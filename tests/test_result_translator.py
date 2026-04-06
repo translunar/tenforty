@@ -1,6 +1,6 @@
 import unittest
 
-from tenforty.models import Scenario, TaxReturnConfig, W2
+from tests.conftest import make_simple_scenario
 from tenforty.result_translator import ResultTranslator, TranslationSpec
 
 
@@ -15,28 +15,17 @@ class TestTranslationSpec(unittest.TestCase):
         self.assertEqual(spec.expansions["agi"], ["agi", "agi_page2"])
 
 
-class TestResultTranslator(unittest.TestCase):
-    def _make_scenario(self) -> Scenario:
-        return Scenario(
-            config=TaxReturnConfig(
-                year=2025,
-                filing_status="single",
-                birthdate="1990-06-15",
-                state="CA",
-            ),
-            w2s=[
-                W2(
-                    employer="Acme Corp",
-                    wages=100000,
-                    federal_tax_withheld=15000,
-                    ss_wages=100000,
-                    ss_tax_withheld=6200,
-                    medicare_wages=100000,
-                    medicare_tax_withheld=1450,
-                ),
-            ],
-        )
+class TestTranslationSpecValidation(unittest.TestCase):
+    def test_overlapping_renames_and_expansions_raises(self):
+        with self.assertRaises(ValueError) as ctx:
+            TranslationSpec(
+                renames={"agi": "adjusted_gross_income"},
+                expansions={"agi": ["agi", "agi_page2"]},
+            )
+        self.assertIn("agi", str(ctx.exception))
 
+
+class TestResultTranslator(unittest.TestCase):
     def _make_spec(self) -> TranslationSpec:
         return TranslationSpec(
             renames={
@@ -47,7 +36,7 @@ class TestResultTranslator(unittest.TestCase):
                 "agi": ["agi", "agi_page2"],
             },
             scenario_fields={
-                "first_name": lambda s: s.config.birthdate.split("-")[0],
+                "state": lambda s: s.config.state,
             },
         )
 
@@ -57,7 +46,7 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000, "overpaid": 1500}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertEqual(result["wages"], 100000)
         self.assertEqual(result["overpaid"], 1500)
@@ -71,7 +60,7 @@ class TestResultTranslator(unittest.TestCase):
             "dividend_income": 2000,
         }
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertEqual(result["taxable_interest"], 250)
         self.assertEqual(result["ordinary_dividends"], 2000)
@@ -84,7 +73,7 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"agi": 100250}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertEqual(result["agi"], 100250)
         self.assertEqual(result["agi_page2"], 100250)
@@ -95,9 +84,9 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
-        self.assertEqual(result["first_name"], "1990")
+        self.assertEqual(result["state"], "CA")
 
     def test_engine_results_override_scenario_fields(self):
         """If an engine result conflicts with a scenario field, engine wins."""
@@ -107,7 +96,7 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertEqual(result["wages"], 100000)
 
@@ -117,7 +106,7 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000, "agi": 100000}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertEqual(result, engine_results)
 
@@ -127,7 +116,7 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000, "schd_line16": None}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertIn("wages", result)
         self.assertNotIn("schd_line16", result)
@@ -140,7 +129,18 @@ class TestResultTranslator(unittest.TestCase):
         translator = ResultTranslator(spec)
         engine_results = {"wages": 100000}
 
-        result = translator.translate(engine_results, self._make_scenario())
+        result = translator.translate(engine_results, make_simple_scenario())
 
         self.assertNotIn("taxable_interest", result)
         self.assertEqual(result["wages"], 100000)
+
+    def test_scenario_field_returning_none_is_excluded(self):
+        """Scenario fields that return None are not included in results."""
+        spec = TranslationSpec(
+            scenario_fields={"missing_field": lambda s: None},
+        )
+        translator = ResultTranslator(spec)
+
+        result = translator.translate({}, make_simple_scenario())
+
+        self.assertNotIn("missing_field", result)
