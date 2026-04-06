@@ -142,7 +142,12 @@ build/
 personal/
 private/
 scenario_real.yaml
+
+# Personal denylist config — contains real employer names, etc.
+scripts/personal_data_config.yaml
 ```
+
+Note: A pre-commit hook that runs the personal data verification script is installed in Task 12.
 
 - [ ] **Step 3: Create package init files**
 
@@ -2158,16 +2163,42 @@ Scanning for personal data leaks...
 No personal data detected. All clear.
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Install as a git pre-commit hook**
 
-Only commit the script, test, and .gitignore update. Do NOT commit the config file.
+Create `.git/hooks/pre-commit`:
+```bash
+#!/bin/sh
+# Run personal data leak check before every commit.
+# Activate the venv and run the verification script.
+# If it fails (exit code 1), the commit is rejected.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+    . "$REPO_ROOT/.venv/bin/activate"
+fi
+
+python "$REPO_ROOT/scripts/verify_no_personal_data.py"
+exit $?
+```
+
+Make it executable:
+```bash
+chmod +x .git/hooks/pre-commit
+```
+
+- [ ] **Step 9: Commit**
+
+Only commit the script, test, and .gitignore update. Do NOT commit the config file. (The hook lives in `.git/hooks/` which is not tracked by git.)
 
 ```bash
 git add scripts/verify_no_personal_data.py tests/test_no_personal_data.py .gitignore
-git commit -m "feat: add personal data leak verification script and test"
+git commit -m "feat: add personal data leak verification script, test, and pre-commit hook"
 ```
 
-- [ ] **Step 9: Verify the config file is not tracked**
+This commit itself will trigger the hook — confirming it works.
+
+- [ ] **Step 10: Verify the config file is not tracked**
 
 ```bash
 git status scripts/personal_data_config.yaml
