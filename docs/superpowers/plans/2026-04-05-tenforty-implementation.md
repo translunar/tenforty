@@ -38,6 +38,8 @@
 
 9. **Tuples with 3+ items must be dataclasses.** Named fields are clearer than positional indexing. `tuple[str, str]` is fine; `tuple[str, str, str]` is not — use a dataclass.
 
+10. **Test classes inherit from `unittest.TestCase`.** Use `self.assertEqual()`, `self.assertIn()`, `self.assertIsInstance()`, `self.assertGreater()`, etc. Never use bare `assert` in test methods. `pytest` is still the test runner, but test classes use the unittest assertion API.
+
 ---
 
 ## File Structure
@@ -164,27 +166,11 @@ scenario_real.yaml
 - [ ] **Step 4: Create tests/conftest.py with shared paths**
 
 ```python
-from pathlib import Path
+"""Shared test configuration.
 
-import pytest
-
-
-REPO_ROOT = Path(__file__).parent.parent
-SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-
-
-@pytest.fixture
-def federal_1040_path() -> Path:
-    path = SPREADSHEETS_DIR / "federal" / "2025" / "1040.xlsx"
-    if not path.exists():
-        pytest.skip(f"Federal 1040 spreadsheet not found at {path}")
-    return path
-
-
-@pytest.fixture
-def fixtures_dir() -> Path:
-    return FIXTURES_DIR
+Tests use unittest.TestCase with module-level constants for paths.
+This file exists for any future shared pytest configuration.
+"""
 ```
 
 - [ ] **Step 5: Copy the federal XLS into the repo**
@@ -227,10 +213,12 @@ git commit -m "feat: scaffold tenforty project with deps and federal XLS"
 
 `tests/test_models.py`:
 ```python
+import unittest
+
 from tenforty.models import W2, Form1099INT, Form1099DIV, Form1098, TaxReturnConfig, Scenario
 
 
-class TestW2:
+class TestW2(unittest.TestCase):
     def test_create_w2(self):
         w2 = W2(
             employer="Acme Corp",
@@ -241,8 +229,8 @@ class TestW2:
             medicare_wages=100000.00,
             medicare_tax_withheld=1450.00,
         )
-        assert w2.wages == 100000.00
-        assert w2.employer == "Acme Corp"
+        self.assertEqual(w2.wages, 100000.00)
+        self.assertEqual(w2.employer, "Acme Corp")
 
     def test_w2_optional_fields_default_to_zero(self):
         w2 = W2(
@@ -254,37 +242,37 @@ class TestW2:
             medicare_wages=50000.00,
             medicare_tax_withheld=725.00,
         )
-        assert w2.state_wages == 0.0
-        assert w2.state_tax_withheld == 0.0
-        assert w2.local_tax_withheld == 0.0
+        self.assertEqual(w2.state_wages, 0.0)
+        self.assertEqual(w2.state_tax_withheld, 0.0)
+        self.assertEqual(w2.local_tax_withheld, 0.0)
 
 
-class TestForm1099INT:
+class TestForm1099INT(unittest.TestCase):
     def test_create_1099_int(self):
         f = Form1099INT(payer="Bank of Example", interest=250.00)
-        assert f.interest == 250.00
-        assert f.federal_tax_withheld == 0.0
+        self.assertEqual(f.interest, 250.00)
+        self.assertEqual(f.federal_tax_withheld, 0.0)
 
 
-class TestForm1099DIV:
+class TestForm1099DIV(unittest.TestCase):
     def test_create_1099_div(self):
         f = Form1099DIV(
             payer="Brokerage Inc",
             ordinary_dividends=1200.00,
             qualified_dividends=800.00,
         )
-        assert f.ordinary_dividends == 1200.00
-        assert f.qualified_dividends == 800.00
+        self.assertEqual(f.ordinary_dividends, 1200.00)
+        self.assertEqual(f.qualified_dividends, 800.00)
 
 
-class TestForm1098:
+class TestForm1098(unittest.TestCase):
     def test_create_1098(self):
         f = Form1098(lender="Mortgage Co", mortgage_interest=8400.00)
-        assert f.mortgage_interest == 8400.00
-        assert f.property_tax == 0.0
+        self.assertEqual(f.mortgage_interest, 8400.00)
+        self.assertEqual(f.property_tax, 0.0)
 
 
-class TestTaxReturnConfig:
+class TestTaxReturnConfig(unittest.TestCase):
     def test_create_config(self):
         config = TaxReturnConfig(
             year=2025,
@@ -292,11 +280,11 @@ class TestTaxReturnConfig:
             birthdate="1990-06-15",
             state="CA",
         )
-        assert config.year == 2025
-        assert config.filing_status == "single"
+        self.assertEqual(config.year, 2025)
+        self.assertEqual(config.filing_status, "single")
 
 
-class TestScenario:
+class TestScenario(unittest.TestCase):
     def test_create_scenario(self):
         w2 = W2(
             employer="Acme",
@@ -314,9 +302,9 @@ class TestScenario:
             state="CA",
         )
         scenario = Scenario(config=config, w2s=[w2])
-        assert len(scenario.w2s) == 1
-        assert scenario.config.year == 2025
-        assert scenario.form1099_int == []
+        self.assertEqual(len(scenario.w2s), 1)
+        self.assertEqual(scenario.config.year, 2025)
+        self.assertEqual(scenario.form1099_int, [])
 ```
 
 - [ ] **Step 2: Run tests to confirm failure**
@@ -447,7 +435,7 @@ git commit -m "feat: add data models for tax input documents and scenarios"
 
 `tests/test_registry.py`:
 ```python
-import pytest
+import unittest
 
 from tenforty.mappings.registry import FormMapping
 
@@ -467,40 +455,42 @@ class FakeMapping(FormMapping):
     }
 
 
-class TestFormMappingGetInputs:
+class TestFormMappingGetInputs(unittest.TestCase):
     def test_returns_inputs_for_valid_year(self):
         result = FakeMapping.get_inputs(2025)
-        assert result == {"wages": "W2_Wages_You", "filing_single": "File_Single"}
+        self.assertEqual(result, {"wages": "W2_Wages_You", "filing_single": "File_Single"})
 
     def test_raises_for_missing_year(self):
-        with pytest.raises(ValueError, match="No input mapping for year 2020"):
+        with self.assertRaises(ValueError) as ctx:
             FakeMapping.get_inputs(2020)
+        self.assertIn("No input mapping for year 2020", str(ctx.exception))
 
 
-class TestFormMappingGetOutputs:
+class TestFormMappingGetOutputs(unittest.TestCase):
     def test_returns_outputs_for_valid_year(self):
         result = FakeMapping.get_outputs(2025)
-        assert result == {"agi": "Adj_Gross_Inc", "tax": "Tax"}
+        self.assertEqual(result, {"agi": "Adj_Gross_Inc", "tax": "Tax"})
 
     def test_raises_for_missing_year(self):
-        with pytest.raises(ValueError, match="No output mapping for year 2020"):
+        with self.assertRaises(ValueError) as ctx:
             FakeMapping.get_outputs(2020)
+        self.assertIn("No output mapping for year 2020", str(ctx.exception))
 
 
-class TestFormMappingInherit:
+class TestFormMappingInherit(unittest.TestCase):
     def test_inherit_inputs_with_override(self):
         result = FakeMapping.inherit(2025, {"wages": "W2_Wages_NEW"}, source="inputs")
-        assert result["wages"] == "W2_Wages_NEW"
-        assert result["filing_single"] == "File_Single"
+        self.assertEqual(result["wages"], "W2_Wages_NEW")
+        self.assertEqual(result["filing_single"], "File_Single")
 
     def test_inherit_outputs_with_addition(self):
         result = FakeMapping.inherit(2025, {"refund": "Overpaid"}, source="outputs")
-        assert result["agi"] == "Adj_Gross_Inc"
-        assert result["refund"] == "Overpaid"
+        self.assertEqual(result["agi"], "Adj_Gross_Inc")
+        self.assertEqual(result["refund"], "Overpaid")
 
     def test_inherit_does_not_mutate_original(self):
         FakeMapping.inherit(2025, {"wages": "CHANGED"}, source="inputs")
-        assert FakeMapping.INPUTS[2025]["wages"] == "W2_Wages_You"
+        self.assertEqual(FakeMapping.INPUTS[2025]["wages"], "W2_Wages_You")
 ```
 
 - [ ] **Step 2: Run tests to confirm failure**
@@ -572,80 +562,81 @@ This mapping covers the entire federal workbook — W-2 input sheet, 1099 sheets
 
 `tests/test_f1040_mapping.py`:
 ```python
+import unittest
+
 from tenforty.mappings.f1040 import F1040
 
 
-class TestF1040Inputs2025:
+class TestF1040Inputs2025(unittest.TestCase):
     def test_has_2025_inputs(self):
         inputs = F1040.get_inputs(2025)
-        assert isinstance(inputs, dict)
-        assert len(inputs) > 0
+        self.assertIsInstance(inputs, dict)
+        self.assertGreater(len(inputs), 0)
 
     def test_w2_wage_fields(self):
         inputs = F1040.get_inputs(2025)
-        assert inputs["w2_wages_1"] == "C3"
-        assert inputs["w2_fed_withheld_1"] == "C4"
-        assert inputs["w2_ss_wages_1"] == "C5"
-        assert inputs["w2_ss_withheld_1"] == "C6"
-        assert inputs["w2_medicare_wages_1"] == "C7"
-        assert inputs["w2_medicare_withheld_1"] == "C8"
+        self.assertEqual(inputs["w2_wages_1"], "C3")
+        self.assertEqual(inputs["w2_fed_withheld_1"], "C4")
+        self.assertEqual(inputs["w2_ss_wages_1"], "C5")
+        self.assertEqual(inputs["w2_ss_withheld_1"], "C6")
+        self.assertEqual(inputs["w2_medicare_wages_1"], "C7")
+        self.assertEqual(inputs["w2_medicare_withheld_1"], "C8")
 
     def test_filing_status_fields(self):
         inputs = F1040.get_inputs(2025)
-        assert inputs["filing_status_single"] == "File_Single"
-        assert inputs["filing_status_married_jointly"] == "File_Marr_Joint"
-        assert inputs["filing_status_married_separately"] == "File_Marr_Sep"
-        assert inputs["filing_status_head_of_household"] == "File_Head"
+        self.assertEqual(inputs["filing_status_single"], "File_Single")
+        self.assertEqual(inputs["filing_status_married_jointly"], "File_Marr_Joint")
+        self.assertEqual(inputs["filing_status_married_separately"], "File_Marr_Sep")
+        self.assertEqual(inputs["filing_status_head_of_household"], "File_Head")
 
     def test_birthdate_fields(self):
         inputs = F1040.get_inputs(2025)
-        assert inputs["birthdate_month"] == "YourBirthMonth"
-        assert inputs["birthdate_day"] == "YourBirthDay"
-        assert inputs["birthdate_year"] == "YourBirthYear"
+        self.assertEqual(inputs["birthdate_month"], "YourBirthMonth")
+        self.assertEqual(inputs["birthdate_day"], "YourBirthDay")
+        self.assertEqual(inputs["birthdate_year"], "YourBirthYear")
 
     def test_1099_int_fields(self):
         inputs = F1040.get_inputs(2025)
-        # 1099-INT sheet, first payer interest goes in a cell
-        assert "interest_1" in inputs
+        self.assertIn("interest_1", inputs)
 
     def test_1098_mortgage_interest(self):
         inputs = F1040.get_inputs(2025)
-        assert "mortgage_interest" in inputs
+        self.assertIn("mortgage_interest", inputs)
 
     def test_schedule_e_rental_fields(self):
         inputs = F1040.get_inputs(2025)
-        assert "sche_rents_a" in inputs
-        assert "sche_property_type_a" in inputs
+        self.assertIn("sche_rents_a", inputs)
+        self.assertIn("sche_property_type_a", inputs)
 
 
-class TestF1040Outputs2025:
+class TestF1040Outputs2025(unittest.TestCase):
     def test_has_2025_outputs(self):
         outputs = F1040.get_outputs(2025)
-        assert isinstance(outputs, dict)
-        assert len(outputs) > 0
+        self.assertIsInstance(outputs, dict)
+        self.assertGreater(len(outputs), 0)
 
     def test_core_output_fields(self):
         outputs = F1040.get_outputs(2025)
-        assert outputs["agi"] == "Adj_Gross_Inc"
-        assert outputs["taxable_income"] == "Taxable_Inc"
-        assert outputs["total_tax"] == "Tax"
-        assert outputs["federal_withheld"] == "W2_FedTaxWH"
-        assert outputs["overpaid"] == "Overpaid"
+        self.assertEqual(outputs["agi"], "Adj_Gross_Inc")
+        self.assertEqual(outputs["taxable_income"], "Taxable_Inc")
+        self.assertEqual(outputs["total_tax"], "Tax")
+        self.assertEqual(outputs["federal_withheld"], "W2_FedTaxWH")
+        self.assertEqual(outputs["overpaid"], "Overpaid")
 
     def test_schedule_e_output(self):
         outputs = F1040.get_outputs(2025)
-        assert outputs["sche_line26"] == "SchE1_Line26"
+        self.assertEqual(outputs["sche_line26"], "SchE1_Line26")
 
 
-class TestF1040InputTypes:
+class TestF1040InputTypes(unittest.TestCase):
     def test_all_input_values_are_strings(self):
         """All mapping values must be strings (named range or cell ref)."""
         for key, value in F1040.get_inputs(2025).items():
-            assert isinstance(value, str), f"Input '{key}' value is {type(value)}, expected str"
+            self.assertIsInstance(value, str, f"Input '{key}' value is {type(value)}, expected str")
 
     def test_all_output_values_are_strings(self):
         for key, value in F1040.get_outputs(2025).items():
-            assert isinstance(value, str), f"Output '{key}' value is {type(value)}, expected str"
+            self.assertIsInstance(value, str, f"Output '{key}' value is {type(value)}, expected str")
 ```
 
 - [ ] **Step 2: Run tests to confirm failure**
@@ -819,11 +810,14 @@ This is the core: write values into a spreadsheet, recalculate with LibreOffice,
 `tests/test_engine.py`:
 ```python
 import subprocess
-
-import pytest
+import tempfile
+import unittest
+from pathlib import Path
 
 from tenforty.engine import SpreadsheetEngine
 from tenforty.mappings.f1040 import F1040
+
+SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
 
 
 def libreoffice_available() -> bool:
@@ -836,16 +830,22 @@ def libreoffice_available() -> bool:
         return False
 
 
-needs_libreoffice = pytest.mark.skipif(
-    not libreoffice_available(),
-    reason="LibreOffice not installed",
+needs_libreoffice = unittest.skipUnless(
+    libreoffice_available(),
+    "LibreOffice not installed",
 )
 
 
-class TestSpreadsheetEngine:
-    @needs_libreoffice
-    def test_simple_w2_single_filer(self, federal_1040_path, tmp_path):
+@needs_libreoffice
+class TestSpreadsheetEngine(unittest.TestCase):
+
+    def test_simple_w2_single_filer(self):
         """$100k wages, single filer, standard deduction."""
+        federal_1040_path = SPREADSHEETS_DIR / "federal" / "2025" / "1040.xlsx"
+        if not federal_1040_path.exists():
+            self.skipTest(f"Federal 1040 spreadsheet not found at {federal_1040_path}")
+
+        tmp_path = Path(tempfile.mkdtemp())
         engine = SpreadsheetEngine()
 
         inputs = {
@@ -869,13 +869,14 @@ class TestSpreadsheetEngine:
             work_dir=tmp_path,
         )
 
-        assert results["wages"] == 100000
-        assert results["agi"] == 100000
-        assert results["taxable_income"] == 84250  # 100000 - 15750 std deduction
-        assert results["federal_withheld"] == 15000
+        self.assertEqual(results["wages"], 100000)
+        self.assertEqual(results["agi"], 100000)
+        self.assertEqual(results["taxable_income"], 84250)  # 100000 - 15750 std deduction
+        self.assertEqual(results["federal_withheld"], 15000)
         # Tax should be roughly $13,455 (per IRS tax table)
-        assert 13000 < results["total_tax"] < 14000
-        assert results["overpaid"] > 0
+        self.assertGreater(results["total_tax"], 13000)
+        self.assertLess(results["total_tax"], 14000)
+        self.assertGreater(results["overpaid"], 0)
 ```
 
 - [ ] **Step 2: Run test to confirm failure**
@@ -1057,48 +1058,49 @@ form1099_int:
 
 `tests/test_scenario.py`:
 ```python
+import unittest
 from pathlib import Path
-
-import pytest
 
 from tenforty.models import Scenario, W2, Form1099INT, TaxReturnConfig
 from tenforty.scenario import load_scenario
 
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
-class TestLoadScenario:
-    def test_loads_simple_w2_scenario(self, fixtures_dir: Path):
-        scenario = load_scenario(fixtures_dir / "simple_w2.yaml")
-        assert isinstance(scenario, Scenario)
-        assert scenario.config.year == 2025
-        assert scenario.config.filing_status == "single"
-        assert scenario.config.birthdate == "1990-06-15"
-        assert scenario.config.state == "CA"
 
-    def test_w2s_loaded(self, fixtures_dir: Path):
-        scenario = load_scenario(fixtures_dir / "simple_w2.yaml")
-        assert len(scenario.w2s) == 1
+class TestLoadScenario(unittest.TestCase):
+    def test_loads_simple_w2_scenario(self):
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+        self.assertIsInstance(scenario, Scenario)
+        self.assertEqual(scenario.config.year, 2025)
+        self.assertEqual(scenario.config.filing_status, "single")
+        self.assertEqual(scenario.config.birthdate, "1990-06-15")
+        self.assertEqual(scenario.config.state, "CA")
+
+    def test_w2s_loaded(self):
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+        self.assertEqual(len(scenario.w2s), 1)
         w2 = scenario.w2s[0]
-        assert isinstance(w2, W2)
-        assert w2.employer == "Acme Corp"
-        assert w2.wages == 100000.00
-        assert w2.federal_tax_withheld == 15000.00
+        self.assertIsInstance(w2, W2)
+        self.assertEqual(w2.employer, "Acme Corp")
+        self.assertEqual(w2.wages, 100000.00)
+        self.assertEqual(w2.federal_tax_withheld, 15000.00)
 
-    def test_1099_int_loaded(self, fixtures_dir: Path):
-        scenario = load_scenario(fixtures_dir / "simple_w2.yaml")
-        assert len(scenario.form1099_int) == 1
+    def test_1099_int_loaded(self):
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+        self.assertEqual(len(scenario.form1099_int), 1)
         f = scenario.form1099_int[0]
-        assert isinstance(f, Form1099INT)
-        assert f.interest == 250.00
+        self.assertIsInstance(f, Form1099INT)
+        self.assertEqual(f.interest, 250.00)
 
-    def test_empty_lists_for_unused_forms(self, fixtures_dir: Path):
-        scenario = load_scenario(fixtures_dir / "simple_w2.yaml")
-        assert scenario.form1099_div == []
-        assert scenario.form1099_b == []
-        assert scenario.form1098s == []
-        assert scenario.schedule_k1s == []
+    def test_empty_lists_for_unused_forms(self):
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+        self.assertEqual(scenario.form1099_div, [])
+        self.assertEqual(scenario.form1099_b, [])
+        self.assertEqual(scenario.form1098s, [])
+        self.assertEqual(scenario.schedule_k1s, [])
 
     def test_file_not_found(self):
-        with pytest.raises(FileNotFoundError):
+        with self.assertRaises(FileNotFoundError):
             load_scenario(Path("/nonexistent/scenario.yaml"))
 ```
 
@@ -1187,6 +1189,8 @@ The engine needs a flat `dict[str, object]` mapping input keys to values. The sc
 
 `tests/test_flattener.py`:
 ```python
+import unittest
+
 from tenforty.flattener import flatten_scenario
 from tenforty.models import (
     Form1098,
@@ -1223,38 +1227,38 @@ def _simple_scenario() -> Scenario:
     )
 
 
-class TestFlattenScenario:
+class TestFlattenScenario(unittest.TestCase):
     def test_filing_status_single(self):
         flat = flatten_scenario(_simple_scenario())
-        assert flat["filing_status_single"] == "X"
-        assert "filing_status_married_jointly" not in flat
+        self.assertEqual(flat["filing_status_single"], "X")
+        self.assertNotIn("filing_status_married_jointly", flat)
 
     def test_birthdate_split(self):
         flat = flatten_scenario(_simple_scenario())
-        assert flat["birthdate_month"] == 6
-        assert flat["birthdate_day"] == 15
-        assert flat["birthdate_year"] == 1990
+        self.assertEqual(flat["birthdate_month"], 6)
+        self.assertEqual(flat["birthdate_day"], 15)
+        self.assertEqual(flat["birthdate_year"], 1990)
 
     def test_w2_fields(self):
         flat = flatten_scenario(_simple_scenario())
-        assert flat["w2_wages_1"] == 100000
-        assert flat["w2_fed_withheld_1"] == 15000
-        assert flat["w2_ss_wages_1"] == 100000
-        assert flat["w2_state_wages_1"] == 100000
-        assert flat["w2_state_withheld_1"] == 5000
+        self.assertEqual(flat["w2_wages_1"], 100000)
+        self.assertEqual(flat["w2_fed_withheld_1"], 15000)
+        self.assertEqual(flat["w2_ss_wages_1"], 100000)
+        self.assertEqual(flat["w2_state_wages_1"], 100000)
+        self.assertEqual(flat["w2_state_withheld_1"], 5000)
 
     def test_1099_int_fields(self):
         flat = flatten_scenario(_simple_scenario())
-        assert flat["interest_1"] == 250
+        self.assertEqual(flat["interest_1"], 250)
 
     def test_1098_mortgage(self):
         flat = flatten_scenario(_simple_scenario())
-        assert flat["mortgage_interest"] == 8400
+        self.assertEqual(flat["mortgage_interest"], 8400)
 
     def test_empty_forms_produce_no_keys(self):
         flat = flatten_scenario(_simple_scenario())
-        assert "ordinary_dividends_1" not in flat
-        assert "sche_rents_a" not in flat
+        self.assertNotIn("ordinary_dividends_1", flat)
+        self.assertNotIn("sche_rents_a", flat)
 ```
 
 - [ ] **Step 2: Run tests to confirm failure**
@@ -1372,14 +1376,17 @@ This wires everything together: load YAML → flatten → engine compute → ver
 `tests/test_integration.py`:
 ```python
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-
-import pytest
 
 from tenforty.engine import SpreadsheetEngine
 from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
+
+SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 def libreoffice_available() -> bool:
@@ -1392,19 +1399,22 @@ def libreoffice_available() -> bool:
         return False
 
 
-needs_libreoffice = pytest.mark.skipif(
-    not libreoffice_available(),
-    reason="LibreOffice not installed",
+needs_libreoffice = unittest.skipUnless(
+    libreoffice_available(),
+    "LibreOffice not installed",
 )
 
 
-class TestEndToEnd:
-    @needs_libreoffice
-    def test_simple_w2_yaml_to_results(
-        self, federal_1040_path: Path, fixtures_dir: Path, tmp_path: Path,
-    ):
+@needs_libreoffice
+class TestEndToEnd(unittest.TestCase):
+    def test_simple_w2_yaml_to_results(self):
         """Full pipeline: YAML → Scenario → flat inputs → engine → results."""
-        scenario = load_scenario(fixtures_dir / "simple_w2.yaml")
+        federal_1040_path = SPREADSHEETS_DIR / "federal" / "2025" / "1040.xlsx"
+        if not federal_1040_path.exists():
+            self.skipTest(f"Federal 1040 spreadsheet not found at {federal_1040_path}")
+
+        tmp_path = Path(tempfile.mkdtemp())
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
         flat_inputs = flatten_scenario(scenario)
 
         engine = SpreadsheetEngine()
@@ -1417,20 +1427,21 @@ class TestEndToEnd:
         )
 
         # $100k wages + $250 interest
-        assert results["wages"] == 100000
-        assert results["agi"] == 100250  # wages + interest
-        assert results["interest_income"] == 250
-        assert results["federal_withheld"] == 15000
+        self.assertEqual(results["wages"], 100000)
+        self.assertEqual(results["agi"], 100250)  # wages + interest
+        self.assertEqual(results["interest_income"], 250)
+        self.assertEqual(results["federal_withheld"], 15000)
 
         # Standard deduction for single 2025 is $15,750
         # Taxable income = 100250 - 15750 = 84500
-        assert results["taxable_income"] == 84500
+        self.assertEqual(results["taxable_income"], 84500)
 
         # Tax should be in the $13k-$14k range
-        assert 13000 < results["total_tax"] < 14000
+        self.assertGreater(results["total_tax"], 13000)
+        self.assertLess(results["total_tax"], 14000)
 
         # Should get a refund (withheld $15k, tax ~$13.5k)
-        assert results["overpaid"] > 0
+        self.assertGreater(results["overpaid"], 0)
 ```
 
 - [ ] **Step 2: Run the integration test**
@@ -1463,9 +1474,9 @@ The orchestrator manages the dependency chain. For now it only handles the feder
 `tests/test_orchestrator.py`:
 ```python
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-
-import pytest
 
 from tenforty.models import Scenario, TaxReturnConfig, W2
 from tenforty.orchestrator import ReturnOrchestrator
@@ -1483,15 +1494,16 @@ def libreoffice_available() -> bool:
         return False
 
 
-needs_libreoffice = pytest.mark.skipif(
-    not libreoffice_available(),
-    reason="LibreOffice not installed",
+needs_libreoffice = unittest.skipUnless(
+    libreoffice_available(),
+    "LibreOffice not installed",
 )
 
 
-class TestReturnOrchestrator:
-    @needs_libreoffice
-    def test_federal_return(self, tmp_path: Path):
+@needs_libreoffice
+class TestReturnOrchestrator(unittest.TestCase):
+    def test_federal_return(self):
+        tmp_path = Path(tempfile.mkdtemp())
         scenario = Scenario(
             config=TaxReturnConfig(
                 year=2025,
@@ -1518,11 +1530,11 @@ class TestReturnOrchestrator:
         )
         results = orchestrator.compute_federal(scenario)
 
-        assert results["wages"] == 80000
-        assert results["agi"] == 80000
+        self.assertEqual(results["wages"], 80000)
+        self.assertEqual(results["agi"], 80000)
         # 80000 - 15750 = 64250
-        assert results["taxable_income"] == 64250
-        assert results["federal_withheld"] == 12000
+        self.assertEqual(results["taxable_income"], 64250)
+        self.assertEqual(results["federal_withheld"], 12000)
 ```
 
 - [ ] **Step 2: Run tests to confirm failure**
@@ -1601,46 +1613,23 @@ git commit -m "feat: add ReturnOrchestrator for dependency-ordered tax computati
 
 `tests/test_pdf_filler.py`:
 ```python
-from pathlib import Path
-from unittest.mock import patch
-
-import pytest
+import unittest
 
 from tenforty.filing.pdf import PdfFiller
 
 
-class TestPdfFiller:
-    def test_fill_creates_output_file(self, tmp_path: Path):
-        """Test with a minimal PDF that has form fields."""
-        # Create a simple test PDF with form fields using pypdf
-        from pypdf import PdfWriter
-
-        writer = PdfWriter()
-        writer.add_blank_page(width=612, height=792)
-
-        # Add a simple text field
-        writer.add_page(writer.pages[0])
-        # pypdf's form field API
-        from pypdf.annotations import FreeText
-        from pypdf.generic import (
-            ArrayObject,
-            DictionaryObject,
-            NameObject,
-            NumberObject,
-            TextStringObject,
-        )
-
-        # We'll test with a pre-made PDF instead — simpler and more realistic
-        # For now, just test that the filler accepts the right interface
+class TestPdfFiller(unittest.TestCase):
+    def test_instantiation(self):
         filler = PdfFiller()
-        assert filler is not None
+        self.assertIsNotNone(filler)
 
-    def test_fill_mapping_structure(self):
+    def test_fill_method_exists(self):
         """PDF filler takes computed results + a field mapping."""
         filler = PdfFiller()
-        # The fill method signature should accept these arguments
-        assert callable(getattr(filler, "fill", None))
+        self.assertTrue(callable(getattr(filler, "fill", None)))
 ```
+
+**Note:** Full PDF filling tests require real fillable PDFs (IRS forms). We'll add those when we integrate with actual forms. For now, we test the interface.
 
 **Note:** Full PDF filling tests require real fillable PDFs (IRS forms). We'll add those when we integrate with actual forms. For now, we test the interface.
 
@@ -1765,14 +1754,17 @@ form1098s:
 `tests/test_verification.py`:
 ```python
 import subprocess
+import tempfile
+import unittest
 from pathlib import Path
-
-import pytest
 
 from tenforty.engine import SpreadsheetEngine
 from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
+
+SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 def libreoffice_available() -> bool:
@@ -1785,19 +1777,22 @@ def libreoffice_available() -> bool:
         return False
 
 
-needs_libreoffice = pytest.mark.skipif(
-    not libreoffice_available(),
-    reason="LibreOffice not installed",
+needs_libreoffice = unittest.skipUnless(
+    libreoffice_available(),
+    "LibreOffice not installed",
 )
 
 
-class TestRealisticScenario:
-    @needs_libreoffice
-    def test_w2_with_interest_dividends_mortgage(
-        self, federal_1040_path: Path, fixtures_dir: Path, tmp_path: Path,
-    ):
+@needs_libreoffice
+class TestRealisticScenario(unittest.TestCase):
+    def test_w2_with_interest_dividends_mortgage(self):
         """Higher-income filer with investment income and mortgage."""
-        scenario = load_scenario(fixtures_dir / "realistic_w2_rental.yaml")
+        federal_1040_path = SPREADSHEETS_DIR / "federal" / "2025" / "1040.xlsx"
+        if not federal_1040_path.exists():
+            self.skipTest(f"Federal 1040 spreadsheet not found at {federal_1040_path}")
+
+        tmp_path = Path(tempfile.mkdtemp())
+        scenario = load_scenario(FIXTURES_DIR / "realistic_w2_rental.yaml")
         flat_inputs = flatten_scenario(scenario)
 
         engine = SpreadsheetEngine()
@@ -1810,25 +1805,25 @@ class TestRealisticScenario:
         )
 
         # Wages should be $150,000
-        assert results["wages"] == 150000
+        self.assertEqual(results["wages"], 150000)
 
         # AGI = 150000 + 500 (interest) + 2000 (dividends) = 152500
-        assert results["agi"] == 152500
+        self.assertEqual(results["agi"], 152500)
 
         # Interest and dividends should flow through
-        assert results["interest_income"] == 500
-        assert results["dividend_income"] == 2000
+        self.assertEqual(results["interest_income"], 500)
+        self.assertEqual(results["dividend_income"], 2000)
 
         # Withholding
-        assert results["federal_withheld"] == 28000
+        self.assertEqual(results["federal_withheld"], 28000)
 
         # Should have meaningful tax
-        assert results["total_tax"] is not None
-        assert results["total_tax"] > 0
+        self.assertIsNotNone(results["total_tax"])
+        self.assertGreater(results["total_tax"], 0)
 
         # Should get a refund (withheld a lot)
-        assert results["overpaid"] is not None
-        assert results["overpaid"] > 0
+        self.assertIsNotNone(results["overpaid"])
+        self.assertGreater(results["overpaid"], 0)
 ```
 
 - [ ] **Step 3: Run the test**
