@@ -1843,6 +1843,294 @@ git commit -m "test: add realistic scenario verification test"
 
 ---
 
+### Task 12: Personal Data Leak Verification
+
+**Files:**
+- Create: `scripts/verify_no_personal_data.py`
+- Create: `tests/test_no_personal_data.py`
+
+This script scans the repo for signs of personal data leaking into tracked files. It runs three checks: an allowlist of known synthetic identifiers, a denylist of real-world identifiers to reject, and heuristics for suspicious patterns.
+
+- [ ] **Step 1: Write failing test**
+
+`tests/test_no_personal_data.py`:
+```python
+import subprocess
+import unittest
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).parent.parent
+
+
+class TestNoPersonalData(unittest.TestCase):
+    def test_verification_script_passes(self):
+        """Run the personal data verification script and assert it exits cleanly."""
+        result = subprocess.run(
+            ["python", str(REPO_ROOT / "scripts" / "verify_no_personal_data.py")],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+        )
+        self.assertEqual(
+            result.returncode, 0,
+            f"Personal data check failed:\n{result.stdout}\n{result.stderr}",
+        )
+```
+
+- [ ] **Step 2: Run test to confirm failure**
+
+```bash
+source .venv/bin/activate && python -m pytest tests/test_no_personal_data.py -v
+```
+
+Expected: FAIL — script does not exist yet.
+
+- [ ] **Step 3: Implement verification script**
+
+`scripts/verify_no_personal_data.py`:
+```python
+"""Scan the repo for personal data leaks.
+
+Checks:
+1. ALLOWLIST — fixture files must contain only known synthetic identifiers.
+2. DENYLIST — no tracked file may contain known real-world identifiers.
+3. HEURISTICS — flag suspicious patterns in YAML fixtures.
+
+Exit code 0 = clean, 1 = violations found.
+"""
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).parent.parent
+
+# --- ALLOWLIST: known synthetic employer/payer names ---
+# Every employer or payer name in YAML fixtures must be one of these.
+ALLOWED_NAMES = {
+    "Acme Corp",
+    "Acme",
+    "Tech Corp",
+    "Test Corp",
+    "Bank of Example",
+    "National Bank",
+    "Brokerage Inc",
+    "Investment Brokerage",
+    "Mortgage Co",
+    "Home Mortgage Co",
+    "Example LLC",
+    "Fake S-Corp Inc",
+}
+
+# --- DENYLIST: real-world identifiers that must never appear ---
+# Add any real employer names, real people's names, real EINs, etc.
+DENYLIST_PATTERNS = [
+    r"(?i)\bastranis\b",
+    r"(?i)\bmorgan\s+stanley\b",
+    r"(?i)\bcharm\b",
+    r"(?i)\btake\s+4\s+presents\b",
+    # Real SSN pattern (XXX-XX-XXXX where first group isn't 000/666/9XX)
+    r"\b(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b",
+    # Real EIN pattern (XX-XXXXXXX where first two digits are a valid prefix)
+    # We only flag these if they appear in YAML/Python test files
+    r"\b\d{2}-\d{7}\b",
+]
+
+# --- HEURISTICS for YAML fixtures ---
+# Dollar amounts in test fixtures should be round numbers (multiples of 50).
+# Real tax data almost never has perfectly round wages.
+NON_ROUND_DOLLAR_RE = re.compile(r":\s*(\d+\.\d{2})")
+ROUND_THRESHOLD = 50  # must be divisible by this
+
+
+def get_tracked_files() -> list[Path]:
+    """Get all git-tracked files."""
+    result = subprocess.run(
+        ["git", "ls-files"],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+    )
+    return [REPO_ROOT / f for f in result.stdout.strip().split("\n") if f]
+
+
+def check_denylist(files: list[Path]) -> list[str]:
+    """Check that no tracked file contains denylist patterns."""
+    violations = []
+    # Only scan text files (Python, YAML, TOML, Markdown)
+    extensions = {".py", ".yaml", ".yml", ".toml", ".md", ".txt", ".json", ".csv"}
+
+    for path in files:
+        if path.suffix not in extensions:
+            continue
+        if not path.exists():
+            continue
+
+        try:
+            content = path.read_text()
+        except UnicodeDecodeError:
+            continue
+
+        for pattern in DENYLIST_PATTERNS:
+            matches = re.findall(pattern, content)
+            if matches:
+                for match in matches:
+                    violations.append(
+                        f"DENYLIST: {path.relative_to(REPO_ROOT)}: "
+                        f"matched pattern '{pattern}' -> '{match}'"
+                    )
+
+    return violations
+
+
+def check_fixture_names(files: list[Path]) -> list[str]:
+    """Check that YAML fixtures only use allowed synthetic names."""
+    violations = []
+    name_fields = {"employer", "payer", "lender", "entity_name", "broker"}
+
+    for path in files:
+        if path.suffix not in {".yaml", ".yml"}:
+            continue
+        if "fixtures" not in str(path):
+            continue
+        if not path.exists():
+            continue
+
+        content = path.read_text()
+        for line_num, line in enumerate(content.split("\n"), start=1):
+            stripped = line.strip()
+            for field in name_fields:
+                if stripped.startswith(f"{field}:"):
+                    # Extract the value after the colon
+                    value = stripped.split(":", 1)[1].strip().strip('"').strip("'")
+                    if value and value not in ALLOWED_NAMES:
+                        violations.append(
+                            f"ALLOWLIST: {path.relative_to(REPO_ROOT)}:{line_num}: "
+                            f"'{field}: {value}' is not in ALLOWED_NAMES"
+                        )
+
+    return violations
+
+
+def check_non_round_amounts(files: list[Path]) -> list[str]:
+    """Flag non-round dollar amounts in YAML fixtures as suspicious."""
+    violations = []
+
+    for path in files:
+        if path.suffix not in {".yaml", ".yml"}:
+            continue
+        if "fixtures" not in str(path):
+            continue
+        if not path.exists():
+            continue
+
+        content = path.read_text()
+        for line_num, line in enumerate(content.split("\n"), start=1):
+            for match in NON_ROUND_DOLLAR_RE.finditer(line):
+                amount = float(match.group(1))
+                if amount > 0 and amount % ROUND_THRESHOLD != 0:
+                    violations.append(
+                        f"HEURISTIC: {path.relative_to(REPO_ROOT)}:{line_num}: "
+                        f"${amount:.2f} is not a round number "
+                        f"(not divisible by {ROUND_THRESHOLD})"
+                    )
+
+    return violations
+
+
+def check_git_history() -> list[str]:
+    """Check that no commit message references personal identifiers."""
+    violations = []
+    result = subprocess.run(
+        ["git", "log", "--all", "--format=%H %s"],
+        capture_output=True,
+        text=True,
+        cwd=str(REPO_ROOT),
+    )
+
+    for line in result.stdout.strip().split("\n"):
+        if not line:
+            continue
+        for pattern in DENYLIST_PATTERNS:
+            if re.search(pattern, line):
+                violations.append(f"GIT HISTORY: commit message matches '{pattern}': {line}")
+
+    return violations
+
+
+def main() -> int:
+    files = get_tracked_files()
+    all_violations: list[str] = []
+
+    print("Scanning for personal data leaks...")
+    print(f"  Tracked files: {len(files)}")
+
+    denylist = check_denylist(files)
+    all_violations.extend(denylist)
+    print(f"  Denylist check: {len(denylist)} violations")
+
+    allowlist = check_fixture_names(files)
+    all_violations.extend(allowlist)
+    print(f"  Allowlist check: {len(allowlist)} violations")
+
+    heuristic = check_non_round_amounts(files)
+    all_violations.extend(heuristic)
+    print(f"  Heuristic check: {len(heuristic)} violations")
+
+    history = check_git_history()
+    all_violations.extend(history)
+    print(f"  Git history check: {len(history)} violations")
+
+    if all_violations:
+        print(f"\nFOUND {len(all_violations)} VIOLATION(S):\n")
+        for v in all_violations:
+            print(f"  {v}")
+        return 1
+
+    print("\nNo personal data detected. All clear.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+- [ ] **Step 4: Run test to confirm it passes**
+
+```bash
+source .venv/bin/activate && python -m pytest tests/test_no_personal_data.py -v
+```
+
+Expected: PASS — no personal data in the repo.
+
+- [ ] **Step 5: Run the script directly to see output**
+
+```bash
+source .venv/bin/activate && python scripts/verify_no_personal_data.py
+```
+
+Expected output:
+```
+Scanning for personal data leaks...
+  Tracked files: N
+  Denylist check: 0 violations
+  Allowlist check: 0 violations
+  Heuristic check: 0 violations
+  Git history check: 0 violations
+
+No personal data detected. All clear.
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/verify_no_personal_data.py tests/test_no_personal_data.py
+git commit -m "feat: add personal data leak verification script and test"
+```
+
+---
+
 ## Summary
 
 | Task | Component | Tests |
@@ -1858,8 +2146,9 @@ git commit -m "test: add realistic scenario verification test"
 | 9 | Return orchestrator | 1 test |
 | 10 | PDF filler | 2 tests |
 | 11 | Realistic verification | 1 test |
+| 12 | Personal data leak verification | 1 test + script |
 
-**What this plan builds:** A working federal tax pipeline — YAML scenario → spreadsheet computation → verified results. The architecture is ready for CA 540, 1120-S, and PDF filing extensions.
+**What this plan builds:** A working federal tax pipeline — YAML scenario → spreadsheet computation → verified results. The architecture is ready for CA 540, 1120-S, and PDF filing extensions. A verification script ensures no personal data leaks into the repo.
 
 **What comes next (separate plans):**
 - CA 540 / 540-CA spreadsheets + mappings
