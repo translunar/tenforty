@@ -47,7 +47,7 @@ class TestPdf1040Mapping(unittest.TestCase):
                 f"Mapping '{result_key}' -> '{pdf_field}' not found in PDF",
             )
 
-    def test_fill_and_read_back_wages(self, ):
+    def test_fill_and_read_back_wages(self):
         """Fill wages field and verify we can read it back."""
         mapping = Pdf1040.get_mapping(2025)
         filler = PdfFiller()
@@ -102,3 +102,19 @@ class TestPdf1040Mapping(unittest.TestCase):
                 value, str,
                 f"Mapping '{key}' value is {type(value)}, expected str",
             )
+
+    def test_mapping_keys_are_valid_identifiers(self):
+        mapping = Pdf1040.get_mapping(2025)
+        for key in mapping:
+            self.assertTrue(
+                key.isidentifier(),
+                f"Mapping key '{key}' is not a valid Python identifier",
+            )
+
+
+class TestPdf1040Basic(unittest.TestCase):
+    """Tests that don't require the PDF file."""
+
+    def test_unsupported_year_raises(self):
+        with self.assertRaises(ValueError):
+            Pdf1040.get_mapping(1999)
