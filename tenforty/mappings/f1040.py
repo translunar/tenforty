@@ -40,6 +40,7 @@ class F1040(FormMapping):
             "sche_utilities_a": "Sch. E",
             "sche_depreciation_a": "Sch. E",
             "mortgage_interest": "Sch. A",
+            "property_tax": "Sch. A",
         },
     }
 
@@ -64,7 +65,8 @@ class F1040(FormMapping):
             "interest_1": "D6",
             "ordinary_dividends_1": "D6",
             "qualified_dividends_1": "D7",
-            "mortgage_interest": "D16",
+            "mortgage_interest": "T37",
+            "property_tax": "N25",
             "sche_property_type_a": "D21",
             "sche_fair_rental_days_a": "V21",
             "sche_personal_use_days_a": "AD21",

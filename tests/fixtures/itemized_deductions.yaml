@@ -1,0 +1,19 @@
+config:
+  year: 2025
+  filing_status: single
+  birthdate: "1980-02-14"
+  state: CA
+
+w2s:
+  - employer: "Acme Corp"
+    wages: 200000.00
+    federal_tax_withheld: 40000.00
+    ss_wages: 176100.00
+    ss_tax_withheld: 10950.00
+    medicare_wages: 200000.00
+    medicare_tax_withheld: 2900.00
+
+form1098s:
+  - lender: "Home Mortgage Co"
+    mortgage_interest: 18000.00
+    property_tax: 6000.00
