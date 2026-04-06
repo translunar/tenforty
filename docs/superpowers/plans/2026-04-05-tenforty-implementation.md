@@ -36,6 +36,8 @@
 
 8. **No personal data.** Test fixtures use synthetic numbers only. Never reference real tax documents.
 
+9. **Tuples with 3+ items must be dataclasses.** Named fields are clearer than positional indexing. `tuple[str, str]` is fine; `tuple[str, str, str]` is not — use a dataclass.
+
 ---
 
 ## File Structure
