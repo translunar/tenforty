@@ -63,6 +63,18 @@ class TestF1040Outputs2025(unittest.TestCase):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["sche_line26"], "SchE1_Line26")
 
+    def test_total_income_output(self):
+        outputs = F1040.get_outputs(2025)
+        self.assertEqual(outputs["total_income"], "Total_Income")
+
+    def test_total_payments_output(self):
+        outputs = F1040.get_outputs(2025)
+        self.assertEqual(outputs["total_payments"], "Tot_Payments")
+
+    def test_total_deductions_output(self):
+        outputs = F1040.get_outputs(2025)
+        self.assertEqual(outputs["total_deductions"], "TotalDeductions")
+
 
 class TestF1040InputTypes(unittest.TestCase):
     def test_all_input_values_are_strings(self):
