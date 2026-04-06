@@ -1,0 +1,23 @@
+config:
+  year: 2025
+  filing_status: single
+  birthdate: "1985-08-10"
+  state: CA
+
+w2s:
+  - employer: "Tech Corp"
+    wages: 120000.00
+    federal_tax_withheld: 22000.00
+    ss_wages: 120000.00
+    ss_tax_withheld: 7450.00
+    medicare_wages: 120000.00
+    medicare_tax_withheld: 1750.00
+
+form1099_int:
+  - payer: "National Bank"
+    interest: 1500.00
+
+form1099_div:
+  - payer: "Investment Brokerage"
+    ordinary_dividends: 3000.00
+    qualified_dividends: 2500.00
