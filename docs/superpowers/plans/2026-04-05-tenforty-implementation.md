@@ -1904,6 +1904,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).parent.parent
 
 # --- ALLOWLIST: known synthetic employer/payer names ---
@@ -1923,19 +1925,32 @@ ALLOWED_NAMES = {
     "Fake S-Corp Inc",
 }
 
-# --- DENYLIST: real-world identifiers that must never appear ---
-# Add any real employer names, real people's names, real EINs, etc.
-DENYLIST_PATTERNS = [
-    r"(?i)\bastranis\b",
-    r"(?i)\bmorgan\s+stanley\b",
-    r"(?i)\bcharm\b",
-    r"(?i)\btake\s+4\s+presents\b",
+# --- DENYLIST: patterns that must never appear in tracked files ---
+# Generic patterns are hardcoded. User-specific patterns (real employer names,
+# etc.) are loaded from a gitignored config file so they don't leak either.
+_BUILTIN_DENYLIST = [
     # Real SSN pattern (XXX-XX-XXXX where first group isn't 000/666/9XX)
     r"\b(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b",
-    # Real EIN pattern (XX-XXXXXXX where first two digits are a valid prefix)
-    # We only flag these if they appear in YAML/Python test files
+    # Real EIN pattern (XX-XXXXXXX)
     r"\b\d{2}-\d{7}\b",
 ]
+
+
+def _load_denylist_config() -> list[str]:
+    """Load user-specific denylist patterns from gitignored config file."""
+    config_path = REPO_ROOT / "scripts" / "personal_data_config.yaml"
+    if not config_path.exists():
+        print(f"  WARNING: {config_path.relative_to(REPO_ROOT)} not found.")
+        print("  Create it with your real employer names, etc. It is gitignored.")
+        return []
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    return config.get("denylist_patterns", [])
+
+
+DENYLIST_PATTERNS = _BUILTIN_DENYLIST + _load_denylist_config()
 
 # --- HEURISTICS for YAML fixtures ---
 # Dollar amounts in test fixtures should be round numbers (multiples of 50).
@@ -2096,7 +2111,28 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 4: Run test to confirm it passes**
+- [ ] **Step 4: Add personal_data_config.yaml to .gitignore**
+
+Append to `.gitignore`:
+```gitignore
+# Personal denylist config — contains real employer names, etc.
+scripts/personal_data_config.yaml
+```
+
+- [ ] **Step 5: Create the gitignored config file with real identifiers**
+
+`scripts/personal_data_config.yaml` (this file is gitignored and never committed):
+```yaml
+# Real-world identifiers to reject in tracked files.
+# This file is gitignored — it contains personal information.
+denylist_patterns:
+  - "(?i)\\bastranis\\b"
+  - "(?i)\\bmorgan\\s+stanley\\b"
+  - "(?i)\\bcharm\\b"
+  - "(?i)\\btake\\s+4\\s+presents\\b"
+```
+
+- [ ] **Step 6: Run test to confirm it passes**
 
 ```bash
 source .venv/bin/activate && python -m pytest tests/test_no_personal_data.py -v
@@ -2104,7 +2140,7 @@ source .venv/bin/activate && python -m pytest tests/test_no_personal_data.py -v
 
 Expected: PASS — no personal data in the repo.
 
-- [ ] **Step 5: Run the script directly to see output**
+- [ ] **Step 7: Run the script directly to see output**
 
 ```bash
 source .venv/bin/activate && python scripts/verify_no_personal_data.py
@@ -2122,12 +2158,22 @@ Scanning for personal data leaks...
 No personal data detected. All clear.
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
+
+Only commit the script, test, and .gitignore update. Do NOT commit the config file.
 
 ```bash
-git add scripts/verify_no_personal_data.py tests/test_no_personal_data.py
+git add scripts/verify_no_personal_data.py tests/test_no_personal_data.py .gitignore
 git commit -m "feat: add personal data leak verification script and test"
 ```
+
+- [ ] **Step 9: Verify the config file is not tracked**
+
+```bash
+git status scripts/personal_data_config.yaml
+```
+
+Expected: the file should show as untracked (not staged), confirming .gitignore works.
 
 ---
 
