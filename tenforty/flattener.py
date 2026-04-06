@@ -19,7 +19,23 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_1099_div(scenario, flat)
     _flatten_1098s(scenario, flat)
 
+    _reject_unhandled(scenario)
+
     return flat
+
+
+def _reject_unhandled(scenario: Scenario) -> None:
+    """Raise NotImplementedError if the scenario has data we can't flatten yet."""
+    if scenario.form1099_b:
+        raise NotImplementedError(
+            f"1099-B flattening not yet implemented "
+            f"({len(scenario.form1099_b)} transaction(s) would be silently dropped)"
+        )
+    if scenario.schedule_k1s:
+        raise NotImplementedError(
+            f"Schedule K-1 flattening not yet implemented "
+            f"({len(scenario.schedule_k1s)} K-1(s) would be silently dropped)"
+        )
 
 
 def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:

@@ -1,8 +1,16 @@
 import unittest
 
-from tenforty.models import Form1099DIV, Form1099INT, Scenario, TaxReturnConfig, W2
+from tenforty.models import (
+    Form1099B,
+    Form1099DIV,
+    Form1099INT,
+    Scenario,
+    TaxReturnConfig,
+    W2,
+)
 from tests.invariants import (
     assert_agi_consistent,
+    assert_all_income_accounted_for,
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
@@ -125,3 +133,41 @@ class TestAssertWithholdingMatchesInput(unittest.TestCase):
         results = {"federal_withheld": 99999}
         with self.assertRaises(AssertionError):
             assert_withholding_matches_input(self, results, scenario)
+
+
+class TestAssertAllIncomeAccountedFor(unittest.TestCase):
+    def test_passes_when_all_income_in_agi(self):
+        scenario = _make_scenario_with_interest_and_dividends()
+        results = {"agi": 102500}  # 100000 + 500 + 2000
+        assert_all_income_accounted_for(self, results, scenario)
+
+    def test_passes_when_agi_slightly_less_due_to_adjustments(self):
+        """AGI can be less than total income (adjustments reduce it)."""
+        scenario = _make_scenario_with_interest_and_dividends()
+        # Total income is 102500, adjustments reduce it a bit
+        results = {"agi": 102000}
+        assert_all_income_accounted_for(self, results, scenario)
+
+    def test_fails_when_income_missing(self):
+        """If AGI is way below expected minimum, income was probably dropped."""
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            w2s=[W2(
+                employer="Acme Corp", wages=100000,
+                federal_tax_withheld=15000,
+                ss_wages=100000, ss_tax_withheld=6200,
+                medicare_wages=100000, medicare_tax_withheld=1450,
+            )],
+            form1099_b=[Form1099B(
+                broker="Brokerage Inc", description="shares",
+                date_acquired="2023-01-01", date_sold="2025-06-01",
+                proceeds=50000, cost_basis=30000, gain_loss=20000,
+            )],
+        )
+        # AGI of 100000 is missing the $20k capital gain
+        results = {"agi": 100000}
+        with self.assertRaises(AssertionError):
+            assert_all_income_accounted_for(self, results, scenario)

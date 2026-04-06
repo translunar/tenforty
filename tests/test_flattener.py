@@ -3,8 +3,10 @@ import unittest
 from tenforty.flattener import flatten_scenario
 from tenforty.models import (
     Form1098,
+    Form1099B,
     Form1099INT,
     Scenario,
+    ScheduleK1,
     TaxReturnConfig,
     W2,
 )
@@ -68,3 +70,38 @@ class TestFlattenScenario(unittest.TestCase):
         flat = flatten_scenario(_simple_scenario())
         self.assertNotIn("ordinary_dividends_1", flat)
         self.assertNotIn("sche_rents_a", flat)
+
+
+class TestFlattenerRejectsUnhandledData(unittest.TestCase):
+    """The flattener must raise NotImplementedError for form types it can't handle yet."""
+
+    def _base_config(self) -> TaxReturnConfig:
+        return TaxReturnConfig(
+            year=2025, filing_status="single",
+            birthdate="1990-06-15", state="CA",
+        )
+
+    def test_rejects_1099_b(self):
+        scenario = Scenario(
+            config=self._base_config(),
+            form1099_b=[Form1099B(
+                broker="Brokerage Inc", description="100 shares ACME",
+                date_acquired="2023-01-15", date_sold="2025-03-20",
+                proceeds=15000, cost_basis=10000,
+            )],
+        )
+        with self.assertRaises(NotImplementedError) as ctx:
+            flatten_scenario(scenario)
+        self.assertIn("1099-B", str(ctx.exception))
+
+    def test_rejects_schedule_k1(self):
+        scenario = Scenario(
+            config=self._base_config(),
+            schedule_k1s=[ScheduleK1(
+                entity_name="Example LLC", entity_ein="FAKE-EIN",
+                rental_income=6000,
+            )],
+        )
+        with self.assertRaises(NotImplementedError) as ctx:
+            flatten_scenario(scenario)
+        self.assertIn("K-1", str(ctx.exception))
