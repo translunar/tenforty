@@ -87,6 +87,51 @@ def assert_refund_or_owed_consistent(
         )
 
 
+def assert_all_income_accounted_for(
+    test: unittest.TestCase,
+    results: dict[str, object],
+    scenario: Scenario,
+) -> None:
+    """AGI should account for all income sources in the scenario.
+
+    Computes a minimum expected income from all scenario data (wages,
+    interest, dividends, capital gains, K-1 income). AGI can be lower
+    than this due to adjustments, but if it's dramatically lower,
+    income was probably silently dropped.
+
+    Uses a threshold of 50% of expected non-wage income to allow for
+    adjustments and losses while still catching completely missing forms.
+    """
+    agi = results.get("agi")
+    test.assertIsNotNone(agi, "AGI is missing from results")
+    agi_float = float(agi)
+
+    # Sum all income sources the scenario claims to have
+    wage_income = sum(w2.wages for w2 in scenario.w2s)
+    interest_income = sum(f.interest for f in scenario.form1099_int)
+    dividend_income = sum(f.ordinary_dividends for f in scenario.form1099_div)
+    capital_gains = sum(f.gain_loss for f in scenario.form1099_b)
+    k1_income = sum(
+        k.ordinary_income + k.rental_income + k.interest_income + k.dividend_income
+        for k in scenario.schedule_k1s
+    )
+
+    non_wage_income = interest_income + dividend_income + capital_gains + k1_income
+
+    # AGI must be at least wages + 50% of non-wage income.
+    # The 50% threshold accounts for adjustments, but catches
+    # completely missing forms (which would be 0% of expected).
+    minimum_agi = wage_income + (non_wage_income * 0.5)
+
+    test.assertGreaterEqual(
+        agi_float, minimum_agi,
+        f"AGI ({agi_float:,.0f}) is suspiciously low. "
+        f"Expected at least {minimum_agi:,.0f} "
+        f"(wages={wage_income:,.0f} + 50% of non-wage={non_wage_income:,.0f}). "
+        f"Was income from a form silently dropped?",
+    )
+
+
 def assert_withholding_matches_input(
     test: unittest.TestCase,
     results: dict[str, object],
