@@ -1683,16 +1683,15 @@ class PdfFiller:
             Path to the filled PDF.
         """
         reader = PdfReader(template_path)
-        writer = PdfWriter()
-        writer.append_pages_from_reader(reader)
+        writer = PdfWriter(clone_from=reader)
 
         pdf_fields: dict[str, str] = {}
         for result_key, pdf_field_name in field_mapping.items():
             if result_key in values and values[result_key] is not None:
                 pdf_fields[pdf_field_name] = str(values[result_key])
 
-        for page_num in range(len(writer.pages)):
-            writer.update_page_form_field_values(writer.pages[page_num], pdf_fields)
+        for page in writer.pages:
+            writer.update_page_form_field_values(page, pdf_fields)
 
         with open(output_path, "wb") as f:
             writer.write(f)
