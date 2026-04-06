@@ -1,0 +1,30 @@
+config:
+  year: 2025
+  filing_status: single
+  birthdate: "1988-03-22"
+  state: CA
+
+w2s:
+  - employer: "Tech Corp"
+    wages: 150000.00
+    federal_tax_withheld: 28000.00
+    ss_wages: 150000.00
+    ss_tax_withheld: 9300.00
+    medicare_wages: 150000.00
+    medicare_tax_withheld: 2200.00
+    state_wages: 150000.00
+    state_tax_withheld: 10000.00
+
+form1099_int:
+  - payer: "National Bank"
+    interest: 500.00
+
+form1099_div:
+  - payer: "Investment Brokerage"
+    ordinary_dividends: 2000.00
+    qualified_dividends: 1500.00
+
+form1098s:
+  - lender: "Home Mortgage Co"
+    mortgage_interest: 12000.00
+    property_tax: 4500.00
