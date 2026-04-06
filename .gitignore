@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# OS
+.DS_Store
+
+# Working files (LibreOffice temp copies)
+/tmp/
+*.~lock.*
+
+# Personal tax data — NEVER commit
+personal/
+private/
+scenario_real.yaml
+
+# Personal denylist config — contains real employer names, etc.
+scripts/personal_data_config.yaml

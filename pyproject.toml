@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tenforty"
+version = "0.1.0"
+description = "Tax preparation harness — spreadsheet-driven, test-verified"
+requires-python = ">=3.12"
+dependencies = [
+    "openpyxl>=3.1",
+    "PyYAML>=6.0",
+    "pypdf>=4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["tenforty*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
