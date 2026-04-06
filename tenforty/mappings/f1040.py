@@ -1,0 +1,97 @@
+from tenforty.mappings.registry import FormMapping
+
+
+class F1040(FormMapping):
+    """Mapping for the entire federal 1040 workbook (all sheets).
+
+    Input keys use the convention: {form}_{field}_{index}.
+    - W-2 fields: w2_{field}_{employer_number} (1-6 supported by XLS)
+    - 1099 fields: {form_type}_{field}_{payer_number}
+    - Schedule E: sche_{field}_{property_letter}
+
+    Values are either named ranges (e.g., "File_Single") or direct cell
+    references on a specific sheet (e.g., "C3" on the W-2s sheet). Named
+    ranges are resolved by openpyxl automatically. Direct cell references
+    require the sheet name prefix in the engine (stored in SHEET_MAP).
+    """
+
+    SHEET_MAP: dict[int, dict[str, str]] = {
+        2025: {
+            "w2_wages_1": "W-2s",
+            "w2_fed_withheld_1": "W-2s",
+            "w2_ss_wages_1": "W-2s",
+            "w2_ss_withheld_1": "W-2s",
+            "w2_medicare_wages_1": "W-2s",
+            "w2_medicare_withheld_1": "W-2s",
+            "w2_state_wages_1": "W-2s",
+            "w2_state_withheld_1": "W-2s",
+            "interest_1": "1099-INT",
+            "ordinary_dividends_1": "1099-DIV",
+            "qualified_dividends_1": "1099-DIV",
+            "sche_rents_a": "Sch. E",
+            "sche_property_type_a": "Sch. E",
+            "sche_fair_rental_days_a": "Sch. E",
+            "sche_personal_use_days_a": "Sch. E",
+            "sche_advertising_a": "Sch. E",
+            "sche_insurance_a": "Sch. E",
+            "sche_mortgage_interest_a": "Sch. E",
+            "sche_repairs_a": "Sch. E",
+            "sche_taxes_a": "Sch. E",
+            "sche_utilities_a": "Sch. E",
+            "sche_depreciation_a": "Sch. E",
+            "mortgage_interest": "Sch. A",
+        },
+    }
+
+    INPUTS: dict[int, dict[str, str]] = {
+        2025: {
+            "filing_status_single": "File_Single",
+            "filing_status_married_jointly": "File_Marr_Joint",
+            "filing_status_married_separately": "File_Marr_Sep",
+            "filing_status_head_of_household": "File_Head",
+            "filing_status_qualifying_widow": "File_Qual_Widow",
+            "birthdate_month": "YourBirthMonth",
+            "birthdate_day": "YourBirthDay",
+            "birthdate_year": "YourBirthYear",
+            "w2_wages_1": "C3",
+            "w2_fed_withheld_1": "C4",
+            "w2_ss_wages_1": "C5",
+            "w2_ss_withheld_1": "C6",
+            "w2_medicare_wages_1": "C7",
+            "w2_medicare_withheld_1": "C8",
+            "w2_state_wages_1": "C26",
+            "w2_state_withheld_1": "C29",
+            "interest_1": "C3",
+            "ordinary_dividends_1": "C4",
+            "qualified_dividends_1": "C5",
+            "mortgage_interest": "D16",
+            "sche_property_type_a": "D21",
+            "sche_fair_rental_days_a": "V21",
+            "sche_personal_use_days_a": "AD21",
+            "sche_rents_a": "V30",
+            "sche_advertising_a": "V33",
+            "sche_insurance_a": "V37",
+            "sche_mortgage_interest_a": "V40",
+            "sche_repairs_a": "V42",
+            "sche_taxes_a": "V44",
+            "sche_utilities_a": "V45",
+            "sche_depreciation_a": "V46",
+        },
+    }
+
+    OUTPUTS: dict[int, dict[str, str]] = {
+        2025: {
+            "wages": "Wages",
+            "agi": "Adj_Gross_Inc",
+            "standard_deduction": "SD_Single",
+            "taxable_income": "Taxable_Inc",
+            "total_tax": "Tax",
+            "federal_withheld": "W2_FedTaxWH",
+            "overpaid": "Overpaid",
+            "sche_line26": "SchE1_Line26",
+            "sche_line41": "SchE1_Line41",
+            "schd_line16": "SchDLine16",
+            "interest_income": "Interest_Inc",
+            "dividend_income": "Dividend_Inc",
+        },
+    }
