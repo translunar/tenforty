@@ -1108,3 +1108,142 @@ git commit -m "docs: add 2025 field coverage table for f1040 PDF"
 - 1099-B and K-1 flattener implementations (turn RED tests green)
 - Fuzz-generated scenarios
 - `formulas` library as alternative engine
+
+---
+
+## Appendix: In-Process UNO Engine (Option A)
+
+If the `unoconvert` approach (Option B, ~2-3s/scenario) is too slow — particularly
+for fuzzing or rapid iteration on mapping verification — an in-process UNO approach
+achieves ~0.1s/scenario. This appendix documents everything needed to implement it.
+
+### What was proved
+
+On 2026-04-09, we benchmarked in-process UNO and confirmed:
+
+- **Open ODS via UNO:** 7.2s (one-time, vs 15.9s for XLSX)
+- **Clear all input cells:** 0.03s
+- **Write inputs + calculateAll():** 0.03s
+- **4 scenarios total:** 0.44s (0.109s average per scenario)
+- **Clearing between scenarios works:** `cell.setString("")` zeros the cell, `calculateAll()` produces correct results with no bleedthrough from prior scenarios
+
+### Architecture
+
+```
+[Our Python 3.14 (venv)]  ←JSON over stdin/stdout→  [LO Python 3.12 + uno]
+     pytest, tenforty                                    calc_server.py
+     orchestrator                                        opens ODS once
+     flattener                                           set cells, calculateAll
+     PDF filler                                          read cells
+```
+
+A small `calc_server.py` script runs under LibreOffice's Python (`/Applications/LibreOffice.app/Contents/Resources/python`). It:
+
+1. Connects to the running `unoserver` daemon
+2. Opens the spreadsheet once (ODS preferred for 2x faster open: 7.2s vs 15.9s)
+3. Listens for JSON commands on stdin:
+   - `{"clear": true}` — clear all mapped input cells
+   - `{"set": {"w2_wages_1": 100000, "filing_status_single": "X", ...}}` — set input values
+   - `{"calculate": true}` — call `doc.calculateAll()`
+   - `{"read": ["agi", "taxable_income", ...]}` — read output values
+   - `{"close": true}` — close document and exit
+4. Responds with JSON on stdout
+
+Our venv Python launches `calc_server.py` as a subprocess and communicates via JSON lines.
+
+### Prerequisites on macOS
+
+LibreOffice's bundled Python must be ad-hoc re-signed to bypass Launch Constraints:
+
+```bash
+codesign --force --sign - "/Applications/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/LibreOfficePython"
+codesign --force --sign - "/Applications/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework/Versions/3.12/Resources/Python.app"
+codesign --force --sign - "/Applications/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework"
+codesign --force --deep --sign - "/Applications/LibreOffice.app"
+```
+
+Without this, macOS Sequoia (26.x) kills LibreOfficePython with `SIGKILL (Code Signature Invalid) / Launch Constraint Violation`.
+
+### unoserver must be installed in LO's Python
+
+```bash
+/Applications/LibreOffice.app/Contents/Resources/python -m pip install unoserver
+```
+
+### Key UNO API calls (verified working)
+
+```python
+import uno
+
+# Connect to running unoserver
+localContext = uno.getComponentContext()
+resolver = localContext.ServiceManager.createInstanceWithContext(
+    "com.sun.star.bridge.UnoUrlResolver", localContext)
+ctx = resolver.resolve(
+    "uno:socket,host=127.0.0.1,port=2002;urp;StarOffice.ComponentContext")
+smgr = ctx.ServiceManager
+desktop = smgr.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
+
+# Open spreadsheet (ODS is 2x faster than XLSX)
+doc = desktop.loadComponentFromURL("file:///path/to/1040.ods", "_blank", 0, ())
+
+# Access sheets
+sheets = doc.getSheets()
+w2_sheet = sheets.getByName("W-2s")
+
+# Set a cell value (col, row are 0-indexed)
+w2_sheet.getCellByPosition(2, 2).setValue(100000)  # C3
+
+# Set a string (for checkboxes like filing status)
+f1040_sheet.getCellByPosition(5, 19).setString("X")  # F20
+
+# Clear a cell
+cell.setString("")
+
+# Recalculate all formulas
+doc.calculateAll()
+
+# Read a cell value
+agi = f1040_sheet.getCellByPosition(37, 78).getValue()  # AL79
+
+# Resolve named ranges
+nrs = doc.NamedRanges  # (property, not method)
+if nrs.hasByName("Adj_Gross_Inc"):
+    content = nrs.getByName("Adj_Gross_Inc").getContent()
+    # content is like "$'1040'.$AL$79"
+
+# Close
+doc.close(True)
+```
+
+### Converting cell references
+
+The F1040 mapping uses cell refs like "C3" and "AL79". To use UNO's `getCellByPosition(col, row)`:
+
+```python
+def col_to_num(col_str: str) -> int:
+    """Convert 'A' -> 0, 'B' -> 1, ..., 'AL' -> 37."""
+    return sum((ord(c) - 64) * 26**i for i, c in enumerate(reversed(col_str))) - 1
+
+# "C3" -> getCellByPosition(2, 2)  (0-indexed)
+# "AL79" -> getCellByPosition(37, 78)
+```
+
+### Our tenforty code works under LO's Python 3.12
+
+Verified: `sys.path.insert(0, "/path/to/tenforty")` then `from tenforty.mappings.f1040 import F1040` works. Our code is pure Python with no 3.13+ features.
+
+### What didn't work
+
+- **`pip install uno` from PyPI:** That's an unrelated, broken package. The real `uno` is only available bundled with LibreOffice.
+- **Symlinking `pyuno.so` into our venv:** ABI mismatch (3.12 vs 3.14), crashes.
+- **`formulas` library:** Couldn't parse the XLS's formulas (timed out during model loading). Too complex for it.
+- **Running UNO directly without `unoserver`:** Segfaults. You need the `soffice` process running.
+- **`loadComponentFromURL` on a stale/locked file:** Returns None silently. Always use a fresh copy.
+- **`--deep` code signing without re-signing nested frameworks first:** The nested `LibreOfficePython` binary keeps its original signature. Must re-sign bottom-up.
+
+### Estimated implementation effort
+
+~2 tasks:
+1. `calc_server.py` script (~100 lines) + `InProcessUnoEngine` class that launches it as subprocess
+2. Parity test: verify InProcessUnoEngine matches SpreadsheetEngine and UnoEngine on all fixtures
