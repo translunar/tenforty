@@ -4,6 +4,7 @@ from tenforty.flattener import flatten_scenario
 from tenforty.models import (
     Form1098,
     Form1099B,
+    Form1099DIV,
     Form1099INT,
     Scenario,
     ScheduleK1,
@@ -65,6 +66,22 @@ class TestFlattenScenario(unittest.TestCase):
     def test_1098_mortgage(self):
         flat = flatten_scenario(_simple_scenario())
         self.assertEqual(flat["mortgage_interest"], 8400)
+
+    def test_1099_div_capital_gain_distributions(self):
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            form1099_div=[Form1099DIV(
+                payer="Brokerage Inc",
+                ordinary_dividends=500,
+                qualified_dividends=500,
+                capital_gain_distributions=5000,
+            )],
+        )
+        flat = flatten_scenario(scenario)
+        self.assertEqual(flat["capital_gain_distributions_1"], 5000)
 
     def test_empty_forms_produce_no_keys(self):
         flat = flatten_scenario(_simple_scenario())
