@@ -60,7 +60,7 @@ class F1040(FormMapping):
             "w2_ss_withheld_1": "C6",
             "w2_medicare_wages_1": "C7",
             "w2_medicare_withheld_1": "C8",
-            "w2_state_wages_1": "C26",
+            "w2_state_wages_1": "C28",
             "w2_state_withheld_1": "C29",
             "interest_1": "D6",
             "ordinary_dividends_1": "D6",
