@@ -74,6 +74,8 @@ def _flatten_1099_div(scenario: Scenario, flat: dict[str, object]) -> None:
     for i, form in enumerate(scenario.form1099_div, start=1):
         flat[f"ordinary_dividends_{i}"] = form.ordinary_dividends
         flat[f"qualified_dividends_{i}"] = form.qualified_dividends
+        if form.capital_gain_distributions:
+            flat[f"capital_gain_distributions_{i}"] = form.capital_gain_distributions
 
 
 def _flatten_1098s(scenario: Scenario, flat: dict[str, object]) -> None:
