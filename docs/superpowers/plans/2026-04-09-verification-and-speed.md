@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Speed up the engine from ~18s to ~0.03s per scenario via UNO daemon, add round-trip PDF verification, build max-coverage test fixtures, and create a per-year field coverage table.
+**Goal:** Speed up the engine from ~18s to ~2-3s per scenario via `unoserver` daemon, add round-trip PDF verification, build max-coverage test fixtures, and create a per-year field coverage table. (Future: in-process UNO API for ~0.03s/scenario.)
 
-**Architecture:** Replace the cold-start `soffice --headless --convert-to` approach with a persistent LibreOffice daemon (via `unoserver`). The engine opens the XLSX once via UNO, then sets cells + `calculateAll()` for each scenario (~0.03s). A round-trip PDF verifier asserts engine results match filled PDF fields. A coverage table tracks which fields have been verified.
+**Architecture:** Replace the cold-start `soffice --headless --convert-to` approach with `unoconvert` talking to a persistent `unoserver` daemon (~2-3s per scenario vs ~18s). Uses a separate `UnoEngine` class (rather than adding a param to `SpreadsheetEngine`) for cleaner separation. A round-trip PDF verifier asserts engine results match filled PDF fields. A coverage table tracks which fields have been verified.
 
 **Tech Stack:** Python 3.14, unoserver (run via LibreOffice's Python), openpyxl, pypdf, pytest
 
@@ -36,8 +36,9 @@
 ```
 tenforty/
 ├── tenforty/
-│   ├── engine.py                    # Modify: add UNO daemon mode
-│   └── uno_engine.py               # Create: UNO-based engine implementation
+│   ├── engine.py                    # Modify: extract shared _write_inputs/_read_outputs
+│   ├── engine_common.py             # Create: shared engine helpers (write/read cells)
+│   └── uno_engine.py               # Create: UNO-based engine using unoconvert
 ├── spreadsheets/
 │   └── federal/
 │       └── 2025/
@@ -48,6 +49,7 @@ tenforty/
 │   └── start_unoserver.sh          # Create: helper to start the UNO daemon
 ├── tests/
 │   ├── invariants.py               # Modify: add verify_pdf_round_trip
+│   ├── helpers.py                  # Create: shared test helpers (libreoffice_available, etc.)
 │   ├── test_uno_engine.py          # Create: tests for UNO engine
 │   ├── test_engine_parity.py       # Create: verify UNO == cold-start results
 │   ├── test_round_trip.py          # Create: PDF round-trip verification tests
@@ -186,14 +188,13 @@ SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
 
 
 def unoserver_available() -> bool:
-    """Check if unoserver is running by trying to connect."""
+    """Check if unoserver daemon is running by attempting a connection."""
+    import socket
     try:
-        result = subprocess.run(
-            ["unoconvert", "--help"],
-            capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
+        sock = socket.create_connection(("127.0.0.1", 2002), timeout=2)
+        sock.close()
+        return True
+    except (ConnectionRefusedError, OSError):
         return False
 
 
@@ -290,19 +291,18 @@ Expected: `ImportError` — `tenforty.uno_engine` does not exist.
 
 `tenforty/uno_engine.py`:
 ```python
-"""UNO-based spreadsheet engine using a persistent LibreOffice daemon.
+"""UNO-based spreadsheet engine using a persistent unoserver daemon.
 
 Requires unoserver running (start with scripts/start_unoserver.sh).
-Opens the spreadsheet once via UNO, then sets cells and recalculates
-in-memory for each scenario (~0.03s vs ~18s for cold-start).
-
-Falls back to the cold-start SpreadsheetEngine if the daemon is unavailable.
+Uses unoconvert to recalculate via the running daemon (~2-3s vs ~18s cold-start).
 """
 
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
-import openpyxl
+from tenforty.engine_common import read_outputs, write_inputs
 
 
 def _uno_available() -> bool:
@@ -324,22 +324,6 @@ class UnoEngine:
         self._doc = None
         self._current_path: Path | None = None
 
-    def _connect(self) -> object:
-        """Connect to the running unoserver daemon via subprocess bridge."""
-        if self._desktop is not None:
-            return self._desktop
-
-        # We can't use the uno module directly from our venv Python.
-        # Instead, we delegate to LO's Python via a subprocess.
-        # But for in-process use, we need a different approach.
-        #
-        # The practical solution: use LO's Python as a subprocess that
-        # accepts commands via stdin/stdout. This avoids the uno import issue.
-        raise NotImplementedError(
-            "Direct UNO connection requires LibreOffice's Python. "
-            "Use UnoSubprocessEngine instead."
-        )
-
     def compute(
         self,
         spreadsheet_path: Path,
@@ -348,76 +332,22 @@ class UnoEngine:
         inputs: dict[str, object],
         work_dir: Path | None = None,
     ) -> dict[str, object]:
-        """Compute by delegating to LO's Python via subprocess."""
+        """Compute by writing inputs, recalculating via unoconvert, reading outputs."""
         input_map = mapping.get_inputs(year)
         output_map = mapping.get_outputs(year)
         sheet_map = getattr(mapping, "SHEET_MAP", {}).get(year, {})
 
-        return self._compute_via_subprocess(
-            spreadsheet_path, input_map, output_map, sheet_map, inputs,
-        )
+        work_dir = work_dir or Path(tempfile.mkdtemp())
+        work_dir.mkdir(parents=True, exist_ok=True)
 
-    def _compute_via_subprocess(
-        self,
-        spreadsheet_path: Path,
-        input_map: dict[str, str],
-        output_map: dict[str, str],
-        sheet_map: dict[str, str],
-        inputs: dict[str, object],
-    ) -> dict[str, object]:
-        """Use openpyxl to write inputs, then LO's Python to recalculate via UNO."""
-        import shutil
-        import tempfile
-        import json
-
-        work_dir = Path(tempfile.mkdtemp())
         working_copy = work_dir / spreadsheet_path.name
         shutil.copy2(spreadsheet_path, working_copy)
 
-        # Write inputs using openpyxl (same as cold-start engine)
-        self._write_inputs(working_copy, input_map, sheet_map, inputs)
+        write_inputs(working_copy, input_map, sheet_map, inputs)
+        recalculated = self._recalculate(working_copy, work_dir)
+        return read_outputs(recalculated, output_map)
 
-        # Recalculate via UNO subprocess
-        recalculated = self._recalculate_uno(working_copy, work_dir)
-
-        # Read outputs using openpyxl
-        return self._read_outputs(recalculated, output_map)
-
-    def _write_inputs(
-        self,
-        workbook_path: Path,
-        input_map: dict[str, str],
-        sheet_map: dict[str, str],
-        inputs: dict[str, object],
-    ) -> None:
-        wb = openpyxl.load_workbook(workbook_path)
-        named_ranges = {n.name: n for n in wb.defined_names.values()}
-
-        for input_key, value in inputs.items():
-            if input_key not in input_map:
-                continue
-
-            cell_ref = input_map[input_key]
-
-            if cell_ref in named_ranges:
-                defn = named_ranges[cell_ref]
-                dest = defn.value
-                sheet_name, cell_addr = dest.split("!")
-                sheet_name = sheet_name.strip("'")
-                cell_addr = cell_addr.replace("$", "")
-                wb[sheet_name][cell_addr] = value
-            elif input_key in sheet_map:
-                sheet_name = sheet_map[input_key]
-                wb[sheet_name][cell_ref] = value
-            else:
-                raise ValueError(
-                    f"Input '{input_key}' maps to '{cell_ref}' but has no named range "
-                    f"and no sheet in SHEET_MAP"
-                )
-
-        wb.save(workbook_path)
-
-    def _recalculate_uno(self, workbook_path: Path, work_dir: Path) -> Path:
+    def _recalculate(self, workbook_path: Path, work_dir: Path) -> Path:
         """Recalculate using unoconvert (talks to running unoserver daemon)."""
         output_path = work_dir / "recalculated" / workbook_path.name
         output_path.parent.mkdir(exist_ok=True)
@@ -440,32 +370,9 @@ class UnoEngine:
             )
 
         return output_path
-
-    def _read_outputs(
-        self,
-        workbook_path: Path,
-        output_map: dict[str, str],
-    ) -> dict[str, object]:
-        wb = openpyxl.load_workbook(workbook_path, data_only=True)
-        named_ranges = {n.name: n for n in wb.defined_names.values()}
-        results: dict[str, object] = {}
-
-        for output_key, named_range in output_map.items():
-            if named_range not in named_ranges:
-                results[output_key] = None
-                continue
-
-            defn = named_ranges[named_range]
-            dest = defn.value
-            sheet_name, cell_addr = dest.split("!")
-            sheet_name = sheet_name.strip("'")
-            cell_addr = cell_addr.replace("$", "")
-            results[output_key] = wb[sheet_name][cell_addr].value
-
-        return results
 ```
 
-**Note:** This initial implementation still uses `unoconvert` (file-based), which talks to the running daemon. It's faster than cold-start because the daemon is already warm. The true in-memory UNO approach (set cells directly via UNO API) requires running under LO's Python, which we'll address in a future task.
+**Note:** `write_inputs` and `read_outputs` are shared with `SpreadsheetEngine` via `engine_common.py` (extracted in this same task). The UnoEngine uses `unoconvert` (file-based, ~2-3s) which talks to the running daemon. Future: in-process UNO API for ~0.03s.
 
 - [ ] **Step 5: Run tests**
 
@@ -761,8 +668,10 @@ def verify_pdf_round_trip(
 
     # Verify every field that was filled
     mismatches: list[str] = []
+    gaps: list[str] = []
     verified_count = 0
 
+    # Check: do filled fields match?
     for our_key, pdf_field_name in mapping.items():
         translated_value = translated.get(our_key)
         if translated_value is None:
@@ -779,18 +688,28 @@ def verify_pdf_round_trip(
         else:
             verified_count += 1
 
+    # Check: are there translated keys with no PDF mapping? (coverage gaps)
+    mapped_keys = set(mapping.keys())
+    for key, value in translated.items():
+        if value is not None and key not in mapped_keys:
+            gaps.append(f"  {key}={value} (no PDF mapping)")
+
+    errors: list[str] = []
     if mismatches:
-        test.fail(
+        errors.append(
             f"{len(mismatches)} field(s) did not round-trip correctly:\n"
             + "\n".join(mismatches)
         )
+    if gaps:
+        errors.append(
+            f"{len(gaps)} translated key(s) have no PDF mapping (coverage gaps):\n"
+            + "\n".join(gaps)
+        )
+    if errors:
+        test.fail("\n\n".join(errors))
 ```
 
-Note: the imports inside the function body are intentional here — `TranslationSpec` is used only as a type hint in the signature and the actual imports (`PdfFiller`, `ResultTranslator`, `PdfReader`) are only needed when this function runs, which is only in integration tests. This avoids making `invariants.py` depend on `pypdf` for unit tests that don't use this function. This is the one exception to our "no inline imports" rule.
-
-**Actually — per our coding guidelines, let's move the imports to the top of invariants.py instead, and accept the dependency.**
-
-Add at the top of `tests/invariants.py`:
+Add these imports at the top of `tests/invariants.py`:
 ```python
 from pathlib import Path
 
@@ -940,7 +859,7 @@ needs_pdf = unittest.skipUnless(
 
 
 @needs_libreoffice
-class TestMaxIncoverage(unittest.TestCase):
+class TestMaxIncomeCoverage(unittest.TestCase):
     """Max-income scenario: W-2 + interest + dividends + cap gain distributions."""
 
     def setUp(self):
@@ -1140,6 +1059,25 @@ Fields verified through round-trip PDF tests: engine → translate → fill PDF 
 | applied_to_next_year | 1040 L36 | — |
 | amount_owed | 1040 L37 | — |
 | estimated_tax_penalty | 1040 L38 | — |
+
+## Schedule A (Itemized Deductions)
+
+| Key | Form/Line | Exercised By |
+|-----|-----------|--------------|
+| mortgage_interest | Sch A L8a | max_deductions, itemized |
+| property_tax | Sch A L5b | max_deductions, itemized |
+
+*Note: Schedule A PDF mapping not yet created. These fields are written to the XLS
+and verified via engine output (`total_deductions`), but not yet round-trip verified
+through a Schedule A PDF.*
+
+## Schedule D (Capital Gains)
+
+| Key | Form/Line | Exercised By |
+|-----|-----------|--------------|
+| schd_line16 | Sch D L16 | max_income (via cap gain distributions) |
+
+*Note: Schedule D PDF mapping not yet created.*
 ```
 
 - [ ] **Step 2: Commit**
@@ -1162,7 +1100,7 @@ git commit -m "docs: add 2025 field coverage table for f1040 PDF"
 | 5 | Max-coverage fixtures + round-trip tests | 6 tests |
 | 6 | Field coverage table | — |
 
-**What this plan builds:** A fast UNO-based engine (~0.03s/scenario when run in-process, faster than cold-start via unoconvert daemon), round-trip PDF verification proving engine→PDF correctness, max-coverage test fixtures, and a per-year field coverage table showing what's verified.
+**What this plan builds:** A faster UNO-based engine (~2-3s/scenario via unoconvert daemon, down from ~18s cold-start), round-trip PDF verification proving engine→PDF correctness, max-coverage test fixtures, and a per-year field coverage table showing what's verified. (Future: in-process UNO for ~0.03s/scenario.)
 
 **What comes next:**
 - In-process UNO engine (set cells directly via LO's Python, no file I/O at all)
