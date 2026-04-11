@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from enum import Enum
 
 
 @dataclass
@@ -67,13 +68,25 @@ class ScheduleK1:
     other_deductions: float = 0.0
 
 
+class FilingStatus(str, Enum):
+    SINGLE = "single"
+    MARRIED_JOINTLY = "married_jointly"
+    MARRIED_SEPARATELY = "married_separately"
+    HEAD_OF_HOUSEHOLD = "head_of_household"
+    QUALIFYING_WIDOW = "qualifying_widow"
+
+
 @dataclass
 class TaxReturnConfig:
     year: int
-    filing_status: str
+    filing_status: FilingStatus
     birthdate: str
     state: str
     dependents: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.filing_status, str):
+            self.filing_status = FilingStatus(self.filing_status)
 
 
 @dataclass
