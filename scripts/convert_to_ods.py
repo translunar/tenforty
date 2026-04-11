@@ -10,10 +10,14 @@ from pathlib import Path
 
 
 def convert_to_ods(xlsx_path: Path) -> Path:
-    """Convert an XLSX file to ODS in the same directory."""
+    """Convert an XLSX file to ODS in the same directory.
+
+    Raises:
+        FileNotFoundError: If the input file does not exist.
+        RuntimeError: If the conversion fails.
+    """
     if not xlsx_path.exists():
-        print(f"Error: {xlsx_path} not found")
-        sys.exit(1)
+        raise FileNotFoundError(f"Input file not found: {xlsx_path}")
 
     output_dir = xlsx_path.parent
     result = subprocess.run(
@@ -29,8 +33,7 @@ def convert_to_ods(xlsx_path: Path) -> Path:
     )
 
     if result.returncode != 0:
-        print(f"Conversion failed: {result.stderr}")
-        sys.exit(1)
+        raise RuntimeError(f"Conversion failed: {result.stderr}")
 
     ods_path = output_dir / xlsx_path.with_suffix(".ods").name
     print(f"Converted: {xlsx_path} -> {ods_path}")
@@ -41,4 +44,8 @@ if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python scripts/convert_to_ods.py <path-to-xlsx>")
         sys.exit(1)
-    convert_to_ods(Path(sys.argv[1]))
+    try:
+        convert_to_ods(Path(sys.argv[1]))
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"Error: {e}")
+        sys.exit(1)
