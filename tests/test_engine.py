@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tenforty.engine import SpreadsheetEngine
 from tenforty.mappings.f1040 import F1040
-from tests.conftest import SPREADSHEETS_DIR, needs_libreoffice
+from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 
 
 @needs_libreoffice

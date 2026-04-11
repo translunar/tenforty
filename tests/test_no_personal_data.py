@@ -1,7 +1,7 @@
 import subprocess
 import unittest
 
-from tests.conftest import REPO_ROOT
+from tests.helpers import REPO_ROOT
 
 
 class TestNoPersonalData(unittest.TestCase):

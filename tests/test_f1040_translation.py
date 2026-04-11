@@ -1,6 +1,6 @@
 import unittest
 
-from tests.conftest import make_simple_scenario
+from tests.helpers import make_simple_scenario
 from tenforty.result_translator import ResultTranslator
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 
