@@ -47,23 +47,18 @@ def verify_pdf_round_trip(
 
 **Where it lives:** `tests/invariants.py` alongside the existing structural invariants.
 
-### 2. LibreOffice Daemon Mode
+### 2. LibreOffice Speed Optimization
 
-Start LibreOffice once as a persistent process and reuse it across computations.
+**Status: File-based daemon (`unoconvert`) does NOT provide meaningful speedup.**
 
-**Approach:** Instead of `soffice --headless --convert-to xlsx` per scenario, use `soffice --headless --accept="socket,host=localhost,port=2002;urp;"` to start a listening server. The engine sends recalculation commands via the UNO API (using the `unoserver` Python package or direct socket protocol).
+We implemented and tested a `UnoEngine` that uses `unoconvert` to talk to a running `unoserver` daemon. Result: the conversion still takes ~16-18s because the bottleneck is LibreOffice parsing/exporting the large XLSX, not process startup. The daemon eliminates ~2s of startup overhead — negligible.
 
-**Fallback:** If the daemon isn't running, fall back to the current cold-start behavior. This keeps the engine usable without special setup.
+**What does work: in-process UNO API (~0.1s/scenario).** We benchmarked opening the spreadsheet once via UNO, then setting cells + `calculateAll()` directly in memory. Results: 0.03s per recalculation after a one-time 7-10s file open. This requires running under LibreOffice's Python 3.12 (which has the `uno` module). See the plan appendix for full technical details.
 
-**Expected speedup:** ~20s → ~2-3s per scenario.
-
-**Interface change:** `SpreadsheetEngine` gains an optional `daemon` parameter:
-```python
-engine = SpreadsheetEngine(daemon=True)  # connect to running soffice
-engine = SpreadsheetEngine()             # cold-start (current behavior)
-```
-
-Tests use a session-scoped fixture that starts the daemon once and shares it across all test methods.
+**Current approach:** Accept ~18s per scenario. Mitigate via:
+- Cache `compute_federal` results in tests (already done — each e2e class computes once)
+- Fewer, broader test scenarios rather than many narrow ones
+- Future: implement the in-process UNO approach (Option A in plan appendix) when speed becomes a blocker
 
 ### 3. Max-Coverage Test Fixtures
 

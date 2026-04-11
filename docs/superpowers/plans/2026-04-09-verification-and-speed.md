@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Speed up the engine from ~18s to ~2-3s per scenario via `unoserver` daemon, add round-trip PDF verification, build max-coverage test fixtures, and create a per-year field coverage table. (Future: in-process UNO API for ~0.03s/scenario.)
+**Goal:** Add round-trip PDF verification, build max-coverage test fixtures, and create a per-year field coverage table. Engine speed optimization deferred to future in-process UNO work (see appendix).
 
-**Architecture:** Replace the cold-start `soffice --headless --convert-to` approach with `unoconvert` talking to a persistent `unoserver` daemon (~2-3s per scenario vs ~18s). Uses a separate `UnoEngine` class (rather than adding a param to `SpreadsheetEngine`) for cleaner separation. A round-trip PDF verifier asserts engine results match filled PDF fields. A coverage table tracks which fields have been verified.
+**Architecture:** The existing cold-start `SpreadsheetEngine` (~18s/scenario) remains the primary engine. A `UnoEngine` exists using `unoconvert` but does NOT provide meaningful speedup (file-based conversion is still ~16-18s). Test speed is mitigated by caching `compute_federal` results per test class. A round-trip PDF verifier asserts engine results match filled PDF fields. A coverage table tracks which fields have been verified.
 
 **Tech Stack:** Python 3.14, unoserver (run via LibreOffice's Python), openpyxl, pypdf, pytest
 
