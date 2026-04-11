@@ -21,6 +21,6 @@ form1099_int:
 
 form1099_div:
   - payer: "Investment Brokerage"
-    ordinary_dividends: 8000.00
-    qualified_dividends: 6000.00
-    capital_gain_distributions: 0.00
+    ordinary_dividends: 3000.00
+    qualified_dividends: 2500.00
+    capital_gain_distributions: 5000.00
