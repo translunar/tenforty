@@ -1,28 +1,10 @@
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from tenforty.models import Scenario, TaxReturnConfig, W2
 from tenforty.orchestrator import ReturnOrchestrator
-
-SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(),
-    "LibreOffice not installed",
-)
+from tests.conftest import SPREADSHEETS_DIR, needs_libreoffice
 
 
 @needs_libreoffice

@@ -1,8 +1,7 @@
 import subprocess
 import unittest
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent
+from tests.conftest import REPO_ROOT
 
 
 class TestNoPersonalData(unittest.TestCase):

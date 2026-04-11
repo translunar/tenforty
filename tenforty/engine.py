@@ -5,6 +5,15 @@ from pathlib import Path
 import openpyxl
 
 
+def _resolve_named_range(defn: object) -> tuple[str, str]:
+    """Parse a named range definition into (sheet_name, cell_address)."""
+    dest = defn.value
+    sheet_name, cell_addr = dest.split("!")
+    sheet_name = sheet_name.strip("'")
+    cell_addr = cell_addr.replace("$", "")
+    return sheet_name, cell_addr
+
+
 class SpreadsheetEngine:
     """Writes inputs into a spreadsheet, recalculates via LibreOffice, reads outputs."""
 
@@ -48,10 +57,7 @@ class SpreadsheetEngine:
 
             if cell_ref in named_ranges:
                 defn = named_ranges[cell_ref]
-                dest = defn.value
-                sheet_name, cell_addr = dest.split("!")
-                sheet_name = sheet_name.strip("'")
-                cell_addr = cell_addr.replace("$", "")
+                sheet_name, cell_addr = _resolve_named_range(defn)
                 wb[sheet_name][cell_addr] = value
             elif input_key in sheet_map:
                 sheet_name = sheet_map[input_key]
@@ -102,10 +108,7 @@ class SpreadsheetEngine:
                 continue
 
             defn = named_ranges[named_range]
-            dest = defn.value
-            sheet_name, cell_addr = dest.split("!")
-            sheet_name = sheet_name.strip("'")
-            cell_addr = cell_addr.replace("$", "")
+            sheet_name, cell_addr = _resolve_named_range(defn)
             results[output_key] = wb[sheet_name][cell_addr].value
 
         return results

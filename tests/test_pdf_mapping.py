@@ -5,15 +5,7 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_1040 import Pdf1040
-
-F1040_PDF = Path("/tmp/f1040_2025.pdf")
-
-
-def pdf_available() -> bool:
-    return F1040_PDF.exists()
-
-
-needs_pdf = unittest.skipUnless(pdf_available(), "f1040 PDF not available at /tmp/f1040_2025.pdf")
+from tests.conftest import F1040_PDF, needs_pdf
 
 
 @needs_pdf

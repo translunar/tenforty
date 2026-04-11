@@ -22,7 +22,6 @@ The 1120-S (S-corp return itself) is a separate spreadsheet and is tested
 separately — here we only test consuming K-1 output on the individual return.
 """
 
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -38,30 +37,13 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
+from tests.conftest import SPREADSHEETS_DIR, needs_libreoffice
 from tests.invariants import (
     assert_agi_consistent,
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
     assert_withholding_matches_input,
-)
-
-REPO_ROOT = Path(__file__).parent.parent
-SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(), "LibreOffice not installed",
 )
 
 
