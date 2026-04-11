@@ -68,6 +68,30 @@ class ScheduleK1:
     other_deductions: float = 0.0
 
 
+@dataclass
+class RentalProperty:
+    address: str
+    property_type: int
+    fair_rental_days: int
+    personal_use_days: int
+    rents_received: float
+    advertising: float = 0.0
+    auto_and_travel: float = 0.0
+    cleaning_and_maintenance: float = 0.0
+    commissions: float = 0.0
+    insurance: float = 0.0
+    legal_and_professional_fees: float = 0.0
+    management_fees: float = 0.0
+    mortgage_interest: float = 0.0
+    other_interest: float = 0.0
+    repairs: float = 0.0
+    supplies: float = 0.0
+    taxes: float = 0.0
+    utilities: float = 0.0
+    depreciation: float = 0.0
+    other_expenses: float = 0.0
+
+
 class FilingStatus(str, Enum):
     SINGLE = "single"
     MARRIED_JOINTLY = "married_jointly"
@@ -98,3 +122,4 @@ class Scenario:
     form1099_b: list[Form1099B] = field(default_factory=list)
     form1098s: list[Form1098] = field(default_factory=list)
     schedule_k1s: list[ScheduleK1] = field(default_factory=list)
+    rental_properties: list[RentalProperty] = field(default_factory=list)
