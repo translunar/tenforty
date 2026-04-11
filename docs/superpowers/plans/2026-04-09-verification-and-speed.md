@@ -36,8 +36,7 @@
 ```
 tenforty/
 ├── tenforty/
-│   ├── engine.py                    # Modify: extract shared _write_inputs/_read_outputs
-│   ├── engine_common.py             # Create: shared engine helpers (write/read cells)
+│   ├── engine.py                    # Already has _resolve_named_range() extracted
 │   └── uno_engine.py               # Create: UNO-based engine using unoconvert
 ├── spreadsheets/
 │   └── federal/
@@ -48,8 +47,8 @@ tenforty/
 │   ├── convert_to_ods.py           # Create: one-time ODS conversion script
 │   └── start_unoserver.sh          # Create: helper to start the UNO daemon
 ├── tests/
+│   ├── conftest.py                 # Already has shared helpers (libreoffice_available, etc.)
 │   ├── invariants.py               # Modify: add verify_pdf_round_trip
-│   ├── helpers.py                  # Create: shared test helpers (libreoffice_available, etc.)
 │   ├── test_uno_engine.py          # Create: tests for UNO engine
 │   ├── test_engine_parity.py       # Create: verify UNO == cold-start results
 │   ├── test_round_trip.py          # Create: PDF round-trip verification tests
@@ -177,19 +176,17 @@ exec "$LO_PYTHON" -m unoserver.server "$@"
 
 `tests/test_uno_engine.py`:
 ```python
-import subprocess
+import socket
 import tempfile
 import unittest
 from pathlib import Path
 
 from tenforty.uno_engine import UnoEngine
-
-SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
+from tests.conftest import SPREADSHEETS_DIR
 
 
 def unoserver_available() -> bool:
     """Check if unoserver daemon is running by attempting a connection."""
-    import socket
     try:
         sock = socket.create_connection(("127.0.0.1", 2002), timeout=2)
         sock.close()
@@ -302,7 +299,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from tenforty.engine_common import read_outputs, write_inputs
+import openpyxl
 
 
 def _uno_available() -> bool:
@@ -343,9 +340,9 @@ class UnoEngine:
         working_copy = work_dir / spreadsheet_path.name
         shutil.copy2(spreadsheet_path, working_copy)
 
-        write_inputs(working_copy, input_map, sheet_map, inputs)
+        self._write_inputs(working_copy, input_map, sheet_map, inputs)
         recalculated = self._recalculate(working_copy, work_dir)
-        return read_outputs(recalculated, output_map)
+        return self._read_outputs(recalculated, output_map)
 
     def _recalculate(self, workbook_path: Path, work_dir: Path) -> Path:
         """Recalculate using unoconvert (talks to running unoserver daemon)."""
@@ -372,7 +369,7 @@ class UnoEngine:
         return output_path
 ```
 
-**Note:** `write_inputs` and `read_outputs` are shared with `SpreadsheetEngine` via `engine_common.py` (extracted in this same task). The UnoEngine uses `unoconvert` (file-based, ~2-3s) which talks to the running daemon. Future: in-process UNO API for ~0.03s.
+**Note:** `UnoEngine` uses the same openpyxl write/read approach as `SpreadsheetEngine` (both have `_write_inputs` and `_read_outputs` methods with a shared `_resolve_named_range` helper pattern). The only difference is the recalculate step: `UnoEngine` uses `unoconvert` (file-based, ~2-3s) which talks to the running daemon, while `SpreadsheetEngine` cold-starts soffice (~18s). If duplication between the two engines becomes a maintenance issue, extract the shared methods into a base class. Future: in-process UNO API for ~0.03s.
 
 - [ ] **Step 5: Run tests**
 
@@ -426,28 +423,16 @@ from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
 from tenforty.uno_engine import UnoEngine
-
-SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
+from tests.conftest import FIXTURES_DIR, SPREADSHEETS_DIR, libreoffice_available
 
 
 def unoserver_available() -> bool:
+    """Check if unoserver daemon is running by attempting a connection."""
     try:
-        result = subprocess.run(
-            ["unoconvert", "--help"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
+        sock = socket.create_connection(("127.0.0.1", 2002), timeout=2)
+        sock.close()
+        return True
+    except (ConnectionRefusedError, OSError):
         return False
 
 
@@ -548,27 +533,12 @@ from tenforty.scenario import load_scenario
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tests.invariants import verify_pdf_round_trip
 
-REPO_ROOT = Path(__file__).parent.parent
-SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-F1040_PDF = Path("/tmp/f1040_2025.pdf")
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(), "LibreOffice not installed",
-)
-needs_pdf = unittest.skipUnless(
-    F1040_PDF.exists(), "f1040 PDF not available at /tmp/f1040_2025.pdf",
+from tests.conftest import (
+    F1040_PDF,
+    FIXTURES_DIR,
+    SPREADSHEETS_DIR,
+    needs_libreoffice,
+    needs_pdf,
 )
 
 
@@ -834,27 +804,12 @@ from tests.invariants import (
     verify_pdf_round_trip,
 )
 
-REPO_ROOT = Path(__file__).parent.parent
-SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-F1040_PDF = Path("/tmp/f1040_2025.pdf")
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(), "LibreOffice not installed",
-)
-needs_pdf = unittest.skipUnless(
-    F1040_PDF.exists(), "f1040 PDF not available",
+from tests.conftest import (
+    F1040_PDF,
+    FIXTURES_DIR,
+    SPREADSHEETS_DIR,
+    needs_libreoffice,
+    needs_pdf,
 )
 
 
