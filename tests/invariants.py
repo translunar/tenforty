@@ -5,6 +5,7 @@ regardless of the specific dollar amounts. Functions take a unittest.TestCase
 as the first argument so they can use self.assertEqual, self.assertGreater, etc.
 """
 
+import sys
 import unittest
 from pathlib import Path
 
@@ -189,7 +190,12 @@ def verify_pdf_round_trip(
             continue
 
         expected_str = str(translated_value)
-        actual_str = pdf_fields.get(pdf_field_name, {}).get("/V", "")
+        field_obj = pdf_fields.get(pdf_field_name)
+        if field_obj is not None:
+            raw = field_obj.get("/V", "")
+            actual_str = str(raw) if raw is not None else ""
+        else:
+            actual_str = ""
 
         if actual_str != expected_str:
             mismatches.append(
@@ -215,7 +221,6 @@ def verify_pdf_round_trip(
     # Gaps are informational — engine outputs for other forms (e.g., Schedule E
     # values that belong on a different PDF) are expected. Print but don't fail.
     if gaps:
-        import sys
         print(
             f"\n  [{len(gaps)} coverage gap(s) — translated keys with no PDF mapping "
             f"(expected for cross-form values)]:",
