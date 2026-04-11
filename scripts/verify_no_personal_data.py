@@ -59,7 +59,8 @@ def _load_denylist_config() -> list[str]:
     return config.get("denylist_patterns", [])
 
 
-DENYLIST_PATTERNS = _BUILTIN_DENYLIST + _load_denylist_config()
+_RAW_DENYLIST_PATTERNS = _BUILTIN_DENYLIST + _load_denylist_config()
+DENYLIST_PATTERNS = [re.compile(p) for p in _RAW_DENYLIST_PATTERNS]
 
 # --- HEURISTICS for YAML fixtures ---
 # Dollar amounts in test fixtures should be round numbers (multiples of 50).
@@ -79,48 +80,38 @@ def get_tracked_files() -> list[Path]:
     return [REPO_ROOT / f for f in result.stdout.strip().split("\n") if f]
 
 
-def check_denylist(files: list[Path]) -> list[str]:
+def check_denylist(files_content: dict[Path, str]) -> list[str]:
     """Check that no tracked file contains denylist patterns."""
     violations = []
     extensions = {".py", ".yaml", ".yml", ".toml", ".md", ".txt", ".json", ".csv"}
 
-    for path in files:
+    for path, content in files_content.items():
         if path.suffix not in extensions:
-            continue
-        if not path.exists():
-            continue
-
-        try:
-            content = path.read_text()
-        except UnicodeDecodeError:
             continue
 
         for pattern in DENYLIST_PATTERNS:
-            matches = re.findall(pattern, content)
+            matches = pattern.findall(content)
             if matches:
                 for match in matches:
                     violations.append(
                         f"DENYLIST: {path.relative_to(REPO_ROOT)}: "
-                        f"matched pattern '{pattern}' -> '{match}'"
+                        f"matched pattern '{pattern.pattern}' -> '{match}'"
                     )
 
     return violations
 
 
-def check_fixture_names(files: list[Path]) -> list[str]:
+def check_fixture_names(files_content: dict[Path, str]) -> list[str]:
     """Check that YAML fixtures only use allowed synthetic names."""
     violations = []
     name_fields = {"employer", "payer", "lender", "entity_name", "broker"}
 
-    for path in files:
+    for path, content in files_content.items():
         if path.suffix not in {".yaml", ".yml"}:
             continue
         if "fixtures" not in str(path):
             continue
-        if not path.exists():
-            continue
 
-        content = path.read_text()
         for line_num, line in enumerate(content.split("\n"), start=1):
             stripped = line.strip()
             for field in name_fields:
@@ -135,19 +126,16 @@ def check_fixture_names(files: list[Path]) -> list[str]:
     return violations
 
 
-def check_non_round_amounts(files: list[Path]) -> list[str]:
+def check_non_round_amounts(files_content: dict[Path, str]) -> list[str]:
     """Flag non-round dollar amounts in YAML fixtures as suspicious."""
     violations = []
 
-    for path in files:
+    for path, content in files_content.items():
         if path.suffix not in {".yaml", ".yml"}:
             continue
         if "fixtures" not in str(path):
             continue
-        if not path.exists():
-            continue
 
-        content = path.read_text()
         for line_num, line in enumerate(content.split("\n"), start=1):
             for match in NON_ROUND_DOLLAR_RE.finditer(line):
                 amount = float(match.group(1))
@@ -175,8 +163,8 @@ def check_git_history() -> list[str]:
         if not line:
             continue
         for pattern in DENYLIST_PATTERNS:
-            if re.search(pattern, line):
-                violations.append(f"GIT HISTORY: commit message matches '{pattern}': {line}")
+            if pattern.search(line):
+                violations.append(f"GIT HISTORY: commit message matches '{pattern.pattern}': {line}")
 
     return violations
 
@@ -188,15 +176,22 @@ def main() -> int:
     print("Scanning for personal data leaks...")
     print(f"  Tracked files: {len(files)}")
 
-    denylist = check_denylist(files)
+    files_content: dict[Path, str] = {}
+    for path in files:
+        try:
+            files_content[path] = path.read_text()
+        except (FileNotFoundError, UnicodeDecodeError):
+            continue
+
+    denylist = check_denylist(files_content)
     all_violations.extend(denylist)
     print(f"  Denylist check: {len(denylist)} violations")
 
-    allowlist = check_fixture_names(files)
+    allowlist = check_fixture_names(files_content)
     all_violations.extend(allowlist)
     print(f"  Allowlist check: {len(allowlist)} violations")
 
-    heuristic = check_non_round_amounts(files)
+    heuristic = check_non_round_amounts(files_content)
     all_violations.extend(heuristic)
     print(f"  Heuristic check: {len(heuristic)} violations")
 
