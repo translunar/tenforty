@@ -1,4 +1,3 @@
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,25 +6,7 @@ from tenforty.engine import SpreadsheetEngine
 from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
-
-SPREADSHEETS_DIR = Path(__file__).parent.parent / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(),
-    "LibreOffice not installed",
-)
+from tests.conftest import FIXTURES_DIR, SPREADSHEETS_DIR, needs_libreoffice
 
 
 @needs_libreoffice
