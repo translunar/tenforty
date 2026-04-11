@@ -48,8 +48,8 @@ class TestMaxIncomeCoverage(unittest.TestCase):
     def test_interest_in_agi(self):
         self.assertGreater(float(self._results["agi"]), 150000)
 
-    def test_dividends_in_agi(self):
-        # Wages (150k) + interest (2k) + ordinary dividends (8k) = 160k AGI
+    def test_capital_gain_distributions_in_agi(self):
+        # Wages (150k) + interest (2k) + dividends (3k) + cap gain dist (5k) = 160k
         self.assertGreater(float(self._results["agi"]), 155000)
 
     @needs_pdf
