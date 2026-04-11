@@ -36,7 +36,7 @@
 Before starting any tasks, rename `tests/conftest.py` to `tests/helpers.py` and update all imports across the test suite. `conftest.py` is a pytest special file for fixtures and hooks — we're using it for plain helper functions and constants, which belong in a regular module.
 
 - [ ] Rename `tests/conftest.py` → `tests/helpers.py`
-- [ ] Find/replace `from tests.helpers import` → `from tests.helpers import` in all test files
+- [ ] Find/replace `from tests.conftest import` → `from tests.helpers import` in all test files (grep to ensure none missed)
 - [ ] Create a minimal `tests/conftest.py` with just a docstring: `"""pytest configuration (if needed)."""`
 - [ ] Run full test suite to verify nothing broke
 - [ ] Commit: `refactor: rename tests/conftest.py to tests/helpers.py`
@@ -193,6 +193,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tenforty.mappings.f1040 import F1040
 from tenforty.uno_engine import UnoEngine
 from tests.helpers import SPREADSHEETS_DIR
 
@@ -222,7 +223,6 @@ class TestUnoEngine(unittest.TestCase):
 
         engine = UnoEngine()
 
-        from tenforty.mappings.f1040 import F1040
         inputs = {
             "filing_status_single": "X",
             "birthdate_month": 6,
@@ -258,7 +258,6 @@ class TestUnoEngine(unittest.TestCase):
             self.skipTest("Federal 1040 spreadsheet not found")
 
         engine = UnoEngine()
-        from tenforty.mappings.f1040 import F1040
 
         inputs_100k = {
             "filing_status_single": "X",
@@ -314,13 +313,17 @@ from pathlib import Path
 import openpyxl
 
 
-def _uno_available() -> bool:
-    """Check if we can import uno (only works under LO's Python or with UNO bridge)."""
-    try:
-        import uno  # noqa: F401
-        return True
-    except ImportError:
-        return False
+def _resolve_named_range(defn: object) -> tuple[str, str]:
+    """Parse a named range definition into (sheet_name, cell_address).
+
+    Duplicated from engine.py — extract to shared module if this becomes
+    a maintenance issue.
+    """
+    dest = defn.value
+    sheet_name, cell_addr = dest.split("!")
+    sheet_name = sheet_name.strip("'")
+    cell_addr = cell_addr.replace("$", "")
+    return sheet_name, cell_addr
 
 
 class UnoEngine:
@@ -355,6 +358,42 @@ class UnoEngine:
         self._write_inputs(working_copy, input_map, sheet_map, inputs)
         recalculated = self._recalculate(working_copy, work_dir)
         return self._read_outputs(recalculated, output_map)
+
+    def _write_inputs(
+        self, workbook_path: Path, input_map: dict[str, str],
+        sheet_map: dict[str, str], inputs: dict[str, object],
+    ) -> None:
+        wb = openpyxl.load_workbook(workbook_path)
+        named_ranges = {n.name: n for n in wb.defined_names.values()}
+        for input_key, value in inputs.items():
+            if input_key not in input_map:
+                continue
+            cell_ref = input_map[input_key]
+            if cell_ref in named_ranges:
+                sheet_name, cell_addr = _resolve_named_range(named_ranges[cell_ref])
+                wb[sheet_name][cell_addr] = value
+            elif input_key in sheet_map:
+                wb[sheet_map[input_key]][cell_ref] = value
+            else:
+                raise ValueError(
+                    f"Input '{input_key}' maps to '{cell_ref}' but has no named range "
+                    f"and no sheet in SHEET_MAP"
+                )
+        wb.save(workbook_path)
+
+    def _read_outputs(
+        self, workbook_path: Path, output_map: dict[str, str],
+    ) -> dict[str, object]:
+        wb = openpyxl.load_workbook(workbook_path, data_only=True)
+        named_ranges = {n.name: n for n in wb.defined_names.values()}
+        results: dict[str, object] = {}
+        for output_key, named_range in output_map.items():
+            if named_range not in named_ranges:
+                results[output_key] = None
+                continue
+            sheet_name, cell_addr = _resolve_named_range(named_ranges[named_range])
+            results[output_key] = wb[sheet_name][cell_addr].value
+        return results
 
     def _recalculate(self, workbook_path: Path, work_dir: Path) -> Path:
         """Recalculate using unoconvert (talks to running unoserver daemon)."""
@@ -425,7 +464,7 @@ every output value matches exactly. If these tests pass, the UNO
 engine is a safe drop-in replacement.
 """
 
-import subprocess
+import socket
 import tempfile
 import unittest
 from pathlib import Path
@@ -532,15 +571,12 @@ git commit -m "test: verify UNO engine produces identical results to cold-start 
 
 `tests/test_round_trip.py`:
 ```python
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.orchestrator import ReturnOrchestrator
-from tenforty.result_translator import ResultTranslator
 from tenforty.scenario import load_scenario
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tests.invariants import verify_pdf_round_trip
@@ -619,7 +655,7 @@ def verify_pdf_round_trip(
     test: unittest.TestCase,
     results: dict[str, object],
     scenario: Scenario,
-    translation_spec: "TranslationSpec",
+    translation_spec: TranslationSpec,
     pdf_mapping_cls: type,
     pdf_template: Path,
     year: int,
@@ -630,10 +666,6 @@ def verify_pdf_round_trip(
     Runs: translate → fill PDF → read back → compare every field.
     Reports mismatches and coverage gaps.
     """
-    from tenforty.filing.pdf import PdfFiller
-    from tenforty.result_translator import ResultTranslator
-    from pypdf import PdfReader
-
     # Translate engine results to PDF namespace
     translator = ResultTranslator(translation_spec)
     translated = translator.translate(results, scenario)
@@ -797,7 +829,6 @@ form1099_div:
 
 `tests/test_round_trip_max_coverage.py`:
 ```python
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
