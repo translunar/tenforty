@@ -18,6 +18,7 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_1099_int(scenario, flat)
     _flatten_1099_div(scenario, flat)
     _flatten_1098s(scenario, flat)
+    _flatten_rental_properties(scenario, flat)
 
     _reject_unhandled(scenario)
 
@@ -88,3 +89,38 @@ def _flatten_1098s(scenario: Scenario, flat: dict[str, object]) -> None:
         flat["mortgage_interest"] = total_mortgage
     if total_property_tax:
         flat["property_tax"] = total_property_tax
+
+
+_RENTAL_PROPERTY_LETTERS = "abcdefgh"
+
+_RENTAL_EXPENSE_FIELDS = [
+    ("advertising", "sche_advertising"),
+    ("auto_and_travel", "sche_auto_and_travel"),
+    ("cleaning_and_maintenance", "sche_cleaning_and_maintenance"),
+    ("commissions", "sche_commissions"),
+    ("insurance", "sche_insurance"),
+    ("legal_and_professional_fees", "sche_legal_and_professional_fees"),
+    ("management_fees", "sche_management_fees"),
+    ("mortgage_interest", "sche_mortgage_interest"),
+    ("other_interest", "sche_other_interest"),
+    ("repairs", "sche_repairs"),
+    ("supplies", "sche_supplies"),
+    ("taxes", "sche_taxes"),
+    ("utilities", "sche_utilities"),
+    ("depreciation", "sche_depreciation"),
+    ("other_expenses", "sche_other_expenses"),
+]
+
+
+def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> None:
+    for i, prop in enumerate(scenario.rental_properties):
+        letter = _RENTAL_PROPERTY_LETTERS[i]
+        flat[f"sche_property_type_{letter}"] = prop.property_type
+        flat[f"sche_fair_rental_days_{letter}"] = prop.fair_rental_days
+        flat[f"sche_personal_use_days_{letter}"] = prop.personal_use_days
+        flat[f"sche_rents_{letter}"] = prop.rents_received
+
+        for attr, key_prefix in _RENTAL_EXPENSE_FIELDS:
+            value = getattr(prop, attr)
+            if value:
+                flat[f"{key_prefix}_{letter}"] = value
