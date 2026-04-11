@@ -68,6 +68,26 @@ class TestTaxReturnConfig(unittest.TestCase):
         self.assertEqual(config.year, 2025)
         self.assertEqual(config.filing_status, "single")
 
+    def test_filing_status_rejects_invalid(self):
+        with self.assertRaises(ValueError):
+            TaxReturnConfig(
+                year=2025,
+                filing_status="married filing jointly",  # wrong string
+                birthdate="1990-06-15",
+                state="CA",
+            )
+
+    def test_filing_status_accepts_valid(self):
+        for status in ["single", "married_jointly", "married_separately",
+                        "head_of_household", "qualifying_widow"]:
+            config = TaxReturnConfig(
+                year=2025,
+                filing_status=status,
+                birthdate="1990-06-15",
+                state="CA",
+            )
+            self.assertEqual(config.filing_status, status)
+
 
 class TestScenario(unittest.TestCase):
     def test_create_scenario(self):
