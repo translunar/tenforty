@@ -6,8 +6,13 @@ as the first argument so they can use self.assertEqual, self.assertGreater, etc.
 """
 
 import unittest
+from pathlib import Path
 
+from pypdf import PdfReader
+
+from tenforty.filing.pdf import PdfFiller
 from tenforty.models import Scenario
+from tenforty.result_translator import ResultTranslator, TranslationSpec
 
 
 def assert_agi_consistent(
@@ -145,3 +150,71 @@ def assert_withholding_matches_input(
         float(actual), expected,
         f"Withholding mismatch: engine={actual}, scenario sum={expected}",
     )
+
+
+def verify_pdf_round_trip(
+    test: unittest.TestCase,
+    results: dict[str, object],
+    scenario: Scenario,
+    translation_spec: TranslationSpec,
+    pdf_mapping_cls: type,
+    pdf_template: Path,
+    year: int,
+    work_dir: Path,
+) -> None:
+    """Verify that engine results survive the full pipeline to the PDF.
+
+    Runs: translate -> fill PDF -> read back -> compare every field.
+    Reports mismatches and coverage gaps.
+    """
+    translator = ResultTranslator(translation_spec)
+    translated = translator.translate(results, scenario)
+
+    filler = PdfFiller()
+    output_pdf = work_dir / "round_trip_verify.pdf"
+    mapping = pdf_mapping_cls.get_mapping(year)
+    filler.fill(pdf_template, output_pdf, mapping, translated)
+
+    reader = PdfReader(output_pdf)
+    pdf_fields = reader.get_fields()
+
+    mismatches: list[str] = []
+    gaps: list[str] = []
+    verified_count = 0
+
+    # Check: do filled fields match?
+    for our_key, pdf_field_name in mapping.items():
+        translated_value = translated.get(our_key)
+        if translated_value is None:
+            continue
+
+        expected_str = str(translated_value)
+        actual_str = pdf_fields.get(pdf_field_name, {}).get("/V", "")
+
+        if actual_str != expected_str:
+            mismatches.append(
+                f"  {our_key}: expected '{expected_str}', "
+                f"got '{actual_str}' (PDF field: {pdf_field_name})"
+            )
+        else:
+            verified_count += 1
+
+    # Check: are there translated keys with no PDF mapping? (coverage gaps)
+    mapped_keys = set(mapping.keys())
+    for key, value in translated.items():
+        if value is not None and key not in mapped_keys:
+            gaps.append(f"  {key}={value} (no PDF mapping)")
+
+    errors: list[str] = []
+    if mismatches:
+        errors.append(
+            f"{len(mismatches)} field(s) did not round-trip correctly:\n"
+            + "\n".join(mismatches)
+        )
+    if gaps:
+        errors.append(
+            f"{len(gaps)} translated key(s) have no PDF mapping (coverage gaps):\n"
+            + "\n".join(gaps)
+        )
+    if errors:
+        test.fail("\n\n".join(errors))
