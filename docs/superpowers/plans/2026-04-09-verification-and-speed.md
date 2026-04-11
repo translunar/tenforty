@@ -31,6 +31,18 @@
 
 ---
 
+## Pre-Task 0: Rename conftest.py → helpers.py
+
+Before starting any tasks, rename `tests/conftest.py` to `tests/helpers.py` and update all imports across the test suite. `conftest.py` is a pytest special file for fixtures and hooks — we're using it for plain helper functions and constants, which belong in a regular module.
+
+- [ ] Rename `tests/conftest.py` → `tests/helpers.py`
+- [ ] Find/replace `from tests.helpers import` → `from tests.helpers import` in all test files
+- [ ] Create a minimal `tests/conftest.py` with just a docstring: `"""pytest configuration (if needed)."""`
+- [ ] Run full test suite to verify nothing broke
+- [ ] Commit: `refactor: rename tests/conftest.py to tests/helpers.py`
+
+---
+
 ## File Structure
 
 ```
@@ -47,7 +59,7 @@ tenforty/
 │   ├── convert_to_ods.py           # Create: one-time ODS conversion script
 │   └── start_unoserver.sh          # Create: helper to start the UNO daemon
 ├── tests/
-│   ├── conftest.py                 # Already has shared helpers (libreoffice_available, etc.)
+│   ├── helpers.py                  # Shared test helpers (libreoffice_available, constants, etc.)
 │   ├── invariants.py               # Modify: add verify_pdf_round_trip
 │   ├── test_uno_engine.py          # Create: tests for UNO engine
 │   ├── test_engine_parity.py       # Create: verify UNO == cold-start results
@@ -182,7 +194,7 @@ import unittest
 from pathlib import Path
 
 from tenforty.uno_engine import UnoEngine
-from tests.conftest import SPREADSHEETS_DIR
+from tests.helpers import SPREADSHEETS_DIR
 
 
 def unoserver_available() -> bool:
@@ -423,7 +435,7 @@ from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
 from tenforty.uno_engine import UnoEngine
-from tests.conftest import FIXTURES_DIR, SPREADSHEETS_DIR, libreoffice_available
+from tests.helpers import FIXTURES_DIR, SPREADSHEETS_DIR, libreoffice_available
 
 
 def unoserver_available() -> bool:
@@ -533,7 +545,7 @@ from tenforty.scenario import load_scenario
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tests.invariants import verify_pdf_round_trip
 
-from tests.conftest import (
+from tests.helpers import (
     F1040_PDF,
     FIXTURES_DIR,
     SPREADSHEETS_DIR,
@@ -804,7 +816,7 @@ from tests.invariants import (
     verify_pdf_round_trip,
 )
 
-from tests.conftest import (
+from tests.helpers import (
     F1040_PDF,
     FIXTURES_DIR,
     SPREADSHEETS_DIR,
