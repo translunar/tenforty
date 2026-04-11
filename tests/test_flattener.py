@@ -83,6 +83,21 @@ class TestFlattenScenario(unittest.TestCase):
         flat = flatten_scenario(scenario)
         self.assertEqual(flat["capital_gain_distributions_1"], 5000)
 
+    def test_multiple_1098s_summed(self):
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            form1098s=[
+                Form1098(lender="Mortgage Co", mortgage_interest=8000, property_tax=3000),
+                Form1098(lender="Home Mortgage Co", mortgage_interest=4000, property_tax=1500),
+            ],
+        )
+        flat = flatten_scenario(scenario)
+        self.assertEqual(flat["mortgage_interest"], 12000)
+        self.assertEqual(flat["property_tax"], 4500)
+
     def test_empty_forms_produce_no_keys(self):
         flat = flatten_scenario(_simple_scenario())
         self.assertNotIn("ordinary_dividends_1", flat)
