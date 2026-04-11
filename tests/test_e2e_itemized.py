@@ -8,7 +8,7 @@ from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.result_translator import ResultTranslator
 from tenforty.scenario import load_scenario
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
-from tests.conftest import (
+from tests.helpers import (
     F1040_PDF,
     FIXTURES_DIR,
     SPREADSHEETS_DIR,

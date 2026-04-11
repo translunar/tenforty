@@ -3,7 +3,7 @@ from pathlib import Path
 
 from tenforty.models import Scenario, W2, Form1099INT, TaxReturnConfig
 from tenforty.scenario import load_scenario
-from tests.conftest import FIXTURES_DIR
+from tests.helpers import FIXTURES_DIR
 
 
 class TestLoadScenario(unittest.TestCase):

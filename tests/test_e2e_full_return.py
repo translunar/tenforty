@@ -37,7 +37,7 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.conftest import SPREADSHEETS_DIR, needs_libreoffice
+from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 from tests.invariants import (
     assert_agi_consistent,
     assert_refund_or_owed_consistent,

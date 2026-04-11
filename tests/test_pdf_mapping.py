@@ -5,7 +5,7 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_1040 import Pdf1040
-from tests.conftest import F1040_PDF, needs_pdf
+from tests.helpers import F1040_PDF, needs_pdf
 
 
 @needs_pdf

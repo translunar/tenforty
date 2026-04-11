@@ -4,7 +4,7 @@ from pathlib import Path
 
 from tenforty.models import Scenario, TaxReturnConfig, W2
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.conftest import SPREADSHEETS_DIR, needs_libreoffice
+from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 
 
 @needs_libreoffice

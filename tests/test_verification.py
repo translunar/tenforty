@@ -6,7 +6,7 @@ from tenforty.engine import SpreadsheetEngine
 from tenforty.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
-from tests.conftest import FIXTURES_DIR, SPREADSHEETS_DIR, needs_libreoffice
+from tests.helpers import FIXTURES_DIR, SPREADSHEETS_DIR, needs_libreoffice
 
 
 @needs_libreoffice
