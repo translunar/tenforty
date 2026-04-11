@@ -6,6 +6,7 @@ from tenforty.models import (
     Form1099B,
     Form1099DIV,
     Form1099INT,
+    RentalProperty,
     Scenario,
     ScheduleK1,
     TaxReturnConfig,
@@ -102,6 +103,63 @@ class TestFlattenScenario(unittest.TestCase):
         flat = flatten_scenario(_simple_scenario())
         self.assertNotIn("ordinary_dividends_1", flat)
         self.assertNotIn("sche_rents_a", flat)
+
+
+class TestFlattenRentalProperty(unittest.TestCase):
+    def _make_rental_scenario(self) -> Scenario:
+        return Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            rental_properties=[RentalProperty(
+                address="42 Test Blvd, Faketown TX 99999",
+                property_type=2,
+                fair_rental_days=350,
+                personal_use_days=15,
+                rents_received=24000,
+                auto_and_travel=800,
+                cleaning_and_maintenance=550,
+                insurance=1600,
+                legal_and_professional_fees=300,
+                mortgage_interest=7500,
+                repairs=950,
+                supplies=350,
+                taxes=8500,
+                depreciation=5500,
+            )],
+        )
+
+    def test_rental_rents_received(self):
+        flat = flatten_scenario(self._make_rental_scenario())
+        self.assertEqual(flat["sche_rents_a"], 24000)
+
+    def test_rental_metadata(self):
+        flat = flatten_scenario(self._make_rental_scenario())
+        self.assertEqual(flat["sche_property_type_a"], 2)
+        self.assertEqual(flat["sche_fair_rental_days_a"], 350)
+        self.assertEqual(flat["sche_personal_use_days_a"], 15)
+
+    def test_rental_all_expenses(self):
+        flat = flatten_scenario(self._make_rental_scenario())
+        self.assertEqual(flat["sche_insurance_a"], 1600)
+        self.assertEqual(flat["sche_mortgage_interest_a"], 7500)
+        self.assertEqual(flat["sche_repairs_a"], 950)
+        self.assertEqual(flat["sche_taxes_a"], 8500)
+        self.assertEqual(flat["sche_depreciation_a"], 5500)
+        self.assertEqual(flat["sche_auto_and_travel_a"], 800)
+        self.assertEqual(flat["sche_cleaning_and_maintenance_a"], 550)
+        self.assertEqual(flat["sche_legal_and_professional_fees_a"], 300)
+        self.assertEqual(flat["sche_supplies_a"], 350)
+
+    def test_rental_zero_expenses_not_included(self):
+        flat = flatten_scenario(self._make_rental_scenario())
+        self.assertNotIn("sche_advertising_a", flat)
+        self.assertNotIn("sche_commissions_a", flat)
+        self.assertNotIn("sche_management_fees_a", flat)
+        self.assertNotIn("sche_other_interest_a", flat)
+        self.assertNotIn("sche_utilities_a", flat)
+        self.assertNotIn("sche_other_expenses_a", flat)
 
 
 class TestFlattenerRejectsUnhandledData(unittest.TestCase):

@@ -1,6 +1,14 @@
 import unittest
 
-from tenforty.models import W2, Form1099INT, Form1099DIV, Form1098, TaxReturnConfig, Scenario
+from tenforty.models import (
+    Form1098,
+    Form1099DIV,
+    Form1099INT,
+    RentalProperty,
+    Scenario,
+    TaxReturnConfig,
+    W2,
+)
 
 
 class TestW2(unittest.TestCase):
@@ -87,6 +95,70 @@ class TestTaxReturnConfig(unittest.TestCase):
                 state="CA",
             )
             self.assertEqual(config.filing_status, status)
+
+
+class TestRentalProperty(unittest.TestCase):
+    def test_create_rental_property(self):
+        prop = RentalProperty(
+            address="42 Test Blvd, Faketown TX 99999",
+            property_type=2,
+            fair_rental_days=350,
+            personal_use_days=15,
+            rents_received=24000,
+            auto_and_travel=800,
+            cleaning_and_maintenance=550,
+            insurance=1600,
+            legal_and_professional_fees=300,
+            mortgage_interest=7500,
+            repairs=950,
+            supplies=350,
+            taxes=8500,
+            depreciation=5500,
+        )
+        self.assertEqual(prop.rents_received, 24000)
+        self.assertEqual(prop.auto_and_travel, 800)
+        self.assertEqual(prop.depreciation, 5500)
+        self.assertEqual(prop.property_type, 2)
+        self.assertEqual(prop.address, "42 Test Blvd, Faketown TX 99999")
+
+    def test_optional_expense_fields_default_to_zero(self):
+        prop = RentalProperty(
+            address="456 Test Ave",
+            property_type=1,
+            fair_rental_days=365,
+            personal_use_days=0,
+            rents_received=24000,
+        )
+        self.assertEqual(prop.advertising, 0.0)
+        self.assertEqual(prop.auto_and_travel, 0.0)
+        self.assertEqual(prop.cleaning_and_maintenance, 0.0)
+        self.assertEqual(prop.commissions, 0.0)
+        self.assertEqual(prop.insurance, 0.0)
+        self.assertEqual(prop.legal_and_professional_fees, 0.0)
+        self.assertEqual(prop.management_fees, 0.0)
+        self.assertEqual(prop.mortgage_interest, 0.0)
+        self.assertEqual(prop.other_interest, 0.0)
+        self.assertEqual(prop.repairs, 0.0)
+        self.assertEqual(prop.supplies, 0.0)
+        self.assertEqual(prop.taxes, 0.0)
+        self.assertEqual(prop.utilities, 0.0)
+        self.assertEqual(prop.depreciation, 0.0)
+        self.assertEqual(prop.other_expenses, 0.0)
+
+    def test_scenario_has_rental_properties(self):
+        config = TaxReturnConfig(
+            year=2025, filing_status="single",
+            birthdate="1990-06-15", state="CA",
+        )
+        prop = RentalProperty(
+            address="123 Example St",
+            property_type=1,
+            fair_rental_days=365,
+            personal_use_days=0,
+            rents_received=24000,
+        )
+        scenario = Scenario(config=config, rental_properties=[prop])
+        self.assertEqual(len(scenario.rental_properties), 1)
 
 
 class TestScenario(unittest.TestCase):
