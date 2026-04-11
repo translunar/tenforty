@@ -7,6 +7,7 @@ from tenforty.models import (
     Form1099B,
     Form1099DIV,
     Form1099INT,
+    RentalProperty,
     Scenario,
     ScheduleK1,
     TaxReturnConfig,
@@ -20,6 +21,7 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1099_b": (Form1099B, "form1099_b"),
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
+    "rental_properties": (RentalProperty, "rental_properties"),
 }
 
 
