@@ -1,4 +1,3 @@
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +8,13 @@ from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.result_translator import ResultTranslator
 from tenforty.scenario import load_scenario
 from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
+from tests.conftest import (
+    F1040_PDF,
+    FIXTURES_DIR,
+    SPREADSHEETS_DIR,
+    needs_libreoffice,
+    needs_pdf,
+)
 from tests.invariants import (
     assert_agi_consistent,
     assert_refund_or_owed_consistent,
@@ -17,59 +23,38 @@ from tests.invariants import (
     assert_withholding_matches_input,
 )
 
-REPO_ROOT = Path(__file__).parent.parent
-SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
-F1040_PDF = Path("/tmp/f1040_2025.pdf")
-
-
-def libreoffice_available() -> bool:
-    try:
-        result = subprocess.run(
-            ["soffice", "--version"], capture_output=True, timeout=5,
-        )
-        return result.returncode == 0
-    except FileNotFoundError:
-        return False
-
-
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(), "LibreOffice not installed",
-)
-needs_pdf = unittest.skipUnless(
-    F1040_PDF.exists(), "f1040 PDF not available at /tmp/f1040_2025.pdf",
-)
-
 
 @needs_libreoffice
 class TestE2ESimpleW2(unittest.TestCase):
     """Full pipeline: simple W-2 single filer with standard deduction."""
 
     def setUp(self):
-        self.work_dir = Path(tempfile.mkdtemp())
-        self.scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
-        self.orchestrator = ReturnOrchestrator(
-            spreadsheets_dir=SPREADSHEETS_DIR,
-            work_dir=self.work_dir,
-        )
+        if not hasattr(self.__class__, '_results'):
+            self.__class__._work_dir = Path(tempfile.mkdtemp())
+            self.__class__._scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+            orchestrator = ReturnOrchestrator(
+                spreadsheets_dir=SPREADSHEETS_DIR,
+                work_dir=self.__class__._work_dir,
+            )
+            self.__class__._results = orchestrator.compute_federal(self.__class__._scenario)
+        self.work_dir = self.__class__._work_dir
+        self.scenario = self.__class__._scenario
+        self.results = self.__class__._results
 
     def test_engine_invariants(self):
         """Run engine and verify structural invariants."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        assert_agi_consistent(self, results, self.scenario)
-        assert_taxable_income_consistent(self, results)
-        assert_tax_is_non_negative(self, results)
-        assert_refund_or_owed_consistent(self, results)
-        assert_withholding_matches_input(self, results, self.scenario)
+        assert_agi_consistent(self, self.results, self.scenario)
+        assert_taxable_income_consistent(self, self.results)
+        assert_tax_is_non_negative(self, self.results)
+        assert_refund_or_owed_consistent(self, self.results)
+        assert_withholding_matches_input(self, self.results, self.scenario)
 
     @needs_pdf
     def test_pdf_output(self):
         """Run full pipeline through PDF filling."""
-        results = self.orchestrator.compute_federal(self.scenario)
 
         translator = ResultTranslator(F1040_PDF_SPEC)
-        translated = translator.translate(results, self.scenario)
+        translated = translator.translate(self.results, self.scenario)
 
         filler = PdfFiller()
         output_pdf = self.work_dir / "f1040_simple_w2.pdf"
