@@ -79,7 +79,12 @@ def _flatten_1099_div(scenario: Scenario, flat: dict[str, object]) -> None:
 
 
 def _flatten_1098s(scenario: Scenario, flat: dict[str, object]) -> None:
+    total_mortgage = 0.0
+    total_property_tax = 0.0
     for form in scenario.form1098s:
-        flat["mortgage_interest"] = form.mortgage_interest
-        if form.property_tax:
-            flat["property_tax"] = form.property_tax
+        total_mortgage += form.mortgage_interest
+        total_property_tax += form.property_tax
+    if total_mortgage:
+        flat["mortgage_interest"] = total_mortgage
+    if total_property_tax:
+        flat["property_tax"] = total_property_tax
