@@ -50,37 +50,36 @@ class Pdf1040:
             # Line 1z: Total of 1a through 1i
             "total_w2_income": "topmostSubform[0].Page1[0].f1_56[0]",
             # Line 2a: Tax-exempt interest
-            "tax_exempt_interest": "topmostSubform[0].Page1[0].f1_57[0]",
+            "tax_exempt_interest": "topmostSubform[0].Page1[0].f1_58[0]",
             # Line 2b: Taxable interest
-            "taxable_interest": "topmostSubform[0].Page1[0].f1_58[0]",
+            "taxable_interest": "topmostSubform[0].Page1[0].f1_59[0]",
             # Line 3a: Qualified dividends
-            "qualified_dividends": "topmostSubform[0].Page1[0].f1_59[0]",
+            "qualified_dividends": "topmostSubform[0].Page1[0].f1_60[0]",
             # Line 3b: Ordinary dividends
-            "ordinary_dividends": "topmostSubform[0].Page1[0].f1_60[0]",
+            "ordinary_dividends": "topmostSubform[0].Page1[0].f1_61[0]",
             # Line 4a: IRA distributions
-            "ira_distributions": "topmostSubform[0].Page1[0].f1_61[0]",
+            "ira_distributions": "topmostSubform[0].Page1[0].f1_62[0]",
             # Line 4b: IRA taxable amount
-            "ira_taxable": "topmostSubform[0].Page1[0].f1_62[0]",
+            "ira_taxable": "topmostSubform[0].Page1[0].f1_63[0]",
             # Line 5a: Pensions and annuities
-            "pensions": "topmostSubform[0].Page1[0].f1_63[0]",
+            "pensions": "topmostSubform[0].Page1[0].f1_65[0]",
             # Line 5b: Pensions taxable amount
-            "pensions_taxable": "topmostSubform[0].Page1[0].f1_64[0]",
+            "pensions_taxable": "topmostSubform[0].Page1[0].f1_66[0]",
             # Line 6a: Social security benefits
-            "social_security": "topmostSubform[0].Page1[0].f1_65[0]",
+            "social_security": "topmostSubform[0].Page1[0].f1_68[0]",
             # Line 6b: Social security taxable amount
-            "social_security_taxable": "topmostSubform[0].Page1[0].f1_66[0]",
-            # Line 6c: Lump-sum election
-            "lump_sum_election": "topmostSubform[0].Page1[0].f1_67[0]",
-            # Line 7: Capital gain or (loss)
-            "capital_gain_loss": "topmostSubform[0].Page1[0].f1_68[0]",
+            "social_security_taxable": "topmostSubform[0].Page1[0].f1_69[0]",
+            # Line 7a: Capital gain or (loss)
+            "capital_gain_loss": "topmostSubform[0].Page1[0].f1_70[0]",
+            # Line 7b: (new on 2025 form — unmapped, reserved for future use)
             # Line 8: Other income from Schedule 1, line 10
-            "other_income": "topmostSubform[0].Page1[0].f1_69[0]",
+            "other_income": "topmostSubform[0].Page1[0].f1_72[0]",
             # Line 9: Total income
-            "total_income": "topmostSubform[0].Page1[0].f1_70[0]",
+            "total_income": "topmostSubform[0].Page1[0].f1_73[0]",
             # Line 10: Adjustments to income from Schedule 1, line 26
-            "adjustments": "topmostSubform[0].Page1[0].f1_71[0]",
-            # Line 11: Adjusted gross income
-            "agi": "topmostSubform[0].Page1[0].f1_72[0]",
+            "adjustments": "topmostSubform[0].Page1[0].f1_74[0]",
+            # Line 11a: Adjusted gross income
+            "agi": "topmostSubform[0].Page1[0].f1_75[0]",
 
             # === Page 2: Tax and Credits (Lines 11b-24) ===
             # Line 11b (AGI repeated at top of page 2)
