@@ -86,9 +86,9 @@ class TestF1040Outputs2025(unittest.TestCase):
     def test_standard_deduction_uses_filing_status_aware_range(self):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(
-            outputs["standard_deduction"], "StdDeduct",
-            "standard_deduction must map to StdDeduct (filing-status-aware), "
-            "not SD_Single (hardcoded to single filers).",
+            outputs["standard_deduction"], "Standard",
+            "standard_deduction must map to Standard (1040!BI70, the filing-status-aware "
+            "dollar amount), not SD_Single (single-only) or StdDeduct (boolean flag).",
         )
 
 
