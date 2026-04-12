@@ -107,6 +107,16 @@ class TaxReturnConfig:
     birthdate: str
     state: str
     dependents: list[str] = field(default_factory=list)
+    first_name: str = ""
+    last_name: str = ""
+    ssn: str = ""
+    spouse_first_name: str = ""
+    spouse_last_name: str = ""
+    spouse_ssn: str = ""
+    address: str = ""
+    address_city: str = ""
+    address_state: str = ""
+    address_zip: str = ""
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):
