@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 
 from tenforty.models import (
     Form1098,
@@ -9,6 +10,9 @@ from tenforty.models import (
     TaxReturnConfig,
     W2,
 )
+from tenforty.scenario import load_scenario
+
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 class TestW2(unittest.TestCase):
@@ -95,6 +99,41 @@ class TestTaxReturnConfig(unittest.TestCase):
                 state="CA",
             )
             self.assertEqual(config.filing_status, status)
+
+    def test_personal_info_fields_are_optional_and_preserve_state(self):
+        blank = TaxReturnConfig(
+            year=2025,
+            filing_status="single",
+            birthdate="1990-01-01",
+            state="CA",
+        )
+        self.assertEqual(blank.first_name, "")
+        self.assertEqual(blank.ssn, "")
+        self.assertEqual(blank.address_state, "")
+
+        populated = TaxReturnConfig(
+            year=2025,
+            filing_status="married_jointly",
+            birthdate="1985-03-20",
+            state="TX",
+            first_name="Jane",
+            last_name="Doe",
+            ssn="000-12-3456",
+            spouse_first_name="John",
+            spouse_last_name="Doe",
+            spouse_ssn="000-98-7654",
+            address="123 Main St",
+            address_city="Austin",
+            address_state="TX",
+            address_zip="78701",
+        )
+        self.assertEqual(populated.state, "TX")
+
+    def test_existing_fixtures_still_load(self):
+        scenario = load_scenario(FIXTURES_DIR / "simple_w2.yaml")
+        self.assertEqual(scenario.config.year, 2025)
+        self.assertEqual(scenario.config.first_name, "")
+        self.assertEqual(scenario.config.address_state, "")
 
 
 class TestRentalProperty(unittest.TestCase):
