@@ -229,3 +229,24 @@ def verify_pdf_round_trip(
         )
         for gap in gaps:
             print(f"    {gap}", file=sys.stderr)
+
+
+def assert_deduction_choice_consistent(testcase, results: dict) -> None:
+    """Assert total_deductions equals max(standard_deduction, schedule_a_total).
+
+    ASSUMES filing status not in {MFS-forced-itemize, dependent, dual-status/NRA}.
+    MFS where the other spouse itemizes forces itemization regardless of which
+    amount is larger; dependents get a reduced standard deduction (earned income
+    + $450, capped at the regular standard); dual-status/NRA filers cannot claim
+    the standard deduction. tenforty does not model these cases today.
+    """
+    std = int(results.get("standard_deduction") or 0)
+    sch_a = int(results.get("schedule_a_total") or 0)
+    applied = int(results.get("total_deductions") or 0)
+    testcase.assertEqual(
+        applied, max(std, sch_a),
+        f"Expected total_deductions=max(standard={std}, schedule_a={sch_a}) "
+        f"but got {applied}. If this filer is MFS-forced-itemize, a dependent, "
+        f"or dual-status/NRA, this invariant does not apply and the test should "
+        f"be suppressed rather than weakened.",
+    )
