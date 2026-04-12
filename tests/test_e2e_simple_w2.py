@@ -15,7 +15,9 @@ from tests.helpers import (
     needs_libreoffice,
     needs_pdf,
 )
+from tenforty.models import TaxReturnConfig
 from tests.invariants import (
+    assert_4868_fills_correctly,
     assert_agi_consistent,
     assert_deduction_choice_consistent,
     assert_refund_or_owed_consistent,
@@ -83,3 +85,25 @@ class TestE2ESimpleW2(unittest.TestCase):
 
     def test_deduction_choice_invariant(self):
         assert_deduction_choice_consistent(self, self.results)
+
+    def test_4868_fills_correctly(self):
+        """4868 lines 4/5/6/7 match engine results; reuses cached _results."""
+        cfg = TaxReturnConfig(
+            year=self.scenario.config.year,
+            filing_status=self.scenario.config.filing_status,
+            birthdate=self.scenario.config.birthdate,
+            state=self.scenario.config.state,
+            dependents=self.scenario.config.dependents,
+            first_name="Alice",
+            last_name="Example",
+            ssn="000-00-0001",
+            spouse_first_name="",
+            spouse_last_name="",
+            spouse_ssn="",
+            address="123 Example St",
+            address_city="Anywhere",
+            address_state="CA",
+            address_zip="00000",
+        )
+        tmp_dir = Path(tempfile.mkdtemp())
+        assert_4868_fills_correctly(self, self.results, cfg, tmp_dir)
