@@ -1,6 +1,10 @@
 import unittest
 
+import openpyxl
+from openpyxl.cell.cell import MergedCell
+
 from tenforty.mappings.f1040 import F1040
+from tests.helpers import SPREADSHEETS_DIR
 
 
 class TestF1040Inputs2025(unittest.TestCase):
@@ -74,6 +78,29 @@ class TestF1040Outputs2025(unittest.TestCase):
     def test_total_deductions_output(self):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["total_deductions"], "TotalDeductions")
+
+
+class TestF1040MappingValidity(unittest.TestCase):
+    """Pre-flight checks: every direct cell ref in SHEET_MAP must point at a
+    writable cell in the actual workbook. Catches merged-cell mapping bugs
+    before they surface as cryptic 'MergedCell attribute is read-only' errors
+    during e2e runs."""
+
+    def test_no_input_maps_to_merged_cell(self):
+        for year, sheet_map in F1040.SHEET_MAP.items():
+            workbook_path = SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+            if not workbook_path.exists():
+                continue
+            wb = openpyxl.load_workbook(workbook_path, read_only=False)
+            inputs = F1040.get_inputs(year)
+            for key, sheet_name in sheet_map.items():
+                cell_ref = inputs[key]
+                cell = wb[sheet_name][cell_ref]
+                self.assertNotIsInstance(
+                    cell, MergedCell,
+                    f"{year} input '{key}' maps to {sheet_name}!{cell_ref}, "
+                    f"which is a merged cell. Map to the top-left of the merge range instead.",
+                )
 
 
 class TestF1040InputTypes(unittest.TestCase):
