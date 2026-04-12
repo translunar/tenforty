@@ -1,5 +1,6 @@
 """CLI entry point: python -m tenforty scenario.yaml"""
 
+import argparse
 import sys
 from pathlib import Path
 from typing import TextIO
@@ -55,15 +56,28 @@ def _which_applied(standard: float, schedule_a: float, applied: float) -> str:
 
 
 def main() -> int:
-    if len(sys.argv) < 2:
-        print("Usage: python -m tenforty <scenario.yaml> [spreadsheets_dir]")
-        print()
-        print("  scenario.yaml     Path to your tax scenario file")
-        print("  spreadsheets_dir  Path to spreadsheets directory (default: ./spreadsheets)")
-        return 1
+    parser = argparse.ArgumentParser(
+        prog="python -m tenforty",
+        description="Compute a federal tax return from a scenario YAML file.",
+    )
+    parser.add_argument("scenario", type=Path, help="Path to your tax scenario YAML file")
+    parser.add_argument(
+        "--spreadsheets-dir",
+        type=Path,
+        default=Path("spreadsheets"),
+        metavar="DIR",
+        help="Path to spreadsheets directory (default: ./spreadsheets)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="When set, fill and emit 1040 and 4868 PDFs to this directory",
+    )
 
-    scenario_path = Path(sys.argv[1]).expanduser()
-    spreadsheets_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("spreadsheets")
+    args = parser.parse_args()
+    scenario_path = args.scenario.expanduser()
 
     try:
         scenario = load_scenario(scenario_path)
@@ -72,7 +86,7 @@ def main() -> int:
         return 1
 
     orchestrator = ReturnOrchestrator(
-        spreadsheets_dir=spreadsheets_dir,
+        spreadsheets_dir=args.spreadsheets_dir,
         work_dir=Path("/tmp/tenforty_work"),
     )
 
@@ -81,6 +95,13 @@ def main() -> int:
 
     print()
     print_results(results)
+
+    if args.output_dir is not None:
+        emitted = orchestrator.emit_pdfs(scenario, results, args.output_dir)
+        print()
+        print("=== Emitted PDFs ===")
+        for form, path in emitted.items():
+            print(f"  {form:4s}  -> {path}")
 
     return 0
 
