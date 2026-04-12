@@ -17,6 +17,7 @@ from tests.helpers import (
 )
 from tests.invariants import (
     assert_agi_consistent,
+    assert_deduction_choice_consistent,
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
@@ -70,3 +71,20 @@ class TestE2EItemized(unittest.TestCase):
         self.assertGreater(output_pdf.stat().st_size, 0)
 
     # --- Regression tests ---
+
+    def test_schedule_a_total_matches_inputs(self):
+        """itemized_deductions.yaml has mortgage_interest $18,000 and
+        property_tax $6,000. Post-OBBBA SALT cap is $40,000, so the
+        $6,000 property tax is well under cap. Expected Sch A total:
+        $18,000 + $6,000 = $24,000.
+        """
+        self.assertEqual(int(self.results["schedule_a_total"]), 24000)
+
+    def test_schedule_a_exceeds_standard(self):
+        """Sanity: this fixture is supposed to favor itemizing."""
+        std = int(self.results["standard_deduction"])
+        sch_a = int(self.results["schedule_a_total"])
+        self.assertGreater(sch_a, std)
+
+    def test_deduction_choice_invariant(self):
+        assert_deduction_choice_consistent(self, self.results)
