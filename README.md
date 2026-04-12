@@ -55,6 +55,14 @@ Tests that require LibreOffice (~18s each) are skipped if it's not installed. Te
 
 ### Prepare a tax return
 
+The quickest way to run a return is the CLI:
+
+```bash
+python -m tenforty ~/Documents/Taxes/2025/scenario.yaml
+```
+
+It loads the scenario, runs `ReturnOrchestrator.compute_federal()`, and prints the computed federal values (wages, AGI, taxable income, total tax, overpaid, etc.). An optional second argument overrides the spreadsheets directory (default: `./spreadsheets`).
+
 Create a scenario file (e.g., `~/Documents/Taxes/2025/scenario.yaml`):
 
 ```yaml
