@@ -103,7 +103,7 @@ class F1040(FormMapping):
         2025: {
             "wages": "Wages",
             "agi": "Adj_Gross_Inc",
-            "standard_deduction": "SD_Single",
+            "standard_deduction": "StdDeduct",
             "taxable_income": "Taxable_Inc",
             "total_tax": "Tax",
             "federal_withheld": "W2_FedTaxWH",
