@@ -17,6 +17,7 @@ from tests.helpers import (
 )
 from tests.invariants import (
     assert_agi_consistent,
+    assert_deduction_choice_consistent,
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
@@ -64,3 +65,21 @@ class TestE2ESimpleW2(unittest.TestCase):
         self.assertGreater(output_pdf.stat().st_size, 0)
 
     # --- Regression tests ---
+
+    def test_standard_deduction_single_2025(self):
+        """2025 single-filer standard deduction is $15,750 (OBBBA).
+
+        This is a regression test for the SD_Single -> StdDeduct swap.
+        Pre-fix this would have returned $15,750 by coincidence (SD_Single
+        happens to be correct for single filers); post-fix it must still
+        return $15,750 via the filing-status-aware StdDeduct cell.
+        """
+        self.assertEqual(int(self.results["standard_deduction"]), 15750)
+
+    def test_schedule_a_total_zero_when_no_sch_a(self):
+        """With no 1098 or other Sch A inputs, schedule_a_total must be 0."""
+        sch_a = self.results.get("schedule_a_total") or 0
+        self.assertEqual(int(sch_a), 0)
+
+    def test_deduction_choice_invariant(self):
+        assert_deduction_choice_consistent(self, self.results)
