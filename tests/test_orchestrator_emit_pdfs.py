@@ -89,12 +89,13 @@ class TestEmitPdfs(unittest.TestCase):
         balance_due_field = "topmostSubform[0].Page1[0].f1_13[0]"
         self.assertEqual(field_values.get(balance_due_field), "3000")
 
-    @unittest.skipUnless(F4868_TEMPLATE.exists(), "f4868.pdf template not found")
-    def test_1040_skipped_gracefully_when_no_template(self):
-        """Since f1040.pdf doesn't exist, '1040' should not appear in emitted dict."""
+    def test_emit_pdfs_emits_both_forms(self):
         scenario = make_scenario_with_identity()
         emitted = self.orchestrator.emit_pdfs(scenario, SAMPLE_RESULTS, self.output_dir)
-        self.assertNotIn("1040", emitted)
+        self.assertIn("1040", emitted)
+        self.assertIn("4868", emitted)
+        self.assertTrue(emitted["1040"].exists())
+        self.assertTrue(emitted["4868"].exists())
 
 
 if __name__ == "__main__":
