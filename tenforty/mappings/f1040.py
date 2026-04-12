@@ -113,6 +113,7 @@ class F1040(FormMapping):
             "schd_line16": "SchDLine16",
             "interest_income": "Interest_Inc",
             "dividend_income": "Dividend_Inc",
+            "schedule_a_total": "Tot_Item_Deduct",
             # --- Totals ---
             "total_income": "Total_Income",
             "total_payments": "Tot_Payments",

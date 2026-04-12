@@ -79,6 +79,10 @@ class TestF1040Outputs2025(unittest.TestCase):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["total_deductions"], "TotalDeductions")
 
+    def test_schedule_a_total_output(self):
+        outputs = F1040.get_outputs(2025)
+        self.assertEqual(outputs["schedule_a_total"], "Tot_Item_Deduct")
+
 
 class TestF1040MappingValidity(unittest.TestCase):
     """Pre-flight checks: every direct cell ref in SHEET_MAP must point at a
