@@ -231,6 +231,71 @@ def verify_pdf_round_trip(
             print(f"    {gap}", file=sys.stderr)
 
 
+def assert_4868_fills_correctly(
+    testcase,
+    results: dict,
+    config_with_personal,
+    output_dir,
+) -> None:
+    """Emit a 4868 from results + config, re-read it, assert lines 4/5/6/7.
+
+    Line 4 = results['total_tax']
+    Line 5 = results['total_payments']
+    Line 6 = max(0, line_4 − line_5)
+    Line 7 = 0 (default — no amount paid with extension in the fixture path)
+
+    ASSUMES personal-info fields populated on config. This helper patches a copy
+    of the scenario's config in memory; it does not mutate the caller's scenario.
+    """
+    import tempfile
+
+    from tenforty.filing.balance_due import compute_balance_due
+    from tenforty.mappings.pdf_4868 import Pdf4868
+    from tenforty.models import Scenario
+    from tenforty.orchestrator import ReturnOrchestrator
+
+    REPO_ROOT = Path(__file__).parent.parent
+    spreadsheets_dir = REPO_ROOT / "spreadsheets"
+
+    orchestrator = ReturnOrchestrator(
+        spreadsheets_dir=spreadsheets_dir,
+        work_dir=Path(tempfile.mkdtemp()),
+    )
+
+    scenario = Scenario(config=config_with_personal, w2s=[])
+    year = config_with_personal.year
+
+    orchestrator.emit_pdfs(scenario, results, output_dir)
+
+    out_4868 = output_dir / f"f4868_{year}.pdf"
+    reader = PdfReader(out_4868)
+    fields = reader.get_fields()
+
+    mapping = Pdf4868.get_mapping(year)
+
+    total_tax = int(round(float(results.get("total_tax", 0))))
+    total_payments = int(round(float(results.get("total_payments", 0))))
+    balance_due = compute_balance_due(total_tax, total_payments)
+
+    expected = {
+        "estimated_total_tax": str(total_tax),
+        "total_payments": str(total_payments),
+        "balance_due": str(balance_due),
+        "amount_paying_with_extension": "0",
+        "voucher_amount": str(balance_due),
+    }
+
+    for key, expected_val in expected.items():
+        pdf_field = mapping[key]
+        field_obj = fields.get(pdf_field)
+        actual = str(field_obj.get("/V", "")) if field_obj is not None else ""
+        testcase.assertEqual(
+            actual,
+            expected_val,
+            f"4868 field '{key}' (PDF: {pdf_field}): expected '{expected_val}', got '{actual}'",
+        )
+
+
 def assert_deduction_choice_consistent(testcase, results: dict) -> None:
     """Assert total_deductions equals max(standard_deduction, schedule_a_total).
 
