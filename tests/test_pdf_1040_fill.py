@@ -118,8 +118,44 @@ class TestPdf1040FillGroundTruth(unittest.TestCase):
         self._assert_field("topmostSubform[0].Page1[0].f1_70[0]", "")
 
     # === PAGE 2 ===
+    # Page 2 lines 16-35a were off-by-one (16-26) and off-by-two (27a-35a)
+    # relative to the current form revision. These assertions pin them.
+    def test_line_11b_agi_copy(self):
+        self._assert_field("topmostSubform[0].Page2[0].f2_01[0]", "12750")
+
+    def test_line_12e_standard_deduction(self):
+        self._assert_field("topmostSubform[0].Page2[0].f2_02[0]", "15750")
+
+    def test_line_14_total_deductions(self):
+        self._assert_field("topmostSubform[0].Page2[0].f2_05[0]", "15750")
+
+    def test_line_15_taxable_income(self):
+        # 12750 - 15750 < 0 -> 0
+        self._assert_field("topmostSubform[0].Page2[0].f2_06[0]", "0")
+
+    def test_line_16_total_tax(self):
+        # Regression guard: f2_07 is the 8814/4972 checkbox on line 16,
+        # NOT the amount. Line 16 amount is f2_08. Tax on 0 taxable = 0.
+        self._assert_field("topmostSubform[0].Page2[0].f2_08[0]", "0")
+
+    def test_line_24_total_tax_liability_blank(self):
+        # Engine doesn't produce `total_tax_liability` for this scenario
+        # (total tax = 0). Field must stay blank — regression guard against
+        # e.g. `overpaid` (2034) accidentally routing here.
+        self._assert_field("topmostSubform[0].Page2[0].f2_16[0]", "")
+
     def test_line_25a_federal_withheld_w2(self):
-        self._assert_field("topmostSubform[0].Page2[0].f2_16[0]", "1550")
+        self._assert_field("topmostSubform[0].Page2[0].f2_17[0]", "1550")
+
+    def test_line_25d_federal_withheld_total(self):
+        self._assert_field("topmostSubform[0].Page2[0].f2_20[0]", "1550")
+
+    def test_line_33_total_payments(self):
+        # 1550 W-2 withholding + 484 EIC (single, $12,350 AGI, no kids).
+        self._assert_field("topmostSubform[0].Page2[0].f2_29[0]", "2034")
+
+    def test_line_34_overpaid(self):
+        self._assert_field("topmostSubform[0].Page2[0].f2_30[0]", "2034")
 
 
 if __name__ == "__main__":
