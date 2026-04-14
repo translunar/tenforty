@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from tenforty.oracle.engine import SpreadsheetEngine
+from tenforty.forms import f1040 as form_1040
 from tenforty.forms.f4868 import compute_balance_due
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
@@ -9,7 +10,6 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.models import Scenario
 from tenforty.result_translator import ResultTranslator
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tenforty.translations.f4868_pdf import F4868_PDF_SPEC
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -35,13 +35,14 @@ class ReturnOrchestrator:
 
         flat_inputs = flatten_scenario(scenario)
 
-        return self.engine.compute(
+        raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,
             year=year,
             inputs=flat_inputs,
             work_dir=self.work_dir / "federal",
         )
+        return form_1040.compute(raw_1040=raw, upstream={})
 
     def emit_pdfs(
         self,
@@ -58,20 +59,14 @@ class ReturnOrchestrator:
         filler = PdfFiller()
 
         f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
-        translated_1040 = ResultTranslator(F1040_PDF_SPEC).translate(results, scenario)
-        # Line 25d is the sum of 25a/25b/25c. The engine does not expose a
-        # pre-summed total, so we add one here from the individual routes.
-        translated_1040["federal_withheld"] = (
-            (translated_1040.get("federal_withheld_w2") or 0)
-            + (translated_1040.get("federal_withheld_1099") or 0)
-            + (translated_1040.get("federal_withheld_other") or 0)
-        )
+        # results is already PDF-ready (forms.f1040.compute produced it,
+        # including the 25d sum). No translator, no patch needed.
         out_1040 = output_dir / f"f1040_{year}.pdf"
         filler.fill(
             template_path=f1040_template,
             output_path=out_1040,
             field_mapping=Pdf1040.get_mapping(year),
-            values=translated_1040,
+            values=results,
         )
 
         f4868_template = _PDFS_ROOT / "federal" / str(year) / "f4868.pdf"

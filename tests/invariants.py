@@ -139,19 +139,30 @@ def assert_all_income_accounted_for(
     )
 
 
-def assert_withholding_matches_input(
+def assert_w2_withholding_matches_input(
     test: unittest.TestCase,
     results: dict[str, object],
     scenario: Scenario,
 ) -> None:
-    """Federal withholding in results should match sum of W-2 withholding."""
+    """W-2 (line 25a) withholding in results should match sum of W-2 withholding.
+
+    Post-Task-6, `federal_withheld` is the 25d total (25a + 25b + 25c).
+    This invariant specifically checks 25a — the W-2 portion — which is
+    stored under `federal_withheld_w2` after forms.f1040.compute.
+    """
     expected = sum(w2.federal_tax_withheld for w2 in scenario.w2s)
-    actual = results.get("federal_withheld")
-    test.assertIsNotNone(actual, "Federal withholding is missing from results")
+    actual = results.get("federal_withheld_w2")
+    test.assertIsNotNone(actual, "W-2 federal withholding is missing from results")
     test.assertEqual(
         float(actual), expected,
-        f"Withholding mismatch: engine={actual}, scenario sum={expected}",
+        f"W-2 withholding mismatch: engine={actual}, scenario sum={expected}",
     )
+
+
+# Backwards-compatible alias — callers still use the old name in several tests.
+# The semantic contract is unchanged (W-2 portion only, i.e. line 25a); only the
+# key in the results dict moved from `federal_withheld` to `federal_withheld_w2`.
+assert_withholding_matches_input = assert_w2_withholding_matches_input
 
 
 def verify_pdf_round_trip(
