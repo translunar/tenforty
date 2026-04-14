@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.engine import SpreadsheetEngine
+from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.mappings.f1040 import F1040
 from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 

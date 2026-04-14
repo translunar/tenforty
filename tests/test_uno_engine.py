@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from tenforty.mappings.f1040 import F1040
-from tenforty.uno_engine import UnoEngine
+from tenforty.oracle.uno_engine import UnoEngine
 from tests.helpers import SPREADSHEETS_DIR
 
 

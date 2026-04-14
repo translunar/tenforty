@@ -1,16 +1,14 @@
 from pathlib import Path
 
-from tenforty.engine import SpreadsheetEngine
-from tenforty.filing.balance_due import compute_balance_due
+from tenforty.oracle.engine import SpreadsheetEngine
+from tenforty.forms import f1040 as form_1040
+from tenforty.forms import f4868 as form_4868
 from tenforty.filing.pdf import PdfFiller
-from tenforty.flattener import flatten_scenario
+from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.models import Scenario
-from tenforty.result_translator import ResultTranslator
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
-from tenforty.translations.f4868_pdf import F4868_PDF_SPEC
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 
@@ -35,13 +33,14 @@ class ReturnOrchestrator:
 
         flat_inputs = flatten_scenario(scenario)
 
-        return self.engine.compute(
+        raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,
             year=year,
             inputs=flat_inputs,
             work_dir=self.work_dir / "federal",
         )
+        return form_1040.compute(raw_1040=raw, upstream={})
 
     def emit_pdfs(
         self,
@@ -58,31 +57,24 @@ class ReturnOrchestrator:
         filler = PdfFiller()
 
         f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
-        translated_1040 = ResultTranslator(F1040_PDF_SPEC).translate(results, scenario)
+        # results is already PDF-ready (forms.f1040.compute produced it,
+        # including the 25d sum). No translator, no patch needed.
         out_1040 = output_dir / f"f1040_{year}.pdf"
         filler.fill(
             template_path=f1040_template,
             output_path=out_1040,
             field_mapping=Pdf1040.get_mapping(year),
-            values=translated_1040,
+            values=results,
         )
 
         f4868_template = _PDFS_ROOT / "federal" / str(year) / "f4868.pdf"
-        translated_4868 = ResultTranslator(F4868_PDF_SPEC).translate(results, scenario)
-        balance_due = compute_balance_due(
-            results.get("total_tax", 0),
-            results.get("total_payments", 0),
-        )
-        translated_4868["balance_due"] = balance_due
-        translated_4868["amount_paying_with_extension"] = 0
-        translated_4868["voucher_amount"] = balance_due
-
         out_4868 = output_dir / f"f4868_{year}.pdf"
+        f4868_values = form_4868.compute(scenario, upstream={"f1040": results})
         filler.fill(
             template_path=f4868_template,
             output_path=out_4868,
             field_mapping=Pdf4868.get_mapping(year),
-            values=translated_4868,
+            values=f4868_values,
         )
 
         return {"1040": out_1040, "4868": out_4868}
