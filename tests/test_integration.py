@@ -2,8 +2,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.engine import SpreadsheetEngine
-from tenforty.flattener import flatten_scenario
+from tenforty.oracle.engine import SpreadsheetEngine
+from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.scenario import load_scenario
 from tests.helpers import FIXTURES_DIR, SPREADSHEETS_DIR, needs_libreoffice

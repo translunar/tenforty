@@ -13,7 +13,6 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.models import Scenario
-from tenforty.result_translator import ResultTranslator, TranslationSpec
 
 
 def assert_agi_consistent(
@@ -139,18 +138,23 @@ def assert_all_income_accounted_for(
     )
 
 
-def assert_withholding_matches_input(
+def assert_w2_withholding_matches_input(
     test: unittest.TestCase,
     results: dict[str, object],
     scenario: Scenario,
 ) -> None:
-    """Federal withholding in results should match sum of W-2 withholding."""
+    """W-2 (line 25a) withholding in results should match sum of W-2 withholding.
+
+    Post-Task-6, `federal_withheld` is the 25d total (25a + 25b + 25c).
+    This invariant specifically checks 25a — the W-2 portion — which is
+    stored under `federal_withheld_w2` after forms.f1040.compute.
+    """
     expected = sum(w2.federal_tax_withheld for w2 in scenario.w2s)
-    actual = results.get("federal_withheld")
-    test.assertIsNotNone(actual, "Federal withholding is missing from results")
+    actual = results.get("federal_withheld_w2")
+    test.assertIsNotNone(actual, "W-2 federal withholding is missing from results")
     test.assertEqual(
         float(actual), expected,
-        f"Withholding mismatch: engine={actual}, scenario sum={expected}",
+        f"W-2 withholding mismatch: engine={actual}, scenario sum={expected}",
     )
 
 
@@ -158,7 +162,6 @@ def verify_pdf_round_trip(
     test: unittest.TestCase,
     results: dict[str, object],
     scenario: Scenario,
-    translation_spec: TranslationSpec,
     pdf_mapping_cls: type,
     pdf_template: Path,
     year: int,
@@ -166,16 +169,15 @@ def verify_pdf_round_trip(
 ) -> None:
     """Verify that engine results survive the full pipeline to the PDF.
 
-    Runs: translate -> fill PDF -> read back -> compare every field.
+    Runs: fill PDF -> read back -> compare every field.
     Reports mismatches and coverage gaps.
     """
-    translator = ResultTranslator(translation_spec)
-    translated = translator.translate(results, scenario)
+    pdf_values = results
 
     filler = PdfFiller()
     output_pdf = work_dir / "round_trip_verify.pdf"
     mapping = pdf_mapping_cls.get_mapping(year)
-    filler.fill(pdf_template, output_pdf, mapping, translated)
+    filler.fill(pdf_template, output_pdf, mapping, pdf_values)
 
     reader = PdfReader(output_pdf)
     pdf_fields = reader.get_fields()
@@ -186,11 +188,11 @@ def verify_pdf_round_trip(
 
     # Check: do filled fields match?
     for our_key, pdf_field_name in mapping.items():
-        translated_value = translated.get(our_key)
-        if translated_value is None:
+        value = pdf_values.get(our_key)
+        if value is None:
             continue
 
-        expected_str = str(translated_value)
+        expected_str = str(value)
         field_obj = pdf_fields.get(pdf_field_name)
         if field_obj is not None:
             raw = field_obj.get("/V", "")
@@ -206,9 +208,9 @@ def verify_pdf_round_trip(
         else:
             verified_count += 1
 
-    # Check: are there translated keys with no PDF mapping? (coverage gaps)
+    # Check: are there result keys with no PDF mapping? (coverage gaps)
     mapped_keys = set(mapping.keys())
-    for key, value in translated.items():
+    for key, value in pdf_values.items():
         if value is not None and key not in mapped_keys:
             gaps.append(f"  {key}={value} (no PDF mapping)")
 
@@ -223,7 +225,7 @@ def verify_pdf_round_trip(
     # values that belong on a different PDF) are expected. Print but don't fail.
     if gaps:
         print(
-            f"\n  [{len(gaps)} coverage gap(s) — translated keys with no PDF mapping "
+            f"\n  [{len(gaps)} coverage gap(s) — result keys with no PDF mapping "
             f"(expected for cross-form values)]:",
             file=sys.stderr,
         )
@@ -249,7 +251,7 @@ def assert_4868_fills_correctly(
     """
     import tempfile
 
-    from tenforty.filing.balance_due import compute_balance_due
+    from tenforty.forms.f4868 import compute_balance_due
     from tenforty.mappings.pdf_4868 import Pdf4868
     from tenforty.models import Scenario
     from tenforty.orchestrator import ReturnOrchestrator

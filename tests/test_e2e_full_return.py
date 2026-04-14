@@ -43,7 +43,7 @@ from tests.invariants import (
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
-    assert_withholding_matches_input,
+    assert_w2_withholding_matches_input,
 )
 
 
@@ -216,7 +216,7 @@ class TestE2ECapitalGains(unittest.TestCase):
         assert_agi_consistent(self, results, self.scenario)
         assert_taxable_income_consistent(self, results)
         assert_tax_is_non_negative(self, results)
-        assert_withholding_matches_input(self, results, self.scenario)
+        assert_w2_withholding_matches_input(self, results, self.scenario)
 
 
 @needs_libreoffice
@@ -251,7 +251,7 @@ class TestE2EScheduleK1(unittest.TestCase):
         results = self.orchestrator.compute_federal(self.scenario)
         assert_taxable_income_consistent(self, results)
         assert_tax_is_non_negative(self, results)
-        assert_withholding_matches_input(self, results, self.scenario)
+        assert_w2_withholding_matches_input(self, results, self.scenario)
 
 
 @needs_libreoffice
@@ -306,7 +306,7 @@ class TestE2EComprehensive(unittest.TestCase):
         results = self.orchestrator.compute_federal(self.scenario)
         assert_taxable_income_consistent(self, results)
         assert_tax_is_non_negative(self, results)
-        assert_withholding_matches_input(self, results, self.scenario)
+        assert_w2_withholding_matches_input(self, results, self.scenario)
 
 
 # --- Invariant extensions needed for new forms ---

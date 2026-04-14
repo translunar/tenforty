@@ -5,9 +5,7 @@ from pathlib import Path
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.orchestrator import ReturnOrchestrator
-from tenforty.result_translator import ResultTranslator
 from tenforty.scenario import load_scenario
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tests.helpers import (
     F1040_PDF,
     FIXTURES_DIR,
@@ -20,7 +18,7 @@ from tests.invariants import (
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
-    assert_withholding_matches_input,
+    assert_w2_withholding_matches_input,
 )
 
 
@@ -46,7 +44,7 @@ class TestE2EW2Investments(unittest.TestCase):
         assert_taxable_income_consistent(self, self.results)
         assert_tax_is_non_negative(self, self.results)
         assert_refund_or_owed_consistent(self, self.results)
-        assert_withholding_matches_input(self, self.results, self.scenario)
+        assert_w2_withholding_matches_input(self, self.results, self.scenario)
 
         # Investment income should be reflected in AGI
         self.assertGreater(
@@ -57,12 +55,9 @@ class TestE2EW2Investments(unittest.TestCase):
     @needs_pdf
     def test_pdf_output(self):
 
-        translator = ResultTranslator(F1040_PDF_SPEC)
-        translated = translator.translate(self.results, self.scenario)
-
         filler = PdfFiller()
         output_pdf = self.work_dir / "f1040_investments.pdf"
-        filler.fill(F1040_PDF, output_pdf, Pdf1040.get_mapping(2025), translated)
+        filler.fill(F1040_PDF, output_pdf, Pdf1040.get_mapping(2025), self.results)
 
         self.assertTrue(output_pdf.exists())
         self.assertGreater(output_pdf.stat().st_size, 0)
