@@ -49,11 +49,20 @@ class TestF1040PdfTranslation(unittest.TestCase):
         self.assertEqual(result["taxable_income"], 84250)
         self.assertEqual(result["overpaid"], 1500)
 
-    def test_schedule_subtotals_passed_through(self):
-        """Schedule subtotals pass through but won't match any PDF field."""
+    def test_schd_line16_renamed_to_capital_gain(self):
+        """Sch D line 16 routes to 1040 line 7 (capital_gain_loss)."""
         translator = ResultTranslator(F1040_PDF_SPEC)
         result = translator.translate(
-            {"sche_line26": 5000, "schd_line16": 3000, "wages": 100000},
-            make_simple_scenario(),
+            {"schd_line16": 4992}, make_simple_scenario(),
         )
-        self.assertEqual(result["wages"], 100000)
+        self.assertEqual(result["capital_gain_loss"], 4992)
+        self.assertNotIn("schd_line16", result)
+
+    def test_sche_line26_renamed_to_other_income(self):
+        """Sch E line 26 routes to 1040 line 8 (other_income)."""
+        translator = ResultTranslator(F1040_PDF_SPEC)
+        result = translator.translate(
+            {"sche_line26": 3899}, make_simple_scenario(),
+        )
+        self.assertEqual(result["other_income"], 3899)
+        self.assertNotIn("sche_line26", result)
