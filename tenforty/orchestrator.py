@@ -59,6 +59,13 @@ class ReturnOrchestrator:
 
         f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
         translated_1040 = ResultTranslator(F1040_PDF_SPEC).translate(results, scenario)
+        # Line 25d is the sum of 25a/25b/25c. The engine does not expose a
+        # pre-summed total, so we add one here from the individual routes.
+        translated_1040["federal_withheld"] = (
+            (translated_1040.get("federal_withheld_w2") or 0)
+            + (translated_1040.get("federal_withheld_1099") or 0)
+            + (translated_1040.get("federal_withheld_other") or 0)
+        )
         out_1040 = output_dir / f"f1040_{year}.pdf"
         filler.fill(
             template_path=f1040_template,
