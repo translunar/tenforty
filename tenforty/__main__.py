@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TextIO
 
 from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.rounding import irs_round
 from tenforty.scenario import load_scenario
 
 
@@ -28,17 +29,17 @@ def print_results(results: dict, stream: TextIO = sys.stdout) -> None:
     for key in GENERIC_OUTPUT_KEYS:
         val = results.get(key)
         if val is not None and val != 0:
-            print(f"  {key:25s} ${float(val):>12,.0f}", file=stream)
+            print(f"  {key:25s} ${irs_round(float(val)):>12,}", file=stream)
 
     print("", file=stream)
     print("=== Deduction Analysis ===", file=stream)
-    std = float(results.get("standard_deduction") or 0)
-    sch_a = float(results.get("schedule_a_total") or 0)
-    applied = float(results.get("total_deductions") or 0)
-    print(f"  {'standard_deduction':25s} ${std:>12,.0f}", file=stream)
-    print(f"  {'schedule_a_total':25s} ${sch_a:>12,.0f}", file=stream)
+    std = irs_round(float(results.get("standard_deduction") or 0))
+    sch_a = irs_round(float(results.get("schedule_a_total") or 0))
+    applied = irs_round(float(results.get("total_deductions") or 0))
+    print(f"  {'standard_deduction':25s} ${std:>12,}", file=stream)
+    print(f"  {'schedule_a_total':25s} ${sch_a:>12,}", file=stream)
     label = _which_applied(std, sch_a, applied)
-    print(f"  {'total_deductions':25s} ${applied:>12,.0f}   ({label})", file=stream)
+    print(f"  {'total_deductions':25s} ${applied:>12,}   ({label})", file=stream)
 
 
 def _which_applied(standard: float, schedule_a: float, applied: float) -> str:

@@ -30,14 +30,24 @@ class TestF1040PdfTranslation(unittest.TestCase):
         self.assertEqual(result["agi"], 100250)
         self.assertEqual(result["agi_page2"], 100250)
 
-    def test_federal_withheld_expanded(self):
-        """federal_withheld should appear as both total (25d) and W-2 (25a)."""
+    def test_federal_withheld_renamed_to_w2(self):
+        """Engine's federal_withheld is W-2 only; renames to 25a slot.
+        Line 25d total is computed downstream in the orchestrator."""
         translator = ResultTranslator(F1040_PDF_SPEC)
         result = translator.translate(
             {"federal_withheld": 15000}, make_simple_scenario(),
         )
-        self.assertEqual(result["federal_withheld"], 15000)
         self.assertEqual(result["federal_withheld_w2"], 15000)
+        self.assertNotIn("federal_withheld", result)
+
+    def test_additional_medicare_withheld_routes_to_25c(self):
+        """F8959_WH (Additional Medicare Tax withholding) routes to 25c."""
+        translator = ResultTranslator(F1040_PDF_SPEC)
+        result = translator.translate(
+            {"additional_medicare_withheld": 20}, make_simple_scenario(),
+        )
+        self.assertEqual(result["federal_withheld_other"], 20)
+        self.assertNotIn("additional_medicare_withheld", result)
 
     def test_direct_passthrough_preserved(self):
         translator = ResultTranslator(F1040_PDF_SPEC)
