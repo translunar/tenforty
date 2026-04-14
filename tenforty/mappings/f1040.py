@@ -107,6 +107,10 @@ class F1040(FormMapping):
             "taxable_income": "Taxable_Inc",
             "total_tax": "Tax",
             "federal_withheld": "W2_FedTaxWH",
+            # Form 8959 Part III: Additional Medicare Tax withheld by employers
+            # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).
+            # Flows to 1040 line 25c via Form 8959.
+            "additional_medicare_withheld": "F8959_WH",
             "overpaid": "Overpaid",
             "sche_line26": "SchE1_Line26",
             "sche_line41": "SchE1_Line41",

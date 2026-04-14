@@ -18,9 +18,17 @@ F1040_PDF_SPEC = TranslationSpec(
         # Sch 1 income appears (unemployment, business, etc.) the engine must
         # grow a dedicated schedule_1_line_10 output.
         "sche_line26": "other_income",
+        # Engine's federal_withheld is W-2 withholding only (25a). The 25d
+        # total is computed in the orchestrator as 25a + 25b + 25c so that
+        # other withholding sources (Form 8959, 1099, etc.) are included.
+        "federal_withheld": "federal_withheld_w2",
+        # Form 8959 Additional Medicare Tax withholding lands on 25c
+        # ("other forms"). Correct only while Form 8959 is the sole 25c
+        # contributor — e.g. a Schedule H household-employer payment would
+        # also belong here and would need its own rename.
+        "additional_medicare_withheld": "federal_withheld_other",
     },
     expansions={
         "agi": ["agi", "agi_page2"],
-        "federal_withheld": ["federal_withheld", "federal_withheld_w2"],
     },
 )
