@@ -1,6 +1,6 @@
 import unittest
 
-from tenforty.flattener import flatten_scenario
+from tenforty.oracle.flattener import flatten_scenario
 from tenforty.models import (
     Form1098,
     Form1099B,
