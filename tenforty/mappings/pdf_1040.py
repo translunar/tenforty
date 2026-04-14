@@ -66,13 +66,16 @@ class Pdf1040:
             "pensions": "topmostSubform[0].Page1[0].f1_65[0]",
             # Line 5b: Pensions taxable amount
             "pensions_taxable": "topmostSubform[0].Page1[0].f1_66[0]",
+            # Line 5c: "Other" explanation (for the 3rd checkbox; 1=rollover, 2=PSO, 3=other)
+            "pensions_other_explanation": "topmostSubform[0].Page1[0].f1_67[0]",
             # Line 6a: Social security benefits
             "social_security": "topmostSubform[0].Page1[0].f1_68[0]",
             # Line 6b: Social security taxable amount
             "social_security_taxable": "topmostSubform[0].Page1[0].f1_69[0]",
             # Line 7a: Capital gain or (loss)
             "capital_gain_loss": "topmostSubform[0].Page1[0].f1_70[0]",
-            # Line 7b: (new on 2025 form — unmapped, reserved for future use)
+            # Line 7b: Amount for the "includes child's capital gain or (loss)" checkbox
+            "child_capital_gain": "topmostSubform[0].Page1[0].f1_71[0]",
             # Line 8: Other income from Schedule 1, line 10
             "other_income": "topmostSubform[0].Page1[0].f1_72[0]",
             # Line 9: Total income
