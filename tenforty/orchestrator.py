@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from tenforty.oracle.engine import SpreadsheetEngine
-from tenforty.filing.balance_due import compute_balance_due
+from tenforty.forms.f4868 import compute_balance_due
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040

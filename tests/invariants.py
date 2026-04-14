@@ -249,7 +249,7 @@ def assert_4868_fills_correctly(
     """
     import tempfile
 
-    from tenforty.filing.balance_due import compute_balance_due
+    from tenforty.forms.f4868 import compute_balance_due
     from tenforty.mappings.pdf_4868 import Pdf4868
     from tenforty.models import Scenario
     from tenforty.orchestrator import ReturnOrchestrator
