@@ -16,3 +16,32 @@ def compute_balance_due(total_tax, total_payments) -> int:
     payments = total_payments or 0
     balance = tax - payments
     return balance if balance > 0 else 0
+
+
+def compute(scenario, upstream: dict[str, dict]) -> dict:
+    """Compute Form 4868 fields in PDF-ready shape.
+
+    `scenario` supplies identity and address fields. `upstream["f1040"]`
+    supplies `total_tax` and `total_payments`; compute derives balance-due
+    (floored at zero) and renames `total_tax` -> `estimated_total_tax` to
+    match the 4868 PDF line names.
+    """
+    f1040 = upstream.get("f1040", {})
+    config = scenario.config
+    balance = compute_balance_due(
+        f1040.get("total_tax"), f1040.get("total_payments")
+    )
+    return {
+        "full_name": f"{config.first_name} {config.last_name}".strip(),
+        "ssn": config.ssn,
+        "spouse_ssn": config.spouse_ssn,
+        "address": config.address,
+        "address_city": config.address_city,
+        "address_state": config.address_state,
+        "address_zip": config.address_zip,
+        "estimated_total_tax": f1040.get("total_tax", 0),
+        "total_payments": f1040.get("total_payments", 0),
+        "balance_due": balance,
+        "amount_paying_with_extension": 0,
+        "voucher_amount": balance,
+    }
