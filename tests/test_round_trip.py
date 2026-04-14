@@ -5,7 +5,6 @@ from pathlib import Path
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
 from tests.helpers import (
     F1040_PDF,
     FIXTURES_DIR,
@@ -33,7 +32,6 @@ class TestRoundTripSimpleW2(unittest.TestCase):
                 test=self,
                 results=results,
                 scenario=scenario,
-                translation_spec=F1040_PDF_SPEC,
                 pdf_mapping_cls=Pdf1040,
                 pdf_template=F1040_PDF,
                 year=2025,
@@ -58,7 +56,6 @@ class TestRoundTripItemized(unittest.TestCase):
                 test=self,
                 results=results,
                 scenario=scenario,
-                translation_spec=F1040_PDF_SPEC,
                 pdf_mapping_cls=Pdf1040,
                 pdf_template=F1040_PDF,
                 year=2025,

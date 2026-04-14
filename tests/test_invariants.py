@@ -14,7 +14,7 @@ from tests.invariants import (
     assert_refund_or_owed_consistent,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
-    assert_withholding_matches_input,
+    assert_w2_withholding_matches_input,
 )
 
 
@@ -126,13 +126,13 @@ class TestAssertWithholdingMatchesInput(unittest.TestCase):
     def test_passes_when_matching(self):
         scenario = _make_scenario_with_interest_and_dividends()
         results = {"federal_withheld_w2": 15000}
-        assert_withholding_matches_input(self, results, scenario)
+        assert_w2_withholding_matches_input(self, results, scenario)
 
     def test_fails_when_mismatched(self):
         scenario = _make_scenario_with_interest_and_dividends()
         results = {"federal_withheld_w2": 99999}
         with self.assertRaises(AssertionError):
-            assert_withholding_matches_input(self, results, scenario)
+            assert_w2_withholding_matches_input(self, results, scenario)
 
 
 class TestAssertAllIncomeAccountedFor(unittest.TestCase):

@@ -170,7 +170,7 @@ class TestMFJSpouseSSN(unittest.TestCase):
         self.assertEqual(self._fields.get(FIELD_SSN), "000-00-0003")
 
     def test_full_name_uses_primary(self):
-        # F4868_PDF_SPEC uses first_name + last_name (primary only)
+        # forms.f4868.compute uses first_name + last_name (primary only)
         self.assertEqual(self._fields.get(FIELD_FULL_NAME), "Carol Joint")
 
     def test_line6_balance_due(self):
