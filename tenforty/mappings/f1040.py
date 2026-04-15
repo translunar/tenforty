@@ -131,6 +131,11 @@ class F1040(FormMapping):
             "interest_income": "Interest_Inc",
             "dividend_income": "Dividend_Inc",
             "schedule_a_total": "Tot_Item_Deduct",
+            # Schedule A line 5e (SALT capped). Oracle cross-check target for
+            # forms.sch_a.compute's native OBBBA cap.
+            "sch_a_line_5e_salt_capped": "SALT_Limited",
+            # MAGI for phaseout math (IRC §164(b)(6) phaseout threshold).
+            "magi": "ModAdjGrossInc",
             # --- Totals ---
             "total_income": "Total_Income",
             "total_payments": "Tot_Payments",

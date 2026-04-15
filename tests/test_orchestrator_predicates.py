@@ -4,7 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.models import Form1099DIV, Form1099INT, RentalProperty, W2
+from tenforty.models import (
+    Form1099DIV, Form1099INT, ItemizedDeductions, RentalProperty, W2,
+)
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import make_simple_scenario
 
@@ -71,6 +73,31 @@ class OrchestratorPredicateTests(unittest.TestCase):
             ),
         ]
         self.assertTrue(self.orchestrator._should_emit_sch_1(scenario, {}))
+
+    def test_should_emit_sch_a_false_when_no_itemized_deductions(self) -> None:
+        scenario = make_simple_scenario()
+        self.assertFalse(self.orchestrator._should_emit_sch_a(
+            scenario, {"f1040": {"agi": 100_000, "magi": 100_000}},
+        ))
+
+    def test_should_emit_sch_a_false_when_under_standard_deduction(self) -> None:
+        scenario = make_simple_scenario()
+        scenario.itemized_deductions = ItemizedDeductions(
+            state_income_tax=2_000, property_tax=1_000,
+        )
+        self.assertFalse(self.orchestrator._should_emit_sch_a(
+            scenario, {"f1040": {"agi": 100_000, "magi": 100_000}},
+        ))
+
+    def test_should_emit_sch_a_true_when_over_standard_deduction_single(self) -> None:
+        scenario = make_simple_scenario()
+        scenario.itemized_deductions = ItemizedDeductions(
+            state_income_tax=8_000, property_tax=6_000,
+            mortgage_interest=18_000, charitable_contributions=3_000,
+        )
+        self.assertTrue(self.orchestrator._should_emit_sch_a(
+            scenario, {"f1040": {"agi": 150_000, "magi": 150_000}},
+        ))
 
     def test_should_emit_sch_d_false_when_no_1099b(self) -> None:
         scenario = make_simple_scenario()
