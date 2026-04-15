@@ -5,6 +5,7 @@ config:
   state: CA
   has_foreign_accounts: false
   acknowledges_form_8949_unsupported: false
+  acknowledges_sch_a_sales_tax_unsupported: false
 
 w2s:
   - employer: "Tech Corp"

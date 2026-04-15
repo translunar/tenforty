@@ -8,6 +8,7 @@ config:
   ssn: "000-00-0000"
   has_foreign_accounts: false
   acknowledges_form_8949_unsupported: false
+  acknowledges_sch_a_sales_tax_unsupported: false
 depreciable_assets:
   - description: "Rental building"
     date_placed_in_service: 2019-06-01

@@ -293,6 +293,7 @@ class TestForm1099B(unittest.TestCase):
                 "state": "CA",
                 "has_foreign_accounts": False,
                 "acknowledges_form_8949_unsupported": False,
+                "acknowledges_sch_a_sales_tax_unsupported": False,
             },
             "form1099_b": [
                 {
