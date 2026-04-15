@@ -132,6 +132,12 @@ class TaxReturnConfig:
     # compute drops 8949-required lots with a per-lot warning; False → Sch D
     # compute raises NotImplementedError on any 8949-required lot.
     acknowledges_form_8949_unsupported: bool | None = None
+    # Sch A line 5a scope-out attestation. None → load_scenario raises. True →
+    # scenario accepts the state-income-tax-only 5a path (sch_a.compute logs
+    # INFO if state is in the no-income-tax set). False → sch_a.compute raises
+    # NotImplementedError when state is in the no-income-tax set AND
+    # itemizing would apply, preventing silent under/over-deduction.
+    acknowledges_sch_a_sales_tax_unsupported: bool | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):
