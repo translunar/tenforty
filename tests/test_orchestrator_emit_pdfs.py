@@ -18,6 +18,7 @@ F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
 SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
 SCH_D_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf"
 SCH_E_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040se.pdf"
+SCH_1_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040s1.pdf"
 F8959_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f8959.pdf"
 
 
@@ -311,6 +312,67 @@ class EmitPdfsSchETests(unittest.TestCase):
         self.assertEqual(field_values.get(rents), "18000")
         self.assertEqual(field_values.get(total_exp), "8000")
         self.assertEqual(field_values.get(income), "10000")
+
+
+class EmitPdfsSch1Tests(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    @unittest.skipUnless(SCH_1_TEMPLATE.exists(), "f1040s1.pdf template not found")
+    def test_emits_sch_1_when_rental_income_present(self):
+        scenario = make_scenario_with_identity()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="123 Main St", property_type=1,
+                fair_rental_days=365, personal_use_days=0,
+                rents_received=24000.0, mortgage_interest=8000.0,
+                taxes=3000.0, depreciation=5000.0,
+            ),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("sch_1", emitted)
+        self.assertEqual(emitted["sch_1"].name, "f1040s1_2025.pdf")
+        self.assertTrue(emitted["sch_1"].exists())
+        self.assertGreater(emitted["sch_1"].stat().st_size, 0)
+
+    def test_omits_sch_1_when_no_additional_income(self):
+        scenario = make_scenario_with_identity()
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("sch_1", emitted)
+
+    @unittest.skipUnless(SCH_1_TEMPLATE.exists(), "f1040s1.pdf template not found")
+    def test_emitted_sch_1_fills_line_5_and_line_10(self):
+        scenario = make_scenario_with_identity()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="123 Main St", property_type=1,
+                fair_rental_days=365, personal_use_days=0,
+                rents_received=24000.0, mortgage_interest=8000.0,
+                taxes=3000.0, depreciation=5000.0,
+            ),
+        ]
+        results = {**SAMPLE_RESULTS, "sche_line26": 8000}
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, results, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_1"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        line_5 = "topmostSubform[0].Page1[0].f1_09[0]"
+        line_10 = "topmostSubform[0].Page1[0].f1_37[0]"
+        self.assertEqual(field_values.get(line_5), "8000")
+        self.assertEqual(field_values.get(line_10), "8000")
 
 
 def _w2_over_threshold(medicare_wages: float) -> W2:
