@@ -3,6 +3,7 @@ from pathlib import Path
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
+from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
@@ -162,6 +163,29 @@ class ReturnOrchestrator:
             emitted["8959"] = out_8959
 
         return emitted
+
+    def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Sch 1 when either Part I total (line 10) or Part II total
+        (line 26) is nonzero.
+
+        Reads from the f1040 oracle (Sch. 1 AC56/AL93) when available for
+        fidelity, and falls back to recomputing Sch 1 natively from a sch_e
+        snapshot when results is empty (keeps unit tests that pass ``results={}``
+        deterministic).
+        """
+        f1040 = results.get("f1040") or {}
+        line_10 = f1040.get("sch_1_line_10")
+        line_26 = f1040.get("sch_1_line_26")
+        if line_10 is not None or line_26 is not None:
+            return bool(line_10) or bool(line_26)
+        sch_e_snapshot = form_sch_e.compute(scenario, upstream={})
+        sch_1_snapshot = form_sch_1.compute(
+            scenario, upstream={"sch_e": sch_e_snapshot},
+        )
+        return bool(
+            sch_1_snapshot.get("sch_1_line_10_total_additional_income", 0)
+            or sch_1_snapshot.get("sch_1_line_26_total_adjustments", 0)
+        )
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
