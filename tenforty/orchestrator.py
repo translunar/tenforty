@@ -3,9 +3,12 @@ from pathlib import Path
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
+from tenforty.forms import sch_1 as form_sch_1
+from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
+from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
@@ -14,7 +17,10 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
 from tenforty.mappings.pdf_sch_d import PdfSchD
+from tenforty.mappings.pdf_sch_1 import PdfSch1
+from tenforty.mappings.pdf_sch_a import PdfSchA
 from tenforty.mappings.pdf_sch_e import PdfSchE
+from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.models import FilingStatus, Scenario
 
@@ -133,6 +139,7 @@ class ReturnOrchestrator:
             )
             emitted["sch_d"] = out_sch_d
 
+        sch_e_values: dict = {}
         if self._should_emit_sch_e(scenario):
             sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
             out_sch_e = output_dir / f"f1040se_{year}.pdf"
@@ -146,6 +153,46 @@ class ReturnOrchestrator:
                 values=sch_e_values,
             )
             emitted["sch_e"] = out_sch_e
+
+        if self._should_emit_sch_a(scenario, {"f1040": results}):
+            sch_a_template = _PDFS_ROOT / "federal" / str(year) / "f1040sa.pdf"
+            out_sch_a = output_dir / f"f1040sa_{year}.pdf"
+            sch_a_values = form_sch_a.compute(
+                scenario, upstream={"f1040": results},
+            )
+            filler.fill_with_repeaters(
+                template_path=sch_a_template,
+                output_path=out_sch_a,
+                mapping=PdfSchA.get_mapping(year),
+                values=sch_a_values,
+            )
+            emitted["sch_a"] = out_sch_a
+
+        if self._should_emit_sch_1(scenario, {"f1040": results}):
+            sch_1_template = _PDFS_ROOT / "federal" / str(year) / "f1040s1.pdf"
+            out_sch_1 = output_dir / f"f1040s1_{year}.pdf"
+            sch_1_values = form_sch_1.compute(
+                scenario, upstream={"sch_e": sch_e_values, "f1040": results},
+            )
+            filler.fill_with_repeaters(
+                template_path=sch_1_template,
+                output_path=out_sch_1,
+                mapping=PdfSch1.get_mapping(year),
+                values=sch_1_values,
+            )
+            emitted["sch_1"] = out_sch_1
+
+        if self._should_emit_4562(scenario, {"f1040": results}):
+            f4562_template = _PDFS_ROOT / "federal" / str(year) / "f4562.pdf"
+            out_4562 = output_dir / f"f4562_{year}.pdf"
+            f4562_values = form_4562.compute(scenario, upstream={})
+            filler.fill_with_repeaters(
+                template_path=f4562_template,
+                output_path=out_4562,
+                mapping=Pdf4562.get_mapping(year),
+                values=f4562_values,
+            )
+            emitted["f4562"] = out_4562
 
         if self._should_emit_8959(scenario, {"f1040": results}):
             f8959_template = _PDFS_ROOT / "federal" / str(year) / "f8959.pdf"
@@ -163,6 +210,48 @@ class ReturnOrchestrator:
 
         return emitted
 
+    def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Sch 1 when either Part I total (line 10) or Part II total
+        (line 26) is nonzero.
+
+        Reads from the f1040 oracle (Sch. 1 AC56/AL93) when available for
+        fidelity, and falls back to recomputing Sch 1 natively from a sch_e
+        snapshot when results is empty (keeps unit tests that pass ``results={}``
+        deterministic).
+        """
+        f1040 = results.get("f1040") or {}
+        line_10 = f1040.get("sch_1_line_10")
+        line_26 = f1040.get("sch_1_line_26")
+        if line_10 is not None or line_26 is not None:
+            return bool(line_10) or bool(line_26)
+        sch_e_snapshot = form_sch_e.compute(scenario, upstream={})
+        sch_1_snapshot = form_sch_1.compute(
+            scenario, upstream={"sch_e": sch_e_snapshot},
+        )
+        return bool(
+            sch_1_snapshot.get("sch_1_line_10_total_additional_income", 0)
+            or sch_1_snapshot.get("sch_1_line_26_total_adjustments", 0)
+        )
+
+    def _should_emit_sch_a(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Sch A when itemizing beats the standard deduction.
+
+        Runs sch_a.compute to get line 17 total and compares to the
+        standard deduction for the filing status. ``results`` must carry
+        ``{"f1040": {...}}`` with ``agi`` (and ideally ``magi``) set, so
+        the sales-tax gate and phaseout scope-out fire correctly.
+        """
+        from tenforty.constants import y2025
+        if scenario.itemized_deductions is None:
+            return False
+        f1040 = results.get("f1040") or {}
+        if "agi" not in f1040:
+            return False
+        sch_a = form_sch_a.compute(scenario, upstream={"f1040": f1040})
+        total = sch_a.get("sch_a_line_17_total", 0)
+        std = y2025.STANDARD_DEDUCTION[scenario.config.filing_status]
+        return total > std
+
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
         (the IRS Part I / Part II filing threshold)."""
@@ -177,6 +266,10 @@ class ReturnOrchestrator:
     def _should_emit_sch_e(self, scenario: Scenario) -> bool:
         """Emit Sch E whenever any rental property exists."""
         return bool(scenario.rental_properties)
+
+    def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Form 4562 whenever the scenario has any depreciable asset."""
+        return bool(scenario.depreciable_assets)
 
     def _should_emit_8959(self, scenario: Scenario, results: dict) -> bool:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).

@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from tenforty.models import (
+    DepreciableAsset,
     Form1098,
     Form1099B,
     Form1099DIV,
@@ -22,6 +23,7 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
     "rental_properties": (RentalProperty, "rental_properties"),
+    "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
 
 
@@ -49,6 +51,23 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             "Schedule B Part III / FBAR is not supported in tenforty v1. "
             "Returns for filers with foreign financial accounts cannot be produced "
             "by this version; support is tracked as a follow-up."
+        )
+
+    if cfg.acknowledges_sch_a_sales_tax_unsupported is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_sch_a_sales_tax_unsupported` "
+            "is required and must be either true or false. Schedule A line 5a "
+            "offers a state-and-local INCOME TAX or GENERAL SALES TAX "
+            "election; tenforty v1 implements only the income-tax path. For "
+            "filers in no-state-income-tax states (TX, FL, WA, NV, SD, WY, "
+            "AK, TN, NH) the sales-tax election is usually the correct "
+            "choice and v1 cannot produce it. Set `false` if your state "
+            "levies an income tax (the income-tax path is correct for you). "
+            "Set `true` ONLY if you are in a no-income-tax state AND you "
+            "have reviewed the consequences — v1 will then raise "
+            "NotImplementedError from Sch A compute rather than silently "
+            "overstating your deduction with an income-tax figure that is "
+            "$0 or near-$0 in your state."
         )
 
     if cfg.acknowledges_form_8949_unsupported is None:

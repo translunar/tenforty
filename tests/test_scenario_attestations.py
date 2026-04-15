@@ -19,6 +19,7 @@ def _base_config(**overrides) -> dict:
         "state": "CA",
         "has_foreign_accounts": False,
         "acknowledges_form_8949_unsupported": False,
+        "acknowledges_sch_a_sales_tax_unsupported": False,
     }
     cfg.update(overrides)
     return cfg
@@ -92,3 +93,4 @@ class FixtureAttestationsTests(unittest.TestCase):
                 s = load_scenario(fixture)
                 self.assertFalse(s.config.has_foreign_accounts)
                 self.assertFalse(s.config.acknowledges_form_8949_unsupported)
+                self.assertFalse(s.config.acknowledges_sch_a_sales_tax_unsupported)

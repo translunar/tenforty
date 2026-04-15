@@ -120,11 +120,22 @@ class F1040(FormMapping):
             "f8959_required": "F8959_Reqd",
             "overpaid": "Overpaid",
             "sche_line26": "SchE1_Line26",
+            # Schedule 1 line 10 (Total Additional Income). Oracle cross-check
+            # target for forms.sch_1.compute's native math.
+            "sch_1_line_10": "Additional_Income",
+            # Schedule 1 line 26 (Total Adjustments to Income). Oracle
+            # cross-check target for forms.sch_1.compute's native math.
+            "sch_1_line_26": "Sch1A_Deductions",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
             "interest_income": "Interest_Inc",
             "dividend_income": "Dividend_Inc",
             "schedule_a_total": "Tot_Item_Deduct",
+            # Schedule A line 5e (SALT capped). Oracle cross-check target for
+            # forms.sch_a.compute's native OBBBA cap.
+            "sch_a_line_5e_salt_capped": "SALT_Limited",
+            # MAGI for phaseout math (IRC §164(b)(6) phaseout threshold).
+            "magi": "ModAdjGrossInc",
             # --- Totals ---
             "total_income": "Total_Income",
             "total_payments": "Tot_Payments",

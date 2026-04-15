@@ -52,16 +52,18 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     rp = scenario.rental_properties[0]
     result.update(_property_a_fields(rp))
 
+    local_total = result["sch_e_property_a_income_loss"]
     line_26_oracle = f1040.get("sche_line26")
     if line_26_oracle is not None:
         result["sch_e_line_26_total"] = irs_round(line_26_oracle)
-        local_total = result["sch_e_property_a_income_loss"]
         if result["sch_e_line_26_total"] != local_total:
             log.warning(
                 "Sch E line 26 oracle total %s diverges from locally-summed "
                 "single-property line 21 %s; using oracle value.",
                 result["sch_e_line_26_total"], local_total,
             )
+    else:
+        result["sch_e_line_26_total"] = local_total
     return result
 
 
