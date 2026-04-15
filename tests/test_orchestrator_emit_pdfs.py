@@ -7,7 +7,8 @@ from pathlib import Path
 import pypdf
 
 from tenforty.models import (
-    FilingStatus, Form1099B, Form1099DIV, Form1099INT, Scenario, TaxReturnConfig,
+    FilingStatus, Form1099B, Form1099DIV, Form1099INT, RentalProperty,
+    Scenario, TaxReturnConfig,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 
@@ -16,6 +17,7 @@ REPO_ROOT = Path(__file__).parent.parent
 F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
 SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
 SCH_D_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf"
+SCH_E_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040se.pdf"
 
 
 def make_scenario_with_identity() -> Scenario:
@@ -235,6 +237,79 @@ class EmitPdfsSchDTests(unittest.TestCase):
         self.assertEqual(field_values.get(line_1a_gain), "500")
         self.assertEqual(field_values.get(line_8a_gain), "3000")
         self.assertEqual(field_values.get(line_16_total), "3500")
+
+
+class EmitPdfsSchETests(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    @unittest.skipUnless(SCH_E_TEMPLATE.exists(), "f1040se.pdf template not found")
+    def test_emits_sch_e_when_rental_property_present(self):
+        scenario = make_scenario_with_identity()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="123 Main St",
+                property_type=1,
+                fair_rental_days=365,
+                personal_use_days=0,
+                rents_received=24000.0,
+                mortgage_interest=8000.0,
+                taxes=3000.0,
+                depreciation=5000.0,
+            ),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("sch_e", emitted)
+        self.assertEqual(emitted["sch_e"].name, "f1040se_2025.pdf")
+        self.assertTrue(emitted["sch_e"].exists())
+        self.assertGreater(emitted["sch_e"].stat().st_size, 0)
+
+    def test_omits_sch_e_when_no_rental(self):
+        scenario = make_scenario_with_identity()
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("sch_e", emitted)
+
+    @unittest.skipUnless(SCH_E_TEMPLATE.exists(), "f1040se.pdf template not found")
+    def test_emitted_sch_e_fills_property_a_fields(self):
+        scenario = make_scenario_with_identity()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="456 Oak Ln",
+                property_type=2,
+                fair_rental_days=300,
+                personal_use_days=30,
+                rents_received=18000.0,
+                mortgage_interest=6000.0,
+                taxes=2000.0,
+            ),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_e"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        addr = "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_3[0]"
+        type_code = "topmostSubform[0].Page1[0].Table_Line1b[0].RowA[0].f1_6[0]"
+        rents = "topmostSubform[0].Page1[0].Table_Income[0].Line3[0].f1_16[0]"
+        total_exp = "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_68[0]"
+        income = "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]"
+        self.assertEqual(field_values.get(addr), "456 Oak Ln")
+        self.assertEqual(field_values.get(type_code), "2")
+        self.assertEqual(field_values.get(rents), "18000")
+        self.assertEqual(field_values.get(total_exp), "8000")
+        self.assertEqual(field_values.get(income), "10000")
 
 
 if __name__ == "__main__":
