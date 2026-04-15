@@ -15,6 +15,7 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
 from tenforty.mappings.pdf_sch_d import PdfSchD
+from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.models import FilingStatus, Scenario
@@ -134,6 +135,7 @@ class ReturnOrchestrator:
             )
             emitted["sch_d"] = out_sch_d
 
+        sch_e_values: dict = {}
         if self._should_emit_sch_e(scenario):
             sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
             out_sch_e = output_dir / f"f1040se_{year}.pdf"
@@ -147,6 +149,20 @@ class ReturnOrchestrator:
                 values=sch_e_values,
             )
             emitted["sch_e"] = out_sch_e
+
+        if self._should_emit_sch_1(scenario, {"f1040": results}):
+            sch_1_template = _PDFS_ROOT / "federal" / str(year) / "f1040s1.pdf"
+            out_sch_1 = output_dir / f"f1040s1_{year}.pdf"
+            sch_1_values = form_sch_1.compute(
+                scenario, upstream={"sch_e": sch_e_values, "f1040": results},
+            )
+            filler.fill_with_repeaters(
+                template_path=sch_1_template,
+                output_path=out_sch_1,
+                mapping=PdfSch1.get_mapping(year),
+                values=sch_1_values,
+            )
+            emitted["sch_1"] = out_sch_1
 
         if self._should_emit_8959(scenario, {"f1040": results}):
             f8959_template = _PDFS_ROOT / "federal" / str(year) / "f8959.pdf"
