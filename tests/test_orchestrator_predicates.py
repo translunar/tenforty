@@ -4,8 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from datetime import date
+
 from tenforty.models import (
-    Form1099DIV, Form1099INT, ItemizedDeductions, RentalProperty, W2,
+    DepreciableAsset, Form1099DIV, Form1099INT, ItemizedDeductions,
+    RentalProperty, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import make_simple_scenario
@@ -127,6 +130,23 @@ class OrchestratorPredicateTests(unittest.TestCase):
         self.assertFalse(self.orchestrator._should_emit_8959(
             scenario, {"f1040": {"f8959_required": False}},
         ))
+
+    def test_should_emit_4562_false_when_no_assets(self) -> None:
+        scenario = make_simple_scenario()
+        self.assertFalse(self.orchestrator._should_emit_4562(scenario, {}))
+
+    def test_should_emit_4562_true_when_any_asset_present(self) -> None:
+        scenario = make_simple_scenario()
+        scenario.depreciable_assets = [
+            DepreciableAsset(
+                description="x",
+                date_placed_in_service=date(2024, 1, 1),
+                basis=1000.0,
+                recovery_class="5-year",
+                convention="half-year",
+            ),
+        ]
+        self.assertTrue(self.orchestrator._should_emit_4562(scenario, {}))
 
 
 if __name__ == "__main__":
