@@ -3,6 +3,8 @@ config:
   filing_status: single
   birthdate: "1985-04-20"
   state: CA
+  has_foreign_accounts: false
+  acknowledges_form_8949_unsupported: false
 
 w2s:
   - employer: "Tech Corp"

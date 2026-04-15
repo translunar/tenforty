@@ -124,6 +124,13 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
+    # and load_scenario raises; True → raises NotImplementedError; False → OK.
+    has_foreign_accounts: bool | None = None
+    # Form 8949 scope-out attestation. None → load_scenario raises; True → Sch D
+    # compute drops 8949-required lots with a per-lot warning; False → Sch D
+    # compute raises NotImplementedError on any 8949-required lot.
+    acknowledges_form_8949_unsupported: bool | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):

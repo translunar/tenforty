@@ -25,6 +25,47 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
 }
 
 
+def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
+    """Enforce the scope-out attestations documented in Plan B (GH #11).
+
+    Both `has_foreign_accounts` and `acknowledges_form_8949_unsupported` are
+    required — scenarios MUST declare them explicitly as True or False.
+    Additionally, `has_foreign_accounts=True` raises NotImplementedError
+    immediately because Schedule B Part III / FBAR is not supported in v1.
+    The `acknowledges_form_8949_unsupported=True` case is checked later in
+    `forms.sch_d.compute` only if an 8949-required lot is actually encountered.
+    """
+    if cfg.has_foreign_accounts is None:
+        raise ValueError(
+            "Scenario config field `has_foreign_accounts` is required and must be "
+            "either true or false. Schedule B Part III (Foreign Accounts and Trusts) "
+            "is not implemented in tenforty v1; if any foreign financial account "
+            "exists, this return will be INCORRECT and you may be legally required "
+            "to file FinCEN Form 114 (FBAR). You must answer this question "
+            "explicitly in every scenario."
+        )
+    if cfg.has_foreign_accounts is True:
+        raise NotImplementedError(
+            "Schedule B Part III / FBAR is not supported in tenforty v1. "
+            "Returns for filers with foreign financial accounts cannot be produced "
+            "by this version; support is tracked as a follow-up."
+        )
+
+    if cfg.acknowledges_form_8949_unsupported is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_form_8949_unsupported` is required "
+            "and must be either true or false. Form 8949 is not implemented in "
+            "tenforty v1. Lots with uncovered basis, basis adjustments, or "
+            "wash-sale reporting legally require Form 8949. Set `false` if all "
+            "1099-B lots are covered-basis with no adjustments (Sch D summary "
+            "path applies and the return is complete). Set `true` ONLY if you "
+            "have reviewed any 8949-required lots and accept that they will be "
+            "DROPPED from Sch D totals (a warning is logged per dropped lot so "
+            "you can reconcile manually); your return will be INCOMPLETE for "
+            "those lots until 8949 support lands."
+        )
+
+
 def load_scenario(path: Path) -> Scenario:
     """Load a tax scenario from a YAML file."""
     if not path.exists():
@@ -34,6 +75,7 @@ def load_scenario(path: Path) -> Scenario:
         data = yaml.safe_load(f)
 
     config = TaxReturnConfig(**data["config"])
+    _validate_scenario_config(config)
 
     form_data: dict[str, list] = {}
     for yaml_key, (model_cls, field_name) in _FORM_REGISTRY.items():

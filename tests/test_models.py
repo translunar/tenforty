@@ -287,6 +287,8 @@ class TestForm1099B(unittest.TestCase):
                 "filing_status": "single",
                 "birthdate": "1990-01-01",
                 "state": "CA",
+                "has_foreign_accounts": False,
+                "acknowledges_form_8949_unsupported": False,
             },
             "form1099_b": [
                 {
