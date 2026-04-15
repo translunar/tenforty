@@ -6,9 +6,11 @@ from pathlib import Path
 
 import pypdf
 
+from datetime import date
+
 from tenforty.models import (
-    FilingStatus, Form1099B, Form1099DIV, Form1099INT, ItemizedDeductions,
-    RentalProperty, Scenario, TaxReturnConfig, W2,
+    DepreciableAsset, FilingStatus, Form1099B, Form1099DIV, Form1099INT,
+    ItemizedDeductions, RentalProperty, Scenario, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 
@@ -513,6 +515,32 @@ class EmitPdfs8959Tests(unittest.TestCase):
         self.assertEqual(field_values.get(name_field), "Sam Doe")
         self.assertEqual(field_values.get(line_1), "300000")
         self.assertEqual(field_values.get(line_18), "900")
+
+    def test_emits_4562_when_depreciable_asset_present(self):
+        scenario = make_scenario_with_identity()
+        scenario.depreciable_assets = [
+            DepreciableAsset(
+                description="Evans Ave",
+                date_placed_in_service=date(2025, 1, 15),
+                basis=200_000.0,
+                recovery_class="27.5-year",
+                convention="mid-month",
+            ),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("f4562", emitted)
+        self.assertEqual(emitted["f4562"].name, "f4562_2025.pdf")
+        self.assertTrue(emitted["f4562"].exists())
+        self.assertGreater(emitted["f4562"].stat().st_size, 0)
+
+    def test_omits_4562_when_no_depreciable_assets(self):
+        scenario = make_scenario_with_identity()
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("f4562", emitted)
 
 
 if __name__ == "__main__":
