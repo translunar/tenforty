@@ -120,6 +120,12 @@ class F1040(FormMapping):
             "f8959_required": "F8959_Reqd",
             "overpaid": "Overpaid",
             "sche_line26": "SchE1_Line26",
+            # Schedule 1 line 10 (Total Additional Income). Oracle cross-check
+            # target for forms.sch_1.compute's native math.
+            "sch_1_line_10": "Additional_Income",
+            # Schedule 1 line 26 (Total Adjustments to Income). Oracle
+            # cross-check target for forms.sch_1.compute's native math.
+            "sch_1_line_26": "Sch1A_Deductions",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
             "interest_income": "Interest_Inc",

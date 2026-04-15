@@ -25,4 +25,5 @@ include = ["tenforty*"]
 testpaths = ["tests"]
 markers = [
     "oracle: tests that diff Python compute against the XLSX oracle (slow; requires LibreOffice)",
+    "only_sch_e_contributes_to_sch_1: scenario where Sch E is the sole Sch 1 contributor (oracle cross-check valid)",
 ]

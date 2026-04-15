@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.models import Form1099DIV, Form1099INT, W2
+from tenforty.models import Form1099DIV, Form1099INT, RentalProperty, W2
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import make_simple_scenario
 
@@ -48,6 +48,29 @@ class OrchestratorPredicateTests(unittest.TestCase):
             Form1099DIV(payer="Broker B", ordinary_dividends=600.0)
         )
         self.assertFalse(self.orchestrator._should_emit_sch_b(scenario, {}))
+
+    def test_should_emit_sch_1_false_when_no_additional_income(self) -> None:
+        scenario = make_simple_scenario()
+        self.assertFalse(self.orchestrator._should_emit_sch_1(scenario, {}))
+
+    def test_should_emit_sch_1_prefers_oracle_line_10(self) -> None:
+        scenario = make_simple_scenario()
+        self.assertTrue(self.orchestrator._should_emit_sch_1(
+            scenario, {"f1040": {"sch_1_line_10": 15_000, "sch_1_line_26": 0}},
+        ))
+        self.assertFalse(self.orchestrator._should_emit_sch_1(
+            scenario, {"f1040": {"sch_1_line_10": 0, "sch_1_line_26": 0}},
+        ))
+
+    def test_should_emit_sch_1_true_when_rental_income_present_no_oracle(self) -> None:
+        scenario = make_simple_scenario()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="x", property_type=1, fair_rental_days=365,
+                personal_use_days=0, rents_received=24_000.0,
+            ),
+        ]
+        self.assertTrue(self.orchestrator._should_emit_sch_1(scenario, {}))
 
     def test_should_emit_sch_d_false_when_no_1099b(self) -> None:
         scenario = make_simple_scenario()
