@@ -6,12 +6,13 @@ from pathlib import Path
 
 import pypdf
 
-from tenforty.models import FilingStatus, Scenario, TaxReturnConfig
+from tenforty.models import FilingStatus, Form1099DIV, Form1099INT, Scenario, TaxReturnConfig
 from tenforty.orchestrator import ReturnOrchestrator
 
 
 REPO_ROOT = Path(__file__).parent.parent
 F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
+SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
 
 
 def make_scenario_with_identity() -> Scenario:
@@ -28,6 +29,8 @@ def make_scenario_with_identity() -> Scenario:
             address_city="Houston",
             address_state="TX",
             address_zip="77001",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
         ),
     )
 
@@ -96,6 +99,72 @@ class TestEmitPdfs(unittest.TestCase):
         self.assertIn("4868", emitted)
         self.assertTrue(emitted["1040"].exists())
         self.assertTrue(emitted["4868"].exists())
+
+
+class EmitPdfsSchBTests(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    @unittest.skipUnless(SCH_B_TEMPLATE.exists(), "f1040sb.pdf template not found")
+    def test_emits_sch_b_when_interest_over_threshold(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_int = [Form1099INT(payer="Bank", interest=2000.0)]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("sch_b", emitted)
+        self.assertEqual(emitted["sch_b"].name, "f1040sb_2025.pdf")
+        self.assertTrue(emitted["sch_b"].exists())
+        self.assertGreater(emitted["sch_b"].stat().st_size, 0)
+
+    @unittest.skipUnless(SCH_B_TEMPLATE.exists(), "f1040sb.pdf template not found")
+    def test_emits_sch_b_when_dividends_over_threshold(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_div = [
+            Form1099DIV(payer="Broker", ordinary_dividends=1600.0),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("sch_b", emitted)
+
+    def test_omits_sch_b_when_under_threshold(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_int = [Form1099INT(payer="Bank", interest=100.0)]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("sch_b", emitted)
+
+    @unittest.skipUnless(SCH_B_TEMPLATE.exists(), "f1040sb.pdf template not found")
+    def test_emitted_sch_b_has_payer_rows_filled(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_int = [
+            Form1099INT(payer="Bank A", interest=900.0),
+            Form1099INT(payer="Bank B", interest=800.0),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_b"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        # Row 1 payer is inside Line1_ReadOrder; amount is at Page1 scope.
+        row1_payer = "topmostSubform[0].Page1[0].Line1_ReadOrder[0].f1_03[0]"
+        row1_amount = "topmostSubform[0].Page1[0].f1_04[0]"
+        row2_payer = "topmostSubform[0].Page1[0].f1_05[0]"
+        total_interest = "topmostSubform[0].Page1[0].f1_31[0]"
+        self.assertEqual(field_values.get(row1_payer), "Bank A")
+        self.assertEqual(field_values.get(row1_amount), "900")
+        self.assertEqual(field_values.get(row2_payer), "Bank B")
+        self.assertEqual(field_values.get(total_interest), "1700")
 
 
 if __name__ == "__main__":
