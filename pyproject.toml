@@ -23,3 +23,6 @@ include = ["tenforty*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "oracle: tests that diff Python compute against the XLSX oracle (slow; requires LibreOffice)",
+]
