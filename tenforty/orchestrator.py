@@ -4,12 +4,14 @@ from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
 from tenforty.forms import sch_b as form_sch_b
+from tenforty.forms import sch_d as form_sch_d
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
+from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.models import FilingStatus, Scenario
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -112,6 +114,20 @@ class ReturnOrchestrator:
                 values=flat_values,
             )
             emitted["sch_b"] = out_sch_b
+
+        if self._should_emit_sch_d(scenario):
+            sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
+            out_sch_d = output_dir / f"f1040sd_{year}.pdf"
+            sch_d_values = form_sch_d.compute(
+                scenario, upstream={"f1040": results},
+            )
+            filler.fill_with_repeaters(
+                template_path=sch_d_template,
+                output_path=out_sch_d,
+                mapping=PdfSchD.get_mapping(year),
+                values=sch_d_values,
+            )
+            emitted["sch_d"] = out_sch_d
 
         return emitted
 

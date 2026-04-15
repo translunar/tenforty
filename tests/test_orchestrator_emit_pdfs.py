@@ -6,13 +6,16 @@ from pathlib import Path
 
 import pypdf
 
-from tenforty.models import FilingStatus, Form1099DIV, Form1099INT, Scenario, TaxReturnConfig
+from tenforty.models import (
+    FilingStatus, Form1099B, Form1099DIV, Form1099INT, Scenario, TaxReturnConfig,
+)
 from tenforty.orchestrator import ReturnOrchestrator
 
 
 REPO_ROOT = Path(__file__).parent.parent
 F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
 SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
+SCH_D_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf"
 
 
 def make_scenario_with_identity() -> Scenario:
@@ -165,6 +168,73 @@ class EmitPdfsSchBTests(unittest.TestCase):
         self.assertEqual(field_values.get(row1_amount), "900")
         self.assertEqual(field_values.get(row2_payer), "Bank B")
         self.assertEqual(field_values.get(total_interest), "1700")
+
+
+def _lot(**overrides) -> Form1099B:
+    defaults = dict(
+        broker="Schwab",
+        description="100 ACME",
+        date_acquired="2024-01-01",
+        date_sold="2025-06-01",
+        proceeds=1500.0,
+        cost_basis=1000.0,
+        short_term=True,
+        basis_reported_to_irs=True,
+        has_adjustments=False,
+    )
+    defaults.update(overrides)
+    return Form1099B(**defaults)
+
+
+class EmitPdfsSchDTests(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    @unittest.skipUnless(SCH_D_TEMPLATE.exists(), "f1040sd.pdf template not found")
+    def test_emits_sch_d_when_1099b_present(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_b = [_lot()]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("sch_d", emitted)
+        self.assertEqual(emitted["sch_d"].name, "f1040sd_2025.pdf")
+        self.assertTrue(emitted["sch_d"].exists())
+        self.assertGreater(emitted["sch_d"].stat().st_size, 0)
+
+    def test_omits_sch_d_when_no_1099b(self):
+        scenario = make_scenario_with_identity()
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("sch_d", emitted)
+
+    @unittest.skipUnless(SCH_D_TEMPLATE.exists(), "f1040sd.pdf template not found")
+    def test_emitted_sch_d_has_summary_totals(self):
+        scenario = make_scenario_with_identity()
+        scenario.form1099_b = [
+            _lot(short_term=True, proceeds=1500.0, cost_basis=1000.0),
+            _lot(short_term=False, proceeds=5000.0, cost_basis=2000.0),
+        ]
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_d"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        line_1a_gain = "topmostSubform[0].Page1[0].Table_PartI[0].Row1a[0].f1_6[0]"
+        line_8a_gain = "topmostSubform[0].Page1[0].Table_PartII[0].Row8a[0].f1_26[0]"
+        line_16_total = "topmostSubform[0].Page2[0].f2_1[0]"
+        self.assertEqual(field_values.get(line_1a_gain), "500")
+        self.assertEqual(field_values.get(line_8a_gain), "3000")
+        self.assertEqual(field_values.get(line_16_total), "3500")
 
 
 if __name__ == "__main__":
