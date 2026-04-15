@@ -3,6 +3,8 @@ config:
   filing_status: single
   birthdate: "1980-02-14"
   state: CA
+  has_foreign_accounts: false
+  acknowledges_form_8949_unsupported: false
 
 w2s:
   - employer: "Acme Corp"
