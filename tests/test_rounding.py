@@ -1,6 +1,6 @@
 import unittest
 
-from tenforty.rounding import irs_round
+from tenforty.rounding import irs_round, round4, round5
 
 
 class IrsRoundTests(unittest.TestCase):
@@ -30,3 +30,34 @@ class IrsRoundTests(unittest.TestCase):
 
     def test_accepts_int_input(self):
         self.assertEqual(irs_round(15000), 15000)
+
+
+class Round4Tests(unittest.TestCase):
+    def test_below_half_rounds_down(self):
+        self.assertEqual(round4(0.12344), 0.1234)
+
+    def test_half_rounds_up(self):
+        self.assertEqual(round4(0.12345), 0.1235)
+
+    def test_above_half_rounds_up(self):
+        self.assertEqual(round4(0.12346), 0.1235)
+
+    def test_negative_half_rounds_away_from_zero(self):
+        self.assertEqual(round4(-0.12345), -0.1235)
+
+    def test_whole_number_passes_through(self):
+        self.assertEqual(round4(1.0), 1.0)
+
+
+class Round5Tests(unittest.TestCase):
+    def test_below_half_rounds_down(self):
+        self.assertEqual(round5(0.123454), 0.12345)
+
+    def test_half_rounds_up(self):
+        self.assertEqual(round5(0.123455), 0.12346)
+
+    def test_above_half_rounds_up(self):
+        self.assertEqual(round5(0.123456), 0.12346)
+
+    def test_negative_half_rounds_away_from_zero(self):
+        self.assertEqual(round5(-0.123455), -0.12346)

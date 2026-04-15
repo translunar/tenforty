@@ -91,11 +91,17 @@ class SchELine26OracleTests(unittest.TestCase):
         result = compute(scenario, upstream={"f1040": {"sche_line26": 8000}})
         self.assertEqual(result["sch_e_line_26_total"], 8000)
 
-    def test_line_26_missing_is_skipped(self):
+    def test_line_26_falls_back_to_locally_summed_when_oracle_missing(self):
+        """Plan C shift: native compute is authoritative. When the oracle
+        doesn't expose line 26 (e.g. Sch 1 predicate path), use the locally
+        summed single-property line 21."""
         scenario = make_simple_scenario()
         scenario.rental_properties = [_rental()]
         result = compute(scenario, upstream={"f1040": {}})
-        self.assertNotIn("sch_e_line_26_total", result)
+        self.assertEqual(
+            result["sch_e_line_26_total"],
+            result["sch_e_property_a_income_loss"],
+        )
 
     def test_line_26_divergence_warns_and_uses_oracle(self):
         scenario = make_simple_scenario()
