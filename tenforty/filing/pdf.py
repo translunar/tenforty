@@ -81,14 +81,18 @@ class PdfFiller:
         for section_name, section in mapping.get("repeaters", {}).items():
             rows = values.get(section_name) or []
             max_slots = section["max_slots"]
+            policy = section.get("overflow", "raise")
             if len(rows) > max_slots:
-                policy = section.get("overflow", "raise")
                 if policy == "raise":
                     raise OverflowError(
                         f"Repeater '{section_name}' has {len(rows)} rows; "
                         f"PDF supports {max_slots} per page. "
-                        "Multi-page emission is deferred (see #9 non-goals)."
+                        "Multi-page emission is deferred (see #11 non-goals)."
                     )
+                raise NotImplementedError(
+                    f"Repeater overflow policy {policy!r} not yet implemented; "
+                    "only 'raise' is supported in v1."
+                )
             for i, row in enumerate(rows, start=1):
                 for inner_key, template in section["template"].items():
                     v = row.get(inner_key)
