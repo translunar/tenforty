@@ -3,14 +3,33 @@ from pathlib import Path
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
+from tenforty.forms import sch_b as form_sch_b
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
+from tenforty.mappings.pdf_sch_b import PdfSchB
 from tenforty.models import FilingStatus, Scenario
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
+
+
+def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
+    """Convert sch_b.compute's payer-lists into the flat row slots that the
+    Sch B PDF mapping expects (interest_payer_{i}, interest_amount_{i}, and
+    the matching dividend_* keys). All scalar keys pass through unchanged."""
+    flat = {
+        k: v for k, v in sch_b_values.items()
+        if k not in ("interest_payers", "dividend_payers")
+    }
+    for i, row in enumerate(sch_b_values.get("interest_payers", []), start=1):
+        flat[f"interest_payer_{i}"] = row["payer"]
+        flat[f"interest_amount_{i}"] = row["amount"]
+    for i, row in enumerate(sch_b_values.get("dividend_payers", []), start=1):
+        flat[f"dividend_payer_{i}"] = row["payer"]
+        flat[f"dividend_amount_{i}"] = row["amount"]
+    return flat
 
 
 class ReturnOrchestrator:
@@ -77,7 +96,24 @@ class ReturnOrchestrator:
             values=f4868_values,
         )
 
-        return {"1040": out_1040, "4868": out_4868}
+        emitted: dict[str, Path] = {"1040": out_1040, "4868": out_4868}
+
+        if self._should_emit_sch_b(scenario, results):
+            sch_b_template = _PDFS_ROOT / "federal" / str(year) / "f1040sb.pdf"
+            out_sch_b = output_dir / f"f1040sb_{year}.pdf"
+            sch_b_values = form_sch_b.compute(
+                scenario, upstream={"f1040": results},
+            )
+            flat_values = _flatten_sch_b_rows(sch_b_values)
+            filler.fill(
+                template_path=sch_b_template,
+                output_path=out_sch_b,
+                field_mapping=PdfSchB.get_mapping(year),
+                values=flat_values,
+            )
+            emitted["sch_b"] = out_sch_b
+
+        return emitted
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
