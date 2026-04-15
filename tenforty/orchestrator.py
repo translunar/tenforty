@@ -253,6 +253,10 @@ class ReturnOrchestrator:
         """Emit Sch E whenever any rental property exists."""
         return bool(scenario.rental_properties)
 
+    def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Form 4562 whenever the scenario has any depreciable asset."""
+        return bool(scenario.depreciable_assets)
+
     def _should_emit_8959(self, scenario: Scenario, results: dict) -> bool:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).
 
