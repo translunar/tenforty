@@ -145,6 +145,15 @@ class TaxReturnConfig:
 
 
 @dataclass
+class ItemizedDeductions:
+    medical_expenses: float = 0.0
+    state_income_tax: float = 0.0
+    property_tax: float = 0.0
+    mortgage_interest: float = 0.0
+    charitable_contributions: float = 0.0
+
+
+@dataclass
 class DepreciableAsset:
     """An asset subject to MACRS depreciation (Form 4562 Part III row).
 
@@ -174,3 +183,4 @@ class Scenario:
     schedule_k1s: list[ScheduleK1] = field(default_factory=list)
     rental_properties: list[RentalProperty] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
+    itemized_deductions: ItemizedDeductions | None = None
