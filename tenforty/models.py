@@ -44,6 +44,8 @@ class Form1099B:
     cost_basis: float
     gain_loss: float = 0.0
     short_term: bool = True
+    basis_reported_to_irs: bool = True
+    has_adjustments: bool = False
 
 
 @dataclass
