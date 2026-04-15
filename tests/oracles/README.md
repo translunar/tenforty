@@ -16,7 +16,7 @@ where those live.
 
 | Module | Covers | Status |
 |---|---|---|
-| `k1_reference.py` | Schedule K-1 (1120-S, 1065, 1041) → Sch E Part II, Sch B, Sch D, QBI (Form 8995), passive flag (Form 8582) | **Scaffolded, pending `ScheduleK1` schema from team-lead** |
+| `k1_reference.py` | Schedule K-1 (1120-S, 1065, 1041) → Sch E Part II, Sch B, Sch D, QBI (Form 8995), passive flag (Form 8582) | Implemented against team-lead's `ScheduleK1` schema (2026-04-15). |
 
 Planned (future PRs, not part of this branch):
 
@@ -28,16 +28,22 @@ Planned (future PRs, not part of this branch):
    wouldn't be independent and bugs in production would replicate into the
    oracle. The only exception is importing dataclasses like `ScheduleK1` that
    are schema-only (no behavior).
-2. **Decimal everywhere.** No float arithmetic. Oracle must be bit-exact.
+2. **`float` matches production.** Team-lead contract uses `float`; oracle
+   follows suit. Sub-cent precision loss is accepted; comparison tests round
+   to the nearest cent. If precision issues surface, revisit.
 3. **No rounding inside the oracle.** Rounding is production's responsibility;
-   the oracle reports exact arithmetic so sub-dollar divergences surface before
-   rounding hides them.
+   the oracle reports unrounded arithmetic so sub-dollar divergences surface
+   before IRS-style rounding hides them.
 4. **Every rule cites its source.** Each calculation carries a `SOURCE:`
    comment naming the IRS instruction or reg paragraph. Annual refresh =
    diffing those citations against the following year's instructions.
 5. **Out-of-scope is explicit.** Anywhere production might have a more complex
    path, the oracle either errors loudly or documents the limitation inline
    AND in this README (below).
+6. **Document divergences, don't smooth them over.** If a second oracle (OTS,
+   TaxVisor, etc.) disagrees with this module's reading of the instructions,
+   flag the divergence here and let the team-lead adjudicate. Silent
+   reconciliation defeats the independence principle.
 
 ## K-1 oracle scope
 
@@ -108,6 +114,36 @@ Every rule in `k1_reference.py` cites one of:
   https://www.irs.gov/instructions/i8582
 - **IRC §469** (passive activity rules) and **§199A** (QBI).
 
+## Second-oracle check: OpenTaxSolver (OTS)
+
+Team-lead asked me to add OTS as a belt-and-suspenders second cross-check if
+its coverage is meaningful for K-1 flows. **Verdict: not useful for this
+scope.**
+
+OTS's federal 1040 solver (`taxsolve_US_1040_YYYY.c`) treats K-1 pass-throughs
+as **user-supplied pre-aggregated totals**:
+
+- `S1_5` — a single scalar for "Rental real estate, royalties, partnerships,
+  S corps" → Schedule 1 line 5.
+- `D5` — a single scalar for K-1 short-term cap gains → Schedule D line 5.
+- `D12` — a single scalar for K-1 long-term cap gains → Schedule D line 12.
+
+There is no Schedule E Part II row-level fan-out, no passive/nonpassive
+classification, no Form 8582, and no Form 8995 in OTS's model. The owner of
+the return is expected to have done that math before feeding the number in.
+
+So OTS cannot cross-check us on what this oracle actually covers. It can only
+cross-check the *downstream* federal aggregate, which the federal XLS oracle
+already covers. **OTS is not added as a second K-1 oracle.**
+
+If a second oracle becomes important, candidates to re-investigate:
+
+- **TaxVisor** — but same likely limitation: user-supplied K-1 totals, no
+  Part II fan-out.
+- **PolicyEngine `us` model** — has more structure; worth a look.
+- **Hand-worked IRS example** — the 2025 Form 8582 instructions include a
+  filled example; codify it as a fixture.
+
 ## Known ambiguities / open questions
 
 1. **2025 QBI threshold (`QBI_SIMPLE_THRESHOLD_2025`).** IRS draft
@@ -142,9 +178,32 @@ Every rule in `k1_reference.py` cites one of:
 6. **Royalties — 1120-S box 6 vs 1041 box 5.** 1120-S box 6 is pure
    royalties to Schedule E line 4. 1041 box 5 is "other portfolio and
    nonbusiness income" which includes royalties plus annuities plus IRD. The
-   oracle cannot disaggregate without more K-1 detail than the current
-   production schema captures. **Action required:** confirm whether the
-   `ScheduleK1` dataclass will break out royalties separately for 1041.
+   normalized `ScheduleK1.royalties` field masks this variance. If a 1041
+   K-1 reports box 5 income that is *not* royalties (e.g. an annuity or
+   IRD), production must either (a) place it in a different normalized
+   field or (b) reject, because the oracle will route it to Schedule E
+   line 4 as if it were royalties. Flag to team-lead.
+
+7. **Passive-flag semantics.** Team-lead brief describes the flag as "True
+   if losses go to 8582". The implementation takes the broader reading —
+   True whenever 8582 is in play for this activity, including positive
+   passive income that could release prior-year suspended losses. If
+   production's reading is narrower (strictly current-year loss), the
+   oracle will report more `True`s than production and the comparison
+   test needs to account. Documented inline in `passive_flag()`.
+
+8. **Pre-8582 vs post-8582 Sch E Part II amounts.** The oracle reports the
+   *raw* pre-limitation K-1 amounts in `sch_e_part_ii_row`. Form 8582
+   aggregates across ALL passive activities and computes the allowable
+   current-year loss, which is what actually lands on Schedule E line 28
+   column (g). The oracle cannot compute the limitation without the full
+   portfolio and MAGI. Production and test harness must agree on whether
+   the Sch E values are pre- or post-limitation; this oracle picks pre-.
+
+9. **`qualified_dividends` is a subset of `ordinary_dividends`**, not
+   additive. The oracle deliberately does NOT add qualified to Schedule B
+   — qualified affects the tax calculation via the Qualified Dividends
+   and Capital Gain Tax Worksheet. Production must handle the same way.
 
 ## How to add to this directory
 
