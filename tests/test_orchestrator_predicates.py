@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.models import Form1099DIV, Form1099INT
+from tenforty.models import Form1099DIV, Form1099INT, W2
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import make_simple_scenario
 
@@ -61,6 +61,22 @@ class OrchestratorPredicateTests(unittest.TestCase):
         scenario = make_simple_scenario()
         # single filer, $100k medicare wages, threshold $200k
         self.assertFalse(self.orchestrator._should_emit_8959(scenario, {}))
+
+    def test_should_emit_8959_prefers_oracle_required_flag(self) -> None:
+        scenario = make_simple_scenario()
+        # Oracle says required even though wages would be under threshold.
+        self.assertTrue(self.orchestrator._should_emit_8959(
+            scenario, {"f1040": {"f8959_required": True}},
+        ))
+        # Oracle says not required even though wages would exceed threshold.
+        scenario.w2s = [W2(
+            employer="X", wages=300_000, federal_tax_withheld=0,
+            ss_wages=168_600, ss_tax_withheld=0,
+            medicare_wages=300_000, medicare_tax_withheld=0,
+        )]
+        self.assertFalse(self.orchestrator._should_emit_8959(
+            scenario, {"f1040": {"f8959_required": False}},
+        ))
 
 
 if __name__ == "__main__":

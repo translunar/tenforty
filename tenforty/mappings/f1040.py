@@ -111,6 +111,13 @@ class F1040(FormMapping):
             # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).
             # Flows to 1040 line 25c via Form 8959.
             "additional_medicare_withheld": "F8959_WH",
+            # Form 8959 line 18: total Additional Medicare Tax. Used as the
+            # oracle cross-check target for forms.f8959.compute's native math.
+            "f8959_tax_total": "F8959_Tax",
+            # Oracle-authoritative gate for whether Form 8959 must be filed.
+            # Preferred over the wage-threshold heuristic in the orchestrator
+            # predicate so we don't emit a zero-valued form.
+            "f8959_required": "F8959_Reqd",
             "overpaid": "Overpaid",
             "sche_line26": "SchE1_Line26",
             "sche_line41": "SchE1_Line41",
