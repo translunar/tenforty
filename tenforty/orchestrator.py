@@ -4,6 +4,7 @@ from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
 from tenforty.forms import sch_1 as form_sch_1
+from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
@@ -202,6 +203,25 @@ class ReturnOrchestrator:
             sch_1_snapshot.get("sch_1_line_10_total_additional_income", 0)
             or sch_1_snapshot.get("sch_1_line_26_total_adjustments", 0)
         )
+
+    def _should_emit_sch_a(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Sch A when itemizing beats the standard deduction.
+
+        Runs sch_a.compute to get line 17 total and compares to the
+        standard deduction for the filing status. ``results`` must carry
+        ``{"f1040": {...}}`` with ``agi`` (and ideally ``magi``) set, so
+        the sales-tax gate and phaseout scope-out fire correctly.
+        """
+        from tenforty.constants import y2025
+        if scenario.itemized_deductions is None:
+            return False
+        f1040 = results.get("f1040") or {}
+        if "agi" not in f1040:
+            return False
+        sch_a = form_sch_a.compute(scenario, upstream={"f1040": f1040})
+        total = sch_a.get("sch_a_line_17_total", 0)
+        std = y2025.STANDARD_DEDUCTION[scenario.config.filing_status]
+        return total > std
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
