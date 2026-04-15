@@ -44,6 +44,8 @@ class Form1099B:
     cost_basis: float
     gain_loss: float = 0.0
     short_term: bool = True
+    basis_reported_to_irs: bool = True
+    has_adjustments: bool = False
 
 
 @dataclass
@@ -91,6 +93,11 @@ class RentalProperty:
     depreciation: float = 0.0
     other_expenses: float = 0.0
 
+    @property
+    def property_type_code(self) -> str:
+        """Schedule E line 1b form code as a string (1..8)."""
+        return str(self.property_type)
+
 
 class FilingStatus(str, Enum):
     SINGLE = "single"
@@ -117,6 +124,13 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
+    # and load_scenario raises; True → raises NotImplementedError; False → OK.
+    has_foreign_accounts: bool | None = None
+    # Form 8949 scope-out attestation. None → load_scenario raises; True → Sch D
+    # compute drops 8949-required lots with a per-lot warning; False → Sch D
+    # compute raises NotImplementedError on any 8949-required lot.
+    acknowledges_form_8949_unsupported: bool | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):

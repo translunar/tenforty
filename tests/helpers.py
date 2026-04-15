@@ -32,13 +32,20 @@ needs_pdf = unittest.skipUnless(
 
 
 def make_simple_scenario() -> Scenario:
-    """Create a simple single-filer scenario for tests that need a Scenario instance."""
+    """Create a simple single-filer scenario for tests that need a Scenario instance.
+
+    Sets both Plan B scope-out attestations (`has_foreign_accounts`,
+    `acknowledges_form_8949_unsupported`) to False so in-memory fixtures mirror
+    the load-time contract enforced on YAML fixtures.
+    """
     return Scenario(
         config=TaxReturnConfig(
             year=2025,
             filing_status="single",
             birthdate="1990-06-15",
             state="CA",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
         ),
         w2s=[
             W2(
