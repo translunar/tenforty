@@ -1,8 +1,13 @@
 import unittest
 from pathlib import Path
 
+import tempfile
+
+import yaml
+
 from tenforty.models import (
     Form1098,
+    Form1099B,
     Form1099DIV,
     Form1099INT,
     RentalProperty,
@@ -221,3 +226,66 @@ class TestScenario(unittest.TestCase):
         self.assertEqual(len(scenario.w2s), 1)
         self.assertEqual(scenario.config.year, 2025)
         self.assertEqual(scenario.form1099_int, [])
+
+
+class TestForm1099B(unittest.TestCase):
+    def test_defaults_basis_reported_true_and_no_adjustments(self):
+        lot = Form1099B(
+            broker="Broker A",
+            description="100 ACME",
+            date_acquired="2024-01-02",
+            date_sold="2025-06-10",
+            proceeds=1500.0,
+            cost_basis=1000.0,
+        )
+        self.assertTrue(lot.basis_reported_to_irs)
+        self.assertFalse(lot.has_adjustments)
+        self.assertTrue(lot.short_term)  # existing default preserved
+
+    def test_accepts_explicit_reporting_flags(self):
+        lot = Form1099B(
+            broker="Broker A",
+            description="100 ACME",
+            date_acquired="2020-01-02",
+            date_sold="2025-06-10",
+            proceeds=5000.0,
+            cost_basis=1000.0,
+            short_term=False,
+            basis_reported_to_irs=False,
+            has_adjustments=True,
+        )
+        self.assertFalse(lot.short_term)
+        self.assertFalse(lot.basis_reported_to_irs)
+        self.assertTrue(lot.has_adjustments)
+
+    def test_yaml_roundtrip_with_new_flags(self):
+        doc = {
+            "config": {
+                "year": 2025,
+                "filing_status": "single",
+                "birthdate": "1990-01-01",
+                "state": "CA",
+            },
+            "form1099_b": [
+                {
+                    "broker": "Broker A",
+                    "description": "100 XYZ",
+                    "date_acquired": "2024-03-01",
+                    "date_sold": "2025-05-10",
+                    "proceeds": 2500.0,
+                    "cost_basis": 2000.0,
+                    "short_term": False,
+                    "basis_reported_to_irs": False,
+                    "has_adjustments": True,
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "s.yaml"
+            p.write_text(yaml.safe_dump(doc))
+            s = load_scenario(p)
+        self.assertEqual(len(s.form1099_b), 1)
+        lot = s.form1099_b[0]
+        self.assertFalse(lot.basis_reported_to_irs)
+        self.assertTrue(lot.has_adjustments)
+        self.assertFalse(lot.short_term)
