@@ -3,6 +3,7 @@ from pathlib import Path
 import yaml
 
 from tenforty.models import (
+    DepreciableAsset,
     Form1098,
     Form1099B,
     Form1099DIV,
@@ -22,6 +23,7 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
     "rental_properties": (RentalProperty, "rental_properties"),
+    "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
 
 

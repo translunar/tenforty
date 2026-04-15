@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import date as _date
 from enum import Enum
 
 
@@ -138,6 +139,25 @@ class TaxReturnConfig:
 
 
 @dataclass
+class DepreciableAsset:
+    """An asset subject to MACRS depreciation (Form 4562 Part III row).
+
+    ``recovery_class`` is the GDS class-life string ("3-year", "5-year",
+    "7-year", "10-year", "15-year", "20-year", "27.5-year", "39-year").
+    ``convention`` is one of "half-year", "mid-quarter", "mid-month"
+    (mid-quarter unsupported in v1). ``disposed``, when not None,
+    triggers NotImplementedError in v1 compute.
+    """
+
+    description: str
+    date_placed_in_service: _date
+    basis: float
+    recovery_class: str
+    convention: str
+    disposed: _date | None = None
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
@@ -147,3 +167,4 @@ class Scenario:
     form1098s: list[Form1098] = field(default_factory=list)
     schedule_k1s: list[ScheduleK1] = field(default_factory=list)
     rental_properties: list[RentalProperty] = field(default_factory=list)
+    depreciable_assets: list[DepreciableAsset] = field(default_factory=list)

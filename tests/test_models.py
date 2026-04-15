@@ -5,7 +5,11 @@ import tempfile
 
 import yaml
 
+from datetime import date
+
 from tenforty.models import (
+    DepreciableAsset,
+    FilingStatus,
     Form1098,
     Form1099B,
     Form1099DIV,
@@ -313,3 +317,54 @@ class TestForm1099B(unittest.TestCase):
         self.assertFalse(lot.basis_reported_to_irs)
         self.assertTrue(lot.has_adjustments)
         self.assertFalse(lot.short_term)
+
+
+class DepreciableAssetTests(unittest.TestCase):
+    def test_minimum_fields(self):
+        a = DepreciableAsset(
+            description="Rental building - Evans Ave",
+            date_placed_in_service=date(2019, 6, 1),
+            basis=250_000.0,
+            recovery_class="27.5-year",
+            convention="mid-month",
+        )
+        self.assertEqual(a.description, "Rental building - Evans Ave")
+        self.assertEqual(a.date_placed_in_service, date(2019, 6, 1))
+        self.assertEqual(a.basis, 250_000.0)
+        self.assertEqual(a.recovery_class, "27.5-year")
+        self.assertEqual(a.convention, "mid-month")
+        self.assertIsNone(a.disposed)
+
+    def test_accepts_disposed_date(self):
+        a = DepreciableAsset(
+            description="Laptop",
+            date_placed_in_service=date(2023, 1, 10),
+            basis=2_000.0,
+            recovery_class="5-year",
+            convention="half-year",
+            disposed=date(2025, 8, 14),
+        )
+        self.assertEqual(a.disposed, date(2025, 8, 14))
+
+
+class ScenarioDepreciableAssetsTests(unittest.TestCase):
+    def test_defaults_empty(self):
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025,
+                filing_status=FilingStatus.SINGLE,
+                birthdate="1980-01-01",
+                state="CA",
+                has_foreign_accounts=False,
+                acknowledges_form_8949_unsupported=False,
+            ),
+        )
+        self.assertEqual(scenario.depreciable_assets, [])
+
+    def test_load_scenario_parses_depreciable_assets(self):
+        s = load_scenario(FIXTURES_DIR / "rental_with_depreciation.yaml")
+        self.assertEqual(len(s.depreciable_assets), 1)
+        a = s.depreciable_assets[0]
+        self.assertEqual(a.description, "Rental building")
+        self.assertEqual(a.basis, 250_000.0)
+        self.assertEqual(a.recovery_class, "27.5-year")
