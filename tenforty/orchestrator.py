@@ -17,6 +17,7 @@ from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
 from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.mappings.pdf_sch_1 import PdfSch1
+from tenforty.mappings.pdf_sch_a import PdfSchA
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.models import FilingStatus, Scenario
@@ -150,6 +151,20 @@ class ReturnOrchestrator:
                 values=sch_e_values,
             )
             emitted["sch_e"] = out_sch_e
+
+        if self._should_emit_sch_a(scenario, {"f1040": results}):
+            sch_a_template = _PDFS_ROOT / "federal" / str(year) / "f1040sa.pdf"
+            out_sch_a = output_dir / f"f1040sa_{year}.pdf"
+            sch_a_values = form_sch_a.compute(
+                scenario, upstream={"f1040": results},
+            )
+            filler.fill_with_repeaters(
+                template_path=sch_a_template,
+                output_path=out_sch_a,
+                mapping=PdfSchA.get_mapping(year),
+                values=sch_a_values,
+            )
+            emitted["sch_a"] = out_sch_a
 
         if self._should_emit_sch_1(scenario, {"f1040": results}):
             sch_1_template = _PDFS_ROOT / "federal" / str(year) / "f1040s1.pdf"

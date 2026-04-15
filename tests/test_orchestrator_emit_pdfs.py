@@ -7,8 +7,8 @@ from pathlib import Path
 import pypdf
 
 from tenforty.models import (
-    FilingStatus, Form1099B, Form1099DIV, Form1099INT, RentalProperty,
-    Scenario, TaxReturnConfig, W2,
+    FilingStatus, Form1099B, Form1099DIV, Form1099INT, ItemizedDeductions,
+    RentalProperty, Scenario, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 
@@ -19,6 +19,7 @@ SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
 SCH_D_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf"
 SCH_E_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040se.pdf"
 SCH_1_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040s1.pdf"
+SCH_A_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sa.pdf"
 F8959_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f8959.pdf"
 
 
@@ -373,6 +374,79 @@ class EmitPdfsSch1Tests(unittest.TestCase):
         line_10 = "topmostSubform[0].Page1[0].f1_37[0]"
         self.assertEqual(field_values.get(line_5), "8000")
         self.assertEqual(field_values.get(line_10), "8000")
+
+
+class EmitPdfsSchATests(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    @unittest.skipUnless(SCH_A_TEMPLATE.exists(), "f1040sa.pdf template not found")
+    def test_emits_sch_a_when_itemizing_beats_standard(self):
+        scenario = make_scenario_with_identity()
+        scenario.config.state = "CA"
+        scenario.itemized_deductions = ItemizedDeductions(
+            state_income_tax=8_000, property_tax=6_000,
+            mortgage_interest=18_000, charitable_contributions=3_000,
+        )
+        results = {**SAMPLE_RESULTS, "agi": 150_000, "magi": 150_000}
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, results, self.output_dir,
+        )
+        self.assertIn("sch_a", emitted)
+        self.assertEqual(emitted["sch_a"].name, "f1040sa_2025.pdf")
+        self.assertTrue(emitted["sch_a"].exists())
+        self.assertGreater(emitted["sch_a"].stat().st_size, 0)
+
+    def test_omits_sch_a_when_no_itemized_deductions(self):
+        scenario = make_scenario_with_identity()
+        results = {**SAMPLE_RESULTS, "agi": 150_000, "magi": 150_000}
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, results, self.output_dir,
+        )
+        self.assertNotIn("sch_a", emitted)
+
+    def test_omits_sch_a_when_under_standard_deduction(self):
+        scenario = make_scenario_with_identity()
+        scenario.config.state = "CA"
+        scenario.itemized_deductions = ItemizedDeductions(
+            state_income_tax=2_000, property_tax=1_000,
+        )
+        results = {**SAMPLE_RESULTS, "agi": 150_000, "magi": 150_000}
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, results, self.output_dir,
+        )
+        self.assertNotIn("sch_a", emitted)
+
+    @unittest.skipUnless(SCH_A_TEMPLATE.exists(), "f1040sa.pdf template not found")
+    def test_emitted_sch_a_fills_salt_and_total(self):
+        scenario = make_scenario_with_identity()
+        scenario.config.state = "CA"
+        scenario.itemized_deductions = ItemizedDeductions(
+            state_income_tax=8_000, property_tax=6_000,
+            mortgage_interest=18_000, charitable_contributions=3_000,
+        )
+        results = {**SAMPLE_RESULTS, "agi": 150_000, "magi": 150_000}
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, results, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_a"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        line_5e = "form1[0].Page1[0].f1_11[0]"
+        line_17 = "form1[0].Page1[0].f1_30[0]"
+        line_8a = "form1[0].Page1[0].f1_15[0]"
+        # 8k + 6k = 14k SALT, well under cap
+        self.assertEqual(field_values.get(line_5e), "14000")
+        # 14k SALT + 18k mortgage + 3k charity = 35k (medical 0 at 150k AGI)
+        self.assertEqual(field_values.get(line_17), "35000")
+        self.assertEqual(field_values.get(line_8a), "18000")
 
 
 def _w2_over_threshold(medicare_wages: float) -> W2:
