@@ -189,6 +189,28 @@ class TestRentalProperty(unittest.TestCase):
         self.assertEqual(prop.depreciation, 0.0)
         self.assertEqual(prop.other_expenses, 0.0)
 
+    def test_property_type_code_stringifies_int(self):
+        rp = RentalProperty(
+            address="123 Main",
+            property_type=1,
+            fair_rental_days=365,
+            personal_use_days=0,
+            rents_received=24000.0,
+        )
+        self.assertEqual(rp.property_type_code, "1")
+
+    def test_property_type_code_handles_all_codes_1_through_8(self):
+        for code in range(1, 9):
+            with self.subTest(code=code):
+                rp = RentalProperty(
+                    address=f"Prop {code}",
+                    property_type=code,
+                    fair_rental_days=365,
+                    personal_use_days=0,
+                    rents_received=0.0,
+                )
+                self.assertEqual(rp.property_type_code, str(code))
+
     def test_scenario_has_rental_properties(self):
         config = TaxReturnConfig(
             year=2025, filing_status="single",

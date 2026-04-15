@@ -93,6 +93,11 @@ class RentalProperty:
     depreciation: float = 0.0
     other_expenses: float = 0.0
 
+    @property
+    def property_type_code(self) -> str:
+        """Schedule E line 1b form code as a string (1..8)."""
+        return str(self.property_type)
+
 
 class FilingStatus(str, Enum):
     SINGLE = "single"
