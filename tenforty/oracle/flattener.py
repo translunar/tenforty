@@ -122,6 +122,20 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
             if value:
                 flat[f"{key_prefix}_{letter}"] = value
 
+    # 8582 Part IV slot A: Sch E Part I net income/loss for first rental
+    # property (v1 scope: single property). Income and loss are separate
+    # positive-amount cells on the form (columns N and R).
+    if scenario.rental_properties:
+        prop = scenario.rental_properties[0]
+        total_expenses = sum(
+            getattr(prop, attr) for attr, _ in _RENTAL_EXPENSE_FIELDS
+        )
+        net = prop.rents_received - total_expenses
+        if net > 0:
+            flat["sche_8582_net_income"] = round(net)
+        elif net < 0:
+            flat["sche_8582_net_loss"] = round(-net)
+
 
 _K1_ROW_LETTERS = "abcd"
 _K1_FIELD_KEYS = (
@@ -154,6 +168,21 @@ def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
                 flat[f"k1_{letter}_{key}"] = value
         # Entity-type checkbox (mutually exclusive):
         flat[f"k1_{letter}_entity_type_{k1.entity_type}"] = "X"
+
+        # 8582 Part IV slots B-E: K-1 passive rental real estate income/loss.
+        # Only passive K-1s (material_participation=False) with net_rental_real_estate
+        # contribute to 8582 Part IV. Income and loss are separate positive-amount
+        # cells (columns N and R); prior-year carryforward goes in column V.
+        if not k1.material_participation and k1.net_rental_real_estate:
+            nre = k1.net_rental_real_estate
+            if nre > 0:
+                flat[f"k1_{letter}_8582_net_income"] = round(nre)
+            else:
+                flat[f"k1_{letter}_8582_net_loss"] = round(-nre)
+        if not k1.material_participation and k1.prior_year_passive_loss_carryforward:
+            flat[f"k1_{letter}_8582_prior_year_loss"] = round(
+                k1.prior_year_passive_loss_carryforward
+            )
 
 
 def _flatten_1099g(scenario: Scenario, flat: dict[str, object]) -> None:

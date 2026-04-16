@@ -56,7 +56,7 @@ def special_allowance(
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     fanout = upstream.get("_k1_fanout", {})
-    magi = float(upstream.get("f1040", {}).get("magi", 0))
+    agi = float(upstream.get("f1040", {}).get("magi", 0))
     sch_e_upstream = upstream.get("sch_e", {})
 
     passive_activities: list[dict] = list(fanout.get("passive_activities", []))
@@ -76,6 +76,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     prior_carryforward_total = sum(
         a["prior_carryforward"] for a in passive_activities
     )
+
+    # Form 8582 MAGI (line 6) is AGI modified to exclude passive income/loss
+    # per the IRS line-6 instructions. The workbook formula is:
+    #   MAGI = Adj_Gross_Inc - PassiveIncomeLoss
+    # where PassiveIncomeLoss = line 3 (the net of all passive activities).
+    # Net passive activity = income - loss - prior_carryforward (negative
+    # when losses dominate). Subtracting a negative adds it back to AGI.
+    net_passive = passive_income_total - passive_loss_total - prior_carryforward_total
+    magi = max(0.0, agi - net_passive)
 
     # Active-participation rental RE qualifies for the §469(i)(5) special
     # allowance.  v1 treats all Sch E Part I rentals as actively participated.

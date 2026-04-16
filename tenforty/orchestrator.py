@@ -12,6 +12,7 @@ from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
+from tenforty.forms import f8582 as form_f8582
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
@@ -309,6 +310,15 @@ class ReturnOrchestrator:
     def _should_emit_8995(self, scenario: Scenario) -> bool:
         """Emit Form 8995 whenever any K-1 carries QBI."""
         return any(k1.qbi_amount for k1 in scenario.schedule_k1s)
+
+    def _should_emit_8582(self, scenario: Scenario) -> bool:
+        """Emit 8582 whenever any passive loss is present or carried forward."""
+        has_passive_k1_loss = any(
+            k1.net_rental_real_estate < 0 or k1.other_net_rental < 0 or
+            k1.ordinary_business_income < 0 or k1.prior_year_passive_loss_carryforward
+            for k1 in scenario.schedule_k1s if not k1.material_participation
+        )
+        return has_passive_k1_loss or form_sch_e.has_any_net_loss(scenario)
 
     def _should_emit_8959(self, scenario: Scenario, results: dict) -> bool:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).
