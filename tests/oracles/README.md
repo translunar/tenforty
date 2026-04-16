@@ -183,14 +183,17 @@ not influenced by the production design pass.
    branches (not claimable, zero earned, earned below tie point, earned
    above cap).
 
-4. **Renter's-credit AGI basis.** FTB's renter's-credit instruction says the
-   cliff applies at "CA AGI" (Form 540 line 17). The oracle currently uses
-   federal AGI as a conservative stand-in because line 17 is computed in the
-   same pipeline and adding it as a separate input creates a circular
-   dependency. In cases where col B/C adjustments materially change CA AGI
-   vs federal AGI, the renter's credit result may be wrong by ±$60–$120.
-   Flag to CPA whether this is acceptable for the harness scenarios or
-   whether the oracle should accept post-computation CA AGI as an override.
+4. ~~**Renter's-credit AGI basis.**~~ **RESOLVED 2026-04-16** —
+   ca-research verified against the FTB Form 540 Booklet Nonrefundable
+   Renter's Credit Qualification Record (Question 2, verbatim): cliff
+   applies at "California adjusted gross income the amount on line 17".
+   The oracle now uses Form 540 line 17 for the gate, pulled from the
+   income dict already computed upstream in `compute_ca_540`. No new
+   input field needed — line 17 is lexically available before the
+   credits step. Added a new unit test exercising a $60k federal AGI /
+   $50k CA AGI case (single, $10k Social Security Sch CA subtraction)
+   that correctly gets the $60 credit; previously would have been
+   denied.
 
 5. **Line 74 semantics.** Historical Form 540 line 74 was "Excess SDI";
    TY2024+ the line is "Refundable Program 4.0 Motion Picture Credit" (SDI

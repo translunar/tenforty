@@ -990,6 +990,7 @@ def _exemption_credits_after_phaseout(ca: CA540Input) -> float:
 # ---------------------------------------------------------------------------
 def _form_540_credits(
     ca: CA540Input,
+    income: dict[str, float],
     tax: dict[str, float],
 ) -> dict[str, float]:
     """Compute Form 540 lines 40, 43–46, 47, 48.
@@ -997,7 +998,8 @@ def _form_540_credits(
     Modeled credits:
       - Line 40 Nonrefundable Child & Dependent Care Expenses (caller supplies
         the FTB 3506 amount; oracle enforces the federal-AGI ≤ $100,000 gate).
-      - Line 46 Nonrefundable Renter's Credit (oracle applies the AGI cliff).
+      - Line 46 Nonrefundable Renter's Credit (oracle applies the CA-AGI
+        cliff against Form 540 line 17).
       - Lines 43–45 Other special credits (caller precomputes; oracle only
         sums them).
 
@@ -1014,19 +1016,16 @@ def _form_540_credits(
     # Lines 43–45: other special credits (pre-computed).
     line_other_credits = c.other_nonrefundable_credits
 
-    # Line 46: renter's credit — hard AGI cliff, no phaseout.
+    # Line 46: renter's credit — hard CA-AGI cliff, no phaseout.
+    # SOURCE: FTB Form 540 Booklet, Nonrefundable Renter's Credit
+    # Qualification Record, Question 2 — "Is your California adjusted gross
+    # income the amount on line 17 [≤ cliff]?" CA AGI (line 17) is already
+    # computed above and available in ``income``; using it avoids the
+    # false-deny that federal AGI would produce when large Sch CA col B
+    # subtractions (Social Security, unemployment, CA lottery, railroad
+    # retirement) push CA AGI materially below federal AGI near the cliff.
     fs = ca.demographics.filing_status
-    ca_agi = (
-        ca.federal.federal_agi
-        # AGI used for renter's credit is CA AGI per FTB instruction (line 17);
-        # the caller provides federal_agi and the oracle computes CA AGI
-        # separately, so we accept a reasonable approximation here: recompute
-        # by adding col C adjustments and subtracting col B adjustments.
-        # For v1 simplicity, use CA AGI only if it was computed upstream and
-        # passed in via the payments structure — but it's not in the input
-        # dataclass, so use federal_agi as a conservative stand-in.
-        # NOTE: README ambiguity #4 flags this.
-    )
+    ca_agi = income["f540_line_17_ca_agi"]
     if c.eligible_for_renters_credit:
         if fs in ("single", "mfs"):
             limit = RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025
@@ -1237,7 +1236,7 @@ def compute_ca_540(ca: CA540Input) -> dict[str, float | bool]:
     sch_ca_p2 = _schedule_ca_part_ii(ca)
     income = _form_540_income_and_taxable(ca, sch_ca_p1, sch_ca_p2)
     tax = _form_540_tax(ca, income)
-    credits = _form_540_credits(ca, tax)
+    credits = _form_540_credits(ca, income, tax)
     other_taxes = _form_540_other_taxes(ca, income, credits)
     payments = _form_540_payments(ca)
     balance = _form_540_balance(ca, other_taxes, payments)

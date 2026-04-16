@@ -671,6 +671,34 @@ class RentersCreditTests(unittest.TestCase):
             out["f540_line_46_renters_credit"], RENTERS_CREDIT_HOUSEHOLD_2025
         )
 
+    def test_gate_uses_ca_agi_not_federal_agi(self):
+        # Federal AGI $60,000 is above the single cliff ($52,421) but
+        # Social Security subtraction of $10,000 on Sch CA Part I line 6
+        # col B pulls CA AGI down to $50,000 — eligibility should hold.
+        ca = _make_input(
+            filing_status="single",
+            federal_agi=60_000.0,
+        )
+        new_p1 = dataclasses.replace(
+            ca.sch_ca_part_i,
+            line_6_col_b_social_security_subtraction=10_000.0,
+        )
+        new_credits = dataclasses.replace(
+            ca.credits, eligible_for_renters_credit=True
+        )
+        ca = dataclasses.replace(
+            ca, sch_ca_part_i=new_p1, credits=new_credits
+        )
+        out = compute_ca_540(ca)
+        # Confirm CA AGI actually fell below the cliff.
+        self.assertLess(
+            out["f540_line_17_ca_agi"],
+            RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025,
+        )
+        self.assertAlmostEqual(
+            out["f540_line_46_renters_credit"], RENTERS_CREDIT_SINGLE_MFS_2025
+        )
+
 
 # ---------------------------------------------------------------------------
 # Dependent-care credit AGI gate
