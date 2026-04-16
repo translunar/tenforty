@@ -4,9 +4,11 @@ import yaml
 
 from tenforty.models import (
     DepreciableAsset,
+    FilingStatus,
     Form1098,
     Form1099B,
     Form1099DIV,
+    Form1099G,
     Form1099INT,
     RentalProperty,
     Scenario,
@@ -20,6 +22,7 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1099_int": (Form1099INT, "form1099_int"),
     "form1099_div": (Form1099DIV, "form1099_div"),
     "form1099_b": (Form1099B, "form1099_b"),
+    "form1099_g": (Form1099G, "form1099_g"),
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
     "rental_properties": (RentalProperty, "rental_properties"),
@@ -84,6 +87,122 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             "those lots until 8949 support lands."
         )
 
+    # --- Plan D unconditional scope-out attestations (9) + prior_year_itemized ---
+    if cfg.acknowledges_qbi_below_threshold is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_qbi_below_threshold` is "
+            "required and must be either true or false. Form 8995-A (full "
+            "QBI) is not implemented in tenforty v1; if a K-1 carries QBI "
+            "and taxable income exceeds the Rev. Proc. 2024-40 threshold "
+            "(~$197,300 single / $394,600 MFJ), compute will raise "
+            "NotImplementedError."
+        )
+    if cfg.acknowledges_unlimited_at_risk is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_unlimited_at_risk` is "
+            "required and must be either true or false. Form 6198 (at-risk "
+            "limitations) is not implemented in tenforty v1; compute will "
+            "raise NotImplementedError at Sch E Part II time if any K-1 is "
+            "present and this attestation is False."
+        )
+    if cfg.basis_tracked_externally is None:
+        raise ValueError(
+            "Scenario config field `basis_tracked_externally` is required "
+            "and must be either true or false. Shareholder/partner basis "
+            "worksheets (Form 7203 for S-corps, partner basis worksheet "
+            "for partnerships) are not implemented in tenforty v1; compute "
+            "will raise NotImplementedError at Sch E Part II time if any "
+            "K-1 is present and this attestation is False."
+        )
+    if cfg.acknowledges_no_partnership_se_earnings is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_partnership_se_earnings` "
+            "is required and must be either true or false. Schedule SE is "
+            "not implemented in tenforty v1; compute will raise "
+            "NotImplementedError if a partnership K-1 carries nonzero "
+            "partnership_self_employment_earnings and this attestation is "
+            "False."
+        )
+    if cfg.acknowledges_no_section_1231_gain is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_section_1231_gain` is "
+            "required and must be either true or false. Form 4797 (sales "
+            "of business property) is not implemented in tenforty v1; "
+            "compute will raise NotImplementedError if any K-1 carries "
+            "nonzero section_1231_gain and this attestation is False."
+        )
+    if cfg.acknowledges_no_more_than_four_k1s is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_more_than_four_k1s` is "
+            "required and must be either true or false. Schedule E Part II "
+            "continuation sheets (for more than 4 K-1s) are not "
+            "implemented in tenforty v1; compute will raise "
+            "NotImplementedError if more than 4 K-1s are present and this "
+            "attestation is False."
+        )
+    if cfg.acknowledges_no_k1_credits is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_k1_credits` is "
+            "required and must be either true or false. K-1 box 13 "
+            "(partnership) and box 15 (S-corp) credits are not "
+            "implemented in tenforty v1; compute will raise "
+            "NotImplementedError if this attestation is False and any K-1 "
+            "is present."
+        )
+    if cfg.acknowledges_no_section_179 is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_section_179` is "
+            "required and must be either true or false. The Section 179 "
+            "deduction (Form 4562 Part I) flowing through from K-1s is "
+            "not implemented in tenforty v1; compute will raise "
+            "NotImplementedError if any K-1 carries nonzero "
+            "section_179_deduction and this attestation is False."
+        )
+    if cfg.acknowledges_no_estate_trust_k1 is None:
+        raise ValueError(
+            "Scenario config field `acknowledges_no_estate_trust_k1` is "
+            "required and must be either true or false. Schedule E Part "
+            "III (estate and trust K-1 income) is not implemented in "
+            "tenforty v1; compute will raise NotImplementedError if any "
+            "K-1 has entity_type == 'estate_trust'. Declare this "
+            "attestation even when no estate/trust K-1 is present."
+        )
+    if cfg.prior_year_itemized is None:
+        raise ValueError(
+            "Scenario config field `prior_year_itemized` is required and "
+            "must be either true or false. It drives the 1099-G state-tax-"
+            "refund tax-benefit-rule on Schedule 1 line 1: if the prior "
+            "year used the standard deduction, the refund is not taxable; "
+            "if itemized, it is taxable up to the recovery limit."
+        )
+
+    # --- Plan D conditional fields (validated only when sibling says yes) ---
+    if cfg.filing_status == FilingStatus.MARRIED_SEPARATELY:
+        if cfg.mfs_lived_with_spouse_any_time is None:
+            raise ValueError(
+                "Scenario config field `mfs_lived_with_spouse_any_time` is "
+                "required when `filing_status` is `mfs`. Per IRC §469(i)(5), "
+                "MFS filers who lived with a spouse at any time during the "
+                "year have a $0 Form 8582 special allowance for rental real "
+                "estate; MFS filers who lived apart the entire year have "
+                "$12,500."
+            )
+
+    if cfg.prior_year_itemized:
+        if cfg.prior_year_itemized_deduction_amount is None:
+            raise ValueError(
+                "Scenario config field `prior_year_itemized_deduction_amount` "
+                "is required when `prior_year_itemized` is true. It is used "
+                "by the state-refund tax-benefit-rule (Sch 1 line 1) to cap "
+                "the taxable refund at the prior-year recovery amount."
+            )
+        if cfg.prior_year_standard_deduction_amount is None:
+            raise ValueError(
+                "Scenario config field `prior_year_standard_deduction_amount` "
+                "is required when `prior_year_itemized` is true. It is used "
+                "to compute the recovery limit."
+            )
+
 
 def load_scenario(path: Path) -> Scenario:
     """Load a tax scenario from a YAML file."""
@@ -101,4 +220,23 @@ def load_scenario(path: Path) -> Scenario:
         items = data.get(yaml_key, [])
         form_data[field_name] = [model_cls(**item) for item in items]
 
-    return Scenario(config=config, **form_data)
+    scenario = Scenario(config=config, **form_data)
+    _validate_schedule_k1s(scenario)
+    return scenario
+
+
+def _validate_schedule_k1s(scenario: Scenario) -> None:
+    """Enforce the per-entity box-number caller contract on ScheduleK1.
+
+    1041 K-1 box 1 is interest income (routed to Sch B), not ordinary
+    business income (Sch E Part II). Reject a mis-populated dataclass
+    immediately rather than letting it silently land in the wrong column.
+    """
+    for k1 in scenario.schedule_k1s:
+        if k1.entity_type == "estate_trust" and k1.ordinary_business_income != 0:
+            raise ValueError(
+                f"K-1 {k1.entity_name!r} has entity_type='estate_trust' but "
+                f"nonzero ordinary_business_income={k1.ordinary_business_income}. "
+                "Form 1041 K-1 box 1 is interest income — load it into "
+                "`interest_income` instead. See ScheduleK1 docstring."
+            )
