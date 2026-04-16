@@ -122,6 +122,44 @@ class Section1400Z2OpportunityZoneTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 500.0)
 
 
+class BasisDifferenceTests(unittest.TestCase):
+    """CA and federal basis can diverge for several reasons:
+    CA doesn't conform to federal bonus depreciation (§168(k)); CA §179
+    limit is $25k vs. federal's much higher amount; ACRS/MACRS history
+    differences; ISO AMT basis tracking. When the CA basis exceeds the
+    federal basis, the CA-recognized gain is SMALLER than the
+    federal-recognized gain. Delta flows to line 12a (subtraction on
+    Sch CA col B).
+
+    SOURCE: FTB 2025 Sch D (540) instructions, nonconformity list item
+    4 — basis differences catch-all."""
+
+    def test_higher_ca_basis_produces_line_12a_subtraction(self):
+        # Asset cost $1,000. Federal took $100 bonus depreciation (§168(k)
+        # not conformed by CA). Federal basis = $900; CA basis = $1,000.
+        # Sold for $1,200. Federal gain = $300; CA gain = $200. Fed >
+        # CA by $100 → line 12a subtraction.
+        t = Transaction(
+            description="Depreciated asset with basis delta",
+            ca_gain_or_loss=200.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=300.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], 200.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 300.0)
+        # line 10 (300) > line 11 (200) → col B subtraction.
+        self.assertEqual(out["schd_540_line_12a_subtraction_col_b"], 100.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 0.0)
+        # Signed integration delta: fed > CA → negative.
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], -100.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
