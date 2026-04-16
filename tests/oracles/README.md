@@ -136,20 +136,20 @@ Raise any of these to the CPA **abstractly** (without quoting FTB language
 or proposing a numeric answer) so that the oracle's independent reading is
 not influenced by the production design pass.
 
-1. ~~**Constants tagged `VERIFY`.**~~ **RESOLVED 2026-04-15** —
+1. ~~**Constants tagged `VERIFY`.**~~ **RESOLVED 2026-04-16** —
    standard deduction ($5,706 / $11,412), exemption-credit amounts ($153
-   personal/senior/blind with MFJ/QSS preprint of $307 reflecting FTB's
-   $1 indexing rounding idiosyncrasy, $475 dependent), AGI phaseout
-   thresholds ($252,203 / $378,310 / $504,411), and renter's-credit cliffs
-   ($52,421 / $104,842) cross-referenced to three independent commercial
-   sources each (Plante Moran state advisory, TurboTax, NerdWallet,
-   TaxFormFinder). **Tax rate schedule bracket boundaries** (Schedules
-   X / Y / Z) additionally verified row-by-row against the first-party
-   FTB 2025 Tax Table PDF — four spot checks across the Single column at
-   different brackets all reproduced the printed whole-dollar tax to the
-   nearest dollar. `VERIFY` tags removed. Dependent standard-deduction
-   floor ($1,350) and earned-income bump ($450) still tagged `VERIFY`;
-   covered under item 3.
+   per person for personal / senior / blind — Form 540 line 7 face preprint
+   reads "[count] × $153" so MFJ/QSS with count 2 is exactly 2 × $153 =
+   $306, no rounding quirk; $475 per dependent), AGI phaseout thresholds
+   ($252,203 / $378,310 / $504,411), and renter's-credit cliffs
+   ($52,421 / $104,842) cross-referenced against Spidell 2025 Pocket
+   Reference (CA-specific authoritative commercial source) plus three
+   independent commercial sources each (Plante Moran state advisory,
+   TurboTax, NerdWallet, TaxFormFinder). **Tax rate schedule bracket
+   boundaries** (Schedules X / Y / Z) additionally verified row-by-row
+   against the first-party FTB 2025 Tax Table PDF — four spot checks
+   across the Single column at different brackets all reproduced the
+   printed whole-dollar tax to the nearest dollar. `VERIFY` tags removed.
 
 2. ~~**Tax table vs rate schedule discrepancy.**~~ **RESOLVED 2026-04-15** —
    switching rule is a hard cutoff at Form 540 line 19 **≤ $100,000 uses

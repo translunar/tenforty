@@ -70,11 +70,12 @@ DEPENDENT_STANDARD_DEDUCTION_MIN_2025 = 1_350.0
 DEPENDENT_STANDARD_DEDUCTION_EARNED_BUMP_2025 = 450.0  # federal-tied; unindexed
 
 # SOURCE: FTB 2025 Form 540 instructions, line 7/8/9/10 ("Exemption credits").
-# $153 personal/blind/senior, $475 per dependent. MFJ/QSS line 7 preprint is
-# $307 rather than 2 × $153 = $306; the $1 increment is idiosyncratic to the
-# FTB indexing rounding and must be matched to agree with the form.
+# Per-person credits: $153 personal/blind/senior, $475 per dependent. MFJ/QSS
+# line 7 is exactly 2 × $153 = $306 — the Form 540 face preprint reads
+# "[count] × $153" and the filer multiplies the per-person amount by the
+# count themselves; there is no filing-status-specific dollar preprint and
+# no rounding quirk.
 EXEMPTION_CREDIT_PERSONAL_2025 = 153.0
-EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025 = 307.0
 EXEMPTION_CREDIT_BLIND_2025 = 153.0
 EXEMPTION_CREDIT_SENIOR_2025 = 153.0
 EXEMPTION_CREDIT_DEPENDENT_2025 = 475.0
@@ -933,17 +934,8 @@ def _exemption_credits_pre_phaseout(ca: CA540Input) -> tuple[float, float]:
     Limitation Worksheet.
     """
     personal, senior, blind, dep = _count_exemptions(ca)
-    fs = ca.demographics.filing_status
-    # FTB preprints $307 on line 7 for MFJ/QSS with both spouses taking a
-    # personal exemption (2 × $153 plus $1 idiosyncratic indexing rounding).
-    # Single-personal MFJ (one spouse claimable) and all non-MFJ/QSS statuses
-    # use the flat per-person $153.
-    if fs in ("mfj", "qss") and personal == 2:
-        personal_dollars = EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025
-    else:
-        personal_dollars = personal * EXEMPTION_CREDIT_PERSONAL_2025
     credits_789 = (
-        personal_dollars
+        personal * EXEMPTION_CREDIT_PERSONAL_2025
         + senior * EXEMPTION_CREDIT_SENIOR_2025
         + blind * EXEMPTION_CREDIT_BLIND_2025
     )
@@ -1279,7 +1271,6 @@ __all__ = [
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
     "EXEMPTION_CREDIT_PERSONAL_2025",
-    "EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025",
     "EXEMPTION_CREDIT_BLIND_2025",
     "EXEMPTION_CREDIT_SENIOR_2025",
     "EXEMPTION_CREDIT_DEPENDENT_2025",
