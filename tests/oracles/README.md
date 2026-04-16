@@ -201,13 +201,28 @@ not influenced by the production design pass.
    EDD). Legacy references to line 74 as excess SDI will produce wrong
    results.
 
-6. **MFJ edge cases in the exemption-count worksheet.** The FTB worksheet
-   for line 7 has specific logic when (a) MFJ and line 6 "can be claimed as
-   dependent" is checked, (b) how senior/blind credits interact with being
-   claimable. The oracle implements the documented simplified reading
-   (claimable-as-dependent zeroes all three of personal/senior/blind); rare
-   MFJ-with-both-claimable edge cases may diverge. Raise to CPA if a
-   scenario hits this.
+6. ~~**MFJ edge cases in the exemption-count worksheet.**~~
+   **RESOLVED 2026-04-16** — ca-research extracted the FTB line 7
+   worksheet verbatim: "Yes" on line 6 (primary claimable) means enter 0
+   for single/MFS/HOH, 0 for MFJ if both spouses claimable, **1 for MFJ
+   if only one spouse claimable**. Lines 8 (blind) and 9 (senior) each
+   carry the warning "Do not claim this credit if someone else can claim
+   you as a dependent" — applied per-spouse so a non-claimable MFJ
+   spouse retains their own senior/blind credit. Line 10 (dependent)
+   drops when the entire filing unit is claimable.
+
+   Oracle updates:
+   - `Demographics` extended with `spouse_can_be_claimed_as_dependent:
+     bool` (only meaningful for MFJ; producers should pass False for
+     non-MFJ statuses).
+   - `_count_exemptions` rewritten to apply the four cases cleanly:
+     MFJ both-claimable / one-claimable / neither-claimable, plus the
+     non-MFJ primary-claimable path.
+   - Senior / blind counted per-spouse with per-spouse claimable gating.
+   - Dependent count dropped only when the entire unit is claimable.
+   - Seven new unit tests cover the MFJ permutations (only-primary,
+     only-spouse, both, non-claimable-spouse-retains-senior,
+     both-claimable-drops-deps, one-claimable-keeps-deps).
 
 7. **§461(l) excess business loss scope.** CA doesn't conform to federal
    CARES/ARPA/IRA extensions to §461(l); the limitation is TY2025 ≈$313k

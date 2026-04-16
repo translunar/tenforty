@@ -184,6 +184,7 @@ def _make_input(
     federal_agi: float = 0.0,
     state_wages: float = 0.0,
     can_be_claimed: bool = False,
+    spouse_can_be_claimed: bool = False,
     taxpayer_65: bool = False,
     spouse_65: bool = False,
     taxpayer_blind: bool = False,
@@ -195,6 +196,7 @@ def _make_input(
         demographics=Demographics(
             filing_status=filing_status,
             can_be_claimed_as_dependent=can_be_claimed,
+            spouse_can_be_claimed_as_dependent=spouse_can_be_claimed,
             taxpayer_age_65_or_older=taxpayer_65,
             spouse_age_65_or_older=spouse_65,
             taxpayer_blind=taxpayer_blind,
@@ -319,6 +321,68 @@ class ExemptionCountTests(unittest.TestCase):
     def test_dependent_count_passes_through(self):
         ca = _make_input(filing_status="mfj", dependent_count=3)
         self.assertEqual(_count_exemptions(ca), (2, 0, 0, 3))
+
+    def test_mfj_only_primary_claimable_gives_one_personal(self):
+        # FTB line 7 worksheet: MFJ with only one spouse claimable → enter 1.
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=True,
+            spouse_can_be_claimed=False,
+        )
+        self.assertEqual(_count_exemptions(ca), (1, 0, 0, 0))
+
+    def test_mfj_only_spouse_claimable_gives_one_personal(self):
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=False,
+            spouse_can_be_claimed=True,
+        )
+        self.assertEqual(_count_exemptions(ca), (1, 0, 0, 0))
+
+    def test_mfj_both_claimable_gives_zero_personal(self):
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=True,
+            spouse_can_be_claimed=True,
+        )
+        self.assertEqual(_count_exemptions(ca), (0, 0, 0, 0))
+
+    def test_mfj_non_claimable_spouse_retains_senior_credit(self):
+        # Primary is claimable, spouse is 65+ and not claimable — spouse's
+        # senior credit should still count.
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=True,
+            spouse_can_be_claimed=False,
+            spouse_65=True,
+        )
+        personal, senior, blind, _ = _count_exemptions(ca)
+        self.assertEqual(personal, 1)
+        self.assertEqual(senior, 1)
+        self.assertEqual(blind, 0)
+
+    def test_mfj_both_claimable_drops_dependents(self):
+        # Both spouses claimable → filing unit is a dependent unit; line 10
+        # warning zeros the dependent credit.
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=True,
+            spouse_can_be_claimed=True,
+            dependent_count=2,
+        )
+        self.assertEqual(_count_exemptions(ca), (0, 0, 0, 0))
+
+    def test_mfj_one_claimable_keeps_dependents(self):
+        # At least one non-claimable spouse → dependents still claimable.
+        ca = _make_input(
+            filing_status="mfj",
+            can_be_claimed=True,
+            spouse_can_be_claimed=False,
+            dependent_count=2,
+        )
+        personal, _, _, dep = _count_exemptions(ca)
+        self.assertEqual(personal, 1)
+        self.assertEqual(dep, 2)
 
 
 class DependentStandardDeductionTests(unittest.TestCase):

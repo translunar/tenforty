@@ -194,9 +194,19 @@ CA_MORTGAGE_ACQUISITION_DEBT_CAP_MFS = 500_000.0
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Demographics:
-    """Filing status and personal-exemption inputs."""
+    """Filing status and personal-exemption inputs.
+
+    ``can_be_claimed_as_dependent`` is the primary taxpayer's checkbox on
+    Form 540 line 6. ``spouse_can_be_claimed_as_dependent`` is the
+    analogous flag for the spouse/RDP on a joint return (FTB worksheet
+    line 7, "Married/RDP filing jointly and only one spouse/RDP can be
+    claimed as a dependent" sub-case). For non-MFJ filing statuses
+    (single / MFS / HOH / QSS) the spouse flag is not meaningful and
+    producers should pass False; the oracle ignores it in those cases.
+    """
     filing_status: FilingStatus
     can_be_claimed_as_dependent: bool
+    spouse_can_be_claimed_as_dependent: bool
     taxpayer_age_65_or_older: bool
     spouse_age_65_or_older: bool
     taxpayer_blind: bool
@@ -894,33 +904,45 @@ def _form_540_tax(
 def _count_exemptions(ca: CA540Input) -> tuple[int, int, int, int]:
     """Return (personal_count, senior_count, blind_count, dep_count).
 
-    SOURCE: FTB 2025 Form 540 instructions, lines 6–10.
+    SOURCE: FTB 2025 Form 540 instructions, line 7 worksheet:
+      "No" on line 6 → follow Form 540 line 7 instructions.
+      "Yes" on line 6 (primary claimable) → enter:
+        0 for single / MFS / HOH / QSS;
+        0 for MFJ if both spouses claimable;
+        1 for MFJ if only one spouse claimable.
+    Lines 8 (blind) and 9 (senior) each carry the warning "Do not claim
+    this credit if someone else can claim you as a dependent" — applied
+    per-spouse on MFJ so a non-claimable spouse retains their own
+    senior/blind credit.
+    Line 10 (dependent) carries the same warning — dropped when the
+    entire filing unit is claimable.
     """
     d = ca.demographics
     fs = d.filing_status
+    prim = d.can_be_claimed_as_dependent
+    spouse = d.spouse_can_be_claimed_as_dependent
 
-    # Personal count.
-    if fs in ("mfj", "qss"):
-        if d.can_be_claimed_as_dependent and d.dependent_count == 0:
-            # Edge: MFJ where both spouses can be claimed — count 0 personal.
-            # The FTB worksheet treats MFJ with line 6 checked + both spouses
-            # dependents differently from MFJ with one. v1 simplification:
-            # personal count is 2 unless line 6 is checked AND dep_count == 0.
-            personal = 0
-        else:
-            personal = 2
+    if fs == "mfj":
+        personal = 2 - int(prim) - int(spouse)
+    elif fs == "qss":
+        personal = 0 if prim else 2
     else:
-        personal = 0 if d.can_be_claimed_as_dependent else 1
+        personal = 0 if prim else 1
 
-    senior = int(d.taxpayer_age_65_or_older) + int(d.spouse_age_65_or_older)
-    blind = int(d.taxpayer_blind) + int(d.spouse_blind)
-    # If the filer can be claimed as a dependent, senior/blind credits are
-    # zeroed per FTB instructions.
-    if d.can_be_claimed_as_dependent:
-        senior = 0
-        blind = 0
+    senior = 0
+    if d.taxpayer_age_65_or_older and not prim:
+        senior += 1
+    if fs == "mfj" and d.spouse_age_65_or_older and not spouse:
+        senior += 1
 
-    dep = max(d.dependent_count, 0)
+    blind = 0
+    if d.taxpayer_blind and not prim:
+        blind += 1
+    if fs == "mfj" and d.spouse_blind and not spouse:
+        blind += 1
+
+    unit_is_dependent = prim and (fs != "mfj" or spouse)
+    dep = 0 if unit_is_dependent else max(d.dependent_count, 0)
     return personal, senior, blind, dep
 
 
