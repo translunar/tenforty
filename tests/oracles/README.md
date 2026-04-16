@@ -129,13 +129,17 @@ Raise any of these to the CPA **abstractly** (without quoting FTB language
 or proposing a numeric answer) so that the oracle's independent reading is
 not influenced by the production design pass.
 
-1. **Constants tagged `VERIFY`.** Standard deduction, exemption-credit
-   amounts, renter's-credit cliff, AGI phaseout thresholds, and tax rate
-   schedule bracket boundaries were extracted from a mirror of the FTB
-   booklet PDF after direct FTB.ca.gov access returned HTTP 403 to the
-   research agent. The values are consistent with 3% indexing from published
-   TY2024 figures, but direct-from-FTB confirmation of each specific number
-   is still required before a production path uses these constants.
+1. ~~**Constants tagged `VERIFY`.**~~ **RESOLVED 2026-04-15** —
+   standard deduction ($5,706 / $11,412), exemption-credit amounts ($153
+   personal/senior/blind with MFJ/QSS preprint of $307 reflecting FTB's
+   $1 indexing rounding idiosyncrasy, $475 dependent), AGI phaseout
+   thresholds ($252,203 / $378,310 / $504,411), tax rate schedule bracket
+   boundaries (Schedules X / Y / Z), and renter's-credit cliffs
+   ($52,421 / $104,842) cross-referenced to ≥2 non-FTB sources each
+   (Plante Moran state advisory, TurboTax, NerdWallet, TaxFormFinder) plus
+   the August 2025 FTB indexing release. `VERIFY` tags removed. Dependent
+   standard-deduction floor ($1,350) and earned-income bump ($450) still
+   tagged `VERIFY`; covered under item 3.
 
 2. **Tax table vs rate schedule discrepancy.** FTB requires use of the tax
    table (p. 69–74 of the booklet) for line 19 ≤ $100,000 and the rate

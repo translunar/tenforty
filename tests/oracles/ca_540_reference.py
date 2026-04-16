@@ -59,7 +59,7 @@ FilingStatus = Literal["single", "mfj", "mfs", "hoh", "qss"]
 # SOURCE: FTB 2025 Form 540 instructions, "Standard Deduction" worksheet.
 # Dependent-floor $1,350 per FTB 540 Booklet instruction (inherits federal
 # "earned income + $450" base with CA's own $1,350 minimum).
-STANDARD_DEDUCTION_2025: dict[str, float] = {  # VERIFY
+STANDARD_DEDUCTION_2025: dict[str, float] = {
     "single": 5_706.0,
     "mfs":    5_706.0,
     "mfj":    11_412.0,
@@ -70,16 +70,19 @@ DEPENDENT_STANDARD_DEDUCTION_MIN_2025 = 1_350.0  # VERIFY
 DEPENDENT_STANDARD_DEDUCTION_EARNED_BUMP_2025 = 450.0  # VERIFY (federal-tied)
 
 # SOURCE: FTB 2025 Form 540 instructions, line 7/8/9/10 ("Exemption credits").
-# $153 personal/blind/senior, $475 per dependent.
-EXEMPTION_CREDIT_PERSONAL_2025 = 153.0  # VERIFY
-EXEMPTION_CREDIT_BLIND_2025 = 153.0  # VERIFY
-EXEMPTION_CREDIT_SENIOR_2025 = 153.0  # VERIFY
-EXEMPTION_CREDIT_DEPENDENT_2025 = 475.0  # VERIFY
+# $153 personal/blind/senior, $475 per dependent. MFJ/QSS line 7 preprint is
+# $307 rather than 2 × $153 = $306; the $1 increment is idiosyncratic to the
+# FTB indexing rounding and must be matched to agree with the form.
+EXEMPTION_CREDIT_PERSONAL_2025 = 153.0
+EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025 = 307.0
+EXEMPTION_CREDIT_BLIND_2025 = 153.0
+EXEMPTION_CREDIT_SENIOR_2025 = 153.0
+EXEMPTION_CREDIT_DEPENDENT_2025 = 475.0
 
 # SOURCE: FTB 2025 Form 540 instructions, "AGI Limitation Worksheet" (line 32
 # exemption credit phaseout) and Schedule CA (540) Part II "Itemized
 # Deductions Worksheet" (line 29 phaseout). Same thresholds apply to both.
-AGI_PHASEOUT_THRESHOLD_2025: dict[str, float] = {  # VERIFY
+AGI_PHASEOUT_THRESHOLD_2025: dict[str, float] = {
     "single": 252_203.0,
     "mfs":    252_203.0,
     "hoh":    378_310.0,
@@ -107,7 +110,7 @@ TAX_TABLE_CUTOFF_2025 = 100_000.0
 # line 19 is less than the next bracket's threshold.
 _RateBracket = tuple[float, float, float]
 
-TAX_RATE_SCHEDULE_X_2025: list[_RateBracket] = [  # VERIFY (Single / MFS)
+TAX_RATE_SCHEDULE_X_2025: list[_RateBracket] = [  # Single / MFS
     (0.0,         0.00,       0.01),
     (11_079.0,    110.79,     0.02),
     (26_264.0,    414.49,     0.04),
@@ -118,7 +121,7 @@ TAX_RATE_SCHEDULE_X_2025: list[_RateBracket] = [  # VERIFY (Single / MFS)
     (445_771.0,   38_638.27,  0.113),
     (742_953.0,   72_219.84,  0.123),
 ]
-TAX_RATE_SCHEDULE_Y_2025: list[_RateBracket] = [  # VERIFY (MFJ / QSS)
+TAX_RATE_SCHEDULE_Y_2025: list[_RateBracket] = [  # MFJ / QSS
     (0.0,           0.00,         0.01),
     (22_158.0,      221.58,       0.02),
     (52_528.0,      828.98,       0.04),
@@ -129,7 +132,7 @@ TAX_RATE_SCHEDULE_Y_2025: list[_RateBracket] = [  # VERIFY (MFJ / QSS)
     (891_542.0,     77_276.52,    0.113),
     (1_485_906.0,   144_439.65,   0.123),
 ]
-TAX_RATE_SCHEDULE_Z_2025: list[_RateBracket] = [  # VERIFY (HOH)
+TAX_RATE_SCHEDULE_Z_2025: list[_RateBracket] = [  # HOH
     (0.0,           0.00,        0.01),
     (22_173.0,      221.73,      0.02),
     (52_530.0,      828.87,      0.04),
@@ -150,10 +153,10 @@ BHST_RATE_2025 = 0.01
 
 # SOURCE: FTB 2025 Form 540 instructions, line 46 (Nonrefundable Renter's
 # Credit). Hard AGI cliff, no phaseout.
-RENTERS_CREDIT_SINGLE_MFS_2025 = 60.0  # VERIFY
-RENTERS_CREDIT_HOUSEHOLD_2025 = 120.0  # VERIFY
-RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025 = 53_994.0  # VERIFY
-RENTERS_CREDIT_AGI_LIMIT_HOUSEHOLD_2025 = 107_988.0  # VERIFY
+RENTERS_CREDIT_SINGLE_MFS_2025 = 60.0
+RENTERS_CREDIT_HOUSEHOLD_2025 = 120.0
+RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025 = 52_421.0
+RENTERS_CREDIT_AGI_LIMIT_HOUSEHOLD_2025 = 104_842.0
 
 # SOURCE: FTB 2025 Schedule CA (540) instructions, Part II line 5e.
 # California does NOT apply the federal SALT cap. The federal cap for TY2025
@@ -915,8 +918,17 @@ def _exemption_credits_pre_phaseout(ca: CA540Input) -> tuple[float, float]:
     Limitation Worksheet.
     """
     personal, senior, blind, dep = _count_exemptions(ca)
+    fs = ca.demographics.filing_status
+    # FTB preprints $307 on line 7 for MFJ/QSS with both spouses taking a
+    # personal exemption (2 × $153 plus $1 idiosyncratic indexing rounding).
+    # Single-personal MFJ (one spouse claimable) and all non-MFJ/QSS statuses
+    # use the flat per-person $153.
+    if fs in ("mfj", "qss") and personal == 2:
+        personal_dollars = EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025
+    else:
+        personal_dollars = personal * EXEMPTION_CREDIT_PERSONAL_2025
     credits_789 = (
-        personal * EXEMPTION_CREDIT_PERSONAL_2025
+        personal_dollars
         + senior * EXEMPTION_CREDIT_SENIOR_2025
         + blind * EXEMPTION_CREDIT_BLIND_2025
     )
@@ -1252,6 +1264,7 @@ __all__ = [
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
     "EXEMPTION_CREDIT_PERSONAL_2025",
+    "EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025",
     "EXEMPTION_CREDIT_BLIND_2025",
     "EXEMPTION_CREDIT_SENIOR_2025",
     "EXEMPTION_CREDIT_DEPENDENT_2025",

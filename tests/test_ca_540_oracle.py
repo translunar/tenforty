@@ -31,6 +31,7 @@ from tests.oracles.ca_540_reference import (
     Demographics,
     EXEMPTION_CREDIT_DEPENDENT_2025,
     EXEMPTION_CREDIT_PERSONAL_2025,
+    EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025,
     FederalCarryIn,
     Form540Credits,
     Form540Misc,
@@ -367,14 +368,16 @@ class ExemptionCreditPhaseoutTests(unittest.TestCase):
         # MFJ + 2 dependents, AGI $2,500 over the MFJ threshold.
         # count_789 = 2 (personal), count_10 = 2 (deps).
         # Reduction per count per block = $6. Blocks = 1.
-        # Line 7-9 credits (pre): 2 × $153 = $306 → after: $306 − $12 = $294.
+        # Line 7 preprint for MFJ is $307 (not 2 × $153 = $306; FTB
+        # idiosyncratic indexing rounding). Line 7-9 credits (pre) = $307
+        # → after: $307 − $12 = $295.
         # Line 10 credits (pre): 2 × $475 = $950 → after: $950 − $12 = $938.
-        # Total = $294 + $938 = $1,232.
+        # Total = $295 + $938 = $1,233.
         agi = AGI_PHASEOUT_THRESHOLD_2025["mfj"] + 2_500.0
         ca = _make_input(
             filing_status="mfj", federal_agi=agi, dependent_count=2
         )
-        expected_789 = 2 * EXEMPTION_CREDIT_PERSONAL_2025 - 2 * 6.0
+        expected_789 = EXEMPTION_CREDIT_PERSONAL_MFJ_QSS_2025 - 2 * 6.0
         expected_10 = 2 * EXEMPTION_CREDIT_DEPENDENT_2025 - 2 * 6.0
         self.assertAlmostEqual(
             _exemption_credits_after_phaseout(ca),
