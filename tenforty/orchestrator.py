@@ -288,6 +288,10 @@ class ReturnOrchestrator:
         """Emit Form 4562 whenever the scenario has any depreciable asset."""
         return bool(scenario.depreciable_assets)
 
+    def _should_emit_8995(self, scenario: Scenario) -> bool:
+        """Emit Form 8995 whenever any K-1 carries QBI."""
+        return any(k1.qbi_amount for k1 in scenario.schedule_k1s)
+
     def _should_emit_8959(self, scenario: Scenario, results: dict) -> bool:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).
 
