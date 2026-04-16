@@ -201,6 +201,42 @@ class CaCapitalLossCarryoverTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], -500.0)
 
 
+class Section1221PatentTests(unittest.TestCase):
+    """TCJA amended IRC §1221 to exclude self-created patents,
+    inventions, models, designs, and secret formulas/processes from the
+    definition of capital asset (so federal treats dispositions by the
+    creator as ordinary income). California did not conform — these
+    remain capital assets for CA-creator taxpayers. Result: the gain
+    flows through CA Sch D (→ line 4) but never appears on federal
+    1040 line 7a (it's reported as ordinary elsewhere on the federal
+    return). Delta on line 12b.
+
+    SOURCE: FTB 2025 Sch D (540) instructions, nonconformity list item
+    3 — IRC §1221 patents/inventions for creators."""
+
+    def test_creator_patent_sale_produces_line_12b_addition(self):
+        # Creator sold self-developed patent for a $400 gain. Federal
+        # treats as ordinary (on 1040 Sch 1 / business income, not on
+        # Sch D → line 7a = 0). CA treats as capital → full $400 on
+        # Sch D (540) line 1.
+        t = Transaction(
+            description="Self-created patent sale (CA-capital / fed-ordinary)",
+            ca_gain_or_loss=400.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=0.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], 400.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 0.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 400.0)
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 400.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
