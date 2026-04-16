@@ -168,14 +168,20 @@ not influenced by the production design pass.
    schedule without quantization. `TAX_TABLE_CUTOFF_2025 = $100,000` is
    confirmed.
 
-3. **Dependent standard deduction worksheet.** The FTB worksheet inherits
-   the federal "earned income + $450" base before applying the CA $1,350
-   floor and filing-status cap. The oracle's Demographics dataclass does
-   not currently expose dependent earned income as an input — the oracle
-   uses the CA $1,350 floor directly (capped at the filing-status base).
-   If a production scenario involves a dependent with substantial earned
-   income, this will underestimate the CA standard deduction. Extend
-   Demographics before merging if the scenario requires it.
+3. ~~**Dependent standard deduction worksheet.**~~ **RESOLVED 2026-04-16** —
+   ca-research verified the 5-line FTB Standard Deduction Worksheet for
+   Dependents (line 1 = federal earned income + $450, line 2 = $1,350 CA
+   floor, line 3 = greater of 1 and 2, line 4 = filing-status cap
+   $5,706/$11,412, line 5 = lesser of 3 and 4). The $450 add-on is
+   unindexed (fixed since TY2023); $1,350 is indexed from TY2024's $1,300.
+   The oracle's `Demographics` dataclass was extended with a
+   `dependent_earned_income: float` field (per federal Pub 501 definition:
+   wages/tips/net SE compensation; excludes interest, dividends, gains,
+   pensions, non-taxable scholarships). The field is read only when
+   `can_be_claimed_as_dependent` is True; producers may pass 0.0 in the
+   non-claimable case. Five new unit tests cover the four worksheet
+   branches (not claimable, zero earned, earned below tie point, earned
+   above cap).
 
 4. **Renter's-credit AGI basis.** FTB's renter's-credit instruction says the
    cliff applies at "CA AGI" (Form 540 line 17). The oracle currently uses

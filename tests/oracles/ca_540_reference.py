@@ -66,8 +66,8 @@ STANDARD_DEDUCTION_2025: dict[str, float] = {
     "hoh":    11_412.0,
     "qss":    11_412.0,
 }
-DEPENDENT_STANDARD_DEDUCTION_MIN_2025 = 1_350.0  # VERIFY
-DEPENDENT_STANDARD_DEDUCTION_EARNED_BUMP_2025 = 450.0  # VERIFY (federal-tied)
+DEPENDENT_STANDARD_DEDUCTION_MIN_2025 = 1_350.0
+DEPENDENT_STANDARD_DEDUCTION_EARNED_BUMP_2025 = 450.0  # federal-tied; unindexed
 
 # SOURCE: FTB 2025 Form 540 instructions, line 7/8/9/10 ("Exemption credits").
 # $153 personal/blind/senior, $475 per dependent. MFJ/QSS line 7 preprint is
@@ -201,6 +201,16 @@ class Demographics:
     taxpayer_blind: bool
     spouse_blind: bool
     dependent_count: int
+    # Taxpayer's own earned income, per the federal dependent Standard
+    # Deduction Worksheet line 5 definition (IRS Pub 501: wages, salaries,
+    # tips, professional fees, net self-employment compensation; excludes
+    # interest, dividends, capital gains, pensions, non-taxable
+    # scholarships). Only read when ``can_be_claimed_as_dependent`` is
+    # True. Producers can pass 0.0 when the filer is not claimable as a
+    # dependent; the standard-deduction computation ignores it in that
+    # branch. SOURCE: FTB 2025 Form 540 Instructions, line 18
+    # "Standard Deduction Worksheet for Dependents".
+    dependent_earned_income: float
 
 
 @dataclass(frozen=True)
@@ -750,22 +760,27 @@ def _schedule_ca_part_ii(ca: CA540Input) -> dict[str, float]:
 def _ca_standard_deduction(ca: CA540Input) -> float:
     """Compute the CA standard deduction for line 18.
 
-    SOURCE: FTB 2025 Form 540 instructions, "Standard Deduction Worksheet".
+    SOURCE: FTB 2025 Form 540 instructions, line 18
+    "Standard Deduction Worksheet for Dependents" (used when the filer
+    themselves can be claimed as a dependent on another return).
+
+    Worksheet mechanics:
+      line 1: federal earned income + $450
+      line 2: CA floor $1,350
+      line 3: greater of line 1 and line 2
+      line 4: filing-status cap ($5,706 single/MFS; $11,412 MFJ/HOH/QSS)
+      line 5: lesser of line 3 and line 4
     """
     fs = ca.demographics.filing_status
     base = STANDARD_DEDUCTION_2025[fs]
     if not ca.demographics.can_be_claimed_as_dependent:
         return base
-    # Dependent worksheet: use the federal "earned income + $450" minimum
-    # applied against the CA base. CA also has its own $1,350 floor.
-    #
-    # NOTE: the worksheet references the federal dependent earned-income base,
-    # which v1 of this oracle does not receive as an input. The oracle makes
-    # the documented simplification: use the CA floor ($1,350), capped at
-    # the filing-status base. Callers with earned-income-sensitive dependent
-    # cases should extend the Demographics dataclass before relying on this.
-    # Flagged in README ambiguity #3.
-    return min(max(DEPENDENT_STANDARD_DEDUCTION_MIN_2025, 0.0), base)
+    earned_base = (
+        ca.demographics.dependent_earned_income
+        + DEPENDENT_STANDARD_DEDUCTION_EARNED_BUMP_2025
+    )
+    greater = max(earned_base, DEPENDENT_STANDARD_DEDUCTION_MIN_2025)
+    return min(greater, base)
 
 
 # ---------------------------------------------------------------------------

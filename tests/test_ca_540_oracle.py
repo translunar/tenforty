@@ -190,6 +190,7 @@ def _make_input(
     taxpayer_blind: bool = False,
     spouse_blind: bool = False,
     dependent_count: int = 0,
+    dependent_earned_income: float = 0.0,
 ) -> CA540Input:
     return CA540Input(
         demographics=Demographics(
@@ -200,6 +201,7 @@ def _make_input(
             taxpayer_blind=taxpayer_blind,
             spouse_blind=spouse_blind,
             dependent_count=dependent_count,
+            dependent_earned_income=dependent_earned_income,
         ),
         federal=FederalCarryIn(
             federal_agi=federal_agi,
@@ -318,6 +320,64 @@ class ExemptionCountTests(unittest.TestCase):
     def test_dependent_count_passes_through(self):
         ca = _make_input(filing_status="mfj", dependent_count=3)
         self.assertEqual(_count_exemptions(ca), (2, 0, 0, 3))
+
+
+class DependentStandardDeductionTests(unittest.TestCase):
+    """FTB 2025 Standard Deduction Worksheet for Dependents (line 18).
+
+    Worksheet: greater-of(earned_income + $450, $1,350) capped at the
+    filing-status base ($5,706 single/MFS, $11,412 MFJ/HOH/QSS).
+    """
+
+    def test_not_claimable_returns_full_base(self):
+        # Filer not claimable as dependent: worksheet does not apply.
+        ca = _make_input(filing_status="single", can_be_claimed=False)
+        out = compute_ca_540(ca)
+        self.assertAlmostEqual(
+            out["f540_line_18_deduction"], STANDARD_DEDUCTION_2025["single"]
+        )
+
+    def test_claimable_zero_earned_income_returns_floor(self):
+        # earned + $450 = $450; floor = $1,350 > $450 → $1,350.
+        ca = _make_input(
+            filing_status="single",
+            can_be_claimed=True,
+            dependent_earned_income=0.0,
+        )
+        out = compute_ca_540(ca)
+        self.assertAlmostEqual(out["f540_line_18_deduction"], 1_350.0)
+
+    def test_claimable_exactly_900_earned_still_returns_floor(self):
+        # earned + $450 = $1,350 = floor → $1,350 (tie goes to greater-of).
+        ca = _make_input(
+            filing_status="single",
+            can_be_claimed=True,
+            dependent_earned_income=900.0,
+        )
+        out = compute_ca_540(ca)
+        self.assertAlmostEqual(out["f540_line_18_deduction"], 1_350.0)
+
+    def test_claimable_moderate_earned_uses_earned_plus_450(self):
+        # earned $3,000 + $450 = $3,450 > floor $1,350 → $3,450 (below cap).
+        ca = _make_input(
+            filing_status="single",
+            can_be_claimed=True,
+            dependent_earned_income=3_000.0,
+        )
+        out = compute_ca_540(ca)
+        self.assertAlmostEqual(out["f540_line_18_deduction"], 3_450.0)
+
+    def test_claimable_earned_above_cap_capped_at_filing_status_base(self):
+        # earned $10,000 + $450 = $10,450 > single cap $5,706 → $5,706.
+        ca = _make_input(
+            filing_status="single",
+            can_be_claimed=True,
+            dependent_earned_income=10_000.0,
+        )
+        out = compute_ca_540(ca)
+        self.assertAlmostEqual(
+            out["f540_line_18_deduction"], STANDARD_DEDUCTION_2025["single"]
+        )
 
 
 class ExemptionCreditPhaseoutTests(unittest.TestCase):
