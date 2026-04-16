@@ -192,6 +192,25 @@ class F1040(FormMapping):
             "k1_b_qbi_amount": "AB16",
             "k1_c_qbi_amount": "AB18",
             "k1_d_qbi_amount": "AB20",
+            # Form 8582 Part IV input cells (rental real estate activities).
+            # Slot A = Sch E Part I rental (row 49); slots B-E = K-1 a-d
+            # rental RE (rows 50-53). Income (col N) and loss (col R) are
+            # separate positive-amount entries; prior-year carryforward is
+            # col V. Named ranges resolve to '8582' sheet without SHEET_MAP.
+            "sche_8582_net_income": "F8582_P4A_NetIncome",
+            "sche_8582_net_loss": "F8582_P4A_NetLoss",
+            "k1_a_8582_net_income": "F8582_P4B_NetIncome",
+            "k1_a_8582_net_loss": "F8582_P4B_NetLoss",
+            "k1_a_8582_prior_year_loss": "F8582_P4B_PriorLoss",
+            "k1_b_8582_net_income": "F8582_P4C_NetIncome",
+            "k1_b_8582_net_loss": "F8582_P4C_NetLoss",
+            "k1_b_8582_prior_year_loss": "F8582_P4C_PriorLoss",
+            "k1_c_8582_net_income": "F8582_P4D_NetIncome",
+            "k1_c_8582_net_loss": "F8582_P4D_NetLoss",
+            "k1_c_8582_prior_year_loss": "F8582_P4D_PriorLoss",
+            "k1_d_8582_net_income": "F8582_P4E_NetIncome",
+            "k1_d_8582_net_loss": "F8582_P4E_NetLoss",
+            "k1_d_8582_prior_year_loss": "F8582_P4E_PriorLoss",
             # Form 1099-G filer cells (payer N in column {D,E,F,G,H,I}[N-1]).
             # Row 6: unemployment compensation (box 1)
             # Row 7: state or local income tax refund (box 2)
@@ -297,5 +316,8 @@ class F1040(FormMapping):
             # f1040.compute to derive taxable_income_before_qbi_deduction
             # (no single named range exists for the pre-QBI figure).
             "_qbi_deduction_1040": "QBID_1040",
+            # Form 8582 line 11: total losses allowed from all passive
+            # activities. Oracle cross-check target for forms.f8582.compute.
+            "f8582_line_11_oracle": "F8582_Line11",
         },
     }

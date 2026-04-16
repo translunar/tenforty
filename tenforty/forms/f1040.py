@@ -35,6 +35,8 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
         + (translated.get("federal_withheld_other") or 0)
     )
 
+    # f8582_line_11_oracle passes through unchanged (XLSX oracle value).
+
     # Derive taxable income before the QBI deduction (Form 8995 line 11).
     # There is no single named range for this value in the workbook; it is
     # computed here as taxable_income + the 1040-line-13 QBI deduction.
