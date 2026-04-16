@@ -17,8 +17,10 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_w2s(scenario, flat)
     _flatten_1099_int(scenario, flat)
     _flatten_1099_div(scenario, flat)
+    _flatten_1099g(scenario, flat)
     _flatten_1098s(scenario, flat)
     _flatten_rental_properties(scenario, flat)
+    _flatten_k1s(scenario, flat)
 
     _reject_unhandled(scenario)
 
@@ -31,11 +33,6 @@ def _reject_unhandled(scenario: Scenario) -> None:
         raise NotImplementedError(
             f"1099-B flattening not yet implemented "
             f"({len(scenario.form1099_b)} transaction(s) would be silently dropped)"
-        )
-    if scenario.schedule_k1s:
-        raise NotImplementedError(
-            f"Schedule K-1 flattening not yet implemented "
-            f"({len(scenario.schedule_k1s)} K-1(s) would be silently dropped)"
         )
 
 
@@ -124,3 +121,54 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
             value = getattr(prop, attr)
             if value:
                 flat[f"{key_prefix}_{letter}"] = value
+
+
+_K1_ROW_LETTERS = "abcd"
+_K1_FIELD_KEYS = (
+    ("entity_name", "entity_name"),
+    ("entity_ein", "entity_ein"),
+    ("ordinary_business_income", "ordinary_business_income"),
+    ("net_rental_real_estate", "net_rental_real_estate"),
+    ("other_net_rental", "other_net_rental"),
+    ("interest_income", "interest_income"),
+    ("ordinary_dividends", "ordinary_dividends"),
+    ("qualified_dividends", "qualified_dividends"),
+    ("royalties", "royalties"),
+    ("net_short_term_capital_gain", "net_short_term_capital_gain"),
+    ("net_long_term_capital_gain", "net_long_term_capital_gain"),
+    ("other_income", "other_income"),
+    ("qbi_amount", "qbi_amount"),
+)
+
+
+def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
+    for i, k1 in enumerate(scenario.schedule_k1s):
+        if i >= len(_K1_ROW_LETTERS):
+            # The >4 case is gated by acknowledges_no_more_than_four_k1s.
+            # Compute-time enforcement (Task 3) raises if ack is False.
+            break
+        letter = _K1_ROW_LETTERS[i]
+        for attr, key in _K1_FIELD_KEYS:
+            value = getattr(k1, attr)
+            if value:
+                flat[f"k1_{letter}_{key}"] = value
+        # Entity-type checkbox (mutually exclusive):
+        flat[f"k1_{letter}_entity_type_{k1.entity_type}"] = "X"
+
+
+def _flatten_1099g(scenario: Scenario, flat: dict[str, object]) -> None:
+    for i, g in enumerate(scenario.form1099_g, start=1):
+        if g.unemployment_compensation:
+            flat[f"g_unemployment_{i}"] = g.unemployment_compensation
+        if g.state_tax_refund:
+            flat[f"g_state_refund_{i}"] = g.state_tax_refund
+        if g.federal_tax_withheld:
+            flat[f"g_fed_withheld_{i}"] = g.federal_tax_withheld
+        if g.rtaa_payments:
+            flat[f"g_rtaa_{i}"] = g.rtaa_payments
+        if g.taxable_grants:
+            flat[f"g_taxable_grants_{i}"] = g.taxable_grants
+        if g.agriculture_payments:
+            flat[f"g_ag_{i}"] = g.agriculture_payments
+        if g.market_gain:
+            flat[f"g_market_gain_{i}"] = g.market_gain

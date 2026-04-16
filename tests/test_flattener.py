@@ -8,7 +8,6 @@ from tenforty.models import (
     Form1099INT,
     RentalProperty,
     Scenario,
-    ScheduleK1,
     TaxReturnConfig,
     W2,
 )
@@ -183,17 +182,3 @@ class TestFlattenerRejectsUnhandledData(unittest.TestCase):
         with self.assertRaises(NotImplementedError) as ctx:
             flatten_scenario(scenario)
         self.assertIn("1099-B", str(ctx.exception))
-
-    def test_rejects_schedule_k1(self):
-        scenario = Scenario(
-            config=self._base_config(),
-            schedule_k1s=[ScheduleK1(
-                entity_name="Example LLC", entity_ein="FAKE-EIN",
-                entity_type="partnership",
-                material_participation=True,
-                net_rental_real_estate=6000,
-            )],
-        )
-        with self.assertRaises(NotImplementedError) as ctx:
-            flatten_scenario(scenario)
-        self.assertIn("K-1", str(ctx.exception))
