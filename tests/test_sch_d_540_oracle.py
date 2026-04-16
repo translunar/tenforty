@@ -160,6 +160,47 @@ class BasisDifferenceTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], -100.0)
 
 
+class CaCapitalLossCarryoverTests(unittest.TestCase):
+    """CA-side capital loss carryover (Sch D (540) line 6) tracks
+    separately from the federal carryover because basis differences and
+    annual absorption can diverge year over year. Prior-year CA loss
+    flows into line 7, then line 8, potentially converting a current-
+    year gain into a net loss that hits the line-9 deduction cap.
+
+    SOURCE: FTB 2025 Sch D (540) form face line 6 — "California capital
+    loss carryover from 2024, if any. See instructions"."""
+
+    def test_carryover_absorbs_current_year_gain_and_drives_delta(self):
+        # Current year: $200 CA gain. Prior-year CA carryover: $500 loss.
+        # Carryover pushes line 8 to a $300 net loss; line 9 bounds at
+        # $3,000 (cap doesn't bite); line 11 = -$300.
+        # Federal: $200 gain (no federal carryover this scenario).
+        # Delta: line 10 (200) > line 11 (-300) → $500 on line 12a.
+        t = Transaction(
+            description="CA-gain offset by prior-year CA loss carryover",
+            ca_gain_or_loss=200.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=500.0,
+            federal_1040_line_7a_capital_gain=200.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_4_total_gains"], 200.0)
+        self.assertEqual(out["schd_540_line_5_total_losses"], 0.0)
+        self.assertEqual(out["schd_540_line_6_ca_carryover_from_prior_year"], 500.0)
+        self.assertEqual(out["schd_540_line_7_total_losses_with_carryover"], 500.0)
+        self.assertEqual(out["schd_540_line_8_net_gain_or_loss"], -300.0)
+        self.assertEqual(out["schd_540_line_9_bounded_loss_deduction"], 300.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 200.0)
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], -300.0)
+        self.assertEqual(out["schd_540_line_12a_subtraction_col_b"], 500.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 0.0)
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], -500.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
