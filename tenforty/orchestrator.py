@@ -8,6 +8,7 @@ from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
+from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.filing.pdf import PdfFiller
@@ -143,9 +144,21 @@ class ReturnOrchestrator:
         if self._should_emit_sch_e(scenario):
             sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
             out_sch_e = output_dir / f"f1040se_{year}.pdf"
-            sch_e_values = form_sch_e.compute(
-                scenario, upstream={"f1040": results},
-            )
+            part_i = form_sch_e.compute(scenario, upstream={"f1040": results})
+            part_ii: dict = {}
+            if self._should_emit_sch_e_part_ii(scenario):
+                part_ii = form_sch_e_part_ii.compute(scenario, upstream={})
+            # Merge: Part I scalars win for shared keys (e.g. taxpayer_name);
+            # strip _-prefixed sidecar keys (e.g. _k1_fanout) from Part II.
+            merged = {
+                **part_i,
+                **{k: v for k, v in part_ii.items() if not k.startswith("_")},
+            }
+            # Derive page-2 header fields for the mapping layer without
+            # polluting compute outputs with PDF-template structure.
+            merged["taxpayer_name_page2"] = merged.get("taxpayer_name")
+            merged["taxpayer_ssn_page2"] = merged.get("taxpayer_ssn")
+            sch_e_values = merged
             filler.fill_with_repeaters(
                 template_path=sch_e_template,
                 output_path=out_sch_e,
