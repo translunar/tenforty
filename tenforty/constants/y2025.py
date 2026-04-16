@@ -49,3 +49,14 @@ SALT_CAP_FLOOR: dict[FilingStatus, int] = {
 
 SALT_PHASEOUT_THRESHOLD: int = 500_000
 SALT_PHASEOUT_RATE: float = 0.30
+
+# Form 8995 simple-path threshold per Rev. Proc. 2024-40.
+# Filers AT or BELOW this may use Form 8995 (simple). Filers above must
+# use Form 8995-A (not implemented in v1).
+QBI_THRESHOLD: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 197_300,
+    FilingStatus.MARRIED_SEPARATELY: 197_300,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 197_300,
+    FilingStatus.MARRIED_JOINTLY: 394_600,
+    FilingStatus.QUALIFYING_WIDOW: 394_600,
+}
