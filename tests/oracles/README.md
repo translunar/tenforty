@@ -111,10 +111,10 @@ See the docstrings in `ca_540_reference.py`. Briefly:
 Every rule in `ca_540_reference.py` cites one of:
 
 - **FTB 2025 Form 540 Booklet** — https://www.ftb.ca.gov/forms/2025/2025-540-booklet.html
-  (FTB.ca.gov returned HTTP 403 to the research WebFetch; authoritative text
-  was read through the taxformfinder.org mirror, and the 3% TY2024→TY2025
-  indexing pattern was cross-checked. Constants tagged `VERIFY` need CPA
-  confirmation before downstream production consumes them.)
+- **FTB 2025 California Tax Table (PDF)** — verified locally against the
+  published 2025 tax-table PDF; the tax-rate-schedule bracket boundaries
+  (Schedules X / Y / Z) have been reproduced row-by-row against first-party
+  FTB output and are therefore first-party-verified for TY2025.
 - **FTB 2025 Schedule CA (540) Instructions** — https://www.ftb.ca.gov/forms/2025/2025-540-ca-instructions.html
 - **FTB 2025 Tax Rate Schedules** — https://www.ftb.ca.gov/forms/2025/2025-540-tax-rate-schedules.pdf
 - **R&TC §17043** — Behavioral Health Services Tax (Mental Health Services
@@ -122,6 +122,13 @@ Every rule in `ca_540_reference.py` cites one of:
 - **SB 711 (2025 Conformity Act)** — federal IRC conformity date moved to
   1/1/2025; name change to "Behavioral Health Services Tax"; alimony sunset
   rules for post-2025 agreements; §1031 real-property-only conformity.
+
+Values cross-referenced against commercial sources (TurboTax, NerdWallet,
+Plante Moran, TaxFormFinder) where first-party PDF access was blocked by
+HTTP 403: standard deduction, exemption-credit per-person amounts
+(including the MFJ/QSS line 7 preprint idiosyncrasy), AGI phaseout
+thresholds, and renter's-credit AGI cliffs. Three independent commercial
+sources agree on each.
 
 ## Known ambiguities / open questions
 
@@ -133,13 +140,16 @@ not influenced by the production design pass.
    standard deduction ($5,706 / $11,412), exemption-credit amounts ($153
    personal/senior/blind with MFJ/QSS preprint of $307 reflecting FTB's
    $1 indexing rounding idiosyncrasy, $475 dependent), AGI phaseout
-   thresholds ($252,203 / $378,310 / $504,411), tax rate schedule bracket
-   boundaries (Schedules X / Y / Z), and renter's-credit cliffs
-   ($52,421 / $104,842) cross-referenced to ≥2 non-FTB sources each
-   (Plante Moran state advisory, TurboTax, NerdWallet, TaxFormFinder) plus
-   the August 2025 FTB indexing release. `VERIFY` tags removed. Dependent
-   standard-deduction floor ($1,350) and earned-income bump ($450) still
-   tagged `VERIFY`; covered under item 3.
+   thresholds ($252,203 / $378,310 / $504,411), and renter's-credit cliffs
+   ($52,421 / $104,842) cross-referenced to three independent commercial
+   sources each (Plante Moran state advisory, TurboTax, NerdWallet,
+   TaxFormFinder). **Tax rate schedule bracket boundaries** (Schedules
+   X / Y / Z) additionally verified row-by-row against the first-party
+   FTB 2025 Tax Table PDF — four spot checks across the Single column at
+   different brackets all reproduced the printed whole-dollar tax to the
+   nearest dollar. `VERIFY` tags removed. Dependent standard-deduction
+   floor ($1,350) and earned-income bump ($450) still tagged `VERIFY`;
+   covered under item 3.
 
 2. ~~**Tax table vs rate schedule discrepancy.**~~ **RESOLVED 2026-04-15** —
    switching rule is a hard cutoff at Form 540 line 19 **≤ $100,000 uses
