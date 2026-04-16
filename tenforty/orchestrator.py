@@ -264,8 +264,12 @@ class ReturnOrchestrator:
         return bool(scenario.form1099_b)
 
     def _should_emit_sch_e(self, scenario: Scenario) -> bool:
-        """Emit Sch E whenever any rental property exists."""
-        return bool(scenario.rental_properties)
+        """Emit Sch E whenever any rental property (Part I) OR any K-1 (Part II)."""
+        return bool(scenario.rental_properties) or bool(scenario.schedule_k1s)
+
+    def _should_emit_sch_e_part_ii(self, scenario: Scenario) -> bool:
+        """Emit Sch E Part II whenever the scenario has any K-1."""
+        return bool(scenario.schedule_k1s)
 
     def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
         """Emit Form 4562 whenever the scenario has any depreciable asset."""

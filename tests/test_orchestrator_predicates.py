@@ -8,10 +8,10 @@ from datetime import date
 
 from tenforty.models import (
     DepreciableAsset, Form1099DIV, Form1099INT, ItemizedDeductions,
-    RentalProperty, W2,
+    RentalProperty, ScheduleK1, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import make_simple_scenario
+from tests.helpers import make_k1_scenario, make_simple_scenario
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -109,6 +109,20 @@ class OrchestratorPredicateTests(unittest.TestCase):
     def test_should_emit_sch_e_false_when_no_rental_property(self) -> None:
         scenario = make_simple_scenario()
         self.assertFalse(self.orchestrator._should_emit_sch_e(scenario))
+
+    def test_should_emit_sch_e_fires_for_k1_only(self) -> None:
+        scenario = make_k1_scenario()
+        scenario.schedule_k1s = [ScheduleK1(
+            entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            ordinary_business_income=50_000.0,
+        )]
+        self.assertTrue(self.orchestrator._should_emit_sch_e(scenario))
+        self.assertTrue(self.orchestrator._should_emit_sch_e_part_ii(scenario))
+
+    def test_should_not_emit_sch_e_part_ii_without_k1(self) -> None:
+        scenario = make_simple_scenario()
+        self.assertFalse(self.orchestrator._should_emit_sch_e_part_ii(scenario))
 
     def test_should_emit_8959_false_when_wages_under_threshold(self) -> None:
         scenario = make_simple_scenario()
