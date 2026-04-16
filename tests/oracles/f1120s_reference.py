@@ -12,8 +12,8 @@ is the signal we care about — do not smooth it over.
 ### Scope (v1)
 
 IN scope:
-- Main form lines 1-21 (Income lines 1-6, Deductions lines 7-20, OBI line 21)
-- Main form lines 22-27 pass-through: caller provides §1375 / §1374 tax
+- Main form lines 1-22 (Income lines 1-6, Deductions lines 7-21, OBI line 22)
+- Main form lines 23-28 pass-through: caller provides §1375 / §1374 tax
   amounts directly; oracle performs the arithmetic to compute total tax,
   balance due, or overpayment.
 - Schedule B Yes/No gates for questions that feed downstream behavior.
@@ -23,8 +23,10 @@ IN scope:
 OUT of scope (v1 — scope-gated, raise NotImplementedError if triggered):
 - Excess Net Passive Income Tax computation per §1375 (caller supplies
   amount directly).
-- Built-in Gains Tax computation per §1374 (caller supplies amount).
+- Built-in Gains Tax / Tax from Schedule D per §1374 (caller supplies).
 - Interest on §453/§453A deferred tax (caller supplies amount).
+- Line 28 direct-deposit fields (28c routing number, 28d account type,
+  28e account number). Payment-mechanism strings, not tax math.
 - Mid-year ownership changes (short-period allocations). Oracle requires
   constant ownership per shareholder for the full tax year.
 - Schedule L (balance sheet).
@@ -38,7 +40,7 @@ OUT of scope (v1 — scope-gated, raise NotImplementedError if triggered):
 
 ``compute_f1120s(inp: F1120SInput) -> dict`` returns a flat dict keyed:
 
-- ``f1120s_line_<N>_<semantic>``    — main form lines 1a-27
+- ``f1120s_line_<N>_<semantic>``    — main form lines 1a-28
 - ``sch_b_line_<N>_<semantic>``     — Schedule B answers (pass-through)
 - ``sch_k_line_<N>_<semantic>``     — Schedule K entity-level totals
 - ``sch_k1_<shareholder_id>_<field>`` — per-shareholder K-1 allocation
@@ -91,9 +93,9 @@ class GrossReceipts:
 
 @dataclass(frozen=True)
 class Deductions:
-    """Form 1120-S Deductions section, lines 7-19.
+    """Form 1120-S Deductions section, lines 7-20.
 
-    Line 20 is computed (sum of 7-19). All fields here are input amounts.
+    Line 21 is computed (sum of 7-20). All fields here are input amounts.
     """
     compensation_of_officers: float         # line 7 (from Form 1125-E; scope-out detail)
     salaries_and_wages: float                # line 8 (net of employment credits)
@@ -107,39 +109,43 @@ class Deductions:
     advertising: float                       # line 16
     pension_and_profit_sharing: float        # line 17
     employee_benefit_programs: float         # line 18
-    other_deductions: float                  # line 19 (attach statement)
+    energy_efficient_commercial_buildings_179d: float  # line 19 (attach Form 7205)
+    other_deductions: float                  # line 20 (attach statement)
 
 
 @dataclass(frozen=True)
 class TaxAndPayments:
     """Form 1120-S Tax and Payments section.
 
-    2025 line structure (VERIFY against released instructions before
-    numbers are hard-coded):
-      22a  Excess net passive income or LIFO recapture tax (§1375/§1363(d))
-      22b  Tax from Schedule D (Form 1120-S) — built-in gains tax (§1374)
-      22c  Add lines 22a + 22b
-      23a  Prior-year overpayment credited + estimated tax payments
-      23b  Tax deposited with Form 7004
-      23c  Credit for federal tax paid on fuels (Form 4136)
-      23d  Add lines 23a-23c
-      24   Estimated tax penalty
-      25   Amount owed
-      26   Overpayment
-      27   Credited to next-year estimates / refunded
+    TY2025 line structure:
+      23a  Excess net passive income or LIFO recapture tax (§1375/§1363(d))
+      23b  Tax from Schedule D (Form 1120-S) — §1374 built-in gains
+      23c  Add lines 23a + 23b
+      24a  Prior-year overpayment credited + estimated tax payments
+      24b  Tax deposited with Form 7004
+      24c  Credit for federal tax paid on fuels (Form 4136)
+      24d  Elective payment election amount from Form 3800 (§6417)
+      24z  Add lines 24a-24d (total payments)
+      25   Estimated tax penalty
+      26   Amount owed
+      27   Overpayment
+      28a  Credited to next-year estimates
+      28b  Refunded
+      28c/d/e Direct-deposit info — scope-out (payment-mechanism strings)
 
     The oracle treats entity-level tax computation (§1375, §1374, §453A
     interest) as a SCOPE-OUT: caller supplies the pre-computed amounts
     directly. The oracle then performs the arithmetic to roll them forward
     to total tax, amount owed, and overpayment.
     """
-    excess_net_passive_income_or_lifo_tax: float  # line 22a — CALLER-PROVIDED
-    built_in_gains_tax: float                      # line 22b — CALLER-PROVIDED
-    prior_year_overpayment_and_estimates: float    # line 23a
-    tax_deposited_with_7004: float                  # line 23b
-    credit_for_federal_tax_paid_on_fuels: float    # line 23c
-    estimated_tax_penalty: float                    # line 24
-    amount_credited_to_next_year_estimates: float  # portion of overpayment applied forward
+    excess_net_passive_income_or_lifo_tax: float  # line 23a — CALLER-PROVIDED
+    tax_from_schedule_d: float                     # line 23b — CALLER-PROVIDED
+    prior_year_overpayment_and_estimates: float    # line 24a
+    tax_deposited_with_7004: float                  # line 24b
+    credit_for_federal_tax_paid_on_fuels: float    # line 24c
+    elective_payment_election_from_form_3800: float  # line 24d (§6417)
+    estimated_tax_penalty: float                    # line 25
+    amount_credited_to_next_year_estimates: float  # portion of overpayment applied forward (line 28a)
 
 
 @dataclass(frozen=True)
@@ -163,20 +169,21 @@ class ScheduleBAnswers:
     owns_stock_in_other_entity: bool                   # line 3
     owns_partnership_or_llc_interest_ge_20pct: bool    # line 4
     #
-    # Line 9 (2024 form numbering — VERIFY 2025): total receipts < $250k
-    # AND total assets < $250k at year-end → NOT required to complete
-    # Schedules L, M-1, M-2. If True, oracle confirms scope-out alignment.
+    # Line 9: total receipts < $250k AND total assets < $250k at year-end
+    # → NOT required to complete Schedules L, M-1, M-2. If True, oracle
+    # confirms scope-out alignment.
     total_receipts_and_assets_under_250k: bool
     #
-    # Line 12 (VERIFY): §163(j) business interest expense limitation applies.
-    # If True, production must file Form 8990 and potentially limit line 13.
+    # Line 10b: §163(j) business interest expense limitation applies when
+    # three-year average gross receipts exceed the §448(c) threshold. If
+    # True, production must file Form 8990 and potentially limit line 13.
     # Oracle v1 does NOT apply §163(j); this flag is captured for the
     # harness to note a potential divergence.
     subject_to_163j_limitation: bool
     #
-    # §448(c) gross receipts test — three-year average > threshold triggers
-    # §163(j) and related limits. Threshold is $31M for 2025 (VERIFY).
-    # Captured for disclosure, not applied internally.
+    # §448(c) gross receipts test — three-year average above the annually
+    # indexed inflation-adjusted threshold triggers §163(j) and related
+    # limits. Captured for disclosure, not applied internally.
     three_year_average_gross_receipts: float
 
 
@@ -294,9 +301,9 @@ def _compute_main_form_income(g: GrossReceipts) -> dict[str, float]:
 
 
 def _compute_main_form_deductions(d: Deductions) -> dict[str, float]:
-    """Lines 7-20: Deductions."""
+    """Lines 7-21: Deductions."""
     # SOURCE: 2025 Form 1120-S instructions, Deductions section.
-    line_20 = (
+    line_21 = (
         d.compensation_of_officers
         + d.salaries_and_wages
         + d.repairs_and_maintenance
@@ -309,6 +316,7 @@ def _compute_main_form_deductions(d: Deductions) -> dict[str, float]:
         + d.advertising
         + d.pension_and_profit_sharing
         + d.employee_benefit_programs
+        + d.energy_efficient_commercial_buildings_179d
         + d.other_deductions
     )
     return {
@@ -324,47 +332,49 @@ def _compute_main_form_deductions(d: Deductions) -> dict[str, float]:
         "f1120s_line_16_advertising": d.advertising,
         "f1120s_line_17_pension_and_profit_sharing": d.pension_and_profit_sharing,
         "f1120s_line_18_employee_benefit_programs": d.employee_benefit_programs,
-        "f1120s_line_19_other_deductions": d.other_deductions,
-        "f1120s_line_20_total_deductions": line_20,
+        "f1120s_line_19_energy_efficient_commercial_buildings_179d":
+            d.energy_efficient_commercial_buildings_179d,
+        "f1120s_line_20_other_deductions": d.other_deductions,
+        "f1120s_line_21_total_deductions": line_21,
     }
 
 
-def _compute_main_form_obi(line_6: float, line_20: float) -> dict[str, float]:
-    """Line 21: Ordinary business income (loss)."""
-    # SOURCE: 2025 Form 1120-S instructions, line 21.
-    return {"f1120s_line_21_ordinary_business_income": line_6 - line_20}
+def _compute_main_form_obi(line_6: float, line_21: float) -> dict[str, float]:
+    """Line 22: Ordinary business income (loss)."""
+    # SOURCE: 2025 Form 1120-S instructions, line 22 — subtract line 21 from line 6.
+    return {"f1120s_line_22_ordinary_business_income": line_6 - line_21}
 
 
 def _compute_main_form_tax_and_payments(
     t: TaxAndPayments,
 ) -> dict[str, float]:
-    """Lines 22-27: Tax and Payments.
+    """Lines 23-28: Tax and Payments.
 
     §1375 and §1374 tax computations are scope-out; caller provides the
     pre-computed amounts in t.excess_net_passive_income_or_lifo_tax and
-    t.built_in_gains_tax. Oracle performs the arithmetic rollup.
+    t.tax_from_schedule_d. Oracle performs the arithmetic rollup.
     """
-    # SOURCE: 2025 Form 1120-S instructions, lines 22-27 (VERIFY line
-    # numbering with ca-research before production uses these keys).
-    line_22a = t.excess_net_passive_income_or_lifo_tax
-    line_22b = t.built_in_gains_tax
-    line_22c = line_22a + line_22b
+    # SOURCE: 2025 Form 1120-S instructions, lines 23-28.
+    line_23a = t.excess_net_passive_income_or_lifo_tax
+    line_23b = t.tax_from_schedule_d
+    line_23c = line_23a + line_23b
 
-    line_23a = t.prior_year_overpayment_and_estimates
-    line_23b = t.tax_deposited_with_7004
-    line_23c = t.credit_for_federal_tax_paid_on_fuels
-    line_23d = line_23a + line_23b + line_23c
+    line_24a = t.prior_year_overpayment_and_estimates
+    line_24b = t.tax_deposited_with_7004
+    line_24c = t.credit_for_federal_tax_paid_on_fuels
+    line_24d = t.elective_payment_election_from_form_3800
+    line_24z = line_24a + line_24b + line_24c + line_24d
 
-    line_24 = t.estimated_tax_penalty
+    line_25 = t.estimated_tax_penalty
 
-    # Balance due vs overpayment: compare line_23d against (line_22c + line_24).
-    total_owed = line_22c + line_24
-    if line_23d < total_owed:
-        amount_owed = total_owed - line_23d
+    # Balance due vs overpayment: compare line_24z against (line_23c + line_25).
+    total_owed = line_23c + line_25
+    if line_24z < total_owed:
+        amount_owed = total_owed - line_24z
         overpayment = 0.0
     else:
         amount_owed = 0.0
-        overpayment = line_23d - total_owed
+        overpayment = line_24z - total_owed
 
     credited_forward = min(
         t.amount_credited_to_next_year_estimates, overpayment
@@ -372,18 +382,19 @@ def _compute_main_form_tax_and_payments(
     refunded = overpayment - credited_forward
 
     return {
-        "f1120s_line_22a_excess_net_passive_or_lifo_tax": line_22a,
-        "f1120s_line_22b_built_in_gains_tax": line_22b,
-        "f1120s_line_22c_total_tax": line_22c,
-        "f1120s_line_23a_prior_year_and_estimates": line_23a,
-        "f1120s_line_23b_deposits_with_7004": line_23b,
-        "f1120s_line_23c_fuel_tax_credit": line_23c,
-        "f1120s_line_23d_total_payments": line_23d,
-        "f1120s_line_24_estimated_tax_penalty": line_24,
-        "f1120s_line_25_amount_owed": amount_owed,
-        "f1120s_line_26_overpayment": overpayment,
-        "f1120s_line_27_credited_to_next_year": credited_forward,
-        "f1120s_line_27_refunded": refunded,
+        "f1120s_line_23a_excess_net_passive_or_lifo_tax": line_23a,
+        "f1120s_line_23b_tax_from_schedule_d": line_23b,
+        "f1120s_line_23c_total_tax": line_23c,
+        "f1120s_line_24a_prior_year_and_estimates": line_24a,
+        "f1120s_line_24b_deposits_with_7004": line_24b,
+        "f1120s_line_24c_fuel_tax_credit": line_24c,
+        "f1120s_line_24d_elective_payment_election": line_24d,
+        "f1120s_line_24z_total_payments": line_24z,
+        "f1120s_line_25_estimated_tax_penalty": line_25,
+        "f1120s_line_26_amount_owed": amount_owed,
+        "f1120s_line_27_overpayment": overpayment,
+        "f1120s_line_28a_credited_to_next_year": credited_forward,
+        "f1120s_line_28b_refunded": refunded,
     }
 
 
@@ -399,8 +410,13 @@ def _compute_schedule_b(
     actually skipped L/M-1/M-2). It simply records what the caller asserted
     and exposes it for the harness to cross-check against production's
     reasoning.
+
+    Line 10b tracks whether the §448(c) gross-receipts threshold is met
+    (test uses the three-year-average value supplied by the caller;
+    threshold itself is indexed annually — see ``three_year_average_gross_receipts``).
+    Line 17 is reserved on the 2025 form; emitted as an explicit placeholder.
     """
-    # SOURCE: 2025 Schedule B (Form 1120-S) — line numbering VERIFY.
+    # SOURCE: 2025 Schedule B (Form 1120-S) form face.
     return {
         "sch_b_line_1_accounting_method": accounting_method,
         "sch_b_line_2a_business_activity": b.business_activity,
@@ -408,8 +424,9 @@ def _compute_schedule_b(
         "sch_b_line_3_owns_stock_in_other_entity": b.owns_stock_in_other_entity,
         "sch_b_line_4_owns_partnership_or_llc_ge_20pct": b.owns_partnership_or_llc_interest_ge_20pct,
         "sch_b_line_9_total_receipts_and_assets_under_250k": b.total_receipts_and_assets_under_250k,
-        "sch_b_line_12_subject_to_163j_limitation": b.subject_to_163j_limitation,
-        "sch_b_line_3_year_avg_gross_receipts": b.three_year_average_gross_receipts,
+        "sch_b_line_10b_subject_to_163j_limitation": b.subject_to_163j_limitation,
+        "sch_b_line_10b_3_year_avg_gross_receipts": b.three_year_average_gross_receipts,
+        "sch_b_line_17_reserved": None,
     }
 
 
@@ -540,14 +557,14 @@ def compute_f1120s(inp: F1120SInput) -> dict:
     deductions = _compute_main_form_deductions(inp.deductions)
     obi = _compute_main_form_obi(
         income["f1120s_line_6_total_income"],
-        deductions["f1120s_line_20_total_deductions"],
+        deductions["f1120s_line_21_total_deductions"],
     )
     tax_and_payments = _compute_main_form_tax_and_payments(inp.tax)
 
     sch_b = _compute_schedule_b(inp.sch_b, inp.entity.accounting_method)
     sch_k = _compute_schedule_k(
         inp.sch_k,
-        obi["f1120s_line_21_ordinary_business_income"],
+        obi["f1120s_line_22_ordinary_business_income"],
     )
     k1s = _compute_schedule_k1_per_shareholder(
         inp.entity, sch_k, inp.shareholders

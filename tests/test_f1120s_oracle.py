@@ -55,6 +55,7 @@ def _make_zero_deductions() -> Deductions:
         advertising=0.0,
         pension_and_profit_sharing=0.0,
         employee_benefit_programs=0.0,
+        energy_efficient_commercial_buildings_179d=0.0,
         other_deductions=0.0,
     )
 
@@ -62,10 +63,11 @@ def _make_zero_deductions() -> Deductions:
 def _make_zero_tax() -> TaxAndPayments:
     return TaxAndPayments(
         excess_net_passive_income_or_lifo_tax=0.0,
-        built_in_gains_tax=0.0,
+        tax_from_schedule_d=0.0,
         prior_year_overpayment_and_estimates=0.0,
         tax_deposited_with_7004=0.0,
         credit_for_federal_tax_paid_on_fuels=0.0,
+        elective_payment_election_from_form_3800=0.0,
         estimated_tax_penalty=0.0,
         amount_credited_to_next_year_estimates=0.0,
     )
@@ -168,7 +170,7 @@ class MainFormIncomeTests(unittest.TestCase):
 # Main form deduction lines
 # ---------------------------------------------------------------------------
 class MainFormDeductionTests(unittest.TestCase):
-    def test_line_20_sums_all_deduction_lines(self):
+    def test_line_21_sums_all_deduction_lines(self):
         inp = _make_minimal_input()
         d = Deductions(
             compensation_of_officers=100_000.0,
@@ -183,22 +185,48 @@ class MainFormDeductionTests(unittest.TestCase):
             advertising=7_000.0,
             pension_and_profit_sharing=25_000.0,
             employee_benefit_programs=12_000.0,
+            energy_efficient_commercial_buildings_179d=4_000.0,
             other_deductions=8_000.0,
         )
         expected = (
             100_000.0 + 200_000.0 + 5_000.0 + 1_000.0 + 24_000.0
             + 10_000.0 + 3_000.0 + 15_000.0 + 0.0 + 7_000.0
-            + 25_000.0 + 12_000.0 + 8_000.0
+            + 25_000.0 + 12_000.0 + 4_000.0 + 8_000.0
         )
         out = compute_f1120s(replace(inp, deductions=d))
-        self.assertEqual(out["f1120s_line_20_total_deductions"], expected)
+        self.assertEqual(out["f1120s_line_21_total_deductions"], expected)
+
+    def test_line_19_179d_emitted_as_separate_line(self):
+        inp = _make_minimal_input()
+        d = Deductions(
+            compensation_of_officers=0.0,
+            salaries_and_wages=0.0,
+            repairs_and_maintenance=0.0,
+            bad_debts=0.0,
+            rents=0.0,
+            taxes_and_licenses=0.0,
+            interest_expense=0.0,
+            depreciation_not_on_1125a=0.0,
+            depletion=0.0,
+            advertising=0.0,
+            pension_and_profit_sharing=0.0,
+            employee_benefit_programs=0.0,
+            energy_efficient_commercial_buildings_179d=12_500.0,
+            other_deductions=0.0,
+        )
+        out = compute_f1120s(replace(inp, deductions=d))
+        self.assertEqual(
+            out["f1120s_line_19_energy_efficient_commercial_buildings_179d"],
+            12_500.0,
+        )
+        self.assertEqual(out["f1120s_line_20_other_deductions"], 0.0)
 
 
 # ---------------------------------------------------------------------------
-# OBI (line 21)
+# OBI (line 22)
 # ---------------------------------------------------------------------------
 class OrdinaryBusinessIncomeTests(unittest.TestCase):
-    def test_line_21_is_income_minus_deductions(self):
+    def test_line_22_is_income_minus_deductions(self):
         inp = _make_minimal_input()
         gross = GrossReceipts(
             gross_receipts_or_sales=1_000_000.0,
@@ -220,13 +248,14 @@ class OrdinaryBusinessIncomeTests(unittest.TestCase):
             advertising=0.0,
             pension_and_profit_sharing=0.0,
             employee_benefit_programs=0.0,
+            energy_efficient_commercial_buildings_179d=0.0,
             other_deductions=0.0,
         )
         out = compute_f1120s(replace(inp, gross=gross, deductions=d))
-        # line 6 = 600k; line 20 = 300k; line 21 = 300k
-        self.assertEqual(out["f1120s_line_21_ordinary_business_income"], 300_000.0)
+        # line 6 = 600k; line 21 = 300k; line 22 = 300k
+        self.assertEqual(out["f1120s_line_22_ordinary_business_income"], 300_000.0)
 
-    def test_line_21_can_be_negative(self):
+    def test_line_22_can_be_negative(self):
         inp = _make_minimal_input()
         d = Deductions(
             compensation_of_officers=50_000.0,
@@ -241,65 +270,69 @@ class OrdinaryBusinessIncomeTests(unittest.TestCase):
             advertising=0.0,
             pension_and_profit_sharing=0.0,
             employee_benefit_programs=0.0,
+            energy_efficient_commercial_buildings_179d=0.0,
             other_deductions=0.0,
         )
         out = compute_f1120s(replace(inp, deductions=d))
         self.assertEqual(
-            out["f1120s_line_21_ordinary_business_income"], -50_000.0
+            out["f1120s_line_22_ordinary_business_income"], -50_000.0
         )
 
 
 # ---------------------------------------------------------------------------
-# Tax and payments (lines 22-27)
+# Tax and payments (lines 23-28)
 # ---------------------------------------------------------------------------
 class TaxAndPaymentsTests(unittest.TestCase):
-    def test_line_22c_sums_22a_and_22b(self):
+    def test_line_23c_sums_23a_and_23b(self):
         inp = _make_minimal_input()
         t = TaxAndPayments(
             excess_net_passive_income_or_lifo_tax=1_000.0,
-            built_in_gains_tax=5_000.0,
+            tax_from_schedule_d=5_000.0,
             prior_year_overpayment_and_estimates=0.0,
             tax_deposited_with_7004=0.0,
             credit_for_federal_tax_paid_on_fuels=0.0,
+            elective_payment_election_from_form_3800=0.0,
             estimated_tax_penalty=0.0,
             amount_credited_to_next_year_estimates=0.0,
         )
         out = compute_f1120s(replace(inp, tax=t))
-        self.assertEqual(out["f1120s_line_22c_total_tax"], 6_000.0)
+        self.assertEqual(out["f1120s_line_23c_total_tax"], 6_000.0)
 
     def test_balance_due_when_payments_below_tax(self):
         inp = _make_minimal_input()
         t = TaxAndPayments(
             excess_net_passive_income_or_lifo_tax=0.0,
-            built_in_gains_tax=10_000.0,
+            tax_from_schedule_d=10_000.0,
             prior_year_overpayment_and_estimates=3_000.0,
             tax_deposited_with_7004=2_000.0,
             credit_for_federal_tax_paid_on_fuels=0.0,
+            elective_payment_election_from_form_3800=0.0,
             estimated_tax_penalty=100.0,
             amount_credited_to_next_year_estimates=0.0,
         )
         out = compute_f1120s(replace(inp, tax=t))
-        # 22c = 10k; 23d = 5k; total_owed = 10.1k; balance = 5.1k
-        self.assertEqual(out["f1120s_line_25_amount_owed"], 5_100.0)
-        self.assertEqual(out["f1120s_line_26_overpayment"], 0.0)
+        # 23c = 10k; 24z = 5k; total_owed = 10.1k; balance = 5.1k
+        self.assertEqual(out["f1120s_line_26_amount_owed"], 5_100.0)
+        self.assertEqual(out["f1120s_line_27_overpayment"], 0.0)
 
     def test_overpayment_when_payments_exceed_tax(self):
         inp = _make_minimal_input()
         t = TaxAndPayments(
             excess_net_passive_income_or_lifo_tax=0.0,
-            built_in_gains_tax=2_000.0,
+            tax_from_schedule_d=2_000.0,
             prior_year_overpayment_and_estimates=5_000.0,
             tax_deposited_with_7004=0.0,
             credit_for_federal_tax_paid_on_fuels=0.0,
+            elective_payment_election_from_form_3800=0.0,
             estimated_tax_penalty=0.0,
             amount_credited_to_next_year_estimates=1_000.0,
         )
         out = compute_f1120s(replace(inp, tax=t))
-        # 22c = 2k; 23d = 5k; overpayment = 3k; 1k credited, 2k refunded
-        self.assertEqual(out["f1120s_line_25_amount_owed"], 0.0)
-        self.assertEqual(out["f1120s_line_26_overpayment"], 3_000.0)
-        self.assertEqual(out["f1120s_line_27_credited_to_next_year"], 1_000.0)
-        self.assertEqual(out["f1120s_line_27_refunded"], 2_000.0)
+        # 23c = 2k; 24z = 5k; overpayment = 3k; 1k credited, 2k refunded
+        self.assertEqual(out["f1120s_line_26_amount_owed"], 0.0)
+        self.assertEqual(out["f1120s_line_27_overpayment"], 3_000.0)
+        self.assertEqual(out["f1120s_line_28a_credited_to_next_year"], 1_000.0)
+        self.assertEqual(out["f1120s_line_28b_refunded"], 2_000.0)
 
     def test_credit_capped_at_overpayment(self):
         """If shareholder asks more credited forward than the overpayment
@@ -307,18 +340,39 @@ class TaxAndPaymentsTests(unittest.TestCase):
         inp = _make_minimal_input()
         t = TaxAndPayments(
             excess_net_passive_income_or_lifo_tax=0.0,
-            built_in_gains_tax=1_000.0,
+            tax_from_schedule_d=1_000.0,
             prior_year_overpayment_and_estimates=1_500.0,
             tax_deposited_with_7004=0.0,
             credit_for_federal_tax_paid_on_fuels=0.0,
+            elective_payment_election_from_form_3800=0.0,
             estimated_tax_penalty=0.0,
             amount_credited_to_next_year_estimates=5_000.0,
         )
         out = compute_f1120s(replace(inp, tax=t))
         # overpayment is 500; credit capped at 500; refund 0
-        self.assertEqual(out["f1120s_line_26_overpayment"], 500.0)
-        self.assertEqual(out["f1120s_line_27_credited_to_next_year"], 500.0)
-        self.assertEqual(out["f1120s_line_27_refunded"], 0.0)
+        self.assertEqual(out["f1120s_line_27_overpayment"], 500.0)
+        self.assertEqual(out["f1120s_line_28a_credited_to_next_year"], 500.0)
+        self.assertEqual(out["f1120s_line_28b_refunded"], 0.0)
+
+    def test_line_24d_elective_payment_flows_into_total_payments(self):
+        """§6417 elective payment election from Form 3800 (new line 24d on
+        the 2024/2025 form face) counts as a payment on line 24z total."""
+        inp = _make_minimal_input()
+        t = TaxAndPayments(
+            excess_net_passive_income_or_lifo_tax=0.0,
+            tax_from_schedule_d=10_000.0,
+            prior_year_overpayment_and_estimates=1_000.0,
+            tax_deposited_with_7004=0.0,
+            credit_for_federal_tax_paid_on_fuels=0.0,
+            elective_payment_election_from_form_3800=4_000.0,
+            estimated_tax_penalty=0.0,
+            amount_credited_to_next_year_estimates=0.0,
+        )
+        out = compute_f1120s(replace(inp, tax=t))
+        # 23c = 10k tax; 24a+24d = 1k+4k = 5k payments; 26 = 5k owed
+        self.assertEqual(out["f1120s_line_24d_elective_payment_election"], 4_000.0)
+        self.assertEqual(out["f1120s_line_24z_total_payments"], 5_000.0)
+        self.assertEqual(out["f1120s_line_26_amount_owed"], 5_000.0)
 
 
 # ---------------------------------------------------------------------------
@@ -340,7 +394,7 @@ class ScheduleBTests(unittest.TestCase):
 # Schedule K totals
 # ---------------------------------------------------------------------------
 class ScheduleKTests(unittest.TestCase):
-    def test_sch_k_line_1_equals_main_form_line_21(self):
+    def test_sch_k_line_1_equals_main_form_line_22(self):
         inp = _make_minimal_input()
         gross = GrossReceipts(
             gross_receipts_or_sales=200_000.0,
@@ -352,7 +406,7 @@ class ScheduleKTests(unittest.TestCase):
         out = compute_f1120s(replace(inp, gross=gross))
         self.assertEqual(
             out["sch_k_line_1_ordinary_business_income"],
-            out["f1120s_line_21_ordinary_business_income"],
+            out["f1120s_line_22_ordinary_business_income"],
         )
 
     def test_sch_k_separately_stated_items_flow_unchanged(self):
