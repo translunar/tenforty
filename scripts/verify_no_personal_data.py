@@ -32,6 +32,8 @@ ALLOWED_NAMES = {
     "Home Mortgage Co",
     "Example LLC",
     "Fake S-Corp Inc",
+    "Fake Trust",
+    "Fake Partnership",
 }
 
 # --- DENYLIST: patterns that must never appear in tracked files ---
@@ -40,8 +42,8 @@ ALLOWED_NAMES = {
 _BUILTIN_DENYLIST = [
     # Real SSN pattern (XXX-XX-XXXX where first group isn't 000/666/9XX)
     r"\b(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b",
-    # Real EIN pattern (XX-XXXXXXX)
-    r"\b\d{2}-\d{7}\b",
+    # Real EIN pattern (XX-XXXXXXX). Excludes the placeholder 00-0000000.
+    r"\b(?!00-0000000\b)\d{2}-\d{7}\b",
 ]
 
 

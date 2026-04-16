@@ -189,7 +189,9 @@ class TestFlattenerRejectsUnhandledData(unittest.TestCase):
             config=self._base_config(),
             schedule_k1s=[ScheduleK1(
                 entity_name="Example LLC", entity_ein="FAKE-EIN",
-                rental_income=6000,
+                entity_type="partnership",
+                material_participation=True,
+                net_rental_real_estate=6000,
             )],
         )
         with self.assertRaises(NotImplementedError) as ctx:
