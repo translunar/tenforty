@@ -26,6 +26,7 @@ from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
+from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.models import FilingStatus, Scenario
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -239,6 +240,26 @@ class ReturnOrchestrator:
                 values=f8995_values,
             )
             emitted["f8995"] = out_8995
+
+        if self._should_emit_8582(scenario):
+            f8582_template = _PDFS_ROOT / "federal" / str(year) / "f8582.pdf"
+            out_8582 = output_dir / f"f8582_{year}.pdf"
+            # Reuse sch_e_values if already computed above; otherwise compute now.
+            if not sch_e_values:
+                sch_e_values = form_sch_e.compute(scenario, upstream={"f1040": results})
+            part_ii_8582 = form_sch_e_part_ii.compute(scenario, upstream={})
+            f8582_values = form_f8582.compute(scenario, upstream={
+                "f1040": results,
+                "sch_e": sch_e_values,
+                "_k1_fanout": part_ii_8582["_k1_fanout"],
+            })
+            filler.fill(
+                template_path=f8582_template,
+                output_path=out_8582,
+                field_mapping=PdfF8582.get_mapping(year)["scalars"],
+                values=f8582_values,
+            )
+            emitted["f8582"] = out_8582
 
         return emitted
 
