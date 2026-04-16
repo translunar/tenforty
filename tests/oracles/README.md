@@ -16,7 +16,7 @@ live.
 
 | Module | Covers | Status |
 |---|---|---|
-| `sch_d_540_reference.py` | CA FTB Schedule D (540) — federal↔CA capital-gain delta for Sch CA (540) Part I line 7 — TY2025 | v0 scaffold only; delta catalog pending ca-research. |
+| `sch_d_540_reference.py` | CA FTB Schedule D (540) — federal↔CA capital-gain delta for Sch CA (540) Part I line 7 — TY2025 | v1: lines 4-12 implemented; 6-category FTB delta catalog covered. |
 
 Planned / elsewhere:
 
@@ -58,88 +58,89 @@ Planned / elsewhere:
 ### Purpose
 
 California generally conforms to federal capital-gain treatment but with
-several named non-conformity deltas. This oracle computes a single
-aggregate number — the CA-minus-federal capital-gain delta — that the
-CA 540 oracle places on Schedule CA (540) Part I line 7 column B
-(subtractions) or column C (additions) depending on sign. It does NOT
-produce a full line-by-line Schedule D (540); it produces the net
-adjustment the downstream 540 oracle needs.
+several named non-conformity deltas enumerated by the FTB. This oracle
+implements lines 4 through 12 of Schedule D (540) directly and exposes a
+single aggregate number — the signed CA-minus-federal capital-gain delta —
+that the CA 540 oracle places on Schedule CA (540) Part I Section A line 7a
+column B (subtractions) or column C (additions) depending on sign.
 
-### Scope (v1 — delta categories)
+Note: CA does not bifurcate short-term and long-term capital gains; all
+dispositions flow together on Sch D (540) at ordinary CA rates.
 
-**IN scope (pending ca-research verification):**
+### Scope (v1 — FTB-enumerated delta catalog)
 
-- Basis differences between federal and CA (e.g., pre-1987 depreciation
-  differences; differing §179 basis; differing depreciation methods on
-  assets with federal/CA book divergence).
-- §1202 qualified-small-business-stock gain: federal partial exclusion
-  under IRC §1202 is NOT allowed by California — R&TC §18152. CA
-  recognizes the full gain.
-- §1400Z-2 Opportunity Zone deferrals / exclusions: California does NOT
-  conform — R&TC §17158.3. CA recognizes gain in the year deferred
-  federally.
-- Installment-sale method differences where federal and CA use
-  different reporting methods.
-- CA-side capital loss carryover, which tracks separately from the
-  federal figure due to prior-year conformity deltas.
+Per the FTB 2025 Sch D (540) instructions, the enumerated nonconformity
+items are:
 
-**OUT of scope (v1 — oracle raises or caller supplies):**
+1. **IRC §1045 / §1202 — Qualified Small Business Stock.** CA does not
+   conform to either the rollover deferral (§1045) or the gain exclusion
+   (§1202). R&TC §18152.
+2. **IRC §1400Z-1 / §1400Z-2 — Qualified Opportunity Zone Funds.** CA does
+   not conform to either the gain deferral or the exclusion on reinvestment
+   in a QOF. R&TC §17158.3.
+3. **IRC §1221 — Patents, inventions, models, designs, secret formulas.**
+   TCJA removed creator-held examples from the federal capital-asset
+   definition (so federal treats the gain as ordinary). CA did not conform
+   — these remain capital assets for CA creator-taxpayers.
+4. **Basis differences (catch-all).** FTB framing per the 2025 instructions:
+   compute the original basis under California law in effect when acquired,
+   then adjust under CA law during ownership. This bucket absorbs bonus
+   depreciation nonconformity (§168(k)), the much lower CA §179 cap,
+   ACRS/MACRS history differences, and ISO AMT basis tracking.
+
+### Per-transaction input shape
+
+Callers fold all of the above into the signed `Transaction.ca_gain_or_loss`
+amount on a per-disposition basis. The oracle does not recompute basis,
+federal exclusion percentages, or §1202 acquisition-date fractions — the
+caller determines the CA-recognized number and the oracle aggregates it.
+The federal aggregate is supplied separately as
+`SchD540Input.federal_1040_line_7a_capital_gain`, matching how the form
+instructs the taxpayer to transcribe 1040 line 7a onto Sch D (540) line 10.
+
+### Not in the delta catalog (conforming / covered via basis)
+
+Per ca-research 2026-04-16 consolidated answer:
+
+- **IRC §1091 wash sales.** CA conforms; no primary delta source. Deltas
+  can arise cascading from item 4 (basis differences).
+- **IRC §453 installment sales.** CA conforms to the method; reporting is
+  on FTB 3805E (analog of Form 6252). Deltas folded into item 4.
+
+### OUT of scope (v1 — caller supplies pre-aggregated or raise)
 
 | Item | Disposition |
 |---|---|
-| Schedule D-1 (540) like-kind §1031 exchanges (real-property only, post-TCJA) | Scope-out; caller supplies the delta pre-aggregated |
-| Wash-sale timing conformity (IRC §1091 / R&TC §18031) | Verification queue |
+| Schedule D-1 (540) like-kind §1031 / §1231 recapture | Scope-out; caller supplies the delta pre-aggregated |
 | Passive-activity-loss interaction on cap-gain dispositions | Scope-out; handled on Sch P (540), not here |
-| Collectibles (28%) / unrecaptured §1250 CA treatment | Verification queue |
+| Collectibles (28%) / unrecaptured §1250 CA treatment | Scope-out (v1); CA treats as ordinary anyway |
 | Mark-to-market §475(f) trader elections | Scope-out |
 | PFIC gains (Form 8621) | Scope-out — federal-only complexity |
-| Qualified Opportunity Fund dispositions post-deferral | Scope-out pending ca-research |
-| S-corp pass-through capital gains from K-1 box 7/8a | Accepted as input; not recomputed here |
+| IRC §1062 qualified-farmland sale (new TY2025, P.L. 119-21) | Scope-out pending FTB 2026 conformity guidance (SB 711 etc.) |
+| IRC §139L rural lender interest exclusion (new TY2025, P.L. 119-21) | Scope-out pending FTB 2026 conformity guidance |
 
 ### Output contract
 
-`compute_sch_d_540(inp: SchD540Input) -> dict` returns a flat dict
-including at least:
+`compute_sch_d_540(inp: SchD540Input) -> dict` returns a flat dict of:
 
+- `schd_540_line_<N>_<semantic>` — mirrors the 2025 form face for lines
+  4-12 (intermediate values).
 - `schd_540_ca_fed_delta_to_sch_ca_line_7` — signed float. Positive = CA
-  recognizes MORE gain than federal (column C addition). Negative = CA
-  recognizes LESS gain than federal (column B subtraction). The CA 540
-  oracle takes the absolute value and routes by sign.
+  recognizes MORE gain than federal (Sch CA col C addition). Negative =
+  CA recognizes LESS gain than federal (Sch CA col B subtraction). Zero
+  = identity case. Consumer takes the absolute value and routes by sign.
 
-Additional keys may surface for line-level transparency but the delta
-key above is the sole stable integration point.
-
-### Verification queue (pending ca-research)
-
-Items flagged for `ca-research` before the oracle moves beyond v0
-scaffold. The delta catalog itself is the blocking question.
-
-1. **Complete delta-category catalog for TY2025.** Named items:
-   basis differences, §1202 QSBS, §1400Z-2 OZ, installment-sale method
-   divergence, wash-sale timing. Any other commonly-encountered item
-   for a 540 filer with investment accounts + rental-property sales?
-2. **Schedule D (540) 2025 line numbering.** Older FTB forms used
-   lines 1 through 14 on the schedule proper. 2025 line numbers
-   need verification before output keys stabilize. If 2025 renumbers,
-   output-dict keys require renaming.
-3. **CA capital-loss carryover year-over-year tracking rules.**
-   Confirm that the CA carryover is just the prior-year CA Schedule D
-   line-8 residual (or equivalent 2025 line), and that the oracle's
-   single `ca_capital_loss_carryover` input is sufficient to represent
-   carryover state.
-4. **Schedule D-1 (540) boundary.** Confirm the boundary between what
-   flows via Schedule D (540) vs. Schedule D-1 (540) for TY2025 — the
-   §1031 narrowing post-TCJA changed this, and the oracle currently
-   assumes D-1 is caller's responsibility.
+This is the sole stable integration point with the CA 540 oracle. Line-
+level keys are stable but may surface additional intermediate values as
+the oracle grows.
 
 ### Citation lineage
 
-- FTB Schedule D (540) instructions (2025 — pending release; v0 cites
-  2024 with `VERIFY` markers).
+- FTB 2025 Schedule D (540) form + instructions.
 - FTB Pub 1001 (Supplemental Guidelines to California Adjustments).
-- R&TC §§17024.5 (conformity date), 17158.3 (OZ non-conformity), 18031
-  (wash sales), 18152 (§1202 non-conformity).
-- IRC §§1091, 1202, 1400Z-2, 453, 1031.
+- R&TC §§17024.5 (conformity date), 17158.3 (OZ non-conformity),
+  18152 (§1202 non-conformity).
+- IRC §§1045, 1091, 1202, 1221, 1400Z-1, 1400Z-2, 453, 1031, 1211(b).
 
 ### Integration with CA 540 oracle
 

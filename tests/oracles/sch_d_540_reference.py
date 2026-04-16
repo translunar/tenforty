@@ -85,7 +85,7 @@ class SchD540Input:
     values are what produce the line-12a/12b delta.
     """
     filing_status: str
-    transactions: tuple
+    transactions: tuple[Transaction, ...]
     ca_capital_loss_carryover: float
     federal_1040_line_7a_capital_gain: float
 
