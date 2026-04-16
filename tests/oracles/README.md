@@ -141,13 +141,22 @@ not influenced by the production design pass.
    standard-deduction floor ($1,350) and earned-income bump ($450) still
    tagged `VERIFY`; covered under item 3.
 
-2. **Tax table vs rate schedule discrepancy.** FTB requires use of the tax
-   table (p. 69–74 of the booklet) for line 19 ≤ $100,000 and the rate
-   schedule above. The tax table uses $50-bracket midpoints rather than
-   exact bracket math; the oracle applies the rate schedule directly in
-   both cases. This introduces a ≈$3 tolerance for line 31 when line 19 is
-   below $100,000. The harness must either (a) replicate the tax-table
-   midpoint logic, or (b) accept a small tolerance.
+2. ~~**Tax table vs rate schedule discrepancy.**~~ **RESOLVED 2026-04-15** —
+   switching rule is a hard cutoff at Form 540 line 19 **≤ $100,000 uses
+   the tax table**, **> $100,000 uses the rate schedules**. The FTB tax
+   table uses one $50-wide bracket ($1–$50) then all-$100-wide brackets
+   ($51–$150, $151–$250, …) through the top at $99,951–$100,000; printed
+   tax is the rate-schedule result at the bracket midpoint rounded to
+   whole dollars. The oracle applies the rate schedule directly in both
+   ranges and reports unrounded arithmetic, by design.
+
+   **Harness tolerance contract:** when line 19 ≤ $100,000, compare line
+   31 (and anything downstream — total tax, refund, balance due) with a
+   **$5 absolute tolerance** to absorb the midpoint quantization (worst
+   case: $50 × 9.3% = $4.65). When line 19 > $100,000, use the normal
+   cent-exact tolerance; both oracle and production apply the rate
+   schedule without quantization. `TAX_TABLE_CUTOFF_2025 = $100,000` is
+   confirmed.
 
 3. **Dependent standard deduction worksheet.** The FTB worksheet inherits
    the federal "earned income + $450" base before applying the CA $1,350
