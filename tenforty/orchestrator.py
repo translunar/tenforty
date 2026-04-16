@@ -11,6 +11,7 @@ from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
+from tenforty.forms import f8995 as form_f8995
 from tenforty.filing.pdf import PdfFiller
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
@@ -23,6 +24,7 @@ from tenforty.mappings.pdf_sch_a import PdfSchA
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
+from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.models import FilingStatus, Scenario
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -220,6 +222,22 @@ class ReturnOrchestrator:
                 values=f8959_values,
             )
             emitted["8959"] = out_8959
+
+        if self._should_emit_8995(scenario):
+            f8995_template = _PDFS_ROOT / "federal" / str(year) / "f8995.pdf"
+            out_8995 = output_dir / f"f8995_{year}.pdf"
+            part_ii = form_sch_e_part_ii.compute(scenario, upstream={})
+            f8995_values = form_f8995.compute(scenario, upstream={
+                "f1040": results,
+                "_k1_fanout": part_ii["_k1_fanout"],
+            })
+            filler.fill(
+                template_path=f8995_template,
+                output_path=out_8995,
+                field_mapping=PdfF8995.get_mapping(year)["scalars"],
+                values=f8995_values,
+            )
+            emitted["f8995"] = out_8995
 
         return emitted
 
