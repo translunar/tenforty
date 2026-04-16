@@ -32,6 +32,64 @@ class EmptyInputTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 0.0)
 
 
+class Section1202QSBSTests(unittest.TestCase):
+    """IRC §1202 (and §1045 rollover) QSBS exclusion is not conformed to
+    by California — R&TC §18152.  Federal excludes some or all of the
+    gain; CA recognizes the full gain. Delta lands on line 12b (addition
+    to Sch CA col C).
+
+    SOURCE: FTB 2025 Sch D (540) instructions, nonconformity list item
+    for IRC §§1045 and 1202."""
+
+    def test_qsbs_full_federal_exclusion_produces_line_12b_addition(self):
+        # Sold QSBS with a $100 CA-recognized gain. Federal 1040 line 7a
+        # is $0 because the entire gain qualified for §1202 exclusion
+        # (100% exclusion applies to QSBS acquired after 2010-09-27).
+        t = Transaction(
+            description="QSBS in ACME Corp",
+            ca_gain_or_loss=100.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=0.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        # CA recognizes the full $100; federal recognizes $0.
+        self.assertEqual(out["schd_540_line_4_total_gains"], 100.0)
+        self.assertEqual(out["schd_540_line_8_net_gain_or_loss"], 100.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 0.0)
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], 100.0)
+        # line 10 (0) < line 11 (100) → col C addition.
+        self.assertEqual(out["schd_540_line_12a_subtraction_col_b"], 0.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 100.0)
+        # Signed integration delta: CA > fed → positive.
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 100.0)
+
+    def test_qsbs_partial_federal_exclusion_produces_partial_addition(self):
+        # QSBS acquired pre-2009-02-18 had only a 50% exclusion under
+        # the original §1202. Federal recognizes half the gain; CA
+        # recognizes the full gain.
+        t = Transaction(
+            description="Pre-2009 QSBS",
+            ca_gain_or_loss=200.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=100.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], 200.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 100.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 100.0)
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 100.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
