@@ -84,6 +84,8 @@ class PlanDUnconditionalAttestationLoadTimeTests(unittest.TestCase):
 
     def test_load_succeeds_when_all_true(self):
         overrides = {name: True for name in _UNCONDITIONAL_FIELDS}
+        overrides["prior_year_itemized_deduction_amount"] = 40_000.0
+        overrides["prior_year_standard_deduction_amount"] = 14_600.0
         doc = {"config": _base_config(**overrides)}
         with tempfile.TemporaryDirectory() as tmp:
             p = _write_yaml(doc, Path(tmp))
@@ -94,7 +96,7 @@ class PlanDUnconditionalAttestationLoadTimeTests(unittest.TestCase):
 
 class PlanDConditionalFieldTests(unittest.TestCase):
     def test_mfs_without_mfs_flag_raises(self):
-        cfg = _base_config(filing_status="mfs")
+        cfg = _base_config(filing_status="married_separately")
         doc = {"config": cfg}
         with tempfile.TemporaryDirectory() as tmp:
             p = _write_yaml(doc, Path(tmp))
@@ -105,7 +107,7 @@ class PlanDConditionalFieldTests(unittest.TestCase):
 
     def test_mfs_with_flag_loads(self):
         cfg = _base_config(
-            filing_status="mfs",
+            filing_status="married_separately",
             mfs_lived_with_spouse_any_time=False,
         )
         doc = {"config": cfg}
