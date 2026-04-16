@@ -146,25 +146,6 @@ class FilingStatus(str, Enum):
     HEAD_OF_HOUSEHOLD = "head_of_household"
     QUALIFYING_WIDOW = "qualifying_widow"
 
-    @classmethod
-    def _missing_(cls, value):
-        """Accept common short aliases for filing statuses.
-
-        Oracle reference code and some YAML fixtures use compact forms
-        like "mfs" for married_separately. Normalize them here so
-        load_scenario and FilingStatus(...) accept either spelling.
-        """
-        aliases = {
-            "mfj": cls.MARRIED_JOINTLY,
-            "mfs": cls.MARRIED_SEPARATELY,
-            "hoh": cls.HEAD_OF_HOUSEHOLD,
-            "qss": cls.QUALIFYING_WIDOW,
-            "qw": cls.QUALIFYING_WIDOW,
-        }
-        if isinstance(value, str):
-            return aliases.get(value.lower())
-        return None
-
 
 @dataclass
 class TaxReturnConfig:
