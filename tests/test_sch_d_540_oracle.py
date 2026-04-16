@@ -237,6 +237,48 @@ class Section1221PatentTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 400.0)
 
 
+class LossDeductionCapTests(unittest.TestCase):
+    """Line 9: if line 8 is a loss, enter the smaller of |line 8| or
+    $3,000 ($1,500 if married/RDP filing separately). Mirrors the
+    federal §1211(b) cap. Line 11 then reflects the bounded loss as a
+    negative amount.
+
+    SOURCE: FTB 2025 Sch D (540) form face line 9."""
+
+    def test_large_loss_caps_at_3000_for_single_filer(self):
+        t = Transaction(
+            description="Large capital loss (single filer)",
+            ca_gain_or_loss=-10_000.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=-10_000.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_8_net_gain_or_loss"], -10_000.0)
+        self.assertEqual(out["schd_540_line_9_bounded_loss_deduction"], 3_000.0)
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], -3_000.0)
+
+    def test_large_loss_caps_at_1500_for_mfs_filer(self):
+        t = Transaction(
+            description="Large capital loss (MFS filer)",
+            ca_gain_or_loss=-10_000.0,
+        )
+        inp = SchD540Input(
+            filing_status="married_filing_separately",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=-10_000.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_9_bounded_loss_deduction"], 1_500.0)
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], -1_500.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
