@@ -195,11 +195,23 @@ not influenced by the production design pass.
    that correctly gets the $60 credit; previously would have been
    denied.
 
-5. **Line 74 semantics.** Historical Form 540 line 74 was "Excess SDI";
-   TY2024+ the line is "Refundable Program 4.0 Motion Picture Credit" (SDI
-   wage base is now unlimited, so excess SDI is handled separately via
-   EDD). Legacy references to line 74 as excess SDI will produce wrong
-   results.
+5. ~~**Line 74 semantics.**~~ **RESOLVED 2026-04-16** — three-step
+   evolution: **≤ TY2023** Excess California SDI (or VPDI) Withheld;
+   **TY2024** "Reserved for future use" (SB 951 removed the SDI wage
+   cap effective 1/1/2024, so excess SDI no longer occurs within a
+   single employer; multi-employer excess is handled via EDD, not on
+   Form 540); **TY2025+** Refundable Program 4.0 California Motion
+   Picture and Television Production Credit, sourced from FTB 3541
+   line 25 (R&TC §17053.98.1, authorized by AB 132 (2024), effective
+   for tax years beginning on or after 1/1/2025). Lines 75–77 remain
+   unchanged (EITC / YCTC / FYTC from FTB 3514).
+
+   Oracle stance for TY2025 (in scope): line 74 accepts the caller-
+   precomputed Program-4.0 MPC amount via the existing "caller passes
+   precomputed refundable-credit values" rule (oracle doesn't compute
+   FTB 3541). Legacy fixtures that label line 74 as "excess SDI" will
+   silently map to the MPC slot under TY2025 semantics, producing
+   wrong results — document this risk in any fixture-migration notes.
 
 6. ~~**MFJ edge cases in the exemption-count worksheet.**~~
    **RESOLVED 2026-04-16** — ca-research extracted the FTB line 7
@@ -224,16 +236,46 @@ not influenced by the production design pass.
      only-spouse, both, non-claimable-spouse-retains-senior,
      both-claimable-drops-deps, one-claimable-keeps-deps).
 
-7. **§461(l) excess business loss scope.** CA doesn't conform to federal
-   CARES/ARPA/IRA extensions to §461(l); the limitation is TY2025 ≈$313k
-   single / $626k MFJ. The oracle gates this to raise if the caller sets
-   the `excess_business_loss_adjustment` field. Production must separately
-   decide how to compute the CA-only §461(l) deferral.
+7. ~~**§461(l) excess business loss scope.**~~ **RESOLVED 2026-04-16** —
+   TY2025 CA thresholds confirmed at **$313,000** (single / MFS / HOH)
+   and **$626,000** (MFJ / RDP-joint), matching the federal §461(l)
+   thresholds magnitude-wise. CA's non-conformity is structural: CA did
+   not adopt the CARES §2304 suspension and has not followed ARPA/IRA
+   extensions, so disallowed EBL becomes a CA-specific excess business
+   loss carryover (distinct from the NOL pool). Entry points are
+   Schedule CA (540) line 8p column B/C and line 8z column B
+   (prior-year carryover).
 
-8. **AMT constants.** Schedule P (540) thresholds, exemption amounts, and
-   phaseout ranges for TY2025 were NOT captured in the TY2025 research
-   pass because the oracle scope-gates AMT entirely. When AMT eventually
-   lands in scope, those constants will need a fresh VERIFY pass.
+   Oracle stance: scope-gate remains correct. Computing CA §461(l)
+   requires the FTB 3461 line-by-line logic plus per-taxpayer CA EBL
+   carryover tracking across years — both out of scope here. The gate
+   applies to any non-zero `excess_business_loss_adjustment`; callers
+   with prior-year CA EBL carryover must either compute the line 8z
+   adjustment upstream and pass it via the existing Sch CA line-8z
+   column B field, or flag the scenario as out-of-scope.
+
+8. ~~**AMT constants.**~~ **RESOLVED 2026-04-16** (captured for future
+   scope expansion; oracle continues to scope-gate AMT entirely).
+   TY2025 Schedule P (540) constants per FTB 2025 instructions:
+   - **Rate**: 7.0% (R&TC §17062; statutorily stable since TY1991).
+   - **Exemption amounts**: $90,048 single / HOH; $120,065 MFJ / QSS /
+     RDP-joint; $60,029 MFS / RDP-separate.
+   - **Phaseout**: 25% exemption reduction per $1 of AMTI over the
+     start threshold. Starts: $337,678 single / HOH; $450,238 MFJ /
+     QSS; $225,115 MFS. Complete-phaseout (exemption = 0) points
+     self-consistent with start + exemption × 4: $697,870, $930,498,
+     $465,231 respectively.
+
+   Keeping the scope-gate is the correct call. Bringing AMT into scope
+   additionally requires: ~20 Schedule P Part I CA-vs-federal
+   adjustments (SALT, §67(g) misc deductions, depreciation deltas, ISO
+   / NQSO timing, private-activity bond interest, etc.); Part III
+   credit-ordering logic (Section A / A2 / B / C limitation tiers);
+   and the CA-vs-federal AMTI reconstruction starting from federal
+   Form 6251 line 4. These constants are a starting point but need
+   direct-from-FTB re-verification when AMT lands in scope — the
+   current values come from WebSearch snippets, not first-party PDF
+   reads.
 
 ## How to add to this directory
 
