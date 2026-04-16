@@ -90,6 +90,38 @@ class Section1202QSBSTests(unittest.TestCase):
         self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 100.0)
 
 
+class Section1400Z2OpportunityZoneTests(unittest.TestCase):
+    """IRC §1400Z-2 (and §1400Z-1) Qualified Opportunity Zone gain
+    deferral/exclusion is not conformed to by California — R&TC
+    §17158.3. Federal defers the gain in the year realized by
+    reinvesting in a QOF; CA recognizes the gain in that same year.
+    Delta flows to line 12b (addition to Sch CA col C).
+
+    SOURCE: FTB 2025 Sch D (540) instructions, nonconformity list item
+    for IRC §§1400Z-1 and 1400Z-2."""
+
+    def test_oz_deferral_produces_line_12b_addition(self):
+        # $500 gain realized in TY2025. Taxpayer reinvested into a QOF,
+        # deferring federal recognition entirely. CA doesn't conform to
+        # the deferral; recognizes the full $500.
+        t = Transaction(
+            description="Gain deferred into QOF investment",
+            ca_gain_or_loss=500.0,
+        )
+        inp = SchD540Input(
+            filing_status="single",
+            transactions=(t,),
+            ca_capital_loss_carryover=0.0,
+            federal_1040_line_7a_capital_gain=0.0,
+        )
+        out = compute_sch_d_540(inp)
+
+        self.assertEqual(out["schd_540_line_11_ca_gain_or_loss"], 500.0)
+        self.assertEqual(out["schd_540_line_10_federal_1040_line_7a"], 0.0)
+        self.assertEqual(out["schd_540_line_12b_addition_col_c"], 500.0)
+        self.assertEqual(out["schd_540_ca_fed_delta_to_sch_ca_line_7"], 500.0)
+
+
 class IdentityCaseTests(unittest.TestCase):
     """CA recognizes identical gain/loss to federal on every transaction.
     Lines 4, 8, 10, 11 all equal; lines 12a and 12b both zero; aggregate
