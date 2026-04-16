@@ -73,6 +73,13 @@ class F1040(FormMapping):
             "k1_d_entity_type_s_corp": "Sch. E",
             "k1_d_entity_type_partnership": "Sch. E",
             "k1_d_entity_ein": "Sch. E",
+            # Form 8995 K-1 QBI input cells. Each K-1's QBI amount is entered
+            # in column AB at rows 14/16/18/20 (lines i–iv). These have no
+            # named range; the sheet name is in SHEET_MAP.
+            "k1_a_qbi_amount": "8995",
+            "k1_b_qbi_amount": "8995",
+            "k1_c_qbi_amount": "8995",
+            "k1_d_qbi_amount": "8995",
             # Form 1099-G (filer's copy — 6 payers supported in cols D..I).
             "g_unemployment_1": "1099-G",
             "g_state_refund_1": "1099-G",
@@ -179,6 +186,12 @@ class F1040(FormMapping):
             "k1_d_entity_type_s_corp": "O83",
             "k1_d_entity_type_partnership": "O83",
             "k1_d_entity_ein": "Y83",
+            # Form 8995 K-1 QBI input cells (column AB, lines i–iv at rows
+            # 14/16/18/20). No named range; resolved via SHEET_MAP → "8995".
+            "k1_a_qbi_amount": "AB14",
+            "k1_b_qbi_amount": "AB16",
+            "k1_c_qbi_amount": "AB18",
+            "k1_d_qbi_amount": "AB20",
             # Form 1099-G filer cells (payer N in column {D,E,F,G,H,I}[N-1]).
             # Row 6: unemployment compensation (box 1)
             # Row 7: state or local income tax refund (box 2)
@@ -273,5 +286,16 @@ class F1040(FormMapping):
             "total_income": "Total_Income",
             "total_payments": "Tot_Payments",
             "total_deductions": "TotalDeductions",
+            # --- Form 8995 oracle cross-check ---
+            # Form 8995 line 15: Qualified Business Income Deduction.
+            # Oracle authoritative output for cross-checking forms.f8995.compute.
+            "f8995_line_15_oracle": "QBID",
+            # Form 8995 line 12: net capital gain (qualified dividends +
+            # net LTCG) as computed on the worksheet.
+            "net_capital_gain": "NetCapitalGain",
+            # QBI deduction as entered on 1040 line 13 (= QBID). Used in
+            # f1040.compute to derive taxable_income_before_qbi_deduction
+            # (no single named range exists for the pre-QBI figure).
+            "_qbi_deduction_1040": "QBID_1040",
         },
     }
