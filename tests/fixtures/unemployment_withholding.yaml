@@ -1,7 +1,7 @@
 config:
   year: 2025
   filing_status: single
-  birthdate: "1985-04-20"
+  birthdate: "1985-06-15"
   state: CA
   has_foreign_accounts: false
   acknowledges_form_8949_unsupported: false
@@ -17,23 +17,7 @@ config:
   acknowledges_no_estate_trust_k1: false
   prior_year_itemized: false
 
-w2s:
-  - employer: "Tech Corp"
-    wages: 150000.00
-    federal_tax_withheld: 30000.00
-    ss_wages: 150000.00
-    ss_tax_withheld: 9300.00
-    medicare_wages: 150000.00
-    medicare_tax_withheld: 2200.00
-    state_wages: 150000.00
-    state_tax_withheld: 10000.00
-
-form1099_int:
-  - payer: "National Bank"
-    interest: 2000.00
-
-form1099_div:
-  - payer: "Investment Brokerage"
-    ordinary_dividends: 3000.00
-    qualified_dividends: 2500.00
-    capital_gain_distributions: 5000.00
+form1099_g:
+  - payer: "State"
+    unemployment_compensation: 8000.00
+    federal_tax_withheld: 800.00

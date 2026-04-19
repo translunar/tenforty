@@ -9,6 +9,16 @@ config:
   has_foreign_accounts: false
   acknowledges_form_8949_unsupported: false
   acknowledges_sch_a_sales_tax_unsupported: false
+  acknowledges_qbi_below_threshold: false
+  acknowledges_unlimited_at_risk: false
+  basis_tracked_externally: false
+  acknowledges_no_partnership_se_earnings: false
+  acknowledges_no_section_1231_gain: false
+  acknowledges_no_more_than_four_k1s: false
+  acknowledges_no_k1_credits: false
+  acknowledges_no_section_179: false
+  acknowledges_no_estate_trust_k1: false
+  prior_year_itemized: false
 depreciable_assets:
   - description: "Rental building"
     date_placed_in_service: 2019-06-01
