@@ -35,8 +35,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     capital_gain_line_4 = 0
     rental_re_royalty_line_5 = irs_round(sch_e.get("sch_e_line_26_total", 0))
     farm_income_line_6 = 0
-    unemployment_line_7 = 0
-    other_income_line_8_sum = 0
+    unemployment_line_7 = irs_round(
+        sum(g.unemployment_compensation for g in scenario.form1099_g),
+    )
+    other_income_line_8_sum = irs_round(
+        sum(
+            g.rtaa_payments + g.taxable_grants + g.agriculture_payments + g.market_gain
+            for g in scenario.form1099_g
+        ),
+    )
 
     total_additional_income_line_10 = (
         taxable_refunds_line_1
@@ -82,6 +89,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_1_line_5_rental_re_royalty": rental_re_royalty_line_5,
         "sch_1_line_6_farm_income": farm_income_line_6,
         "sch_1_line_7_unemployment": unemployment_line_7,
+        "sch_1_line_8z_other_income": other_income_line_8_sum,
         "sch_1_line_10_total_additional_income": total_additional_income_line_10,
         "sch_1_line_11_educator": educator_expenses_line_11,
         "sch_1_line_13_hsa": hsa_deduction_line_13,
