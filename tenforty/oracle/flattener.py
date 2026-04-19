@@ -48,6 +48,35 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
     flat["birthdate_month"] = int(parts[1])
     flat["birthdate_day"] = int(parts[2])
 
+    # SALT refund tax-benefit-rule worksheet inputs. Only populate the
+    # SALT worksheet cells when a state refund actually exists — setting
+    # the filing-status checkboxes when no refund is present can cause
+    # formula cascade issues (the worksheet's conditional logic short-
+    # circuits differently when the checkboxes are pre-set).
+    has_state_refund = any(
+        g.state_tax_refund for g in scenario.form1099_g
+    )
+    if has_state_refund:
+        # Prior-year itemized deduction amount (Sch 1, Line 1 (SALT)
+        # worksheet cell J45).
+        if (config.prior_year_itemized
+                and config.prior_year_itemized_deduction_amount):
+            flat["prior_year_itemized_deduction"] = (
+                config.prior_year_itemized_deduction_amount
+            )
+
+        # The SALT worksheet has its own filing-status checkboxes
+        # (P6/P8/P10/P12/P14) NOT linked to the main 1040 named ranges.
+        salt_status_key = {
+            "single": "salt_filing_status_single",
+            "married_jointly": "salt_filing_status_mfj",
+            "married_separately": "salt_filing_status_mfs",
+            "head_of_household": "salt_filing_status_hoh",
+            "qualifying_widow": "salt_filing_status_qw",
+        }.get(config.filing_status)
+        if salt_status_key:
+            flat[salt_status_key] = "X"
+
 
 def _flatten_w2s(scenario: Scenario, flat: dict[str, object]) -> None:
     for i, w2 in enumerate(scenario.w2s, start=1):
@@ -168,6 +197,27 @@ def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
                 flat[f"k1_{letter}_{key}"] = value
         # Entity-type checkbox (mutually exclusive):
         flat[f"k1_{letter}_entity_type_{k1.entity_type}"] = "X"
+
+        # Aggregate K-1 income fields into the passive/nonpassive columns
+        # that Sch E Part II expects (columns g-k on the form). Ordinary
+        # business income + net rental + royalties + other income are summed
+        # per row; the total is routed to passive or nonpassive based on
+        # material_participation.
+        total_row = round(
+            k1.ordinary_business_income
+            + k1.net_rental_real_estate + k1.other_net_rental
+            + k1.royalties + k1.other_income,
+        )
+        if k1.material_participation:
+            if total_row >= 0:
+                flat[f"k1_{letter}_nonpassive_income"] = total_row
+            else:
+                flat[f"k1_{letter}_nonpassive_loss"] = -total_row
+        else:
+            if total_row >= 0:
+                flat[f"k1_{letter}_passive_income"] = total_row
+            else:
+                flat[f"k1_{letter}_passive_loss"] = -total_row
 
         # 8582 Part IV slots B-E: K-1 passive rental real estate income/loss.
         # Only passive K-1s (material_participation=False) with net_rental_real_estate
