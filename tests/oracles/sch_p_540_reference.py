@@ -86,6 +86,21 @@ class SchP540Input:
 
 
 # ---------------------------------------------------------------------------
+# Line 18 thresholds — high-AGI itemized-deduction haircut (R&TC §17077)
+# DIFFERENT grouping from Part II exemption phaseout thresholds (§17062).
+# Line 18: single+MFS share a threshold; line 22: single+HoH share one.
+# ---------------------------------------------------------------------------
+_LINE_18_HAIRCUT_THRESHOLD: dict[str, float] = {
+    "single": 252_203.0,
+    "mfs":    252_203.0,
+    "hoh":    378_310.0,
+    "mfj":    504_411.0,
+    "qss":    504_411.0,
+}
+_HAIRCUT_RATE = 0.06
+
+
+# ---------------------------------------------------------------------------
 # Part I — AMTI build-up (lines 1-21)
 # ---------------------------------------------------------------------------
 def _compute_part_i(inp: SchP540Input) -> dict:
@@ -133,9 +148,15 @@ def _compute_part_i(inp: SchP540Input) -> dict:
     # Line 17: AMTI exclusion (negative; §17062.5 small-business carve-out).
     line_17 = inp.amti_exclusion_amount
 
-    # Line 18: high-AGI itemized-deduction haircut (§17077). Stub zero in
-    # v1 — implement when haircut tests arrive.
-    line_18 = 0.0
+    # Line 18: high-AGI itemized-deduction haircut (§17077). Only applies
+    # when itemizing AND fed AGI exceeds the filing-status-keyed threshold.
+    # SOURCE: 2025 Sch P (540) form face line 18 + R&TC §17077.
+    if inp.itemized_deduction_used:
+        threshold_18 = _LINE_18_HAIRCUT_THRESHOLD[inp.filing_status]
+        excess = max(0.0, inp.federal_agi - threshold_18)
+        line_18 = _HAIRCUT_RATE * excess
+    else:
+        line_18 = 0.0
 
     # Line 19: combine 14-18.
     line_19 = line_14 + line_15 + line_16 + line_17 + line_18

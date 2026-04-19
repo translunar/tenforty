@@ -217,6 +217,66 @@ class PartIAdjustmentsAndNOLTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# Part I — Line 18 high-AGI itemized-deduction haircut (§17077)
+# ---------------------------------------------------------------------------
+class PartIItemizedHaircutTests(unittest.TestCase):
+    def test_no_haircut_when_not_itemizing(self):
+        """Line 18 = 0 when std-ded path, regardless of AGI."""
+        inp = replace(
+            _make_minimal_input(),
+            federal_agi=600_000.0,
+            ca_taxable_income=594_294.0,
+        )
+        out = compute_sch_p_540(inp)
+        self.assertEqual(out["schp_540_line_18_itemized_haircut"], 0.0)
+
+    def test_no_haircut_below_threshold_single(self):
+        """Single filer below $252,203 → no haircut even when itemizing."""
+        inp = replace(
+            _make_minimal_input(),
+            federal_agi=200_000.0,
+            ca_taxable_income=180_000.0,
+            itemized_deduction_used=True,
+            standard_deduction_amount=0.0,
+        )
+        out = compute_sch_p_540(inp)
+        self.assertEqual(out["schp_540_line_18_itemized_haircut"], 0.0)
+
+    def test_haircut_single_above_threshold(self):
+        """Single filer $10,000 over $252,203 threshold: 6% × $10,000 = $600
+        (assuming that's less than 80% of non-protected itemized)."""
+        excess = 10_000.0
+        inp = replace(
+            _make_minimal_input(),
+            federal_agi=252_203.0 + excess,
+            ca_taxable_income=230_000.0,
+            itemized_deduction_used=True,
+            standard_deduction_amount=0.0,
+        )
+        out = compute_sch_p_540(inp)
+        self.assertAlmostEqual(
+            out["schp_540_line_18_itemized_haircut"], 0.06 * excess
+        )
+
+    def test_haircut_hoh_different_grouping_from_exemption(self):
+        """HoH uses $378,310 for line 18 (§17077) but $347,808 for line 22
+        (§17062). These are NOT the same threshold — different groupings."""
+        excess = 20_000.0
+        inp = replace(
+            _make_minimal_input(),
+            filing_status="hoh",
+            federal_agi=378_310.0 + excess,
+            ca_taxable_income=350_000.0,
+            itemized_deduction_used=True,
+            standard_deduction_amount=0.0,
+        )
+        out = compute_sch_p_540(inp)
+        self.assertAlmostEqual(
+            out["schp_540_line_18_itemized_haircut"], 0.06 * excess
+        )
+
+
+# ---------------------------------------------------------------------------
 # Part II — Exemption, TMT, and AMT (lines 22-26)
 # ---------------------------------------------------------------------------
 class PartIIExemptionNoPhaseoutTests(unittest.TestCase):
