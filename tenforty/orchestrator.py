@@ -132,8 +132,12 @@ class ReturnOrchestrator:
         if self._should_emit_sch_b(scenario, results):
             sch_b_template = _PDFS_ROOT / "federal" / str(year) / "f1040sb.pdf"
             out_sch_b = output_dir / f"f1040sb_{year}.pdf"
+            sch_b_upstream: dict[str, dict] = {"f1040": results}
+            if self._should_emit_sch_e_part_ii(scenario):
+                part_ii_for_sch_b = form_sch_e_part_ii.compute(scenario, upstream={})
+                sch_b_upstream["_k1_fanout"] = part_ii_for_sch_b["_k1_fanout"]
             sch_b_values = form_sch_b.compute(
-                scenario, upstream={"f1040": results},
+                scenario, upstream=sch_b_upstream,
             )
             flat_values = _flatten_sch_b_rows(sch_b_values)
             filler.fill(
@@ -147,8 +151,12 @@ class ReturnOrchestrator:
         if self._should_emit_sch_d(scenario):
             sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
             out_sch_d = output_dir / f"f1040sd_{year}.pdf"
+            sch_d_upstream: dict[str, dict] = {"f1040": results}
+            if self._should_emit_sch_e_part_ii(scenario):
+                part_ii_for_sch_d = form_sch_e_part_ii.compute(scenario, upstream={})
+                sch_d_upstream["_k1_fanout"] = part_ii_for_sch_d["_k1_fanout"]
             sch_d_values = form_sch_d.compute(
-                scenario, upstream={"f1040": results},
+                scenario, upstream=sch_d_upstream,
             )
             filler.fill_with_repeaters(
                 template_path=sch_d_template,

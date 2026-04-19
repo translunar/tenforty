@@ -31,6 +31,12 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         for e in scenario.form1099_div
     ]
 
+    fanout = upstream.get("_k1_fanout", {})
+    for row in fanout.get("interest_from_k1s", []):
+        interest_payers.append({"payer": row["payer"], "amount": row["amount"]})
+    for row in fanout.get("ordinary_dividends_from_k1s", []):
+        dividend_payers.append({"payer": row["payer"], "amount": row["amount"]})
+
     if len(interest_payers) > INTEREST_MAX_ROWS:
         raise NotImplementedError(
             f"Schedule B has {len(interest_payers)} 1099-INT payers; the 2025 "
