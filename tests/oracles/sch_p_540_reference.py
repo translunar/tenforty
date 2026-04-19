@@ -158,10 +158,81 @@ def _compute_part_i(inp: SchP540Input) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Part II — Exemption, TMT, AMT (lines 22-26)
+# ---------------------------------------------------------------------------
+# SOURCE: 2025 Sch P (540) form face, Part II. Exemption amounts and
+# phaseout thresholds are CA-indexed under R&TC §17062, not pegged to
+# IRC §55(d). Separate from the §17077 itemized-haircut thresholds.
+_AMT_EXEMPTION: dict[str, float] = {
+    "single": 92_749.0,
+    "hoh":    92_749.0,
+    "mfj":   123_667.0,
+    "qss":   123_667.0,
+    "mfs":    61_830.0,
+}
+
+_AMT_PHASEOUT_THRESHOLD: dict[str, float] = {
+    "single": 347_808.0,
+    "hoh":    347_808.0,
+    "mfj":   463_745.0,
+    "qss":   463_745.0,
+    "mfs":   231_868.0,
+}
+
+_AMT_PHASEOUT_RATE = 0.25
+
+# SOURCE: R&TC §17062(a) — single flat rate, no bracket split.
+_CA_AMT_RATE = 0.07
+
+
+def _compute_part_ii(amti: float, filing_status: str,
+                     regular_tax: float) -> dict:
+    """Lines 22-26: Exemption with phaseout, TMT at 7%, and AMT."""
+    base_exemption = _AMT_EXEMPTION[filing_status]
+    threshold = _AMT_PHASEOUT_THRESHOLD[filing_status]
+
+    # Phaseout: reduce exemption by 25% of (AMTI − threshold), floor 0.
+    if amti > threshold:
+        reduction = _AMT_PHASEOUT_RATE * (amti - threshold)
+        line_22 = max(0.0, base_exemption - reduction)
+    else:
+        line_22 = base_exemption
+
+    # Line 23: AMTI − exemption (floor 0).
+    line_23 = max(0.0, amti - line_22)
+
+    # Line 24: Tentative Minimum Tax.
+    line_24 = line_23 * _CA_AMT_RATE
+
+    # Line 25: regular tax before credits (Form 540 line 31).
+    line_25 = regular_tax
+
+    # Line 26: AMT = max(0, TMT − regular tax).
+    line_26 = max(0.0, line_24 - line_25)
+
+    return {
+        "schp_540_line_22_exemption": line_22,
+        "schp_540_line_23_amti_minus_exemption": line_23,
+        "schp_540_line_24_tmt": line_24,
+        "schp_540_tentative_minimum_tax": line_24,
+        "schp_540_line_25_regular_tax": line_25,
+        "schp_540_line_26_amt": line_26,
+        "schp_540_amt_due": line_26,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 def compute_sch_p_540(inp: SchP540Input) -> dict:
     """Compute Sch P (540) Part I (AMTI) + Part II (TMT/AMT) + Part III."""
     out: dict = {}
-    out.update(_compute_part_i(inp))
+    part_i = _compute_part_i(inp)
+    out.update(part_i)
+    part_ii = _compute_part_ii(
+        part_i["schp_540_line_21_amti"],
+        inp.filing_status,
+        inp.ca_regular_tax_before_credits,
+    )
+    out.update(part_ii)
     return out
