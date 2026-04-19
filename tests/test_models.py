@@ -294,6 +294,16 @@ class TestForm1099B(unittest.TestCase):
                 "has_foreign_accounts": False,
                 "acknowledges_form_8949_unsupported": False,
                 "acknowledges_sch_a_sales_tax_unsupported": False,
+                "acknowledges_qbi_below_threshold": False,
+                "acknowledges_unlimited_at_risk": False,
+                "basis_tracked_externally": False,
+                "acknowledges_no_partnership_se_earnings": False,
+                "acknowledges_no_section_1231_gain": False,
+                "acknowledges_no_more_than_four_k1s": False,
+                "acknowledges_no_k1_credits": False,
+                "acknowledges_no_section_179": False,
+                "acknowledges_no_estate_trust_k1": False,
+                "prior_year_itemized": False,
             },
             "form1099_b": [
                 {

@@ -49,3 +49,24 @@ SALT_CAP_FLOOR: dict[FilingStatus, int] = {
 
 SALT_PHASEOUT_THRESHOLD: int = 500_000
 SALT_PHASEOUT_RATE: float = 0.30
+
+# Form 8995 simple-path threshold per Rev. Proc. 2024-40.
+# Filers AT or BELOW this may use Form 8995 (simple). Filers above must
+# use Form 8995-A (not implemented in v1).
+QBI_THRESHOLD: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 197_300,
+    FilingStatus.MARRIED_SEPARATELY: 197_300,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 197_300,
+    FilingStatus.MARRIED_JOINTLY: 394_600,
+    FilingStatus.QUALIFYING_WIDOW: 394_600,
+}
+
+# SALT cap that applied in the year the refund originated. For a TY2025
+# return, this is TY2024 values (pre-OBBBA flat $10k / $5k MFS).
+PRIOR_YEAR_SALT_CAP: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 10_000,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 10_000,
+    FilingStatus.MARRIED_JOINTLY: 10_000,
+    FilingStatus.QUALIFYING_WIDOW: 10_000,
+    FilingStatus.MARRIED_SEPARATELY: 5_000,
+}

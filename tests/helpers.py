@@ -34,10 +34,10 @@ needs_pdf = unittest.skipUnless(
 def make_simple_scenario() -> Scenario:
     """Create a simple single-filer scenario for tests that need a Scenario instance.
 
-    Sets scope-out attestations (`has_foreign_accounts`,
-    `acknowledges_form_8949_unsupported`, `acknowledges_sch_a_sales_tax_unsupported`)
-    to False so in-memory fixtures mirror the load-time contract enforced on YAML
-    fixtures.
+    Sets all Plan B and Plan D load-time scope-out attestations to False so
+    in-memory fixtures mirror the load-time contract enforced on YAML fixtures.
+    Also sets `prior_year_itemized=False` (factual) to mean last year took the
+    standard deduction, so 1099-G state-refund tax-benefit-rule short-circuits.
     """
     return Scenario(
         config=TaxReturnConfig(
@@ -48,6 +48,16 @@ def make_simple_scenario() -> Scenario:
             has_foreign_accounts=False,
             acknowledges_form_8949_unsupported=False,
             acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=False,
+            basis_tracked_externally=False,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=False,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=False,
+            prior_year_itemized=False,
         ),
         w2s=[
             W2(
@@ -61,3 +71,22 @@ def make_simple_scenario() -> Scenario:
             ),
         ],
     )
+
+
+def make_k1_scenario() -> Scenario:
+    """Variant of make_simple_scenario whose config passes the K-1 gates.
+    Use in compute tests where the K-1 itself is the subject, not the gate."""
+    s = make_simple_scenario()
+    for name in (
+        "acknowledges_qbi_below_threshold",
+        "acknowledges_unlimited_at_risk",
+        "basis_tracked_externally",
+        "acknowledges_no_partnership_se_earnings",
+        "acknowledges_no_section_1231_gain",
+        "acknowledges_no_more_than_four_k1s",
+        "acknowledges_no_k1_credits",
+        "acknowledges_no_section_179",
+        "acknowledges_no_estate_trust_k1",
+    ):
+        setattr(s.config, name, True)
+    return s
