@@ -76,6 +76,20 @@ class ReturnOrchestrator:
             inputs=flat_inputs,
             work_dir=self.work_dir / "federal",
         )
+
+        # Supplement: the oracle's OUTPUTS only read W-2 withholding
+        # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding
+        # flows into the workbook's total_payments but is not exposed as a
+        # separate named range. Inject it here so f1040.compute's
+        # federal_withheld_1099 slot picks it up for line 25b.
+        g_withheld = sum(
+            g.federal_tax_withheld for g in scenario.form1099_g
+        )
+        if g_withheld:
+            raw["federal_withheld_1099"] = (
+                (raw.get("federal_withheld_1099") or 0) + g_withheld
+            )
+
         return form_1040.compute(raw_1040=raw, upstream={})
 
     def emit_pdfs(
