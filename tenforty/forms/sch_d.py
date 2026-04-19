@@ -66,16 +66,23 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     short = _summarize(short_lots)
     lng = _summarize(long_lots)
+
+    fanout = upstream.get("_k1_fanout", {})
+    k1_short = irs_round(fanout.get("short_term_cap_gain_from_k1s", 0.0))
+    k1_long = irs_round(fanout.get("long_term_cap_gain_from_k1s", 0.0))
+
     return {
         "sch_d_line_1a_proceeds": short["proceeds"],
         "sch_d_line_1a_basis": short["basis"],
         "sch_d_line_1a_gain": short["gain"],
-        "sch_d_line_7_net_short": short["gain"],
+        "sch_d_line_5_net_short_k1": k1_short,
+        "sch_d_line_7_net_short": short["gain"] + k1_short,
         "sch_d_line_8a_proceeds": lng["proceeds"],
         "sch_d_line_8a_basis": lng["basis"],
         "sch_d_line_8a_gain": lng["gain"],
-        "sch_d_line_15_net_long": lng["gain"],
-        "sch_d_line_16_total": short["gain"] + lng["gain"],
+        "sch_d_line_12_net_long_k1": k1_long,
+        "sch_d_line_15_net_long": lng["gain"] + k1_long,
+        "sch_d_line_16_total": (short["gain"] + k1_short) + (lng["gain"] + k1_long),
         "taxpayer_name": _format_taxpayer_name(scenario),
         "taxpayer_ssn": scenario.config.ssn,
     }
