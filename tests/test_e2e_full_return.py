@@ -56,6 +56,19 @@ def _make_rental_property_scenario() -> Scenario:
         config=TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=False,
+            basis_tracked_externally=False,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=False,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=False,
+            prior_year_itemized=False,
         ),
         w2s=[W2(
             employer="Tech Corp", wages=130000,
@@ -77,6 +90,19 @@ def _make_capital_gains_scenario() -> Scenario:
         config=TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=False,
+            basis_tracked_externally=False,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=False,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=False,
+            prior_year_itemized=False,
         ),
         w2s=[W2(
             employer="Tech Corp", wages=100000,
@@ -115,12 +141,25 @@ def _make_k1_scenario() -> Scenario:
     """Single filer with W-2 + S-corp K-1 (Schedule E Part II).
 
     Exercises: 1040, Schedule 1, Schedule E Part II, K-1.
-    The K-1 has rental income from the S-corp.
+    The K-1 has ordinary business income from the S-corp.
     """
     return Scenario(
         config=TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=True,
+            basis_tracked_externally=True,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=True,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=True,
+            prior_year_itemized=False,
         ),
         w2s=[W2(
             employer="Tech Corp", wages=130000,
@@ -130,8 +169,10 @@ def _make_k1_scenario() -> Scenario:
         )],
         schedule_k1s=[ScheduleK1(
             entity_name="Example LLC",
-            entity_ein="FAKE-EIN",
-            rental_income=6000,
+            entity_ein="00-0000000",
+            entity_type="s_corp",
+            material_participation=True,
+            ordinary_business_income=6000.0,
         )],
     )
 
@@ -139,13 +180,26 @@ def _make_k1_scenario() -> Scenario:
 def _make_comprehensive_scenario() -> Scenario:
     """The 'kitchen sink' scenario exercising every form we support.
 
-    W-2 + interest + dividends + capital gains + mortgage + K-1 rental.
+    W-2 + interest + dividends + capital gains + mortgage + K-1.
     Exercises: 1040, Sch 1, Sch 2, Sch A, Sch D, Sch E, 8949, K-1.
     """
     return Scenario(
         config=TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
+            has_foreign_accounts=False,
+            acknowledges_form_8949_unsupported=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=True,
+            basis_tracked_externally=True,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=True,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=True,
+            prior_year_itemized=False,
         ),
         w2s=[W2(
             employer="Tech Corp", wages=150000,
@@ -178,8 +232,10 @@ def _make_comprehensive_scenario() -> Scenario:
         )],
         schedule_k1s=[ScheduleK1(
             entity_name="Example LLC",
-            entity_ein="FAKE-EIN",
-            rental_income=4000,
+            entity_ein="00-0000000",
+            entity_type="s_corp",
+            material_participation=True,
+            ordinary_business_income=4000.0,
         )],
     )
 

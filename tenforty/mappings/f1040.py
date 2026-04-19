@@ -73,6 +73,25 @@ class F1040(FormMapping):
             "k1_d_entity_type_s_corp": "Sch. E",
             "k1_d_entity_type_partnership": "Sch. E",
             "k1_d_entity_ein": "Sch. E",
+            # Sch. E Part II K-1 income/loss per-row cells (rows 88..91 = A..D).
+            # Passive loss (g) = col C, passive income (h) = col K,
+            # nonpassive loss (i) = col S, nonpassive income (k) = col AH.
+            "k1_a_passive_loss": "Sch. E",
+            "k1_a_passive_income": "Sch. E",
+            "k1_a_nonpassive_loss": "Sch. E",
+            "k1_a_nonpassive_income": "Sch. E",
+            "k1_b_passive_loss": "Sch. E",
+            "k1_b_passive_income": "Sch. E",
+            "k1_b_nonpassive_loss": "Sch. E",
+            "k1_b_nonpassive_income": "Sch. E",
+            "k1_c_passive_loss": "Sch. E",
+            "k1_c_passive_income": "Sch. E",
+            "k1_c_nonpassive_loss": "Sch. E",
+            "k1_c_nonpassive_income": "Sch. E",
+            "k1_d_passive_loss": "Sch. E",
+            "k1_d_passive_income": "Sch. E",
+            "k1_d_nonpassive_loss": "Sch. E",
+            "k1_d_nonpassive_income": "Sch. E",
             # Form 8995 K-1 QBI input cells. Each K-1's QBI amount is entered
             # in column AB at rows 14/16/18/20 (lines i–iv). These have no
             # named range; the sheet name is in SHEET_MAP.
@@ -80,6 +99,16 @@ class F1040(FormMapping):
             "k1_b_qbi_amount": "8995",
             "k1_c_qbi_amount": "8995",
             "k1_d_qbi_amount": "8995",
+            # SALT refund tax-benefit-rule worksheet: prior-year itemized
+            # deduction amount goes in cell J45 on the SALT worksheet.
+            # The SALT worksheet has its own filing-status checkboxes
+            # (P6/P8/P10/P12/P14) independent of the main 1040 sheet.
+            "prior_year_itemized_deduction": "Sch 1, Line 1 (SALT)",
+            "salt_filing_status_single": "Sch 1, Line 1 (SALT)",
+            "salt_filing_status_mfj": "Sch 1, Line 1 (SALT)",
+            "salt_filing_status_mfs": "Sch 1, Line 1 (SALT)",
+            "salt_filing_status_hoh": "Sch 1, Line 1 (SALT)",
+            "salt_filing_status_qw": "Sch 1, Line 1 (SALT)",
             # Form 1099-G (filer's copy — 6 payers supported in cols D..I).
             "g_unemployment_1": "1099-G",
             "g_state_refund_1": "1099-G",
@@ -186,12 +215,41 @@ class F1040(FormMapping):
             "k1_d_entity_type_s_corp": "O83",
             "k1_d_entity_type_partnership": "O83",
             "k1_d_entity_ein": "Y83",
+            # Sch. E Part II K-1 income/loss cells (rows 88..91 = A..D).
+            # (g) passive loss = col C, (h) passive income = col K,
+            # (i) nonpassive loss = col S, (k) nonpassive income = col AH.
+            "k1_a_passive_loss": "C88",
+            "k1_a_passive_income": "K88",
+            "k1_a_nonpassive_loss": "S88",
+            "k1_a_nonpassive_income": "AH88",
+            "k1_b_passive_loss": "C89",
+            "k1_b_passive_income": "K89",
+            "k1_b_nonpassive_loss": "S89",
+            "k1_b_nonpassive_income": "AH89",
+            "k1_c_passive_loss": "C90",
+            "k1_c_passive_income": "K90",
+            "k1_c_nonpassive_loss": "S90",
+            "k1_c_nonpassive_income": "AH90",
+            "k1_d_passive_loss": "C91",
+            "k1_d_passive_income": "K91",
+            "k1_d_nonpassive_loss": "S91",
+            "k1_d_nonpassive_income": "AH91",
             # Form 8995 K-1 QBI input cells (column AB, lines i–iv at rows
             # 14/16/18/20). No named range; resolved via SHEET_MAP → "8995".
             "k1_a_qbi_amount": "AB14",
             "k1_b_qbi_amount": "AB16",
             "k1_c_qbi_amount": "AB18",
             "k1_d_qbi_amount": "AB20",
+            # SALT refund tax-benefit-rule (Sch 1, Line 1 worksheet).
+            # J45 = prior year total itemized deductions (line 4).
+            # P6/P8/P10/P12/P14 = filing status checkboxes (independent
+            # of the main 1040 named ranges).
+            "prior_year_itemized_deduction": "J45",
+            "salt_filing_status_single": "P6",
+            "salt_filing_status_mfj": "P8",
+            "salt_filing_status_mfs": "P10",
+            "salt_filing_status_hoh": "P12",
+            "salt_filing_status_qw": "P14",
             # Form 8582 Part IV input cells (rental real estate activities).
             # Slot A = Sch E Part I rental (row 49); slots B-E = K-1 a-d
             # rental RE (rows 50-53). Income (col N) and loss (col R) are

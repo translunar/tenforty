@@ -1,0 +1,34 @@
+config:
+  year: 2025
+  filing_status: single
+  birthdate: "1985-06-15"
+  state: CA
+  has_foreign_accounts: false
+  acknowledges_form_8949_unsupported: false
+  acknowledges_sch_a_sales_tax_unsupported: false
+  acknowledges_qbi_below_threshold: false
+  acknowledges_unlimited_at_risk: false
+  basis_tracked_externally: false
+  acknowledges_no_partnership_se_earnings: false
+  acknowledges_no_section_1231_gain: false
+  acknowledges_no_more_than_four_k1s: false
+  acknowledges_no_k1_credits: false
+  acknowledges_no_section_179: false
+  acknowledges_no_estate_trust_k1: false
+  prior_year_itemized: true
+  prior_year_itemized_deduction_amount: 30000.00
+  prior_year_standard_deduction_amount: 14600.00
+
+w2s:
+  - employer: "Tech Corp"
+    wages: 80000.00
+    federal_tax_withheld: 12000.00
+    ss_wages: 80000.00
+    ss_tax_withheld: 5000.00
+    medicare_wages: 80000.00
+    medicare_tax_withheld: 1200.00
+
+form1099_g:
+  - payer: "State"
+    state_tax_refund: 1500.00
+    state_tax_refund_tax_year: 2024
