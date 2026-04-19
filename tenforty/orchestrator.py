@@ -14,6 +14,7 @@ from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.filing.pdf import PdfFiller
+from tenforty.constants import y2025
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
@@ -316,7 +317,6 @@ class ReturnOrchestrator:
         ``{"f1040": {...}}`` with ``agi`` (and ideally ``magi``) set, so
         the sales-tax gate and phaseout scope-out fire correctly.
         """
-        from tenforty.constants import y2025
         if scenario.itemized_deductions is None:
             return False
         f1040 = results.get("f1040") or {}
