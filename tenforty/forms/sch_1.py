@@ -13,7 +13,8 @@ populate the value here; line 10 and line 26 sums already reference
 the variables by name, so the wiring is a one-line edit.
 """
 
-from tenforty.models import Scenario
+from tenforty.constants import y2025
+from tenforty.models import FilingStatus, Scenario
 from tenforty.rounding import irs_round
 
 
@@ -29,7 +30,19 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     """
     sch_e = upstream.get("sch_e", {})
 
-    taxable_refunds_line_1 = 0
+    refund_total = sum(g.state_tax_refund for g in scenario.form1099_g)
+    if not scenario.config.prior_year_itemized or refund_total == 0:
+        taxable_refunds_line_1 = 0
+    else:
+        itemized = float(scenario.config.prior_year_itemized_deduction_amount or 0)
+        standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
+        recovery_cap = max(0.0, itemized - standard)
+        salt_cap = float(
+            y2025.PRIOR_YEAR_SALT_CAP[FilingStatus(scenario.config.filing_status)]
+        )
+        taxable_refunds_line_1 = irs_round(
+            min(refund_total, recovery_cap, salt_cap)
+        )
     alimony_line_2a = 0
     business_income_line_3 = 0
     capital_gain_line_4 = 0

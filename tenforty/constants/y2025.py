@@ -60,3 +60,13 @@ QBI_THRESHOLD: dict[FilingStatus, int] = {
     FilingStatus.MARRIED_JOINTLY: 394_600,
     FilingStatus.QUALIFYING_WIDOW: 394_600,
 }
+
+# SALT cap that applied in the year the refund originated. For a TY2025
+# return, this is TY2024 values (pre-OBBBA flat $10k / $5k MFS).
+PRIOR_YEAR_SALT_CAP: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 10_000,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 10_000,
+    FilingStatus.MARRIED_JOINTLY: 10_000,
+    FilingStatus.QUALIFYING_WIDOW: 10_000,
+    FilingStatus.MARRIED_SEPARATELY: 5_000,
+}
