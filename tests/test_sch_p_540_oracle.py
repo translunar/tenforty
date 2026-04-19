@@ -8,6 +8,7 @@ import unittest
 from dataclasses import replace
 
 from tests.oracles.sch_p_540_reference import (
+    CreditEntry,
     PartIAdjustments,
     SchP540Input,
     compute_sch_p_540,
@@ -49,6 +50,8 @@ def _make_minimal_input() -> SchP540Input:
         ca_nol_deductions_9b=0.0,
         amti_exclusion_amount=0.0,
         amt_nol_deduction_post_90pct_cap=0.0,
+        total_tax_before_credits=1_000.0,
+        credits=(),
     )
 
 
@@ -310,6 +313,90 @@ class PartIITMTAndAMTTests(unittest.TestCase):
         expected_amt = max(0.0, tmt - 3_000.0)
         self.assertAlmostEqual(out["schp_540_line_26_amt"], expected_amt)
         self.assertAlmostEqual(out["schp_540_amt_due"], expected_amt)
+
+
+# ---------------------------------------------------------------------------
+# Part III — Credit limitations
+# ---------------------------------------------------------------------------
+class PartIIICreditLimitationTests(unittest.TestCase):
+    def _make_amt_scenario(self) -> SchP540Input:
+        """Scenario with AMT: ISO bargain pushes AMTI high, regular tax low."""
+        adj = replace(_make_zero_adjustments(), iso_cqso=500_000.0)
+        return replace(
+            _make_minimal_input(),
+            ca_taxable_income=80_000.0,
+            ca_regular_tax_before_credits=3_000.0,
+            total_tax_before_credits=3_000.0,
+            adjustments=adj,
+        )
+
+    def test_no_credits_amt_due_unchanged(self):
+        """With no credits supplied, Part III doesn't reduce anything."""
+        inp = self._make_amt_scenario()
+        out = compute_sch_p_540(inp)
+        self.assertEqual(out["schp_540_amt_due"], out["schp_540_line_26_amt"])
+
+    def test_section_a_credit_capped_at_excess_tax(self):
+        """Section A credit (Code 232 child/dep care) cannot reduce tax
+        below TMT. Cap = total_tax_before_credits − TMT."""
+        inp = self._make_amt_scenario()
+        tmt_preview = compute_sch_p_540(inp)["schp_540_line_24_tmt"]
+        excess_tax = max(0.0, 3_000.0 - tmt_preview)
+
+        inp = replace(
+            inp,
+            credits=(CreditEntry(code="232", amount=50_000.0),),
+        )
+        out = compute_sch_p_540(inp)
+        capped = out["schp_540_credit_caps"]["232"]["capped"]
+        self.assertAlmostEqual(capped, excess_tax)
+        self.assertLessEqual(capped, 50_000.0)
+
+    def test_section_b_ostc_can_reduce_below_tmt(self):
+        """Section B credit Code 187 (OSTC) can reduce tax below TMT per
+        R&TC §18001. If excess_tax is zero but the OSTC is $500, the
+        OSTC can still be applied (up to remaining balance)."""
+        inp = replace(
+            self._make_amt_scenario(),
+            credits=(CreditEntry(code="187", amount=500.0),),
+        )
+        out = compute_sch_p_540(inp)
+        capped = out["schp_540_credit_caps"]["187"]["capped"]
+        self.assertEqual(capped, 500.0)
+
+    def test_section_c_solar_reduces_amt(self):
+        """Section C credits (Code 180/181) reduce AMT itself. Adjusted
+        AMT (Part III line 25) should be less than Part II line 26."""
+        inp = replace(
+            self._make_amt_scenario(),
+            credits=(CreditEntry(code="180", amount=200.0),),
+        )
+        out = compute_sch_p_540(inp)
+        self.assertAlmostEqual(
+            out["schp_540_amt_due"],
+            out["schp_540_line_26_amt"] - 200.0,
+        )
+
+    def test_section_c_solar_cannot_reduce_amt_below_zero(self):
+        """Solar carryover can't make AMT negative."""
+        inp = replace(
+            self._make_amt_scenario(),
+            credits=(CreditEntry(code="180", amount=999_999.0),),
+        )
+        out = compute_sch_p_540(inp)
+        self.assertGreaterEqual(out["schp_540_amt_due"], 0.0)
+
+    def test_credit_caps_contains_uncapped_and_capped(self):
+        """Each credit in the output has both uncapped and capped values."""
+        inp = replace(
+            self._make_amt_scenario(),
+            credits=(CreditEntry(code="232", amount=1_000.0),),
+        )
+        out = compute_sch_p_540(inp)
+        entry = out["schp_540_credit_caps"]["232"]
+        self.assertIn("uncapped", entry)
+        self.assertIn("capped", entry)
+        self.assertEqual(entry["uncapped"], 1_000.0)
 
 
 if __name__ == "__main__":

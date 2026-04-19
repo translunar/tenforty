@@ -45,6 +45,26 @@ class PartIAdjustments:
 
 
 @dataclass(frozen=True)
+class CreditEntry:
+    """A single nonrefundable credit for Part III processing.
+
+    ``code`` identifies the credit and determines its section placement:
+    - Section A (capped at excess tax): "162", "232", "188", and unlabeled
+    - Section B (below-TMT): "170", "173", "163", "renter", "187", "242",
+      and unlabeled
+    - Section C (reduce AMT): "180", "181"
+    """
+    code: str
+    amount: float
+
+
+# Section routing by credit code.
+_SECTION_A_CODES = {"162", "232", "188"}
+_SECTION_B_CODES = {"170", "173", "163", "renter", "187", "242"}
+_SECTION_C_CODES = {"180", "181"}
+
+
+@dataclass(frozen=True)
 class SchP540Input:
     """Top-level input for the Sch P (540) oracle.
 
@@ -61,6 +81,8 @@ class SchP540Input:
     ca_nol_deductions_9b: float              # line 16 (positive NOL add-back)
     amti_exclusion_amount: float             # line 17 (negative; §17062.5)
     amt_nol_deduction_post_90pct_cap: float  # line 20 (attested; oracle guards 90% cap)
+    total_tax_before_credits: float          # Form 540 line 35 → Part III line 1
+    credits: tuple[CreditEntry, ...]         # Part III credit entries
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +244,74 @@ def _compute_part_ii(amti: float, filing_status: str,
 
 
 # ---------------------------------------------------------------------------
+# Part III — Credit Limitations
+# ---------------------------------------------------------------------------
+def _credit_section(code: str) -> str:
+    """Route a credit code to its Part III section."""
+    if code in _SECTION_A_CODES:
+        return "A"
+    if code in _SECTION_B_CODES:
+        return "B"
+    if code in _SECTION_C_CODES:
+        return "C"
+    raise ValueError(f"Unknown credit code '{code}' — cannot route to Part III section.")
+
+
+def _compute_part_iii(
+    total_tax_before_credits: float,
+    tmt: float,
+    amt_from_part_ii: float,
+    credits: tuple[CreditEntry, ...],
+) -> dict:
+    """Part III: sequential credit-limitation pipeline.
+
+    Section A: credits limited to excess_tax = total_tax − TMT (floor 0).
+    Section B: credits that can reduce below TMT (to zero).
+    Section C: credits that reduce AMT itself.
+    """
+    # SOURCE: 2025 Sch P (540) form face, Part III.
+    excess_tax = max(0.0, total_tax_before_credits - tmt)
+
+    # Partition credits by section, preserving input order within each.
+    section_a = [c for c in credits if _credit_section(c.code) == "A"]
+    section_b = [c for c in credits if _credit_section(c.code) == "B"]
+    section_c = [c for c in credits if _credit_section(c.code) == "C"]
+
+    credit_caps: dict[str, dict[str, float]] = {}
+
+    # Section A: consume from excess_tax balance.
+    remaining_a = excess_tax
+    for c in section_a:
+        capped = min(c.amount, remaining_a)
+        remaining_a -= capped
+        credit_caps[c.code] = {"uncapped": c.amount, "capped": capped}
+
+    # Section B: consume from remaining tax (total_tax − section_a_used).
+    # Section B credits can reduce below TMT → remaining balance is
+    # total_tax − (excess_tax − remaining_a) = total_tax − section_a_used.
+    section_a_used = excess_tax - remaining_a
+    remaining_b = total_tax_before_credits - section_a_used
+    for c in section_b:
+        capped = min(c.amount, max(0.0, remaining_b))
+        remaining_b -= capped
+        credit_caps[c.code] = {"uncapped": c.amount, "capped": capped}
+
+    # Section C: consume from AMT itself.
+    remaining_amt = amt_from_part_ii
+    for c in section_c:
+        capped = min(c.amount, max(0.0, remaining_amt))
+        remaining_amt -= capped
+        credit_caps[c.code] = {"uncapped": c.amount, "capped": capped}
+
+    adjusted_amt = max(0.0, remaining_amt)
+
+    return {
+        "schp_540_credit_caps": credit_caps,
+        "schp_540_amt_due": adjusted_amt,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 def compute_sch_p_540(inp: SchP540Input) -> dict:
@@ -235,4 +325,12 @@ def compute_sch_p_540(inp: SchP540Input) -> dict:
         inp.ca_regular_tax_before_credits,
     )
     out.update(part_ii)
+
+    part_iii = _compute_part_iii(
+        inp.total_tax_before_credits,
+        part_ii["schp_540_line_24_tmt"],
+        part_ii["schp_540_line_26_amt"],
+        inp.credits,
+    )
+    out.update(part_iii)
     return out
