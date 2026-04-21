@@ -6,8 +6,7 @@ from tenforty.forms.f4868 import compute, compute_balance_due
 
 def _scenario(**overrides):
     config = SimpleNamespace(
-        first_name="Ada",
-        last_name="Lovelace",
+        full_name="Ada Lovelace",
         ssn="000-45-6789",
         spouse_ssn="",
         address="1 Analytical Engine Way",

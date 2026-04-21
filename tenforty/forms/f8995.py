@@ -59,8 +59,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     line_15 = min(line_6, line_14)
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "f8995_line_1_qbi": line_1,
         "f8995_line_2_total_qbi": line_2,
@@ -73,6 +71,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8995_line_13_subtract": line_13,
         "f8995_line_14_income_limit": line_14,
         "f8995_line_15_qbi_deduction": line_15,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }

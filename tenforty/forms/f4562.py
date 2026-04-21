@@ -52,7 +52,7 @@ _PROPERTY_METHOD = {
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
     result: dict = {
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
     assets_by_class: dict[str, list] = defaultdict(list)
@@ -123,7 +123,3 @@ def _convention_text(convention: str) -> str:
     }[convention]
 
 
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()
