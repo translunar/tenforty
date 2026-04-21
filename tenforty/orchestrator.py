@@ -345,26 +345,17 @@ class ReturnOrchestrator:
         return any(k1.qbi_amount for k1 in scenario.schedule_k1s)
 
     def _should_emit_8582(
-        self,
-        scenario: Scenario,
-        upstream: UpstreamState,
+        self, scenario: Scenario, upstream: UpstreamState,
     ) -> bool:
-        """Emit 8582 whenever any passive loss is present or carried forward.
-
-        The `upstream` parameter is accepted here so the caller wiring (Task 8)
-        lands in one commit without a body rewrite. Task 9 (SP1-M4) rewrites
-        this body to read upstream["k1_fanout"].passive_activities instead of
-        re-iterating scenario.schedule_k1s — keeping the gate consistent with
-        the already-computed fanout rather than duplicating the passive-activity
-        classification logic.
-        """
-        del upstream  # Task 9 replaces this body; upstream is not yet consumed
-        has_passive_k1_loss = any(
-            k1.net_rental_real_estate < 0 or k1.other_net_rental < 0 or
-            k1.ordinary_business_income < 0 or k1.prior_year_passive_loss_carryforward
-            for k1 in scenario.schedule_k1s if not k1.material_participation
-        )
-        return has_passive_k1_loss or form_sch_e.has_any_net_loss(scenario)
+        """Emit 8582 when any passive activity has a loss or carryforward,
+        OR when any Sch E Part I rental runs a net loss. Reads the typed
+        K1FanoutData sidecar — no re-classification of per-K-1 fields."""
+        fanout = upstream["k1_fanout"]
+        if any(
+            a.loss or a.prior_carryforward for a in fanout.passive_activities
+        ):
+            return True
+        return form_sch_e.has_any_net_loss(scenario)
 
     def _should_emit_8959(self, scenario: Scenario, results: dict) -> bool:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).

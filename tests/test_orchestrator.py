@@ -99,3 +99,73 @@ class TestComputeOnceDiscipline(unittest.TestCase):
             f"sch_e_part_ii.compute was called {spy.call_count} times in "
             "one emit_pdfs; SP1-M1 requires at most once per compute stage.",
         )
+
+
+class TestShouldEmit8582ReadsFanout(unittest.TestCase):
+    """_should_emit_8582 must read K1FanoutData.passive_activities from
+    upstream, not re-loop scenario.schedule_k1s (SP1-M4)."""
+
+    def test_no_k1_no_rental_returns_false(self) -> None:
+        from tenforty.models import K1FanoutData
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path("/tmp/tenforty-predicate"),
+        )
+        upstream = {"f1040": {}, "k1_fanout": K1FanoutData.empty()}
+        self.assertFalse(orchestrator._should_emit_8582(scenario, upstream))
+
+    def test_passive_activity_with_loss_returns_true(self) -> None:
+        from tenforty.models import (
+            EntityType, K1FanoutActivity, K1FanoutData,
+        )
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path("/tmp/tenforty-predicate"),
+        )
+        fanout = K1FanoutData(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=0.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(
+                K1FanoutActivity(
+                    entity_name="X", entity_ein="00-0000000",
+                    entity_type=EntityType.PARTNERSHIP,
+                    income=0.0, loss=500.0, prior_carryforward=0.0,
+                ),
+            ),
+        )
+        upstream = {"f1040": {}, "k1_fanout": fanout}
+        self.assertTrue(orchestrator._should_emit_8582(scenario, upstream))
+
+    def test_passive_activity_with_only_income_returns_false(self) -> None:
+        """No loss, no prior carryforward -> no 8582."""
+        from tenforty.models import (
+            EntityType, K1FanoutActivity, K1FanoutData,
+        )
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path("/tmp/tenforty-predicate"),
+        )
+        fanout = K1FanoutData(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=0.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(
+                K1FanoutActivity(
+                    entity_name="X", entity_ein="00-0000000",
+                    entity_type=EntityType.PARTNERSHIP,
+                    income=500.0, loss=0.0, prior_carryforward=0.0,
+                ),
+            ),
+        )
+        upstream = {"f1040": {}, "k1_fanout": fanout}
+        self.assertFalse(orchestrator._should_emit_8582(scenario, upstream))
