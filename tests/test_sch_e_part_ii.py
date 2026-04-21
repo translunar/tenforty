@@ -75,3 +75,37 @@ class TestComputeReturnShape(unittest.TestCase):
         self.assertIsInstance(pa, PayerAmount)
         self.assertEqual(pa.payer, "Int Source LP")
         self.assertEqual(pa.amount, 250.0)
+
+
+class TestK1RowTotalHelper(unittest.TestCase):
+    """`_k1_row_total` aggregates the Sch E Part II row-total components
+    (ordinary business income + net rental + royalties + other income) after
+    IRS rounding per component. Extraction target of SP1-N7."""
+
+    def test_helper_matches_inline_expression(self) -> None:
+        from tenforty.forms.sch_e_part_ii import _k1_row_total
+        from tenforty.models import EntityType, ScheduleK1
+        from tenforty.rounding import irs_round
+        k1 = ScheduleK1(
+            entity_name="X", entity_ein="00-0000000",
+            entity_type=EntityType.S_CORP, material_participation=True,
+            ordinary_business_income=1234.56,
+            net_rental_real_estate=100.40, other_net_rental=50.10,
+            royalties=200.49, other_income=10.01,
+        )
+        expected = (
+            irs_round(1234.56)
+            + irs_round(100.40 + 50.10)
+            + irs_round(200.49)
+            + irs_round(10.01)
+        )
+        self.assertEqual(expected, _k1_row_total(k1))
+
+    def test_helper_zero_on_empty_k1(self) -> None:
+        from tenforty.forms.sch_e_part_ii import _k1_row_total
+        from tenforty.models import EntityType, ScheduleK1
+        k1 = ScheduleK1(
+            entity_name="X", entity_ein="00-0000000",
+            entity_type=EntityType.S_CORP, material_participation=True,
+        )
+        self.assertEqual(0.0, _k1_row_total(k1))
