@@ -7,7 +7,7 @@ contract:
   `compute_error` at compute time.
 - `True` → proceed (the scope-out path is accepted by the user).
 
-Single source of truth for the 13 Plan B + Plan D attestations. Both
+Single source of truth for all 13 attestations. Both
 scenario._validate_scenario_config and sch_e_part_ii._enforce_scope_gates
 iterate this tuple rather than hand-coded `if ... is None: raise` blocks.
 
@@ -89,7 +89,7 @@ def _never(s: Scenario) -> bool:
 
 
 _ATTESTATIONS: tuple[Attestation, ...] = (
-    # --- Load-time-only (Plan B) attestations ---
+    # --- Load-time-only attestations ---
     Attestation(
         field="has_foreign_accounts",
         triggered_when=_never,  # True-branch raises at load; see scenario._validate_scenario_config.
@@ -153,9 +153,9 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
         ),
         compute_error="",
     ),
-    # --- Compute-time (Plan D) K-1 scope gates, in enforcement order ---
-    # Order matches the old hand-coded _enforce_scope_gates so that tests
-    # asserting on which error fires first for a given scenario stay green.
+    # --- Compute-time K-1 scope gates, in enforcement order ---
+    # Order matches _enforce_scope_gates so that tests asserting on which
+    # error fires first for a given scenario stay green.
     Attestation(
         field="acknowledges_no_more_than_four_k1s",
         triggered_when=_more_than_four_k1s,

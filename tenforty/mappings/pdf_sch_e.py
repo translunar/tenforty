@@ -3,8 +3,8 @@
 v1 scope: single rental property (slot A on Page 1). Property slots B
 and C exist on the form but are not populated by v1 compute.
 
-Plan D extends this mapping with Part II (partnerships, S corps via K-1)
-on Page 2.  The page-2 header fields (taxpayer_name_page2 / taxpayer_ssn_page2)
+Part II (partnerships, S-corps via K-1) shares the Page 2 table frame.
+The page-2 header fields (taxpayer_name_page2 / taxpayer_ssn_page2)
 are mapping-layer concerns — the orchestrator derives them from the compute
 outputs (taxpayer_name / taxpayer_ssn) when merging Part I + Part II values.
 That way compute never leaks PDF-template structure.
@@ -21,7 +21,7 @@ Page 2 field discovery notes (2025 form):
     (g) nonpassive loss, (h) §179 (skipped in v1), (i) nonpassive income.
   - Line 29a/b totals at y≈480/468 (f2_35–f2_44, five cols each).
   - Lines 30/31/32 single-column totals (f2_45/f2_46/f2_47).
-  - Line 37 estate/trust total (f2_68) — always 0 in Plan D.
+  - Line 37 estate/trust total (f2_68) — always 0: estate_trust K-1s are rejected at load.
   - Line 41 total pass-through (f2_76).
 """
 
@@ -173,7 +173,7 @@ class PdfSchE:
                 "sch_e_line_31_total_loss":      f"{_P2}.f2_46[0]",
                 "sch_e_line_32_total_partnership_scorp": f"{_P2}.f2_47[0]",
 
-                # ── Part III — Line 37 (estate/trust) — always 0 in Plan D ────
+                # ── Part III — Line 37 (estate/trust) — always 0 in v1 ────
                 "sch_e_line_37_total_estate_trust": f"{_P2}.f2_68[0]",
 
                 # ── Line 41 — total pass-through income / (loss) ───────────────

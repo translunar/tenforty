@@ -33,7 +33,7 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
 
 
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
-    """Enforce the Plan B + Plan D load-time attestations via
+    """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
     recovery) are validated separately because they depend on other config
     values, not on a trigger-predicate over the full scenario."""
