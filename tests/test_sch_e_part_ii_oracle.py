@@ -48,7 +48,7 @@ class SchEPartIIOracleTests(unittest.TestCase):
         )
         s = make_k1_scenario()
         s.schedule_k1s = [k1]
-        got = sch_e_part_ii.compute(s, upstream={})
+        got, _ = sch_e_part_ii.compute(s, upstream={})
         self._assert_row_matches("a", k1, got)
 
     def test_partnership_passive_matches_oracle(self):
@@ -62,5 +62,5 @@ class SchEPartIIOracleTests(unittest.TestCase):
         )
         s = make_k1_scenario()
         s.schedule_k1s = [k1]
-        got = sch_e_part_ii.compute(s, upstream={})
+        got, _ = sch_e_part_ii.compute(s, upstream={})
         self._assert_row_matches("a", k1, got)

@@ -23,7 +23,7 @@ forces an explicit attestation at scenario load.
 
 import logging
 
-from tenforty.models import Form1099B, Scenario
+from tenforty.models import Form1099B, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 log = logging.getLogger(__name__)
@@ -67,9 +67,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     short = _summarize(short_lots)
     lng = _summarize(long_lots)
 
-    fanout = upstream.get("_k1_fanout", {})
-    k1_short = irs_round(fanout.get("short_term_cap_gain_from_k1s", 0.0))
-    k1_long = irs_round(fanout.get("long_term_cap_gain_from_k1s", 0.0))
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
+    k1_short = irs_round(sum(fanout.sch_d_short_term_additions))
+    k1_long = irs_round(sum(fanout.sch_d_long_term_additions))
 
     return {
         "sch_d_line_1a_proceeds": short["proceeds"],

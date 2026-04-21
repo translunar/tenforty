@@ -16,20 +16,20 @@ under-state the deduction — documented limitation.
 """
 
 from tenforty.constants import y2025
-from tenforty.models import Scenario
+from tenforty.models import K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    fanout = upstream.get("_k1_fanout", {})
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
     f1040 = upstream.get("f1040", {})
 
     taxable_income = float(f1040.get("taxable_income_before_qbi_deduction", 0))
     net_cap_gain = float(f1040.get("net_capital_gain", 0))
     threshold = y2025.QBI_THRESHOLD[scenario.config.filing_status]
 
-    qbi_total = float(fanout.get("qbi_total", 0.0))
-    qualified_divs = float(fanout.get("qualified_dividends_total", 0.0))
+    qbi_total = fanout.qbi_aggregate
+    qualified_divs = fanout.qualified_dividends_aggregate
 
     if (qbi_total > 0
             and taxable_income > threshold

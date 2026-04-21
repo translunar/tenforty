@@ -40,22 +40,22 @@ class K1SupportedEntityFanoutTests(unittest.TestCase):
         k1 = _supported_k1(entity_type)
         s = make_k1_scenario()
         s.schedule_k1s = [k1]
-        part_ii = form_sch_e_part_ii.compute(s, upstream={})
+        part_ii_fields, fanout = form_sch_e_part_ii.compute(s, upstream={})
         sch_b = form_sch_b.compute(
-            s, upstream={"_k1_fanout": part_ii["_k1_fanout"], "f1040": {}},
+            s, upstream={"k1_fanout": fanout, "f1040": {}},
         )
         sch_d = form_sch_d.compute(
-            s, upstream={"_k1_fanout": part_ii["_k1_fanout"]},
+            s, upstream={"k1_fanout": fanout},
         )
 
         expected = k1_reference.k1_to_expected_outputs(k1)
         row = expected["sch_e_part_ii_row"]
         self.assertEqual(
-            part_ii["sch_e_part_ii_row_a_nonpassive_income"],
+            part_ii_fields["sch_e_part_ii_row_a_nonpassive_income"],
             round(row["nonpassive_income"]),
         )
         self.assertEqual(
-            part_ii["sch_e_part_ii_row_a_passive_income"],
+            part_ii_fields["sch_e_part_ii_row_a_passive_income"],
             round(row["passive_income"]),
         )
 
@@ -73,16 +73,16 @@ class K1SupportedEntityFanoutTests(unittest.TestCase):
 
         sch_d_adds = expected["sch_d_additions"]
         self.assertEqual(
-            round(part_ii["_k1_fanout"]["short_term_cap_gain_from_k1s"]),
+            round(sum(fanout.sch_d_short_term_additions)),
             round(sch_d_adds["short_term"]),
         )
         self.assertEqual(
-            round(part_ii["_k1_fanout"]["long_term_cap_gain_from_k1s"]),
+            round(sum(fanout.sch_d_long_term_additions)),
             round(sch_d_adds["long_term"]),
         )
 
         self.assertEqual(
-            round(part_ii["_k1_fanout"]["qbi_total"]),
+            round(fanout.qbi_aggregate),
             round(expected["qbi_amount"]),
         )
 

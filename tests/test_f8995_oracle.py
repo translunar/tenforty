@@ -34,10 +34,10 @@ class F8995OracleTests(unittest.TestCase):
             )
             f1040 = orch.compute_federal(s)
 
-        sch_e_part_ii = form_sch_e_part_ii.compute(s, upstream={})
+        _sch_e_part_ii_fields, fanout = form_sch_e_part_ii.compute(s, upstream={})
         upstream = {
             "f1040": f1040,
-            "_k1_fanout": sch_e_part_ii["_k1_fanout"],
+            "k1_fanout": fanout,
         }
         native = form_f8995.compute(s, upstream=upstream)
         self.assertEqual(
