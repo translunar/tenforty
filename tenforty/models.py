@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date as _date
 from enum import Enum
-from typing import Literal
 
 
 @dataclass
@@ -77,7 +76,7 @@ class ScheduleK1:
     """
     entity_name: str
     entity_ein: str
-    entity_type: Literal["s_corp", "partnership", "estate_trust"]
+    entity_type: EntityType
     material_participation: bool
     ordinary_business_income: float = 0.0
     net_rental_real_estate: float = 0.0
@@ -95,6 +94,12 @@ class ScheduleK1:
     section_1231_gain: float = 0.0
     section_179_deduction: float = 0.0
     partnership_self_employment_earnings: float = 0.0
+
+    def __post_init__(self) -> None:
+        # YAML loaders yield plain strings; coerce to the typed enum so all
+        # downstream comparisons work against EntityType members, not raw strings.
+        if isinstance(self.entity_type, str):
+            self.entity_type = EntityType(self.entity_type)
 
 
 @dataclass

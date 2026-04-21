@@ -196,7 +196,7 @@ def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
             if value:
                 flat[f"k1_{letter}_{key}"] = value
         # Entity-type checkbox (mutually exclusive):
-        flat[f"k1_{letter}_entity_type_{k1.entity_type}"] = "X"
+        flat[f"k1_{letter}_entity_type_{k1.entity_type.value}"] = "X"
 
         # Aggregate K-1 income fields into the passive/nonpassive columns
         # that Sch E Part II expects (columns g-k on the form). Ordinary

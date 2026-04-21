@@ -4,6 +4,7 @@ import yaml
 
 from tenforty.models import (
     DepreciableAsset,
+    EntityType,
     FilingStatus,
     Form1098,
     Form1099B,
@@ -233,7 +234,7 @@ def _validate_schedule_k1s(scenario: Scenario) -> None:
     immediately rather than letting it silently land in the wrong column.
     """
     for k1 in scenario.schedule_k1s:
-        if k1.entity_type == "estate_trust" and k1.ordinary_business_income != 0:
+        if k1.entity_type == EntityType.ESTATE_TRUST and k1.ordinary_business_income != 0:
             raise ValueError(
                 f"K-1 {k1.entity_name!r} has entity_type='estate_trust' but "
                 f"nonzero ordinary_business_income={k1.ordinary_business_income}. "
