@@ -15,7 +15,7 @@ def _lot(
     proceeds: float = 1000.0,
     basis: float = 600.0,
     basis_reported_to_irs: bool = True,
-    has_adjustments: bool = False,
+    wash_sale_loss_disallowed: float = 0.0,
 ) -> Form1099B:
     return Form1099B(
         broker="Schwab",
@@ -26,7 +26,7 @@ def _lot(
         cost_basis=basis,
         short_term=short_term,
         basis_reported_to_irs=basis_reported_to_irs,
-        has_adjustments=has_adjustments,
+        wash_sale_loss_disallowed=wash_sale_loss_disallowed,
     )
 
 
@@ -114,7 +114,7 @@ class SchDForm8949GateTests(unittest.TestCase):
     def test_adjusted_lot_raises_when_ack_false(self):
         scenario = make_simple_scenario()
         scenario.config.acknowledges_form_8949_unsupported = False
-        scenario.form1099_b = [_lot(has_adjustments=True)]
+        scenario.form1099_b = [_lot(wash_sale_loss_disallowed=50.0)]
         with self.assertRaises(EightFortyNineRequired):
             compute(scenario, upstream={})
 

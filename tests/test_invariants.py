@@ -164,7 +164,7 @@ class TestAssertAllIncomeAccountedFor(unittest.TestCase):
             form1099_b=[Form1099B(
                 broker="Brokerage Inc", description="shares",
                 date_acquired="2023-01-01", date_sold="2025-06-01",
-                proceeds=50000, cost_basis=30000, gain_loss=20000,
+                proceeds=50000, cost_basis=30000,
             )],
         )
         # AGI of 100000 is missing the $20k capital gain

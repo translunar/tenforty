@@ -35,6 +35,14 @@ class Form1099DIV:
     foreign_tax_paid: float = 0.0
 
 
+_LOT_ADJUSTMENT_FIELDS: tuple[str, ...] = (
+    "wash_sale_loss_disallowed",
+    "other_basis_adjustment",
+    "is_28_rate_collectible",
+    "is_section_1250",
+)
+
+
 @dataclass
 class Form1099B:
     broker: str
@@ -43,10 +51,28 @@ class Form1099B:
     date_sold: str
     proceeds: float
     cost_basis: float
-    gain_loss: float = 0.0
     short_term: bool = True
     basis_reported_to_irs: bool = True
-    has_adjustments: bool = False
+    # Per-IRS-instruction lot-level adjustment fields. Any nonzero/True is
+    # gated by its corresponding _ATTESTATIONS entry — ack=False + nonzero
+    # raises NotImplementedError at compute time. Disallowed wash-sale loss
+    # is a positive amount (IRS code W, column (g) on Form 8949).
+    # other_basis_adjustment is added to cost_basis (positive = higher basis,
+    # less gain); gain_loss subtracts it because a positive value reduces gain.
+    wash_sale_loss_disallowed: float = 0.0
+    other_basis_adjustment: float = 0.0
+    is_28_rate_collectible: bool = False
+    is_section_1250: bool = False
+
+    @property
+    def has_adjustments(self) -> bool:
+        return any(getattr(self, f) for f in _LOT_ADJUSTMENT_FIELDS)
+
+    @property
+    def gain_loss(self) -> float:
+        return (self.proceeds - self.cost_basis
+                - self.other_basis_adjustment
+                + self.wash_sale_loss_disallowed)
 
 
 @dataclass

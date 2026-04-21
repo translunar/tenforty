@@ -18,6 +18,7 @@ from tenforty.models import (
     Scenario,
     TaxReturnConfig,
     W2,
+    _LOT_ADJUSTMENT_FIELDS,
 )
 from tenforty.scenario import load_scenario
 
@@ -278,7 +279,7 @@ class TestForm1099B(unittest.TestCase):
             cost_basis=1000.0,
             short_term=False,
             basis_reported_to_irs=False,
-            has_adjustments=True,
+            wash_sale_loss_disallowed=50.0,
         )
         self.assertFalse(lot.short_term)
         self.assertFalse(lot.basis_reported_to_irs)
@@ -315,7 +316,7 @@ class TestForm1099B(unittest.TestCase):
                     "cost_basis": 2000.0,
                     "short_term": False,
                     "basis_reported_to_irs": False,
-                    "has_adjustments": True,
+                    "wash_sale_loss_disallowed": 50.0,
                 }
             ],
         }
@@ -564,3 +565,64 @@ class TestScheduleK1EntityTypeEnum(unittest.TestCase):
                 entity_name="X", entity_ein="00-0000000",
                 entity_type="c_corp", material_participation=True,
             )
+
+
+class TestForm1099BAdjustments(unittest.TestCase):
+    def test_default_no_adjustments(self) -> None:
+        lot = Form1099B(
+            broker="Brokerage Inc", description="10 sh X",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=800.0,
+        )
+        self.assertEqual(lot.wash_sale_loss_disallowed, 0.0)
+        self.assertEqual(lot.other_basis_adjustment, 0.0)
+        self.assertFalse(lot.is_28_rate_collectible)
+        self.assertFalse(lot.is_section_1250)
+        self.assertFalse(lot.has_adjustments)
+
+    def test_wash_sale_is_adjustment(self) -> None:
+        lot = Form1099B(
+            broker="Brokerage Inc", description="10 sh X",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=1200.0,
+            wash_sale_loss_disallowed=50.0,
+        )
+        self.assertTrue(lot.has_adjustments)
+
+    def test_other_basis_adjustment_is_adjustment(self) -> None:
+        lot = Form1099B(
+            broker="Brokerage Inc", description="X",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=800.0,
+            other_basis_adjustment=-50.0,
+        )
+        self.assertTrue(lot.has_adjustments)
+
+    def test_28_rate_flag_is_adjustment(self) -> None:
+        lot = Form1099B(
+            broker="Brokerage Inc", description="coin",
+            date_acquired="2020-01-15", date_sold="2025-03-20",
+            proceeds=5000.0, cost_basis=1000.0,
+            short_term=False, is_28_rate_collectible=True,
+        )
+        self.assertTrue(lot.has_adjustments)
+
+    def test_section_1250_flag_is_adjustment(self) -> None:
+        lot = Form1099B(
+            broker="Brokerage Inc", description="REIT",
+            date_acquired="2020-01-15", date_sold="2025-03-20",
+            proceeds=5000.0, cost_basis=3000.0,
+            short_term=False, is_section_1250=True,
+        )
+        self.assertTrue(lot.has_adjustments)
+
+    def test_adjustment_fields_tuple_covers_all(self) -> None:
+        """The module-level _LOT_ADJUSTMENT_FIELDS tuple is the single source
+        of truth for 'what counts as an adjustment'. has_adjustments iterates
+        it; attestation compute-time gates iterate it; fixture verifiers
+        iterate it. Shared-field-tuple discipline."""
+        self.assertEqual(
+            set(_LOT_ADJUSTMENT_FIELDS),
+            {"wash_sale_loss_disallowed", "other_basis_adjustment",
+             "is_28_rate_collectible", "is_section_1250"},
+        )

@@ -119,7 +119,6 @@ def _make_capital_gains_scenario() -> Scenario:
                 date_sold="2025-03-20",
                 proceeds=15000,
                 cost_basis=10000,
-                gain_loss=5000,
                 short_term=False,
             ),
             # Short-term loss
@@ -130,7 +129,6 @@ def _make_capital_gains_scenario() -> Scenario:
                 date_sold="2025-06-15",
                 proceeds=4000,
                 cost_basis=5000,
-                gain_loss=-1000,
                 short_term=True,
             ),
         ],
@@ -221,7 +219,6 @@ def _make_comprehensive_scenario() -> Scenario:
                 date_sold="2025-09-15",
                 proceeds=25000,
                 cost_basis=18000,
-                gain_loss=7000,
                 short_term=False,
             ),
         ],

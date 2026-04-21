@@ -187,7 +187,6 @@ def _lot(**overrides) -> Form1099B:
         cost_basis=1000.0,
         short_term=True,
         basis_reported_to_irs=True,
-        has_adjustments=False,
     )
     defaults.update(overrides)
     return Form1099B(**defaults)
