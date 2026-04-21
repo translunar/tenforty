@@ -26,6 +26,7 @@ behavior is to ignore, not raise.
 
 import logging
 
+from tenforty.attestations import enforce_compute_time
 from tenforty.models import (
     EntityType, K1FanoutActivity, K1FanoutData, PayerAmount,
     Scenario, ScheduleK1,
@@ -146,13 +147,15 @@ def compute(
 
 
 def _enforce_scope_gates(scenario: Scenario) -> None:
-    k1s = scenario.schedule_k1s
-    if not k1s:
-        return
-    cfg = scenario.config
-    # Estate/trust K-1 — unconditional NotImplementedError (attestation
-    # is for user awareness, not "proceed naively").
-    for k1 in k1s:
+    """Compute-time scope-out enforcement.
+
+    Two parts:
+    1. estate_trust K-1 — unconditional NotImplementedError regardless of
+       attestation (Schedule E Part III is not implemented; the attestation
+       is user-awareness only).
+    2. All other gates driven by _ATTESTATIONS.enforce_compute_time.
+    """
+    for k1 in scenario.schedule_k1s:
         if k1.entity_type == EntityType.ESTATE_TRUST:
             raise NotImplementedError(
                 f"K-1 {k1.entity_name!r} has entity_type='estate_trust'. "
@@ -162,58 +165,7 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
                 "(`acknowledges_no_estate_trust_k1` is a load-time "
                 "user-awareness gate only; it does not enable compute.)"
             )
-    if len(k1s) > 4 and not cfg.acknowledges_no_more_than_four_k1s:
-        raise NotImplementedError(
-            f"Scenario has {len(k1s)} K-1s; Schedule E Part II "
-            "continuation (beyond 4 rows) is not implemented in tenforty "
-            "v1. Set `acknowledges_no_more_than_four_k1s: true` to accept "
-            "that rows beyond D will be dropped, or reduce to 4 K-1s."
-        )
-    if not cfg.acknowledges_unlimited_at_risk:
-        raise NotImplementedError(
-            "K-1 present but `acknowledges_unlimited_at_risk` is false. "
-            "Form 6198 (at-risk limitation) is not implemented in "
-            "tenforty v1; set the attestation to true to affirm all K-1 "
-            "activities have unlimited at-risk amounts."
-        )
-    if not cfg.basis_tracked_externally:
-        raise NotImplementedError(
-            "K-1 present but `basis_tracked_externally` is false. "
-            "tenforty v1 does not compute stock/debt basis worksheets; "
-            "set the attestation to true to affirm basis is tracked "
-            "outside this system."
-        )
-    for k1 in k1s:
-        if k1.section_1231_gain and not cfg.acknowledges_no_section_1231_gain:
-            raise NotImplementedError(
-                f"K-1 {k1.entity_name!r} reports section 1231 gain "
-                f"{k1.section_1231_gain}. Form 4797 is not implemented "
-                "in tenforty v1; set `acknowledges_no_section_1231_gain: "
-                "true` only if zero gain is correct."
-            )
-        if k1.section_179_deduction and not cfg.acknowledges_no_section_179:
-            raise NotImplementedError(
-                f"K-1 {k1.entity_name!r} reports section 179 deduction "
-                f"{k1.section_179_deduction}. Section 179 at the 1040 "
-                "level is not implemented in tenforty v1; set "
-                "`acknowledges_no_section_179: true` if zero is correct."
-            )
-        if (k1.entity_type == EntityType.PARTNERSHIP
-                and k1.partnership_self_employment_earnings
-                and not cfg.acknowledges_no_partnership_se_earnings):
-            raise NotImplementedError(
-                f"Partnership K-1 {k1.entity_name!r} reports SE "
-                f"earnings {k1.partnership_self_employment_earnings}. "
-                "Schedule SE is not implemented in tenforty v1; set "
-                "`acknowledges_no_partnership_se_earnings: true` only if "
-                "zero is correct."
-            )
-    if not cfg.acknowledges_no_k1_credits:
-        raise NotImplementedError(
-            "K-1 present but `acknowledges_no_k1_credits` is false. K-1 "
-            "box 13 / 15 credits are not implemented in tenforty v1; set "
-            "the attestation to true to affirm no K-1 credits apply."
-        )
+    enforce_compute_time(scenario)
 
 
 def _row_fields(k1: ScheduleK1, letter: str) -> dict:
