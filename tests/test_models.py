@@ -536,3 +536,31 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
     def test_only_first(self) -> None:
         cfg = self._config(first_name="Taxpayer")
         self.assertEqual(cfg.full_name, "Taxpayer")
+
+
+class TestScheduleK1EntityTypeEnum(unittest.TestCase):
+    def test_construct_with_enum_member(self) -> None:
+        from tenforty.models import EntityType, ScheduleK1
+        k1 = ScheduleK1(
+            entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
+            entity_type=EntityType.S_CORP, material_participation=True,
+        )
+        self.assertIs(k1.entity_type, EntityType.S_CORP)
+
+    def test_construct_with_string_coerces_to_enum(self) -> None:
+        """YAML loader passes strings; dataclass coerces in __post_init__."""
+        from tenforty.models import EntityType, ScheduleK1
+        k1 = ScheduleK1(
+            entity_name="X", entity_ein="00-0000000",
+            entity_type="partnership", material_participation=False,
+        )
+        self.assertIs(k1.entity_type, EntityType.PARTNERSHIP)
+
+    def test_invalid_string_raises(self) -> None:
+        """Mis-routed entity_type fails at construction, not silently."""
+        from tenforty.models import ScheduleK1
+        with self.assertRaises(ValueError):
+            ScheduleK1(
+                entity_name="X", entity_ein="00-0000000",
+                entity_type="c_corp", material_participation=True,
+            )

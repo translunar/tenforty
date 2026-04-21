@@ -26,7 +26,7 @@ behavior is to ignore, not raise.
 
 import logging
 
-from tenforty.models import Scenario, ScheduleK1
+from tenforty.models import EntityType, Scenario, ScheduleK1
 from tenforty.rounding import irs_round
 
 
@@ -137,7 +137,7 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
     # Estate/trust K-1 — unconditional NotImplementedError (attestation
     # is for user awareness, not "proceed naively").
     for k1 in k1s:
-        if k1.entity_type == "estate_trust":
+        if k1.entity_type == EntityType.ESTATE_TRUST:
             raise NotImplementedError(
                 f"K-1 {k1.entity_name!r} has entity_type='estate_trust'. "
                 "1041 K-1 income belongs on Sch E Part III (lines 33-37), "
@@ -182,7 +182,7 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
                 "level is not implemented in tenforty v1; set "
                 "`acknowledges_no_section_179: true` if zero is correct."
             )
-        if (k1.entity_type == "partnership"
+        if (k1.entity_type == EntityType.PARTNERSHIP
                 and k1.partnership_self_employment_earnings
                 and not cfg.acknowledges_no_partnership_se_earnings):
             raise NotImplementedError(
@@ -220,7 +220,7 @@ def _row_fields(k1: ScheduleK1, letter: str) -> dict:
     return {
         f"sch_e_part_ii_row_{letter}_name": k1.entity_name,
         f"sch_e_part_ii_row_{letter}_ein": k1.entity_ein,
-        f"sch_e_part_ii_row_{letter}_entity_type_{k1.entity_type}": "X",
+        f"sch_e_part_ii_row_{letter}_entity_type_{k1.entity_type.value}": "X",
         f"sch_e_part_ii_row_{letter}_passive_income": passive_income,
         f"sch_e_part_ii_row_{letter}_passive_loss": passive_loss,
         f"sch_e_part_ii_row_{letter}_nonpassive_income": nonpassive_income,
