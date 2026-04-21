@@ -24,8 +24,7 @@ Consumes upstream["sch_e"] for Sch E Part I results — does NOT
 re-invoke forms.sch_e.compute, avoiding circular layering.
 """
 
-from tenforty.models import Scenario
-from tenforty.models import FilingStatus
+from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
@@ -55,11 +54,19 @@ def special_allowance(
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    fanout = upstream.get("_k1_fanout", {})
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
     agi = float(upstream.get("f1040", {}).get("magi", 0))
     sch_e_upstream = upstream.get("sch_e", {})
 
-    passive_activities: list[dict] = list(fanout.get("passive_activities", []))
+    passive_activities: list[dict] = [
+        {
+            "entity_name": a.entity_name,
+            "income": a.income,
+            "loss": a.loss,
+            "prior_carryforward": a.prior_carryforward,
+        }
+        for a in fanout.passive_activities
+    ]
 
     # Sch E Part I rental property contributes to passive activities.
     if scenario.rental_properties:
@@ -77,12 +84,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         a["prior_carryforward"] for a in passive_activities
     )
 
-    # Form 8582 MAGI (line 6) is AGI modified to exclude passive income/loss
-    # per the IRS line-6 instructions. The workbook formula is:
-    #   MAGI = Adj_Gross_Inc - PassiveIncomeLoss
-    # where PassiveIncomeLoss = line 3 (the net of all passive activities).
-    # Net passive activity = income - loss - prior_carryforward (negative
-    # when losses dominate). Subtracting a negative adds it back to AGI.
+    # Form 8582 MAGI (line 6) = AGI minus net passive activity. Subtracting a
+    # negative net (losses > income) adds the loss back, which is intentional.
     net_passive = passive_income_total - passive_loss_total - prior_carryforward_total
     magi = max(0.0, agi - net_passive)
 
@@ -134,8 +137,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 "suspended_amount": suspended,
             })
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "f8582_line_1a_activities_with_income": passive_income_total,
         "f8582_line_1b_activities_with_loss": passive_loss_total,
@@ -146,6 +147,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8582_line_11_allowed_loss": allowed_loss,
         "f8582_special_allowance": allowance,
         "per_activity_carryforwards": per_activity_carryforwards,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }

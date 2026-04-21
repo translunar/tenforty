@@ -3,7 +3,7 @@
 import unittest
 
 from tenforty.forms import f8995
-from tenforty.models import ScheduleK1
+from tenforty.models import K1FanoutData, ScheduleK1
 
 from tests.helpers import make_k1_scenario
 
@@ -18,15 +18,21 @@ def _scenario_with_qbi(qbi: float = 20_000.0, taxable_income: float = 100_000.0,
         material_participation=True,
         qbi_amount=qbi,
     )]
+    fanout = K1FanoutData(
+        sch_b_interest_additions=(),
+        sch_b_dividend_additions=(),
+        sch_d_short_term_additions=(),
+        sch_d_long_term_additions=(),
+        qbi_aggregate=qbi,
+        qualified_dividends_aggregate=0.0,
+        passive_activities=(),
+    )
     upstream = {
         "f1040": {
             "taxable_income_before_qbi_deduction": taxable_income,
             "net_capital_gain": net_cap_gain,
         },
-        "_k1_fanout": {
-            "qbi_total": qbi,
-            "qualified_dividends_total": 0.0,
-        },
+        "k1_fanout": fanout,
     }
     return s, upstream
 

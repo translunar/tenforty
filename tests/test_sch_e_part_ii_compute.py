@@ -85,7 +85,7 @@ class RowLayoutTests(unittest.TestCase):
     def test_one_scorp_active_row_a_nonpassive(self):
         s = make_k1_scenario()
         s.schedule_k1s = [_scorp_k1(ordinary_business_income=50_000.0)]
-        out = sch_e_part_ii.compute(s, upstream={})
+        out, _ = sch_e_part_ii.compute(s, upstream={})
         self.assertEqual(out["sch_e_part_ii_row_a_name"], "Fake S-Corp Inc")
         self.assertEqual(out["sch_e_part_ii_row_a_ein"], "00-0000000")
         self.assertEqual(out["sch_e_part_ii_row_a_entity_type_s_corp"], "X")
@@ -100,7 +100,7 @@ class RowLayoutTests(unittest.TestCase):
             material_participation=False,
             ordinary_business_income=10_000.0,
         )]
-        out = sch_e_part_ii.compute(s, upstream={})
+        out, _ = sch_e_part_ii.compute(s, upstream={})
         self.assertEqual(out["sch_e_part_ii_row_a_passive_income"], 10_000)
         self.assertEqual(out["sch_e_part_ii_row_a_nonpassive_income"], 0)
 
@@ -114,14 +114,15 @@ class FanoutTests(unittest.TestCase):
             qualified_dividends=200.0,
             qbi_amount=50_000.0,
         )]
-        out = sch_e_part_ii.compute(s, upstream={})
-        fan = out["_k1_fanout"]
-        self.assertEqual(fan["interest_from_k1s"],
-                         [{"payer": "Fake S-Corp Inc", "amount": 500.0}])
-        self.assertEqual(fan["ordinary_dividends_from_k1s"],
-                         [{"payer": "Fake S-Corp Inc", "amount": 250.0}])
-        self.assertEqual(fan["qualified_dividends_total"], 200.0)
-        self.assertEqual(fan["qbi_total"], 50_000.0)
+        _, fan = sch_e_part_ii.compute(s, upstream={})
+        self.assertEqual(len(fan.sch_b_interest_additions), 1)
+        self.assertEqual(fan.sch_b_interest_additions[0].payer, "Fake S-Corp Inc")
+        self.assertEqual(fan.sch_b_interest_additions[0].amount, 500.0)
+        self.assertEqual(len(fan.sch_b_dividend_additions), 1)
+        self.assertEqual(fan.sch_b_dividend_additions[0].payer, "Fake S-Corp Inc")
+        self.assertEqual(fan.sch_b_dividend_additions[0].amount, 250.0)
+        self.assertEqual(fan.qualified_dividends_aggregate, 200.0)
+        self.assertEqual(fan.qbi_aggregate, 50_000.0)
 
 
 if __name__ == "__main__":

@@ -31,10 +31,38 @@ needs_pdf = unittest.skipUnless(
 )
 
 
+def plan_d_attestation_defaults() -> dict[str, bool]:
+    """Return a dict of all attestation fields pre-set for a K-1-capable
+    in-memory test scenario.
+
+    Three fields default to True because they affirm the common test posture:
+    unlimited at-risk amounts, basis tracked externally, and no K-1 credits.
+    The other ten fields stay False because their compute-time gates fire only
+    when the scenario's K-1s actually carry the triggering field value — an
+    all-False default is safe and conservative. Tests that need a different
+    value for one of the three True fields should override it explicitly on
+    `scenario.config`."""
+    return {
+        "has_foreign_accounts": False,
+        "acknowledges_form_8949_unsupported": False,
+        "acknowledges_sch_a_sales_tax_unsupported": False,
+        "acknowledges_qbi_below_threshold": False,
+        "acknowledges_unlimited_at_risk": True,
+        "basis_tracked_externally": True,
+        "acknowledges_no_partnership_se_earnings": False,
+        "acknowledges_no_section_1231_gain": False,
+        "acknowledges_no_more_than_four_k1s": False,
+        "acknowledges_no_k1_credits": True,
+        "acknowledges_no_section_179": False,
+        "acknowledges_no_estate_trust_k1": False,
+        "prior_year_itemized": False,
+    }
+
+
 def make_simple_scenario() -> Scenario:
     """Create a simple single-filer scenario for tests that need a Scenario instance.
 
-    Sets all Plan B and Plan D load-time scope-out attestations to False so
+    Sets all load-time scope-out attestations to False so
     in-memory fixtures mirror the load-time contract enforced on YAML fixtures.
     Also sets `prior_year_itemized=False` (factual) to mean last year took the
     standard deduction, so 1099-G state-refund tax-benefit-rule short-circuits.
@@ -45,19 +73,7 @@ def make_simple_scenario() -> Scenario:
             filing_status="single",
             birthdate="1990-06-15",
             state="CA",
-            has_foreign_accounts=False,
-            acknowledges_form_8949_unsupported=False,
-            acknowledges_sch_a_sales_tax_unsupported=False,
-            acknowledges_qbi_below_threshold=False,
-            acknowledges_unlimited_at_risk=False,
-            basis_tracked_externally=False,
-            acknowledges_no_partnership_se_earnings=False,
-            acknowledges_no_section_1231_gain=False,
-            acknowledges_no_more_than_four_k1s=False,
-            acknowledges_no_k1_credits=False,
-            acknowledges_no_section_179=False,
-            acknowledges_no_estate_trust_k1=False,
-            prior_year_itemized=False,
+            **plan_d_attestation_defaults(),
         ),
         w2s=[
             W2(

@@ -22,12 +22,12 @@ def _passive_k1_loss(name: str, loss: float, carryforward: float = 0.0) -> Sched
 
 
 def _run(s, magi):
-    part_ii = form_sch_e_part_ii.compute(s, upstream={})
+    _, fanout = form_sch_e_part_ii.compute(s, upstream={})
     sch_e = form_sch_e.compute(s, upstream={"f1040": {}})
     return f8582.compute(s, upstream={
         "f1040": {"magi": magi},
         "sch_e": sch_e,
-        "_k1_fanout": part_ii["_k1_fanout"],
+        "k1_fanout": fanout,
     })
 
 

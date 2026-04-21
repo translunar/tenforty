@@ -2,15 +2,15 @@
 
 Parts I and II only. Part III (Foreign Accounts and Trusts) is not
 implemented in tenforty v1; the scope-out is enforced at scenario load
-via ``TaxReturnConfig.has_foreign_accounts`` (see #11 Task 6), so any
+via ``TaxReturnConfig.has_foreign_accounts``, so any
 scenario reaching this mapping has already attested ``False``. Part III
 / FinCEN 114 (FBAR) support is tracked as a follow-up.
 
 The 2025 Sch B PDF uses flat, sequential field names (``f1_01`` through
 ``f1_66``) rather than row-grouped names (e.g. ``Row1.f1_X``), so the
-{i}-repeater shape introduced in Plan B Task 1 does not apply cleanly
-here. The mapping declares every payer/amount slot as an explicit
-scalar. Compute (Task 8) writes slots 1..N for N payers and leaves the
+{i}-repeater shape used by other forms does not apply cleanly here.
+The mapping declares every payer/amount slot as an explicit scalar.
+Compute writes slots 1..N for N payers and leaves the
 remaining slots unset; overflow is enforced in compute against the
 14-interest / 16-dividend row caps.
 

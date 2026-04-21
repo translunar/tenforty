@@ -1,35 +1,30 @@
-"""Form 8995 — Qualified Business Income Deduction Simplified Computation.
+"""Form 8995 — Qualified Business Income Deduction (simplified).
 
-v1 scope: simple path only. When taxable income exceeds the Rev. Proc.
-2024-40 threshold AND the scenario actually has QBI to deduct, the
-scenario must attest with `acknowledges_qbi_below_threshold: true` to
-accept that the simple path is being used in place of Form 8995-A
-(scoped out of v1). If qbi_total == 0 the threshold gate is
-unconditionally skipped — there is no deduction to compute.
+Scope: v1 simple path only. Over-threshold scenarios with nonzero QBI
+require Form 8995-A (not implemented) and raise NotImplementedError at
+compute time — the gate message carries the full explanation.
 
-net_capital_gain simplification (v1): per Form 8995 Inst, the correct
-figure is `qualified_dividends + net_LTCG − net_STCL`. v1 narrows to
-`qualified_dividends + max(0, net_LTCG)`, since K-1-only scenarios
-rarely realize a net short-term capital loss worth netting. Scenarios
-with a meaningful STCL will slightly over-state the income limit and
-under-state the deduction — documented limitation.
+net_capital_gain simplification: v1 uses `qualified_dividends + max(0,
+net_LTCG)` in place of `qualified_dividends + net_LTCG − net_STCL`.
+K-1-only scenarios rarely realize a meaningful STCL worth netting; a
+scenario with a meaningful STCL will slightly under-state the deduction.
 """
 
 from tenforty.constants import y2025
-from tenforty.models import Scenario
+from tenforty.models import K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    fanout = upstream.get("_k1_fanout", {})
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
     f1040 = upstream.get("f1040", {})
 
     taxable_income = float(f1040.get("taxable_income_before_qbi_deduction", 0))
     net_cap_gain = float(f1040.get("net_capital_gain", 0))
     threshold = y2025.QBI_THRESHOLD[scenario.config.filing_status]
 
-    qbi_total = float(fanout.get("qbi_total", 0.0))
-    qualified_divs = float(fanout.get("qualified_dividends_total", 0.0))
+    qbi_total = fanout.qbi_aggregate
+    qualified_divs = fanout.qualified_dividends_aggregate
 
     if (qbi_total > 0
             and taxable_income > threshold
@@ -59,8 +54,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     line_15 = min(line_6, line_14)
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "f8995_line_1_qbi": line_1,
         "f8995_line_2_total_qbi": line_2,
@@ -73,6 +66,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8995_line_13_subtract": line_13,
         "f8995_line_14_income_limit": line_14,
         "f8995_line_15_qbi_deduction": line_15,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }

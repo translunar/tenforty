@@ -37,11 +37,11 @@ class F8582OracleTests(unittest.TestCase):
             f1040 = orch.compute_federal(s)
 
         sch_e = form_sch_e.compute(s, upstream={"f1040": f1040})
-        part_ii = form_sch_e_part_ii.compute(s, upstream={})
+        _part_ii_fields, fanout = form_sch_e_part_ii.compute(s, upstream={})
         native = form_f8582.compute(s, upstream={
             "f1040": f1040,
             "sch_e": sch_e,
-            "_k1_fanout": part_ii["_k1_fanout"],
+            "k1_fanout": fanout,
         })
         self.assertEqual(
             native["f8582_line_11_allowed_loss"],

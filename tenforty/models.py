@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date as _date
 from enum import Enum
-from typing import Literal
 
 
 @dataclass
@@ -77,7 +76,7 @@ class ScheduleK1:
     """
     entity_name: str
     entity_ein: str
-    entity_type: Literal["s_corp", "partnership", "estate_trust"]
+    entity_type: EntityType
     material_participation: bool
     ordinary_business_income: float = 0.0
     net_rental_real_estate: float = 0.0
@@ -95,6 +94,12 @@ class ScheduleK1:
     section_1231_gain: float = 0.0
     section_179_deduction: float = 0.0
     partnership_self_employment_earnings: float = 0.0
+
+    def __post_init__(self) -> None:
+        # YAML loaders yield plain strings; coerce to the typed enum so all
+        # downstream comparisons work against EntityType members, not raw strings.
+        if isinstance(self.entity_type, str):
+            self.entity_type = EntityType(self.entity_type)
 
 
 @dataclass
@@ -147,6 +152,95 @@ class FilingStatus(str, Enum):
     QUALIFYING_WIDOW = "qualifying_widow"
 
 
+class EntityType(str, Enum):
+    """Pass-through entity type carried on ScheduleK1. YAML fixtures yield
+    strings; str-Enum lets them compare equal to their value string and
+    round-trip through a YAML boundary without a custom resolver."""
+    S_CORP = "s_corp"
+    PARTNERSHIP = "partnership"
+    ESTATE_TRUST = "estate_trust"
+
+
+class AccountingMethod(str, Enum):
+    """Entity-level accounting method. Declared now for Sub-plan 2's 1120-S
+    Schedule B; no Pass 1 consumer."""
+    CASH = "cash"
+    ACCRUAL = "accrual"
+    OTHER = "other"
+
+
+@dataclass(frozen=True)
+class PayerAmount:
+    """A payer-and-amount line item — K-1-derived Sch B interest/dividend
+    additions, and any place where income is attributed to a named source.
+
+    Replaces the 2-tuple / 2-key-dict {"payer", "amount"} shape that flowed
+    through multiple forms before typed dataclasses were adopted."""
+    payer: str
+    amount: float
+
+
+@dataclass(frozen=True)
+class K1FanoutActivity:
+    """One passive-activity row for Form 8582 and related passive-loss
+    predicates. Populated by sch_e_part_ii.compute for every K-1 whose
+    material_participation is False.
+
+    Sign convention: income, loss, and prior_carryforward are all positive
+    magnitudes (>= 0). The loss field being nonzero is itself the direction
+    signal — consumers do not negate."""
+    entity_name: str
+    entity_ein: str
+    entity_type: "EntityType"
+    income: float
+    loss: float
+    prior_carryforward: float
+
+
+@dataclass(frozen=True)
+class K1FanoutData:
+    """Typed sidecar produced by sch_e_part_ii.compute, carrying K-1-derived
+    additions consumed by downstream form computes (sch_b, sch_d, f8995,
+    f8582). Fields are read by name, not by positional index or string key.
+
+    qualified_dividends_aggregate is aggregated from K-1s using the same
+    "aggregate" suffix convention as qbi_aggregate for consistency."""
+    sch_b_interest_additions: tuple[PayerAmount, ...]
+    sch_b_dividend_additions: tuple[PayerAmount, ...]
+    sch_d_short_term_additions: tuple[float, ...]
+    sch_d_long_term_additions: tuple[float, ...]
+    qbi_aggregate: float
+    qualified_dividends_aggregate: float
+    passive_activities: tuple[K1FanoutActivity, ...]
+
+    @classmethod
+    def empty(cls) -> "K1FanoutData":
+        """Returned when no K-1s are present so downstream consumers can
+        unconditionally read upstream['k1_fanout'] without guarding every
+        access."""
+        return cls(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=0.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(),
+        )
+
+
+@dataclass(frozen=True)
+class VoluntaryContribution:
+    """A single CA 540 voluntary-contribution line item. Declared in Pass 1
+    for Sub-plan 3's CA540PersonalOverlay; no Pass 1 consumer.
+
+    fund_code follows FTB-defined fund abbreviations (e.g. "WLD" = California
+    Seniors Special Fund; "KID" = Child Victims of Human Trafficking Fund).
+    """
+    fund_code: str
+    amount: float
+
+
 @dataclass
 class TaxReturnConfig:
     year: int
@@ -177,7 +271,7 @@ class TaxReturnConfig:
     # NotImplementedError when state is in the no-income-tax set AND
     # itemizing would apply, preventing silent under/over-deduction.
     acknowledges_sch_a_sales_tax_unsupported: bool | None = None
-    # --- Plan D scope-out attestations (9 unconditional + 1 factual bool) ---
+    # --- K-1 scope-out attestations (9 unconditional + 1 factual bool) ---
     # All are `bool | None = None`; load_scenario raises ValueError if any is
     # left as None. Compute-time gates fire only when the predicate condition
     # is actually met (e.g., a K-1 is present, a nonzero field exists, etc.).
@@ -210,7 +304,7 @@ class TaxReturnConfig:
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
-    # --- Plan D conditional fields (validated only when sibling is set) ---
+    # --- Conditional fields (validated only when sibling is set) ---
     # Required only when filing_status == MARRIED_SEPARATELY. Per IRC §469(i)(5),
     # MFS filers who lived with a spouse at any time during the year have a
     # $0 Form 8582 special allowance for rental real estate.
@@ -225,6 +319,15 @@ class TaxReturnConfig:
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):
             self.filing_status = FilingStatus(self.filing_status)
+
+    @property
+    def full_name(self) -> str:
+        """Single source of 'First Last' formatting consumed by every form's
+        PDF-header emission. Stripped at each half so trailing whitespace in
+        one field doesn't leave a stray space when the other is empty."""
+        first = self.first_name.strip()
+        last = self.last_name.strip()
+        return f"{first} {last}".strip()
 
 
 @dataclass

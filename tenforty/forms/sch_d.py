@@ -23,7 +23,7 @@ forces an explicit attestation at scenario load.
 
 import logging
 
-from tenforty.models import Form1099B, Scenario
+from tenforty.models import Form1099B, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 log = logging.getLogger(__name__)
@@ -67,9 +67,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     short = _summarize(short_lots)
     lng = _summarize(long_lots)
 
-    fanout = upstream.get("_k1_fanout", {})
-    k1_short = irs_round(fanout.get("short_term_cap_gain_from_k1s", 0.0))
-    k1_long = irs_round(fanout.get("long_term_cap_gain_from_k1s", 0.0))
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
+    k1_short = irs_round(sum(fanout.sch_d_short_term_additions))
+    k1_long = irs_round(sum(fanout.sch_d_long_term_additions))
 
     return {
         "sch_d_line_1a_proceeds": short["proceeds"],
@@ -83,7 +83,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_d_line_12_net_long_k1": k1_long,
         "sch_d_line_15_net_long": lng["gain"] + k1_long,
         "sch_d_line_16_total": (short["gain"] + k1_short) + (lng["gain"] + k1_long),
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
 
@@ -94,7 +94,3 @@ def _summarize(lots: list[Form1099B]) -> dict:
     return {"proceeds": proceeds, "basis": basis, "gain": proceeds - basis}
 
 
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()
