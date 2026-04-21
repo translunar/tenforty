@@ -175,7 +175,7 @@ class PayerAmount:
     additions, and any place where income is attributed to a named source.
 
     Replaces the 2-tuple / 2-key-dict {"payer", "amount"} shape that flowed
-    through multiple forms in Plan D."""
+    through multiple forms before typed dataclasses were adopted."""
     payer: str
     amount: float
 
@@ -199,14 +199,12 @@ class K1FanoutActivity:
 
 @dataclass(frozen=True)
 class K1FanoutData:
-    """Typed sidecar result of sch_e_part_ii.compute. Replaces the
-    underscore-prefixed `_k1_fanout` dict that Plan D threaded through
-    upstream. Consumers (sch_b, sch_d, f8995, f8582) read fields by name,
-    not by positional index or string key.
+    """Typed sidecar produced by sch_e_part_ii.compute, carrying K-1-derived
+    additions consumed by downstream form computes (sch_b, sch_d, f8995,
+    f8582). Fields are read by name, not by positional index or string key.
 
-    qualified_dividends_aggregate matches what Plan D called "qualified_dividends_total"
-    in the old sidecar dict — renamed here to match the "aggregate" suffix
-    used by qbi_aggregate for consistency."""
+    qualified_dividends_aggregate is aggregated from K-1s using the same
+    "aggregate" suffix convention as qbi_aggregate for consistency."""
     sch_b_interest_additions: tuple[PayerAmount, ...]
     sch_b_dividend_additions: tuple[PayerAmount, ...]
     sch_d_short_term_additions: tuple[float, ...]
@@ -273,7 +271,7 @@ class TaxReturnConfig:
     # NotImplementedError when state is in the no-income-tax set AND
     # itemizing would apply, preventing silent under/over-deduction.
     acknowledges_sch_a_sales_tax_unsupported: bool | None = None
-    # --- Plan D scope-out attestations (9 unconditional + 1 factual bool) ---
+    # --- K-1 scope-out attestations (9 unconditional + 1 factual bool) ---
     # All are `bool | None = None`; load_scenario raises ValueError if any is
     # left as None. Compute-time gates fire only when the predicate condition
     # is actually met (e.g., a K-1 is present, a nonzero field exists, etc.).
@@ -306,7 +304,7 @@ class TaxReturnConfig:
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
-    # --- Plan D conditional fields (validated only when sibling is set) ---
+    # --- Conditional fields (validated only when sibling is set) ---
     # Required only when filing_status == MARRIED_SEPARATELY. Per IRC §469(i)(5),
     # MFS filers who lived with a spouse at any time during the year have a
     # $0 Form 8582 special allowance for rental real estate.

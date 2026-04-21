@@ -5,7 +5,7 @@ scenario and returns PDF-ready result keys.
 
 v1 scope: Parts I and II only. Part III (Foreign Accounts and Trusts)
 is gated at scenario load via ``TaxReturnConfig.has_foreign_accounts``
-(see #11 Task 6) — scenarios with ``True`` fail load with
+— scenarios with ``True`` fail load with
 ``NotImplementedError``, so any scenario reaching this compute has
 attested ``False``. Part III / FinCEN 114 (FBAR) support is tracked as
 a follow-up.

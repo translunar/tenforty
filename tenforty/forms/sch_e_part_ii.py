@@ -6,7 +6,7 @@ and Form 8582 (passive activity loss).
 
 **Scope:** Partnership (1065) and S-corp (1120-S) K-1s only. 1041
 (estate/trust) K-1s belong on Schedule E Part III, which is NOT
-implemented in Plan D — encountering any K-1 with
+implemented in tenforty v1 — encountering any K-1 with
 ``entity_type == "estate_trust"`` raises NotImplementedError regardless
 of the ``acknowledges_no_estate_trust_k1`` attestation (the attestation
 is a user-awareness checkbox, not a "proceed naively" flag).
@@ -20,7 +20,7 @@ Note on prior-year passive-loss carryforward: when
 ``prior_year_passive_loss_carryforward`` on that K-1 is dropped — an
 activity cannot shift between passive and nonpassive in a single year,
 and any prior suspended loss should remain suspended until disposition
-(out of scope for Plan D). We log a WARN in that case; the compute-time
+(out of scope for tenforty v1). We log a WARN in that case; the compute-time
 behavior is to ignore, not raise.
 """
 
@@ -165,7 +165,7 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
             raise NotImplementedError(
                 f"K-1 {k1.entity_name!r} has entity_type='estate_trust'. "
                 "1041 K-1 income belongs on Sch E Part III (lines 33-37), "
-                "which is NOT implemented in Plan D. Scope out: remove "
+                "which is NOT implemented in tenforty v1. Scope out: remove "
                 "the K-1 or wait for Part III support. "
                 "(`acknowledges_no_estate_trust_k1` is a load-time "
                 "user-awareness gate only; it does not enable compute.)"

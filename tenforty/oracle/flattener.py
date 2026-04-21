@@ -188,7 +188,7 @@ def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
     for i, k1 in enumerate(scenario.schedule_k1s):
         if i >= len(_K1_ROW_LETTERS):
             # The >4 case is gated by acknowledges_no_more_than_four_k1s.
-            # Compute-time enforcement (Task 3) raises if ack is False.
+            # acknowledges_no_more_than_four_k1s=False raises at compute time.
             break
         letter = _K1_ROW_LETTERS[i]
         for attr, key in _K1_FIELD_KEYS:
