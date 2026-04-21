@@ -39,6 +39,18 @@ log = logging.getLogger(__name__)
 _ROW_LETTERS = ("a", "b", "c", "d")
 
 
+def _k1_row_total(k1: ScheduleK1) -> float:
+    """Sum of the Sch E Part II row components per K-1, IRS-rounded
+    per component (rentals are combined before rounding, matching the
+    form's single 'Rental real estate' line)."""
+    return (
+        irs_round(k1.ordinary_business_income)
+        + irs_round(k1.net_rental_real_estate + k1.other_net_rental)
+        + irs_round(k1.royalties)
+        + irs_round(k1.other_income)
+    )
+
+
 def compute(
     scenario: Scenario, upstream: dict,
 ) -> tuple[dict, K1FanoutData]:
@@ -67,14 +79,7 @@ def compute(
         row = _row_fields(k1, letter)
         result.update(row)
 
-        # Row total duplicated here and in _row_fields; Task 14 extracts
-        # _k1_row_total(k1) to eliminate the duplication with its own test.
-        total_row = (
-            irs_round(k1.ordinary_business_income)
-            + irs_round(k1.net_rental_real_estate + k1.other_net_rental)
-            + irs_round(k1.royalties)
-            + irs_round(k1.other_income)
-        )
+        total_row = _k1_row_total(k1)
 
         if k1.material_participation:
             if total_row >= 0:
@@ -169,11 +174,7 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
 
 
 def _row_fields(k1: ScheduleK1, letter: str) -> dict:
-    ord_biz = irs_round(k1.ordinary_business_income)
-    rental = irs_round(k1.net_rental_real_estate + k1.other_net_rental)
-    roy = irs_round(k1.royalties)
-    other = irs_round(k1.other_income)
-    total = ord_biz + rental + roy + other
+    total = _k1_row_total(k1)
     passive_income = passive_loss = nonpassive_income = nonpassive_loss = 0
     if k1.material_participation:
         if total >= 0:
