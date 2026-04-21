@@ -499,3 +499,40 @@ class TestVoluntaryContribution(unittest.TestCase):
         vc = VoluntaryContribution(fund_code="WLD", amount=10.0)
         with self.assertRaises(Exception):  # FrozenInstanceError
             vc.amount = 20.0  # type: ignore[misc]
+
+
+class TestTaxReturnConfigFullName(unittest.TestCase):
+    def _config(self, **kw) -> "TaxReturnConfig":
+        from tenforty.models import TaxReturnConfig
+        defaults = dict(
+            year=2025, filing_status="single", birthdate="1990-06-15", state="CA",
+            has_foreign_accounts=False, acknowledges_form_8949_unsupported=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=False, basis_tracked_externally=False,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=False,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=False,
+            prior_year_itemized=False,
+        )
+        defaults.update(kw)
+        return TaxReturnConfig(**defaults)
+
+    def test_concatenates_first_last(self) -> None:
+        cfg = self._config(first_name="Taxpayer", last_name="A")
+        self.assertEqual(cfg.full_name, "Taxpayer A")
+
+    def test_strips_whitespace(self) -> None:
+        cfg = self._config(first_name="  Taxpayer  ", last_name=" A ")
+        self.assertEqual(cfg.full_name, "Taxpayer A")
+
+    def test_both_empty_gives_empty_string(self) -> None:
+        cfg = self._config()
+        self.assertEqual(cfg.full_name, "")
+
+    def test_only_first(self) -> None:
+        cfg = self._config(first_name="Taxpayer")
+        self.assertEqual(cfg.full_name, "Taxpayer")
