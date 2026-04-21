@@ -29,6 +29,7 @@ from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.models import FilingStatus, K1FanoutData, Scenario
+from tenforty.types import UpstreamState
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 
@@ -107,6 +108,19 @@ class ReturnOrchestrator:
         year = scenario.config.year
         filler = PdfFiller()
 
+        # Hoist sch_e_part_ii.compute to run at most once per emit_pdfs call.
+        # All downstream consumers (sch_b, sch_d, sch_e, f8995, f8582) share
+        # a single fanout result rather than each recomputing from scratch —
+        # keeping the K-1 fanout computation deterministic and avoiding
+        # redundant spreadsheet evaluation.
+        if self._should_emit_sch_e_part_ii(scenario):
+            part_ii_fields, k1_fanout = form_sch_e_part_ii.compute(scenario, upstream={})
+        else:
+            part_ii_fields = {}
+            k1_fanout = K1FanoutData.empty()
+
+        upstream: UpstreamState = {"f1040": results, "k1_fanout": k1_fanout}
+
         f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
         # results is already PDF-ready (forms.f1040.compute produced it,
         # including the 25d sum). No translator, no patch needed.
@@ -120,7 +134,7 @@ class ReturnOrchestrator:
 
         f4868_template = _PDFS_ROOT / "federal" / str(year) / "f4868.pdf"
         out_4868 = output_dir / f"f4868_{year}.pdf"
-        f4868_values = form_4868.compute(scenario, upstream={"f1040": results})
+        f4868_values = form_4868.compute(scenario, upstream=upstream)
         filler.fill(
             template_path=f4868_template,
             output_path=out_4868,
@@ -133,13 +147,7 @@ class ReturnOrchestrator:
         if self._should_emit_sch_b(scenario, results):
             sch_b_template = _PDFS_ROOT / "federal" / str(year) / "f1040sb.pdf"
             out_sch_b = output_dir / f"f1040sb_{year}.pdf"
-            sch_b_upstream: dict[str, dict] = {"f1040": results}
-            if self._should_emit_sch_e_part_ii(scenario):
-                _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
-                sch_b_upstream["k1_fanout"] = _fanout
-            sch_b_values = form_sch_b.compute(
-                scenario, upstream=sch_b_upstream,
-            )
+            sch_b_values = form_sch_b.compute(scenario, upstream=upstream)
             flat_values = _flatten_sch_b_rows(sch_b_values)
             filler.fill(
                 template_path=sch_b_template,
@@ -152,13 +160,7 @@ class ReturnOrchestrator:
         if self._should_emit_sch_d(scenario):
             sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
             out_sch_d = output_dir / f"f1040sd_{year}.pdf"
-            sch_d_upstream: dict[str, dict] = {"f1040": results}
-            if self._should_emit_sch_e_part_ii(scenario):
-                _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
-                sch_d_upstream["k1_fanout"] = _fanout
-            sch_d_values = form_sch_d.compute(
-                scenario, upstream=sch_d_upstream,
-            )
+            sch_d_values = form_sch_d.compute(scenario, upstream=upstream)
             filler.fill_with_repeaters(
                 template_path=sch_d_template,
                 output_path=out_sch_d,
@@ -171,13 +173,7 @@ class ReturnOrchestrator:
         if self._should_emit_sch_e(scenario):
             sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
             out_sch_e = output_dir / f"f1040se_{year}.pdf"
-            part_i = form_sch_e.compute(scenario, upstream={"f1040": results})
-            part_ii_fields: dict = {}
-            part_ii_fanout = K1FanoutData.empty()
-            if self._should_emit_sch_e_part_ii(scenario):
-                part_ii_fields, part_ii_fanout = form_sch_e_part_ii.compute(
-                    scenario, upstream={},
-                )
+            part_i = form_sch_e.compute(scenario, upstream=upstream)
             # Merge: Part I scalars win for shared keys (e.g. taxpayer_name).
             merged = {
                 **part_i,
@@ -199,9 +195,7 @@ class ReturnOrchestrator:
         if self._should_emit_sch_a(scenario, {"f1040": results}):
             sch_a_template = _PDFS_ROOT / "federal" / str(year) / "f1040sa.pdf"
             out_sch_a = output_dir / f"f1040sa_{year}.pdf"
-            sch_a_values = form_sch_a.compute(
-                scenario, upstream={"f1040": results},
-            )
+            sch_a_values = form_sch_a.compute(scenario, upstream=upstream)
             filler.fill_with_repeaters(
                 template_path=sch_a_template,
                 output_path=out_sch_a,
@@ -214,7 +208,7 @@ class ReturnOrchestrator:
             sch_1_template = _PDFS_ROOT / "federal" / str(year) / "f1040s1.pdf"
             out_sch_1 = output_dir / f"f1040s1_{year}.pdf"
             sch_1_values = form_sch_1.compute(
-                scenario, upstream={"sch_e": sch_e_values, "f1040": results},
+                scenario, upstream={**upstream, "sch_e": sch_e_values},
             )
             filler.fill_with_repeaters(
                 template_path=sch_1_template,
@@ -227,7 +221,7 @@ class ReturnOrchestrator:
         if self._should_emit_4562(scenario, {"f1040": results}):
             f4562_template = _PDFS_ROOT / "federal" / str(year) / "f4562.pdf"
             out_4562 = output_dir / f"f4562_{year}.pdf"
-            f4562_values = form_4562.compute(scenario, upstream={})
+            f4562_values = form_4562.compute(scenario, upstream=upstream)
             filler.fill_with_repeaters(
                 template_path=f4562_template,
                 output_path=out_4562,
@@ -239,9 +233,7 @@ class ReturnOrchestrator:
         if self._should_emit_8959(scenario, {"f1040": results}):
             f8959_template = _PDFS_ROOT / "federal" / str(year) / "f8959.pdf"
             out_8959 = output_dir / f"f8959_{year}.pdf"
-            f8959_values = form_8959.compute(
-                scenario, upstream={"f1040": results},
-            )
+            f8959_values = form_8959.compute(scenario, upstream=upstream)
             filler.fill(
                 template_path=f8959_template,
                 output_path=out_8959,
@@ -253,11 +245,7 @@ class ReturnOrchestrator:
         if self._should_emit_8995(scenario):
             f8995_template = _PDFS_ROOT / "federal" / str(year) / "f8995.pdf"
             out_8995 = output_dir / f"f8995_{year}.pdf"
-            _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
-            f8995_values = form_f8995.compute(scenario, upstream={
-                "f1040": results,
-                "k1_fanout": _fanout,
-            })
+            f8995_values = form_f8995.compute(scenario, upstream=upstream)
             filler.fill(
                 template_path=f8995_template,
                 output_path=out_8995,
@@ -266,17 +254,17 @@ class ReturnOrchestrator:
             )
             emitted["f8995"] = out_8995
 
-        if self._should_emit_8582(scenario):
+        if self._should_emit_8582(scenario, upstream):
             f8582_template = _PDFS_ROOT / "federal" / str(year) / "f8582.pdf"
             out_8582 = output_dir / f"f8582_{year}.pdf"
-            # Reuse sch_e_values if already computed above; otherwise compute now.
+            # Reuse sch_e_values if already computed above; otherwise compute
+            # Part I now so 8582 has rental loss context even when Sch E
+            # wasn't emitted (e.g. only passive K-1 activity, no rental property).
             if not sch_e_values:
-                sch_e_values = form_sch_e.compute(scenario, upstream={"f1040": results})
-            _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
+                sch_e_values = form_sch_e.compute(scenario, upstream=upstream)
             f8582_values = form_f8582.compute(scenario, upstream={
-                "f1040": results,
+                **upstream,
                 "sch_e": sch_e_values,
-                "k1_fanout": _fanout,
             })
             filler.fill(
                 template_path=f8582_template,
@@ -356,8 +344,21 @@ class ReturnOrchestrator:
         """Emit Form 8995 whenever any K-1 carries QBI."""
         return any(k1.qbi_amount for k1 in scenario.schedule_k1s)
 
-    def _should_emit_8582(self, scenario: Scenario) -> bool:
-        """Emit 8582 whenever any passive loss is present or carried forward."""
+    def _should_emit_8582(
+        self,
+        scenario: Scenario,
+        upstream: UpstreamState,
+    ) -> bool:
+        """Emit 8582 whenever any passive loss is present or carried forward.
+
+        The `upstream` parameter is accepted here so the caller wiring (Task 8)
+        lands in one commit without a body rewrite. Task 9 (SP1-M4) rewrites
+        this body to read upstream["k1_fanout"].passive_activities instead of
+        re-iterating scenario.schedule_k1s — keeping the gate consistent with
+        the already-computed fanout rather than duplicating the passive-activity
+        classification logic.
+        """
+        del upstream  # Task 9 replaces this body; upstream is not yet consumed
         has_passive_k1_loss = any(
             k1.net_rental_real_estate < 0 or k1.other_net_rental < 0 or
             k1.ordinary_business_income < 0 or k1.prior_year_passive_loss_carryforward
