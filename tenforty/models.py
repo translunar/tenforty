@@ -317,6 +317,15 @@ class TaxReturnConfig:
         if isinstance(self.filing_status, str):
             self.filing_status = FilingStatus(self.filing_status)
 
+    @property
+    def full_name(self) -> str:
+        """Single source of 'First Last' formatting consumed by every form's
+        PDF-header emission. Stripped at each half so trailing whitespace in
+        one field doesn't leave a stray space when the other is empty."""
+        first = self.first_name.strip()
+        last = self.last_name.strip()
+        return f"{first} {last}".strip()
+
 
 @dataclass
 class ItemizedDeductions:
