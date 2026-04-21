@@ -164,6 +164,68 @@ class AccountingMethod(str, Enum):
     OTHER = "other"
 
 
+@dataclass(frozen=True)
+class PayerAmount:
+    """A payer-and-amount line item — K-1-derived Sch B interest/dividend
+    additions, and any place where income is attributed to a named source.
+
+    Replaces the 2-tuple / 2-key-dict {"payer", "amount"} shape that flowed
+    through multiple forms in Plan D."""
+    payer: str
+    amount: float
+
+
+@dataclass(frozen=True)
+class K1FanoutActivity:
+    """One passive-activity row for Form 8582 and related passive-loss
+    predicates. Populated by sch_e_part_ii.compute for every K-1 whose
+    material_participation is False.
+
+    Sign convention: income, loss, and prior_carryforward are all positive
+    magnitudes (>= 0). The loss field being nonzero is itself the direction
+    signal — consumers do not negate."""
+    entity_name: str
+    entity_ein: str
+    entity_type: "EntityType"
+    income: float
+    loss: float
+    prior_carryforward: float
+
+
+@dataclass(frozen=True)
+class K1FanoutData:
+    """Typed sidecar result of sch_e_part_ii.compute. Replaces the
+    underscore-prefixed `_k1_fanout` dict that Plan D threaded through
+    upstream. Consumers (sch_b, sch_d, f8995, f8582) read fields by name,
+    not by positional index or string key.
+
+    qualified_dividends_aggregate matches what Plan D called "qualified_dividends_total"
+    in the old sidecar dict — renamed here to match the "aggregate" suffix
+    used by qbi_aggregate for consistency."""
+    sch_b_interest_additions: tuple[PayerAmount, ...]
+    sch_b_dividend_additions: tuple[PayerAmount, ...]
+    sch_d_short_term_additions: tuple[float, ...]
+    sch_d_long_term_additions: tuple[float, ...]
+    qbi_aggregate: float
+    qualified_dividends_aggregate: float
+    passive_activities: tuple[K1FanoutActivity, ...]
+
+    @classmethod
+    def empty(cls) -> "K1FanoutData":
+        """Returned when no K-1s are present so downstream consumers can
+        unconditionally read upstream['k1_fanout'] without guarding every
+        access."""
+        return cls(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=0.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(),
+        )
+
+
 @dataclass
 class TaxReturnConfig:
     year: int

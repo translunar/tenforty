@@ -406,3 +406,82 @@ class TestAccountingMethod(unittest.TestCase):
     def test_is_str_subclass(self) -> None:
         from tenforty.models import AccountingMethod
         self.assertIsInstance(AccountingMethod.CASH, str)
+
+
+class TestPayerAmount(unittest.TestCase):
+    def test_fields(self) -> None:
+        from tenforty.models import PayerAmount
+        pa = PayerAmount(payer="Fake S-Corp Inc", amount=150.0)
+        self.assertEqual(pa.payer, "Fake S-Corp Inc")
+        self.assertEqual(pa.amount, 150.0)
+
+    def test_frozen(self) -> None:
+        from tenforty.models import PayerAmount
+        pa = PayerAmount(payer="X", amount=1.0)
+        with self.assertRaises(Exception):
+            pa.amount = 2.0  # type: ignore[misc]
+
+
+class TestK1FanoutActivity(unittest.TestCase):
+    def test_fields(self) -> None:
+        from tenforty.models import EntityType, K1FanoutActivity
+        a = K1FanoutActivity(
+            entity_name="Fake S-Corp Inc",
+            entity_ein="00-0000000",
+            entity_type=EntityType.S_CORP,
+            income=500.0,
+            loss=0.0,
+            prior_carryforward=200.0,
+        )
+        self.assertEqual(a.entity_name, "Fake S-Corp Inc")
+        self.assertEqual(a.entity_type, EntityType.S_CORP)
+        self.assertEqual(a.income, 500.0)
+        self.assertEqual(a.loss, 0.0)
+        self.assertEqual(a.prior_carryforward, 200.0)
+
+    def test_magnitudes_are_positive(self) -> None:
+        """income/loss/prior_carryforward are all positive magnitudes by
+        convention — loss being nonzero is itself the direction signal."""
+        from tenforty.models import EntityType, K1FanoutActivity
+        a = K1FanoutActivity(
+            entity_name="X", entity_ein="00-0000000",
+            entity_type=EntityType.PARTNERSHIP,
+            income=0.0, loss=800.0, prior_carryforward=0.0,
+        )
+        self.assertGreaterEqual(a.loss, 0.0)
+        self.assertGreaterEqual(a.prior_carryforward, 0.0)
+
+
+class TestK1FanoutData(unittest.TestCase):
+    def test_empty_constructor(self) -> None:
+        from tenforty.models import K1FanoutData
+        empty = K1FanoutData.empty()
+        self.assertEqual(empty.sch_b_interest_additions, ())
+        self.assertEqual(empty.sch_b_dividend_additions, ())
+        self.assertEqual(empty.sch_d_short_term_additions, ())
+        self.assertEqual(empty.sch_d_long_term_additions, ())
+        self.assertEqual(empty.qbi_aggregate, 0.0)
+        self.assertEqual(empty.qualified_dividends_aggregate, 0.0)
+        self.assertEqual(empty.passive_activities, ())
+
+    def test_construct_with_activities(self) -> None:
+        from tenforty.models import (
+            EntityType, K1FanoutActivity, K1FanoutData, PayerAmount,
+        )
+        fanout = K1FanoutData(
+            sch_b_interest_additions=(PayerAmount(payer="X", amount=50.0),),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(100.0,),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=1000.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(
+                K1FanoutActivity(
+                    entity_name="A", entity_ein="00-0000000",
+                    entity_type=EntityType.PARTNERSHIP,
+                    income=0.0, loss=500.0, prior_carryforward=0.0,
+                ),
+            ),
+        )
+        self.assertEqual(len(fanout.passive_activities), 1)
+        self.assertEqual(fanout.sch_b_interest_additions[0].payer, "X")
