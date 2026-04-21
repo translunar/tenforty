@@ -24,8 +24,7 @@ Consumes upstream["sch_e"] for Sch E Part I results — does NOT
 re-invoke forms.sch_e.compute, avoiding circular layering.
 """
 
-from tenforty.models import Scenario
-from tenforty.models import FilingStatus
+from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
@@ -55,11 +54,19 @@ def special_allowance(
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    fanout = upstream.get("_k1_fanout", {})
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
     agi = float(upstream.get("f1040", {}).get("magi", 0))
     sch_e_upstream = upstream.get("sch_e", {})
 
-    passive_activities: list[dict] = list(fanout.get("passive_activities", []))
+    passive_activities: list[dict] = [
+        {
+            "entity_name": a.entity_name,
+            "income": a.income,
+            "loss": a.loss,
+            "prior_carryforward": a.prior_carryforward,
+        }
+        for a in fanout.passive_activities
+    ]
 
     # Sch E Part I rental property contributes to passive activities.
     if scenario.rental_properties:

@@ -26,7 +26,10 @@ behavior is to ignore, not raise.
 
 import logging
 
-from tenforty.models import EntityType, Scenario, ScheduleK1
+from tenforty.models import (
+    EntityType, K1FanoutActivity, K1FanoutData, PayerAmount,
+    Scenario, ScheduleK1,
+)
 from tenforty.rounding import irs_round
 
 
@@ -35,23 +38,23 @@ log = logging.getLogger(__name__)
 _ROW_LETTERS = ("a", "b", "c", "d")
 
 
-def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
+def compute(
+    scenario: Scenario, upstream: dict,
+) -> tuple[dict, K1FanoutData]:
     _enforce_scope_gates(scenario)
 
     result: dict = {
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
 
-    fanout = {
-        "interest_from_k1s": [],
-        "ordinary_dividends_from_k1s": [],
-        "qualified_dividends_total": 0.0,
-        "short_term_cap_gain_from_k1s": 0.0,
-        "long_term_cap_gain_from_k1s": 0.0,
-        "qbi_total": 0.0,
-        "passive_activities": [],
-    }
+    interest_additions: list[PayerAmount] = []
+    dividend_additions: list[PayerAmount] = []
+    short_term_additions: list[float] = []
+    long_term_additions: list[float] = []
+    passive_activities: list[K1FanoutActivity] = []
+    qbi_aggregate = 0.0
+    qualified_dividends_aggregate = 0.0
 
     line_29a_passive_income = 0
     line_29a_passive_loss = 0
@@ -63,11 +66,14 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         row = _row_fields(k1, letter)
         result.update(row)
 
-        ord_biz = irs_round(k1.ordinary_business_income)
-        rental = irs_round(k1.net_rental_real_estate + k1.other_net_rental)
-        roy = irs_round(k1.royalties)
-        other = irs_round(k1.other_income)
-        total_row = ord_biz + rental + roy + other
+        # Row total duplicated here and in _row_fields; Task 14 extracts
+        # _k1_row_total(k1) to eliminate the duplication with its own test.
+        total_row = (
+            irs_round(k1.ordinary_business_income)
+            + irs_round(k1.net_rental_real_estate + k1.other_net_rental)
+            + irs_round(k1.royalties)
+            + irs_round(k1.other_income)
+        )
 
         if k1.material_participation:
             if total_row >= 0:
@@ -78,9 +84,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 log.warning(
                     "K-1 %r has material_participation=True but also a "
                     "prior_year_passive_loss_carryforward of %s; "
-                    "dropping the carryforward (cannot mix active and "
-                    "suspended-passive in the same year). Track the "
-                    "carryforward externally until disposition.",
+                    "dropping (cannot mix active and suspended-passive "
+                    "in the same year). Track the carryforward externally "
+                    "until disposition.",
                     k1.entity_name, k1.prior_year_passive_loss_carryforward,
                 )
         else:
@@ -88,36 +94,38 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 line_29a_passive_income += total_row
             else:
                 line_29a_passive_loss += -total_row
-            fanout["passive_activities"].append({
-                "entity_name": k1.entity_name,
-                "income": max(0, total_row),
-                "loss": max(0, -total_row),
-                "prior_carryforward": irs_round(
-                    k1.prior_year_passive_loss_carryforward,
+            passive_activities.append(K1FanoutActivity(
+                entity_name=k1.entity_name,
+                entity_ein=k1.entity_ein,
+                entity_type=k1.entity_type,
+                income=float(max(0, total_row)),
+                loss=float(max(0, -total_row)),
+                prior_carryforward=float(
+                    irs_round(k1.prior_year_passive_loss_carryforward),
                 ),
-            })
+            ))
 
         if k1.interest_income:
-            fanout["interest_from_k1s"].append(
-                {"payer": k1.entity_name, "amount": float(k1.interest_income)},
+            interest_additions.append(
+                PayerAmount(payer=k1.entity_name, amount=float(k1.interest_income)),
             )
         if k1.ordinary_dividends:
-            fanout["ordinary_dividends_from_k1s"].append(
-                {"payer": k1.entity_name,
-                 "amount": float(k1.ordinary_dividends)},
+            dividend_additions.append(
+                PayerAmount(
+                    payer=k1.entity_name, amount=float(k1.ordinary_dividends),
+                ),
             )
-        fanout["qualified_dividends_total"] += k1.qualified_dividends
-        fanout["short_term_cap_gain_from_k1s"] += k1.net_short_term_capital_gain
-        fanout["long_term_cap_gain_from_k1s"] += k1.net_long_term_capital_gain
-        fanout["qbi_total"] += k1.qbi_amount
+        qualified_dividends_aggregate += k1.qualified_dividends
+        short_term_additions.append(float(k1.net_short_term_capital_gain))
+        long_term_additions.append(float(k1.net_long_term_capital_gain))
+        qbi_aggregate += k1.qbi_amount
 
     result["sch_e_line_29a_total_passive_income"] = line_29a_passive_income
     result["sch_e_line_29b_total_passive_loss"] = line_29a_passive_loss
     result["sch_e_line_29a_total_nonpassive_income"] = line_29a_nonpassive_income
     result["sch_e_line_29b_total_nonpassive_loss"] = line_29a_nonpassive_loss
-    # Line 32 = partnership + s-corp subtotal. Line 37 (estate/trust) is
-    # unconditionally 0 in Plan D — estate/trust K-1s are rejected at the
-    # scope gate above, so nothing ever reaches Part III.
+    # Line 37 (estate/trust) is always 0: estate_trust K-1s are rejected by
+    # _enforce_scope_gates, so nothing reaches Part III.
     result["sch_e_line_32_total_partnership_scorp"] = (
         line_29a_passive_income + line_29a_nonpassive_income
         - line_29a_passive_loss - line_29a_nonpassive_loss
@@ -125,8 +133,16 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     result["sch_e_line_37_total_estate_trust"] = 0
     result["sch_e_line_41_total_pte"] = result["sch_e_line_32_total_partnership_scorp"]
 
-    result["_k1_fanout"] = fanout
-    return result
+    fanout = K1FanoutData(
+        sch_b_interest_additions=tuple(interest_additions),
+        sch_b_dividend_additions=tuple(dividend_additions),
+        sch_d_short_term_additions=tuple(short_term_additions),
+        sch_d_long_term_additions=tuple(long_term_additions),
+        qbi_aggregate=qbi_aggregate,
+        qualified_dividends_aggregate=qualified_dividends_aggregate,
+        passive_activities=tuple(passive_activities),
+    )
+    return result, fanout
 
 
 def _enforce_scope_gates(scenario: Scenario) -> None:
@@ -226,9 +242,3 @@ def _row_fields(k1: ScheduleK1, letter: str) -> dict:
         f"sch_e_part_ii_row_{letter}_nonpassive_income": nonpassive_income,
         f"sch_e_part_ii_row_{letter}_nonpassive_loss": nonpassive_loss,
     }
-
-
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()

@@ -28,7 +28,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import FilingStatus, K1FanoutData, Scenario
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 
@@ -135,8 +135,8 @@ class ReturnOrchestrator:
             out_sch_b = output_dir / f"f1040sb_{year}.pdf"
             sch_b_upstream: dict[str, dict] = {"f1040": results}
             if self._should_emit_sch_e_part_ii(scenario):
-                part_ii_for_sch_b = form_sch_e_part_ii.compute(scenario, upstream={})
-                sch_b_upstream["_k1_fanout"] = part_ii_for_sch_b["_k1_fanout"]
+                _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
+                sch_b_upstream["k1_fanout"] = _fanout
             sch_b_values = form_sch_b.compute(
                 scenario, upstream=sch_b_upstream,
             )
@@ -154,8 +154,8 @@ class ReturnOrchestrator:
             out_sch_d = output_dir / f"f1040sd_{year}.pdf"
             sch_d_upstream: dict[str, dict] = {"f1040": results}
             if self._should_emit_sch_e_part_ii(scenario):
-                part_ii_for_sch_d = form_sch_e_part_ii.compute(scenario, upstream={})
-                sch_d_upstream["_k1_fanout"] = part_ii_for_sch_d["_k1_fanout"]
+                _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
+                sch_d_upstream["k1_fanout"] = _fanout
             sch_d_values = form_sch_d.compute(
                 scenario, upstream=sch_d_upstream,
             )
@@ -172,14 +172,16 @@ class ReturnOrchestrator:
             sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
             out_sch_e = output_dir / f"f1040se_{year}.pdf"
             part_i = form_sch_e.compute(scenario, upstream={"f1040": results})
-            part_ii: dict = {}
+            part_ii_fields: dict = {}
+            part_ii_fanout = K1FanoutData.empty()
             if self._should_emit_sch_e_part_ii(scenario):
-                part_ii = form_sch_e_part_ii.compute(scenario, upstream={})
-            # Merge: Part I scalars win for shared keys (e.g. taxpayer_name);
-            # strip _-prefixed sidecar keys (e.g. _k1_fanout) from Part II.
+                part_ii_fields, part_ii_fanout = form_sch_e_part_ii.compute(
+                    scenario, upstream={},
+                )
+            # Merge: Part I scalars win for shared keys (e.g. taxpayer_name).
             merged = {
                 **part_i,
-                **{k: v for k, v in part_ii.items() if not k.startswith("_")},
+                **part_ii_fields,
             }
             # Derive page-2 header fields for the mapping layer without
             # polluting compute outputs with PDF-template structure.
@@ -251,10 +253,10 @@ class ReturnOrchestrator:
         if self._should_emit_8995(scenario):
             f8995_template = _PDFS_ROOT / "federal" / str(year) / "f8995.pdf"
             out_8995 = output_dir / f"f8995_{year}.pdf"
-            part_ii = form_sch_e_part_ii.compute(scenario, upstream={})
+            _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
             f8995_values = form_f8995.compute(scenario, upstream={
                 "f1040": results,
-                "_k1_fanout": part_ii["_k1_fanout"],
+                "k1_fanout": _fanout,
             })
             filler.fill(
                 template_path=f8995_template,
@@ -270,11 +272,11 @@ class ReturnOrchestrator:
             # Reuse sch_e_values if already computed above; otherwise compute now.
             if not sch_e_values:
                 sch_e_values = form_sch_e.compute(scenario, upstream={"f1040": results})
-            part_ii_8582 = form_sch_e_part_ii.compute(scenario, upstream={})
+            _part_ii_fields, _fanout = form_sch_e_part_ii.compute(scenario, upstream={})
             f8582_values = form_f8582.compute(scenario, upstream={
                 "f1040": results,
                 "sch_e": sch_e_values,
-                "_k1_fanout": part_ii_8582["_k1_fanout"],
+                "k1_fanout": _fanout,
             })
             filler.fill(
                 template_path=f8582_template,
