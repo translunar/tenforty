@@ -29,6 +29,37 @@ _P2 = "topmostSubform[0].Page2[0]"
 _T28AF = f"{_P2}.Table_Line28a-f[0]"
 _T28GK = f"{_P2}.Table_Line28g-k[0]"
 
+_ROWS = ("A", "B", "C", "D")
+
+
+def _row_mapping(row_letter: str) -> dict[str, str]:
+    """Return the 8 PDF field entries for one Part II Line 28 row (A–D).
+
+    Field-number strides within the form:
+      AF sub-table (name, EIN, checkboxes) — +3 per row:
+        name f2_(3,6,9,12), EIN f2_(4,7,10,13),
+        partnership checkbox c2_(2,5,8,11), S-corp checkbox c2_(3,6,9,12)
+      GK sub-table (income/loss columns) — +5 per row:
+        passive_loss f2_(15,20,25,30), passive_income f2_(16,21,26,31),
+        nonpassive_loss f2_(17,22,27,32),
+        nonpassive_income f2_(19,24,29,34)  ← skips §179 at offset +2
+    To add Row E: append "E" to _ROWS; strides extend automatically.
+    """
+    i = _ROWS.index(row_letter)
+    row = row_letter.lower()
+    af = f"{_T28AF}.Row{row_letter}[0]"
+    gk = f"{_T28GK}.Row{row_letter}[0]"
+    return {
+        f"sch_e_part_ii_row_{row}_name":                     f"{af}.f2_{3 + 3 * i}[0]",
+        f"sch_e_part_ii_row_{row}_ein":                      f"{af}.f2_{4 + 3 * i}[0]",
+        f"sch_e_part_ii_row_{row}_entity_type_partnership":  f"{af}.c2_{2 + 3 * i}[0]",
+        f"sch_e_part_ii_row_{row}_entity_type_s_corp":       f"{af}.c2_{3 + 3 * i}[0]",
+        f"sch_e_part_ii_row_{row}_passive_loss":             f"{gk}.f2_{15 + 5 * i}[0]",
+        f"sch_e_part_ii_row_{row}_passive_income":           f"{gk}.f2_{16 + 5 * i}[0]",
+        f"sch_e_part_ii_row_{row}_nonpassive_loss":          f"{gk}.f2_{17 + 5 * i}[0]",
+        f"sch_e_part_ii_row_{row}_nonpassive_income":        f"{gk}.f2_{19 + 5 * i}[0]",
+    }
+
 
 class PdfSchE:
     _MAPPINGS: dict[int, dict] = {
@@ -108,81 +139,12 @@ class PdfSchE:
                 "taxpayer_name_page2": f"{_P2}.f2_1[0]",
                 "taxpayer_ssn_page2":  f"{_P2}.f2_2[0]",
 
-                # ── Part II — Line 28, Row A ────────────────────────────────────
-                # Columns a-f sub-table (name, EIN, entity-type checkboxes)
-                "sch_e_part_ii_row_a_name":
-                    f"{_T28AF}.RowA[0].f2_3[0]",
-                "sch_e_part_ii_row_a_ein":
-                    f"{_T28AF}.RowA[0].f2_4[0]",
-                # Entity-type checkboxes: P=partnership, S=s_corp
-                "sch_e_part_ii_row_a_entity_type_partnership":
-                    f"{_T28AF}.RowA[0].c2_2[0]",
-                "sch_e_part_ii_row_a_entity_type_s_corp":
-                    f"{_T28AF}.RowA[0].c2_3[0]",
-                # Columns g-k sub-table: passive loss, passive income,
-                # nonpassive loss, [§179 skip], nonpassive income
-                "sch_e_part_ii_row_a_passive_loss":
-                    f"{_T28GK}.RowA[0].f2_15[0]",
-                "sch_e_part_ii_row_a_passive_income":
-                    f"{_T28GK}.RowA[0].f2_16[0]",
-                "sch_e_part_ii_row_a_nonpassive_loss":
-                    f"{_T28GK}.RowA[0].f2_17[0]",
-                "sch_e_part_ii_row_a_nonpassive_income":
-                    f"{_T28GK}.RowA[0].f2_19[0]",
-
-                # ── Part II — Line 28, Row B ────────────────────────────────────
-                "sch_e_part_ii_row_b_name":
-                    f"{_T28AF}.RowB[0].f2_6[0]",
-                "sch_e_part_ii_row_b_ein":
-                    f"{_T28AF}.RowB[0].f2_7[0]",
-                "sch_e_part_ii_row_b_entity_type_partnership":
-                    f"{_T28AF}.RowB[0].c2_5[0]",
-                "sch_e_part_ii_row_b_entity_type_s_corp":
-                    f"{_T28AF}.RowB[0].c2_6[0]",
-                "sch_e_part_ii_row_b_passive_loss":
-                    f"{_T28GK}.RowB[0].f2_20[0]",
-                "sch_e_part_ii_row_b_passive_income":
-                    f"{_T28GK}.RowB[0].f2_21[0]",
-                "sch_e_part_ii_row_b_nonpassive_loss":
-                    f"{_T28GK}.RowB[0].f2_22[0]",
-                "sch_e_part_ii_row_b_nonpassive_income":
-                    f"{_T28GK}.RowB[0].f2_24[0]",
-
-                # ── Part II — Line 28, Row C ────────────────────────────────────
-                "sch_e_part_ii_row_c_name":
-                    f"{_T28AF}.RowC[0].f2_9[0]",
-                "sch_e_part_ii_row_c_ein":
-                    f"{_T28AF}.RowC[0].f2_10[0]",
-                "sch_e_part_ii_row_c_entity_type_partnership":
-                    f"{_T28AF}.RowC[0].c2_8[0]",
-                "sch_e_part_ii_row_c_entity_type_s_corp":
-                    f"{_T28AF}.RowC[0].c2_9[0]",
-                "sch_e_part_ii_row_c_passive_loss":
-                    f"{_T28GK}.RowC[0].f2_25[0]",
-                "sch_e_part_ii_row_c_passive_income":
-                    f"{_T28GK}.RowC[0].f2_26[0]",
-                "sch_e_part_ii_row_c_nonpassive_loss":
-                    f"{_T28GK}.RowC[0].f2_27[0]",
-                "sch_e_part_ii_row_c_nonpassive_income":
-                    f"{_T28GK}.RowC[0].f2_29[0]",
-
-                # ── Part II — Line 28, Row D ────────────────────────────────────
-                "sch_e_part_ii_row_d_name":
-                    f"{_T28AF}.RowD[0].f2_12[0]",
-                "sch_e_part_ii_row_d_ein":
-                    f"{_T28AF}.RowD[0].f2_13[0]",
-                "sch_e_part_ii_row_d_entity_type_partnership":
-                    f"{_T28AF}.RowD[0].c2_11[0]",
-                "sch_e_part_ii_row_d_entity_type_s_corp":
-                    f"{_T28AF}.RowD[0].c2_12[0]",
-                "sch_e_part_ii_row_d_passive_loss":
-                    f"{_T28GK}.RowD[0].f2_30[0]",
-                "sch_e_part_ii_row_d_passive_income":
-                    f"{_T28GK}.RowD[0].f2_31[0]",
-                "sch_e_part_ii_row_d_nonpassive_loss":
-                    f"{_T28GK}.RowD[0].f2_32[0]",
-                "sch_e_part_ii_row_d_nonpassive_income":
-                    f"{_T28GK}.RowD[0].f2_34[0]",
+                # ── Part II — Line 28, Rows A–D (generated via _row_mapping) ──────
+                **{
+                    k: v
+                    for letter in _ROWS
+                    for k, v in _row_mapping(letter).items()
+                },
 
                 # ── Part II — Line 29 column totals ────────────────────────────
                 # Line 29a row (y≈480): passive-loss(e), passive-income(f),

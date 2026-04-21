@@ -134,5 +134,42 @@ class PdfSchEPartIIStructureTests(unittest.TestCase):
         )
 
 
+class TestPdfSchERowsSnapshot(unittest.TestCase):
+    """Snapshot test for pdf_sch_e Part II row mapping (SP1-N9).
+
+    Ensures the loop-based row generator emits the exact same PDF field names
+    as the hand-written blocks so the refactor is bit-identical."""
+
+    def test_row_a_through_d_fields(self) -> None:
+        m = PdfSchE.get_mapping(2025)
+        scalars = m["scalars"]
+        expected = {
+            # Row A
+            "sch_e_part_ii_row_a_name":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].f2_3[0]",
+            "sch_e_part_ii_row_a_ein":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].f2_4[0]",
+            "sch_e_part_ii_row_a_entity_type_partnership":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].c2_2[0]",
+            "sch_e_part_ii_row_a_entity_type_s_corp":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].c2_3[0]",
+            "sch_e_part_ii_row_a_passive_loss":
+                "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_15[0]",
+            "sch_e_part_ii_row_a_passive_income":
+                "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_16[0]",
+            "sch_e_part_ii_row_a_nonpassive_loss":
+                "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_17[0]",
+            "sch_e_part_ii_row_a_nonpassive_income":
+                "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_19[0]",
+            # Row D (spot-check stride)
+            "sch_e_part_ii_row_d_name":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowD[0].f2_12[0]",
+            "sch_e_part_ii_row_d_nonpassive_income":
+                "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowD[0].f2_34[0]",
+        }
+        for k, expected_value in expected.items():
+            self.assertEqual(scalars.get(k), expected_value, f"field {k}")
+
+
 if __name__ == "__main__":
     unittest.main()
