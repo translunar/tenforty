@@ -14,7 +14,7 @@ the variables by name, so the wiring is a one-line edit.
 """
 
 from tenforty.constants import y2025
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
 
@@ -38,7 +38,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
         recovery_cap = max(0.0, itemized - standard)
         salt_cap = float(
-            y2025.PRIOR_YEAR_SALT_CAP[FilingStatus(scenario.config.filing_status)]
+            y2025.PRIOR_YEAR_SALT_CAP[scenario.config.filing_status]
         )
         taxable_refunds_line_1 = irs_round(
             min(refund_total, recovery_cap, salt_cap)
