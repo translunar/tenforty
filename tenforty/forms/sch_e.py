@@ -92,18 +92,11 @@ def _property_a_fields(rp: RentalProperty) -> dict:
 def has_any_net_loss(scenario: Scenario) -> bool:
     """True when any Sch E Part I rental runs a net loss.
 
-    Single-purpose helper for orchestrator predicates. Does not go
-    through compute() — just sums the scenario's own fields.
-    """
+    Iterates _EXPENSE_FIELDS so that adding or removing an expense line
+    here keeps the predicate in sync without a second edit."""
     for p in scenario.rental_properties:
-        expense_fields = (
-            p.advertising, p.auto_and_travel, p.cleaning_and_maintenance,
-            p.commissions, p.insurance, p.legal_and_professional_fees,
-            p.management_fees, p.mortgage_interest, p.other_interest,
-            p.repairs, p.supplies, p.taxes, p.utilities, p.depreciation,
-            p.other_expenses,
-        )
-        if p.rents_received < sum(expense_fields):
+        expense_total = sum(getattr(p, attr) for attr, _key in _EXPENSE_FIELDS)
+        if p.rents_received < expense_total:
             return True
     return False
 
