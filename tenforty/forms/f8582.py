@@ -84,12 +84,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         a["prior_carryforward"] for a in passive_activities
     )
 
-    # Form 8582 MAGI (line 6) is AGI modified to exclude passive income/loss
-    # per the IRS line-6 instructions. The workbook formula is:
-    #   MAGI = Adj_Gross_Inc - PassiveIncomeLoss
-    # where PassiveIncomeLoss = line 3 (the net of all passive activities).
-    # Net passive activity = income - loss - prior_carryforward (negative
-    # when losses dominate). Subtracting a negative adds it back to AGI.
+    # Form 8582 MAGI (line 6) = AGI minus net passive activity. Subtracting a
+    # negative net (losses > income) adds the loss back, which is intentional.
     net_passive = passive_income_total - passive_loss_total - prior_carryforward_total
     magi = max(0.0, agi - net_passive)
 

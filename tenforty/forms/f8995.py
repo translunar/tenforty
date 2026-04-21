@@ -1,18 +1,13 @@
-"""Form 8995 — Qualified Business Income Deduction Simplified Computation.
+"""Form 8995 — Qualified Business Income Deduction (simplified).
 
-v1 scope: simple path only. When taxable income exceeds the Rev. Proc.
-2024-40 threshold AND the scenario actually has QBI to deduct, the
-scenario must attest with `acknowledges_qbi_below_threshold: true` to
-accept that the simple path is being used in place of Form 8995-A
-(scoped out of v1). If qbi_total == 0 the threshold gate is
-unconditionally skipped — there is no deduction to compute.
+Scope: v1 simple path only. Over-threshold scenarios with nonzero QBI
+require Form 8995-A (not implemented) and raise NotImplementedError at
+compute time — the gate message carries the full explanation.
 
-net_capital_gain simplification (v1): per Form 8995 Inst, the correct
-figure is `qualified_dividends + net_LTCG − net_STCL`. v1 narrows to
-`qualified_dividends + max(0, net_LTCG)`, since K-1-only scenarios
-rarely realize a net short-term capital loss worth netting. Scenarios
-with a meaningful STCL will slightly over-state the income limit and
-under-state the deduction — documented limitation.
+net_capital_gain simplification: v1 uses `qualified_dividends + max(0,
+net_LTCG)` in place of `qualified_dividends + net_LTCG − net_STCL`.
+K-1-only scenarios rarely realize a meaningful STCL worth netting; a
+scenario with a meaningful STCL will slightly under-state the deduction.
 """
 
 from tenforty.constants import y2025
