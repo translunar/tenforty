@@ -379,3 +379,30 @@ class ScenarioDepreciableAssetsTests(unittest.TestCase):
         self.assertEqual(a.description, "Rental building")
         self.assertEqual(a.basis, 250_000.0)
         self.assertEqual(a.recovery_class, "27.5-year")
+
+
+class TestEntityType(unittest.TestCase):
+    def test_values_match_plan_d_string_literal(self) -> None:
+        """The three entity types accepted by ScheduleK1 today."""
+        from tenforty.models import EntityType
+        self.assertEqual(EntityType.S_CORP.value, "s_corp")
+        self.assertEqual(EntityType.PARTNERSHIP.value, "partnership")
+        self.assertEqual(EntityType.ESTATE_TRUST.value, "estate_trust")
+
+    def test_is_str_subclass(self) -> None:
+        """str-Enum for YAML-loader friendliness (YAML yields strings)."""
+        from tenforty.models import EntityType
+        self.assertIsInstance(EntityType.S_CORP, str)
+        self.assertEqual(EntityType("s_corp"), EntityType.S_CORP)
+
+
+class TestAccountingMethod(unittest.TestCase):
+    def test_values(self) -> None:
+        from tenforty.models import AccountingMethod
+        self.assertEqual(AccountingMethod.CASH.value, "cash")
+        self.assertEqual(AccountingMethod.ACCRUAL.value, "accrual")
+        self.assertEqual(AccountingMethod.OTHER.value, "other")
+
+    def test_is_str_subclass(self) -> None:
+        from tenforty.models import AccountingMethod
+        self.assertIsInstance(AccountingMethod.CASH, str)

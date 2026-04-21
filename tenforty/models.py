@@ -147,6 +147,23 @@ class FilingStatus(str, Enum):
     QUALIFYING_WIDOW = "qualifying_widow"
 
 
+class EntityType(str, Enum):
+    """Pass-through entity type carried on ScheduleK1. YAML fixtures yield
+    strings; str-Enum lets them compare equal to their value string and
+    round-trip through a YAML boundary without a custom resolver."""
+    S_CORP = "s_corp"
+    PARTNERSHIP = "partnership"
+    ESTATE_TRUST = "estate_trust"
+
+
+class AccountingMethod(str, Enum):
+    """Entity-level accounting method. Declared now for Sub-plan 2's 1120-S
+    Schedule B; no Pass 1 consumer."""
+    CASH = "cash"
+    ACCRUAL = "accrual"
+    OTHER = "other"
+
+
 @dataclass
 class TaxReturnConfig:
     year: int
