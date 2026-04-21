@@ -21,6 +21,7 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_1098s(scenario, flat)
     _flatten_rental_properties(scenario, flat)
     _flatten_k1s(scenario, flat)
+    _flatten_1099_b(scenario, flat)
 
     _reject_unhandled(scenario)
 
@@ -28,12 +29,14 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
 
 
 def _reject_unhandled(scenario: Scenario) -> None:
-    """Raise NotImplementedError if the scenario has data we can't flatten yet."""
-    if scenario.form1099_b:
-        raise NotImplementedError(
-            f"1099-B flattening not yet implemented "
-            f"({len(scenario.form1099_b)} transaction(s) would be silently dropped)"
-        )
+    """Reserved hook for future form types that cannot yet be flattened.
+
+    Currently a no-op: every modeled form type has an explicit flattener.
+    When a new unhandled form type is added to the Scenario schema, raise
+    NotImplementedError here so callers fail loudly rather than silently
+    dropping data.
+    """
+    return
 
 
 def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
@@ -166,6 +169,18 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
             flat["sche_8582_net_loss"] = round(-net)
 
 
+# Form 8949 box routing.
+# Short-term (Part I):  A = 1099-B + basis reported; B = 1099-B + basis not reported.
+# Long-term  (Part II): D = 1099-B + basis reported; E = 1099-B + basis not reported.
+# Boxes C / F ("no 1099-B received") are out of scope: Form1099B represents
+# a received 1099-B by definition.
+_BOX_KEYS = {
+    (True,  True):  "box_a",
+    (True,  False): "box_b",
+    (False, True):  "box_d",
+    (False, False): "box_e",
+}
+
 _K1_ROW_LETTERS = "abcd"
 _K1_FIELD_KEYS = (
     ("entity_name", "entity_name"),
@@ -233,6 +248,35 @@ def _flatten_k1s(scenario: Scenario, flat: dict[str, object]) -> None:
             flat[f"k1_{letter}_8582_prior_year_loss"] = round(
                 k1.prior_year_passive_loss_carryforward
             )
+
+
+def _flatten_1099_b(scenario: Scenario, flat: dict[str, object]) -> None:
+    """Populate per-lot 8949 row slots, enumerated 1..N per subsection box."""
+    box_counters: dict[str, int] = {}
+    for lot in scenario.form1099_b:
+        box = _BOX_KEYS[(lot.short_term, lot.basis_reported_to_irs)]
+        idx = box_counters.get(box, 0) + 1
+        box_counters[box] = idx
+        prefix = f"f8949_{box}_lot_{idx}"
+        flat[f"{prefix}_description"] = lot.description
+        flat[f"{prefix}_date_acquired"] = lot.date_acquired
+        flat[f"{prefix}_date_sold"] = lot.date_sold
+        flat[f"{prefix}_proceeds"] = lot.proceeds
+        flat[f"{prefix}_basis"] = lot.cost_basis
+        # Wash sale (code W) wins over other basis adjustment (code O);
+        # combined adjustments on a single lot are caught at compute-time.
+        if lot.wash_sale_loss_disallowed:
+            flat[f"{prefix}_adjustment_code"] = "W"
+            flat[f"{prefix}_adjustment_amount"] = lot.wash_sale_loss_disallowed
+        elif lot.other_basis_adjustment:
+            flat[f"{prefix}_adjustment_code"] = "O"
+            flat[f"{prefix}_adjustment_amount"] = lot.other_basis_adjustment
+        # 28%-rate / §1250 tags propagate for Sch D to aggregate; not
+        # separate XLS inputs of their own.
+        if lot.is_28_rate_collectible:
+            flat[f"{prefix}_is_28_rate"] = "X"
+        if lot.is_section_1250:
+            flat[f"{prefix}_is_section_1250"] = "X"
 
 
 def _flatten_1099g(scenario: Scenario, flat: dict[str, object]) -> None:
