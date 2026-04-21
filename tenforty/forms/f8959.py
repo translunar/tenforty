@@ -78,7 +78,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_24 = line_22 + line_23
 
     result: dict = {
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
         "f8959_line_1": irs_round(line_1),
         "f8959_line_2": irs_round(line_2),
@@ -126,7 +126,3 @@ def _cross_check(result: dict, key: str, oracle_value, oracle_name: str) -> None
         )
 
 
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()

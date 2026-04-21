@@ -5,7 +5,7 @@ scenario and returns PDF-ready result keys.
 
 v1 scope: Parts I and II only. Part III (Foreign Accounts and Trusts)
 is gated at scenario load via ``TaxReturnConfig.has_foreign_accounts``
-(see #11 Task 6) — scenarios with ``True`` fail load with
+— scenarios with ``True`` fail load with
 ``NotImplementedError``, so any scenario reaching this compute has
 attested ``False``. Part III / FinCEN 114 (FBAR) support is tracked as
 a follow-up.
@@ -17,7 +17,7 @@ the mapping module so they stay in sync with the PDF geometry.
 """
 
 from tenforty.mappings.pdf_sch_b import DIVIDEND_MAX_ROWS, INTEREST_MAX_ROWS
-from tenforty.models import Scenario
+from tenforty.models import K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
@@ -31,11 +31,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         for e in scenario.form1099_div
     ]
 
-    fanout = upstream.get("_k1_fanout", {})
-    for row in fanout.get("interest_from_k1s", []):
-        interest_payers.append({"payer": row["payer"], "amount": row["amount"]})
-    for row in fanout.get("ordinary_dividends_from_k1s", []):
-        dividend_payers.append({"payer": row["payer"], "amount": row["amount"]})
+    fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
+    for pa in fanout.sch_b_interest_additions:
+        interest_payers.append({"payer": pa.payer, "amount": irs_round(pa.amount)})
+    for pa in fanout.sch_b_dividend_additions:
+        dividend_payers.append({"payer": pa.payer, "amount": irs_round(pa.amount)})
 
     if len(interest_payers) > INTEREST_MAX_ROWS:
         raise NotImplementedError(
@@ -60,12 +60,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "taxable_interest": total_interest,
         "dividend_payers": dividend_payers,
         "total_ordinary_dividends": total_dividends,
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
 
 
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()

@@ -14,7 +14,7 @@ the variables by name, so the wiring is a one-line edit.
 """
 
 from tenforty.constants import y2025
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
 
@@ -38,7 +38,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
         recovery_cap = max(0.0, itemized - standard)
         salt_cap = float(
-            y2025.PRIOR_YEAR_SALT_CAP[FilingStatus(scenario.config.filing_status)]
+            y2025.PRIOR_YEAR_SALT_CAP[scenario.config.filing_status]
         )
         taxable_refunds_line_1 = irs_round(
             min(refund_total, recovery_cap, salt_cap)
@@ -93,8 +93,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         + other_adjustments_line_24_sum
     )
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "sch_1_line_1_taxable_refunds": taxable_refunds_line_1,
         "sch_1_line_3_business_income": business_income_line_3,
@@ -111,6 +109,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_1_line_20_ira": ira_deduction_line_20,
         "sch_1_line_21_student_loan_interest": student_loan_interest_line_21,
         "sch_1_line_26_total_adjustments": total_adjustments_line_26,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
