@@ -31,6 +31,34 @@ needs_pdf = unittest.skipUnless(
 )
 
 
+def plan_d_attestation_defaults() -> dict[str, bool]:
+    """Return a dict mapping every Plan B + Plan D attestation field to a
+    default value suitable for a bare in-memory test scenario.
+
+    Task 11 sets every field to False, matching the legacy `make_simple_scenario`
+    posture verbatim so introducing the data-driven table does NOT change
+    behavior for any existing test. Task 12 migrates individual defaults
+    where the spec's target posture for K-1-bearing scenarios differs
+    (`acknowledges_unlimited_at_risk`, `basis_tracked_externally`,
+    `acknowledges_no_k1_credits`). Tests that relied on the all-False posture
+    will be updated there, not here."""
+    return {
+        "has_foreign_accounts": False,
+        "acknowledges_form_8949_unsupported": False,
+        "acknowledges_sch_a_sales_tax_unsupported": False,
+        "acknowledges_qbi_below_threshold": False,
+        "acknowledges_unlimited_at_risk": False,
+        "basis_tracked_externally": False,
+        "acknowledges_no_partnership_se_earnings": False,
+        "acknowledges_no_section_1231_gain": False,
+        "acknowledges_no_more_than_four_k1s": False,
+        "acknowledges_no_k1_credits": False,
+        "acknowledges_no_section_179": False,
+        "acknowledges_no_estate_trust_k1": False,
+        "prior_year_itemized": False,
+    }
+
+
 def make_simple_scenario() -> Scenario:
     """Create a simple single-filer scenario for tests that need a Scenario instance.
 
@@ -45,19 +73,7 @@ def make_simple_scenario() -> Scenario:
             filing_status="single",
             birthdate="1990-06-15",
             state="CA",
-            has_foreign_accounts=False,
-            acknowledges_form_8949_unsupported=False,
-            acknowledges_sch_a_sales_tax_unsupported=False,
-            acknowledges_qbi_below_threshold=False,
-            acknowledges_unlimited_at_risk=False,
-            basis_tracked_externally=False,
-            acknowledges_no_partnership_se_earnings=False,
-            acknowledges_no_section_1231_gain=False,
-            acknowledges_no_more_than_four_k1s=False,
-            acknowledges_no_k1_credits=False,
-            acknowledges_no_section_179=False,
-            acknowledges_no_estate_trust_k1=False,
-            prior_year_itemized=False,
+            **plan_d_attestation_defaults(),
         ),
         w2s=[
             W2(
