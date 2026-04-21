@@ -173,7 +173,7 @@ class PdfSchE:
                 "sch_e_line_31_total_loss":      f"{_P2}.f2_46[0]",
                 "sch_e_line_32_total_partnership_scorp": f"{_P2}.f2_47[0]",
 
-                # ── Part III — Line 37 (estate/trust) — always 0 in v1 ────
+                # ── Part III — Line 37 (estate/trust) — always 0: estate_trust K-1s rejected at load ────
                 "sch_e_line_37_total_estate_trust": f"{_P2}.f2_68[0]",
 
                 # ── Line 41 — total pass-through income / (loss) ───────────────

@@ -56,7 +56,7 @@ class F1040(FormMapping):
             # are intentionally deferred: the form's Part II table aggregates
             # K-1 income into four columns (passive/nonpassive * income/loss)
             # that require per-K-1 routing based on material_participation
-
+            # and box type; aggregation is deferred until that routing is implemented.
             "k1_a_entity_name": "Sch. E",
             "k1_a_entity_type_s_corp": "Sch. E",
             "k1_a_entity_type_partnership": "Sch. E",
