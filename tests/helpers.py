@@ -35,24 +35,25 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
     """Return a dict mapping every Plan B + Plan D attestation field to a
     default value suitable for a bare in-memory test scenario.
 
-    Task 11 sets every field to False, matching the legacy `make_simple_scenario`
-    posture verbatim so introducing the data-driven table does NOT change
-    behavior for any existing test. Task 12 migrates individual defaults
-    where the spec's target posture for K-1-bearing scenarios differs
-    (`acknowledges_unlimited_at_risk`, `basis_tracked_externally`,
-    `acknowledges_no_k1_credits`). Tests that relied on the all-False posture
-    will be updated there, not here."""
+    Three fields default to True because they affirm the spec's target posture
+    for any K-1-bearing scenario (unlimited at-risk amounts, basis tracked
+    externally, no K-1 credits). The other ten fields stay False because their
+    triggers check per-K-1-field values (e.g. `_has_partnership_se_earnings`,
+    `_has_section_1231`, `_more_than_four_k1s`) — an all-False default is safe
+    because the gate only fires if the scenario's K-1s actually carry the
+    triggering field. Tests that need the False value for one of the three
+    migrated fields should set it explicitly on `scenario.config`."""
     return {
         "has_foreign_accounts": False,
         "acknowledges_form_8949_unsupported": False,
         "acknowledges_sch_a_sales_tax_unsupported": False,
         "acknowledges_qbi_below_threshold": False,
-        "acknowledges_unlimited_at_risk": False,
-        "basis_tracked_externally": False,
+        "acknowledges_unlimited_at_risk": True,   # migrated in Task 12
+        "basis_tracked_externally": True,         # migrated in Task 12
         "acknowledges_no_partnership_se_earnings": False,
         "acknowledges_no_section_1231_gain": False,
         "acknowledges_no_more_than_four_k1s": False,
-        "acknowledges_no_k1_credits": False,
+        "acknowledges_no_k1_credits": True,       # migrated in Task 12
         "acknowledges_no_section_179": False,
         "acknowledges_no_estate_trust_k1": False,
         "prior_year_itemized": False,
