@@ -1,3 +1,4 @@
+import dataclasses
 import unittest
 from pathlib import Path
 
@@ -7,6 +8,7 @@ import yaml
 
 from datetime import date
 
+from tenforty.forms import sch_d as sch_d_module
 from tenforty.models import (
     DepreciableAsset,
     FilingStatus,
@@ -293,7 +295,6 @@ class TestForm1099B(unittest.TestCase):
                 "birthdate": "1990-01-01",
                 "state": "CA",
                 "has_foreign_accounts": False,
-                "acknowledges_form_8949_unsupported": False,
                 "acknowledges_sch_a_sales_tax_unsupported": False,
                 "acknowledges_qbi_below_threshold": False,
                 "acknowledges_unlimited_at_risk": False,
@@ -305,6 +306,10 @@ class TestForm1099B(unittest.TestCase):
                 "acknowledges_no_section_179": False,
                 "acknowledges_no_estate_trust_k1": False,
                 "prior_year_itemized": False,
+                "acknowledges_no_wash_sale_adjustments": False,
+                "acknowledges_no_other_basis_adjustments": False,
+                "acknowledges_no_28_rate_gain": False,
+                "acknowledges_no_unrecaptured_section_1250": False,
             },
             "form1099_b": [
                 {
@@ -368,7 +373,10 @@ class ScenarioDepreciableAssetsTests(unittest.TestCase):
                 birthdate="1980-01-01",
                 state="CA",
                 has_foreign_accounts=False,
-                acknowledges_form_8949_unsupported=False,
+                acknowledges_no_wash_sale_adjustments=False,
+                acknowledges_no_other_basis_adjustments=False,
+                acknowledges_no_28_rate_gain=False,
+                acknowledges_no_unrecaptured_section_1250=False,
             ),
         )
         self.assertEqual(scenario.depreciable_assets, [])
@@ -507,7 +515,7 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
         from tenforty.models import TaxReturnConfig
         defaults = dict(
             year=2025, filing_status="single", birthdate="1990-06-15", state="CA",
-            has_foreign_accounts=False, acknowledges_form_8949_unsupported=False,
+            has_foreign_accounts=False,
             acknowledges_sch_a_sales_tax_unsupported=False,
             acknowledges_qbi_below_threshold=False,
             acknowledges_unlimited_at_risk=False, basis_tracked_externally=False,
@@ -518,6 +526,10 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
             acknowledges_no_section_179=False,
             acknowledges_no_estate_trust_k1=False,
             prior_year_itemized=False,
+            acknowledges_no_wash_sale_adjustments=False,
+            acknowledges_no_other_basis_adjustments=False,
+            acknowledges_no_28_rate_gain=False,
+            acknowledges_no_unrecaptured_section_1250=False,
         )
         defaults.update(kw)
         return TaxReturnConfig(**defaults)
@@ -625,4 +637,16 @@ class TestForm1099BAdjustments(unittest.TestCase):
             set(_LOT_ADJUSTMENT_FIELDS),
             {"wash_sale_loss_disallowed", "other_basis_adjustment",
              "is_28_rate_collectible", "is_section_1250"},
+        )
+
+
+class TestRemovedAttestation(unittest.TestCase):
+    def test_old_form_8949_attestation_removed(self) -> None:
+        fields = {f.name for f in dataclasses.fields(TaxReturnConfig)}
+        self.assertNotIn("acknowledges_form_8949_unsupported", fields)
+
+    def test_eightfortynine_exception_removed(self) -> None:
+        self.assertFalse(
+            hasattr(sch_d_module, "EightFortyNineRequired"),
+            "EightFortyNineRequired should be deleted; 8949 is implemented.",
         )

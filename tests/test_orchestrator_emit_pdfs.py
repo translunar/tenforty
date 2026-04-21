@@ -40,7 +40,10 @@ def make_scenario_with_identity() -> Scenario:
             address_state="TX",
             address_zip="77001",
             has_foreign_accounts=False,
-            acknowledges_form_8949_unsupported=False,
+            acknowledges_no_wash_sale_adjustments=False,
+            acknowledges_no_other_basis_adjustments=False,
+            acknowledges_no_28_rate_gain=False,
+            acknowledges_no_unrecaptured_section_1250=False,
         ),
     )
 

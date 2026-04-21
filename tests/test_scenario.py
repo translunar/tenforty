@@ -3,7 +3,11 @@ from pathlib import Path
 
 from tenforty.models import Scenario, W2, Form1099INT, TaxReturnConfig
 from tenforty.scenario import load_scenario
-from tests.helpers import FIXTURES_DIR
+from tests.helpers import (
+    FIXTURES_DIR,
+    plan_d_attestation_defaults,
+    plan_d_attestation_defaults_minus_lot_attestations,
+)
 
 
 class TestLoadScenario(unittest.TestCase):
@@ -41,3 +45,36 @@ class TestLoadScenario(unittest.TestCase):
     def test_file_not_found(self):
         with self.assertRaises(FileNotFoundError):
             load_scenario(Path("/nonexistent/scenario.yaml"))
+
+
+class TestFixtureAttestationMigration(unittest.TestCase):
+    def test_every_yaml_fixture_loads(self) -> None:
+        """Post-migration, every YAML fixture must load without raising."""
+        fixtures = Path("tests/fixtures").glob("*.yaml")
+        loaded = 0
+        for fx in fixtures:
+            load_scenario(fx)  # must not raise
+            loaded += 1
+        self.assertGreater(loaded, 0, "expected to find fixtures")
+
+    def test_defaults_helper_includes_new_attestations(self) -> None:
+        d = plan_d_attestation_defaults()
+        for key in (
+            "acknowledges_no_wash_sale_adjustments",
+            "acknowledges_no_other_basis_adjustments",
+            "acknowledges_no_28_rate_gain",
+            "acknowledges_no_unrecaptured_section_1250",
+        ):
+            self.assertIn(key, d)
+        self.assertNotIn("acknowledges_form_8949_unsupported", d)
+
+    def test_minus_lot_attestations_helper_omits_new_keys(self) -> None:
+        minus = plan_d_attestation_defaults_minus_lot_attestations()
+        full = plan_d_attestation_defaults()
+        dropped = set(full) - set(minus)
+        self.assertEqual(dropped, {
+            "acknowledges_no_wash_sale_adjustments",
+            "acknowledges_no_other_basis_adjustments",
+            "acknowledges_no_28_rate_gain",
+            "acknowledges_no_unrecaptured_section_1250",
+        })

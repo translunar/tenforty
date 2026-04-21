@@ -1,9 +1,8 @@
 """Schedule D native-Python summary-path compute tests."""
 
-import logging
 import unittest
 
-from tenforty.forms.sch_d import EightFortyNineRequired, compute
+from tenforty.forms.sch_d import compute
 from tenforty.models import Form1099B
 
 from tests.helpers import make_simple_scenario
@@ -101,47 +100,6 @@ class SchDEmptyTests(unittest.TestCase):
             "sch_d_line_16_total",
         ):
             self.assertEqual(result[key], 0, key)
-
-
-class SchDForm8949GateTests(unittest.TestCase):
-    def test_uncovered_basis_lot_raises_when_ack_false(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = False
-        scenario.form1099_b = [_lot(basis_reported_to_irs=False)]
-        with self.assertRaisesRegex(EightFortyNineRequired, "8949"):
-            compute(scenario, upstream={})
-
-    def test_adjusted_lot_raises_when_ack_false(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = False
-        scenario.form1099_b = [_lot(wash_sale_loss_disallowed=50.0)]
-        with self.assertRaises(EightFortyNineRequired):
-            compute(scenario, upstream={})
-
-    def test_uncovered_basis_lot_dropped_with_warning_when_ack_true(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = True
-        scenario.form1099_b = [
-            _lot(basis_reported_to_irs=False, proceeds=9999.0, basis=1.0),
-            _lot(proceeds=1500.0, basis=1000.0),  # covered, included
-        ]
-        with self.assertLogs("tenforty.forms.sch_d", level=logging.WARNING) as cm:
-            result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_7_net_short"], 500)
-        self.assertTrue(
-            any("8949" in rec.getMessage() for rec in cm.records),
-            "expected a WARNING mentioning 8949 for dropped lot",
-        )
-
-    def test_covered_no_adjustment_lots_unaffected_by_ack_flag(self):
-        base_lot = dict(short_term=True, proceeds=1500.0, basis=1000.0)
-        for ack in (True, False):
-            with self.subTest(ack=ack):
-                scenario = make_simple_scenario()
-                scenario.config.acknowledges_form_8949_unsupported = ack
-                scenario.form1099_b = [_lot(**base_lot)]
-                result = compute(scenario, upstream={})
-                self.assertEqual(result["sch_d_line_7_net_short"], 500)
 
 
 class SchDTaxpayerHeaderTests(unittest.TestCase):

@@ -287,10 +287,6 @@ class TaxReturnConfig:
     # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
     # and load_scenario raises; True → raises NotImplementedError; False → OK.
     has_foreign_accounts: bool | None = None
-    # Form 8949 scope-out attestation. None → load_scenario raises; True → Sch D
-    # compute drops 8949-required lots with a per-lot warning; False → Sch D
-    # compute raises NotImplementedError on any 8949-required lot.
-    acknowledges_form_8949_unsupported: bool | None = None
     # Sch A line 5a scope-out attestation. None → load_scenario raises. True →
     # scenario accepts the state-income-tax-only 5a path (sch_a.compute logs
     # INFO if state is in the no-income-tax set). False → sch_a.compute raises
@@ -327,6 +323,15 @@ class TaxReturnConfig:
     # regardless of this value, but the attestation must still be declared
     # at load time.
     acknowledges_no_estate_trust_k1: bool | None = None
+    # --- Form 8949 scope-out attestations ---
+    # Any 1099-B lot with nonzero wash_sale_loss_disallowed + False raises.
+    acknowledges_no_wash_sale_adjustments: bool | None = None
+    # Any 1099-B lot with nonzero other_basis_adjustment + False raises.
+    acknowledges_no_other_basis_adjustments: bool | None = None
+    # Any 1099-B lot with is_28_rate_collectible=True + False raises.
+    acknowledges_no_28_rate_gain: bool | None = None
+    # Any 1099-B lot with is_section_1250=True + False raises.
+    acknowledges_no_unrecaptured_section_1250: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None

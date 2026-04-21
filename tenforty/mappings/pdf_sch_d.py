@@ -3,19 +3,17 @@
 v1 scope: SUMMARY PATH ONLY. The covered-basis, no-adjustment summary
 lines 1a and 8a carry aggregate proceeds / basis / gain for transactions
 reported on 1099-B with basis reported to the IRS and no wash-sale or
-other adjustments. Any lot that would require Form 8949 (non-covered
-basis, basis adjustments, wash sales) is gated at scenario load via
-``TaxReturnConfig.acknowledges_form_8949_unsupported`` and enforced in
-``forms.sch_d.compute`` (see #11 Tasks 6 and 11). 8949 support is tracked
-as a follow-up.
+other adjustments. Lots carrying wash-sale disallowed amounts, other
+basis adjustments, 28%-rate collectible gain, or unrecaptured section
+1250 gain are gated by the four per-lot attestations on TaxReturnConfig.
 
 Field names were enumerated from ``pdfs/federal/2025/f1040sd.pdf`` and
 confirmed by the probe methodology used for Pdf4868/PdfSchB. Unlike
 Sch B, Sch D's per-row fields are row-namespaced
 (``Table_PartI/Row1a/f1_3``), so the mapping is shape
 ``{"scalars": {...}, "repeaters": {}}`` matching the repeater-aware
-Plan-B-Task-1 filler call — but with an empty repeaters block, since the
-summary path writes scalar cells only.
+filler call — but with an empty repeaters block, since the summary path
+writes scalar cells only.
 """
 
 

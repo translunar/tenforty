@@ -37,14 +37,13 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
 
     Three fields default to True because they affirm the common test posture:
     unlimited at-risk amounts, basis tracked externally, and no K-1 credits.
-    The other ten fields stay False because their compute-time gates fire only
-    when the scenario's K-1s actually carry the triggering field value — an
-    all-False default is safe and conservative. Tests that need a different
-    value for one of the three True fields should override it explicitly on
-    `scenario.config`."""
+    The other fields stay False because their compute-time gates fire only
+    when the scenario's K-1s or lots actually carry the triggering field
+    value — an all-False default is safe and conservative. Tests that need
+    a different value for one of the three True fields should override it
+    explicitly on `scenario.config`."""
     return {
         "has_foreign_accounts": False,
-        "acknowledges_form_8949_unsupported": False,
         "acknowledges_sch_a_sales_tax_unsupported": False,
         "acknowledges_qbi_below_threshold": False,
         "acknowledges_unlimited_at_risk": True,
@@ -56,7 +55,28 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
         "acknowledges_no_section_179": False,
         "acknowledges_no_estate_trust_k1": False,
         "prior_year_itemized": False,
+        "acknowledges_no_wash_sale_adjustments": False,
+        "acknowledges_no_other_basis_adjustments": False,
+        "acknowledges_no_28_rate_gain": False,
+        "acknowledges_no_unrecaptured_section_1250": False,
     }
+
+
+def plan_d_attestation_defaults_minus_lot_attestations() -> dict:
+    """All attestations defaulted to False EXCEPT the 4 per-lot
+    attestations — those are omitted so the caller can pass each one
+    explicitly (or leave it as None to assert the load-time validation
+    fires on exactly that key).
+    """
+    d = plan_d_attestation_defaults()
+    for k in (
+        "acknowledges_no_wash_sale_adjustments",
+        "acknowledges_no_other_basis_adjustments",
+        "acknowledges_no_28_rate_gain",
+        "acknowledges_no_unrecaptured_section_1250",
+    ):
+        d.pop(k, None)
+    return d
 
 
 def make_simple_scenario() -> Scenario:
