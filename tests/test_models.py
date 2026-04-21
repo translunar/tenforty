@@ -485,3 +485,17 @@ class TestK1FanoutData(unittest.TestCase):
         )
         self.assertEqual(len(fanout.passive_activities), 1)
         self.assertEqual(fanout.sch_b_interest_additions[0].payer, "X")
+
+
+class TestVoluntaryContribution(unittest.TestCase):
+    def test_fields(self) -> None:
+        from tenforty.models import VoluntaryContribution
+        vc = VoluntaryContribution(fund_code="WLD", amount=10.0)
+        self.assertEqual(vc.fund_code, "WLD")
+        self.assertEqual(vc.amount, 10.0)
+
+    def test_frozen(self) -> None:
+        from tenforty.models import VoluntaryContribution
+        vc = VoluntaryContribution(fund_code="WLD", amount=10.0)
+        with self.assertRaises(Exception):  # FrozenInstanceError
+            vc.amount = 20.0  # type: ignore[misc]

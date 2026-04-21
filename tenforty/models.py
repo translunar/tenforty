@@ -226,6 +226,18 @@ class K1FanoutData:
         )
 
 
+@dataclass(frozen=True)
+class VoluntaryContribution:
+    """A single CA 540 voluntary-contribution line item. Declared in Pass 1
+    for Sub-plan 3's CA540PersonalOverlay; no Pass 1 consumer.
+
+    fund_code follows FTB-defined fund abbreviations (e.g. "WLD" = California
+    Seniors Special Fund; "KID" = Child Victims of Human Trafficking Fund).
+    """
+    fund_code: str
+    amount: float
+
+
 @dataclass
 class TaxReturnConfig:
     year: int
