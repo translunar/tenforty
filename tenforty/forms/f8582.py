@@ -141,8 +141,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 "suspended_amount": suspended,
             })
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "f8582_line_1a_activities_with_income": passive_income_total,
         "f8582_line_1b_activities_with_loss": passive_loss_total,
@@ -153,6 +151,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8582_line_11_allowed_loss": allowed_loss,
         "f8582_special_allowance": allowance,
         "per_activity_carryforwards": per_activity_carryforwards,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }

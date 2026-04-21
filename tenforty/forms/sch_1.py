@@ -93,8 +93,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         + other_adjustments_line_24_sum
     )
 
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
     return {
         "sch_1_line_1_taxable_refunds": taxable_refunds_line_1,
         "sch_1_line_3_business_income": business_income_line_3,
@@ -111,6 +109,6 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_1_line_20_ira": ira_deduction_line_20,
         "sch_1_line_21_student_loan_interest": student_loan_interest_line_21,
         "sch_1_line_26_total_adjustments": total_adjustments_line_26,
-        "taxpayer_name": f"{first} {last}".strip(),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }

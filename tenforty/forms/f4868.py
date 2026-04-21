@@ -32,7 +32,7 @@ def compute(scenario, upstream: dict[str, dict]) -> dict:
         f1040.get("total_tax"), f1040.get("total_payments")
     )
     return {
-        "full_name": f"{config.first_name} {config.last_name}".strip(),
+        "full_name": config.full_name,
         "ssn": config.ssn,
         "spouse_ssn": config.spouse_ssn,
         "address": config.address,

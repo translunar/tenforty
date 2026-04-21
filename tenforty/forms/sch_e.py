@@ -43,7 +43,7 @@ _EXPENSE_FIELDS = (
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     f1040 = upstream.get("f1040", {})
     result: dict = {
-        "taxpayer_name": _format_taxpayer_name(scenario),
+        "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
     if not scenario.rental_properties:
@@ -101,7 +101,3 @@ def has_any_net_loss(scenario: Scenario) -> bool:
     return False
 
 
-def _format_taxpayer_name(scenario: Scenario) -> str:
-    first = scenario.config.first_name.strip()
-    last = scenario.config.last_name.strip()
-    return f"{first} {last}".strip()
