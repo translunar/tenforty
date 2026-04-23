@@ -6,6 +6,7 @@ from tenforty.forms import f4868 as form_4868
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
+from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
@@ -160,7 +161,10 @@ class ReturnOrchestrator:
         if self._should_emit_sch_d(scenario):
             sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
             out_sch_d = output_dir / f"f1040sd_{year}.pdf"
-            sch_d_values = form_sch_d.compute(scenario, upstream=upstream)
+            f8949_values = form_f8949.compute(scenario, upstream={})
+            sch_d_values = form_sch_d.compute(
+                scenario, upstream={**upstream, "f8949": f8949_values},
+            )
             filler.fill_with_repeaters(
                 template_path=sch_d_template,
                 output_path=out_sch_d,
