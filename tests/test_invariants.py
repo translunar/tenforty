@@ -12,6 +12,7 @@ from tests.invariants import (
     assert_agi_consistent,
     assert_all_income_accounted_for,
     assert_refund_or_owed_consistent,
+    assert_sch_d_no_double_count,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
     assert_w2_withholding_matches_input,
@@ -171,3 +172,37 @@ class TestAssertAllIncomeAccountedFor(unittest.TestCase):
         results = {"agi": 100000}
         with self.assertRaises(AssertionError):
             assert_all_income_accounted_for(self, results, scenario)
+
+
+class TestSchDNoDoubleCountInvariant(unittest.TestCase):
+    def test_invariant_detects_double_count(self) -> None:
+        """Synthetic pathological result triggers the invariant."""
+        results = {
+            "sch_d_line_1a_proceeds": 1000,
+            "sch_d_line_1b_proceeds": 1000,
+            "sch_d_line_2_proceeds": 0,
+            "sch_d_line_3_proceeds": 0,
+            "sch_d_line_8a_proceeds": 0,
+            "sch_d_line_8b_proceeds": 0,
+            "sch_d_line_9_proceeds": 0,
+            "sch_d_line_10_proceeds": 0,
+        }
+        with self.assertRaises(AssertionError):
+            assert_sch_d_no_double_count(
+                self, results, total_scenario_proceeds=1000,
+            )
+
+    def test_invariant_passes_for_correct_split(self) -> None:
+        results = {
+            "sch_d_line_1a_proceeds": 1000,
+            "sch_d_line_1b_proceeds": 500,
+            "sch_d_line_2_proceeds": 0,
+            "sch_d_line_3_proceeds": 0,
+            "sch_d_line_8a_proceeds": 0,
+            "sch_d_line_8b_proceeds": 0,
+            "sch_d_line_9_proceeds": 0,
+            "sch_d_line_10_proceeds": 0,
+        }
+        assert_sch_d_no_double_count(
+            self, results, total_scenario_proceeds=1500,
+        )
