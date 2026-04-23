@@ -208,5 +208,5 @@ class TestRecalculateIsolatesProfile(unittest.TestCase):
         self.assertEqual(len(captured_profiles), 1)
         self.assertFalse(
             captured_profiles[0].exists(),
-            "profile dir must be cleaned up so the test suite doesn't leak tmp",
+            "profile dir must be cleaned up by the TemporaryDirectory context manager",
         )

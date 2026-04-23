@@ -95,6 +95,9 @@ class SpreadsheetEngine:
                     text=True,
                     timeout=60,
                 )
+            # TimeoutExpired is NOT CalledProcessError — would leak past the
+            # returncode check. Re-raise as RuntimeError so downstream callers
+            # see a uniform error surface.
             except subprocess.TimeoutExpired as e:
                 raise RuntimeError(
                     f"soffice timeout after {e.timeout}s for "
@@ -106,11 +109,18 @@ class SpreadsheetEngine:
                 f"soffice recalculation failed (exit={result.returncode}): "
                 f"stderr={result.stderr!r} stdout={result.stdout!r}"
             )
+        # soffice can exit 0 without creating output when the profile lock at
+        # ~/.config/libreoffice/4/.~lock.registrymodifications.xcu# is held by
+        # a concurrent invocation. The per-invocation UserInstallation above
+        # sidesteps that lock; this check is residual defense.
         if not expected_output.exists():
             raise RuntimeError(
                 f"soffice exited 0 but did not create {expected_output}. "
                 f"stdout={result.stdout!r} stderr={result.stderr!r}"
             )
+        # Zero-byte or truncated output passes .exists() but fails downstream
+        # in openpyxl.load_workbook with a confusing BadZipFile error. Catch
+        # the empty case here; openpyxl handles truncation-but-nonempty.
         if expected_output.stat().st_size == 0:
             raise RuntimeError(
                 f"soffice exited 0 and created {expected_output} but it is empty. "
