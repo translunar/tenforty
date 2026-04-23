@@ -73,26 +73,8 @@ class TestF8949XlsxOracle(unittest.TestCase):
             int(self.oracle.get("f8949_box_e_total_gain", 0)),
         )
 
-    def test_net_short_term_matches_oracle(self) -> None:
-        # f8949_net_short_term is emitted by f8949.compute only and is not a
-        # workbook named-range output. The oracle always returns 0 for this key.
-        # This test verifies the key remains absent from XLSX outputs; if the
-        # workbook ever adds it as a named range, the assertion will detect
-        # a mismatch with the native value.
-        oracle_val = int(self.oracle.get("f8949_net_short_term", 0))
-        if oracle_val != 0:
-            self.assertEqual(self.native["f8949_net_short_term"], oracle_val)
-        else:
-            self.assertEqual(oracle_val, 0)
-
-    def test_net_long_term_matches_oracle(self) -> None:
-        # f8949_net_long_term is emitted by f8949.compute only and is not a
-        # workbook named-range output. The oracle always returns 0 for this key.
-        # This test verifies the key remains absent from XLSX outputs; if the
-        # workbook ever adds it as a named range, the assertion will detect
-        # a mismatch with the native value.
-        oracle_val = int(self.oracle.get("f8949_net_long_term", 0))
-        if oracle_val != 0:
-            self.assertEqual(self.native["f8949_net_long_term"], oracle_val)
-        else:
-            self.assertEqual(oracle_val, 0)
+    # The net_short/net_long aggregates emitted by f8949.compute have no
+    # dedicated XLS named range (the workbook tracks per-sheet ST/LT totals
+    # only). Per-box cross-checks above already exercise the same arithmetic
+    # for the chosen fixture (one lot per box → box total == net), so
+    # separate net_*_matches_oracle tests would be redundant.
