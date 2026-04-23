@@ -1,6 +1,62 @@
 from tenforty.mappings.registry import FormMapping
 
 
+# Form 8949 XLS row slots: each subsection box gets 11 lot rows on its sheet,
+# Part I at row 41 and Part II at row 91 (21 blank rows in between are form
+# headers). Boxes C/F ("no 1099-B received") are out of scope — Form1099B
+# implies a 1099-B was received.
+_F8949_LOT_ROWS = 11
+_F8949_LOT_COLS = {
+    "description":       "AJ",
+    "date_acquired":     "AK",
+    "date_sold":         "AL",
+    "proceeds":          "AM",
+    "basis":             "AN",
+    "adjustment_code":   "AO",
+    "adjustment_amount": "AP",
+}
+_F8949_BOX_SLOTS = (
+    # (box letter, sheet name, Part row base)
+    ("a", "8949A", 41),  # short-term, basis reported
+    ("b", "8949B", 41),  # short-term, basis not reported
+    ("d", "8949A", 91),  # long-term,  basis reported
+    ("e", "8949B", 91),  # long-term,  basis not reported
+)
+
+
+def _f8949_box_inputs(letter: str, row_base: int) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for i in range(_F8949_LOT_ROWS):
+        idx = i + 1
+        row = row_base + i
+        for field, col in _F8949_LOT_COLS.items():
+            out[f"f8949_box_{letter}_lot_{idx}_{field}"] = f"{col}{row}"
+    return out
+
+
+def _f8949_box_sheet_map(letter: str, sheet: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for i in range(_F8949_LOT_ROWS):
+        idx = i + 1
+        for field in _F8949_LOT_COLS:
+            out[f"f8949_box_{letter}_lot_{idx}_{field}"] = sheet
+    return out
+
+
+def _f8949_all_inputs() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for letter, _sheet, row_base in _F8949_BOX_SLOTS:
+        out |= _f8949_box_inputs(letter, row_base)
+    return out
+
+
+def _f8949_all_sheet_map() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for letter, sheet, _row_base in _F8949_BOX_SLOTS:
+        out |= _f8949_box_sheet_map(letter, sheet)
+    return out
+
+
 class F1040(FormMapping):
     """Mapping for the entire federal 1040 workbook (all sheets).
 
@@ -152,6 +208,7 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "1099-G",
             "g_ag_6": "1099-G",
             "g_market_gain_6": "1099-G",
+            **_f8949_all_sheet_map(),
         },
     }
 
@@ -319,6 +376,7 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "I11",
             "g_ag_6": "I12",
             "g_market_gain_6": "I15",
+            **_f8949_all_inputs(),
         },
     }
 
@@ -377,5 +435,27 @@ class F1040(FormMapping):
             # Form 8582 line 11: total losses allowed from all passive
             # activities. Oracle cross-check target for forms.f8582.compute.
             "f8582_line_11_oracle": "F8582_Line11",
+            # Form 8949 per-subsection totals. Each physical sheet (8949A,
+            # 8949B) carries one ST box (top-of-sheet checkbox = A or B) and
+            # one LT box (mid-sheet checkbox = D or E) — ST sums Part I row 52,
+            # LT sums Part II row 102. Suffixes: D=proceeds, E=basis,
+            # G=adjustment, H=gain. Used as oracle cross-check targets for
+            # forms.f8949.compute native math.
+            "f8949_box_a_total_proceeds":   "F8949ASTD",
+            "f8949_box_a_total_basis":      "F8949ASTE",
+            "f8949_box_a_total_adjustment": "F8949ASTG",
+            "f8949_box_a_total_gain":       "F8949ASTH",
+            "f8949_box_b_total_proceeds":   "F8949BSTD",
+            "f8949_box_b_total_basis":      "F8949BSTE",
+            "f8949_box_b_total_adjustment": "F8949BSTG",
+            "f8949_box_b_total_gain":       "F8949BSTH",
+            "f8949_box_d_total_proceeds":   "F8949ALTD",
+            "f8949_box_d_total_basis":      "F8949ALTE",
+            "f8949_box_d_total_adjustment": "F8949ALTG",
+            "f8949_box_d_total_gain":       "F8949ALTH",
+            "f8949_box_e_total_proceeds":   "F8949BLTD",
+            "f8949_box_e_total_basis":      "F8949BLTE",
+            "f8949_box_e_total_adjustment": "F8949BLTG",
+            "f8949_box_e_total_gain":       "F8949BLTH",
         },
     }

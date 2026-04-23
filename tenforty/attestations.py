@@ -34,10 +34,6 @@ class Attestation:
     triggered_when: Callable[[Scenario], bool]
     load_error: str
     compute_error: str
-    # Informational default hint; not used at runtime (enforcement always reads
-    # the live TaxReturnConfig value). Stored here so tooling can surface the
-    # recommended value when generating scenario templates.
-    default: bool = False
 
 
 def _has_any_k1(s: Scenario) -> bool:
@@ -300,7 +296,6 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "attestation to true to affirm awareness of IRC §1091 "
             "wash-sale treatment on the affected lot(s)."
         ),
-        default=False,
     ),
     Attestation(
         field="acknowledges_no_other_basis_adjustments",
@@ -318,7 +313,6 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "basis adjustments (IRS codes B/T/L/N/H/D/O/S/X) are supported "
             "in Form 8949 column (g) only when this attestation is set true."
         ),
-        default=False,
     ),
     Attestation(
         field="acknowledges_no_28_rate_gain",
@@ -336,7 +330,6 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "worksheet feeds Sch D's preferential-rate tax computation; "
             "set the attestation to true to affirm awareness."
         ),
-        default=False,
     ),
     Attestation(
         field="acknowledges_no_unrecaptured_section_1250",
@@ -354,7 +347,6 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "Unrecaptured §1250 Gain Worksheet feeds Sch D line 19; set "
             "the attestation to true to affirm awareness."
         ),
-        default=False,
     ),
 )
 
