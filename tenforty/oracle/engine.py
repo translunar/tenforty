@@ -73,25 +73,52 @@ class SpreadsheetEngine:
     def _recalculate(self, workbook_path: Path, work_dir: Path) -> Path:
         output_dir = work_dir / "recalculated"
         output_dir.mkdir(exist_ok=True)
+        expected_output = output_dir / workbook_path.name
 
-        result = subprocess.run(
-            [
-                "soffice", "--headless", "--calc",
-                "--convert-to", "xlsx",
-                "--outdir", str(output_dir),
-                str(workbook_path),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
+        try:
+            result = subprocess.run(
+                [
+                    "soffice", "--headless", "--calc",
+                    "--convert-to", "xlsx",
+                    "--outdir", str(output_dir),
+                    str(workbook_path),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+        except subprocess.TimeoutExpired as e:
+            # TimeoutExpired is NOT CalledProcessError — would leak past the
+            # returncode check. Re-raise as RuntimeError so downstream callers
+            # see a uniform error surface.
+            raise RuntimeError(
+                f"soffice timeout after {e.timeout}s for "
+                f"{expected_output}; stdout={e.stdout!r} stderr={e.stderr!r}"
+            ) from e
 
         if result.returncode != 0:
             raise RuntimeError(
-                f"LibreOffice recalculation failed: {result.stderr}"
+                f"soffice recalculation failed (exit={result.returncode}): "
+                f"stderr={result.stderr!r} stdout={result.stdout!r}"
             )
-
-        return output_dir / workbook_path.name
+        # soffice can exit 0 without creating output when the profile lock at
+        # ~/.config/libreoffice/4/.~lock.registrymodifications.xcu# is held by
+        # a concurrent invocation. Task 2 adds per-invocation UserInstallation
+        # to sidestep the lock; this check catches any residual occurrence.
+        if not expected_output.exists():
+            raise RuntimeError(
+                f"soffice exited 0 but did not create {expected_output}. "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        # Zero-byte or truncated output passes .exists() but fails downstream
+        # in openpyxl.load_workbook with a confusing BadZipFile error. Catch
+        # the empty case here; openpyxl handles truncation-but-nonempty.
+        if expected_output.stat().st_size == 0:
+            raise RuntimeError(
+                f"soffice exited 0 and created {expected_output} but it is empty. "
+                f"stdout={result.stdout!r} stderr={result.stderr!r}"
+            )
+        return expected_output
 
     def _read_outputs(
         self,
