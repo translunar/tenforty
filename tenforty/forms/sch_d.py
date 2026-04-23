@@ -20,12 +20,12 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     line_1a = _agg_line(f8949, term="short")
     line_8a = _agg_line(f8949, term="long")
 
-    line_1b = _box_line(f8949, "a")
-    line_2 = _box_line(f8949, "b")
-    line_3 = _box_line(f8949, "c")
-    line_8b = _box_line(f8949, "d")
-    line_9 = _box_line(f8949, "e")
-    line_10 = _box_line(f8949, "f")
+    line_1b = _box_line(f8949, letter="a")
+    line_2 = _box_line(f8949, letter="b")
+    line_3 = _box_line(f8949, letter="c")
+    line_8b = _box_line(f8949, letter="d")
+    line_9 = _box_line(f8949, letter="e")
+    line_10 = _box_line(f8949, letter="f")
 
     k1_short = irs_round(sum(fanout.sch_d_short_term_additions))
     k1_long = irs_round(sum(fanout.sch_d_long_term_additions))
@@ -71,12 +71,8 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
         "sch_d_line_15_net_long": line_15,
 
         "sch_d_line_16_total": line_16,
-        "sch_d_line_18_unrecap_1250": irs_round(
-            f8949.get("f8949_total_unrecap_1250", 0)
-        ),
-        "sch_d_line_19_28_rate_gain": irs_round(
-            f8949.get("f8949_total_28_rate_gain", 0)
-        ),
+        "sch_d_line_18_unrecap_1250": f8949.get("f8949_total_unrecap_1250", 0),
+        "sch_d_line_19_28_rate_gain": f8949.get("f8949_total_28_rate_gain", 0),
     }
 
 
@@ -88,7 +84,7 @@ def _agg_line(f8949: dict, *, term: str) -> dict[str, int]:
     }
 
 
-def _box_line(f8949: dict, letter: str) -> dict[str, int]:
+def _box_line(f8949: dict, *, letter: str) -> dict[str, int]:
     return {
         "proceeds": f8949.get(f"f8949_box_{letter}_total_proceeds", 0),
         "basis": f8949.get(f"f8949_box_{letter}_total_basis", 0),

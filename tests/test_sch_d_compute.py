@@ -21,16 +21,26 @@ def _scenario(lots: list[Form1099B], **overrides) -> Scenario:
     return Scenario(config=cfg, form1099_b=list(lots))
 
 
+def _lot(**overrides) -> Form1099B:
+    """Form1099B with defaults that don't affect aggregate-vs-8949 routing.
+    Tests override only the fields that drive the routing decision."""
+    base = dict(
+        broker="Brokerage Inc",
+        description="Lot",
+        date_acquired="2025-01-15",
+        date_sold="2025-06-20",
+        proceeds=1000.0,
+        cost_basis=800.0,
+        short_term=True,
+        basis_reported_to_irs=True,
+    )
+    base.update(overrides)
+    return Form1099B(**base)
+
+
 class TestSchDAggregateVsForm8949Split(unittest.TestCase):
     def test_no_adjustment_box_a_flows_to_1a_not_1b(self) -> None:
-        scen = _scenario([
-            Form1099B(
-                broker="Brokerage Inc", description="Clean",
-                date_acquired="2025-01-15", date_sold="2025-06-20",
-                proceeds=1000.0, cost_basis=800.0,
-                short_term=True, basis_reported_to_irs=True,
-            ),
-        ])
+        scen = _scenario([_lot(description="Clean")])
         f8949_result = f8949.compute(scen, upstream={})
         out = sch_d.compute(scen, upstream={"f8949": f8949_result})
         self.assertEqual(out["sch_d_line_1a_proceeds"], 1000)
@@ -41,11 +51,9 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
     def test_wash_sale_box_a_flows_to_1b_not_1a(self) -> None:
         scen = _scenario(
             [
-                Form1099B(
-                    broker="Brokerage Inc", description="WS",
-                    date_acquired="2025-01-15", date_sold="2025-06-20",
-                    proceeds=1000.0, cost_basis=1200.0,
-                    short_term=True, basis_reported_to_irs=True,
+                _lot(
+                    description="WS",
+                    cost_basis=1200.0,
                     wash_sale_loss_disallowed=200.0,
                 ),
             ],
@@ -62,24 +70,18 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
     def test_no_double_count_mixed_scenario(self) -> None:
         scen = _scenario(
             [
-                Form1099B(
-                    broker="Brokerage Inc", description="Clean",
-                    date_acquired="2025-01-15", date_sold="2025-06-20",
-                    proceeds=1000.0, cost_basis=800.0,
-                    short_term=True, basis_reported_to_irs=True,
-                ),
-                Form1099B(
-                    broker="Brokerage Inc", description="WS",
-                    date_acquired="2025-01-15", date_sold="2025-06-20",
-                    proceeds=2000.0, cost_basis=2500.0,
-                    short_term=True, basis_reported_to_irs=True,
+                _lot(description="Clean"),
+                _lot(
+                    description="WS",
+                    proceeds=2000.0,
+                    cost_basis=2500.0,
                     wash_sale_loss_disallowed=500.0,
                 ),
-                Form1099B(
-                    broker="Brokerage Inc", description="NonCov",
-                    date_acquired="2025-01-15", date_sold="2025-06-20",
-                    proceeds=500.0, cost_basis=300.0,
-                    short_term=True, basis_reported_to_irs=False,
+                _lot(
+                    description="NonCov",
+                    proceeds=500.0,
+                    cost_basis=300.0,
+                    basis_reported_to_irs=False,
                 ),
             ],
             acknowledges_no_wash_sale_adjustments=True,
@@ -95,17 +97,13 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
 
     def test_line_16_combines_short_and_long(self) -> None:
         scen = _scenario([
-            Form1099B(
-                broker="Brokerage Inc", description="ST",
-                date_acquired="2025-01-15", date_sold="2025-06-20",
-                proceeds=1000.0, cost_basis=800.0,
-                short_term=True, basis_reported_to_irs=True,
-            ),
-            Form1099B(
-                broker="Brokerage Inc", description="LT",
-                date_acquired="2022-01-15", date_sold="2025-06-20",
-                proceeds=5000.0, cost_basis=3000.0,
-                short_term=False, basis_reported_to_irs=True,
+            _lot(description="ST"),
+            _lot(
+                description="LT",
+                date_acquired="2022-01-15",
+                proceeds=5000.0,
+                cost_basis=3000.0,
+                short_term=False,
             ),
         ])
         f8949_result = f8949.compute(scen, upstream={})
@@ -117,11 +115,12 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
     def test_28_rate_feeds_line_19(self) -> None:
         scen = _scenario(
             [
-                Form1099B(
-                    broker="Brokerage Inc", description="Coin",
-                    date_acquired="2020-01-15", date_sold="2025-06-20",
-                    proceeds=5000.0, cost_basis=1000.0,
-                    short_term=False, basis_reported_to_irs=True,
+                _lot(
+                    description="Coin",
+                    date_acquired="2020-01-15",
+                    proceeds=5000.0,
+                    cost_basis=1000.0,
+                    short_term=False,
                     is_28_rate_collectible=True,
                 ),
             ],
@@ -134,11 +133,12 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
     def test_section_1250_feeds_line_18(self) -> None:
         scen = _scenario(
             [
-                Form1099B(
-                    broker="Brokerage Inc", description="REIT",
-                    date_acquired="2020-01-15", date_sold="2025-06-20",
-                    proceeds=10000.0, cost_basis=7000.0,
-                    short_term=False, basis_reported_to_irs=True,
+                _lot(
+                    description="REIT",
+                    date_acquired="2020-01-15",
+                    proceeds=10000.0,
+                    cost_basis=7000.0,
+                    short_term=False,
                     is_section_1250=True,
                 ),
             ],
