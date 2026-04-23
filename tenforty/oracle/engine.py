@@ -1,9 +1,17 @@
 import shutil
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 import openpyxl
+
+
+# Belt-and-suspenders on top of per-invocation UserInstallation (see #23).
+# Serializes every soffice invocation so concurrent callers can't race on
+# any soffice-internal shared resource (sockets, registry caches) that
+# profile isolation doesn't cover.
+_SOFFICE_LOCK = threading.Lock()
 
 
 def _resolve_named_range(defn: object) -> tuple[str, str]:
@@ -80,7 +88,7 @@ class SpreadsheetEngine:
         # ~/.config/libreoffice/4/.~lock.registrymodifications.xcu# so
         # concurrent soffice frontends can't silently exit 0 without
         # producing output.
-        with tempfile.TemporaryDirectory(prefix="soffice_profile_") as profile_dir:
+        with _SOFFICE_LOCK, tempfile.TemporaryDirectory(prefix="soffice_profile_") as profile_dir:
             try:
                 result = subprocess.run(
                     [

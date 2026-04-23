@@ -210,3 +210,72 @@ class TestRecalculateIsolatesProfile(unittest.TestCase):
             captured_profiles[0].exists(),
             "profile dir must be cleaned up by the TemporaryDirectory context manager",
         )
+
+
+class TestRecalculateSerializesSoffice(unittest.TestCase):
+    """Belt-and-suspenders on top of profile isolation: the module-level
+    _SOFFICE_LOCK serializes soffice invocations so no two overlap in time,
+    even if soffice internals expose shared state we haven't cataloged."""
+
+    def test_module_exposes_soffice_lock(self) -> None:
+        """_SOFFICE_LOCK must exist at module scope and behave like a lock
+        (acquire/release + context-manager). Uses duck typing rather than an
+        isinstance check against threading.Lock — the latter returns a
+        factory whose concrete type varies by Python implementation."""
+        self.assertTrue(hasattr(engine_mod, "_SOFFICE_LOCK"))
+        lock = engine_mod._SOFFICE_LOCK
+        self.assertTrue(hasattr(lock, "acquire"))
+        self.assertTrue(hasattr(lock, "release"))
+        with lock:
+            pass  # raises if not a context manager
+
+    def test_concurrent_recalculates_do_not_overlap(self) -> None:
+        """Four threads each call _recalculate concurrently. With the lock,
+        subprocess.run invocations don't overlap in time. Without it,
+        max_concurrent would be 2-4."""
+        engine_inst = SpreadsheetEngine()
+        active = [0]
+        max_concurrent = [0]
+        counter_lock = threading.Lock()
+
+        def fake_run(cmd, *a, **kw):
+            with counter_lock:
+                active[0] += 1
+                if active[0] > max_concurrent[0]:
+                    max_concurrent[0] = active[0]
+            # Forces GIL release so a missing _SOFFICE_LOCK would allow
+            # observable overlap; without this sleep, GIL scheduling could
+            # mask a missing lock and let the test pass incorrectly.
+            time.sleep(0.05)
+            with counter_lock:
+                active[0] -= 1
+            outdir_idx = cmd.index("--outdir") + 1
+            outdir = Path(cmd[outdir_idx])
+            outdir.mkdir(parents=True, exist_ok=True)
+            (outdir / Path(cmd[-1]).name).write_bytes(b"ok")
+            return MagicMock(returncode=0, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work_dir = Path(tmp)
+            workbook = work_dir / "1040.xlsx"
+            workbook.write_bytes(b"")
+
+            with patch(
+                "tenforty.oracle.engine.subprocess.run", side_effect=fake_run
+            ):
+                threads = [
+                    threading.Thread(
+                        target=engine_inst._recalculate,
+                        args=(workbook, work_dir),
+                    )
+                    for _ in range(4)
+                ]
+                for t in threads:
+                    t.start()
+                for t in threads:
+                    t.join()
+
+        self.assertEqual(
+            max_concurrent[0], 1,
+            "module-level lock must serialize soffice invocations",
+        )
