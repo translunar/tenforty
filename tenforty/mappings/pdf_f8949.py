@@ -16,6 +16,10 @@ paths (likewise D and E share page-2 paths). The filler emits a separate
 copy of the page for each box.
 """
 
+import enum
+from dataclasses import dataclass
+
+
 _COL_NAMES: tuple[str, ...] = (
     "description",
     "date_acquired",
@@ -37,13 +41,29 @@ _ROW_STRIDE: int = 8  # confirmed uniform across columns and rows in T11a
 # From T11a: 11 data row slots per page (not 14 as the earlier brief assumed).
 _ROWS_PER_PAGE: int = 11
 
-_BOX_TO_PAGE: dict[str, int] = {"a": 1, "b": 1, "d": 2, "e": 2}
 
-# From T11a: checkbox field index within c{page}_1[idx] for each in-scope box.
-_BOX_CHECKBOX_IDX: dict[str, int] = {"a": 0, "b": 1, "d": 0, "e": 1}
+class BoxLetter(str, enum.Enum):
+    A = "a"
+    B = "b"
+    D = "d"
+    E = "e"
 
 
-def _row_mapping(box_letter: str, row_idx: int) -> dict[str, str]:
+@dataclass(frozen=True)
+class _BoxSpec:
+    page: int
+    checkbox_idx: int
+
+
+_BOX_SPECS: dict[BoxLetter, _BoxSpec] = {
+    BoxLetter.A: _BoxSpec(page=1, checkbox_idx=0),
+    BoxLetter.B: _BoxSpec(page=1, checkbox_idx=1),
+    BoxLetter.D: _BoxSpec(page=2, checkbox_idx=0),
+    BoxLetter.E: _BoxSpec(page=2, checkbox_idx=1),
+}
+
+
+def _row_mapping(box_letter: BoxLetter, row_idx: int) -> dict[str, str]:
     """Build the eight PDF field paths for one data row.
 
     Boxes A/B share the page-1 table; D/E share the page-2 table. The
@@ -51,20 +71,20 @@ def _row_mapping(box_letter: str, row_idx: int) -> dict[str, str]:
     emits separate physical copies, one per box, with the appropriate
     checkbox set).
     """
-    page = _BOX_TO_PAGE[box_letter]
+    page = _BOX_SPECS[box_letter].page
     base = _PAGE_ROW1_BASE[page] + (row_idx - 1) * _ROW_STRIDE
     prefix = (
         f"topmostSubform[0].Page{page}[0]"
         f".Table_Line1_Part{page}[0].Row{row_idx}[0]"
     )
     return {
-        f"f8949_box_{box_letter}_row_{row_idx}_{col}":
+        f"f8949_box_{box_letter.value}_row_{row_idx}_{col}":
             f"{prefix}.f{page}_{base + col_idx:02d}[0]"
         for col_idx, col in enumerate(_COL_NAMES)
     }
 
 
-def _box_rows(box_letter: str) -> list[dict[str, str]]:
+def _box_rows(box_letter: BoxLetter) -> list[dict[str, str]]:
     return [_row_mapping(box_letter, r) for r in range(1, _ROWS_PER_PAGE + 1)]
 
 
@@ -76,10 +96,9 @@ def _build_scalars_2025() -> dict[str, str]:
     }
 
     # Checkboxes — one per in-scope box
-    for box, idx in _BOX_CHECKBOX_IDX.items():
-        page = _BOX_TO_PAGE[box]
-        scalars[f"f8949_box_{box}_checkbox"] = (
-            f"topmostSubform[0].Page{page}[0].c{page}_1[{idx}]"
+    for letter, spec in _BOX_SPECS.items():
+        scalars[f"f8949_box_{letter.value}_checkbox"] = (
+            f"topmostSubform[0].Page{spec.page}[0].c{spec.page}_1[{spec.checkbox_idx}]"
         )
 
     # Totals — page-level scalars (f1_91–f1_95 for page 1, f2_91–f2_95 for
@@ -97,14 +116,15 @@ def _build_scalars_2025() -> dict[str, str]:
         "total_adjustment": "topmostSubform[0].Page2[0].f2_94[0]",
         "total_gain":       "topmostSubform[0].Page2[0].f2_95[0]",
     }
-    _box_totals_source = {"a": _page1_totals, "b": _page1_totals,
-                          "d": _page2_totals, "e": _page2_totals}
+    # Page 1 hosts boxes A/B; page 2 hosts boxes D/E.
+    _page_totals = {1: _page1_totals, 2: _page2_totals}
 
-    for box, source in _box_totals_source.items():
-        scalars[f"f8949_box_{box}_total_proceeds"]   = source["total_proceeds"]
-        scalars[f"f8949_box_{box}_total_basis"]      = source["total_basis"]
-        scalars[f"f8949_box_{box}_total_adjustment"] = source["total_adjustment"]
-        scalars[f"f8949_box_{box}_total_gain"]       = source["total_gain"]
+    for letter, spec in _BOX_SPECS.items():
+        source = _page_totals[spec.page]
+        scalars[f"f8949_box_{letter.value}_total_proceeds"]   = source["total_proceeds"]
+        scalars[f"f8949_box_{letter.value}_total_basis"]      = source["total_basis"]
+        scalars[f"f8949_box_{letter.value}_total_adjustment"] = source["total_adjustment"]
+        scalars[f"f8949_box_{letter.value}_total_gain"]       = source["total_gain"]
 
     return scalars
 
@@ -114,10 +134,8 @@ class PdfF8949:
         2025: {
             "scalars": _build_scalars_2025(),
             "repeaters": {
-                "box_a_rows": _box_rows("a"),
-                "box_b_rows": _box_rows("b"),
-                "box_d_rows": _box_rows("d"),
-                "box_e_rows": _box_rows("e"),
+                f"box_{letter.value}_rows": _box_rows(letter)
+                for letter in BoxLetter
             },
         },
     }

@@ -9,10 +9,8 @@ import re
 import unittest
 from pathlib import Path
 
-from tenforty.mappings.pdf_f8949 import PdfF8949
-
-
-_IN_SCOPE_BOXES = ("a", "b", "d", "e")
+from tenforty.mappings import pdf_f8949 as _pdf_f8949_module
+from tenforty.mappings.pdf_f8949 import PdfF8949, _BOX_SPECS
 
 
 class TestPdfF8949Mapping(unittest.TestCase):
@@ -25,11 +23,11 @@ class TestPdfF8949Mapping(unittest.TestCase):
         m = PdfF8949.get_mapping(2025)
         for key in ("taxpayer_name", "taxpayer_ssn"):
             self.assertIn(key, m["scalars"])
-        for letter in _IN_SCOPE_BOXES:
+        for letter in _BOX_SPECS:
             for kind in ("proceeds", "basis", "adjustment", "gain"):
                 self.assertIn(
-                    f"f8949_box_{letter}_total_{kind}", m["scalars"],
-                    f"missing total for box {letter.upper()}/{kind}",
+                    f"f8949_box_{letter.value}_total_{kind}", m["scalars"],
+                    f"missing total for box {letter.value.upper()}/{kind}",
                 )
 
     def test_scalars_do_not_cover_out_of_scope_boxes(self) -> None:
@@ -45,18 +43,18 @@ class TestPdfF8949Mapping(unittest.TestCase):
 
     def test_repeaters_cover_rows_for_each_in_scope_box(self) -> None:
         m = PdfF8949.get_mapping(2025)
-        for letter in _IN_SCOPE_BOXES:
-            self.assertIn(f"box_{letter}_rows", m["repeaters"])
+        for letter in _BOX_SPECS:
+            self.assertIn(f"box_{letter.value}_rows", m["repeaters"])
 
     def test_each_box_has_checkbox_in_scalars(self) -> None:
         """The PDF uses one table per page with a checkbox selecting the
         active box — each in-scope box needs its checkbox path mapped so
         emit can mark the correct box."""
         m = PdfF8949.get_mapping(2025)
-        for letter in _IN_SCOPE_BOXES:
+        for letter in _BOX_SPECS:
             self.assertIn(
-                f"f8949_box_{letter}_checkbox", m["scalars"],
-                f"missing checkbox path for box {letter.upper()}",
+                f"f8949_box_{letter.value}_checkbox", m["scalars"],
+                f"missing checkbox path for box {letter.value.upper()}",
             )
 
     def test_no_year_raises(self) -> None:
@@ -70,7 +68,7 @@ class TestPdfF8949NoPlaceholders(unittest.TestCase):
     Matches here mean the transcription wasn't finished."""
 
     def test_module_source_has_no_placeholders(self) -> None:
-        src = Path("tenforty/mappings/pdf_f8949.py").read_text()
+        src = Path(_pdf_f8949_module.__file__).read_text()
         self.assertNotRegex(
             src, r"f[12]_\?\?",
             "pdf_f8949.py still contains 'f?_??' placeholder",
