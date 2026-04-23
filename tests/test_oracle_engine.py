@@ -120,3 +120,93 @@ class TestRecalculateVerifiesOutput(unittest.TestCase):
             self.assertEqual(result, work_dir / "recalculated" / "1040.xlsx")
             self.assertTrue(result.exists())
             self.assertGreater(result.stat().st_size, 0)
+
+
+class TestRecalculateIsolatesProfile(unittest.TestCase):
+    """Each soffice invocation must pass -env:UserInstallation=file://{unique}
+    so concurrent invocations don't share ~/.config/libreoffice/4/ and race
+    on .~lock.registrymodifications.xcu#. This is the documented LibreOffice
+    mechanism for concurrent-safe headless conversion."""
+
+    def _fake_successful_run(self, cmd, *a, **kw):
+        outdir_idx = cmd.index("--outdir") + 1
+        outdir = Path(cmd[outdir_idx])
+        outdir.mkdir(parents=True, exist_ok=True)
+        workbook_name = Path(cmd[-1]).name
+        (outdir / workbook_name).write_bytes(b"ok")
+        return MagicMock(returncode=0, stdout="", stderr="")
+
+    def test_soffice_invocation_includes_userinstallation_flag(self) -> None:
+        engine = SpreadsheetEngine()
+        captured = []
+
+        def capturing_run(cmd, *a, **kw):
+            captured.append(list(cmd))
+            return self._fake_successful_run(cmd, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work_dir = Path(tmp)
+            workbook = work_dir / "1040.xlsx"
+            workbook.write_bytes(b"")
+            with patch(
+                "tenforty.oracle.engine.subprocess.run", side_effect=capturing_run
+            ):
+                engine._recalculate(workbook, work_dir)
+
+        self.assertEqual(len(captured), 1)
+        flags = [
+            a for a in captured[0]
+            if isinstance(a, str) and a.startswith("-env:UserInstallation=file://")
+        ]
+        self.assertEqual(
+            len(flags), 1, f"expected one UserInstallation flag: {captured[0]}"
+        )
+
+    def test_two_invocations_use_distinct_profile_paths(self) -> None:
+        engine = SpreadsheetEngine()
+        captured = []
+
+        def capturing_run(cmd, *a, **kw):
+            captured.append(list(cmd))
+            return self._fake_successful_run(cmd, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work_dir = Path(tmp)
+            workbook = work_dir / "1040.xlsx"
+            workbook.write_bytes(b"")
+            with patch(
+                "tenforty.oracle.engine.subprocess.run", side_effect=capturing_run
+            ):
+                engine._recalculate(workbook, work_dir)
+                engine._recalculate(workbook, work_dir)
+
+        flag_1 = next(a for a in captured[0] if a.startswith("-env:UserInstallation="))
+        flag_2 = next(a for a in captured[1] if a.startswith("-env:UserInstallation="))
+        self.assertNotEqual(
+            flag_1, flag_2,
+            "each invocation must get a unique profile dir",
+        )
+
+    def test_profile_dir_is_cleaned_up_after_invocation(self) -> None:
+        engine = SpreadsheetEngine()
+        captured_profiles: list[Path] = []
+
+        def capturing_run(cmd, *a, **kw):
+            flag = next(a for a in cmd if a.startswith("-env:UserInstallation=file://"))
+            captured_profiles.append(Path(flag.removeprefix("-env:UserInstallation=file://")))
+            return self._fake_successful_run(cmd, *a, **kw)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work_dir = Path(tmp)
+            workbook = work_dir / "1040.xlsx"
+            workbook.write_bytes(b"")
+            with patch(
+                "tenforty.oracle.engine.subprocess.run", side_effect=capturing_run
+            ):
+                engine._recalculate(workbook, work_dir)
+
+        self.assertEqual(len(captured_profiles), 1)
+        self.assertFalse(
+            captured_profiles[0].exists(),
+            "profile dir must be cleaned up so the test suite doesn't leak tmp",
+        )
