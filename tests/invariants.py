@@ -33,6 +33,9 @@ def assert_agi_consistent(
         expected_income += f.ordinary_dividends
         expected_income += f.capital_gain_distributions
 
+    for f in scenario.form1099_b:
+        expected_income += f.gain_loss
+
     agi = results.get("agi")
     test.assertIsNotNone(agi, "AGI is missing from results")
     test.assertLessEqual(
@@ -296,6 +299,28 @@ def assert_4868_fills_correctly(
             expected_val,
             f"4868 field '{key}' (PDF: {pdf_field}): expected '{expected_val}', got '{actual}'",
         )
+
+
+def assert_sch_d_no_double_count(
+    test: unittest.TestCase,
+    results: dict,
+    *,
+    total_scenario_proceeds: float,
+) -> None:
+    """Sch D line 1a/1b/2/3/8a/8b/9/10 proceeds must sum to exactly the total
+    1099-B proceeds for the scenario. Catches lot-partitioning bugs where a
+    lot ends up on two lines (over-counted) or zero lines (dropped)."""
+    short_lines = ("1a", "1b", "2", "3")
+    long_lines = ("8a", "8b", "9", "10")
+    total = sum(
+        int(results.get(f"sch_d_line_{ln}_proceeds", 0))
+        for ln in (*short_lines, *long_lines)
+    )
+    test.assertEqual(
+        total, int(total_scenario_proceeds),
+        f"Sch D double-count: lines sum to {total} but scenario had "
+        f"{total_scenario_proceeds} total 1099-B proceeds",
+    )
 
 
 def assert_deduction_choice_consistent(testcase, results: dict) -> None:

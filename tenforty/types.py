@@ -24,6 +24,7 @@ class UpstreamState(TypedDict, total=False):
     sch_e_part_ii: dict[str, Any]
     f4562: dict[str, Any]
     f8582: dict[str, Any]
+    f8949: dict[str, Any]
     f8959: dict[str, Any]
     f8995: dict[str, Any]
     k1_fanout: K1FanoutData

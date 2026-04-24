@@ -1,160 +1,170 @@
-"""Schedule D native-Python summary-path compute tests."""
+"""Schedule D compute — consumes f8949 totals; preserves 1a/8a aggregate path."""
 
-import logging
 import unittest
 
-from tenforty.forms.sch_d import EightFortyNineRequired, compute
-from tenforty.models import Form1099B
+from tenforty.forms import f8949, sch_d
+from tenforty.models import (
+    Form1099B, K1FanoutData, Scenario, TaxReturnConfig,
+)
+from tests.helpers import plan_d_attestation_defaults
 
-from tests.helpers import make_simple_scenario
 
-
-def _lot(
-    *,
-    short_term: bool = True,
-    proceeds: float = 1000.0,
-    basis: float = 600.0,
-    basis_reported_to_irs: bool = True,
-    has_adjustments: bool = False,
-) -> Form1099B:
-    return Form1099B(
-        broker="Schwab",
-        description="100 ACME",
-        date_acquired="2024-01-01",
-        date_sold="2025-06-01",
-        proceeds=proceeds,
-        cost_basis=basis,
-        short_term=short_term,
-        basis_reported_to_irs=basis_reported_to_irs,
-        has_adjustments=has_adjustments,
+def _scenario(lots: list[Form1099B], **overrides) -> Scenario:
+    kw = plan_d_attestation_defaults()
+    kw.update(overrides)
+    cfg = TaxReturnConfig(
+        year=2025, filing_status="single",
+        birthdate="1985-04-20", state="CA",
+        first_name="Taxpayer", last_name="A", ssn="000-00-0000",
+        **kw,
     )
+    return Scenario(config=cfg, form1099_b=list(lots))
 
 
-class SchDShortTermTests(unittest.TestCase):
-    def test_single_short_term_summary_line(self):
-        scenario = make_simple_scenario()
-        scenario.form1099_b = [_lot(proceeds=1500.0, basis=1000.0)]
-        result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_1a_proceeds"], 1500)
-        self.assertEqual(result["sch_d_line_1a_basis"], 1000)
-        self.assertEqual(result["sch_d_line_1a_gain"], 500)
-        self.assertEqual(result["sch_d_line_7_net_short"], 500)
-        self.assertEqual(result["sch_d_line_8a_gain"], 0)
-        self.assertEqual(result["sch_d_line_15_net_long"], 0)
-
-    def test_short_term_netting(self):
-        scenario = make_simple_scenario()
-        scenario.form1099_b = [
-            _lot(proceeds=1000.0, basis=600.0),   # +400
-            _lot(proceeds=500.0, basis=700.0),    # -200
-        ]
-        result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_7_net_short"], 200)
+def _lot(**overrides) -> Form1099B:
+    """Form1099B with defaults that don't affect aggregate-vs-8949 routing.
+    Tests override only the fields that drive the routing decision."""
+    base = dict(
+        broker="Brokerage Inc",
+        description="Lot",
+        date_acquired="2025-01-15",
+        date_sold="2025-06-20",
+        proceeds=1000.0,
+        cost_basis=800.0,
+        short_term=True,
+        basis_reported_to_irs=True,
+    )
+    base.update(overrides)
+    return Form1099B(**base)
 
 
-class SchDLongTermTests(unittest.TestCase):
-    def test_long_term_netting(self):
-        scenario = make_simple_scenario()
-        scenario.form1099_b = [
-            _lot(short_term=False, proceeds=5000.0, basis=2000.0),  # +3000
-            _lot(short_term=False, proceeds=1000.0, basis=1500.0),  # -500
-        ]
-        result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_15_net_long"], 2500)
+class TestSchDAggregateVsForm8949Split(unittest.TestCase):
+    def test_no_adjustment_box_a_flows_to_1a_not_1b(self) -> None:
+        scen = _scenario([_lot(description="Clean")])
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        self.assertEqual(out["sch_d_line_1a_proceeds"], 1000)
+        self.assertEqual(out["sch_d_line_1a_gain"], 200)
+        self.assertEqual(out["sch_d_line_1b_gain"], 0)
+        self.assertEqual(out["sch_d_line_1b_proceeds"], 0)
 
-
-class SchDMixedTests(unittest.TestCase):
-    def test_mixed_terms_produce_two_summary_lines(self):
-        scenario = make_simple_scenario()
-        scenario.form1099_b = [
-            _lot(short_term=True, proceeds=1500.0, basis=1000.0),
-            _lot(short_term=False, proceeds=5000.0, basis=2000.0),
-        ]
-        result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_1a_gain"], 500)
-        self.assertEqual(result["sch_d_line_8a_gain"], 3000)
-        self.assertEqual(result["sch_d_line_16_total"], 3500)
-
-    def test_line_16_is_sum_of_7_and_15(self):
-        scenario = make_simple_scenario()
-        scenario.form1099_b = [
-            _lot(short_term=True, proceeds=1500.0, basis=1000.0),
-            _lot(short_term=False, proceeds=5000.0, basis=2000.0),
-        ]
-        result = compute(scenario, upstream={})
-        self.assertEqual(
-            result["sch_d_line_16_total"],
-            result["sch_d_line_7_net_short"]
-            + result["sch_d_line_15_net_long"],
+    def test_wash_sale_box_a_flows_to_1b_not_1a(self) -> None:
+        scen = _scenario(
+            [
+                _lot(
+                    description="WS",
+                    cost_basis=1200.0,
+                    wash_sale_loss_disallowed=200.0,
+                ),
+            ],
+            acknowledges_no_wash_sale_adjustments=True,
         )
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        self.assertEqual(out["sch_d_line_1a_proceeds"], 0)
+        self.assertEqual(out["sch_d_line_1a_gain"], 0)
+        self.assertEqual(out["sch_d_line_1b_proceeds"], 1000)
+        self.assertEqual(out["sch_d_line_1b_basis"], 1200)
+        self.assertEqual(out["sch_d_line_1b_gain"], 0)
 
-
-class SchDEmptyTests(unittest.TestCase):
-    def test_empty_scenario_yields_zero_totals(self):
-        scenario = make_simple_scenario()
-        result = compute(scenario, upstream={})
-        for key in (
-            "sch_d_line_1a_proceeds", "sch_d_line_1a_basis",
-            "sch_d_line_1a_gain", "sch_d_line_7_net_short",
-            "sch_d_line_8a_proceeds", "sch_d_line_8a_basis",
-            "sch_d_line_8a_gain", "sch_d_line_15_net_long",
-            "sch_d_line_16_total",
-        ):
-            self.assertEqual(result[key], 0, key)
-
-
-class SchDForm8949GateTests(unittest.TestCase):
-    def test_uncovered_basis_lot_raises_when_ack_false(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = False
-        scenario.form1099_b = [_lot(basis_reported_to_irs=False)]
-        with self.assertRaisesRegex(EightFortyNineRequired, "8949"):
-            compute(scenario, upstream={})
-
-    def test_adjusted_lot_raises_when_ack_false(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = False
-        scenario.form1099_b = [_lot(has_adjustments=True)]
-        with self.assertRaises(EightFortyNineRequired):
-            compute(scenario, upstream={})
-
-    def test_uncovered_basis_lot_dropped_with_warning_when_ack_true(self):
-        scenario = make_simple_scenario()
-        scenario.config.acknowledges_form_8949_unsupported = True
-        scenario.form1099_b = [
-            _lot(basis_reported_to_irs=False, proceeds=9999.0, basis=1.0),
-            _lot(proceeds=1500.0, basis=1000.0),  # covered, included
-        ]
-        with self.assertLogs("tenforty.forms.sch_d", level=logging.WARNING) as cm:
-            result = compute(scenario, upstream={})
-        self.assertEqual(result["sch_d_line_7_net_short"], 500)
-        self.assertTrue(
-            any("8949" in rec.getMessage() for rec in cm.records),
-            "expected a WARNING mentioning 8949 for dropped lot",
+    def test_no_double_count_mixed_scenario(self) -> None:
+        scen = _scenario(
+            [
+                _lot(description="Clean"),
+                _lot(
+                    description="WS",
+                    proceeds=2000.0,
+                    cost_basis=2500.0,
+                    wash_sale_loss_disallowed=500.0,
+                ),
+                _lot(
+                    description="NonCov",
+                    proceeds=500.0,
+                    cost_basis=300.0,
+                    basis_reported_to_irs=False,
+                ),
+            ],
+            acknowledges_no_wash_sale_adjustments=True,
         )
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        total_proceeds_across_lines = (
+            out["sch_d_line_1a_proceeds"]
+            + out["sch_d_line_1b_proceeds"]
+            + out["sch_d_line_2_proceeds"]
+        )
+        self.assertEqual(total_proceeds_across_lines, 1000 + 2000 + 500)
 
-    def test_covered_no_adjustment_lots_unaffected_by_ack_flag(self):
-        base_lot = dict(short_term=True, proceeds=1500.0, basis=1000.0)
-        for ack in (True, False):
-            with self.subTest(ack=ack):
-                scenario = make_simple_scenario()
-                scenario.config.acknowledges_form_8949_unsupported = ack
-                scenario.form1099_b = [_lot(**base_lot)]
-                result = compute(scenario, upstream={})
-                self.assertEqual(result["sch_d_line_7_net_short"], 500)
+    def test_line_16_combines_short_and_long(self) -> None:
+        scen = _scenario([
+            _lot(description="ST"),
+            _lot(
+                description="LT",
+                date_acquired="2022-01-15",
+                proceeds=5000.0,
+                cost_basis=3000.0,
+                short_term=False,
+            ),
+        ])
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        self.assertEqual(out["sch_d_line_7_net_short"], 200)
+        self.assertEqual(out["sch_d_line_15_net_long"], 2000)
+        self.assertEqual(out["sch_d_line_16_total"], 2200)
 
+    def test_28_rate_feeds_line_19(self) -> None:
+        scen = _scenario(
+            [
+                _lot(
+                    description="Coin",
+                    date_acquired="2020-01-15",
+                    proceeds=5000.0,
+                    cost_basis=1000.0,
+                    short_term=False,
+                    is_28_rate_collectible=True,
+                ),
+            ],
+            acknowledges_no_28_rate_gain=True,
+        )
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        self.assertEqual(out["sch_d_line_19_28_rate_gain"], 4000)
 
-class SchDTaxpayerHeaderTests(unittest.TestCase):
-    def test_taxpayer_header_from_config(self):
-        scenario = make_simple_scenario()
-        scenario.config.first_name = "Alex"
-        scenario.config.last_name = "Rivera"
-        scenario.config.ssn = "000-12-3456"
-        scenario.form1099_b = [_lot()]
-        result = compute(scenario, upstream={})
-        self.assertEqual(result["taxpayer_name"], "Alex Rivera")
-        self.assertEqual(result["taxpayer_ssn"], "000-12-3456")
+    def test_section_1250_feeds_line_18(self) -> None:
+        scen = _scenario(
+            [
+                _lot(
+                    description="REIT",
+                    date_acquired="2020-01-15",
+                    proceeds=10000.0,
+                    cost_basis=7000.0,
+                    short_term=False,
+                    is_section_1250=True,
+                ),
+            ],
+            acknowledges_no_unrecaptured_section_1250=True,
+        )
+        f8949_result = f8949.compute(scen, upstream={})
+        out = sch_d.compute(scen, upstream={"f8949": f8949_result})
+        self.assertEqual(out["sch_d_line_18_unrecap_1250"], 3000)
 
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_k1_cap_gain_adds_to_sch_d(self) -> None:
+        scen = _scenario([])
+        f8949_result = f8949.compute(scen, upstream={})
+        fanout = K1FanoutData(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(150.0,),
+            sch_d_long_term_additions=(400.0,),
+            qbi_aggregate=0.0,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(),
+        )
+        out = sch_d.compute(
+            scen, upstream={"f8949": f8949_result, "k1_fanout": fanout},
+        )
+        self.assertEqual(out["sch_d_line_5_net_short_k1"], 150)
+        self.assertEqual(out["sch_d_line_12_net_long_k1"], 400)
+        self.assertEqual(out["sch_d_line_7_net_short"], 150)
+        self.assertEqual(out["sch_d_line_15_net_long"], 400)
+        self.assertEqual(out["sch_d_line_16_total"], 550)

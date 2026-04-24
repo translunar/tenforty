@@ -13,10 +13,12 @@ from tenforty.models import (
     ItemizedDeductions, RentalProperty, Scenario, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
+from tests.helpers import plan_d_attestation_defaults
 
 
 REPO_ROOT = Path(__file__).parent.parent
 F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
+F8949_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f8949.pdf"
 SCH_B_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
 SCH_D_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf"
 SCH_E_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040se.pdf"
@@ -40,7 +42,10 @@ def make_scenario_with_identity() -> Scenario:
             address_state="TX",
             address_zip="77001",
             has_foreign_accounts=False,
-            acknowledges_form_8949_unsupported=False,
+            acknowledges_no_wash_sale_adjustments=False,
+            acknowledges_no_other_basis_adjustments=False,
+            acknowledges_no_28_rate_gain=False,
+            acknowledges_no_unrecaptured_section_1250=False,
         ),
     )
 
@@ -187,7 +192,6 @@ def _lot(**overrides) -> Form1099B:
         cost_basis=1000.0,
         short_term=True,
         basis_reported_to_irs=True,
-        has_adjustments=False,
     )
     defaults.update(overrides)
     return Form1099B(**defaults)
@@ -541,6 +545,59 @@ class EmitPdfs8959Tests(unittest.TestCase):
             scenario, SAMPLE_RESULTS, self.output_dir,
         )
         self.assertNotIn("f4562", emitted)
+
+
+class TestEmit8949Pdf(unittest.TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp()
+        self.output_dir = Path(self._tmpdir)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.output_dir / "work",
+        )
+
+    def _make_8949_scenario(self, basis_reported_to_irs: bool) -> Scenario:
+        return Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status=FilingStatus.SINGLE,
+                birthdate="1990-01-01", state="TX",
+                first_name="Sam", last_name="Doe",
+                ssn="000-11-2222",
+                address="789 Elm St", address_city="Houston",
+                address_state="TX", address_zip="77001",
+                **plan_d_attestation_defaults(),
+            ),
+            form1099_b=[
+                Form1099B(
+                    broker="Schwab", description="50 ACME",
+                    date_acquired="2025-01-10", date_sold="2025-07-15",
+                    proceeds=2000.0, cost_basis=1200.0,
+                    short_term=True,
+                    basis_reported_to_irs=basis_reported_to_irs,
+                ),
+            ],
+        )
+
+    @unittest.skipUnless(F8949_TEMPLATE.exists(), "f8949.pdf template not found")
+    def test_emits_f8949_pdf_when_8949_path_lot_present(self):
+        # Box B lot (basis_reported_to_irs=False) must produce a PDF.
+        scenario = self._make_8949_scenario(basis_reported_to_irs=False)
+        results = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertIn("f8949", results)
+        self.assertTrue(results["f8949"].exists())
+        self.assertGreater(results["f8949"].stat().st_size, 0)
+
+    @unittest.skipUnless(F8949_TEMPLATE.exists(), "f8949.pdf template not found")
+    def test_no_8949_pdf_when_only_aggregate_path_lots(self):
+        # Box A lot (basis_reported_to_irs=True, no adjustments) goes aggregate
+        # path; no 8949 PDF should be emitted.
+        scenario = self._make_8949_scenario(basis_reported_to_irs=True)
+        results = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        self.assertNotIn("f8949", results)
 
 
 if __name__ == "__main__":

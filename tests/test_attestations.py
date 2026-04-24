@@ -1,13 +1,20 @@
 """Tests for the data-driven _ATTESTATIONS table."""
 
+import tempfile
 import unittest
+from pathlib import Path
 
-from tenforty.attestations import Attestation, _ATTESTATIONS
+import yaml
+
+from tenforty.attestations import Attestation, _ATTESTATIONS, enforce_compute_time
+from tenforty.models import Form1099B, Scenario, TaxReturnConfig
+from tenforty.scenario import load_scenario
+from tests.helpers import plan_d_attestation_defaults
 
 
 class TestAttestationsTable(unittest.TestCase):
     def test_table_is_non_empty(self) -> None:
-        self.assertGreaterEqual(len(_ATTESTATIONS), 13)
+        self.assertGreaterEqual(len(_ATTESTATIONS), 16)
 
     def test_each_entry_has_required_fields(self) -> None:
         for a in _ATTESTATIONS:
@@ -23,7 +30,6 @@ class TestAttestationsTable(unittest.TestCase):
         fields = {a.field for a in _ATTESTATIONS}
         expected = {
             "has_foreign_accounts",
-            "acknowledges_form_8949_unsupported",
             "acknowledges_sch_a_sales_tax_unsupported",
             "acknowledges_qbi_below_threshold",
             "acknowledges_unlimited_at_risk",
@@ -35,6 +41,10 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_section_179",
             "acknowledges_no_estate_trust_k1",
             "prior_year_itemized",
+            "acknowledges_no_wash_sale_adjustments",
+            "acknowledges_no_other_basis_adjustments",
+            "acknowledges_no_28_rate_gain",
+            "acknowledges_no_unrecaptured_section_1250",
         }
         self.assertEqual(expected, fields)
 
@@ -57,7 +67,6 @@ class TestLoadTimeValidation(unittest.TestCase):
         kw = dict(
             year=2025, filing_status="single", birthdate="1990-06-15",
             state="CA", has_foreign_accounts=False,
-            acknowledges_form_8949_unsupported=False,
             acknowledges_sch_a_sales_tax_unsupported=False,
             acknowledges_qbi_below_threshold=False,
             acknowledges_unlimited_at_risk=False,
@@ -69,6 +78,10 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_section_179=False,
             acknowledges_no_estate_trust_k1=False,
             prior_year_itemized=False,
+            acknowledges_no_wash_sale_adjustments=False,
+            acknowledges_no_other_basis_adjustments=False,
+            acknowledges_no_28_rate_gain=False,
+            acknowledges_no_unrecaptured_section_1250=False,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise
@@ -118,7 +131,6 @@ class TestDefaultsAfterMigration(unittest.TestCase):
         d = plan_d_attestation_defaults()
         for f in (
             "has_foreign_accounts",
-            "acknowledges_form_8949_unsupported",
             "acknowledges_sch_a_sales_tax_unsupported",
             "acknowledges_qbi_below_threshold",
             "acknowledges_no_partnership_se_earnings",
@@ -144,3 +156,170 @@ class TestDefaultsAfterMigration(unittest.TestCase):
             ordinary_business_income=1000.0,
         )]
         sch_e_part_ii.compute(scenario, upstream={})
+
+
+class TestNewForm8949Attestations(unittest.TestCase):
+    """Four Form 8949 scope-out attestations — wash-sale, other-basis-adj, 28%-rate, §1250."""
+
+    def _base_config_kwargs(self) -> dict:
+        """Return a kwargs dict that sets every attestation to a safe default,
+        including the 4 lot-level gates as False. Individual test methods
+        override the specific attestation under test via `_make_scenario`'s
+        **config_overrides."""
+        return plan_d_attestation_defaults()
+
+    def _make_scenario(self, lot_kwargs: dict, **config_overrides):
+        """Build a Scenario with a single 1099-B lot and config overrides."""
+        kwargs = self._base_config_kwargs()
+        kwargs.update(config_overrides)
+        # has_foreign_accounts and prior_year_itemized come from
+        # plan_d_attestation_defaults(); no need to pass them separately.
+        cfg = TaxReturnConfig(
+            year=2025, filing_status="single",
+            birthdate="1985-04-20", state="CA",
+            **kwargs,
+        )
+        lot = Form1099B(
+            broker="Brokerage Inc", description="X",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=800.0,
+            **lot_kwargs,
+        )
+        return Scenario(config=cfg, form1099_b=[lot])
+
+    def test_wash_sale_gate_raises_at_compute_when_false(self) -> None:
+        scenario = self._make_scenario(
+            lot_kwargs={"wash_sale_loss_disallowed": 50.0},
+            acknowledges_no_wash_sale_adjustments=False,
+        )
+        with self.assertRaises(NotImplementedError) as ctx:
+            enforce_compute_time(scenario)
+        self.assertIn("wash_sale", str(ctx.exception))
+
+    def test_wash_sale_gate_passes_when_true(self) -> None:
+        scenario = self._make_scenario(
+            lot_kwargs={"wash_sale_loss_disallowed": 50.0},
+            acknowledges_no_wash_sale_adjustments=True,
+        )
+        enforce_compute_time(scenario)  # no raise
+
+    def test_wash_sale_gate_passes_when_no_trigger(self) -> None:
+        """No wash sale on any lot → attestation value is irrelevant at compute."""
+        scenario = self._make_scenario(
+            lot_kwargs={},
+            acknowledges_no_wash_sale_adjustments=False,
+        )
+        enforce_compute_time(scenario)
+
+    def test_other_basis_adjustment_gate_raises_when_false(self) -> None:
+        scenario = self._make_scenario(
+            lot_kwargs={"other_basis_adjustment": -25.0},
+            acknowledges_no_other_basis_adjustments=False,
+        )
+        with self.assertRaises(NotImplementedError):
+            enforce_compute_time(scenario)
+
+    def test_other_basis_adjustment_gate_passes_when_true(self) -> None:
+        """ack=True + trigger proceeds (no silent skip)."""
+        scenario = self._make_scenario(
+            lot_kwargs={"other_basis_adjustment": -25.0},
+            acknowledges_no_other_basis_adjustments=True,
+        )
+        enforce_compute_time(scenario)  # no raise
+
+    def test_other_basis_adjustment_gate_passes_when_no_trigger(self) -> None:
+        """No other basis adjustment on any lot → attestation value is irrelevant at compute."""
+        scenario = self._make_scenario(
+            lot_kwargs={},
+            acknowledges_no_other_basis_adjustments=False,
+        )
+        enforce_compute_time(scenario)
+
+    def test_28_rate_gate_raises_when_false(self) -> None:
+        scenario = self._make_scenario(
+            lot_kwargs={
+                "is_28_rate_collectible": True,
+                "short_term": False,
+            },
+            acknowledges_no_28_rate_gain=False,
+        )
+        with self.assertRaises(NotImplementedError):
+            enforce_compute_time(scenario)
+
+    def test_28_rate_gate_passes_when_true(self) -> None:
+        """ack=True + trigger proceeds (no silent skip)."""
+        scenario = self._make_scenario(
+            lot_kwargs={
+                "is_28_rate_collectible": True,
+                "short_term": False,
+            },
+            acknowledges_no_28_rate_gain=True,
+        )
+        enforce_compute_time(scenario)  # no raise
+
+    def test_28_rate_gate_passes_when_no_trigger(self) -> None:
+        """No 28%-rate collectible on any lot → attestation value is irrelevant at compute."""
+        scenario = self._make_scenario(
+            lot_kwargs={"short_term": False},
+            acknowledges_no_28_rate_gain=False,
+        )
+        enforce_compute_time(scenario)
+
+    def test_section_1250_gate_raises_when_false(self) -> None:
+        scenario = self._make_scenario(
+            lot_kwargs={
+                "is_section_1250": True,
+                "short_term": False,
+            },
+            acknowledges_no_unrecaptured_section_1250=False,
+        )
+        with self.assertRaises(NotImplementedError):
+            enforce_compute_time(scenario)
+
+    def test_section_1250_gate_passes_when_true(self) -> None:
+        """ack=True + trigger proceeds (no silent skip)."""
+        scenario = self._make_scenario(
+            lot_kwargs={
+                "is_section_1250": True,
+                "short_term": False,
+            },
+            acknowledges_no_unrecaptured_section_1250=True,
+        )
+        enforce_compute_time(scenario)  # no raise
+
+    def test_section_1250_gate_passes_when_no_trigger(self) -> None:
+        """No section 1250 on any lot → attestation value is irrelevant at compute."""
+        scenario = self._make_scenario(
+            lot_kwargs={"short_term": False},
+            acknowledges_no_unrecaptured_section_1250=False,
+        )
+        enforce_compute_time(scenario)
+
+    def test_load_error_when_attestation_none(self) -> None:
+        """Scenario load raises ValueError when any of the 4 new lot
+        attestations is left as None."""
+        for missing_key in (
+            "acknowledges_no_wash_sale_adjustments",
+            "acknowledges_no_other_basis_adjustments",
+            "acknowledges_no_28_rate_gain",
+            "acknowledges_no_unrecaptured_section_1250",
+        ):
+            with self.subTest(missing=missing_key):
+                defaults = plan_d_attestation_defaults()
+                defaults.pop(missing_key, None)
+                body = {
+                    "config": {
+                        "year": 2025, "filing_status": "single",
+                        "birthdate": "1985-04-20", "state": "CA",
+                        "has_foreign_accounts": False,
+                        "prior_year_itemized": False,
+                        **defaults,
+                    },
+                }
+                with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+                    yaml.safe_dump(body, f)
+                    path = Path(f.name)
+                self.addCleanup(path.unlink)
+                with self.assertRaises(ValueError) as ctx:
+                    load_scenario(path)
+                self.assertIn(missing_key, str(ctx.exception))

@@ -1,7 +1,7 @@
 """Structural tests for tenforty.types."""
 
 import unittest
-from typing import get_type_hints
+from typing import Any, get_type_hints
 
 from tenforty.types import UpstreamState
 
@@ -21,8 +21,8 @@ class TestUpstreamState(unittest.TestCase):
         hints = get_type_hints(UpstreamState)
         expected = {
             "f1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
-            "sch_e_part_ii", "f4562", "f8582", "f8959", "f8995",
-            "k1_fanout",
+            "sch_e_part_ii", "f4562", "f8582", "f8949", "f8959",
+            "f8995", "k1_fanout",
         }
         self.assertEqual(expected, set(hints))
 
@@ -31,3 +31,9 @@ class TestUpstreamState(unittest.TestCase):
         from tenforty.models import K1FanoutData
         hints = get_type_hints(UpstreamState)
         self.assertIs(hints["k1_fanout"], K1FanoutData)
+
+    def test_f8949_is_dict_of_any(self) -> None:
+        """f8949 holds the computed subsection-box totals (box_a/b/d/e
+        proceeds/basis/adjustment/gain) that sch_d.compute consumes."""
+        hints = get_type_hints(UpstreamState)
+        self.assertEqual(hints["f8949"], dict[str, Any])

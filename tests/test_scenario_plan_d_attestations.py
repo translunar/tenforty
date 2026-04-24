@@ -34,8 +34,11 @@ def _base_config(**overrides) -> dict:
         "birthdate": "1990-01-01",
         "state": "CA",
         "has_foreign_accounts": False,
-        "acknowledges_form_8949_unsupported": False,
         "acknowledges_sch_a_sales_tax_unsupported": False,
+        "acknowledges_no_wash_sale_adjustments": False,
+        "acknowledges_no_other_basis_adjustments": False,
+        "acknowledges_no_28_rate_gain": False,
+        "acknowledges_no_unrecaptured_section_1250": False,
     }
     for name in _UNCONDITIONAL_FIELDS:
         cfg[name] = False

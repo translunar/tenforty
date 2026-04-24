@@ -7,7 +7,10 @@ config:
   last_name: Filer
   ssn: "000-00-0000"
   has_foreign_accounts: false
-  acknowledges_form_8949_unsupported: false
+  acknowledges_no_wash_sale_adjustments: false
+  acknowledges_no_other_basis_adjustments: false
+  acknowledges_no_28_rate_gain: false
+  acknowledges_no_unrecaptured_section_1250: false
   acknowledges_sch_a_sales_tax_unsupported: false
   acknowledges_qbi_below_threshold: false
   acknowledges_unlimited_at_risk: false
