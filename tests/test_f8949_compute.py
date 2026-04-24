@@ -232,12 +232,12 @@ class TestF8949CheckboxEmission(unittest.TestCase):
         )
         out = f8949.compute(scenario, upstream={})
         self.assertEqual(out.get("f8949_box_a_checkbox"), "X")
-        # Other boxes have no lots → their checkboxes must be absent or empty
+        # Other boxes have no lots → their checkboxes must be absent (key not emitted)
         for letter in ("b", "d", "e"):
-            val = out.get(f"f8949_box_{letter}_checkbox")
-            self.assertFalse(
-                val,
-                f"Expected f8949_box_{letter}_checkbox to be absent or empty, got {val!r}",
+            self.assertIsNone(
+                out.get(f"f8949_box_{letter}_checkbox"),
+                f"Expected f8949_box_{letter}_checkbox to be absent (None), "
+                f"got {out.get(f'f8949_box_{letter}_checkbox')!r}",
             )
 
 

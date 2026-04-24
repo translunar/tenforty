@@ -23,6 +23,11 @@ _ALIASES: dict[str, str] = {
     "schd_line16": "capital_gain_loss",
 }
 
+assert not (set(_RENAMES) & set(_ALIASES)), (
+    f"Keys appear in both _RENAMES and _ALIASES: "
+    f"{set(_RENAMES) & set(_ALIASES)}"
+)
+
 
 def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     """Translate raw engine output into a PDF-ready 1040 result dict."""
