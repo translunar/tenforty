@@ -56,5 +56,25 @@ class PdfSchDStructureTests(unittest.TestCase):
             PdfSchD.get_mapping(1999)
 
 
+class TestPdfSchDFullLineGrid(unittest.TestCase):
+    """Verify the full Part I / Part II line grid plus page-2 lines 18/19."""
+
+    def test_all_new_lines_present(self) -> None:
+        m = PdfSchD.get_mapping(2025)
+        for line, kind in [
+            ("1b", "proceeds"), ("1b", "basis"), ("1b", "gain"),
+            ("2",  "proceeds"), ("2",  "basis"), ("2",  "gain"),
+            ("3",  "proceeds"), ("3",  "basis"), ("3",  "gain"),
+            ("5",  "net_short_k1"),
+            ("8b", "proceeds"), ("8b", "basis"), ("8b", "gain"),
+            ("9",  "proceeds"), ("9",  "basis"), ("9",  "gain"),
+            ("10", "proceeds"), ("10", "basis"), ("10", "gain"),
+            ("12", "net_long_k1"),
+        ]:
+            self.assertIn(f"sch_d_line_{line}_{kind}", m["scalars"])
+        self.assertIn("sch_d_line_18_unrecap_1250", m["scalars"])
+        self.assertIn("sch_d_line_19_28_rate_gain", m["scalars"])
+
+
 if __name__ == "__main__":
     unittest.main()
