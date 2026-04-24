@@ -40,6 +40,29 @@ def _make_scenario_with_interest_and_dividends() -> Scenario:
 
 
 class TestAssertAgiConsistent(unittest.TestCase):
+    def test_passes_when_agi_includes_cap_gain(self):
+        """assert_agi_consistent must accept AGI that includes 1099-B net cap gain."""
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            w2s=[W2(
+                employer="Acme Corp", wages=100000,
+                federal_tax_withheld=15000,
+                ss_wages=100000, ss_tax_withheld=6200,
+                medicare_wages=100000, medicare_tax_withheld=1450,
+            )],
+            form1099_b=[Form1099B(
+                broker="Brokerage Inc", description="shares",
+                date_acquired="2023-01-01", date_sold="2025-06-01",
+                proceeds=15000, cost_basis=10000,
+            )],
+        )
+        # gain_loss = 15000 - 10000 = 5000; correct AGI = 100000 + 5000 = 105000
+        results = {"agi": 105000}
+        assert_agi_consistent(self, results, scenario)
+
     def test_passes_when_agi_equals_income_sum(self):
         scenario = _make_scenario_with_interest_and_dividends()
         results = {

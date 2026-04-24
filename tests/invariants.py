@@ -33,6 +33,9 @@ def assert_agi_consistent(
         expected_income += f.ordinary_dividends
         expected_income += f.capital_gain_distributions
 
+    for f in scenario.form1099_b:
+        expected_income += f.gain_loss
+
     agi = results.get("agi")
     test.assertIsNotNone(agi, "AGI is missing from results")
     test.assertLessEqual(
