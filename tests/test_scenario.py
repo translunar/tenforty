@@ -6,7 +6,6 @@ from tenforty.scenario import load_scenario
 from tests.helpers import (
     FIXTURES_DIR,
     plan_d_attestation_defaults,
-    plan_d_attestation_defaults_minus_lot_attestations,
 )
 
 
@@ -68,13 +67,3 @@ class TestFixtureAttestationMigration(unittest.TestCase):
             self.assertIn(key, d)
         self.assertNotIn("acknowledges_form_8949_unsupported", d)
 
-    def test_minus_lot_attestations_helper_omits_new_keys(self) -> None:
-        minus = plan_d_attestation_defaults_minus_lot_attestations()
-        full = plan_d_attestation_defaults()
-        dropped = set(full) - set(minus)
-        self.assertEqual(dropped, {
-            "acknowledges_no_wash_sale_adjustments",
-            "acknowledges_no_other_basis_adjustments",
-            "acknowledges_no_28_rate_gain",
-            "acknowledges_no_unrecaptured_section_1250",
-        })

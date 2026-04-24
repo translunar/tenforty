@@ -1,3 +1,4 @@
+from tenforty.forms.f8949 import BOX_KEYS, adjustment_code_and_amount
 from tenforty.models import Scenario
 
 _FILING_STATUS_KEYS = {
@@ -169,18 +170,6 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
             flat["sche_8582_net_loss"] = round(-net)
 
 
-# Form 8949 box routing.
-# Short-term (Part I):  A = 1099-B + basis reported; B = 1099-B + basis not reported.
-# Long-term  (Part II): D = 1099-B + basis reported; E = 1099-B + basis not reported.
-# Boxes C / F ("no 1099-B received") are out of scope: Form1099B represents
-# a received 1099-B by definition.
-_BOX_KEYS = {
-    (True,  True):  "box_a",
-    (True,  False): "box_b",
-    (False, True):  "box_d",
-    (False, False): "box_e",
-}
-
 _K1_ROW_LETTERS = "abcd"
 _K1_FIELD_KEYS = (
     ("entity_name", "entity_name"),
@@ -254,26 +243,22 @@ def _flatten_1099_b(scenario: Scenario, flat: dict[str, object]) -> None:
     """Populate per-lot 8949 row slots, enumerated 1..N per subsection box."""
     box_counters: dict[str, int] = {}
     for lot in scenario.form1099_b:
-        box = _BOX_KEYS[(lot.short_term, lot.basis_reported_to_irs)]
-        idx = box_counters.get(box, 0) + 1
-        box_counters[box] = idx
-        # Mark the box checkbox the first time we see a lot for this box.
-        if idx == 1:
+        box = f"box_{BOX_KEYS[(lot.short_term, lot.basis_reported_to_irs)]}"
+        if box not in box_counters:
             flat[f"f8949_{box}_checkbox"] = "X"
+            box_counters[box] = 0
+        box_counters[box] += 1
+        idx = box_counters[box]
         prefix = f"f8949_{box}_lot_{idx}"
         flat[f"{prefix}_description"] = lot.description
         flat[f"{prefix}_date_acquired"] = lot.date_acquired
         flat[f"{prefix}_date_sold"] = lot.date_sold
         flat[f"{prefix}_proceeds"] = lot.proceeds
         flat[f"{prefix}_basis"] = lot.cost_basis
-        # Wash sale (code W) wins over other basis adjustment (code O);
-        # combined adjustments on a single lot are caught at compute-time.
-        if lot.wash_sale_loss_disallowed:
-            flat[f"{prefix}_adjustment_code"] = "W"
-            flat[f"{prefix}_adjustment_amount"] = lot.wash_sale_loss_disallowed
-        elif lot.other_basis_adjustment:
-            flat[f"{prefix}_adjustment_code"] = "O"
-            flat[f"{prefix}_adjustment_amount"] = lot.other_basis_adjustment
+        code, amount = adjustment_code_and_amount(lot)
+        if code:
+            flat[f"{prefix}_adjustment_code"] = code
+            flat[f"{prefix}_adjustment_amount"] = amount
         # 28%-rate / §1250 tags propagate for Sch D to aggregate; not
         # separate XLS inputs of their own.
         if lot.is_28_rate_collectible:

@@ -62,23 +62,6 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
     }
 
 
-def plan_d_attestation_defaults_minus_lot_attestations() -> dict:
-    """All attestations defaulted to False EXCEPT the 4 per-lot
-    attestations — those are omitted so the caller can pass each one
-    explicitly (or leave it as None to assert the load-time validation
-    fires on exactly that key).
-    """
-    d = plan_d_attestation_defaults()
-    for k in (
-        "acknowledges_no_wash_sale_adjustments",
-        "acknowledges_no_other_basis_adjustments",
-        "acknowledges_no_28_rate_gain",
-        "acknowledges_no_unrecaptured_section_1250",
-    ):
-        d.pop(k, None)
-    return d
-
-
 def make_simple_scenario() -> Scenario:
     """Create a simple single-filer scenario for tests that need a Scenario instance.
 

@@ -21,9 +21,11 @@ via the shared ``enforce_compute_time`` dispatcher in
 ``tenforty.attestations``; this module does not re-implement gate logic.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass
 
 from tenforty.attestations import enforce_compute_time
+from tenforty.mappings.pdf_f8949 import BoxLetter
 from tenforty.models import Form1099B, Scenario
 from tenforty.rounding import irs_round
 from tenforty.types import UpstreamState
@@ -44,25 +46,47 @@ class Form8949Lot:
     is_section_1250: bool
 
 
-_BOX_KEYS = {
-    (True,  True):  "a",
-    (True,  False): "b",
-    (False, True):  "d",
-    (False, False): "e",
+# (short_term, basis_reported_to_irs) → IRS 8949 box letter. Shared with
+# tenforty.oracle.flattener so the routing rule has a single source of
+# truth. Values are plain letters ("a"/"b"/"d"/"e") matching BoxLetter.value.
+BOX_KEYS: dict[tuple[bool, bool], str] = {
+    (True,  True):  BoxLetter.A.value,
+    (True,  False): BoxLetter.B.value,
+    (False, True):  BoxLetter.D.value,
+    (False, False): BoxLetter.E.value,
 }
+
+_CHECKBOX_LETTERS: frozenset[str] = frozenset(b.value for b in BoxLetter)
+
+
+def adjustment_code_and_amount(raw: Form1099B) -> tuple[str, float]:
+    """Return (IRS 8949 col (f) code, col (g) signed amount) for one lot.
+
+    Wash-sale (code W) wins over other-basis-adjustment (code O); a lot
+    carrying both is rejected at compute time (see ``_lot_from_1099b``).
+    Amount is raw (not rounded); callers apply ``irs_round`` as needed.
+    """
+    if raw.wash_sale_loss_disallowed:
+        return "W", raw.wash_sale_loss_disallowed
+    if raw.other_basis_adjustment:
+        return "O", raw.other_basis_adjustment
+    return "", 0.0
 
 
 def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     enforce_compute_time(scenario)
     aggregate_lots, f8949_path_raw = _partition_lots(scenario.form1099_b)
     lots: list[Form8949Lot] = [_lot_from_1099b(raw) for raw in f8949_path_raw]
+    lots_by_box: dict[str, list[Form8949Lot]] = defaultdict(list)
+    for lot in lots:
+        lots_by_box[lot.box].append(lot)
     result: dict = {
         "taxpayer_name": scenario.config.full_name,
         "taxpayer_ssn": scenario.config.ssn,
     }
     for letter in ("a", "b", "c", "d", "e", "f"):
-        box_lots = [lot for lot in lots if lot.box == letter]
-        if box_lots and letter in ("a", "b", "d", "e"):
+        box_lots = lots_by_box[letter]
+        if box_lots and letter in _CHECKBOX_LETTERS:
             result[f"f8949_box_{letter}_checkbox"] = "X"
         for idx, lot in enumerate(box_lots, start=1):
             prefix = f"f8949_box_{letter}_row_{idx}"
@@ -118,7 +142,7 @@ def _partition_lots(
 
 
 def _lot_from_1099b(raw: Form1099B) -> Form8949Lot:
-    box = _BOX_KEYS[(raw.short_term, raw.basis_reported_to_irs)]
+    box = BOX_KEYS[(raw.short_term, raw.basis_reported_to_irs)]
     if raw.wash_sale_loss_disallowed and raw.other_basis_adjustment:
         raise NotImplementedError(
             "A single 1099-B lot carries both wash_sale_loss_disallowed "
@@ -126,14 +150,8 @@ def _lot_from_1099b(raw: Form1099B) -> Form8949Lot:
             "code per row — split into two lots: one with wash-sale-only "
             "(code W) and one with the residual basis adjustment (code O)."
         )
-    code = ""
-    adj = 0
-    if raw.wash_sale_loss_disallowed:
-        code = "W"
-        adj = irs_round(raw.wash_sale_loss_disallowed)
-    elif raw.other_basis_adjustment:
-        code = "O"
-        adj = irs_round(raw.other_basis_adjustment)
+    code, raw_amount = adjustment_code_and_amount(raw)
+    adj = irs_round(raw_amount)
     proceeds = irs_round(raw.proceeds)
     basis = irs_round(raw.cost_basis)
     gain = proceeds - basis + adj

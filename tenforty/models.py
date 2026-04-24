@@ -55,10 +55,10 @@ class Form1099B:
     basis_reported_to_irs: bool = True
     # Per-IRS-instruction lot-level adjustment fields. Any nonzero/True is
     # gated by its corresponding _ATTESTATIONS entry — ack=False + nonzero
-    # raises NotImplementedError at compute time. Disallowed wash-sale loss
-    # is a positive amount (IRS code W, column (g) on Form 8949).
-    # other_basis_adjustment is added to cost_basis (positive = higher basis,
-    # less gain); gain_loss subtracts it because a positive value reduces gain.
+    # raises NotImplementedError at compute time. Both signed per IRS
+    # Form 8949 col (g) convention (positive increases gain, negative
+    # decreases); wash-sale disallowed loss (code W) is always entered
+    # positive, other_basis_adjustment (code O) is user-signed.
     wash_sale_loss_disallowed: float = 0.0
     other_basis_adjustment: float = 0.0
     is_28_rate_collectible: bool = False
@@ -71,7 +71,7 @@ class Form1099B:
     @property
     def gain_loss(self) -> float:
         return (self.proceeds - self.cost_basis
-                - self.other_basis_adjustment
+                + self.other_basis_adjustment
                 + self.wash_sale_loss_disallowed)
 
 

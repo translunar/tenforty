@@ -177,10 +177,13 @@ class ReturnOrchestrator:
         if self._should_emit_8949_pdf(scenario, upstream):
             f8949_template = _PDFS_ROOT / "federal" / str(year) / "f8949.pdf"
             out_8949 = output_dir / f"f8949_{year}.pdf"
-            # PdfF8949 uses a pre-indexed repeater structure: each "row" in
-            # box_X_rows is a full {result_key: pdf_field} dict with the row
-            # number already baked into both keys. Merge scalars + all row
-            # dicts into a single flat field_mapping and use filler.fill.
+            # PdfF8949 keeps per-box repeater groups (box_a_rows, box_b_rows, …)
+            # rather than the single-repeater {template, rows} shape that
+            # fill_with_repeaters expects, because boxes A/B share page-1 PDF
+            # fields and D/E share page-2 fields — a single repeater can't
+            # disambiguate them. Each row dict already bakes its row index
+            # and PDF field path into its keys, so a flat merge onto one
+            # field_mapping resolves all per-box keys correctly for filler.fill.
             f8949_full_mapping = PdfF8949.get_mapping(year)
             f8949_flat: dict[str, str] = dict(f8949_full_mapping["scalars"])
             for row_dicts in f8949_full_mapping["repeaters"].values():
@@ -366,15 +369,13 @@ class ReturnOrchestrator:
         The aggregate path (Box A/D no-adjustment) flows to Sch D 1a/8a
         summaries with no PDF row. Because ``f8949.compute`` already
         partitioned the lots, detect 8949-path lots by the presence of
-        any non-zero per-box total in the upstream result.
+        any non-zero per-box proceeds total in the upstream result.
         """
         f8949_result = upstream.get("f8949", {})
-        for box in BoxLetter:
-            if f8949_result.get(f"f8949_box_{box.value}_total_proceeds", 0):
-                return True
-            if f8949_result.get(f"f8949_box_{box.value}_total_basis", 0):
-                return True
-        return False
+        return any(
+            f8949_result.get(f"f8949_box_{box.value}_total_proceeds", 0)
+            for box in BoxLetter
+        )
 
     def _should_emit_sch_d(self, scenario: Scenario) -> bool:
         """Emit Sch D whenever any 1099-B transactions exist in the scenario."""

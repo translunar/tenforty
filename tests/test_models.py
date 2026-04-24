@@ -639,6 +639,32 @@ class TestForm1099BAdjustments(unittest.TestCase):
              "is_28_rate_collectible", "is_section_1250"},
         )
 
+    def test_gain_loss_matches_f8949_lot_for_other_basis_adjustment(self) -> None:
+        """Both Form1099B.gain_loss and f8949._lot_from_1099b must follow
+        the IRS Form 8949 col (g) convention (signed adjustment to gain)
+        for other_basis_adjustment. Guards against sign drift between the
+        two call sites — they were historically out of sync."""
+        from tenforty.forms.f8949 import _lot_from_1099b
+        from tenforty.rounding import irs_round
+        lot = Form1099B(
+            broker="Brokerage Inc", description="O-adj",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=800.0,
+            other_basis_adjustment=25.0,
+        )
+        self.assertEqual(irs_round(lot.gain_loss), _lot_from_1099b(lot).gain)
+
+    def test_gain_loss_matches_f8949_lot_for_wash_sale(self) -> None:
+        from tenforty.forms.f8949 import _lot_from_1099b
+        from tenforty.rounding import irs_round
+        lot = Form1099B(
+            broker="Brokerage Inc", description="WS",
+            date_acquired="2024-01-15", date_sold="2025-03-20",
+            proceeds=1000.0, cost_basis=1200.0,
+            wash_sale_loss_disallowed=50.0,
+        )
+        self.assertEqual(irs_round(lot.gain_loss), _lot_from_1099b(lot).gain)
+
 
 class TestRemovedAttestation(unittest.TestCase):
     def test_old_form_8949_attestation_removed(self) -> None:
