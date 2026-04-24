@@ -11,6 +11,7 @@ from tenforty.models import (
     TaxReturnConfig,
     W2,
 )
+from tests.helpers import plan_d_attestation_defaults
 
 
 def _simple_scenario() -> Scenario:
@@ -161,24 +162,114 @@ class TestFlattenRentalProperty(unittest.TestCase):
         self.assertNotIn("sche_other_expenses_a", flat)
 
 
-class TestFlattenerRejectsUnhandledData(unittest.TestCase):
-    """The flattener must raise NotImplementedError for form types it can't handle yet."""
+class TestFlatten1099B(unittest.TestCase):
+    """Flattener emits per-lot 8949 row keys per box/subsection."""
 
-    def _base_config(self) -> TaxReturnConfig:
-        return TaxReturnConfig(
-            year=2025, filing_status="single",
-            birthdate="1990-06-15", state="CA",
+    def _scenario_with_lots(self, lots):
+        return self._scenario_with_lots_ack(lots)
+
+    def _scenario_with_lots_ack(self, lots, **ack_overrides):
+        """Build a Scenario with attestation overrides passed directly into
+        TaxReturnConfig (no post-construction mutation)."""
+        kw = plan_d_attestation_defaults()
+        kw.update(ack_overrides)
+        return Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1985-04-20", state="CA",
+                **kw,
+            ),
+            form1099_b=list(lots),
         )
 
-    def test_rejects_1099_b(self):
-        scenario = Scenario(
-            config=self._base_config(),
-            form1099_b=[Form1099B(
-                broker="Brokerage Inc", description="100 shares ACME",
-                date_acquired="2023-01-15", date_sold="2025-03-20",
-                proceeds=15000, cost_basis=10000,
-            )],
+    def test_short_term_box_a_lot(self) -> None:
+        """Box A: short_term + basis_reported + no adjustments."""
+        s = self._scenario_with_lots([
+            Form1099B(
+                broker="Brokerage Inc", description="10 sh X",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=1000.0, cost_basis=800.0, short_term=True,
+                basis_reported_to_irs=True,
+            ),
+        ])
+        flat = flatten_scenario(s)
+        self.assertEqual(flat.get("f8949_box_a_lot_1_proceeds"), 1000.0)
+        self.assertEqual(flat.get("f8949_box_a_lot_1_basis"), 800.0)
+        self.assertEqual(flat.get("f8949_box_a_lot_1_description"), "10 sh X")
+
+    def test_long_term_box_d_lot(self) -> None:
+        """Box D: long_term + basis_reported + no adjustments."""
+        s = self._scenario_with_lots([
+            Form1099B(
+                broker="Brokerage Inc", description="100 sh Y",
+                date_acquired="2022-01-15", date_sold="2025-06-20",
+                proceeds=15000.0, cost_basis=10000.0, short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ])
+        flat = flatten_scenario(s)
+        self.assertEqual(flat.get("f8949_box_d_lot_1_proceeds"), 15000.0)
+        self.assertEqual(flat.get("f8949_box_d_lot_1_basis"), 10000.0)
+
+    def test_short_term_box_b_when_basis_not_reported(self) -> None:
+        s = self._scenario_with_lots([
+            Form1099B(
+                broker="Brokerage Inc", description="50 sh Z",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=500.0, cost_basis=700.0, short_term=True,
+                basis_reported_to_irs=False,
+            ),
+        ])
+        flat = flatten_scenario(s)
+        self.assertIn("f8949_box_b_lot_1_proceeds", flat)
+        self.assertNotIn("f8949_box_a_lot_1_proceeds", flat)
+
+    def test_wash_sale_lot_carries_adjustment(self) -> None:
+        """Lot with wash_sale_loss_disallowed is routed to adjusted-basis
+        box (A if basis reported, B if not) and its column-(g) adjustment
+        amount is keyed for the engine."""
+        s = self._scenario_with_lots_ack(
+            lots=[
+                Form1099B(
+                    broker="Brokerage Inc", description="W sh",
+                    date_acquired="2025-01-15", date_sold="2025-06-20",
+                    proceeds=500.0, cost_basis=700.0, short_term=True,
+                    basis_reported_to_irs=True,
+                    wash_sale_loss_disallowed=100.0,
+                ),
+            ],
+            acknowledges_no_wash_sale_adjustments=True,
         )
-        with self.assertRaises(NotImplementedError) as ctx:
-            flatten_scenario(scenario)
-        self.assertIn("1099-B", str(ctx.exception))
+        flat = flatten_scenario(s)
+        self.assertEqual(flat.get("f8949_box_a_lot_1_adjustment_amount"), 100.0)
+        self.assertEqual(flat.get("f8949_box_a_lot_1_adjustment_code"), "W")
+
+    def test_multiple_lots_enumerate(self) -> None:
+        s = self._scenario_with_lots([
+            Form1099B(
+                broker="Brokerage Inc", description="L1",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=1000.0, cost_basis=800.0,
+                short_term=True, basis_reported_to_irs=True,
+            ),
+            Form1099B(
+                broker="Brokerage Inc", description="L2",
+                date_acquired="2025-02-15", date_sold="2025-07-20",
+                proceeds=1500.0, cost_basis=1200.0,
+                short_term=True, basis_reported_to_irs=True,
+            ),
+        ])
+        flat = flatten_scenario(s)
+        self.assertEqual(flat["f8949_box_a_lot_1_description"], "L1")
+        self.assertEqual(flat["f8949_box_a_lot_2_description"], "L2")
+
+    def test_reject_unhandled_no_longer_blocks_1099_b(self) -> None:
+        """The pre-existing _reject_unhandled gate for form1099_b is gone."""
+        s = self._scenario_with_lots([
+            Form1099B(
+                broker="Brokerage Inc", description="X",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=100.0, cost_basis=80.0,
+            ),
+        ])
+        flatten_scenario(s)  # must not raise NotImplementedError

@@ -12,6 +12,7 @@ from tests.invariants import (
     assert_agi_consistent,
     assert_all_income_accounted_for,
     assert_refund_or_owed_consistent,
+    assert_sch_d_no_double_count,
     assert_tax_is_non_negative,
     assert_taxable_income_consistent,
     assert_w2_withholding_matches_input,
@@ -39,6 +40,29 @@ def _make_scenario_with_interest_and_dividends() -> Scenario:
 
 
 class TestAssertAgiConsistent(unittest.TestCase):
+    def test_passes_when_agi_includes_cap_gain(self):
+        """assert_agi_consistent must accept AGI that includes 1099-B net cap gain."""
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1990-06-15", state="CA",
+            ),
+            w2s=[W2(
+                employer="Acme Corp", wages=100000,
+                federal_tax_withheld=15000,
+                ss_wages=100000, ss_tax_withheld=6200,
+                medicare_wages=100000, medicare_tax_withheld=1450,
+            )],
+            form1099_b=[Form1099B(
+                broker="Brokerage Inc", description="shares",
+                date_acquired="2023-01-01", date_sold="2025-06-01",
+                proceeds=15000, cost_basis=10000,
+            )],
+        )
+        # gain_loss = 15000 - 10000 = 5000; correct AGI = 100000 + 5000 = 105000
+        results = {"agi": 105000}
+        assert_agi_consistent(self, results, scenario)
+
     def test_passes_when_agi_equals_income_sum(self):
         scenario = _make_scenario_with_interest_and_dividends()
         results = {
@@ -164,10 +188,44 @@ class TestAssertAllIncomeAccountedFor(unittest.TestCase):
             form1099_b=[Form1099B(
                 broker="Brokerage Inc", description="shares",
                 date_acquired="2023-01-01", date_sold="2025-06-01",
-                proceeds=50000, cost_basis=30000, gain_loss=20000,
+                proceeds=50000, cost_basis=30000,
             )],
         )
         # AGI of 100000 is missing the $20k capital gain
         results = {"agi": 100000}
         with self.assertRaises(AssertionError):
             assert_all_income_accounted_for(self, results, scenario)
+
+
+class TestSchDNoDoubleCountInvariant(unittest.TestCase):
+    def test_invariant_detects_double_count(self) -> None:
+        """Synthetic pathological result triggers the invariant."""
+        results = {
+            "sch_d_line_1a_proceeds": 1000,
+            "sch_d_line_1b_proceeds": 1000,
+            "sch_d_line_2_proceeds": 0,
+            "sch_d_line_3_proceeds": 0,
+            "sch_d_line_8a_proceeds": 0,
+            "sch_d_line_8b_proceeds": 0,
+            "sch_d_line_9_proceeds": 0,
+            "sch_d_line_10_proceeds": 0,
+        }
+        with self.assertRaises(AssertionError):
+            assert_sch_d_no_double_count(
+                self, results, total_scenario_proceeds=1000,
+            )
+
+    def test_invariant_passes_for_correct_split(self) -> None:
+        results = {
+            "sch_d_line_1a_proceeds": 1000,
+            "sch_d_line_1b_proceeds": 500,
+            "sch_d_line_2_proceeds": 0,
+            "sch_d_line_3_proceeds": 0,
+            "sch_d_line_8a_proceeds": 0,
+            "sch_d_line_8b_proceeds": 0,
+            "sch_d_line_9_proceeds": 0,
+            "sch_d_line_10_proceeds": 0,
+        }
+        assert_sch_d_no_double_count(
+            self, results, total_scenario_proceeds=1500,
+        )

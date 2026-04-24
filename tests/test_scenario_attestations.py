@@ -18,7 +18,6 @@ def _base_config(**overrides) -> dict:
         "birthdate": "1990-01-01",
         "state": "CA",
         "has_foreign_accounts": False,
-        "acknowledges_form_8949_unsupported": False,
         "acknowledges_sch_a_sales_tax_unsupported": False,
         "acknowledges_qbi_below_threshold": False,
         "acknowledges_unlimited_at_risk": False,
@@ -30,6 +29,10 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_section_179": False,
         "acknowledges_no_estate_trust_k1": False,
         "prior_year_itemized": False,
+        "acknowledges_no_wash_sale_adjustments": False,
+        "acknowledges_no_other_basis_adjustments": False,
+        "acknowledges_no_28_rate_gain": False,
+        "acknowledges_no_unrecaptured_section_1250": False,
     }
     cfg.update(overrides)
     return cfg
@@ -68,39 +71,10 @@ class LoadScenarioForeignAccountsTests(unittest.TestCase):
         self.assertFalse(s.config.has_foreign_accounts)
 
 
-class LoadScenarioForm8949Tests(unittest.TestCase):
-    def test_load_raises_when_acknowledges_form_8949_unsupported_omitted(self):
-        cfg = _base_config()
-        cfg.pop("acknowledges_form_8949_unsupported")
-        path = _write_and_load({"config": cfg})
-        self.addCleanup(path.unlink)
-        with self.assertRaisesRegex(ValueError, "acknowledges_form_8949_unsupported"):
-            load_scenario(path)
-
-    def test_load_succeeds_when_false(self):
-        path = _write_and_load(
-            {"config": _base_config(acknowledges_form_8949_unsupported=False)},
-        )
-        self.addCleanup(path.unlink)
-        s = load_scenario(path)
-        self.assertFalse(s.config.acknowledges_form_8949_unsupported)
-
-    def test_load_succeeds_when_true(self):
-        # No raise here — the raise happens later in forms.sch_d.compute
-        # only if an 8949-required lot is actually encountered (Task 11).
-        path = _write_and_load(
-            {"config": _base_config(acknowledges_form_8949_unsupported=True)},
-        )
-        self.addCleanup(path.unlink)
-        s = load_scenario(path)
-        self.assertTrue(s.config.acknowledges_form_8949_unsupported)
-
-
 class FixtureAttestationsTests(unittest.TestCase):
-    def test_every_fixture_declares_both_attestations_as_false(self):
+    def test_every_fixture_declares_scope_attestations_as_false(self):
         for fixture in sorted(FIXTURES_DIR.glob("*.yaml")):
             with self.subTest(fixture=fixture.name):
                 s = load_scenario(fixture)
                 self.assertFalse(s.config.has_foreign_accounts)
-                self.assertFalse(s.config.acknowledges_form_8949_unsupported)
                 self.assertFalse(s.config.acknowledges_sch_a_sales_tax_unsupported)

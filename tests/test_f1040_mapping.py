@@ -123,3 +123,56 @@ class TestF1040InputTypes(unittest.TestCase):
     def test_all_output_values_are_strings(self):
         for key, value in F1040.get_outputs(2025).items():
             self.assertIsInstance(value, str, f"Output '{key}' value is {type(value)}, expected str")
+
+
+class TestF1040Form8949Mapping(unittest.TestCase):
+    """Form 8949 per-lot row mapping: 4 boxes (A/B/D/E) × 11 lots × 7 fields.
+
+    Box C/F (no 1099-B) is out of scope since Form1099B implies a received
+    1099-B by definition.
+    """
+
+    def test_each_box_has_eleven_lot_rows(self):
+        inputs = F1040.get_inputs(2025)
+        for box in ("a", "b", "d", "e"):
+            for idx in range(1, 12):
+                self.assertIn(
+                    f"f8949_box_{box}_lot_{idx}_description", inputs,
+                    f"missing Box {box.upper()} lot {idx} description cell",
+                )
+
+    def test_box_a_lot_1_cells_are_part_i_row_41(self):
+        inputs = F1040.get_inputs(2025)
+        self.assertEqual(inputs["f8949_box_a_lot_1_description"],     "AJ41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_date_acquired"],   "AK41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_date_sold"],       "AL41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_proceeds"],        "AM41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_basis"],           "AN41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_adjustment_code"], "AO41")
+        self.assertEqual(inputs["f8949_box_a_lot_1_adjustment_amount"], "AP41")
+
+    def test_box_d_lot_1_cells_are_part_ii_row_91(self):
+        inputs = F1040.get_inputs(2025)
+        self.assertEqual(inputs["f8949_box_d_lot_1_description"], "AJ91")
+        self.assertEqual(inputs["f8949_box_d_lot_1_proceeds"],    "AM91")
+
+    def test_box_a_and_d_use_sheet_8949A(self):
+        sheet_map = F1040.SHEET_MAP[2025]
+        self.assertEqual(sheet_map["f8949_box_a_lot_1_description"], "8949A")
+        self.assertEqual(sheet_map["f8949_box_d_lot_1_description"], "8949A")
+
+    def test_box_b_and_e_use_sheet_8949B(self):
+        sheet_map = F1040.SHEET_MAP[2025]
+        self.assertEqual(sheet_map["f8949_box_b_lot_1_description"], "8949B")
+        self.assertEqual(sheet_map["f8949_box_e_lot_1_description"], "8949B")
+
+    def test_box_totals_map_to_named_ranges(self):
+        """Per-box totals come from the workbook's 4-letter named ranges:
+        {sheet}{S,L}T{D,E,G,H} where D/E/G/H columns are proceeds/basis/
+        adjustment/gain respectively on the subsection total row."""
+        outputs = F1040.get_outputs(2025)
+        self.assertEqual(outputs["f8949_box_a_total_proceeds"],   "F8949ASTD")
+        self.assertEqual(outputs["f8949_box_a_total_gain"],       "F8949ASTH")
+        self.assertEqual(outputs["f8949_box_b_total_proceeds"],   "F8949BSTD")
+        self.assertEqual(outputs["f8949_box_d_total_proceeds"],   "F8949ALTD")
+        self.assertEqual(outputs["f8949_box_e_total_gain"],       "F8949BLTH")

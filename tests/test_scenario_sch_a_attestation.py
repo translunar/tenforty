@@ -19,7 +19,6 @@ def _base_config(**overrides) -> dict:
         "birthdate": "1990-01-01",
         "state": "CA",
         "has_foreign_accounts": False,
-        "acknowledges_form_8949_unsupported": False,
         "acknowledges_sch_a_sales_tax_unsupported": False,
         "acknowledges_qbi_below_threshold": False,
         "acknowledges_unlimited_at_risk": False,
@@ -31,6 +30,10 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_section_179": False,
         "acknowledges_no_estate_trust_k1": False,
         "prior_year_itemized": False,
+        "acknowledges_no_wash_sale_adjustments": False,
+        "acknowledges_no_other_basis_adjustments": False,
+        "acknowledges_no_28_rate_gain": False,
+        "acknowledges_no_unrecaptured_section_1250": False,
     }
     cfg.update(overrides)
     return cfg

@@ -75,9 +75,6 @@ def _never(s: Scenario) -> bool:
     - Raise eagerly in a different place (e.g. `has_foreign_accounts=True`
       raises `NotImplementedError` immediately in `_validate_scenario_config`
       because no scenario context makes a foreign account safe).
-    - Are enforced in a compute path outside `sch_e_part_ii._enforce_scope_gates`
-      (e.g. `acknowledges_form_8949_unsupported` is gated per-lot inside
-      `forms.sch_d`).
     - Are user-awareness knobs with no runtime trigger (e.g.
       `prior_year_itemized` configures the Sch 1 state-refund rule; an
       unset value is rejected at load but the value itself does not cause
@@ -103,24 +100,6 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "scenario."
         ),
         compute_error="",  # unused; True-at-load raises NotImplementedError eagerly
-    ),
-    Attestation(
-        field="acknowledges_form_8949_unsupported",
-        triggered_when=_never,  # enforced by forms.sch_d on a per-lot basis
-        load_error=(
-            "Scenario config field `acknowledges_form_8949_unsupported` is "
-            "required and must be either true or false. Form 8949 is not "
-            "implemented in tenforty v1. Lots with uncovered basis, basis "
-            "adjustments, or wash-sale reporting legally require Form 8949. "
-            "Set `false` if all 1099-B lots are covered-basis with no "
-            "adjustments (Sch D summary path applies and the return is "
-            "complete). Set `true` ONLY if you have reviewed any "
-            "8949-required lots and accept that they will be DROPPED from "
-            "Sch D totals (a warning is logged per dropped lot so you can "
-            "reconcile manually); your return will be INCOMPLETE for those "
-            "lots until 8949 support lands."
-        ),
-        compute_error="",
     ),
     Attestation(
         field="acknowledges_sch_a_sales_tax_unsupported",
@@ -300,6 +279,74 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "if itemized, it is taxable up to the recovery limit."
         ),
         compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_wash_sale_adjustments",
+        triggered_when=lambda s: any(
+            lot.wash_sale_loss_disallowed for lot in s.form1099_b
+        ),
+        load_error=(
+            "`acknowledges_no_wash_sale_adjustments` required: confirm "
+            "whether any 1099-B lot has wash-sale-disallowed loss (set "
+            "true if none, false if awareness is needed)."
+        ),
+        compute_error=(
+            "A 1099-B lot reports wash_sale_loss_disallowed > 0 but "
+            "`acknowledges_no_wash_sale_adjustments` is false. Set the "
+            "attestation to true to affirm awareness of IRC §1091 "
+            "wash-sale treatment on the affected lot(s)."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_no_other_basis_adjustments",
+        triggered_when=lambda s: any(
+            lot.other_basis_adjustment for lot in s.form1099_b
+        ),
+        load_error=(
+            "`acknowledges_no_other_basis_adjustments` required: confirm "
+            "whether any 1099-B lot has a basis adjustment other than "
+            "wash sale."
+        ),
+        compute_error=(
+            "A 1099-B lot reports a nonzero other_basis_adjustment but "
+            "`acknowledges_no_other_basis_adjustments` is false. Other "
+            "basis adjustments (IRS codes B/T/L/N/H/D/O/S/X) are supported "
+            "in Form 8949 column (g) only when this attestation is set true."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_no_28_rate_gain",
+        triggered_when=lambda s: any(
+            lot.is_28_rate_collectible for lot in s.form1099_b
+        ),
+        load_error=(
+            "`acknowledges_no_28_rate_gain` required: confirm whether any "
+            "1099-B lot is a collectible or §1202 gain subject to the "
+            "28%-rate worksheet."
+        ),
+        compute_error=(
+            "A 1099-B lot is flagged is_28_rate_collectible=True but "
+            "`acknowledges_no_28_rate_gain` is false. The 28%-rate gain "
+            "worksheet feeds Sch D's preferential-rate tax computation; "
+            "set the attestation to true to affirm awareness."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_no_unrecaptured_section_1250",
+        triggered_when=lambda s: any(
+            lot.is_section_1250 for lot in s.form1099_b
+        ),
+        load_error=(
+            "`acknowledges_no_unrecaptured_section_1250` required: confirm "
+            "whether any 1099-B lot is unrecaptured §1250 gain "
+            "(real-property depreciation recapture)."
+        ),
+        compute_error=(
+            "A 1099-B lot is flagged is_section_1250=True but "
+            "`acknowledges_no_unrecaptured_section_1250` is false. The "
+            "Unrecaptured §1250 Gain Worksheet feeds Sch D line 19; set "
+            "the attestation to true to affirm awareness."
+        ),
     ),
 )
 
