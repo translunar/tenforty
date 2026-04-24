@@ -11,10 +11,16 @@ invocation and hands `compute` the raw result dict.
 _RENAMES: dict[str, str] = {
     "interest_income": "taxable_interest",
     "dividend_income": "ordinary_dividends",
-    "schd_line16": "capital_gain_loss",
     "sche_line26": "other_income",
     "federal_withheld": "federal_withheld_w2",
     "additional_medicare_withheld": "federal_withheld_other",
+}
+
+# Keys that are aliased: both the original oracle key and the PDF-ready name
+# are preserved in the result. This allows downstream consumers (tests,
+# native math) to read either name without a second lookup.
+_ALIASES: dict[str, str] = {
+    "schd_line16": "capital_gain_loss",
 }
 
 
@@ -25,6 +31,10 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     for old, new in _RENAMES.items():
         if old in translated:
             translated[new] = translated.pop(old)
+
+    for old, new in _ALIASES.items():
+        if old in translated:
+            translated[new] = translated[old]
 
     if "agi" in translated:
         translated["agi_page2"] = translated["agi"]

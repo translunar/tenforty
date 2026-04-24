@@ -62,6 +62,8 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     }
     for letter in ("a", "b", "c", "d", "e", "f"):
         box_lots = [lot for lot in lots if lot.box == letter]
+        if box_lots and letter in ("a", "b", "d", "e"):
+            result[f"f8949_box_{letter}_checkbox"] = "X"
         for idx, lot in enumerate(box_lots, start=1):
             prefix = f"f8949_box_{letter}_row_{idx}"
             result[f"{prefix}_description"] = lot.description

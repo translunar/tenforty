@@ -214,6 +214,33 @@ class TestF8949Compute(unittest.TestCase):
         self.assertEqual(out["f8949_agg_long_gain"], 3000)
 
 
+class TestF8949CheckboxEmission(unittest.TestCase):
+    def test_box_a_checkbox_emitted_when_box_a_has_8949_path_lot(self) -> None:
+        """A lot routed to Box A (ST, covered, with wash-sale adjustment) must
+        cause f8949.compute to emit f8949_box_a_checkbox == 'X'."""
+        scenario = _make_scenario(
+            [
+                Form1099B(
+                    broker="Brokerage Inc", description="WS",
+                    date_acquired="2025-01-15", date_sold="2025-06-20",
+                    proceeds=1000.0, cost_basis=1200.0,
+                    short_term=True, basis_reported_to_irs=True,
+                    wash_sale_loss_disallowed=200.0,
+                ),
+            ],
+            acknowledges_no_wash_sale_adjustments=True,
+        )
+        out = f8949.compute(scenario, upstream={})
+        self.assertEqual(out.get("f8949_box_a_checkbox"), "X")
+        # Other boxes have no lots → their checkboxes must be absent or empty
+        for letter in ("b", "d", "e"):
+            val = out.get(f"f8949_box_{letter}_checkbox")
+            self.assertFalse(
+                val,
+                f"Expected f8949_box_{letter}_checkbox to be absent or empty, got {val!r}",
+            )
+
+
 class TestForm8949Lot(unittest.TestCase):
     """Dataclass sanity — Iron Law 8 (no positional 6-tuples for lot data)."""
 

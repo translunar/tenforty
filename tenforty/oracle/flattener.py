@@ -257,6 +257,9 @@ def _flatten_1099_b(scenario: Scenario, flat: dict[str, object]) -> None:
         box = _BOX_KEYS[(lot.short_term, lot.basis_reported_to_irs)]
         idx = box_counters.get(box, 0) + 1
         box_counters[box] = idx
+        # Mark the box checkbox the first time we see a lot for this box.
+        if idx == 1:
+            flat[f"f8949_{box}_checkbox"] = "X"
         prefix = f"f8949_{box}_lot_{idx}"
         flat[f"{prefix}_description"] = lot.description
         flat[f"{prefix}_date_acquired"] = lot.date_acquired

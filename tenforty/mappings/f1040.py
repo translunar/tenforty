@@ -16,16 +16,17 @@ _F8949_LOT_COLS = {
     "adjustment_amount": "AP",
 }
 _F8949_BOX_SLOTS = (
-    # (box letter, sheet name, Part row base)
-    ("a", "8949A", 41),  # short-term, basis reported
-    ("b", "8949B", 41),  # short-term, basis not reported
-    ("d", "8949A", 91),  # long-term,  basis reported
-    ("e", "8949B", 91),  # long-term,  basis not reported
+    # (box letter, sheet name, Part row base, checkbox cell)
+    ("a", "8949A", 41, "C25"),  # short-term, basis reported
+    ("b", "8949B", 41, "C27"),  # short-term, basis not reported
+    ("d", "8949A", 91, "C75"),  # long-term,  basis reported
+    ("e", "8949B", 91, "C77"),  # long-term,  basis not reported
 )
 
 
-def _f8949_box_inputs(letter: str, row_base: int) -> dict[str, str]:
+def _f8949_box_inputs(letter: str, row_base: int, checkbox_cell: str) -> dict[str, str]:
     out: dict[str, str] = {}
+    out[f"f8949_box_{letter}_checkbox"] = checkbox_cell
     for i in range(_F8949_LOT_ROWS):
         idx = i + 1
         row = row_base + i
@@ -36,6 +37,7 @@ def _f8949_box_inputs(letter: str, row_base: int) -> dict[str, str]:
 
 def _f8949_box_sheet_map(letter: str, sheet: str) -> dict[str, str]:
     out: dict[str, str] = {}
+    out[f"f8949_box_{letter}_checkbox"] = sheet
     for i in range(_F8949_LOT_ROWS):
         idx = i + 1
         for field in _F8949_LOT_COLS:
@@ -45,14 +47,14 @@ def _f8949_box_sheet_map(letter: str, sheet: str) -> dict[str, str]:
 
 def _f8949_all_inputs() -> dict[str, str]:
     out: dict[str, str] = {}
-    for letter, _sheet, row_base in _F8949_BOX_SLOTS:
-        out |= _f8949_box_inputs(letter, row_base)
+    for letter, _sheet, row_base, checkbox_cell in _F8949_BOX_SLOTS:
+        out |= _f8949_box_inputs(letter, row_base, checkbox_cell)
     return out
 
 
 def _f8949_all_sheet_map() -> dict[str, str]:
     out: dict[str, str] = {}
-    for letter, sheet, _row_base in _F8949_BOX_SLOTS:
+    for letter, sheet, _row_base, _checkbox_cell in _F8949_BOX_SLOTS:
         out |= _f8949_box_sheet_map(letter, sheet)
     return out
 
