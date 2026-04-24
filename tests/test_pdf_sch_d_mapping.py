@@ -29,7 +29,7 @@ class PdfSchDStructureTests(unittest.TestCase):
         for k in _REQUIRED_SCALARS:
             self.assertIn(k, scalars, f"missing scalar: {k}")
 
-    def test_2025_has_empty_repeaters_v1(self):
+    def test_2025_repeaters_is_empty(self):
         m = PdfSchD.get_mapping(2025)
         self.assertEqual(m.get("repeaters", {}), {})
 
@@ -65,11 +65,16 @@ class TestPdfSchDFullLineGrid(unittest.TestCase):
             ("1b", "proceeds"), ("1b", "basis"), ("1b", "gain"),
             ("2",  "proceeds"), ("2",  "basis"), ("2",  "gain"),
             ("3",  "proceeds"), ("3",  "basis"), ("3",  "gain"),
+            ("4",  "gain"),
             ("5",  "net_short_k1"),
+            ("6",  "loss_carryover"),
             ("8b", "proceeds"), ("8b", "basis"), ("8b", "gain"),
             ("9",  "proceeds"), ("9",  "basis"), ("9",  "gain"),
             ("10", "proceeds"), ("10", "basis"), ("10", "gain"),
+            ("11", "gain"),
             ("12", "net_long_k1"),
+            ("13", "cap_gain_dist"),
+            ("14", "loss_carryover"),
         ]:
             self.assertIn(f"sch_d_line_{line}_{kind}", m["scalars"])
         self.assertIn("sch_d_line_18_unrecap_1250", m["scalars"])
