@@ -29,6 +29,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
+from tenforty.mappings.pdf_f8949 import PdfF8949
 from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.types import UpstreamState
 
@@ -122,6 +123,9 @@ class ReturnOrchestrator:
 
         upstream: UpstreamState = {"f1040": results, "k1_fanout": k1_fanout}
 
+        if self._should_compute_8949(scenario):
+            upstream["f8949"] = form_f8949.compute(scenario, upstream)
+
         f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
         # results is already PDF-ready (forms.f1040.compute produced it,
         # including the 25d sum). No translator, no patch needed.
@@ -161,10 +165,7 @@ class ReturnOrchestrator:
         if self._should_emit_sch_d(scenario):
             sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
             out_sch_d = output_dir / f"f1040sd_{year}.pdf"
-            f8949_values = form_f8949.compute(scenario, upstream={})
-            sch_d_values = form_sch_d.compute(
-                scenario, upstream={**upstream, "f8949": f8949_values},
-            )
+            sch_d_values = form_sch_d.compute(scenario, upstream=upstream)
             filler.fill_with_repeaters(
                 template_path=sch_d_template,
                 output_path=out_sch_d,
@@ -172,6 +173,26 @@ class ReturnOrchestrator:
                 values=sch_d_values,
             )
             emitted["sch_d"] = out_sch_d
+
+        if self._should_emit_8949_pdf(scenario, upstream):
+            f8949_template = _PDFS_ROOT / "federal" / str(year) / "f8949.pdf"
+            out_8949 = output_dir / f"f8949_{year}.pdf"
+            # PdfF8949 uses a pre-indexed repeater structure: each "row" in
+            # box_X_rows is a full {result_key: pdf_field} dict with the row
+            # number already baked into both keys. Merge scalars + all row
+            # dicts into a single flat field_mapping and use filler.fill.
+            f8949_full_mapping = PdfF8949.get_mapping(year)
+            f8949_flat: dict[str, str] = dict(f8949_full_mapping["scalars"])
+            for row_dicts in f8949_full_mapping["repeaters"].values():
+                for row_dict in row_dicts:
+                    f8949_flat.update(row_dict)
+            filler.fill(
+                template_path=f8949_template,
+                output_path=out_8949,
+                field_mapping=f8949_flat,
+                values=upstream["f8949"],
+            )
+            emitted["f8949"] = out_8949
 
         sch_e_values: dict = {}
         if self._should_emit_sch_e(scenario):
@@ -327,6 +348,33 @@ class ReturnOrchestrator:
         total_interest = sum(i.interest for i in scenario.form1099_int)
         total_dividends = sum(d.ordinary_dividends for d in scenario.form1099_div)
         return total_interest >= 1500.0 or total_dividends >= 1500.0
+
+    def _should_compute_8949(self, scenario: Scenario) -> bool:
+        """Run f8949.compute whenever any 1099-B lot exists.
+
+        Even pure Box A/D no-adjustment scenarios need the compute step,
+        because ``sch_d.compute`` reads ``upstream["f8949"]["f8949_agg_*"]``
+        for Sch D line 1a / 8a totals. The compute step is the single
+        source of truth that partitions aggregate-path vs 8949-path lots.
+        """
+        return bool(scenario.form1099_b)
+
+    def _should_emit_8949_pdf(self, scenario: Scenario,
+                              upstream: dict) -> bool:
+        """Emit f8949.pdf only when at least one lot is on the 8949 path.
+
+        The aggregate path (Box A/D no-adjustment) flows to Sch D 1a/8a
+        summaries with no PDF row. Because ``f8949.compute`` already
+        partitioned the lots, detect 8949-path lots by the presence of
+        any non-zero per-box total in the upstream result.
+        """
+        f8949_result = upstream.get("f8949", {})
+        for letter in ("a", "b", "d", "e"):
+            if f8949_result.get(f"f8949_box_{letter}_total_proceeds", 0):
+                return True
+            if f8949_result.get(f"f8949_box_{letter}_total_basis", 0):
+                return True
+        return False
 
     def _should_emit_sch_d(self, scenario: Scenario) -> bool:
         """Emit Sch D whenever any 1099-B transactions exist in the scenario."""

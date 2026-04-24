@@ -6,12 +6,13 @@ from pathlib import Path
 
 from datetime import date
 
+from tenforty.forms import f8949 as form_f8949
 from tenforty.models import (
-    DepreciableAsset, Form1099DIV, Form1099INT, ItemizedDeductions,
-    RentalProperty, ScheduleK1, W2,
+    DepreciableAsset, Form1099B, Form1099DIV, Form1099INT, ItemizedDeductions,
+    RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import make_k1_scenario, make_simple_scenario
+from tests.helpers import make_k1_scenario, make_simple_scenario, plan_d_attestation_defaults
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -172,6 +173,96 @@ class OrchestratorPredicateTests(unittest.TestCase):
             ),
         ]
         self.assertTrue(self.orchestrator._should_emit_4562(scenario, {}))
+
+
+class TestShouldCompute8949(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name),
+        )
+
+    def _scen(self, lots: list) -> Scenario:
+        return Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1985-04-20", state="CA",
+                **plan_d_attestation_defaults(),
+            ),
+            form1099_b=list(lots),
+        )
+
+    def test_compute_when_any_1099b_lot_present(self) -> None:
+        scen = self._scen([
+            Form1099B(
+                broker="Brokerage Inc", description="Clean",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=1000.0, cost_basis=800.0,
+                short_term=True, basis_reported_to_irs=True,
+            ),
+        ])
+        self.assertTrue(self.orch._should_compute_8949(scen))
+
+    def test_compute_false_when_no_1099b(self) -> None:
+        scen = self._scen([])
+        self.assertFalse(self.orch._should_compute_8949(scen))
+
+
+class TestShouldEmit8949Pdf(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name),
+        )
+
+    def _scen(self, lots: list) -> Scenario:
+        return Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status="single",
+                birthdate="1985-04-20", state="CA",
+                **plan_d_attestation_defaults(),
+            ),
+            form1099_b=list(lots),
+        )
+
+    def test_emit_true_when_8949_path_lot_present(self) -> None:
+        # basis_reported_to_irs=False → Box B → appears in f8949_box_b_total_proceeds
+        scen = self._scen([
+            Form1099B(
+                broker="Brokerage Inc", description="Non-covered lot",
+                date_acquired="2025-01-15", date_sold="2025-06-20",
+                proceeds=2000.0, cost_basis=1500.0,
+                short_term=True, basis_reported_to_irs=False,
+            ),
+        ])
+        f8949_result = form_f8949.compute(scen, upstream={})
+        upstream = {"f8949": f8949_result}
+        self.assertTrue(self.orch._should_emit_8949_pdf(scen, upstream))
+
+    def test_emit_false_when_only_aggregate_path_lots(self) -> None:
+        # basis_reported_to_irs=True, no adjustments → Box A aggregate path,
+        # not on the 8949 path, so per-box totals are all zero.
+        scen = self._scen([
+            Form1099B(
+                broker="Brokerage Inc", description="Covered lot",
+                date_acquired="2024-06-01", date_sold="2025-03-15",
+                proceeds=5000.0, cost_basis=3000.0,
+                short_term=False, basis_reported_to_irs=True,
+            ),
+        ])
+        f8949_result = form_f8949.compute(scen, upstream={})
+        upstream = {"f8949": f8949_result}
+        self.assertFalse(self.orch._should_emit_8949_pdf(scen, upstream))
+
+    def test_emit_false_when_no_lots_empty_upstream(self) -> None:
+        # Empty upstream — no f8949 key at all, or empty dict at "f8949"
+        scen = self._scen([])
+        upstream: dict = {"f8949": {}}
+        self.assertFalse(self.orch._should_emit_8949_pdf(scen, upstream))
 
 
 if __name__ == "__main__":
