@@ -29,7 +29,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
-from tenforty.mappings.pdf_f8949 import PdfF8949
+from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.types import UpstreamState
 
@@ -369,10 +369,10 @@ class ReturnOrchestrator:
         any non-zero per-box total in the upstream result.
         """
         f8949_result = upstream.get("f8949", {})
-        for letter in ("a", "b", "d", "e"):
-            if f8949_result.get(f"f8949_box_{letter}_total_proceeds", 0):
+        for box in BoxLetter:
+            if f8949_result.get(f"f8949_box_{box.value}_total_proceeds", 0):
                 return True
-            if f8949_result.get(f"f8949_box_{letter}_total_basis", 0):
+            if f8949_result.get(f"f8949_box_{box.value}_total_basis", 0):
                 return True
         return False
 
