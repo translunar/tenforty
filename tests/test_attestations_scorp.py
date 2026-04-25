@@ -2,7 +2,9 @@
 
 import unittest
 
-from tenforty.attestations import _ATTESTATIONS
+from tenforty.attestations import _ATTESTATIONS, enforce_compute_time
+from tenforty.models import FilingStatus, Scenario, TaxReturnConfig
+from tests._scorp_fixtures import _make_scorp_return
 
 
 _EXPECTED_SCORP_FIELDS = frozenset({
@@ -67,11 +69,6 @@ class SCorpAttestationGateFiringTests(unittest.TestCase):
     def test_schedule_l_gate_fires_on_high_total_assets(self):
         """When total_assets >= 250000 and the attestation is False,
         compute-time enforcement raises NotImplementedError."""
-        from tenforty.attestations import enforce_compute_time
-        from tests._scorp_fixtures import _make_scorp_return
-        from tenforty.models import (
-            FilingStatus, Scenario, TaxReturnConfig,
-        )
         cfg = TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
             birthdate="01-01-1980", state="EX",
@@ -92,11 +89,6 @@ class SCorpAttestationGateFiringTests(unittest.TestCase):
         self.assertIn("Schedule L", str(cm.exception))
 
     def test_section_1375_gate_fires_on_nonzero_passive_income_tax(self):
-        from tenforty.attestations import enforce_compute_time
-        from tests._scorp_fixtures import _make_scorp_return
-        from tenforty.models import (
-            FilingStatus, Scenario, TaxReturnConfig,
-        )
         cfg = TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
             birthdate="01-01-1980", state="EX",
@@ -119,11 +111,6 @@ class SCorpAttestationGateFiringTests(unittest.TestCase):
     def test_section_1375_gate_does_not_fire_when_attestation_true(self):
         """Sanity-check the inverse: ack=True + nonzero scope-out value
         runs cleanly. Confirms the gate is not over-eager."""
-        from tenforty.attestations import enforce_compute_time
-        from tests._scorp_fixtures import _make_scorp_return
-        from tenforty.models import (
-            FilingStatus, Scenario, TaxReturnConfig,
-        )
         cfg = TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
             birthdate="01-01-1980", state="EX",
