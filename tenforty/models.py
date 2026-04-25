@@ -404,6 +404,13 @@ class Address:
 
 @dataclass
 class SCorpShareholder:
+    """Single shareholder identity and ownership stake for Schedule K-1 allocation.
+
+    ``ownership_percentage`` is expressed as a percentage (0–100), not a
+    proportion (0–1). A sole shareholder holds 100.0. Pro-rata allocation
+    divides by 100 at compute time; keeping the percentage scale matches
+    the IRS Schedule K-1 Part II box D literal.
+    """
     name: str
     ssn_or_ein: str
     address: Address
