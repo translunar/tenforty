@@ -390,6 +390,27 @@ class DepreciableAsset:
 
 
 @dataclass
+class Address:
+    """Mailing-address record. Reusable across entity and shareholder
+    contexts; future migrations of `TaxReturnConfig.address*` should
+    consume this same dataclass (tracked as a follow-up cleanup issue
+    rather than included in this sub-plan).
+    """
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+
+@dataclass
+class SCorpShareholder:
+    name: str
+    ssn_or_ein: str
+    address: Address
+    ownership_percentage: float
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
