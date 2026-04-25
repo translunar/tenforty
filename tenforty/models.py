@@ -419,6 +419,11 @@ class SCorpShareholder:
 
 @dataclass
 class SCorpScheduleBAnswers:
+    """Schedule B Yes/No answers and entity-description fields for Form 1120-S.
+
+    ``business_activity_code`` is a six-digit NAICS code (e.g. "541990").
+    It is passed verbatim to the PDF fill layer; no validation is performed here.
+    """
     accounting_method: AccountingMethod
     business_activity_code: str
     business_activity_description: str
