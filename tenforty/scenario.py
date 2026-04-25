@@ -1,9 +1,12 @@
+import datetime
 from pathlib import Path
 
 import yaml
 
 from tenforty.attestations import validate_load_time
 from tenforty.models import (
+    AccountingMethod,
+    Address,
     DepreciableAsset,
     EntityType,
     FilingStatus,
@@ -13,6 +16,13 @@ from tenforty.models import (
     Form1099G,
     Form1099INT,
     RentalProperty,
+    SCorpDeductions,
+    SCorpIncome,
+    SCorpPayments,
+    SCorpReturn,
+    SCorpScheduleBAnswers,
+    SCorpScopeOuts,
+    SCorpShareholder,
     Scenario,
     ScheduleK1,
     TaxReturnConfig,
@@ -30,6 +40,116 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "rental_properties": (RentalProperty, "rental_properties"),
     "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
+
+
+def _coerce_date(value) -> datetime.date:
+    """PyYAML returns `datetime.date` for unquoted ISO dates and `str`
+    for quoted ones; normalize both to `datetime.date`."""
+    if isinstance(value, datetime.date):
+        return value
+    return datetime.date.fromisoformat(value)
+
+
+def _load_address(data: dict) -> Address:
+    return Address(
+        street=data["street"],
+        city=data["city"],
+        state=data["state"],
+        zip_code=data["zip_code"],
+    )
+
+
+def _load_schedule_b_answers(data: dict) -> SCorpScheduleBAnswers:
+    return SCorpScheduleBAnswers(
+        accounting_method=AccountingMethod(data["accounting_method"]),
+        business_activity_code=data["business_activity_code"],
+        business_activity_description=data["business_activity_description"],
+        product_or_service=data["product_or_service"],
+        any_c_corp_subsidiaries=data["any_c_corp_subsidiaries"],
+        has_any_foreign_shareholders=data["has_any_foreign_shareholders"],
+        owns_foreign_entity=data["owns_foreign_entity"],
+    )
+
+
+def _load_income(data: dict) -> SCorpIncome:
+    return SCorpIncome(
+        gross_receipts=float(data["gross_receipts"]),
+        returns_and_allowances=float(data["returns_and_allowances"]),
+        cogs_aggregate=float(data["cogs_aggregate"]),
+        net_gain_loss_4797=float(data["net_gain_loss_4797"]),
+        other_income=float(data["other_income"]),
+    )
+
+
+def _load_deductions(data: dict) -> SCorpDeductions:
+    return SCorpDeductions(
+        compensation_of_officers=float(data["compensation_of_officers"]),
+        salaries_wages=float(data["salaries_wages"]),
+        repairs_maintenance=float(data["repairs_maintenance"]),
+        bad_debts=float(data["bad_debts"]),
+        rents=float(data["rents"]),
+        taxes_licenses=float(data["taxes_licenses"]),
+        interest=float(data["interest"]),
+        depreciation=float(data["depreciation"]),
+        depletion=float(data["depletion"]),
+        advertising=float(data["advertising"]),
+        pension_profit_sharing_plans=float(data["pension_profit_sharing_plans"]),
+        employee_benefits=float(data["employee_benefits"]),
+        other_deductions=float(data["other_deductions"]),
+    )
+
+
+def _load_scope_outs(data: dict) -> SCorpScopeOuts:
+    return SCorpScopeOuts(
+        net_passive_income_tax=float(data.get("net_passive_income_tax", 0.0)),
+        built_in_gains_tax=float(data.get("built_in_gains_tax", 0.0)),
+        interest_on_453_deferred=float(data.get("interest_on_453_deferred", 0.0)),
+    )
+
+
+def _load_payments(data: dict) -> SCorpPayments:
+    return SCorpPayments(
+        estimated_tax_payments=float(data.get("estimated_tax_payments", 0.0)),
+        prior_year_overpayment_credited=float(
+            data.get("prior_year_overpayment_credited", 0.0)
+        ),
+        tax_deposited_with_7004=float(data.get("tax_deposited_with_7004", 0.0)),
+        credit_for_federal_excise_tax=float(
+            data.get("credit_for_federal_excise_tax", 0.0)
+        ),
+        refundable_credits=float(data.get("refundable_credits", 0.0)),
+    )
+
+
+def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
+    """Build SCorpReturn from a YAML-parsed dict. Each section uses an
+    explicit-field-names loader (not `**` dict-spread) so a typoed YAML
+    key fails with a clear `KeyError: <field>` rather than the implicit
+    `TypeError: unexpected keyword argument` from dataclass construction."""
+    if data is None:
+        return None
+    return SCorpReturn(
+        name=data["name"],
+        ein=data["ein"],
+        address=_load_address(data["address"]),
+        date_incorporated=_coerce_date(data["date_incorporated"]),
+        s_election_effective_date=_coerce_date(data["s_election_effective_date"]),
+        total_assets=float(data["total_assets"]),
+        income=_load_income(data["income"]),
+        deductions=_load_deductions(data["deductions"]),
+        schedule_b_answers=_load_schedule_b_answers(data["schedule_b_answers"]),
+        shareholders=[
+            SCorpShareholder(
+                name=sh["name"],
+                ssn_or_ein=sh["ssn_or_ein"],
+                address=_load_address(sh["address"]),
+                ownership_percentage=float(sh["ownership_percentage"]),
+            )
+            for sh in data.get("shareholders", [])
+        ],
+        scope_outs=_load_scope_outs(data.get("scope_outs", {})),
+        payments=_load_payments(data.get("payments", {})),
+    )
 
 
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
@@ -93,7 +213,8 @@ def load_scenario(path: Path) -> Scenario:
         items = data.get(yaml_key, [])
         form_data[field_name] = [model_cls(**item) for item in items]
 
-    scenario = Scenario(config=config, **form_data)
+    s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
+    scenario = Scenario(config=config, s_corp_return=s_corp_return, **form_data)
     _validate_schedule_k1s(scenario)
     return scenario
 
