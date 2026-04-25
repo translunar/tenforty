@@ -1,19 +1,27 @@
 """Unit tests for 1120-S data model dataclasses."""
 
+import datetime
 import unittest
 
 from tenforty.models import (
     AccountingMethod,
     Address,
+    FilingStatus,
     SCorpDeductions,
     SCorpIncome,
     SCorpPayments,
+    SCorpReturn,
     SCorpScheduleBAnswers,
     SCorpScopeOuts,
     SCorpShareholder,
+    Scenario,
+    TaxReturnConfig,
 )
 
-from tests._scorp_fixtures import _example_address
+from tests._scorp_fixtures import (
+    _example_address,
+    _make_scorp_return,
+)
 
 
 class AddressTests(unittest.TestCase):
@@ -133,3 +141,43 @@ class SCorpPaymentsTests(unittest.TestCase):
         self.assertEqual(p.tax_deposited_with_7004, 0.0)
         self.assertEqual(p.credit_for_federal_excise_tax, 0.0)
         self.assertEqual(p.refundable_credits, 0.0)
+
+
+class SCorpReturnTests(unittest.TestCase):
+    def test_construct_minimal(self):
+        r = _make_scorp_return()
+        self.assertEqual(r.name, "Example S-Corp Inc.")
+        self.assertEqual(len(r.shareholders), 1)
+        self.assertEqual(r.scope_outs.net_passive_income_tax, 0.0)
+        self.assertEqual(r.payments.estimated_tax_payments, 0.0)
+
+    def test_dates_are_date_objects(self):
+        r = _make_scorp_return()
+        self.assertIsInstance(r.date_incorporated, datetime.date)
+        self.assertIsInstance(r.s_election_effective_date, datetime.date)
+
+    def test_address_is_address_dataclass(self):
+        r = _make_scorp_return()
+        self.assertIsInstance(r.address, Address)
+
+
+class ScenarioSCorpFieldTests(unittest.TestCase):
+    def test_s_corp_return_defaults_to_none(self):
+        s = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status=FilingStatus.SINGLE,
+                birthdate="01-01-1980", state="EX",
+            ),
+        )
+        self.assertIsNone(s.s_corp_return)
+
+    def test_s_corp_return_accepts_instance(self):
+        s = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status=FilingStatus.SINGLE,
+                birthdate="01-01-1980", state="EX",
+            ),
+            s_corp_return=_make_scorp_return(),
+        )
+        self.assertIsNotNone(s.s_corp_return)
+        self.assertEqual(s.s_corp_return.ein, "00-0000000")

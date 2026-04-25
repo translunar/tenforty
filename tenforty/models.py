@@ -1,3 +1,4 @@
+import datetime
 from dataclasses import dataclass, field
 from datetime import date as _date
 from enum import Enum
@@ -496,6 +497,28 @@ class SCorpPayments:
 
 
 @dataclass
+class SCorpReturn:
+    name: str
+    ein: str
+    address: Address
+    date_incorporated: datetime.date
+    s_election_effective_date: datetime.date
+
+    income: SCorpIncome
+    deductions: SCorpDeductions
+    schedule_b_answers: SCorpScheduleBAnswers
+
+    # `total_assets` defaults to 0.0 so test scenarios that don't care
+    # about Sch L gating can omit it. Real returns must supply the
+    # actual figure; the Sch L attestation gate fires at >= $250,000.
+    total_assets: float = 0.0
+    shareholders: list[SCorpShareholder] = field(default_factory=list)
+
+    scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
+    payments: SCorpPayments = field(default_factory=SCorpPayments)
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
@@ -508,3 +531,4 @@ class Scenario:
     rental_properties: list[RentalProperty] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
+    s_corp_return: SCorpReturn | None = None
