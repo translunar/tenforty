@@ -1,4 +1,3 @@
-import datetime
 from dataclasses import dataclass, field
 from datetime import date as _date
 from enum import Enum
@@ -501,8 +500,8 @@ class SCorpReturn:
     name: str
     ein: str
     address: Address
-    date_incorporated: datetime.date
-    s_election_effective_date: datetime.date
+    date_incorporated: _date
+    s_election_effective_date: _date
 
     income: SCorpIncome
     deductions: SCorpDeductions
