@@ -435,6 +435,11 @@ class SCorpScheduleBAnswers:
 
 @dataclass
 class SCorpIncome:
+    """Caller-supplied amounts for Form 1120-S Income lines 1a–6.
+
+    ``cogs_aggregate`` is the Form 1125-A line 8 total. Tenforty does not
+    compute COGS line-item detail; Form 1125-A is out of scope for v1.
+    """
     gross_receipts: float
     returns_and_allowances: float
     cogs_aggregate: float
@@ -444,6 +449,14 @@ class SCorpIncome:
 
 @dataclass
 class SCorpDeductions:
+    """Caller-supplied aggregates for Form 1120-S Deductions lines 7–19.
+
+    ``compensation_of_officers`` is the Form 1125-E line 4 total; Form 1125-E
+    line-item detail is out of scope for v1. ``depreciation`` is also a
+    caller-supplied aggregate — tenforty does not automatically integrate
+    Form 4562 / ``Scenario.depreciable_assets`` output into 1120-S deductions,
+    so a caller using both must avoid double-counting.
+    """
     compensation_of_officers: float
     salaries_wages: float
     repairs_maintenance: float
@@ -461,6 +474,13 @@ class SCorpDeductions:
 
 @dataclass
 class SCorpScopeOuts:
+    """Caller-supplied tax amounts that tenforty does not compute.
+
+    Covers §1375 net passive income tax, §1374 built-in gains tax, and
+    §453/§453A interest on deferred tax. Tenforty's v1 has no compute
+    path for these; the caller supplies amounts directly and the compute
+    layer passes them through to Form 1120-S line 22.
+    """
     net_passive_income_tax: float = 0.0
     built_in_gains_tax: float = 0.0
     interest_on_453_deferred: float = 0.0
