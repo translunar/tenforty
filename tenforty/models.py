@@ -418,6 +418,17 @@ class SCorpShareholder:
 
 
 @dataclass
+class SCorpScheduleBAnswers:
+    accounting_method: AccountingMethod
+    business_activity_code: str
+    business_activity_description: str
+    product_or_service: str
+    any_c_corp_subsidiaries: bool
+    has_any_foreign_shareholders: bool
+    owns_foreign_entity: bool
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)

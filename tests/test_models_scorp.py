@@ -2,7 +2,7 @@
 
 import unittest
 
-from tenforty.models import Address, SCorpShareholder
+from tenforty.models import AccountingMethod, Address, SCorpScheduleBAnswers, SCorpShareholder
 
 from tests._scorp_fixtures import _example_address
 
@@ -45,3 +45,32 @@ class SCorpShareholderTests(unittest.TestCase):
             ownership_percentage=100.0,
         )
         self.assertIsInstance(sh.address, Address)
+
+
+class SCorpScheduleBAnswersTests(unittest.TestCase):
+    def test_construct_with_all_fields(self):
+        sb = SCorpScheduleBAnswers(
+            accounting_method=AccountingMethod.CASH,
+            business_activity_code="541990",
+            business_activity_description="Services",
+            product_or_service="Consulting",
+            any_c_corp_subsidiaries=False,
+            has_any_foreign_shareholders=False,
+            owns_foreign_entity=False,
+        )
+        self.assertEqual(sb.accounting_method, AccountingMethod.CASH)
+        self.assertEqual(sb.business_activity_code, "541990")
+
+    def test_accounting_method_accepts_all_three_values(self):
+        for m in (AccountingMethod.CASH, AccountingMethod.ACCRUAL,
+                  AccountingMethod.OTHER):
+            sb = SCorpScheduleBAnswers(
+                accounting_method=m,
+                business_activity_code="541990",
+                business_activity_description="Services",
+                product_or_service="Consulting",
+                any_c_corp_subsidiaries=False,
+                has_any_foreign_shareholders=False,
+                owns_foreign_entity=False,
+            )
+            self.assertEqual(sb.accounting_method, m)
