@@ -434,6 +434,48 @@ class SCorpScheduleBAnswers:
 
 
 @dataclass
+class SCorpIncome:
+    gross_receipts: float
+    returns_and_allowances: float
+    cogs_aggregate: float
+    net_gain_loss_4797: float
+    other_income: float
+
+
+@dataclass
+class SCorpDeductions:
+    compensation_of_officers: float
+    salaries_wages: float
+    repairs_maintenance: float
+    bad_debts: float
+    rents: float
+    taxes_licenses: float
+    interest: float
+    depreciation: float
+    depletion: float
+    advertising: float
+    pension_profit_sharing_plans: float
+    employee_benefits: float
+    other_deductions: float
+
+
+@dataclass
+class SCorpScopeOuts:
+    net_passive_income_tax: float = 0.0
+    built_in_gains_tax: float = 0.0
+    interest_on_453_deferred: float = 0.0
+
+
+@dataclass
+class SCorpPayments:
+    estimated_tax_payments: float = 0.0
+    prior_year_overpayment_credited: float = 0.0
+    tax_deposited_with_7004: float = 0.0
+    credit_for_federal_excise_tax: float = 0.0
+    refundable_credits: float = 0.0
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
