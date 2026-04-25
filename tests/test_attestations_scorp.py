@@ -28,21 +28,52 @@ _RUNTIME_TRIGGERED_SCORP_FIELDS = frozenset({
     "acknowledges_no_section_1374_tax",
 })
 
+# Each load_error must mention its canonical IRC / R&TC / form anchor so a
+# copy-paste error between two entries fails the content check below.
+_LOAD_ERROR_ANCHORS = {
+    "acknowledges_no_1120s_schedule_l_needed": "Schedule L",
+    "acknowledges_no_1120s_schedule_m_needed": "Schedule M-1",
+    "acknowledges_constant_shareholder_ownership": "§1377",
+    "acknowledges_no_section_1375_tax": "§1375",
+    "acknowledges_no_section_1374_tax": "§1374",
+    "acknowledges_cogs_aggregate_only": "1125-A",
+    "acknowledges_officer_comp_aggregate_only": "1125-E",
+}
+
+
+def _make_scorp_cfg(**overrides) -> TaxReturnConfig:
+    """Build a TaxReturnConfig with all 7 1120-S attestations True by default,
+    suitable for firing-test scaffolding. Override individual gates by kwarg to
+    selectively set one False — per-test variance is then a single kwarg, not
+    a 12-line config block."""
+    base = {f: True for f in _EXPECTED_SCORP_FIELDS}
+    base.update(overrides)
+    return TaxReturnConfig(
+        year=2025, filing_status=FilingStatus.SINGLE,
+        birthdate="01-01-1980", state="EX",
+        has_foreign_accounts=False, prior_year_itemized=False,
+        **base,
+    )
+
 
 class SCorpAttestationsTests(unittest.TestCase):
-    def test_all_seven_are_registered(self):
-        registered = {a.field for a in _ATTESTATIONS}
-        missing = _EXPECTED_SCORP_FIELDS - registered
-        self.assertEqual(missing, set(),
-                         f"Missing 1120-S attestations: {missing}")
+    # NOTE: registry membership is already enforced canonically by
+    # `tests/test_attestations.py::TestAttestationsTable` (full-set equality),
+    # so a separate "are the seven registered" structural test would be
+    # strictly weaker and was deliberately not added here. Content checks
+    # below verify that each entry carries its canonical IRC/R&TC/form
+    # anchor, catching copy-paste errors between entries.
 
-    def test_each_scorp_attestation_has_load_error(self):
-        for a in _ATTESTATIONS:
-            if a.field not in _EXPECTED_SCORP_FIELDS:
-                continue
-            self.assertTrue(
-                a.load_error,
-                f"{a.field} has empty load_error",
+    def test_each_scorp_load_error_mentions_canonical_anchor(self):
+        """The load_error string must reference the IRC/R&TC/form anchor that
+        identifies which scope-out it covers (e.g. `§1374`, `1125-A`,
+        `Schedule M-1`). This catches copy-paste errors between adjacent
+        entries — non-emptiness alone would not."""
+        by_field = {a.field: a for a in _ATTESTATIONS}
+        for field, anchor in _LOAD_ERROR_ANCHORS.items():
+            self.assertIn(
+                anchor, by_field[field].load_error,
+                f"{field}.load_error missing canonical anchor {anchor!r}",
             )
 
     def test_runtime_triggered_attestations_have_compute_errors(self):
@@ -63,68 +94,57 @@ class SCorpAttestationsTests(unittest.TestCase):
 
 
 class SCorpAttestationGateFiringTests(unittest.TestCase):
-    """End-to-end: each attestation gate actually raises when the
-    underlying triggered_when predicate fires AND the attestation is False."""
+    """End-to-end: each runtime-triggered attestation gate actually raises
+    when the underlying triggered_when predicate fires AND the attestation
+    is False. All four runtime-triggered gates (Sch L, Sch M, §1375, §1374)
+    are covered; the two large-balance-sheet predicates are exercised on
+    BOTH arms of the OR (total_assets and gross_receipts)."""
 
     def test_schedule_l_gate_fires_on_high_total_assets(self):
-        """When total_assets >= 250000 and the attestation is False,
-        compute-time enforcement raises NotImplementedError."""
-        cfg = TaxReturnConfig(
-            year=2025, filing_status=FilingStatus.SINGLE,
-            birthdate="01-01-1980", state="EX",
-            has_foreign_accounts=False, prior_year_itemized=False,
-            acknowledges_no_1120s_schedule_l_needed=False,  # gate is FALSE
-            acknowledges_no_1120s_schedule_m_needed=True,
-            acknowledges_constant_shareholder_ownership=True,
-            acknowledges_no_section_1375_tax=True,
-            acknowledges_no_section_1374_tax=True,
-            acknowledges_cogs_aggregate_only=True,
-            acknowledges_officer_comp_aggregate_only=True,
-        )
+        """Exercises the total_assets arm of `_has_scorp_large_balance_sheet`."""
+        cfg = _make_scorp_cfg(acknowledges_no_1120s_schedule_l_needed=False)
         r = _make_scorp_return()
-        r.total_assets = 500000.0  # over the $250k threshold
+        r.total_assets = 500_000.0  # over the $250k threshold
         s = Scenario(config=cfg, s_corp_return=r)
         with self.assertRaises(NotImplementedError) as cm:
             enforce_compute_time(s)
         self.assertIn("Schedule L", str(cm.exception))
 
-    def test_section_1375_gate_fires_on_nonzero_passive_income_tax(self):
-        cfg = TaxReturnConfig(
-            year=2025, filing_status=FilingStatus.SINGLE,
-            birthdate="01-01-1980", state="EX",
-            has_foreign_accounts=False, prior_year_itemized=False,
-            acknowledges_no_1120s_schedule_l_needed=True,
-            acknowledges_no_1120s_schedule_m_needed=True,
-            acknowledges_constant_shareholder_ownership=True,
-            acknowledges_no_section_1375_tax=False,  # gate is FALSE
-            acknowledges_no_section_1374_tax=True,
-            acknowledges_cogs_aggregate_only=True,
-            acknowledges_officer_comp_aggregate_only=True,
-        )
+    def test_schedule_m_gate_fires_on_high_gross_receipts(self):
+        """Exercises the gross_receipts arm of `_has_scorp_large_balance_sheet`
+        (the Sch L test covers total_assets)."""
+        cfg = _make_scorp_cfg(acknowledges_no_1120s_schedule_m_needed=False)
         r = _make_scorp_return()
-        r.scope_outs.net_passive_income_tax = 100.0  # triggers the gate
+        r.income.gross_receipts = 300_000.0
         s = Scenario(config=cfg, s_corp_return=r)
         with self.assertRaises(NotImplementedError) as cm:
             enforce_compute_time(s)
-        self.assertIn("1375", str(cm.exception))
+        self.assertIn("Schedule M-1", str(cm.exception))
+
+    def test_section_1375_gate_fires_on_nonzero_passive_income_tax(self):
+        cfg = _make_scorp_cfg(acknowledges_no_section_1375_tax=False)
+        r = _make_scorp_return()
+        r.scope_outs.net_passive_income_tax = 100.0
+        s = Scenario(config=cfg, s_corp_return=r)
+        with self.assertRaises(NotImplementedError) as cm:
+            enforce_compute_time(s)
+        self.assertIn("§1375", str(cm.exception))
+
+    def test_section_1374_gate_fires_on_nonzero_built_in_gains_tax(self):
+        cfg = _make_scorp_cfg(acknowledges_no_section_1374_tax=False)
+        r = _make_scorp_return()
+        r.scope_outs.built_in_gains_tax = 100.0
+        s = Scenario(config=cfg, s_corp_return=r)
+        with self.assertRaises(NotImplementedError) as cm:
+            enforce_compute_time(s)
+        self.assertIn("§1374", str(cm.exception))
 
     def test_section_1375_gate_does_not_fire_when_attestation_true(self):
-        """Sanity-check the inverse: ack=True + nonzero scope-out value
-        runs cleanly. Confirms the gate is not over-eager."""
-        cfg = TaxReturnConfig(
-            year=2025, filing_status=FilingStatus.SINGLE,
-            birthdate="01-01-1980", state="EX",
-            has_foreign_accounts=False, prior_year_itemized=False,
-            acknowledges_no_1120s_schedule_l_needed=True,
-            acknowledges_no_1120s_schedule_m_needed=True,
-            acknowledges_constant_shareholder_ownership=True,
-            acknowledges_no_section_1375_tax=True,  # ack=True
-            acknowledges_no_section_1374_tax=True,
-            acknowledges_cogs_aggregate_only=True,
-            acknowledges_officer_comp_aggregate_only=True,
-        )
+        """Confirms `True` ack short-circuits the gate even when the
+        triggered_when predicate fires — the attestation flag governs,
+        not the predicate alone."""
+        cfg = _make_scorp_cfg()  # all seven True
         r = _make_scorp_return()
         r.scope_outs.net_passive_income_tax = 100.0  # nonzero, but acked
         s = Scenario(config=cfg, s_corp_return=r)
-        # No raise expected.
-        enforce_compute_time(s)
+        enforce_compute_time(s)  # no raise expected
