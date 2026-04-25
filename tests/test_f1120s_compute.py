@@ -7,9 +7,8 @@ instructions. These tests do NOT import or reference any oracle module.
 import unittest
 
 from tenforty.forms import f1120s
-from tenforty.models import AccountingMethod, Address, SCorpShareholder
 
-from tests._scorp_fixtures import _example_address, _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario
 
 
 class IncomeSectionTests(unittest.TestCase):

@@ -19,6 +19,7 @@ library function in addition to its primary use through the orchestrator.
 
 from tenforty.attestations import enforce_compute_time, validate_load_time
 from tenforty.models import Scenario, SCorpReturn
+from tenforty.rounding import irs_round
 
 
 def _compute_income(r: SCorpReturn) -> dict:
@@ -32,18 +33,18 @@ def _compute_income(r: SCorpReturn) -> dict:
     line_5 = r.income.other_income
     line_6 = line_3 + line_4 + line_5
     return {
-        "f1120s_line_1a_gross_receipts": line_1a,
-        "f1120s_line_1b_returns_and_allowances": line_1b,
-        "f1120s_line_1c_net_receipts": line_1c,
-        "f1120s_line_2_cost_of_goods_sold": line_2,
-        "f1120s_line_3_gross_profit": line_3,
-        "f1120s_line_4_net_gain_loss_4797": line_4,
-        "f1120s_line_5_other_income": line_5,
-        "f1120s_line_6_total_income": line_6,
+        "f1120s_line_1a_gross_receipts": irs_round(line_1a),
+        "f1120s_line_1b_returns_and_allowances": irs_round(line_1b),
+        "f1120s_line_1c_net_receipts": irs_round(line_1c),
+        "f1120s_line_2_cost_of_goods_sold": irs_round(line_2),
+        "f1120s_line_3_gross_profit": irs_round(line_3),
+        "f1120s_line_4_net_gain_loss_4797": irs_round(line_4),
+        "f1120s_line_5_other_income": irs_round(line_5),
+        "f1120s_line_6_total_income": irs_round(line_6),
     }
 
 
-def compute(scenario: Scenario, upstream: dict) -> dict:
+def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
     # Run BOTH gates here, not just compute-time. Direct importers (callers
@@ -56,6 +57,6 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
 
     # Per-section helpers contribute to the return dict additively. Each
     # later task in this sub-plan adds one helper and one update line.
-    out: dict = {}
+    out: dict[str, float] = {}
     out.update(_compute_income(r))
     return out

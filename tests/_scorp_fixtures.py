@@ -84,15 +84,14 @@ def _make_v1_scenario(
     compensation_of_officers: float = 30000.0,
     other_deductions: float = 0.0,
 ) -> Scenario:
-    """Build a v1-profile Scenario (single shareholder, all attestations
-    true). Combines `tests.helpers.plan_d_attestation_defaults()` (the 16
-    pre-existing attestations from Plan D / Sub-plan 1) with the 7 new
-    1120-S attestations from Sub-plan 2 — `validate_load_time` requires
-    every attestation field to be non-None, regardless of trigger.
+    """Build a v1-profile Scenario (single shareholder, all 1120-S attestations
+    true). `plan_d_attestation_defaults()` carries safe-default values for all
+    23 attestation fields (the 7 1120-S keys default False); merging
+    `_scorp_attestation_defaults()` over it lets the 1120-S True values win —
+    `validate_load_time` requires every attestation field to be non-None
+    regardless of trigger.
     """
     from tests.helpers import plan_d_attestation_defaults
-    # plan_d_attestation_defaults() already contains the 7 1120-S keys
-    # (set to False as safe defaults). Merge so the 1120-S True values win.
     attestations = {**plan_d_attestation_defaults(), **_scorp_attestation_defaults()}
     return Scenario(
         config=TaxReturnConfig(
