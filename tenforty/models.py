@@ -332,6 +332,33 @@ class TaxReturnConfig:
     acknowledges_no_28_rate_gain: bool | None = None
     # Any 1099-B lot with is_section_1250=True + False raises.
     acknowledges_no_unrecaptured_section_1250: bool | None = None
+    # --- 1120-S scope-out attestations (7 unconditional) ---
+    # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
+    # gross_receipts >= $250,000 + False raises.
+    acknowledges_no_1120s_schedule_l_needed: bool | None = None
+    # Sch M-1 (book/tax reconciliation) and Sch M-2 (AAA) are out of scope;
+    # same gate as Sch L (total_assets or gross_receipts >= $250,000) +
+    # False raises.
+    acknowledges_no_1120s_schedule_m_needed: bool | None = None
+    # Mid-year shareholder ownership changes are out of scope; required at
+    # load time so the user affirms ownership percentages are constant for
+    # the full tax year.
+    acknowledges_constant_shareholder_ownership: bool | None = None
+    # §1375 Excess Net Passive Income Tax is out of scope; caller supplies
+    # the amount on s_corp_return.scope_outs.net_passive_income_tax. Nonzero
+    # + False raises.
+    acknowledges_no_section_1375_tax: bool | None = None
+    # §1374 Built-in Gains Tax is out of scope; caller supplies the amount
+    # on s_corp_return.scope_outs.built_in_gains_tax. Nonzero + False raises.
+    acknowledges_no_section_1374_tax: bool | None = None
+    # Form 1125-A (COGS line-item detail) is out of scope; caller supplies
+    # the aggregate on s_corp_return.income.cogs_aggregate. Required at
+    # load time.
+    acknowledges_cogs_aggregate_only: bool | None = None
+    # Form 1125-E (officer compensation line-item detail) is out of scope;
+    # caller supplies the aggregate on
+    # s_corp_return.deductions.compensation_of_officers. Required at load time.
+    acknowledges_officer_comp_aggregate_only: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None

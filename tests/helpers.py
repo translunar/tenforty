@@ -33,7 +33,7 @@ needs_pdf = unittest.skipUnless(
 
 def plan_d_attestation_defaults() -> dict[str, bool]:
     """Return a dict of all attestation fields pre-set for a K-1-capable
-    in-memory test scenario.
+    and S-corp-capable in-memory test scenario.
 
     Three fields default to True because they affirm the common test posture:
     unlimited at-risk amounts, basis tracked externally, and no K-1 credits.
@@ -59,6 +59,13 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
         "acknowledges_no_other_basis_adjustments": False,
         "acknowledges_no_28_rate_gain": False,
         "acknowledges_no_unrecaptured_section_1250": False,
+        "acknowledges_no_1120s_schedule_l_needed": False,
+        "acknowledges_no_1120s_schedule_m_needed": False,
+        "acknowledges_constant_shareholder_ownership": False,
+        "acknowledges_no_section_1375_tax": False,
+        "acknowledges_no_section_1374_tax": False,
+        "acknowledges_cogs_aggregate_only": False,
+        "acknowledges_officer_comp_aggregate_only": False,
     }
 
 
