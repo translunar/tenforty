@@ -88,6 +88,20 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
     }
 
 
+def _compute_total_tax(r: SCorpReturn) -> dict:
+    """Form 1120-S Total Tax (line 22). §1375 / §1374 / §453 interest
+    are scope-outs (caller-supplied)."""
+    line_22a = r.scope_outs.net_passive_income_tax
+    line_22b = r.scope_outs.built_in_gains_tax
+    line_22c = r.scope_outs.interest_on_453_deferred
+    return {
+        "f1120s_line_22a_net_passive_income_tax": irs_round(line_22a),
+        "f1120s_line_22b_built_in_gains_tax": irs_round(line_22b),
+        "f1120s_line_22c_interest_on_453_deferred": irs_round(line_22c),
+        "f1120s_line_22_total_tax": irs_round(line_22a + line_22b + line_22c),
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
@@ -105,4 +119,5 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     income = _compute_income(r)
     out.update(income)
     out.update(_compute_deductions(r, income))
+    out.update(_compute_total_tax(r))
     return out

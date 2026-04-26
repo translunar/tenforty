@@ -103,3 +103,29 @@ class DeductionsSectionTests(unittest.TestCase):
         self.assertEqual(out["f1120s_line_17_pension_profit_sharing"], 10.0)
         self.assertEqual(out["f1120s_line_18_employee_benefits"], 11.0)
         self.assertEqual(out["f1120s_line_19_other_deductions"], 12.0)
+
+
+class TotalTaxTests(unittest.TestCase):
+    def test_line_22_is_sum_of_scope_out_amounts(self):
+        """IRS line 22 (total tax) = line 22a + 22b + 22c.
+
+        All three are scope-out values supplied by the caller; tenforty v1
+        does not compute §1375, §1374, or §453 interest itself. The v1
+        fixture's `acknowledges_no_section_137{4,5}_tax = True` defaults
+        affirm the scope-out posture; supplying a nonzero scope_outs value
+        is then accepted (gate fires only when ack=False AND nonzero).
+        """
+        s = _make_v1_scenario()
+        s.s_corp_return.scope_outs.net_passive_income_tax = 1000.0
+        s.s_corp_return.scope_outs.built_in_gains_tax = 500.0
+        s.s_corp_return.scope_outs.interest_on_453_deferred = 50.0
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_line_22a_net_passive_income_tax"], 1000.0)
+        self.assertEqual(out["f1120s_line_22b_built_in_gains_tax"], 500.0)
+        self.assertEqual(out["f1120s_line_22c_interest_on_453_deferred"], 50.0)
+        self.assertEqual(out["f1120s_line_22_total_tax"], 1550.0)
+
+    def test_line_22_is_zero_when_all_scope_out_amounts_zero(self):
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_line_22_total_tax"], 0.0)
