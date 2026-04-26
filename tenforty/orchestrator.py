@@ -14,6 +14,7 @@ from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
+from tenforty.forms import f1120s as form_f1120s
 from tenforty.filing.pdf import PdfFiller
 from tenforty.constants import y2025
 from tenforty.oracle.flattener import flatten_scenario
@@ -95,6 +96,16 @@ class ReturnOrchestrator:
             )
 
         return form_1040.compute(raw_1040=raw, upstream={})
+
+    def compute_corporate(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the federal corporate return (Form 1120-S pipeline).
+
+        Returns {} when scenario.s_corp_return is None (no corporate work
+        needed for a pure personal 1040 scenario).
+        """
+        if scenario.s_corp_return is None:
+            return {}
+        return form_f1120s.compute(scenario, upstream={})
 
     def emit_pdfs(
         self,
