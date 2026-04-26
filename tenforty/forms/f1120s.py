@@ -22,6 +22,31 @@ from tenforty.models import AccountingMethod, Scenario, SCorpReturn
 from tenforty.rounding import irs_round
 
 
+# `int` (not `float`) values: each entry is the rounded form of 0.0 per
+# the form-wide `irs_round` output convention. Using `int` here removes
+# the redundant `irs_round(0.0)` wrap on every line and makes the type
+# match the rest of the compute output.
+_SCH_K_V1_ZERO_LINES: dict[str, int] = {
+    "f1120s_sch_k_line_2_net_rental_real_estate": 0,
+    "f1120s_sch_k_line_3c_other_net_rental_income": 0,
+    "f1120s_sch_k_line_4_interest_income": 0,
+    "f1120s_sch_k_line_5a_ordinary_dividends": 0,
+    "f1120s_sch_k_line_6_royalties": 0,
+    "f1120s_sch_k_line_7_net_short_term_capital_gain": 0,
+    "f1120s_sch_k_line_8a_net_long_term_capital_gain": 0,
+    "f1120s_sch_k_line_9_net_section_1231_gain": 0,
+    "f1120s_sch_k_line_10_other_income": 0,
+    "f1120s_sch_k_line_11_section_179_deduction": 0,
+    "f1120s_sch_k_line_12a_charitable_contributions": 0,
+    "f1120s_sch_k_line_13a_low_income_housing_credit": 0,
+    "f1120s_sch_k_line_14_foreign_transactions": 0,
+    "f1120s_sch_k_line_15_amt_items": 0,
+    "f1120s_sch_k_line_16a_tax_exempt_interest": 0,
+    "f1120s_sch_k_line_17a_investment_income": 0,
+    "f1120s_sch_k_line_18_income_loss_reconciliation": 0,
+}
+
+
 def _compute_income(r: SCorpReturn) -> dict:
     """Form 1120-S Income section (lines 1a-6)."""
     line_1a = r.income.gross_receipts
@@ -172,6 +197,27 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
     }
 
 
+def _compute_schedule_k(deductions: dict) -> dict:
+    """Form 1120-S Schedule K entity-level totals.
+
+    In v1 only line 1 (OBI) has compute logic; the remaining lines are
+    reserved for future sub-plans and emit zero so the Sch K section is
+    complete on the fill output. `_SCH_K_V1_ZERO_LINES` is the named
+    constant of those reserved zero entries.
+
+    Line 1 is read from the deductions dict (which already passed through
+    `irs_round` at line-21 emit), so the `irs_round` wrap below is a
+    no-op — it documents that this output respects the same rounding
+    convention as the rest of the compute path.
+    """
+    return {
+        "f1120s_sch_k_line_1_ordinary_business_income": irs_round(
+            deductions["f1120s_line_21_ordinary_business_income"]
+        ),
+        **_SCH_K_V1_ZERO_LINES,
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
@@ -188,9 +234,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     out: dict[str, float] = {}
     income = _compute_income(r)
     out.update(income)
-    out.update(_compute_deductions(r, income))
+    deductions = _compute_deductions(r, income)
+    out.update(deductions)
     total_tax = _compute_total_tax(r)
     out.update(total_tax)
     out.update(_compute_payments_and_balance(r, total_tax))
     out.update(_compute_schedule_b(r))
+    out.update(_compute_schedule_k(deductions))
     return out

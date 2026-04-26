@@ -230,3 +230,45 @@ class ScheduleBPassthroughTests(unittest.TestCase):
         self.assertFalse(out["f1120s_sch_b_accounting_method_cash"])
         self.assertFalse(out["f1120s_sch_b_accounting_method_accrual"])
         self.assertTrue(out["f1120s_sch_b_accounting_method_other"])
+
+
+class ScheduleKTotalsTests(unittest.TestCase):
+    def test_sch_k_line_1_equals_main_form_line_21(self):
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(
+            out["f1120s_sch_k_line_1_ordinary_business_income"],
+            70000.0,
+        )
+        self.assertEqual(
+            out["f1120s_sch_k_line_1_ordinary_business_income"],
+            out["f1120s_line_21_ordinary_business_income"],
+        )
+
+    def test_sch_k_lines_2_through_18_present_and_zero_for_v1_profile(self):
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        for line_number_field in (
+            "f1120s_sch_k_line_2_net_rental_real_estate",
+            "f1120s_sch_k_line_3c_other_net_rental_income",
+            "f1120s_sch_k_line_4_interest_income",
+            "f1120s_sch_k_line_5a_ordinary_dividends",
+            "f1120s_sch_k_line_6_royalties",
+            "f1120s_sch_k_line_7_net_short_term_capital_gain",
+            "f1120s_sch_k_line_8a_net_long_term_capital_gain",
+            "f1120s_sch_k_line_9_net_section_1231_gain",
+            "f1120s_sch_k_line_10_other_income",
+            "f1120s_sch_k_line_11_section_179_deduction",
+            "f1120s_sch_k_line_12a_charitable_contributions",
+            "f1120s_sch_k_line_13a_low_income_housing_credit",
+            "f1120s_sch_k_line_14_foreign_transactions",
+            "f1120s_sch_k_line_15_amt_items",
+            "f1120s_sch_k_line_16a_tax_exempt_interest",
+            "f1120s_sch_k_line_17a_investment_income",
+            "f1120s_sch_k_line_18_income_loss_reconciliation",
+        ):
+            self.assertEqual(out[line_number_field], 0.0,
+                             f"{line_number_field} should be 0.0")
