@@ -223,6 +223,9 @@ class ReturnOrchestrator:
         on a *copy* of the scenario (the caller's input is not mutated).
         The corporate output keys (prefixed `f1120s_`) are merged into the
         returned 1040 output dict.
+
+        Delegates to `_build_effective_scenario` and `_compute_1040_pipeline`
+        — see those for waterfall and pipeline contracts.
         """
         effective_scenario, corp_results = self._build_effective_scenario(scenario)
         results_1040 = self._compute_1040_pipeline(effective_scenario)
@@ -282,7 +285,7 @@ class ReturnOrchestrator:
         year = scenario.config.year
         filler = PdfFiller()
 
-        # Hoist sch_e_part_ii.compute to run at most once per emit_pdfs call.
+        # Hoist sch_e_part_ii.compute to run at most once per call to this method.
         # All downstream consumers (sch_b, sch_d, sch_e, f8995, f8582) share
         # a single fanout result rather than each recomputing from scratch —
         # keeping the K-1 fanout computation deterministic and avoiding
@@ -532,6 +535,12 @@ class ReturnOrchestrator:
         output_dir: Path,
     ) -> tuple[dict[str, object], dict[str, Path]]:
         """Compute the full federal return and emit PDFs to output_dir.
+
+        The two-call pattern (`compute_federal` then `emit_pdfs`) cannot keep
+        both ends consistent for S-corp scenarios, because `compute_federal`'s
+        effective scenario (with the synthesized K-1) is not exposed to
+        `emit_pdfs`; this method holds both ends so the rendered Sch E PDF
+        reflects the same K-1 list the numerical results were computed against.
 
         This is the canonical entry point for S-corp scenarios: it builds
         the effective scenario (with synthesized K-1s) internally and feeds
