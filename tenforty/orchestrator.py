@@ -31,7 +31,15 @@ from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
-from tenforty.models import FilingStatus, K1FanoutData, Scenario
+from tenforty.mappings.pdf_f1120s import PdfF1120S
+from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
+from tenforty.models import (
+    FilingStatus,
+    K1AllocationEntity,
+    K1AllocationShareholder,
+    K1FanoutData,
+    Scenario,
+)
 from tenforty.types import UpstreamState
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -51,6 +59,58 @@ def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
     for i, row in enumerate(sch_b_values.get("dividend_payers", []), start=1):
         flat[f"dividend_payer_{i}"] = row["payer"]
         flat[f"dividend_amount_{i}"] = row["amount"]
+    return flat
+
+
+def _flatten_k1_party(
+    prefix: str,
+    party: K1AllocationEntity | K1AllocationShareholder,
+) -> dict:
+    """Flatten a typed K-1-allocation party (entity or shareholder) into
+    the prefixed flat keys the K-1 PDF mapping expects.
+
+    The IRS Schedule K-1 PDF combines name, street, city, state, and ZIP
+    into a single multi-line text area per party (Part I field B for the
+    corporation, Part II field F1 for the shareholder). This helper
+    pre-assembles the combined string here so the PDF mapping can stay a
+    flat 1:1 dict (one compute key, one PDF cell) instead of needing a
+    multi-key string-aggregation pattern in the mapping registry.
+
+    Disambiguation between entity and shareholder uses `isinstance`
+    (not `hasattr`): if a future shareholder gains an EIN field — some
+    shareholders are entities themselves (trusts, ESOPs) — `hasattr`
+    would emit both keys silently. `isinstance` dispatch on the typed
+    discriminator surfaces design changes as type errors.
+
+    Render note: the assembled string is
+
+        Name
+        Street
+        City, ST ZIP
+
+    (newline-separated). After the first end-to-end PDF emit
+    succeeds, eyeball the rendered K-1 against the IRS form to confirm
+    the cell wraps this format cleanly. If the cell is single-line or
+    the form expects a different separator, change the joiner here —
+    the mapping shape stays the same.
+    """
+    name_and_address = (
+        f"{party.name}\n"
+        f"{party.address.street}\n"
+        f"{party.address.city}, {party.address.state} {party.address.zip_code}"
+    )
+    flat: dict = {
+        f"{prefix}_name_and_address": name_and_address,
+    }
+    if isinstance(party, K1AllocationEntity):
+        flat[f"{prefix}_ein"] = party.ein
+    elif isinstance(party, K1AllocationShareholder):
+        flat[f"{prefix}_ssn_or_ein"] = party.ssn_or_ein
+    else:
+        raise TypeError(
+            f"_flatten_k1_party received unexpected party type: "
+            f"{type(party).__name__}"
+        )
     return flat
 
 
@@ -312,6 +372,54 @@ class ReturnOrchestrator:
                 values=f8582_values,
             )
             emitted["f8582"] = out_8582
+
+        # 1120-S emit (only when scenario.s_corp_return is populated).
+        if scenario.s_corp_return is not None:
+            # Main 1120-S + Sch B + Sch K.
+            main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
+            main_output = output_dir / f"f1120s_{year}.pdf"
+            filler.fill(
+                template_path=main_template,
+                output_path=main_output,
+                values={
+                    k: v for k, v in results.items()
+                    if k in PdfF1120S.get_mapping(year)
+                },
+                field_mapping=PdfF1120S.get_mapping(year),
+            )
+            emitted["1120s"] = main_output
+
+            # Per-shareholder Sch K-1.
+            #
+            # The compute output's allocation is a typed `K1Allocation`
+            # dataclass with nested `entity` / `shareholder` sub-dataclasses
+            # and an `Address` for each. The K-1 PDF combines name+address
+            # into a single multi-line cell per party (Part I field B for
+            # the corporation, Part II field F1 for the shareholder); the
+            # mapping uses one flat compute key per party for that combined
+            # block. `_flatten_k1_party` is the boundary: typed for
+            # programmatic consumers, flat with assembled name+address
+            # strings for the form filler.
+            k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
+            for i, alloc in enumerate(
+                results.get("f1120s_sch_k1_allocations", []),
+                start=1,
+            ):
+                flat_values = {
+                    **_flatten_k1_party("entity", alloc.entity),
+                    **_flatten_k1_party("shareholder", alloc.shareholder),
+                    "ownership_percentage": alloc.ownership_percentage,
+                    "box_1_ordinary_business_income":
+                        alloc.box_1_ordinary_business_income,
+                }
+                k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
+                filler.fill(
+                    template_path=k1_template,
+                    output_path=k1_output,
+                    values=flat_values,
+                    field_mapping=PdfF1120SK1.get_mapping(year),
+                )
+                emitted[f"1120s_k1_{i}"] = k1_output
 
         return emitted
 
