@@ -200,10 +200,10 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
 def _compute_schedule_k(deductions: dict) -> dict:
     """Form 1120-S Schedule K entity-level totals.
 
-    In v1 only line 1 (OBI) has compute logic; the remaining lines are
-    reserved for future sub-plans and emit zero so the Sch K section is
-    complete on the fill output. `_SCH_K_V1_ZERO_LINES` is the named
-    constant of those reserved zero entries.
+    In v1 only line 1 (OBI) has compute logic; the remaining lines have
+    no v1 compute logic and emit zero so the Sch K section is complete
+    on the fill output. `_SCH_K_V1_ZERO_LINES` is the named constant of
+    those v1 zero entries.
 
     Line 1 is read from the deductions dict (which already passed through
     `irs_round` at line-21 emit), so the `irs_round` wrap below is a
