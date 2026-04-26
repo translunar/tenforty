@@ -64,6 +64,18 @@ class ComputeCorporateTests(unittest.TestCase):
 
 
 class EmitCorporatePdfsTests(unittest.TestCase):
+    """Tests emit-time PDF rendering in isolation from the compute pipeline;
+    injects custom `results` dicts to drive PDF formatting without re-running
+    the corporate waterfall. Calls `_emit_pdfs_internal` directly because the
+    public `emit_pdfs` guard rejects S-corp scenarios (forcing
+    `run_full_return`), and `run_full_return` would re-run the corp pipeline
+    rather than honor the injected results.
+
+    The sibling non-S-corp test (`test_emit_pdfs_skips_1120s_when_no_s_corp_return`)
+    stays on the public `emit_pdfs` API since the guard does not fire for
+    scenarios with `s_corp_return = None`.
+    """
+
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.orch = ReturnOrchestrator(
@@ -78,7 +90,7 @@ class EmitCorporatePdfsTests(unittest.TestCase):
         s = _make_v1_scenario()
         corp_results = self.orch.compute_corporate(s)
         out_dir = Path(self._tmp.name) / "out"
-        paths = self.orch.emit_pdfs(
+        paths = self.orch._emit_pdfs_internal(
             scenario=s, results={**corp_results},
             output_dir=out_dir,
         )
@@ -263,11 +275,15 @@ class FederalWaterfallTests(unittest.TestCase):
 
 
 class EmitCorporatePdfsAggregationTests(unittest.TestCase):
-    """Exercises aggregations and derivations registries in the 1120-S emit path.
+    """Tests emit-time PDF rendering in isolation from the compute pipeline;
+    injects custom `results` dicts to drive PDF formatting without re-running
+    the corporate waterfall. Calls `_emit_pdfs_internal` directly because the
+    public `emit_pdfs` guard rejects S-corp scenarios (forcing
+    `run_full_return`), and `run_full_return` would re-run the corp pipeline
+    rather than honor the injected results.
 
-    Tests here bypass compute_corporate and inject a hand-crafted results dict
-    directly into emit_pdfs — this isolates the filler+orchestrator wiring from
-    any compute model logic.
+    This class specifically tests aggregation+derivation rendering with
+    non-zero injected values.
     """
 
     def setUp(self):
@@ -298,10 +314,10 @@ class EmitCorporatePdfsAggregationTests(unittest.TestCase):
         the output path."""
         s = _make_v1_scenario()
         out_dir = Path(self._tmp.name) / "out"
-        # Provide a minimal results dict that satisfies emit_pdfs (K-1
+        # Provide a minimal results dict that satisfies _emit_pdfs_internal (K-1
         # allocations key must exist; its value can be empty for this test).
         results = {"f1120s_sch_k1_allocations": [], **extra_results}
-        paths = self.orch.emit_pdfs(scenario=s, results=results, output_dir=out_dir)
+        paths = self.orch._emit_pdfs_internal(scenario=s, results=results, output_dir=out_dir)
         return paths["1120s"]
 
     def test_aggregation_line_24a_sums_estimated_payments_and_prior_year(self):
@@ -354,7 +370,16 @@ class EmitCorporatePdfsAggregationTests(unittest.TestCase):
 
 
 class K1AddressBlockFormatTests(unittest.TestCase):
-    """Locks the newline-separated address-block format written to K-1 PDF cells."""
+    """Tests emit-time PDF rendering in isolation from the compute pipeline;
+    injects custom `results` dicts to drive PDF formatting without re-running
+    the corporate waterfall. Calls `_emit_pdfs_internal` directly because the
+    public `emit_pdfs` guard rejects S-corp scenarios (forcing
+    `run_full_return`), and `run_full_return` would re-run the corp pipeline
+    rather than honor the injected results.
+
+    This class specifically tests the K-1 entity name+address combined-cell
+    rendering.
+    """
 
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -439,7 +464,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
         )
         corp_results = self.orch.compute_corporate(scenario)
         out_dir = Path(self._tmp.name) / "out"
-        paths = self.orch.emit_pdfs(
+        paths = self.orch._emit_pdfs_internal(
             scenario=scenario,
             results={**corp_results},
             output_dir=out_dir,
@@ -453,3 +478,172 @@ class K1AddressBlockFormatTests(unittest.TestCase):
             field.get("/V"),
             "Example S-Corp Inc.\n123 Test Lane\nSample City, CA 94000",
         )
+
+
+class EmitPdfsGuardTests(unittest.TestCase):
+    """The public emit_pdfs API rejects S-corp scenarios so callers cannot
+    silently produce a Sch E PDF that excludes the synthesized 1120-S K-1.
+    Such callers must use run_full_return, which builds the effective
+    scenario internally and feeds it to the unguarded internal emit path.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_emit_pdfs_raises_when_called_with_s_corp_scenario(self):
+        s = _make_v1_scenario()
+        out_dir = Path(self._tmp.name) / "out"
+        with self.assertRaises(ValueError) as ctx:
+            self.orch.emit_pdfs(scenario=s, results={}, output_dir=out_dir)
+        # The message must guide the caller to the canonical entry point —
+        # silent failure is exactly the regression class the guard prevents.
+        msg = str(ctx.exception)
+        self.assertIn("run_full_return", msg)
+        self.assertIn("s_corp_return", msg)
+
+    def test_emit_pdfs_works_normally_for_non_s_corp_scenario(self):
+        """The guard fires only when scenario.s_corp_return is not None;
+        the dominant non-S-corp path is unaffected.
+        """
+        s = _make_v1_scenario()
+        s.s_corp_return = None
+        out_dir = Path(self._tmp.name) / "out"
+        paths = self.orch.emit_pdfs(scenario=s, results={}, output_dir=out_dir)
+        # 1040 + 4868 are emitted unconditionally for any non-S-corp scenario.
+        self.assertIn("1040", paths)
+        self.assertIn("4868", paths)
+        # And no 1120-S branch fires.
+        self.assertNotIn("1120s", paths)
+
+
+class BuildEffectiveScenarioTests(unittest.TestCase):
+    """The _build_effective_scenario helper is the single source of truth
+    for what the 1040 pipeline runs against. Both compute_federal and
+    run_full_return depend on it producing identical effective scenarios
+    for the same input — that contract is what prevents Sch E divergence
+    between the numerical and PDF paths.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_returns_unchanged_scenario_and_empty_corp_results_for_no_s_corp(self):
+        s = _make_v1_scenario()
+        s.s_corp_return = None
+        effective, corp_results = self.orch._build_effective_scenario(s)
+        self.assertEqual(corp_results, {})
+        self.assertEqual(len(effective.schedule_k1s), len(s.schedule_k1s))
+
+    def test_appends_synthesized_k1_for_s_corp_scenario(self):
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        original_k1_count = len(s.schedule_k1s)
+        effective, corp_results = self.orch._build_effective_scenario(s)
+        self.assertIn("f1120s_sch_k1_allocations", corp_results)
+        self.assertEqual(len(corp_results["f1120s_sch_k1_allocations"]), 1)
+        self.assertEqual(
+            len(effective.schedule_k1s), original_k1_count + 1,
+        )
+        self.assertEqual(
+            effective.schedule_k1s[-1].entity_name,
+            "Example S-Corp Inc.",
+        )
+        # Caller's input was not mutated.
+        self.assertEqual(len(s.schedule_k1s), original_k1_count)
+
+
+class RunFullReturnTests(unittest.TestCase):
+    """run_full_return is the canonical entry point: callers get both
+    numerical results and emitted PDF paths, with the synthesized
+    1120-S K-1 visible in the Sch E PDF — the M-2 contract.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_returns_results_and_emitted_paths_tuple(self):
+        s = _make_v1_scenario()
+        out_dir = Path(self._tmp.name) / "out"
+        results, emitted = self.orch.run_full_return(s, out_dir)
+        self.assertIn("agi", results)
+        self.assertIn("f1120s_ordinary_business_income", results)
+        self.assertIn("1040", emitted)
+        self.assertIn("4868", emitted)
+        self.assertIn("1120s", emitted)
+        self.assertIn("1120s_k1_1", emitted)
+        for path in emitted.values():
+            self.assertTrue(path.exists())
+
+    def test_sch_e_pdf_includes_synthesized_1120s_k1(self):
+        """M-2 contract: when the corp pipeline produces a K-1, the Sch E
+        Part II PDF rendered by emit_pdfs must reflect that K-1 as a row.
+
+        Failure mode this test guards: emit_pdfs sees the original
+        scenario (no synthesized K-1), so Sch E renders blank or with
+        only user-supplied K-1s — silently incomplete.
+        """
+        # This assertion catches the bug where _emit_pdfs_internal runs against
+        # the original scenario (no synthesized K-1), so the S-corp's name
+        # was missing from Sch E PDF. Post-fix, run_full_return passes
+        # effective_scenario through to _emit_pdfs_internal, so the K-1
+        # appears in the Part II row block.
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        out_dir = Path(self._tmp.name) / "out"
+        results, emitted = self.orch.run_full_return(s, out_dir)
+        self.assertIn("sch_e", emitted)
+        reader = PdfReader(str(emitted["sch_e"]))
+        all_field_values = "\n".join(
+            (f.get("/V") or "")
+            for page in reader.pages
+            for f in (page.get("/Annots") or [])
+        )
+        self.assertIn("Example S-Corp Inc.", all_field_values)
+
+    def test_run_full_return_does_not_mutate_caller_scenario(self):
+        s = _make_v1_scenario()
+        original_k1_count = len(s.schedule_k1s)
+        original_s_corp_return_repr = repr(s.s_corp_return)
+        out_dir = Path(self._tmp.name) / "out"
+        self.orch.run_full_return(s, out_dir)
+        self.assertEqual(len(s.schedule_k1s), original_k1_count)
+        self.assertEqual(repr(s.s_corp_return), original_s_corp_return_repr)
+        self.orch.run_full_return(s, out_dir)
+        self.assertEqual(len(s.schedule_k1s), original_k1_count)
+
+    def test_run_full_return_works_for_non_s_corp_scenario(self):
+        """Non-S-corp scenarios route through run_full_return cleanly."""
+        s = _make_v1_scenario()
+        s.s_corp_return = None
+        out_dir = Path(self._tmp.name) / "out"
+        results, emitted = self.orch.run_full_return(s, out_dir)
+        f1120s_keys = [k for k in results if k.startswith("f1120s_")]
+        self.assertEqual(f1120s_keys, [])
+        self.assertNotIn("1120s", emitted)
+        self.assertIn("1040", emitted)
+        self.assertIn("4868", emitted)

@@ -92,13 +92,16 @@ def main() -> int:
     )
 
     print(f"Computing {scenario.config.year} federal return ({scenario.config.filing_status})...")
-    results = orchestrator.compute_federal(scenario)
+    if args.output_dir is not None:
+        results, emitted = orchestrator.run_full_return(scenario, args.output_dir)
+    else:
+        results = orchestrator.compute_federal(scenario)
+        emitted = None
 
     print()
     print_results(results)
 
-    if args.output_dir is not None:
-        emitted = orchestrator.emit_pdfs(scenario, results, args.output_dir)
+    if emitted is not None:
         print()
         print("=== Emitted PDFs ===")
         for form, path in emitted.items():

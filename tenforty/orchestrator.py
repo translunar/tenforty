@@ -143,33 +143,47 @@ class ReturnOrchestrator:
         self.work_dir = work_dir
         self.engine = SpreadsheetEngine()
 
-    def compute_federal(self, scenario: Scenario) -> dict[str, object]:
-        """Compute the federal return (1120-S waterfall + 1040 + schedules).
+    def _build_effective_scenario(
+        self, scenario: Scenario,
+    ) -> tuple[Scenario, dict[str, object]]:
+        """Build the effective scenario for the 1040 pipeline.
 
-        When `scenario.s_corp_return` is set, runs the corporate pipeline
-        first; the computed K-1s are merged with any user-supplied K-1s
-        on a *copy* of the scenario (the caller's input is not mutated).
-        The corporate output keys (prefixed `f1120s_`) are merged into the
-        returned 1040 output dict.
+        When `scenario.s_corp_return` is set, runs the corporate pipeline and
+        appends the synthesized K-1(s) to a copy of the input scenario. The
+        caller's scenario is never mutated. Returns a tuple of
+        (effective_scenario, corp_results). For non-S-corp scenarios returns
+        (scenario, {}) unchanged.
         """
-        corp_results: dict[str, object] = {}
-        effective_scenario = scenario
-        if scenario.s_corp_return is not None:
-            corp_results = self.compute_corporate(scenario)
-            extra_k1s = [
-                _make_k1_from_1120s_allocation(alloc)
-                for alloc in corp_results.get("f1120s_sch_k1_allocations", [])
-            ]
-            effective_scenario = dataclasses.replace(
-                scenario,
-                schedule_k1s=list(scenario.schedule_k1s) + extra_k1s,
-            )
-            # Re-run compute-time gates against the effective scenario.
-            # Any K-1-related gate (e.g., the >4 K-1s scope-out from
-            # Plan D's Sch E Part II) must see the FULL list including
-            # the just-appended computed K-1s, not just the original.
-            enforce_compute_time(effective_scenario)
+        if scenario.s_corp_return is None:
+            return scenario, {}
 
+        corp_results = self.compute_corporate(scenario)
+        extra_k1s = [
+            _make_k1_from_1120s_allocation(alloc)
+            for alloc in corp_results.get("f1120s_sch_k1_allocations", [])
+        ]
+        effective_scenario = dataclasses.replace(
+            scenario,
+            schedule_k1s=list(scenario.schedule_k1s) + extra_k1s,
+        )
+        # Re-run compute-time gates against the effective scenario.
+        # Any K-1-related gate (e.g., the >4 K-1s scope-out from
+        # Plan D's Sch E Part II) must see the FULL list including
+        # the just-appended computed K-1s, not just the original.
+        enforce_compute_time(effective_scenario)
+        return effective_scenario, corp_results
+
+    def _compute_1040_pipeline(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, object]:
+        """Run the 1040 pipeline (spreadsheet evaluation + f1040.compute).
+
+        Accepts the already-resolved effective scenario (with any synthesized
+        K-1s already appended). Returns the 1040 results dict only — corp keys
+        are merged by the caller. This is the single source of truth for the
+        spreadsheet evaluation step, the 1099-G withholding supplement, and
+        the form_1040.compute step.
+        """
         year = effective_scenario.config.year
         spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
         if not spreadsheet.exists():
@@ -199,7 +213,19 @@ class ReturnOrchestrator:
                 (raw.get("federal_withheld_1099") or 0) + g_withheld
             )
 
-        results_1040 = form_1040.compute(raw_1040=raw, upstream={})
+        return form_1040.compute(raw_1040=raw, upstream={})
+
+    def compute_federal(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the federal return (1120-S waterfall + 1040 + schedules).
+
+        When `scenario.s_corp_return` is set, runs the corporate pipeline
+        first; the computed K-1s are merged with any user-supplied K-1s
+        on a *copy* of the scenario (the caller's input is not mutated).
+        The corporate output keys (prefixed `f1120s_`) are merged into the
+        returned 1040 output dict.
+        """
+        effective_scenario, corp_results = self._build_effective_scenario(scenario)
+        results_1040 = self._compute_1040_pipeline(effective_scenario)
         return {**corp_results, **results_1040}
 
     def compute_corporate(self, scenario: Scenario) -> dict[str, object]:
@@ -218,9 +244,39 @@ class ReturnOrchestrator:
         results: dict[str, object],
         output_dir: Path,
     ) -> dict[str, Path]:
-        """Fill both 1040 and 4868 PDFs and write them to output_dir.
+        """Fill PDFs and write them to output_dir.
 
-        Returns a dict mapping form name ('1040', '4868') to the filled PDF path.
+        Raises ValueError when scenario.s_corp_return is not None — callers
+        must use run_full_return() instead, which builds the effective scenario
+        internally so the synthesized 1120-S K-1 is visible in Sch E. Calling
+        this method directly with an S-corp scenario would silently produce an
+        incomplete Sch E (missing the corp-pipeline K-1).
+
+        For non-S-corp scenarios, delegates to _emit_pdfs_internal.
+        Returns a dict mapping form name to the filled PDF path.
+        """
+        if scenario.s_corp_return is not None:
+            raise ValueError(
+                "Scenario has s_corp_return set — use "
+                "ReturnOrchestrator.run_full_return() to produce PDFs that "
+                "include the synthesized 1120-S K-1 in Sch E. Calling "
+                "emit_pdfs() directly skips the K-1 waterfall and produces "
+                "incomplete Sch E output."
+            )
+        return self._emit_pdfs_internal(scenario, results, output_dir)
+
+    def _emit_pdfs_internal(
+        self,
+        scenario: Scenario,
+        results: dict[str, object],
+        output_dir: Path,
+    ) -> dict[str, Path]:
+        """Fill PDFs and write them to output_dir (unguarded internal API).
+
+        Does not check whether scenario.s_corp_return is set. Callers are
+        responsible for passing the effective scenario (with any synthesized
+        K-1s already appended) when operating on S-corp returns.
+        Returns a dict mapping form name to the filled PDF path.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
@@ -469,6 +525,27 @@ class ReturnOrchestrator:
                 emitted[f"1120s_k1_{i}"] = k1_output
 
         return emitted
+
+    def run_full_return(
+        self,
+        scenario: Scenario,
+        output_dir: Path,
+    ) -> tuple[dict[str, object], dict[str, Path]]:
+        """Compute the full federal return and emit PDFs to output_dir.
+
+        This is the canonical entry point for S-corp scenarios: it builds
+        the effective scenario (with synthesized K-1s) internally and feeds
+        it to the PDF emit step, so the Sch E PDF reflects the corp-pipeline
+        K-1. The caller's scenario is never mutated.
+
+        Returns a tuple of (results, emitted) where results is the merged
+        1040+corp output dict and emitted maps form names to PDF paths.
+        """
+        effective_scenario, corp_results = self._build_effective_scenario(scenario)
+        results_1040 = self._compute_1040_pipeline(effective_scenario)
+        results = {**corp_results, **results_1040}
+        emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
+        return results, emitted
 
     def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch 1 when either Part I total (line 10) or Part II total
