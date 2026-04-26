@@ -40,3 +40,66 @@ class IncomeSectionTests(unittest.TestCase):
         out = f1120s.compute(s, upstream={})
         # 3 = 100000; 4 = 2000; 5 = 500; total = 102500
         self.assertEqual(out["f1120s_line_6_total_income"], 102500.0)
+
+
+class DeductionsSectionTests(unittest.TestCase):
+    def test_line_20_total_deductions_sums_7_through_19(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.deductions.compensation_of_officers = 30000.0
+        s.s_corp_return.deductions.salaries_wages = 5000.0
+        s.s_corp_return.deductions.rents = 12000.0
+        s.s_corp_return.deductions.taxes_licenses = 1500.0
+        s.s_corp_return.deductions.other_deductions = 2500.0
+        out = f1120s.compute(s, upstream={})
+        # 30000 + 5000 + 12000 + 1500 + 2500 = 51000
+        self.assertEqual(out["f1120s_line_20_total_deductions"], 51000.0)
+
+    def test_line_21_ordinary_business_income_equals_6_minus_20(self):
+        """IRS line 21 (OBI) = line 6 − line 20."""
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        out = f1120s.compute(s, upstream={})
+        # line 6 = 100000, line 20 = 30000, OBI = 70000
+        self.assertEqual(out["f1120s_line_21_ordinary_business_income"], 70000.0)
+
+    def test_line_21_obi_can_be_negative(self):
+        """Ordinary business loss flows through as a negative line 21."""
+        s = _make_v1_scenario(
+            gross_receipts=30000.0,
+            compensation_of_officers=50000.0,
+        )
+        out = f1120s.compute(s, upstream={})
+        # line 6 = 30000, line 20 = 50000, OBI = -20000
+        self.assertEqual(out["f1120s_line_21_ordinary_business_income"], -20000.0)
+
+    def test_all_thirteen_deduction_lines_emitted(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.deductions.compensation_of_officers = 30000.0
+        s.s_corp_return.deductions.salaries_wages = 1.0
+        s.s_corp_return.deductions.repairs_maintenance = 2.0
+        s.s_corp_return.deductions.bad_debts = 3.0
+        s.s_corp_return.deductions.rents = 4.0
+        s.s_corp_return.deductions.taxes_licenses = 5.0
+        s.s_corp_return.deductions.interest = 6.0
+        s.s_corp_return.deductions.depreciation = 7.0
+        s.s_corp_return.deductions.depletion = 8.0
+        s.s_corp_return.deductions.advertising = 9.0
+        s.s_corp_return.deductions.pension_profit_sharing_plans = 10.0
+        s.s_corp_return.deductions.employee_benefits = 11.0
+        s.s_corp_return.deductions.other_deductions = 12.0
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_line_7_compensation_of_officers"], 30000.0)
+        self.assertEqual(out["f1120s_line_8_salaries_wages"], 1.0)
+        self.assertEqual(out["f1120s_line_9_repairs_maintenance"], 2.0)
+        self.assertEqual(out["f1120s_line_10_bad_debts"], 3.0)
+        self.assertEqual(out["f1120s_line_11_rents"], 4.0)
+        self.assertEqual(out["f1120s_line_12_taxes_licenses"], 5.0)
+        self.assertEqual(out["f1120s_line_13_interest"], 6.0)
+        self.assertEqual(out["f1120s_line_14_depreciation"], 7.0)
+        self.assertEqual(out["f1120s_line_15_depletion"], 8.0)
+        self.assertEqual(out["f1120s_line_16_advertising"], 9.0)
+        self.assertEqual(out["f1120s_line_17_pension_profit_sharing"], 10.0)
+        self.assertEqual(out["f1120s_line_18_employee_benefits"], 11.0)
+        self.assertEqual(out["f1120s_line_19_other_deductions"], 12.0)

@@ -44,6 +44,50 @@ def _compute_income(r: SCorpReturn) -> dict:
     }
 
 
+def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
+    """Form 1120-S Deductions section (lines 7-21).
+
+    Reads `income["f1120s_line_6_total_income"]` to compute line 21
+    (Ordinary Business Income = line 6 − line 20).
+    """
+    d = r.deductions
+    line_7 = d.compensation_of_officers
+    line_8 = d.salaries_wages
+    line_9 = d.repairs_maintenance
+    line_10 = d.bad_debts
+    line_11 = d.rents
+    line_12 = d.taxes_licenses
+    line_13 = d.interest
+    line_14 = d.depreciation
+    line_15 = d.depletion
+    line_16 = d.advertising
+    line_17 = d.pension_profit_sharing_plans
+    line_18 = d.employee_benefits
+    line_19 = d.other_deductions
+    line_20 = sum([
+        line_7, line_8, line_9, line_10, line_11, line_12, line_13,
+        line_14, line_15, line_16, line_17, line_18, line_19,
+    ])
+    line_21 = income["f1120s_line_6_total_income"] - line_20
+    return {
+        "f1120s_line_7_compensation_of_officers": irs_round(line_7),
+        "f1120s_line_8_salaries_wages": irs_round(line_8),
+        "f1120s_line_9_repairs_maintenance": irs_round(line_9),
+        "f1120s_line_10_bad_debts": irs_round(line_10),
+        "f1120s_line_11_rents": irs_round(line_11),
+        "f1120s_line_12_taxes_licenses": irs_round(line_12),
+        "f1120s_line_13_interest": irs_round(line_13),
+        "f1120s_line_14_depreciation": irs_round(line_14),
+        "f1120s_line_15_depletion": irs_round(line_15),
+        "f1120s_line_16_advertising": irs_round(line_16),
+        "f1120s_line_17_pension_profit_sharing": irs_round(line_17),
+        "f1120s_line_18_employee_benefits": irs_round(line_18),
+        "f1120s_line_19_other_deductions": irs_round(line_19),
+        "f1120s_line_20_total_deductions": irs_round(line_20),
+        "f1120s_line_21_ordinary_business_income": irs_round(line_21),
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
@@ -58,5 +102,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     # Per-section helpers contribute to the return dict additively. Each
     # later task in this sub-plan adds one helper and one update line.
     out: dict[str, float] = {}
-    out.update(_compute_income(r))
+    income = _compute_income(r)
+    out.update(income)
+    out.update(_compute_deductions(r, income))
     return out
