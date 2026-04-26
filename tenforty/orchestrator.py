@@ -492,6 +492,7 @@ class ReturnOrchestrator:
                 field_mapping=PdfF1120S.get_mapping(year),
                 aggregations=PdfF1120S.get_aggregations(year),
                 derivations=PdfF1120S.get_derivations(year),
+                checkbox_states=PdfF1120S.get_checkbox_states(year),
             )
             emitted["1120s"] = main_output
 

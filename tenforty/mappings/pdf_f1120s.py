@@ -77,6 +77,18 @@ class PdfF1120S:
             return _SUPPRESSED_2025
         raise ValueError(f"No Form 1120-S suppressions for year {year}")
 
+    @classmethod
+    def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        """Return compute key → PDF "on" state for IRS XFA checkbox fields.
+
+        IRS XFA forms use per-field state names ("/1", "/2", "/3") rather than
+        the conventional "/Yes". These overrides are passed to PdfFiller.fill()
+        so that bool compute keys toggle the correct appearance state.
+        """
+        if year == 2025:
+            return _CHECKBOX_STATES_2025
+        raise ValueError(f"No Form 1120-S checkbox states for year {year}")
+
 
 # Direct 1:1 mappings — most compute keys go here.
 # Authoritative field paths come from docs/plans/t14-f1120s-probe.md.
@@ -185,6 +197,28 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     "topmostSubform[0].Page1[0].f1_53[0]": lambda c: (
         c["f1120s_overpayment"] - c["f1120s_credited_to_next_year"]
     ),
+}
+
+
+# Checkbox "on" state names for IRS XFA checkbox fields.
+#
+# IRS XFA forms use per-field state names ("/1", "/2", "/3") rather than the
+# conventional "/Yes" that simpler PDF forms use. pypdf's
+# update_page_form_field_values looks up the written value in the field's
+# /AP/N appearance dict; only an exact match sets the field; anything else
+# silently falls back to "/Off". These are the exact AP/N keys verified from
+# the 2025 form template.
+#
+# Accounting method is a radio group: [0]=Cash(/1), [1]=Accrual(/2),
+# [2]=Other(/3). The yes/no questions each have a single checkbox whose on
+# state is always "/1".
+_CHECKBOX_STATES_2025: dict[str, str] = {
+    "f1120s_sch_b_accounting_method_cash":    "/1",
+    "f1120s_sch_b_accounting_method_accrual": "/2",
+    "f1120s_sch_b_accounting_method_other":   "/3",
+    "f1120s_sch_b_has_any_foreign_shareholders": "/1",
+    "f1120s_sch_b_any_c_corp_subsidiaries":      "/1",
+    "f1120s_sch_b_owns_foreign_entity":          "/1",
 }
 
 

@@ -11,9 +11,11 @@ class PdfFiller:
 
     @staticmethod
     def _render_numeric(value: object) -> str:
-        """Render a scalar value to its PDF string form with IRS rounding."""
+        """Render a scalar value to its PDF string form. Bools are rendered
+        as pypdf checkbox toggle values ("Yes"/"Off"); numerics are IRS
+        half-up rounded to whole dollars; everything else is str()-coerced."""
         if isinstance(value, bool):
-            return str(value)
+            return "Yes" if value else "Off"
         if isinstance(value, (int, float)):
             return str(irs_round(value))
         return str(value)
@@ -26,6 +28,7 @@ class PdfFiller:
         values: dict[str, object],
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
+        checkbox_states: Mapping[str, str] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
@@ -45,6 +48,11 @@ class PdfFiller:
             values: Computed results from the engine.
             aggregations: Maps PDF field path → tuple of compute keys to sum.
             derivations: Maps PDF field path → lambda(values) → value.
+            checkbox_states: Maps compute key → PDF "on" state string for
+                forms whose checkbox fields use non-standard state names
+                (e.g. IRS XFA forms use "/1", "/2", "/3" instead of "/Yes").
+                When a bool-valued key is listed here, the on-state from this
+                dict is written for True; "/Off" is written for False.
 
         Returns:
             Path to the filled PDF.
@@ -56,7 +64,11 @@ class PdfFiller:
 
         for result_key, pdf_field_name in field_mapping.items():
             if result_key in values and values[result_key] is not None:
-                pdf_fields[pdf_field_name] = self._render_numeric(values[result_key])
+                v = values[result_key]
+                if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
+                    pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
+                else:
+                    pdf_fields[pdf_field_name] = self._render_numeric(v)
 
         if aggregations:
             for pdf_field, compute_keys in aggregations.items():
