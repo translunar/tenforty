@@ -142,11 +142,9 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     Lines 24 (amount owed) and 26 (overpayment) are mutually exclusive.
     Reads `total_tax["f1120s_total_tax"]` to compute the balance.
 
-    Line 25 (estimated tax penalty / Form 2220) and line 27 (overpayment
-    credited to next year) emit 0.0 in v1 — Form 2220 is not implemented
-    and the full overpayment is treated as refunded. Both are emitted so
-    the downstream PDF mapping layer has compute keys for the
-    corresponding form fields without special-case absence handling.
+    Lines 25 and 27 emit 0 unconditionally in v1; the keys exist so the
+    PDF mapping has a slot to fill (Form 2220 estimated-tax penalty is
+    out of scope for v1).
     """
     p = r.payments
     line_23a = p.estimated_tax_payments
@@ -203,15 +201,9 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
 def _compute_schedule_k(deductions: dict) -> dict:
     """Form 1120-S Schedule K entity-level totals.
 
-    In v1 only line 1 (OBI) has compute logic; the remaining lines have
-    no v1 compute logic and emit zero so the Sch K section is complete
-    on the fill output. `_SCH_K_V1_ZERO_PLACEHOLDERS` is the named constant of
-    those v1 zero entries.
-
-    Line 1 is read from the deductions dict (which already passed through
-    `irs_round` at line-21 emit), so the `irs_round` wrap below is a
-    no-op — it documents that this output respects the same rounding
-    convention as the rest of the compute path.
+    In v1 only line 1 (OBI) has compute logic; the remaining lines emit
+    zero so the Sch K section is complete on the fill output (the keys
+    are required by the PDF mapping but their values await later sub-plans).
     """
     return {
         "f1120s_sch_k_ordinary_business_income": irs_round(

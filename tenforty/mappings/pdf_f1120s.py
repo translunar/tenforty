@@ -6,7 +6,10 @@ receive a sum of multiple compute keys. Derivations (`_DERIVATIONS_2025`)
 describe PDF cells whose value is computed from compute outputs (e.g.,
 overpayment minus credited-to-next-year). Suppressions
 (`_SUPPRESSED_2025`) declare compute keys that have no fillable cell on
-the 2025 form (write-in only).
+the 2025 form (write-in only). Checkbox states (`_CHECKBOX_STATES_2025`)
+map a compute key to the PDF "on" appearance state name (e.g. `"/1"`,
+`"/2"`, `"/3"`) for IRS XFA forms whose checkbox cells use non-conventional
+state names.
 
 All field paths come from the probe artifact; see
 docs/plans/t14-f1120s-probe.md for the per-line rationale.
@@ -19,7 +22,7 @@ class PdfF1120S:
     """PDF field mapping for IRS Form 1120-S.
 
     Unlike `Pdf1040`, which uses a single flat compute-key → PDF-field
-    dict, this class exposes a four-registry design because the 2025
+    dict, this class exposes a five-registry design because the 2025
     Form 1120-S has structural patterns that a flat map cannot express:
 
     - `_MAPPING_<year>` — direct 1:1 compute-key → PDF-field-path. Most
@@ -35,6 +38,11 @@ class PdfF1120S:
     - `_SUPPRESSED_<year>` — compute keys that have *no* fillable cell
       on the year's form. v1 declares them out-of-scope-for-PDF and
       relies on attestations to ensure the user reports them externally.
+    - `_CHECKBOX_STATES_<year>` — for boolean compute keys whose target
+      PDF cell is an IRS XFA checkbox, this maps the compute key to the
+      per-field "on" appearance state name (e.g. `"/1"`, `"/2"`, `"/3"`)
+      because IRS XFA forms use non-conventional state names rather than
+      the usual `"/Yes"`.
 
     These extensions did not exist for F1040 because the 1040's PDF
     fields line up 1:1 with compute outputs at the keys we expose. They
@@ -122,7 +130,8 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_38[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_39[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_40[0]",
-    # Tax — Lines 23a (2025 numbering)
+    # Tax — Line 23a only (2025 numbering); §1374 BIG and §453 deferred
+    # interest live in aggregations/suppressed registries.
     "f1120s_net_passive_income_tax":    "topmostSubform[0].Page1[0].f1_41[0]",
     # Payments — Lines 24b-24z, 25-27, 28a (2025 numbering)
     "f1120s_tax_deposited_with_7004":   "topmostSubform[0].Page1[0].f1_45[0]",
