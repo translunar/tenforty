@@ -117,7 +117,8 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     Line 25 (estimated tax penalty / Form 2220) and line 27 (overpayment
     credited to next year) emit 0.0 in v1 — Form 2220 is not implemented
     and the full overpayment is treated as refunded. Both are emitted so
-    Task 15's PDF mapping has compute keys for the corresponding fields.
+    the downstream PDF mapping layer has compute keys for the
+    corresponding form fields without special-case absence handling.
     """
     p = r.payments
     line_23a = p.estimated_tax_payments
