@@ -107,6 +107,41 @@ def _compute_total_tax(r: SCorpReturn) -> dict:
     }
 
 
+def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
+    """Form 1120-S Payments (line 23a-23e) + balance (line 24 / 26)
+    + line 25 / line 27 placeholders.
+
+    Lines 24 (amount owed) and 26 (overpayment) are mutually exclusive.
+    Reads `total_tax["f1120s_line_22_total_tax"]` to compute the balance.
+
+    Line 25 (estimated tax penalty / Form 2220) and line 27 (overpayment
+    credited to next year) emit 0.0 in v1 — Form 2220 is not implemented
+    and the full overpayment is treated as refunded. Both are emitted so
+    Task 15's PDF mapping has compute keys for the corresponding fields.
+    """
+    p = r.payments
+    line_23a = p.estimated_tax_payments
+    line_23b = p.prior_year_overpayment_credited
+    line_23c = p.tax_deposited_with_7004
+    line_23d = p.credit_for_federal_excise_tax
+    line_23e = p.refundable_credits
+    line_23 = line_23a + line_23b + line_23c + line_23d + line_23e
+    line_22 = total_tax["f1120s_line_22_total_tax"]
+    delta = line_22 - line_23
+    return {
+        "f1120s_line_23a_estimated_tax_payments": irs_round(line_23a),
+        "f1120s_line_23b_prior_year_overpayment_credited": irs_round(line_23b),
+        "f1120s_line_23c_tax_deposited_with_7004": irs_round(line_23c),
+        "f1120s_line_23d_credit_for_federal_excise_tax": irs_round(line_23d),
+        "f1120s_line_23e_refundable_credits": irs_round(line_23e),
+        "f1120s_line_23_total_payments": irs_round(line_23),
+        "f1120s_line_24_amount_owed": irs_round(max(delta, 0.0)),
+        "f1120s_line_25_estimated_tax_penalty": irs_round(0.0),
+        "f1120s_line_26_overpayment": irs_round(max(-delta, 0.0)),
+        "f1120s_line_27_credited_to_next_year": irs_round(0.0),
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
@@ -124,5 +159,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     income = _compute_income(r)
     out.update(income)
     out.update(_compute_deductions(r, income))
-    out.update(_compute_total_tax(r))
+    total_tax = _compute_total_tax(r)
+    out.update(total_tax)
+    out.update(_compute_payments_and_balance(r, total_tax))
     return out

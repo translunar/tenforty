@@ -129,3 +129,52 @@ class TotalTaxTests(unittest.TestCase):
         s = _make_v1_scenario()
         out = f1120s.compute(s, upstream={})
         self.assertEqual(out["f1120s_line_22_total_tax"], 0.0)
+
+
+class PaymentsAndBalanceTests(unittest.TestCase):
+    def test_line_23_total_payments_sums_23a_through_23e(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.payments.estimated_tax_payments = 600.0
+        s.s_corp_return.payments.prior_year_overpayment_credited = 100.0
+        s.s_corp_return.payments.tax_deposited_with_7004 = 200.0
+        s.s_corp_return.payments.credit_for_federal_excise_tax = 50.0
+        s.s_corp_return.payments.refundable_credits = 25.0
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_line_23_total_payments"], 975.0)
+
+    def test_line_24_amount_owed_when_tax_exceeds_payments(self):
+        """IRS line 24 (amount owed) = line 22 − line 23 when positive.
+        Uses the v1 fixture's ack=True default; sets a nonzero §1375
+        scope-out and a smaller payments total."""
+        s = _make_v1_scenario()
+        s.s_corp_return.scope_outs.net_passive_income_tax = 1000.0
+        s.s_corp_return.payments.estimated_tax_payments = 600.0
+        out = f1120s.compute(s, upstream={})
+        # tax 1000, payments 600, owed 400
+        self.assertEqual(out["f1120s_line_24_amount_owed"], 400.0)
+        self.assertEqual(out["f1120s_line_26_overpayment"], 0.0)
+
+    def test_line_26_overpayment_when_payments_exceed_tax(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.scope_outs.net_passive_income_tax = 100.0
+        s.s_corp_return.payments.estimated_tax_payments = 400.0
+        out = f1120s.compute(s, upstream={})
+        # tax 100, payments 400, overpayment 300
+        self.assertEqual(out["f1120s_line_24_amount_owed"], 0.0)
+        self.assertEqual(out["f1120s_line_26_overpayment"], 300.0)
+
+    def test_line_24_and_26_both_zero_when_exactly_balanced(self):
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        # tax 0, payments 0, owed 0, overpayment 0
+        self.assertEqual(out["f1120s_line_24_amount_owed"], 0.0)
+        self.assertEqual(out["f1120s_line_26_overpayment"], 0.0)
+
+    def test_lines_25_and_27_emit_zero_placeholders(self):
+        """Line 25 (Form 2220 penalty) and line 27 (overpayment credited
+        to next year) are scope-out placeholders in v1; emit 0.0 so the
+        PDF mapping has compute keys for both fields."""
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_line_25_estimated_tax_penalty"], 0.0)
+        self.assertEqual(out["f1120s_line_27_credited_to_next_year"], 0.0)
