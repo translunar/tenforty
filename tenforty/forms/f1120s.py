@@ -47,8 +47,13 @@ def _compute_income(r: SCorpReturn) -> dict:
 def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
     """Form 1120-S Deductions section (lines 7-21).
 
-    Reads `income["f1120s_line_6_total_income"]` to compute line 21
-    (Ordinary Business Income = line 6 − line 20).
+    Takes the income-section dict (rather than recomputing line 6 from
+    raw fields) because IRS line 21 = (rounded) line 6 − (rounded)
+    line 20, not raw arithmetic. The IRS instructions consistently
+    define each line as a function of *form-displayed* (rounded) values
+    on prior lines, so reading line_6 from `income` is the
+    instructions-faithful path; recomputing from `r.income.*` would
+    produce a different value when gross_receipts has cents.
     """
     d = r.deductions
     line_7 = d.compensation_of_officers
@@ -64,10 +69,10 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
     line_17 = d.pension_profit_sharing_plans
     line_18 = d.employee_benefits
     line_19 = d.other_deductions
-    line_20 = sum([
+    line_20 = sum((
         line_7, line_8, line_9, line_10, line_11, line_12, line_13,
         line_14, line_15, line_16, line_17, line_18, line_19,
-    ])
+    ))
     line_21 = income["f1120s_line_6_total_income"] - line_20
     return {
         "f1120s_line_7_compensation_of_officers": irs_round(line_7),
