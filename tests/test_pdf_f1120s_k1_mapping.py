@@ -16,18 +16,10 @@ from tenforty.mappings import pdf_f1120s_k1
 
 
 _EXPECTED_K1_KEYS = frozenset({
-    "shareholder_name",
-    "shareholder_ssn_or_ein",
-    "shareholder_address_street",
-    "shareholder_address_city",
-    "shareholder_address_state",
-    "shareholder_address_zip",
-    "entity_name",
     "entity_ein",
-    "entity_address_street",
-    "entity_address_city",
-    "entity_address_state",
-    "entity_address_zip",
+    "entity_name_and_address",
+    "shareholder_ssn_or_ein",
+    "shareholder_name_and_address",
     "ownership_percentage",
     "box_1_ordinary_business_income",
 })
@@ -50,3 +42,19 @@ class PdfF1120SK1MappingTests(unittest.TestCase):
         mapping = pdf_f1120s_k1.PdfF1120SK1.get_mapping(2025)
         bad = {k: v for k, v in mapping.items() if v not in real_fields}
         self.assertEqual(bad, {})
+
+    def test_2025_every_pdf_field_has_at_most_one_compute_key(self):
+        """Each PDF cell is filled by exactly one compute key.
+
+        Multiple compute keys mapping to the same PDF field would mean
+        `pdf_filler` writes the same cell N times with the last-iterated
+        key winning silently. Catch that here."""
+        mapping = pdf_f1120s_k1.PdfF1120SK1.get_mapping(2025)
+        seen: dict[str, str] = {}
+        duplicates: list[tuple[str, str, str]] = []
+        for compute_key, pdf_field in mapping.items():
+            if pdf_field in seen:
+                duplicates.append((pdf_field, seen[pdf_field], compute_key))
+            else:
+                seen[pdf_field] = compute_key
+        self.assertEqual(duplicates, [])
