@@ -18,7 +18,7 @@ library function in addition to its primary use through the orchestrator.
 """
 
 from tenforty.attestations import enforce_compute_time, validate_load_time
-from tenforty.models import Scenario, SCorpReturn
+from tenforty.models import AccountingMethod, Scenario, SCorpReturn
 from tenforty.rounding import irs_round
 
 
@@ -143,6 +143,35 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     }
 
 
+def _compute_schedule_b(r: SCorpReturn) -> dict:
+    """Form 1120-S Schedule B Yes/No + text answers (pass-through).
+
+    `accounting_method` (AccountingMethod enum) explodes into three
+    boolean keys here so the downstream PDF mapping layer can target the
+    form's three checkboxes (Cash / Accrual / Other) directly. The IRS
+    form's Question 1 has three exclusive checkboxes — a single enum
+    field would require a converter at the PDF-fill boundary; emitting
+    three booleans here keeps the boundary trivial.
+    """
+    sb = r.schedule_b_answers
+    return {
+        "f1120s_sch_b_accounting_method_cash":
+            sb.accounting_method == AccountingMethod.CASH,
+        "f1120s_sch_b_accounting_method_accrual":
+            sb.accounting_method == AccountingMethod.ACCRUAL,
+        "f1120s_sch_b_accounting_method_other":
+            sb.accounting_method == AccountingMethod.OTHER,
+        "f1120s_sch_b_business_activity_code": sb.business_activity_code,
+        "f1120s_sch_b_business_activity_description":
+            sb.business_activity_description,
+        "f1120s_sch_b_product_or_service": sb.product_or_service,
+        "f1120s_sch_b_any_c_corp_subsidiaries": sb.any_c_corp_subsidiaries,
+        "f1120s_sch_b_has_any_foreign_shareholders":
+            sb.has_any_foreign_shareholders,
+        "f1120s_sch_b_owns_foreign_entity": sb.owns_foreign_entity,
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
@@ -163,4 +192,5 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     total_tax = _compute_total_tax(r)
     out.update(total_tax)
     out.update(_compute_payments_and_balance(r, total_tax))
+    out.update(_compute_schedule_b(r))
     return out

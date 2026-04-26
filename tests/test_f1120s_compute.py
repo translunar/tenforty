@@ -7,6 +7,7 @@ instructions. These tests do NOT import or reference any oracle module.
 import unittest
 
 from tenforty.forms import f1120s
+from tenforty.models import AccountingMethod
 
 from tests._scorp_fixtures import _make_v1_scenario
 
@@ -178,3 +179,54 @@ class PaymentsAndBalanceTests(unittest.TestCase):
         out = f1120s.compute(s, upstream={})
         self.assertEqual(out["f1120s_line_25_estimated_tax_penalty"], 0.0)
         self.assertEqual(out["f1120s_line_27_credited_to_next_year"], 0.0)
+
+
+class ScheduleBPassthroughTests(unittest.TestCase):
+    def test_schedule_b_answers_appear_verbatim_in_output(self):
+        s = _make_v1_scenario()
+        sb = s.s_corp_return.schedule_b_answers
+        sb.accounting_method = AccountingMethod.ACCRUAL
+        sb.business_activity_code = "999999"
+        sb.business_activity_description = "Other services"
+        sb.product_or_service = "Consulting services"
+        sb.any_c_corp_subsidiaries = False
+        sb.has_any_foreign_shareholders = False
+        sb.owns_foreign_entity = False
+        out = f1120s.compute(s, upstream={})
+        # accounting_method explodes into three exclusive booleans for
+        # PDF checkbox fill.
+        self.assertFalse(out["f1120s_sch_b_accounting_method_cash"])
+        self.assertTrue(out["f1120s_sch_b_accounting_method_accrual"])
+        self.assertFalse(out["f1120s_sch_b_accounting_method_other"])
+        self.assertEqual(out["f1120s_sch_b_business_activity_code"], "999999")
+        self.assertEqual(
+            out["f1120s_sch_b_business_activity_description"],
+            "Other services",
+        )
+        self.assertEqual(
+            out["f1120s_sch_b_product_or_service"],
+            "Consulting services",
+        )
+        self.assertFalse(out["f1120s_sch_b_any_c_corp_subsidiaries"])
+        self.assertFalse(out["f1120s_sch_b_has_any_foreign_shareholders"])
+        self.assertFalse(out["f1120s_sch_b_owns_foreign_entity"])
+
+    def test_accounting_method_cash_explodes_correctly(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.schedule_b_answers.accounting_method = (
+            AccountingMethod.CASH
+        )
+        out = f1120s.compute(s, upstream={})
+        self.assertTrue(out["f1120s_sch_b_accounting_method_cash"])
+        self.assertFalse(out["f1120s_sch_b_accounting_method_accrual"])
+        self.assertFalse(out["f1120s_sch_b_accounting_method_other"])
+
+    def test_accounting_method_other_explodes_correctly(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.schedule_b_answers.accounting_method = (
+            AccountingMethod.OTHER
+        )
+        out = f1120s.compute(s, upstream={})
+        self.assertFalse(out["f1120s_sch_b_accounting_method_cash"])
+        self.assertFalse(out["f1120s_sch_b_accounting_method_accrual"])
+        self.assertTrue(out["f1120s_sch_b_accounting_method_other"])
