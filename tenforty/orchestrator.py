@@ -420,14 +420,16 @@ class ReturnOrchestrator:
             # Main 1120-S + Sch B + Sch K.
             main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
             main_output = output_dir / f"f1120s_{year}.pdf"
+            # Pass the full results dict — aggregation and derivation lambdas
+            # reference keys that are NOT in _MAPPING_<year>, so filtering to
+            # mapping keys alone would silently drop those inputs.
             filler.fill(
                 template_path=main_template,
                 output_path=main_output,
-                values={
-                    k: v for k, v in results.items()
-                    if k in PdfF1120S.get_mapping(year)
-                },
+                values=results,
                 field_mapping=PdfF1120S.get_mapping(year),
+                aggregations=PdfF1120S.get_aggregations(year),
+                derivations=PdfF1120S.get_derivations(year),
             )
             emitted["1120s"] = main_output
 

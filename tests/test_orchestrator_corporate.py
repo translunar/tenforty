@@ -1,16 +1,28 @@
 """Unit tests for ReturnOrchestrator.compute_corporate."""
 
 import dataclasses
+import datetime
 import tempfile
 import unittest
 from pathlib import Path
 
+from pypdf import PdfReader
+
 from tenforty.models import (
+    AccountingMethod,
     Address,
     EntityType,
+    FilingStatus,
     K1AllocationEntity,
     K1AllocationShareholder,
+    Scenario,
+    SCorpDeductions,
+    SCorpIncome,
+    SCorpReturn,
+    SCorpScheduleBAnswers,
+    SCorpShareholder,
     ScheduleK1,
+    TaxReturnConfig,
 )
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.orchestrator import (
@@ -19,7 +31,8 @@ from tenforty.orchestrator import (
     _make_k1_from_1120s_allocation,
 )
 
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario, _scorp_attestation_defaults
+from tests.helpers import plan_d_attestation_defaults
 
 
 class ComputeCorporateTests(unittest.TestCase):
@@ -236,4 +249,197 @@ class FederalWaterfallTests(unittest.TestCase):
             len(effective.schedule_k1s), 2,
             "v1 contract: user K-1 + computed K-1 both flow to 1040; "
             "if dedup is later added, this test must change explicitly.",
+        )
+
+
+class EmitCorporatePdfsAggregationTests(unittest.TestCase):
+    """Exercises aggregations and derivations registries in the 1120-S emit path.
+
+    Tests here bypass compute_corporate and inject a hand-crafted results dict
+    directly into emit_pdfs — this isolates the filler+orchestrator wiring from
+    any compute model logic.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _read_field(self, pdf_path: Path, full_field_key: str) -> str | None:
+        """Read back a single PDF field value by its full dotted-path key.
+
+        pypdf's get_form_text_fields() returns short leaf names; get_fields()
+        returns the full hierarchical path and preserves the /V (value) entry.
+        """
+        reader = PdfReader(str(pdf_path))
+        all_fields = reader.get_fields() or {}
+        field = all_fields.get(full_field_key)
+        if field is None:
+            return None
+        return field.get("/V")
+
+    def _emit(self, extra_results: dict) -> Path:
+        """Render 1120-S PDF with the given extra_results injected and return
+        the output path."""
+        s = _make_v1_scenario()
+        out_dir = Path(self._tmp.name) / "out"
+        # Provide a minimal results dict that satisfies emit_pdfs (K-1
+        # allocations key must exist; its value can be empty for this test).
+        results = {"f1120s_sch_k1_allocations": [], **extra_results}
+        paths = self.orch.emit_pdfs(scenario=s, results=results, output_dir=out_dir)
+        return paths["1120s"]
+
+    def test_aggregation_line_24a_sums_estimated_payments_and_prior_year(self):
+        """Line 24a renders as the sum of estimated tax payments + prior-year
+        overpayment credited (100 + 200 = 300)."""
+        pdf = self._emit({
+            "f1120s_estimated_tax_payments": 100,
+            "f1120s_prior_year_overpayment_credited": 200,
+        })
+        self.assertEqual(
+            self._read_field(pdf, "topmostSubform[0].Page1[0].f1_44[0]"),
+            "300",
+        )
+
+    def test_aggregation_line_23c_sums_total_tax_and_453_interest(self):
+        """Line 23c renders as total_tax + interest_on_453_deferred (300 + 400 = 700)."""
+        pdf = self._emit({
+            "f1120s_total_tax": 300,
+            "f1120s_interest_on_453_deferred": 400,
+        })
+        self.assertEqual(
+            self._read_field(pdf, "topmostSubform[0].Page1[0].f1_43[0]"),
+            "700",
+        )
+
+    def test_derivation_line_28b_renders_overpayment_minus_credited(self):
+        """Line 28b renders as overpayment − credited_to_next_year (500 − 200 = 300)."""
+        pdf = self._emit({
+            "f1120s_overpayment": 500,
+            "f1120s_credited_to_next_year": 200,
+        })
+        self.assertEqual(
+            self._read_field(pdf, "topmostSubform[0].Page1[0].f1_53[0]"),
+            "300",
+        )
+
+    def test_all_three_cells_with_distinct_nonzero_values(self):
+        """All three previously-blank cells render correct values in a single pass."""
+        pdf = self._emit({
+            "f1120s_estimated_tax_payments": 100,
+            "f1120s_prior_year_overpayment_credited": 200,
+            "f1120s_total_tax": 300,
+            "f1120s_interest_on_453_deferred": 400,
+            "f1120s_overpayment": 500,
+            "f1120s_credited_to_next_year": 200,
+        })
+        self.assertEqual(self._read_field(pdf, "topmostSubform[0].Page1[0].f1_44[0]"), "300")
+        self.assertEqual(self._read_field(pdf, "topmostSubform[0].Page1[0].f1_43[0]"), "700")
+        self.assertEqual(self._read_field(pdf, "topmostSubform[0].Page1[0].f1_53[0]"), "300")
+
+
+class K1AddressBlockFormatTests(unittest.TestCase):
+    """Locks the newline-separated address-block format written to K-1 PDF cells."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_entity_name_and_address_field_format_in_k1_pdf(self):
+        """The entity name+address block in Part I field B of the K-1 PDF is
+        formatted as 'name\\nstreet\\ncity, state zip'."""
+        entity_address = Address(
+            street="123 Test Lane",
+            city="Sample City",
+            state="CA",
+            zip_code="94000",
+        )
+        shareholder_address = Address(
+            street="456 Shareholder Rd",
+            city="Investor Town",
+            state="NY",
+            zip_code="10001",
+        )
+        attestations = {**plan_d_attestation_defaults(), **_scorp_attestation_defaults()}
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2025, filing_status=FilingStatus.SINGLE,
+                birthdate="01-01-1980", state="EX",
+                first_name="Taxpayer", last_name="A", ssn="000-00-0000",
+                **attestations,
+            ),
+            s_corp_return=SCorpReturn(
+                name="Example S-Corp Inc.",
+                ein="00-0000000",
+                address=entity_address,
+                date_incorporated=datetime.date(2020, 1, 1),
+                s_election_effective_date=datetime.date(2020, 1, 1),
+                total_assets=50000.0,
+                income=SCorpIncome(
+                    gross_receipts=100000.0,
+                    returns_and_allowances=0.0,
+                    cogs_aggregate=0.0,
+                    net_gain_loss_4797=0.0,
+                    other_income=0.0,
+                ),
+                deductions=SCorpDeductions(
+                    compensation_of_officers=30000.0,
+                    salaries_wages=0.0,
+                    repairs_maintenance=0.0,
+                    bad_debts=0.0,
+                    rents=0.0,
+                    taxes_licenses=0.0,
+                    interest=0.0,
+                    depreciation=0.0,
+                    depletion=0.0,
+                    advertising=0.0,
+                    pension_profit_sharing_plans=0.0,
+                    employee_benefits=0.0,
+                    other_deductions=0.0,
+                ),
+                schedule_b_answers=SCorpScheduleBAnswers(
+                    accounting_method=AccountingMethod.CASH,
+                    business_activity_code="541990",
+                    business_activity_description="Services",
+                    product_or_service="Consulting",
+                    any_c_corp_subsidiaries=False,
+                    has_any_foreign_shareholders=False,
+                    owns_foreign_entity=False,
+                ),
+                shareholders=[
+                    SCorpShareholder(
+                        name="Taxpayer A",
+                        ssn_or_ein="000-00-0000",
+                        address=shareholder_address,
+                        ownership_percentage=100.0,
+                    ),
+                ],
+            ),
+        )
+        corp_results = self.orch.compute_corporate(scenario)
+        out_dir = Path(self._tmp.name) / "out"
+        paths = self.orch.emit_pdfs(
+            scenario=scenario,
+            results={**corp_results},
+            output_dir=out_dir,
+        )
+        self.assertIn("1120s_k1_1", paths)
+        reader = PdfReader(str(paths["1120s_k1_1"]))
+        all_fields = reader.get_fields() or {}
+        field = all_fields.get("topmostSubform[0].Page1[0].LeftCol[0].f1_07[0]")
+        self.assertIsNotNone(field, "K-1 entity name+address field not found in PDF")
+        self.assertEqual(
+            field.get("/V"),
+            "Example S-Corp Inc.\n123 Test Lane\nSample City, CA 94000",
         )
