@@ -3,8 +3,8 @@
 Mapping keys are flat with explicit `entity_` / `shareholder_` prefixes
 because the IRS K-1 PDF has both an entity-name field and a
 shareholder-name field that must be filled distinctly. The orchestrator
-emit step (Task 18) flattens the nested compute output (`alloc["entity"]`,
-`alloc["shareholder"]`) into this flat keyspace before invoking the filler.
+emit step flattens the nested compute output (`alloc.entity`,
+`alloc.shareholder`) into this flat keyspace before invoking the filler.
 """
 
 from pathlib import Path
