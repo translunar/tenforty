@@ -76,6 +76,7 @@ def _scorp_attestation_defaults() -> dict[str, bool]:
         "acknowledges_no_section_1374_tax": True,
         "acknowledges_cogs_aggregate_only": True,
         "acknowledges_officer_comp_aggregate_only": True,
+        "acknowledges_no_elective_payment_election": True,
     }
 
 

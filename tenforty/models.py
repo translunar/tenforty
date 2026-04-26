@@ -359,6 +359,13 @@ class TaxReturnConfig:
     # caller supplies the aggregate on
     # s_corp_return.deductions.compensation_of_officers. Required at load time.
     acknowledges_officer_comp_aggregate_only: bool | None = None
+    # Form 3800 elective payment election (IRC §6417) is out of scope; v1
+    # does not compute or claim elective payment elections. Required at
+    # load time so the user affirms awareness — the value reaches the PDF
+    # via line 24d only when supplied externally on
+    # `s_corp_return.scope_outs.refundable_credits` (mirroring §1374 /
+    # §1375 caller-supplied amounts).
+    acknowledges_no_elective_payment_election: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None

@@ -503,6 +503,21 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
         ),
         compute_error="",
     ),
+    Attestation(
+        field="acknowledges_no_elective_payment_election",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_elective_payment_election` "
+            "is required and must be either true or false. Form 3800 "
+            "elective payment elections (IRC §6417) are not computed by "
+            "tenforty v1. The 2025 Form 1120-S routes any elective payment "
+            "amount to line 24d via `s_corp_return.scope_outs.refundable_credits`; "
+            "set true to affirm awareness that v1 does not compute the "
+            "election and any value supplied externally must come from a "
+            "completed Form 3800 prepared off-platform."
+        ),
+        compute_error="",
+    ),
 )
 
 

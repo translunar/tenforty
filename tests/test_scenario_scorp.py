@@ -46,6 +46,7 @@ _YAML_WITH_SCORP = textwrap.dedent("""\
       acknowledges_no_section_1374_tax: true
       acknowledges_cogs_aggregate_only: true
       acknowledges_officer_comp_aggregate_only: true
+      acknowledges_no_elective_payment_election: true
     s_corp_return:
       name: "Example S-Corp Inc."
       ein: "00-0000000"
@@ -133,6 +134,7 @@ _MINIMAL_NO_SCORP_YAML = textwrap.dedent("""\
       acknowledges_no_section_1374_tax: true
       acknowledges_cogs_aggregate_only: true
       acknowledges_officer_comp_aggregate_only: true
+      acknowledges_no_elective_payment_election: true
 """)
 
 

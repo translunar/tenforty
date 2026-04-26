@@ -53,6 +53,7 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_section_1374_tax",
             "acknowledges_cogs_aggregate_only",
             "acknowledges_officer_comp_aggregate_only",
+            "acknowledges_no_elective_payment_election",
         }
         self.assertEqual(expected, fields)
 
@@ -98,6 +99,7 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_section_1374_tax=False,
             acknowledges_cogs_aggregate_only=False,
             acknowledges_officer_comp_aggregate_only=False,
+            acknowledges_no_elective_payment_election=False,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise

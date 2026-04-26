@@ -18,6 +18,7 @@ config:
   acknowledges_no_section_1374_tax: false
   acknowledges_cogs_aggregate_only: false
   acknowledges_officer_comp_aggregate_only: false
+  acknowledges_no_elective_payment_election: false
   acknowledges_sch_a_sales_tax_unsupported: false
   acknowledges_qbi_below_threshold: false
   acknowledges_unlimited_at_risk: false

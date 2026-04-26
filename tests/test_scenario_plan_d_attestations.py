@@ -47,6 +47,7 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_section_1374_tax": False,
         "acknowledges_cogs_aggregate_only": False,
         "acknowledges_officer_comp_aggregate_only": False,
+        "acknowledges_no_elective_payment_election": False,
     }
     for name in _UNCONDITIONAL_FIELDS:
         cfg[name] = False

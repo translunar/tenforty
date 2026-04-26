@@ -15,6 +15,7 @@ _EXPECTED_SCORP_FIELDS = frozenset({
     "acknowledges_no_section_1374_tax",
     "acknowledges_cogs_aggregate_only",
     "acknowledges_officer_comp_aggregate_only",
+    "acknowledges_no_elective_payment_election",  # NEW
 })
 
 # Per existing attestations.py convention, attestations whose
@@ -38,11 +39,12 @@ _LOAD_ERROR_ANCHORS = {
     "acknowledges_no_section_1374_tax": "§1374",
     "acknowledges_cogs_aggregate_only": "1125-A",
     "acknowledges_officer_comp_aggregate_only": "1125-E",
+    "acknowledges_no_elective_payment_election": "§6417",
 }
 
 
 def _make_scorp_cfg(**overrides) -> TaxReturnConfig:
-    """Build a TaxReturnConfig with all 7 1120-S attestations True by default,
+    """Build a TaxReturnConfig with all 8 1120-S attestations True by default,
     suitable for firing-test scaffolding. Override individual gates by kwarg to
     selectively set one False — per-test variance is then a single kwarg, not
     a 12-line config block."""
