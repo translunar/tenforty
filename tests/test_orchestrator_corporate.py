@@ -236,8 +236,12 @@ class FederalWaterfallTests(unittest.TestCase):
         # The corp output still emits exactly 1 allocation (corp doesn't
         # see user-supplied K-1s).
         self.assertEqual(len(out["f1120s_sch_k1_allocations"]), 1)
-        # To verify v1 non-dedup: build the same effective_scenario the
-        # orchestrator builds and check its schedule_k1s has 2 entries.
+        # Behavioral non-dedup check: rebuild the same effective_scenario
+        # the orchestrator constructs internally, flatten it the way the
+        # 1040 workbook sees it, and count distinct K-1 rows in the flat
+        # input dict. Each K-1 occupies one of the lettered row slots
+        # (k1_a_*, k1_b_*, …), so counting `*_entity_name` keys yields
+        # the number of K-1 rows the workbook will actually read.
         extra_k1s = [
             _make_k1_from_1120s_allocation(a)
             for a in out["f1120s_sch_k1_allocations"]
@@ -245,10 +249,16 @@ class FederalWaterfallTests(unittest.TestCase):
         effective = dataclasses.replace(
             s, schedule_k1s=list(s.schedule_k1s) + extra_k1s,
         )
+        flat = flatten_scenario(effective)
+        k1_row_entity_keys = [
+            k for k in flat
+            if k.startswith("k1_") and k.endswith("_entity_name")
+        ]
         self.assertEqual(
-            len(effective.schedule_k1s), 2,
-            "v1 contract: user K-1 + computed K-1 both flow to 1040; "
-            "if dedup is later added, this test must change explicitly.",
+            len(k1_row_entity_keys), 2,
+            "v1 contract: user K-1 + computed K-1 both flow to 1040 as "
+            "two distinct flat-input rows; if dedup is later added, this "
+            "test must change explicitly.",
         )
 
 

@@ -186,8 +186,11 @@ class ReturnOrchestrator:
             work_dir=self.work_dir / "federal",
         )
 
-        # 1099-G box 4 withholding injection (preserved from prior behavior;
-        # see the existing inline rationale on this block).
+        # Supplement: the oracle's OUTPUTS only read W-2 withholding
+        # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding
+        # flows into the workbook's total_payments but is not exposed as a
+        # separate named range. Inject it here so f1040.compute's
+        # federal_withheld_1099 slot picks it up for line 25b.
         g_withheld = sum(
             g.federal_tax_withheld for g in effective_scenario.form1099_g
         )
