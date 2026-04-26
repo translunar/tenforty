@@ -16,28 +16,63 @@ from collections.abc import Callable, Mapping
 
 
 class PdfF1120S:
-    @staticmethod
-    def get_mapping(year: int) -> dict[str, str]:
+    """PDF field mapping for IRS Form 1120-S.
+
+    Unlike `Pdf1040`, which uses a single flat compute-key → PDF-field
+    dict, this class exposes a four-registry design because the 2025
+    Form 1120-S has structural patterns that a flat map cannot express:
+
+    - `_MAPPING_<year>` — direct 1:1 compute-key → PDF-field-path. Most
+      keys live here. This is the same shape as `Pdf1040._MAPPINGS`.
+    - `_AGGREGATIONS_<year>` — PDF cells that receive the *sum* of
+      multiple compute keys. The 2025 form combined former lines 23a +
+      23b into a single line-24a cell, and the §453 deferred-interest
+      amount must be folded into the line-23c "Total tax" write-in
+      because no separate fillable cell exists.
+    - `_DERIVATIONS_<year>` — PDF cells whose value is *computed* from
+      compute outputs (e.g., line 28b refund = overpayment − credited).
+      These never receive a single compute key directly.
+    - `_SUPPRESSED_<year>` — compute keys that have *no* fillable cell
+      on the year's form. v1 declares them out-of-scope-for-PDF and
+      relies on attestations to ensure the user reports them externally.
+
+    These extensions did not exist for F1040 because the 1040's PDF
+    fields line up 1:1 with compute outputs at the keys we expose. They
+    are necessary for 1120-S because the IRS reorganized the Tax and
+    Payments section on the 2025 revision (consolidating cells, dropping
+    the built-in-gains-tax line, and converting some former cells into
+    write-in adjustments).
+
+    The partition invariant (enforced by the mapping test) is that every
+    expected compute key is OWNED by exactly one of `_MAPPING_<year>`,
+    `_AGGREGATIONS_<year>`, or `_SUPPRESSED_<year>`. Derivations consume
+    compute keys but do not own them; see the comment block above
+    `_DERIVATIONS_2025` for the convention.
+    """
+
+    @classmethod
+    def get_mapping(cls, year: int) -> dict[str, str]:
         if year == 2025:
             return _MAPPING_2025
         raise ValueError(f"No Form 1120-S mapping for year {year}")
 
-    @staticmethod
-    def get_aggregations(year: int) -> dict[str, tuple[str, ...]]:
+    @classmethod
+    def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
         if year == 2025:
             return _AGGREGATIONS_2025
         raise ValueError(f"No Form 1120-S aggregations for year {year}")
 
-    @staticmethod
+    @classmethod
     def get_derivations(
+        cls,
         year: int,
     ) -> dict[str, Callable[[Mapping[str, object]], object]]:
         if year == 2025:
             return _DERIVATIONS_2025
         raise ValueError(f"No Form 1120-S derivations for year {year}")
 
-    @staticmethod
-    def get_suppressed(year: int) -> frozenset[str]:
+    @classmethod
+    def get_suppressed(cls, year: int) -> frozenset[str]:
         if year == 2025:
             return _SUPPRESSED_2025
         raise ValueError(f"No Form 1120-S suppressions for year {year}")
@@ -68,6 +103,10 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_advertising":               "topmostSubform[0].Page1[0].f1_34[0]",
     "f1120s_pension_profit_sharing":    "topmostSubform[0].Page1[0].f1_35[0]",
     "f1120s_employee_benefits":         "topmostSubform[0].Page1[0].f1_36[0]",
+    # Why skip `f1_37`: the 2025 form added a new Line 19 ("Energy
+    # efficient commercial buildings deduction", Form 7205) with no
+    # corresponding compute key in the v1 1120-S model. The next compute
+    # key (`f1120s_other_deductions`) maps to Line 20 (`f1_38`).
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_38[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_39[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_40[0]",
@@ -90,7 +129,7 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_sch_b_business_activity_code":        "topmostSubform[0].Page1[0].ABC[0].f1_12[0]",
     "f1120s_sch_b_business_activity_description": "topmostSubform[0].Page2[0].f2_2[0]",
     "f1120s_sch_b_product_or_service":            "topmostSubform[0].Page2[0].f2_3[0]",
-    # Schedule B — yes/no questions ([0]=Yes checkbox, [1]=No checkbox)
+    # Schedule B — yes/no questions. Only Yes-side checkbox paths are mapped.
     "f1120s_sch_b_has_any_foreign_shareholders": "topmostSubform[0].Page2[0].c2_2[0]",
     "f1120s_sch_b_any_c_corp_subsidiaries":      "topmostSubform[0].Page2[0].c2_3[0]",
     "f1120s_sch_b_owns_foreign_entity":          "topmostSubform[0].Page2[0].c2_4[0]",
@@ -135,6 +174,12 @@ _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {
 
 
 # PDF cells whose value is derived from compute outputs.
+#
+# Convention: derivation lambdas consume compute keys but do not own
+# them. Every key referenced inside a lambda body must already appear in
+# `_MAPPING_2025`, `_AGGREGATIONS_2025`, or `_SUPPRESSED_2025`. The
+# partition test enforces ownership; lambda consumption is intentionally
+# excluded from the partition.
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 28b "Refunded" — refund = overpayment − credited to next year.
     "topmostSubform[0].Page1[0].f1_53[0]": lambda c: (

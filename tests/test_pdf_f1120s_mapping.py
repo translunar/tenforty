@@ -82,9 +82,18 @@ _EXPECTED_COMPUTE_KEYS = frozenset({
 
 class PdfF1120SMappingTests(unittest.TestCase):
     def test_2025_every_compute_key_is_accounted_for(self):
-        """Every expected compute key must appear in exactly one of the
-        three registries: direct mapping, aggregation contributor, or
-        suppression. No orphans, no double-accounting."""
+        """Partition invariant: every expected compute key is OWNED by
+        exactly one of `_MAPPING_2025`, `_AGGREGATIONS_2025`, or
+        `_SUPPRESSED_2025`. No orphans (every key is owned somewhere)
+        and no double-accounting (a key may not be owned by two
+        registries).
+
+        Derivation lambdas (`_DERIVATIONS_2025`) CONSUME compute keys
+        but do not OWN them — a derivation may only reference keys that
+        are already owned by mapping/aggregations/suppressed. This test
+        enforces ownership; derivation consumption is intentionally
+        excluded from the partition.
+        """
         mapping = pdf_f1120s.PdfF1120S.get_mapping(2025)
         aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2025)
         suppressed = pdf_f1120s.PdfF1120S.get_suppressed(2025)
