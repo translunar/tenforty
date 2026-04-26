@@ -10,12 +10,22 @@ class PdfFiller:
     """Fills PDF form fields with computed tax values."""
 
     @staticmethod
-    def _render_numeric(value: object) -> str:
-        """Render a scalar value to its PDF string form. Bools are rendered
-        as pypdf checkbox toggle values ("Yes"/"Off"); numerics are IRS
-        half-up rounded to whole dollars; everything else is str()-coerced."""
+    def _render_scalar(value: object) -> str:
+        """Render a scalar value to its PDF string form.
+
+        Numerics are IRS half-up rounded to whole dollars; everything else
+        is str()-coerced. Bools are explicitly rejected — bool-valued fields
+        must be registered in the form's checkbox_states map and routed
+        through fill() so the per-field XFA appearance state is written.
+        Falling through to "Yes"/"Off" here would silently render the cell
+        empty in pypdf for any IRS XFA form whose checkboxes use non-/Yes
+        on-states."""
         if isinstance(value, bool):
-            return "Yes" if value else "Off"
+            raise ValueError(
+                "PdfFiller._render_scalar does not accept bool values; "
+                "bool-valued fields must be registered in the form's "
+                "checkbox_states map and routed through fill()."
+            )
         if isinstance(value, (int, float)):
             return str(irs_round(value))
         return str(value)
@@ -68,7 +78,7 @@ class PdfFiller:
                 if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
                     pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
                 else:
-                    pdf_fields[pdf_field_name] = self._render_numeric(v)
+                    pdf_fields[pdf_field_name] = self._render_scalar(v)
 
         if aggregations:
             for pdf_field, compute_keys in aggregations.items():
@@ -77,7 +87,7 @@ class PdfFiller:
                 if not present_keys:
                     continue
                 total = sum(values[k] for k in compute_keys if k in values and values[k] is not None)
-                pdf_fields[pdf_field] = self._render_numeric(total)
+                pdf_fields[pdf_field] = self._render_scalar(total)
 
         if derivations:
             for pdf_field, lambda_fn in derivations.items():
@@ -88,7 +98,7 @@ class PdfFiller:
                     # rather than writing a broken or partial value.
                     continue
                 if result is not None:
-                    pdf_fields[pdf_field] = self._render_numeric(result)
+                    pdf_fields[pdf_field] = self._render_scalar(result)
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)

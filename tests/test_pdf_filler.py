@@ -14,17 +14,24 @@ class TestPdfFiller(unittest.TestCase):
         self.assertTrue(callable(getattr(filler, "fill", None)))
 
 
-class RenderNumericTests(unittest.TestCase):
-    def test_emits_Yes_for_True(self):
-        self.assertEqual(PdfFiller._render_numeric(True), "Yes")
-
-    def test_emits_Off_for_False(self):
-        self.assertEqual(PdfFiller._render_numeric(False), "Off")
-
+class RenderScalarTests(unittest.TestCase):
     def test_irs_rounds_floats(self):
         # 1234.5 rounds to 1235 (IRS half-up); regression guard for the
         # existing rounding branch.
-        self.assertEqual(PdfFiller._render_numeric(1234.5), "1235")
+        self.assertEqual(PdfFiller._render_scalar(1234.5), "1235")
 
     def test_passes_strings_through(self):
-        self.assertEqual(PdfFiller._render_numeric("541990"), "541990")
+        self.assertEqual(PdfFiller._render_scalar("541990"), "541990")
+
+    def test_rejects_bool_true(self):
+        # Bools are no longer accepted — they must be routed through
+        # checkbox_states in fill(). This guards the footgun where a
+        # bool-valued field gets forgotten and silently renders "Yes"/"Off".
+        with self.assertRaises(ValueError) as cm:
+            PdfFiller._render_scalar(True)
+        self.assertIn("checkbox_states", str(cm.exception))
+
+    def test_rejects_bool_false(self):
+        with self.assertRaises(ValueError) as cm:
+            PdfFiller._render_scalar(False)
+        self.assertIn("checkbox_states", str(cm.exception))
