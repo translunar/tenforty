@@ -29,24 +29,24 @@ from tenforty.rounding import irs_round
 # the form-wide `irs_round` output convention. Using `int` here removes
 # the redundant `irs_round(0.0)` wrap on every line and makes the type
 # match the rest of the compute output.
-_SCH_K_V1_ZERO_LINES: dict[str, int] = {
-    "f1120s_sch_k_line_2_net_rental_real_estate": 0,
-    "f1120s_sch_k_line_3c_other_net_rental_income": 0,
-    "f1120s_sch_k_line_4_interest_income": 0,
-    "f1120s_sch_k_line_5a_ordinary_dividends": 0,
-    "f1120s_sch_k_line_6_royalties": 0,
-    "f1120s_sch_k_line_7_net_short_term_capital_gain": 0,
-    "f1120s_sch_k_line_8a_net_long_term_capital_gain": 0,
-    "f1120s_sch_k_line_9_net_section_1231_gain": 0,
-    "f1120s_sch_k_line_10_other_income": 0,
-    "f1120s_sch_k_line_11_section_179_deduction": 0,
-    "f1120s_sch_k_line_12a_charitable_contributions": 0,
-    "f1120s_sch_k_line_13a_low_income_housing_credit": 0,
-    "f1120s_sch_k_line_14_foreign_transactions": 0,
-    "f1120s_sch_k_line_15_amt_items": 0,
-    "f1120s_sch_k_line_16a_tax_exempt_interest": 0,
-    "f1120s_sch_k_line_17a_investment_income": 0,
-    "f1120s_sch_k_line_18_income_loss_reconciliation": 0,
+_SCH_K_V1_ZERO_PLACEHOLDERS: dict[str, int] = {
+    "f1120s_sch_k_net_rental_real_estate": 0,
+    "f1120s_sch_k_other_net_rental_income": 0,
+    "f1120s_sch_k_interest_income": 0,
+    "f1120s_sch_k_ordinary_dividends": 0,
+    "f1120s_sch_k_royalties": 0,
+    "f1120s_sch_k_net_short_term_capital_gain": 0,
+    "f1120s_sch_k_net_long_term_capital_gain": 0,
+    "f1120s_sch_k_net_section_1231_gain": 0,
+    "f1120s_sch_k_other_income": 0,
+    "f1120s_sch_k_section_179_deduction": 0,
+    "f1120s_sch_k_charitable_contributions": 0,
+    "f1120s_sch_k_low_income_housing_credit": 0,
+    "f1120s_sch_k_foreign_transactions": 0,
+    "f1120s_sch_k_amt_items": 0,
+    "f1120s_sch_k_tax_exempt_interest": 0,
+    "f1120s_sch_k_investment_income": 0,
+    "f1120s_sch_k_income_loss_reconciliation": 0,
 }
 
 
@@ -61,14 +61,14 @@ def _compute_income(r: SCorpReturn) -> dict:
     line_5 = r.income.other_income
     line_6 = line_3 + line_4 + line_5
     return {
-        "f1120s_line_1a_gross_receipts": irs_round(line_1a),
-        "f1120s_line_1b_returns_and_allowances": irs_round(line_1b),
-        "f1120s_line_1c_net_receipts": irs_round(line_1c),
-        "f1120s_line_2_cost_of_goods_sold": irs_round(line_2),
-        "f1120s_line_3_gross_profit": irs_round(line_3),
-        "f1120s_line_4_net_gain_loss_4797": irs_round(line_4),
-        "f1120s_line_5_other_income": irs_round(line_5),
-        "f1120s_line_6_total_income": irs_round(line_6),
+        "f1120s_gross_receipts": irs_round(line_1a),
+        "f1120s_returns_and_allowances": irs_round(line_1b),
+        "f1120s_net_receipts": irs_round(line_1c),
+        "f1120s_cost_of_goods_sold": irs_round(line_2),
+        "f1120s_gross_profit": irs_round(line_3),
+        "f1120s_net_gain_loss_4797": irs_round(line_4),
+        "f1120s_other_income": irs_round(line_5),
+        "f1120s_total_income": irs_round(line_6),
     }
 
 
@@ -101,23 +101,23 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
         line_7, line_8, line_9, line_10, line_11, line_12, line_13,
         line_14, line_15, line_16, line_17, line_18, line_19,
     ))
-    line_21 = income["f1120s_line_6_total_income"] - line_20
+    line_21 = income["f1120s_total_income"] - line_20
     return {
-        "f1120s_line_7_compensation_of_officers": irs_round(line_7),
-        "f1120s_line_8_salaries_wages": irs_round(line_8),
-        "f1120s_line_9_repairs_maintenance": irs_round(line_9),
-        "f1120s_line_10_bad_debts": irs_round(line_10),
-        "f1120s_line_11_rents": irs_round(line_11),
-        "f1120s_line_12_taxes_licenses": irs_round(line_12),
-        "f1120s_line_13_interest": irs_round(line_13),
-        "f1120s_line_14_depreciation": irs_round(line_14),
-        "f1120s_line_15_depletion": irs_round(line_15),
-        "f1120s_line_16_advertising": irs_round(line_16),
-        "f1120s_line_17_pension_profit_sharing": irs_round(line_17),
-        "f1120s_line_18_employee_benefits": irs_round(line_18),
-        "f1120s_line_19_other_deductions": irs_round(line_19),
-        "f1120s_line_20_total_deductions": irs_round(line_20),
-        "f1120s_line_21_ordinary_business_income": irs_round(line_21),
+        "f1120s_compensation_of_officers": irs_round(line_7),
+        "f1120s_salaries_wages": irs_round(line_8),
+        "f1120s_repairs_maintenance": irs_round(line_9),
+        "f1120s_bad_debts": irs_round(line_10),
+        "f1120s_rents": irs_round(line_11),
+        "f1120s_taxes_licenses": irs_round(line_12),
+        "f1120s_interest": irs_round(line_13),
+        "f1120s_depreciation": irs_round(line_14),
+        "f1120s_depletion": irs_round(line_15),
+        "f1120s_advertising": irs_round(line_16),
+        "f1120s_pension_profit_sharing": irs_round(line_17),
+        "f1120s_employee_benefits": irs_round(line_18),
+        "f1120s_other_deductions": irs_round(line_19),
+        "f1120s_total_deductions": irs_round(line_20),
+        "f1120s_ordinary_business_income": irs_round(line_21),
     }
 
 
@@ -128,10 +128,10 @@ def _compute_total_tax(r: SCorpReturn) -> dict:
     line_22b = r.scope_outs.built_in_gains_tax
     line_22c = r.scope_outs.interest_on_453_deferred
     return {
-        "f1120s_line_22a_net_passive_income_tax": irs_round(line_22a),
-        "f1120s_line_22b_built_in_gains_tax": irs_round(line_22b),
-        "f1120s_line_22c_interest_on_453_deferred": irs_round(line_22c),
-        "f1120s_line_22_total_tax": irs_round(line_22a + line_22b + line_22c),
+        "f1120s_net_passive_income_tax": irs_round(line_22a),
+        "f1120s_built_in_gains_tax": irs_round(line_22b),
+        "f1120s_interest_on_453_deferred": irs_round(line_22c),
+        "f1120s_total_tax": irs_round(line_22a + line_22b + line_22c),
     }
 
 
@@ -140,7 +140,7 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     + line 25 / line 27 placeholders.
 
     Lines 24 (amount owed) and 26 (overpayment) are mutually exclusive.
-    Reads `total_tax["f1120s_line_22_total_tax"]` to compute the balance.
+    Reads `total_tax["f1120s_total_tax"]` to compute the balance.
 
     Line 25 (estimated tax penalty / Form 2220) and line 27 (overpayment
     credited to next year) emit 0.0 in v1 — Form 2220 is not implemented
@@ -155,19 +155,19 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     line_23d = p.credit_for_federal_excise_tax
     line_23e = p.refundable_credits
     line_23 = line_23a + line_23b + line_23c + line_23d + line_23e
-    line_22 = total_tax["f1120s_line_22_total_tax"]
+    line_22 = total_tax["f1120s_total_tax"]
     delta = line_22 - line_23
     return {
-        "f1120s_line_23a_estimated_tax_payments": irs_round(line_23a),
-        "f1120s_line_23b_prior_year_overpayment_credited": irs_round(line_23b),
-        "f1120s_line_23c_tax_deposited_with_7004": irs_round(line_23c),
-        "f1120s_line_23d_credit_for_federal_excise_tax": irs_round(line_23d),
-        "f1120s_line_23e_refundable_credits": irs_round(line_23e),
-        "f1120s_line_23_total_payments": irs_round(line_23),
-        "f1120s_line_24_amount_owed": irs_round(max(delta, 0.0)),
-        "f1120s_line_25_estimated_tax_penalty": irs_round(0.0),
-        "f1120s_line_26_overpayment": irs_round(max(-delta, 0.0)),
-        "f1120s_line_27_credited_to_next_year": irs_round(0.0),
+        "f1120s_estimated_tax_payments": irs_round(line_23a),
+        "f1120s_prior_year_overpayment_credited": irs_round(line_23b),
+        "f1120s_tax_deposited_with_7004": irs_round(line_23c),
+        "f1120s_credit_for_federal_excise_tax": irs_round(line_23d),
+        "f1120s_refundable_credits": irs_round(line_23e),
+        "f1120s_total_payments": irs_round(line_23),
+        "f1120s_amount_owed": irs_round(max(delta, 0.0)),
+        "f1120s_estimated_tax_penalty": irs_round(0.0),
+        "f1120s_overpayment": irs_round(max(-delta, 0.0)),
+        "f1120s_credited_to_next_year": irs_round(0.0),
     }
 
 
@@ -205,7 +205,7 @@ def _compute_schedule_k(deductions: dict) -> dict:
 
     In v1 only line 1 (OBI) has compute logic; the remaining lines have
     no v1 compute logic and emit zero so the Sch K section is complete
-    on the fill output. `_SCH_K_V1_ZERO_LINES` is the named constant of
+    on the fill output. `_SCH_K_V1_ZERO_PLACEHOLDERS` is the named constant of
     those v1 zero entries.
 
     Line 1 is read from the deductions dict (which already passed through
@@ -214,10 +214,10 @@ def _compute_schedule_k(deductions: dict) -> dict:
     convention as the rest of the compute path.
     """
     return {
-        "f1120s_sch_k_line_1_ordinary_business_income": irs_round(
-            deductions["f1120s_line_21_ordinary_business_income"]
+        "f1120s_sch_k_ordinary_business_income": irs_round(
+            deductions["f1120s_ordinary_business_income"]
         ),
-        **_SCH_K_V1_ZERO_LINES,
+        **_SCH_K_V1_ZERO_PLACEHOLDERS,
     }
 
 
@@ -229,7 +229,7 @@ def _compute_schedule_k1_allocations(
     v1 supports only Sch K line 1 (OBI) on Sch K-1 box 1; other
     separately-stated items have no v1 compute logic.
     """
-    sch_k_line_1 = schedule_k["f1120s_sch_k_line_1_ordinary_business_income"]
+    sch_k_line_1 = schedule_k["f1120s_sch_k_ordinary_business_income"]
     allocations: list[K1Allocation] = []
     for sh in r.shareholders:
         share = sh.ownership_percentage / 100.0
