@@ -64,7 +64,7 @@ def _make_scorp_return() -> SCorpReturn:
 
 
 def _scorp_attestation_defaults() -> dict[str, bool]:
-    """The seven 1120-S-specific attestations Sub-plan 2 introduces, all
+    """The eight 1120-S-specific attestations Sub-plan 2 introduces, all
     set to True for a v1-profile fixture (sole-shareholder service S-corp,
     under $250k receipts/assets, no §1375/§1374, aggregate COGS/officer
     comp). Returned as a dict so callers can splat with `**`."""
@@ -87,7 +87,7 @@ def _make_v1_scenario(
 ) -> Scenario:
     """Build a v1-profile Scenario (single shareholder, all 1120-S attestations
     true). `plan_d_attestation_defaults()` carries safe-default values for all
-    23 attestation fields (the 7 1120-S keys default False); merging
+    23 attestation fields (the 8 1120-S keys default False); merging
     `_scorp_attestation_defaults()` over it lets the 1120-S True values win —
     `validate_load_time` requires every attestation field to be non-None
     regardless of trigger.

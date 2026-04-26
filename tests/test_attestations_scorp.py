@@ -15,7 +15,7 @@ _EXPECTED_SCORP_FIELDS = frozenset({
     "acknowledges_no_section_1374_tax",
     "acknowledges_cogs_aggregate_only",
     "acknowledges_officer_comp_aggregate_only",
-    "acknowledges_no_elective_payment_election",  # NEW
+    "acknowledges_no_elective_payment_election",
 })
 
 # Per existing attestations.py convention, attestations whose
@@ -61,7 +61,7 @@ def _make_scorp_cfg(**overrides) -> TaxReturnConfig:
 class SCorpAttestationsTests(unittest.TestCase):
     # NOTE: registry membership is already enforced canonically by
     # `tests/test_attestations.py::TestAttestationsTable` (full-set equality),
-    # so a separate "are the seven registered" structural test would be
+    # so a separate "are the eight registered" structural test would be
     # strictly weaker and was deliberately not added here. Content checks
     # below verify that each entry carries its canonical IRC/R&TC/form
     # anchor, catching copy-paste errors between entries.
@@ -145,7 +145,7 @@ class SCorpAttestationGateFiringTests(unittest.TestCase):
         """Confirms `True` ack short-circuits the gate even when the
         triggered_when predicate fires — the attestation flag governs,
         not the predicate alone."""
-        cfg = _make_scorp_cfg()  # all seven True
+        cfg = _make_scorp_cfg()  # all eight True
         r = _make_scorp_return()
         r.scope_outs.net_passive_income_tax = 100.0  # nonzero, but acked
         s = Scenario(config=cfg, s_corp_return=r)

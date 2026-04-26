@@ -41,7 +41,7 @@ def plan_d_attestation_defaults() -> dict[str, bool]:
     when the scenario's K-1s or lots actually carry the triggering field
     value — an all-False default is safe and conservative. Tests that need
     a different value for one of the three True fields should override it
-    explicitly on `scenario.config`. The 7 1120-S fields are likewise safe
+    explicitly on `scenario.config`. The 8 1120-S fields are likewise safe
     at False because their compute gates require `s.s_corp_return` to be
     non-None."""
     return {

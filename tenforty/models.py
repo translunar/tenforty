@@ -332,7 +332,7 @@ class TaxReturnConfig:
     acknowledges_no_28_rate_gain: bool | None = None
     # Any 1099-B lot with is_section_1250=True + False raises.
     acknowledges_no_unrecaptured_section_1250: bool | None = None
-    # --- 1120-S scope-out attestations (7 unconditional) ---
+    # --- 1120-S scope-out attestations (8 unconditional) ---
     # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
     # gross_receipts >= $250,000 + False raises.
     acknowledges_no_1120s_schedule_l_needed: bool | None = None

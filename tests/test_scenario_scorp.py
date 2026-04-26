@@ -125,7 +125,7 @@ _MINIMAL_NO_SCORP_YAML = textwrap.dedent("""\
       acknowledges_no_unrecaptured_section_1250: false
       # 1120-S attestations are universally declared on TaxReturnConfig
       # (load-time validation iterates the registry unconditionally), so
-      # the seven 1120-S keys must appear here even when s_corp_return is
+      # the eight 1120-S keys must appear here even when s_corp_return is
       # absent.
       acknowledges_no_1120s_schedule_l_needed: true
       acknowledges_no_1120s_schedule_m_needed: true
