@@ -35,6 +35,7 @@ from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.models import (
     FilingStatus,
+    K1Allocation,
     K1AllocationEntity,
     K1AllocationShareholder,
     K1FanoutData,
