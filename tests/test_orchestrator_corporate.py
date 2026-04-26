@@ -32,7 +32,7 @@ from tenforty.orchestrator import (
 )
 
 from tests._scorp_fixtures import _make_v1_scenario, _scorp_attestation_defaults
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 
 class ComputeCorporateTests(unittest.TestCase):
@@ -406,7 +406,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
             state="NY",
             zip_code="10001",
         )
-        attestations = {**plan_d_attestation_defaults(), **_scorp_attestation_defaults()}
+        attestations = {**scope_out_attestation_defaults(), **_scorp_attestation_defaults()}
         scenario = Scenario(
             config=TaxReturnConfig(
                 year=2025, filing_status=FilingStatus.SINGLE,

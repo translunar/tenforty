@@ -31,9 +31,9 @@ needs_pdf = unittest.skipUnless(
 )
 
 
-def plan_d_attestation_defaults() -> dict[str, bool]:
-    """Return a dict of all attestation fields pre-set for a K-1-capable
-    and S-corp-capable in-memory test scenario.
+def scope_out_attestation_defaults() -> dict[str, bool]:
+    """Return a dict of safe-default values for every scope-out attestation
+    field (Plan D, K-1, S-corp) on an in-memory test scenario.
 
     Three fields default to True because they affirm the common test posture:
     unlimited at-risk amounts, basis tracked externally, and no K-1 credits.
@@ -86,7 +86,7 @@ def make_simple_scenario() -> Scenario:
             filing_status="single",
             birthdate="1990-06-15",
             state="CA",
-            **plan_d_attestation_defaults(),
+            **scope_out_attestation_defaults(),
         ),
         w2s=[
             W2(

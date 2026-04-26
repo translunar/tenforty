@@ -86,14 +86,14 @@ def _make_v1_scenario(
     other_deductions: float = 0.0,
 ) -> Scenario:
     """Build a v1-profile Scenario (single shareholder, all 1120-S attestations
-    true). `plan_d_attestation_defaults()` carries safe-default values for all
+    true). `scope_out_attestation_defaults()` carries safe-default values for all
     23 attestation fields (the 8 1120-S keys default False); merging
     `_scorp_attestation_defaults()` over it lets the 1120-S True values win —
     `validate_load_time` requires every attestation field to be non-None
     regardless of trigger.
     """
-    from tests.helpers import plan_d_attestation_defaults
-    attestations = {**plan_d_attestation_defaults(), **_scorp_attestation_defaults()}
+    from tests.helpers import scope_out_attestation_defaults
+    attestations = {**scope_out_attestation_defaults(), **_scorp_attestation_defaults()}
     return Scenario(
         config=TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,

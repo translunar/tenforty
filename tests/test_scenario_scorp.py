@@ -21,7 +21,7 @@ _YAML_WITH_SCORP = textwrap.dedent("""\
       ssn: "000-00-0000"
       # Pre-existing attestations from Plan D / Sub-plan 1 (all required
       # to be non-None at load time). Mirrors the helper
-      # `tests.helpers.plan_d_attestation_defaults()`.
+      # `tests.helpers.scope_out_attestation_defaults()`.
       has_foreign_accounts: false
       prior_year_itemized: false
       acknowledges_sch_a_sales_tax_unsupported: false

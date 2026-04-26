@@ -12,7 +12,7 @@ scenario._validate_scenario_config and sch_e_part_ii._enforce_scope_gates
 iterate this tuple rather than hand-coded `if ... is None: raise` blocks.
 
 Fixture/helper defaults are deliberately NOT on this dataclass. They live in
-`tests/helpers.plan_d_attestation_defaults()` so that changing what a simple
+`tests/helpers.scope_out_attestation_defaults()` so that changing what a simple
 in-memory test scenario implies (e.g., whether the user is assumed to have
 unlimited at-risk amounts when constructing a bare Scenario) is a helper
 change, reviewable independently from this registry.
