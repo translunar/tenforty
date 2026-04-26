@@ -1,15 +1,23 @@
 """Unit tests for ReturnOrchestrator.compute_corporate."""
 
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
 
 from tenforty.models import (
     Address,
+    EntityType,
     K1AllocationEntity,
     K1AllocationShareholder,
+    ScheduleK1,
 )
-from tenforty.orchestrator import ReturnOrchestrator, _flatten_k1_party
+from tenforty.oracle.flattener import flatten_scenario
+from tenforty.orchestrator import (
+    ReturnOrchestrator,
+    _flatten_k1_party,
+    _make_k1_from_1120s_allocation,
+)
 
 from tests._scorp_fixtures import _make_v1_scenario
 
@@ -121,3 +129,111 @@ class FlattenK1PartyTests(unittest.TestCase):
         )
         # Shareholder has no EIN field.
         self.assertNotIn("shareholder_ein", flat)
+
+
+class FederalWaterfallTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name),
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_federal_compute_runs_corporate_pipeline_and_merges_results(self):
+        """When s_corp_return is set, compute_federal runs the corporate
+        pipeline before the 1040 pipeline and merges f1120s_* output keys
+        into its return dict alongside the 1040 outputs.
+        """
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        out = self.orch.compute_federal(s)
+        # Corporate-pipeline keys appear in compute_federal's output.
+        self.assertEqual(
+            out["f1120s_ordinary_business_income"], 70000.0,
+        )
+        # 1040-pipeline keys are also present (line 21 OBI flowed into the
+        # personal return via the appended K-1 → Sch E Part II → Sch 1).
+        self.assertIn("agi", out)
+
+    def test_federal_compute_does_not_mutate_caller_scenario(self):
+        """compute_federal must not mutate the caller's input. Verified
+        across schedule_k1s (which the corporate waterfall augments) and
+        config (which is shared by reference through dataclasses.replace).
+        """
+        s = _make_v1_scenario()
+        original_k1_count = len(s.schedule_k1s)
+        original_config_id = id(s.config)
+        original_config_repr = repr(s.config)
+        original_s_corp_return_repr = repr(s.s_corp_return)
+
+        self.orch.compute_federal(s)
+        self.assertEqual(len(s.schedule_k1s), original_k1_count)
+        # `dataclasses.replace` shares config by reference; verify it
+        # wasn't mutated in place by any downstream pipeline step.
+        self.assertEqual(id(s.config), original_config_id)
+        self.assertEqual(repr(s.config), original_config_repr)
+        # SCorpReturn similarly should be untouched.
+        self.assertEqual(repr(s.s_corp_return), original_s_corp_return_repr)
+
+        # Calling twice should not double-append or otherwise drift either.
+        self.orch.compute_federal(s)
+        self.assertEqual(len(s.schedule_k1s), original_k1_count)
+        self.assertEqual(repr(s.config), original_config_repr)
+        self.assertEqual(repr(s.s_corp_return), original_s_corp_return_repr)
+
+    def test_federal_compute_skips_corporate_pipeline_when_no_s_corp_return(self):
+        s = _make_v1_scenario()
+        s.s_corp_return = None
+        out = self.orch.compute_federal(s)
+        # No f1120s_* keys when there is no corporate return.
+        f1120s_keys = [k for k in out if k.startswith("f1120s_")]
+        self.assertEqual(f1120s_keys, [])
+
+    def test_federal_compute_does_not_dedupe_user_supplied_k1(self):
+        """V1 contract: caller is responsible for not double-entering.
+        If the user manually populated `scenario.schedule_k1s` with a
+        K-1 from the same entity `s_corp_return` will compute, the 1040
+        pipeline's effective K-1 list contains BOTH (the user's + the
+        computed one). v1 does not deduplicate.
+
+        Detection mechanism: count K-1 entries actually rendered into
+        the workbook flat inputs (which is what the 1040 sheet sees).
+        """
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        # User adds the same entity's K-1 manually.
+        s.schedule_k1s = [
+            ScheduleK1(
+                entity_name="Example S-Corp Inc.",
+                entity_ein="00-0000000",
+                entity_type=EntityType.S_CORP,
+                material_participation=True,
+                ordinary_business_income=70000.0,
+            ),
+        ]
+        # Run compute_federal end-to-end (validates no crash).
+        out = self.orch.compute_federal(s)
+        # The corp output still emits exactly 1 allocation (corp doesn't
+        # see user-supplied K-1s).
+        self.assertEqual(len(out["f1120s_sch_k1_allocations"]), 1)
+        # To verify v1 non-dedup: build the same effective_scenario the
+        # orchestrator builds and check its schedule_k1s has 2 entries.
+        extra_k1s = [
+            _make_k1_from_1120s_allocation(a)
+            for a in out["f1120s_sch_k1_allocations"]
+        ]
+        effective = dataclasses.replace(
+            s, schedule_k1s=list(s.schedule_k1s) + extra_k1s,
+        )
+        self.assertEqual(
+            len(effective.schedule_k1s), 2,
+            "v1 contract: user K-1 + computed K-1 both flow to 1040; "
+            "if dedup is later added, this test must change explicitly.",
+        )

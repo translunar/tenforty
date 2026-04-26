@@ -1,5 +1,7 @@
+import dataclasses
 from pathlib import Path
 
+from tenforty.attestations import enforce_compute_time
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
@@ -34,12 +36,14 @@ from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.models import (
+    EntityType,
     FilingStatus,
     K1Allocation,
     K1AllocationEntity,
     K1AllocationShareholder,
     K1FanoutData,
     Scenario,
+    ScheduleK1,
 )
 from tenforty.types import UpstreamState
 
@@ -61,6 +65,22 @@ def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
         flat[f"dividend_payer_{i}"] = row["payer"]
         flat[f"dividend_amount_{i}"] = row["amount"]
     return flat
+
+
+def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
+    """Build a ScheduleK1 instance from a 1120-S computed allocation.
+
+    The 1120-S pipeline produces typed `K1Allocation` dataclasses; the
+    1040 pipeline's Sch E Part II compute consumes `ScheduleK1` dataclass
+    instances. This is the bridge.
+    """
+    return ScheduleK1(
+        entity_name=alloc.entity.name,
+        entity_ein=alloc.entity.ein,
+        entity_type=EntityType.S_CORP,
+        material_participation=True,  # v1 default; caller-configurable later
+        ordinary_business_income=alloc.box_1_ordinary_business_income,
+    )
 
 
 def _flatten_k1_party(
@@ -124,17 +144,40 @@ class ReturnOrchestrator:
         self.engine = SpreadsheetEngine()
 
     def compute_federal(self, scenario: Scenario) -> dict[str, object]:
-        """Compute the federal return (1040 + all schedules)."""
-        year = scenario.config.year
-        spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
+        """Compute the federal return (1120-S waterfall + 1040 + schedules).
 
+        When `scenario.s_corp_return` is set, runs the corporate pipeline
+        first; the computed K-1s are merged with any user-supplied K-1s
+        on a *copy* of the scenario (the caller's input is not mutated).
+        The corporate output keys (prefixed `f1120s_`) are merged into the
+        returned 1040 output dict.
+        """
+        corp_results: dict[str, object] = {}
+        effective_scenario = scenario
+        if scenario.s_corp_return is not None:
+            corp_results = self.compute_corporate(scenario)
+            extra_k1s = [
+                _make_k1_from_1120s_allocation(alloc)
+                for alloc in corp_results.get("f1120s_sch_k1_allocations", [])
+            ]
+            effective_scenario = dataclasses.replace(
+                scenario,
+                schedule_k1s=list(scenario.schedule_k1s) + extra_k1s,
+            )
+            # Re-run compute-time gates against the effective scenario.
+            # Any K-1-related gate (e.g., the >4 K-1s scope-out from
+            # Plan D's Sch E Part II) must see the FULL list including
+            # the just-appended computed K-1s, not just the original.
+            enforce_compute_time(effective_scenario)
+
+        year = effective_scenario.config.year
+        spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
         if not spreadsheet.exists():
             raise FileNotFoundError(
                 f"Federal spreadsheet not found: {spreadsheet}"
             )
 
-        flat_inputs = flatten_scenario(scenario)
-
+        flat_inputs = flatten_scenario(effective_scenario)
         raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,
@@ -143,20 +186,18 @@ class ReturnOrchestrator:
             work_dir=self.work_dir / "federal",
         )
 
-        # Supplement: the oracle's OUTPUTS only read W-2 withholding
-        # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding
-        # flows into the workbook's total_payments but is not exposed as a
-        # separate named range. Inject it here so f1040.compute's
-        # federal_withheld_1099 slot picks it up for line 25b.
+        # 1099-G box 4 withholding injection (preserved from prior behavior;
+        # see the existing inline rationale on this block).
         g_withheld = sum(
-            g.federal_tax_withheld for g in scenario.form1099_g
+            g.federal_tax_withheld for g in effective_scenario.form1099_g
         )
         if g_withheld:
             raw["federal_withheld_1099"] = (
                 (raw.get("federal_withheld_1099") or 0) + g_withheld
             )
 
-        return form_1040.compute(raw_1040=raw, upstream={})
+        results_1040 = form_1040.compute(raw_1040=raw, upstream={})
+        return {**corp_results, **results_1040}
 
     def compute_corporate(self, scenario: Scenario) -> dict[str, object]:
         """Compute the federal corporate return (Form 1120-S pipeline).
