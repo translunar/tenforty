@@ -18,7 +18,10 @@ library function in addition to its primary use through the orchestrator.
 """
 
 from tenforty.attestations import enforce_compute_time, validate_load_time
-from tenforty.models import AccountingMethod, Scenario, SCorpReturn
+from tenforty.models import (
+    AccountingMethod, K1Allocation, K1AllocationEntity,
+    K1AllocationShareholder, Scenario, SCorpReturn,
+)
 from tenforty.rounding import irs_round
 
 
@@ -218,27 +221,53 @@ def _compute_schedule_k(deductions: dict) -> dict:
     }
 
 
+def _compute_schedule_k1_allocations(
+    r: SCorpReturn, schedule_k: dict,
+) -> list[K1Allocation]:
+    """Per-shareholder K-1 allocation (pro-rata by ownership %).
+
+    v1 supports only Sch K line 1 (OBI) on Sch K-1 box 1; other
+    separately-stated items have no v1 compute logic.
+    """
+    sch_k_line_1 = schedule_k["f1120s_sch_k_line_1_ordinary_business_income"]
+    allocations: list[K1Allocation] = []
+    for sh in r.shareholders:
+        share = sh.ownership_percentage / 100.0
+        allocations.append(K1Allocation(
+            entity=K1AllocationEntity(
+                name=r.name,
+                ein=r.ein,
+                address=r.address,
+            ),
+            shareholder=K1AllocationShareholder(
+                name=sh.name,
+                ssn_or_ein=sh.ssn_or_ein,
+                address=sh.address,
+            ),
+            ownership_percentage=sh.ownership_percentage,
+            box_1_ordinary_business_income=sch_k_line_1 * share,
+        ))
+    return allocations
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     if scenario.s_corp_return is None:
         return {}
-    # Run BOTH gates here, not just compute-time. Direct importers (callers
-    # who construct Scenario in code rather than via load_scenario) would
-    # otherwise bypass the load-time None-attestation check.
     validate_load_time(scenario.config)
     enforce_compute_time(scenario)
 
     r = scenario.s_corp_return
-
-    # Per-section helpers contribute to the return dict additively. Each
-    # later task in this sub-plan adds one helper and one update line.
-    out: dict[str, float] = {}
     income = _compute_income(r)
-    out.update(income)
     deductions = _compute_deductions(r, income)
-    out.update(deductions)
     total_tax = _compute_total_tax(r)
-    out.update(total_tax)
-    out.update(_compute_payments_and_balance(r, total_tax))
-    out.update(_compute_schedule_b(r))
-    out.update(_compute_schedule_k(deductions))
-    return out
+    schedule_k = _compute_schedule_k(deductions)
+    return {
+        **income,
+        **deductions,
+        **total_tax,
+        **_compute_payments_and_balance(r, total_tax),
+        **_compute_schedule_b(r),
+        **schedule_k,
+        "f1120s_sch_k1_allocations":
+            _compute_schedule_k1_allocations(r, schedule_k),
+    }

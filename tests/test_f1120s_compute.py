@@ -7,9 +7,12 @@ instructions. These tests do NOT import or reference any oracle module.
 import unittest
 
 from tenforty.forms import f1120s
-from tenforty.models import AccountingMethod
+from tenforty.models import (
+    AccountingMethod, Address, K1Allocation, K1AllocationEntity,
+    K1AllocationShareholder, SCorpShareholder,
+)
 
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _example_address, _make_v1_scenario
 
 
 class IncomeSectionTests(unittest.TestCase):
@@ -272,3 +275,95 @@ class ScheduleKTotalsTests(unittest.TestCase):
         ):
             self.assertEqual(out[line_number_field], 0.0,
                              f"{line_number_field} should be 0.0")
+
+
+class ScheduleK1AllocationTests(unittest.TestCase):
+    def test_single_shareholder_at_100_gets_full_obi(self):
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        out = f1120s.compute(s, upstream={})
+        k1s = out["f1120s_sch_k1_allocations"]
+        self.assertEqual(len(k1s), 1)
+        self.assertIsInstance(k1s[0], K1Allocation)
+        self.assertEqual(k1s[0].shareholder.name, "Taxpayer A")
+        self.assertEqual(k1s[0].ownership_percentage, 100.0)
+        # OBI = 70000, 100% share = 70000
+        self.assertEqual(k1s[0].box_1_ordinary_business_income, 70000.0)
+
+    def test_two_shareholders_60_40_split(self):
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        # Replace sole shareholder with two shareholders 60/40.
+        s.s_corp_return.shareholders = [
+            SCorpShareholder(
+                name="Taxpayer A", ssn_or_ein="000-00-0000",
+                address=_example_address(), ownership_percentage=60.0,
+            ),
+            SCorpShareholder(
+                name="Taxpayer B", ssn_or_ein="000-00-0001",
+                address=Address(
+                    street="2 Example Ave", city="Example City",
+                    state="EX", zip_code="00000",
+                ),
+                ownership_percentage=40.0,
+            ),
+        ]
+        out = f1120s.compute(s, upstream={})
+        k1s = out["f1120s_sch_k1_allocations"]
+        self.assertEqual(len(k1s), 2)
+        # OBI = 70000; A gets 60% = 42000; B gets 40% = 28000
+        self.assertEqual(k1s[0].box_1_ordinary_business_income, 42000.0)
+        self.assertEqual(k1s[1].box_1_ordinary_business_income, 28000.0)
+
+    def test_allocations_sum_equals_sch_k_line_1(self):
+        """Pro-rata invariant: sum of shareholder box-1 = Sch K line 1."""
+        s = _make_v1_scenario(
+            gross_receipts=100000.0,
+            compensation_of_officers=30000.0,
+        )
+        s.s_corp_return.shareholders = [
+            SCorpShareholder(
+                name="Taxpayer A", ssn_or_ein="000-00-0000",
+                address=_example_address(), ownership_percentage=33.333,
+            ),
+            SCorpShareholder(
+                name="Taxpayer B", ssn_or_ein="000-00-0001",
+                address=_example_address(), ownership_percentage=33.333,
+            ),
+            SCorpShareholder(
+                name="Taxpayer C", ssn_or_ein="000-00-0002",
+                address=_example_address(), ownership_percentage=33.334,
+            ),
+        ]
+        out = f1120s.compute(s, upstream={})
+        k1s = out["f1120s_sch_k1_allocations"]
+        total = sum(k.box_1_ordinary_business_income for k in k1s)
+        # Pro-rata invariant must hold to within $0.01 (float accumulation
+        # on percentages summing to exactly 100.0). The OBI of $70,000
+        # split 33.333/33.333/33.334 should sum back to $70,000 ± 0.01.
+        self.assertAlmostEqual(
+            total, out["f1120s_sch_k_line_1_ordinary_business_income"],
+            places=2,
+        )
+
+    def test_shareholder_and_entity_identity_passed_through_nested(self):
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        k1 = out["f1120s_sch_k1_allocations"][0]
+        # Typed nested structure: K1Allocation with entity/shareholder
+        # sub-dataclasses; address is the shared Address dataclass.
+        self.assertIsInstance(k1.shareholder, K1AllocationShareholder)
+        self.assertIsInstance(k1.entity, K1AllocationEntity)
+        self.assertIsInstance(k1.shareholder.address, Address)
+        self.assertEqual(k1.shareholder.name, "Taxpayer A")
+        self.assertEqual(k1.shareholder.ssn_or_ein, "000-00-0000")
+        self.assertEqual(k1.shareholder.address.street, "1 Example Ave")
+        self.assertEqual(k1.shareholder.address.city, "Example City")
+        self.assertEqual(k1.entity.name, "Example S-Corp Inc.")
+        self.assertEqual(k1.entity.ein, "00-0000000")
+        self.assertEqual(k1.entity.address.street, "1 Example Ave")
+        self.assertEqual(k1.entity.address.zip_code, "00000")

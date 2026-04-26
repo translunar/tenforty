@@ -545,6 +545,40 @@ class SCorpReturn:
 
 
 @dataclass
+class K1AllocationEntity:
+    """Entity-side identity carried on a K-1 allocation. Distinguished
+    from `SCorpReturn` (which holds the full corporate return inputs);
+    `K1AllocationEntity` is a snapshot of just the fields a K-1 needs."""
+    name: str
+    ein: str
+    address: Address
+
+
+@dataclass
+class K1AllocationShareholder:
+    """Shareholder-side identity carried on a K-1 allocation."""
+    name: str
+    ssn_or_ein: str
+    address: Address
+
+
+@dataclass
+class K1Allocation:
+    """A single shareholder's pro-rata share of an S-corp's pass-through
+    items. v1 covers only Sch K line 1 / box 1 (Ordinary Business Income).
+
+    This is the contract between `f1120s.compute` (producer) and the
+    orchestrator (consumer for PDF emit + 1040 waterfall). Consumers
+    access fields by attribute (e.g., `alloc.entity.name`); replacing
+    or renaming fields is a typed change that surfaces at every call
+    site, not silently in a string-key lookup."""
+    entity: K1AllocationEntity
+    shareholder: K1AllocationShareholder
+    ownership_percentage: float
+    box_1_ordinary_business_income: float
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
