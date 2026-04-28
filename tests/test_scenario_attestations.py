@@ -33,6 +33,15 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_other_basis_adjustments": False,
         "acknowledges_no_28_rate_gain": False,
         "acknowledges_no_unrecaptured_section_1250": False,
+        # 1120-S scope-out attestations (Sub-plan 2, Task 5)
+        "acknowledges_no_1120s_schedule_l_needed": False,
+        "acknowledges_no_1120s_schedule_m_needed": False,
+        "acknowledges_constant_shareholder_ownership": False,
+        "acknowledges_no_section_1375_tax": False,
+        "acknowledges_no_section_1374_tax": False,
+        "acknowledges_cogs_aggregate_only": False,
+        "acknowledges_officer_comp_aggregate_only": False,
+        "acknowledges_no_elective_payment_election": False,
     }
     cfg.update(overrides)
     return cfg

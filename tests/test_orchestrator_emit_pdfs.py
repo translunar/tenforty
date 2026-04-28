@@ -13,7 +13,7 @@ from tenforty.models import (
     ItemizedDeductions, RentalProperty, Scenario, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -565,7 +565,7 @@ class TestEmit8949Pdf(unittest.TestCase):
                 ssn="000-11-2222",
                 address="789 Elm St", address_city="Houston",
                 address_state="TX", address_zip="77001",
-                **plan_d_attestation_defaults(),
+                **scope_out_attestation_defaults(),
             ),
             form1099_b=[
                 Form1099B(

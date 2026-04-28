@@ -16,7 +16,7 @@ from tenforty.forms import f8949
 from tenforty.models import Form1099B, Scenario, TaxReturnConfig
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import (
-    SPREADSHEETS_DIR, needs_libreoffice, plan_d_attestation_defaults,
+    SPREADSHEETS_DIR, needs_libreoffice, scope_out_attestation_defaults,
 )
 
 
@@ -26,12 +26,12 @@ class TestF8949XlsxOracle(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.work_dir = Path(tempfile.mkdtemp())
         # has_foreign_accounts and prior_year_itemized are included in
-        # plan_d_attestation_defaults(); pass only non-overlapping fields here.
+        # scope_out_attestation_defaults(); pass only non-overlapping fields here.
         cfg = TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
             first_name="Taxpayer", last_name="A", ssn="000-00-0000",
-            **plan_d_attestation_defaults(),
+            **scope_out_attestation_defaults(),
         )
         # Use 8949-path lots (Box B short non-covered; Box E long non-covered)
         # so the workbook's 8949 sheet totals are populated and agree with

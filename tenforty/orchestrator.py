@@ -1,5 +1,7 @@
+import dataclasses
 from pathlib import Path
 
+from tenforty.attestations import enforce_compute_time
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
@@ -14,6 +16,7 @@ from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
+from tenforty.forms import f1120s as form_f1120s
 from tenforty.filing.pdf import PdfFiller
 from tenforty.constants import y2025
 from tenforty.oracle.flattener import flatten_scenario
@@ -30,7 +33,18 @@ from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
-from tenforty.models import FilingStatus, K1FanoutData, Scenario
+from tenforty.mappings.pdf_f1120s import PdfF1120S
+from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
+from tenforty.models import (
+    EntityType,
+    FilingStatus,
+    K1Allocation,
+    K1AllocationEntity,
+    K1AllocationShareholder,
+    K1FanoutData,
+    Scenario,
+    ScheduleK1,
+)
 from tenforty.types import UpstreamState
 
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
@@ -53,6 +67,74 @@ def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
     return flat
 
 
+def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
+    """Build a ScheduleK1 instance from a 1120-S computed allocation.
+
+    The 1120-S pipeline produces typed `K1Allocation` dataclasses; the
+    1040 pipeline's Sch E Part II compute consumes `ScheduleK1` dataclass
+    instances. This is the bridge.
+    """
+    return ScheduleK1(
+        entity_name=alloc.entity.name,
+        entity_ein=alloc.entity.ein,
+        entity_type=EntityType.S_CORP,
+        material_participation=True,  # v1 default; caller-configurable later
+        ordinary_business_income=alloc.box_1_ordinary_business_income,
+    )
+
+
+def _flatten_k1_party(
+    prefix: str,
+    party: K1AllocationEntity | K1AllocationShareholder,
+) -> dict:
+    """Flatten a typed K-1-allocation party (entity or shareholder) into
+    the prefixed flat keys the K-1 PDF mapping expects.
+
+    The IRS Schedule K-1 PDF combines name, street, city, state, and ZIP
+    into a single multi-line text area per party (Part I field B for the
+    corporation, Part II field F1 for the shareholder). This helper
+    pre-assembles the combined string here so the PDF mapping can stay a
+    flat 1:1 dict (one compute key, one PDF cell) instead of needing a
+    multi-key string-aggregation pattern in the mapping registry.
+
+    Disambiguation between entity and shareholder uses `isinstance`
+    (not `hasattr`): if a future shareholder gains an EIN field — some
+    shareholders are entities themselves (trusts, ESOPs) — `hasattr`
+    would emit both keys silently. `isinstance` dispatch on the typed
+    discriminator surfaces design changes as type errors.
+
+    Render note: the assembled string is
+
+        Name
+        Street
+        City, ST ZIP
+
+    (newline-separated). After the first end-to-end PDF emit
+    succeeds, eyeball the rendered K-1 against the IRS form to confirm
+    the cell wraps this format cleanly. If the cell is single-line or
+    the form expects a different separator, change the joiner here —
+    the mapping shape stays the same.
+    """
+    name_and_address = (
+        f"{party.name}\n"
+        f"{party.address.street}\n"
+        f"{party.address.city}, {party.address.state} {party.address.zip_code}"
+    )
+    flat: dict = {
+        f"{prefix}_name_and_address": name_and_address,
+    }
+    if isinstance(party, K1AllocationEntity):
+        flat[f"{prefix}_ein"] = party.ein
+    elif isinstance(party, K1AllocationShareholder):
+        flat[f"{prefix}_ssn_or_ein"] = party.ssn_or_ein
+    else:
+        raise TypeError(
+            f"_flatten_k1_party received unexpected party type: "
+            f"{type(party).__name__}"
+        )
+    return flat
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -61,18 +143,55 @@ class ReturnOrchestrator:
         self.work_dir = work_dir
         self.engine = SpreadsheetEngine()
 
-    def compute_federal(self, scenario: Scenario) -> dict[str, object]:
-        """Compute the federal return (1040 + all schedules)."""
-        year = scenario.config.year
-        spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
+    def _build_effective_scenario(
+        self, scenario: Scenario,
+    ) -> tuple[Scenario, dict[str, object]]:
+        """Build the effective scenario for the 1040 pipeline.
 
+        When `scenario.s_corp_return` is set, runs the corporate pipeline and
+        appends the synthesized K-1(s) to a copy of the input scenario. The
+        caller's scenario is never mutated. Returns a tuple of
+        (effective_scenario, corp_results). For non-S-corp scenarios returns
+        (scenario, {}) unchanged.
+        """
+        if scenario.s_corp_return is None:
+            return scenario, {}
+
+        corp_results = self.compute_corporate(scenario)
+        extra_k1s = [
+            _make_k1_from_1120s_allocation(alloc)
+            for alloc in corp_results.get("f1120s_sch_k1_allocations", [])
+        ]
+        effective_scenario = dataclasses.replace(
+            scenario,
+            schedule_k1s=list(scenario.schedule_k1s) + extra_k1s,
+        )
+        # Re-run compute-time gates against the effective scenario.
+        # Any K-1-related gate (e.g., the >4 K-1s scope-out from
+        # Plan D's Sch E Part II) must see the FULL list including
+        # the just-appended computed K-1s, not just the original.
+        enforce_compute_time(effective_scenario)
+        return effective_scenario, corp_results
+
+    def _compute_1040_pipeline(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, object]:
+        """Run the 1040 pipeline (spreadsheet evaluation + f1040.compute).
+
+        Accepts the already-resolved effective scenario (with any synthesized
+        K-1s already appended). Returns the 1040 results dict only — corp keys
+        are merged by the caller. This is the single source of truth for the
+        spreadsheet evaluation step, the 1099-G withholding supplement, and
+        the form_1040.compute step.
+        """
+        year = effective_scenario.config.year
+        spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
         if not spreadsheet.exists():
             raise FileNotFoundError(
                 f"Federal spreadsheet not found: {spreadsheet}"
             )
 
-        flat_inputs = flatten_scenario(scenario)
-
+        flat_inputs = flatten_scenario(effective_scenario)
         raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,
@@ -87,7 +206,7 @@ class ReturnOrchestrator:
         # separate named range. Inject it here so f1040.compute's
         # federal_withheld_1099 slot picks it up for line 25b.
         g_withheld = sum(
-            g.federal_tax_withheld for g in scenario.form1099_g
+            g.federal_tax_withheld for g in effective_scenario.form1099_g
         )
         if g_withheld:
             raw["federal_withheld_1099"] = (
@@ -96,21 +215,77 @@ class ReturnOrchestrator:
 
         return form_1040.compute(raw_1040=raw, upstream={})
 
+    def compute_federal(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the federal return (1120-S waterfall + 1040 + schedules).
+
+        When `scenario.s_corp_return` is set, runs the corporate pipeline
+        first; the computed K-1s are merged with any user-supplied K-1s
+        on a *copy* of the scenario (the caller's input is not mutated).
+        The corporate output keys (prefixed `f1120s_`) are merged into the
+        returned 1040 output dict.
+
+        Delegates to `_build_effective_scenario` and `_compute_1040_pipeline`
+        — see those for waterfall and pipeline contracts.
+        """
+        effective_scenario, corp_results = self._build_effective_scenario(scenario)
+        results_1040 = self._compute_1040_pipeline(effective_scenario)
+        return {**corp_results, **results_1040}
+
+    def compute_corporate(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the federal corporate return (Form 1120-S pipeline).
+
+        Returns {} when scenario.s_corp_return is None (no corporate work
+        needed for a pure personal 1040 scenario).
+        """
+        if scenario.s_corp_return is None:
+            return {}
+        return form_f1120s.compute(scenario, upstream={})
+
     def emit_pdfs(
         self,
         scenario: Scenario,
         results: dict[str, object],
         output_dir: Path,
     ) -> dict[str, Path]:
-        """Fill both 1040 and 4868 PDFs and write them to output_dir.
+        """Fill PDFs and write them to output_dir.
 
-        Returns a dict mapping form name ('1040', '4868') to the filled PDF path.
+        Raises ValueError when scenario.s_corp_return is not None — callers
+        must use run_full_return() instead, which builds the effective scenario
+        internally so the synthesized 1120-S K-1 is visible in Sch E. Calling
+        this method directly with an S-corp scenario would silently produce an
+        incomplete Sch E (missing the corp-pipeline K-1).
+
+        For non-S-corp scenarios, delegates to _emit_pdfs_internal.
+        Returns a dict mapping form name to the filled PDF path.
+        """
+        if scenario.s_corp_return is not None:
+            raise ValueError(
+                "Scenario has s_corp_return set — use "
+                "ReturnOrchestrator.run_full_return() to produce PDFs that "
+                "include the synthesized 1120-S K-1 in Sch E. Calling "
+                "emit_pdfs() directly skips the K-1 waterfall and produces "
+                "incomplete Sch E output."
+            )
+        return self._emit_pdfs_internal(scenario, results, output_dir)
+
+    def _emit_pdfs_internal(
+        self,
+        scenario: Scenario,
+        results: dict[str, object],
+        output_dir: Path,
+    ) -> dict[str, Path]:
+        """Fill PDFs and write them to output_dir (unguarded internal API).
+
+        Does not check whether scenario.s_corp_return is set. Callers are
+        responsible for passing the effective scenario (with any synthesized
+        K-1s already appended) when operating on S-corp returns.
+        Returns a dict mapping form name to the filled PDF path.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
 
-        # Hoist sch_e_part_ii.compute to run at most once per emit_pdfs call.
+        # Hoist sch_e_part_ii.compute to run at most once per call to this method.
         # All downstream consumers (sch_b, sch_d, sch_e, f8995, f8582) share
         # a single fanout result rather than each recomputing from scratch —
         # keeping the K-1 fanout computation deterministic and avoiding
@@ -302,7 +477,85 @@ class ReturnOrchestrator:
             )
             emitted["f8582"] = out_8582
 
+        # 1120-S emit (only when scenario.s_corp_return is populated).
+        if scenario.s_corp_return is not None:
+            # Main 1120-S + Sch B + Sch K.
+            main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
+            main_output = output_dir / f"f1120s_{year}.pdf"
+            # Pass the full results dict — aggregation and derivation lambdas
+            # reference keys that are NOT in _MAPPING_<year>, so filtering to
+            # mapping keys alone would silently drop those inputs.
+            filler.fill(
+                template_path=main_template,
+                output_path=main_output,
+                values=results,
+                field_mapping=PdfF1120S.get_mapping(year),
+                aggregations=PdfF1120S.get_aggregations(year),
+                derivations=PdfF1120S.get_derivations(year),
+                checkbox_states=PdfF1120S.get_checkbox_states(year),
+            )
+            emitted["1120s"] = main_output
+
+            # Per-shareholder Sch K-1.
+            #
+            # The compute output's allocation is a typed `K1Allocation`
+            # dataclass with nested `entity` / `shareholder` sub-dataclasses
+            # and an `Address` for each. The K-1 PDF combines name+address
+            # into a single multi-line cell per party (Part I field B for
+            # the corporation, Part II field F1 for the shareholder); the
+            # mapping uses one flat compute key per party for that combined
+            # block. `_flatten_k1_party` is the boundary: typed for
+            # programmatic consumers, flat with assembled name+address
+            # strings for the form filler.
+            k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
+            for i, alloc in enumerate(
+                results.get("f1120s_sch_k1_allocations", []),
+                start=1,
+            ):
+                flat_values = {
+                    **_flatten_k1_party("entity", alloc.entity),
+                    **_flatten_k1_party("shareholder", alloc.shareholder),
+                    "ownership_percentage": alloc.ownership_percentage,
+                    "box_1_ordinary_business_income":
+                        alloc.box_1_ordinary_business_income,
+                }
+                k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
+                filler.fill(
+                    template_path=k1_template,
+                    output_path=k1_output,
+                    values=flat_values,
+                    field_mapping=PdfF1120SK1.get_mapping(year),
+                )
+                emitted[f"1120s_k1_{i}"] = k1_output
+
         return emitted
+
+    def run_full_return(
+        self,
+        scenario: Scenario,
+        output_dir: Path,
+    ) -> tuple[dict[str, object], dict[str, Path]]:
+        """Compute the full federal return and emit PDFs to output_dir.
+
+        The two-call pattern (`compute_federal` then `emit_pdfs`) cannot keep
+        both ends consistent for S-corp scenarios, because `compute_federal`'s
+        effective scenario (with the synthesized K-1) is not exposed to
+        `emit_pdfs`; this method holds both ends so the rendered Sch E PDF
+        reflects the same K-1 list the numerical results were computed against.
+
+        This is the canonical entry point for S-corp scenarios: it builds
+        the effective scenario (with synthesized K-1s) internally and feeds
+        it to the PDF emit step, so the Sch E PDF reflects the corp-pipeline
+        K-1. The caller's scenario is never mutated.
+
+        Returns a tuple of (results, emitted) where results is the merged
+        1040+corp output dict and emitted maps form names to PDF paths.
+        """
+        effective_scenario, corp_results = self._build_effective_scenario(scenario)
+        results_1040 = self._compute_1040_pipeline(effective_scenario)
+        results = {**corp_results, **results_1040}
+        emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
+        return results, emitted
 
     def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch 1 when either Part I total (line 10) or Part II total

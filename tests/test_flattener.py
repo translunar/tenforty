@@ -11,7 +11,7 @@ from tenforty.models import (
     TaxReturnConfig,
     W2,
 )
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 
 def _simple_scenario() -> Scenario:
@@ -171,7 +171,7 @@ class TestFlatten1099B(unittest.TestCase):
     def _scenario_with_lots_ack(self, lots, **ack_overrides):
         """Build a Scenario with attestation overrides passed directly into
         TaxReturnConfig (no post-construction mutation)."""
-        kw = plan_d_attestation_defaults()
+        kw = scope_out_attestation_defaults()
         kw.update(ack_overrides)
         return Scenario(
             config=TaxReturnConfig(

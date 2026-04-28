@@ -27,8 +27,8 @@ class TestArgparseWiring(unittest.TestCase):
             result = main()
         self.assertEqual(result, 1)
 
-    def test_output_dir_flag_calls_emit_pdfs(self):
-        """When --output-dir is passed, emit_pdfs should be called."""
+    def test_output_dir_flag_calls_run_full_return(self):
+        """When --output-dir is passed, run_full_return should be called."""
         tmpdir = Path(tempfile.mkdtemp())
         fake_results = {
             "total_tax": 5000,
@@ -58,15 +58,14 @@ class TestArgparseWiring(unittest.TestCase):
             "tenforty.__main__.ReturnOrchestrator"
         ) as MockOrchestrator:
             mock_orch = MockOrchestrator.return_value
-            mock_orch.compute_federal.return_value = fake_results
-            mock_orch.emit_pdfs.return_value = fake_emitted
+            mock_orch.run_full_return.return_value = (fake_results, fake_emitted)
 
             captured = io.StringIO()
             with patch("sys.stdout", captured):
                 result = main()
 
         self.assertEqual(result, 0)
-        mock_orch.emit_pdfs.assert_called_once()
+        mock_orch.run_full_return.assert_called_once()
         output = captured.getvalue()
         self.assertIn("=== Emitted PDFs ===", output)
         self.assertIn("4868", output)
