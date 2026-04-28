@@ -12,7 +12,7 @@ scenario._validate_scenario_config and sch_e_part_ii._enforce_scope_gates
 iterate this tuple rather than hand-coded `if ... is None: raise` blocks.
 
 Fixture/helper defaults are deliberately NOT on this dataclass. They live in
-`tests/helpers.plan_d_attestation_defaults()` so that changing what a simple
+`tests/helpers.scope_out_attestation_defaults()` so that changing what a simple
 in-memory test scenario implies (e.g., whether the user is assumed to have
 unlimited at-risk amounts when constructing a bare Scenario) is a helper
 change, reviewable independently from this registry.
@@ -83,6 +83,30 @@ def _never(s: Scenario) -> bool:
     The inline comment on each `triggered_when=_never,` row is for quick
     scanning; this docstring is the canonical reference."""
     return False
+
+
+def _has_scorp_large_balance_sheet(s: Scenario) -> bool:
+    if s.s_corp_return is None:
+        return False
+    r = s.s_corp_return
+    return (
+        r.total_assets >= 250_000.0
+        or r.income.gross_receipts >= 250_000.0
+    )
+
+
+def _has_scorp_section_1375_tax(s: Scenario) -> bool:
+    return (
+        s.s_corp_return is not None
+        and s.s_corp_return.scope_outs.net_passive_income_tax != 0.0
+    )
+
+
+def _has_scorp_section_1374_tax(s: Scenario) -> bool:
+    return (
+        s.s_corp_return is not None
+        and s.s_corp_return.scope_outs.built_in_gains_tax != 0.0
+    )
 
 
 _ATTESTATIONS: tuple[Attestation, ...] = (
@@ -347,6 +371,152 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
             "Unrecaptured §1250 Gain Worksheet feeds Sch D line 19; set "
             "the attestation to true to affirm awareness."
         ),
+    ),
+    # --- 1120-S scope-out attestations (Sub-plan 2) ---
+    Attestation(
+        field="acknowledges_no_1120s_schedule_l_needed",
+        triggered_when=_has_scorp_large_balance_sheet,
+        load_error=(
+            "Scenario config field `acknowledges_no_1120s_schedule_l_needed` "
+            "is required and must be either true or false. Schedule L "
+            "(balance sheet) is not implemented in tenforty v1; per Form "
+            "1120-S Schedule B Q10 it is optional only when both total "
+            "receipts and total assets are under $250,000. Compute will "
+            "raise NotImplementedError if either "
+            "`s_corp_return.income.gross_receipts >= 250_000` or "
+            "`s_corp_return.total_assets >= 250_000` and this attestation "
+            "is False."
+        ),
+        compute_error=(
+            "`s_corp_return.income.gross_receipts` or "
+            "`s_corp_return.total_assets` reached $250,000, triggering the "
+            "Schedule L (balance sheet) requirement. Schedule L is required "
+            "per Form 1120-S Schedule B Q10 when total receipts and total "
+            "assets meet this threshold. Schedule L is not implemented in "
+            "tenforty v1; this return cannot be completed automatically. "
+            "Reduce the scenario below the threshold."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_no_1120s_schedule_m_needed",
+        triggered_when=_has_scorp_large_balance_sheet,
+        load_error=(
+            "Scenario config field `acknowledges_no_1120s_schedule_m_needed` "
+            "is required and must be either true or false. Schedule M-1 "
+            "(book/tax reconciliation) and Schedule M-2 (AAA) are not "
+            "implemented in tenforty v1; per Form 1120-S Schedule B Q10 "
+            "they are optional only when both total receipts and total "
+            "assets are under $250,000. Compute will raise "
+            "NotImplementedError if either "
+            "`s_corp_return.income.gross_receipts >= 250_000` or "
+            "`s_corp_return.total_assets >= 250_000` and this attestation "
+            "is False."
+        ),
+        compute_error=(
+            "`s_corp_return.income.gross_receipts` or "
+            "`s_corp_return.total_assets` reached $250,000, triggering the "
+            "Schedule M-1 and M-2 requirement. Schedule M-1 (book/tax "
+            "reconciliation) and Schedule M-2 (AAA) are required per Form "
+            "1120-S Schedule B Q10 when total receipts and total assets "
+            "meet this threshold. Neither is implemented in tenforty v1; "
+            "this return cannot be completed automatically. Reduce the "
+            "scenario below the threshold."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_constant_shareholder_ownership",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_constant_shareholder_ownership` "
+            "is required and must be either true or false. tenforty v1 "
+            "allocates S-corp pass-through items pro rata using shareholder "
+            "ownership percentages that are assumed constant for the full "
+            "tax year; mid-year ownership changes (per-day allocation under "
+            "IRC §1377) are not implemented."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_section_1375_tax",
+        triggered_when=_has_scorp_section_1375_tax,
+        load_error=(
+            "Scenario config field `acknowledges_no_section_1375_tax` is "
+            "required and must be either true or false. The Excess Net "
+            "Passive Income Tax (IRC §1375) is not computed by tenforty "
+            "v1; if applicable, supply the amount on "
+            "`s_corp_return.scope_outs.net_passive_income_tax`. Compute "
+            "will raise NotImplementedError if that scope-out value is "
+            "nonzero and this attestation is False."
+        ),
+        compute_error=(
+            "`s_corp_return.scope_outs.net_passive_income_tax` is nonzero "
+            "but `acknowledges_no_section_1375_tax` is false. tenforty v1 "
+            "does not compute the §1375 Excess Net Passive Income Tax; "
+            "set the attestation to true to affirm the scope-out value is "
+            "provided externally, or set the scope-out value to zero."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_no_section_1374_tax",
+        triggered_when=_has_scorp_section_1374_tax,
+        load_error=(
+            "Scenario config field `acknowledges_no_section_1374_tax` is "
+            "required and must be either true or false. The Built-in "
+            "Gains Tax (IRC §1374) is not computed by tenforty v1; if "
+            "applicable, supply the amount on "
+            "`s_corp_return.scope_outs.built_in_gains_tax`. Compute will "
+            "raise NotImplementedError if that scope-out value is nonzero "
+            "and this attestation is False."
+        ),
+        compute_error=(
+            "`s_corp_return.scope_outs.built_in_gains_tax` is nonzero but "
+            "`acknowledges_no_section_1374_tax` is false. tenforty v1 "
+            "does not compute the §1374 Built-in Gains Tax; set the "
+            "attestation to true to affirm the scope-out value is "
+            "provided externally, or set the scope-out value to zero."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_cogs_aggregate_only",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_cogs_aggregate_only` is "
+            "required and must be either true or false. Form 1125-A (Cost "
+            "of Goods Sold line-item detail) is not implemented in "
+            "tenforty v1; supply the aggregate on "
+            "`s_corp_return.income.cogs_aggregate`. Set true to affirm "
+            "awareness that line-item COGS detail is not produced."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_officer_comp_aggregate_only",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_officer_comp_aggregate_only` "
+            "is required and must be either true or false. Form 1125-E "
+            "(Compensation of Officers line-item detail) is not "
+            "implemented in tenforty v1; supply the aggregate on "
+            "`s_corp_return.deductions.compensation_of_officers`. Set "
+            "true to affirm awareness that line-item officer-compensation "
+            "detail is not produced."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_elective_payment_election",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_elective_payment_election` "
+            "is required and must be either true or false. Form 3800 "
+            "elective payment elections (IRC §6417) are not computed by "
+            "tenforty v1. The 2025 Form 1120-S routes any elective payment "
+            "amount to line 24d via `s_corp_return.scope_outs.refundable_credits`; "
+            "set true to affirm awareness that v1 does not compute the "
+            "election and any value supplied externally must come from a "
+            "completed Form 3800 prepared off-platform."
+        ),
+        compute_error="",
     ),
 )
 

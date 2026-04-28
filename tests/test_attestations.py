@@ -9,7 +9,7 @@ import yaml
 from tenforty.attestations import Attestation, _ATTESTATIONS, enforce_compute_time
 from tenforty.models import Form1099B, Scenario, TaxReturnConfig
 from tenforty.scenario import load_scenario
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 
 class TestAttestationsTable(unittest.TestCase):
@@ -45,6 +45,15 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_other_basis_adjustments",
             "acknowledges_no_28_rate_gain",
             "acknowledges_no_unrecaptured_section_1250",
+            # 1120-S scope-out attestations (Sub-plan 2, Task 5)
+            "acknowledges_no_1120s_schedule_l_needed",
+            "acknowledges_no_1120s_schedule_m_needed",
+            "acknowledges_constant_shareholder_ownership",
+            "acknowledges_no_section_1375_tax",
+            "acknowledges_no_section_1374_tax",
+            "acknowledges_cogs_aggregate_only",
+            "acknowledges_officer_comp_aggregate_only",
+            "acknowledges_no_elective_payment_election",
         }
         self.assertEqual(expected, fields)
 
@@ -82,6 +91,15 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_other_basis_adjustments=False,
             acknowledges_no_28_rate_gain=False,
             acknowledges_no_unrecaptured_section_1250=False,
+            # 1120-S scope-out attestations (Sub-plan 2, Task 5)
+            acknowledges_no_1120s_schedule_l_needed=False,
+            acknowledges_no_1120s_schedule_m_needed=False,
+            acknowledges_constant_shareholder_ownership=False,
+            acknowledges_no_section_1375_tax=False,
+            acknowledges_no_section_1374_tax=False,
+            acknowledges_cogs_aggregate_only=False,
+            acknowledges_officer_comp_aggregate_only=False,
+            acknowledges_no_elective_payment_election=False,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise
@@ -112,23 +130,23 @@ class TestDefaultsAfterMigration(unittest.TestCase):
     K-1-bearing returns."""
 
     def test_unlimited_at_risk_defaults_true(self) -> None:
-        from tests.helpers import plan_d_attestation_defaults
-        self.assertIs(plan_d_attestation_defaults()["acknowledges_unlimited_at_risk"], True)
+        from tests.helpers import scope_out_attestation_defaults
+        self.assertIs(scope_out_attestation_defaults()["acknowledges_unlimited_at_risk"], True)
 
     def test_basis_tracked_externally_defaults_true(self) -> None:
-        from tests.helpers import plan_d_attestation_defaults
-        self.assertIs(plan_d_attestation_defaults()["basis_tracked_externally"], True)
+        from tests.helpers import scope_out_attestation_defaults
+        self.assertIs(scope_out_attestation_defaults()["basis_tracked_externally"], True)
 
     def test_acknowledges_no_k1_credits_defaults_true(self) -> None:
-        from tests.helpers import plan_d_attestation_defaults
-        self.assertIs(plan_d_attestation_defaults()["acknowledges_no_k1_credits"], True)
+        from tests.helpers import scope_out_attestation_defaults
+        self.assertIs(scope_out_attestation_defaults()["acknowledges_no_k1_credits"], True)
 
     def test_other_defaults_remain_false(self) -> None:
         """Only the three K-1-posture fields migrate. Everything else stays
         all-False — their triggers are more specific (per-K-1-field) so the
         pessimal default is still safe."""
-        from tests.helpers import plan_d_attestation_defaults
-        d = plan_d_attestation_defaults()
+        from tests.helpers import scope_out_attestation_defaults
+        d = scope_out_attestation_defaults()
         for f in (
             "has_foreign_accounts",
             "acknowledges_sch_a_sales_tax_unsupported",
@@ -166,14 +184,14 @@ class TestNewForm8949Attestations(unittest.TestCase):
         including the 4 lot-level gates as False. Individual test methods
         override the specific attestation under test via `_make_scenario`'s
         **config_overrides."""
-        return plan_d_attestation_defaults()
+        return scope_out_attestation_defaults()
 
     def _make_scenario(self, lot_kwargs: dict, **config_overrides):
         """Build a Scenario with a single 1099-B lot and config overrides."""
         kwargs = self._base_config_kwargs()
         kwargs.update(config_overrides)
         # has_foreign_accounts and prior_year_itemized come from
-        # plan_d_attestation_defaults(); no need to pass them separately.
+        # scope_out_attestation_defaults(); no need to pass them separately.
         cfg = TaxReturnConfig(
             year=2025, filing_status="single",
             birthdate="1985-04-20", state="CA",
@@ -305,7 +323,7 @@ class TestNewForm8949Attestations(unittest.TestCase):
             "acknowledges_no_unrecaptured_section_1250",
         ):
             with self.subTest(missing=missing_key):
-                defaults = plan_d_attestation_defaults()
+                defaults = scope_out_attestation_defaults()
                 defaults.pop(missing_key, None)
                 body = {
                     "config": {

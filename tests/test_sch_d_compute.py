@@ -6,11 +6,11 @@ from tenforty.forms import f8949, sch_d
 from tenforty.models import (
     Form1099B, K1FanoutData, Scenario, TaxReturnConfig,
 )
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 
 def _scenario(lots: list[Form1099B], **overrides) -> Scenario:
-    kw = plan_d_attestation_defaults()
+    kw = scope_out_attestation_defaults()
     kw.update(overrides)
     cfg = TaxReturnConfig(
         year=2025, filing_status="single",

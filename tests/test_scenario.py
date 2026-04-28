@@ -5,7 +5,7 @@ from tenforty.models import Scenario, W2, Form1099INT, TaxReturnConfig
 from tenforty.scenario import load_scenario
 from tests.helpers import (
     FIXTURES_DIR,
-    plan_d_attestation_defaults,
+    scope_out_attestation_defaults,
 )
 
 
@@ -57,7 +57,7 @@ class TestFixtureAttestationMigration(unittest.TestCase):
         self.assertGreater(loaded, 0, "expected to find fixtures")
 
     def test_defaults_helper_includes_new_attestations(self) -> None:
-        d = plan_d_attestation_defaults()
+        d = scope_out_attestation_defaults()
         for key in (
             "acknowledges_no_wash_sale_adjustments",
             "acknowledges_no_other_basis_adjustments",

@@ -332,6 +332,40 @@ class TaxReturnConfig:
     acknowledges_no_28_rate_gain: bool | None = None
     # Any 1099-B lot with is_section_1250=True + False raises.
     acknowledges_no_unrecaptured_section_1250: bool | None = None
+    # --- 1120-S scope-out attestations (8 unconditional) ---
+    # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
+    # gross_receipts >= $250,000 + False raises.
+    acknowledges_no_1120s_schedule_l_needed: bool | None = None
+    # Sch M-1 (book/tax reconciliation) and Sch M-2 (AAA) are out of scope;
+    # same gate as Sch L (total_assets or gross_receipts >= $250,000) +
+    # False raises.
+    acknowledges_no_1120s_schedule_m_needed: bool | None = None
+    # Mid-year shareholder ownership changes are out of scope; required at
+    # load time so the user affirms ownership percentages are constant for
+    # the full tax year.
+    acknowledges_constant_shareholder_ownership: bool | None = None
+    # §1375 Excess Net Passive Income Tax is out of scope; caller supplies
+    # the amount on s_corp_return.scope_outs.net_passive_income_tax. Nonzero
+    # + False raises.
+    acknowledges_no_section_1375_tax: bool | None = None
+    # §1374 Built-in Gains Tax is out of scope; caller supplies the amount
+    # on s_corp_return.scope_outs.built_in_gains_tax. Nonzero + False raises.
+    acknowledges_no_section_1374_tax: bool | None = None
+    # Form 1125-A (COGS line-item detail) is out of scope; caller supplies
+    # the aggregate on s_corp_return.income.cogs_aggregate. Required at
+    # load time.
+    acknowledges_cogs_aggregate_only: bool | None = None
+    # Form 1125-E (officer compensation line-item detail) is out of scope;
+    # caller supplies the aggregate on
+    # s_corp_return.deductions.compensation_of_officers. Required at load time.
+    acknowledges_officer_comp_aggregate_only: bool | None = None
+    # Form 3800 elective payment election (IRC §6417) is out of scope; v1
+    # does not compute or claim elective payment elections. Required at
+    # load time so the user affirms awareness — the value reaches the PDF
+    # via line 24d only when supplied externally on
+    # `s_corp_return.scope_outs.refundable_credits` (mirroring §1374 /
+    # §1375 caller-supplied amounts).
+    acknowledges_no_elective_payment_election: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
@@ -390,6 +424,168 @@ class DepreciableAsset:
 
 
 @dataclass
+class Address:
+    """Mailing-address record. Reusable across entity and shareholder
+    contexts; future migrations of `TaxReturnConfig.address*` should
+    consume this same dataclass (tracked as a follow-up cleanup issue
+    rather than included in this sub-plan).
+    """
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+
+@dataclass
+class SCorpShareholder:
+    """Single shareholder identity and ownership stake for Schedule K-1 allocation.
+
+    ``ownership_percentage`` is expressed as a percentage (0–100), not a
+    proportion (0–1). A sole shareholder holds 100.0. Pro-rata allocation
+    divides by 100 at compute time; keeping the percentage scale matches
+    the IRS Schedule K-1 Part II box D literal.
+    """
+    name: str
+    ssn_or_ein: str
+    address: Address
+    ownership_percentage: float
+
+
+@dataclass
+class SCorpScheduleBAnswers:
+    """Schedule B Yes/No answers and entity-description fields for Form 1120-S.
+
+    ``business_activity_code`` is a six-digit NAICS code (e.g. "541990").
+    It is passed verbatim to the PDF fill layer; no validation is performed here.
+    """
+    accounting_method: AccountingMethod
+    business_activity_code: str
+    business_activity_description: str
+    product_or_service: str
+    any_c_corp_subsidiaries: bool
+    has_any_foreign_shareholders: bool
+    owns_foreign_entity: bool
+
+
+@dataclass
+class SCorpIncome:
+    """Caller-supplied amounts for Form 1120-S Income lines 1a–6.
+
+    ``cogs_aggregate`` is the Form 1125-A line 8 total. Tenforty does not
+    compute COGS line-item detail; Form 1125-A is out of scope for v1.
+    """
+    gross_receipts: float
+    returns_and_allowances: float
+    cogs_aggregate: float
+    net_gain_loss_4797: float
+    other_income: float
+
+
+@dataclass
+class SCorpDeductions:
+    """Caller-supplied aggregates for Form 1120-S Deductions lines 7–19.
+
+    ``compensation_of_officers`` is the Form 1125-E line 4 total; Form 1125-E
+    line-item detail is out of scope for v1. ``depreciation`` is also a
+    caller-supplied aggregate — tenforty does not automatically integrate
+    Form 4562 / ``Scenario.depreciable_assets`` output into 1120-S deductions,
+    so a caller using both must avoid double-counting.
+    """
+    compensation_of_officers: float
+    salaries_wages: float
+    repairs_maintenance: float
+    bad_debts: float
+    rents: float
+    taxes_licenses: float
+    interest: float
+    depreciation: float
+    depletion: float
+    advertising: float
+    pension_profit_sharing_plans: float
+    employee_benefits: float
+    other_deductions: float
+
+
+@dataclass
+class SCorpScopeOuts:
+    """Caller-supplied tax amounts that tenforty does not compute.
+
+    Covers §1375 net passive income tax, §1374 built-in gains tax, and
+    §453/§453A interest on deferred tax. Tenforty's v1 has no compute
+    path for these; the caller supplies amounts directly and the compute
+    layer passes them through to Form 1120-S line 22.
+    """
+    net_passive_income_tax: float = 0.0
+    built_in_gains_tax: float = 0.0
+    interest_on_453_deferred: float = 0.0
+
+
+@dataclass
+class SCorpPayments:
+    estimated_tax_payments: float = 0.0
+    prior_year_overpayment_credited: float = 0.0
+    tax_deposited_with_7004: float = 0.0
+    credit_for_federal_excise_tax: float = 0.0
+    refundable_credits: float = 0.0
+
+
+@dataclass
+class SCorpReturn:
+    name: str
+    ein: str
+    address: Address
+    date_incorporated: _date
+    s_election_effective_date: _date
+
+    income: SCorpIncome
+    deductions: SCorpDeductions
+    schedule_b_answers: SCorpScheduleBAnswers
+
+    # `total_assets` defaults to 0.0 so test scenarios that don't care
+    # about Sch L gating can omit it. Real returns must supply the
+    # actual figure; the Sch L attestation gate fires at >= $250,000.
+    total_assets: float = 0.0
+    shareholders: list[SCorpShareholder] = field(default_factory=list)
+
+    scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
+    payments: SCorpPayments = field(default_factory=SCorpPayments)
+
+
+@dataclass
+class K1AllocationEntity:
+    """Entity-side identity carried on a K-1 allocation. Distinguished
+    from `SCorpReturn` (which holds the full corporate return inputs);
+    `K1AllocationEntity` is a snapshot of just the fields a K-1 needs."""
+    name: str
+    ein: str
+    address: Address
+
+
+@dataclass
+class K1AllocationShareholder:
+    """Shareholder-side identity carried on a K-1 allocation."""
+    name: str
+    ssn_or_ein: str
+    address: Address
+
+
+@dataclass
+class K1Allocation:
+    """A single shareholder's pro-rata share of an S-corp's pass-through
+    items. v1 covers only Sch K line 1 / box 1 (Ordinary Business Income).
+
+    This is the contract between `f1120s.compute` (producer) and the
+    orchestrator (consumer for PDF emit + 1040 waterfall). Consumers
+    access fields by attribute (e.g., `alloc.entity.name`); replacing
+    or renaming fields is a typed change that surfaces at every call
+    site, not silently in a string-key lookup."""
+    entity: K1AllocationEntity
+    shareholder: K1AllocationShareholder
+    ownership_percentage: float
+    box_1_ordinary_business_income: float
+
+
+@dataclass
 class Scenario:
     config: TaxReturnConfig
     w2s: list[W2] = field(default_factory=list)
@@ -402,3 +598,4 @@ class Scenario:
     rental_properties: list[RentalProperty] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
+    s_corp_return: SCorpReturn | None = None

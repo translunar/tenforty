@@ -8,6 +8,14 @@ config:
   acknowledges_no_other_basis_adjustments: false
   acknowledges_no_28_rate_gain: false
   acknowledges_no_unrecaptured_section_1250: false
+  acknowledges_no_1120s_schedule_l_needed: false
+  acknowledges_no_1120s_schedule_m_needed: false
+  acknowledges_constant_shareholder_ownership: false
+  acknowledges_no_section_1375_tax: false
+  acknowledges_no_section_1374_tax: false
+  acknowledges_cogs_aggregate_only: false
+  acknowledges_officer_comp_aggregate_only: false
+  acknowledges_no_elective_payment_election: false
   acknowledges_sch_a_sales_tax_unsupported: false
   acknowledges_qbi_below_threshold: false
   acknowledges_unlimited_at_risk: true

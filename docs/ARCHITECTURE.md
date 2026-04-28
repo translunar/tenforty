@@ -58,6 +58,16 @@ filled f1040.pdf
 
 The engine checks: is the value a named range? → resolve it. Is the key in SHEET_MAP? → use that sheet + the cell ref. Neither? → raise ValueError.
 
+### Compute output keys (Python-compute forms)
+
+For forms whose math is implemented in Python (`tenforty/forms/*.py`) rather than via the XLS engine — currently 1120-S; future CA 540 — the `compute()` function returns a flat `dict[str, object]` whose keys are the public API surface consumed by the PDF mapping module.
+
+**Convention:** compute output keys use **semantic-noun basenames**, never IRS line numbers. Examples: `f1120s_total_tax`, `f1120s_overpayment`, `f1120s_sch_k_ordinary_business_income`. Not `f1120s_line_22_total_tax`, not `f1120s_sch_k_line_1_ordinary_business_income`.
+
+**Why:** line numbers belong in the PDF mapping module, which is form-revision-specific (e.g. `_MAPPING_2025`). The 2025 1120-S renumbered the entire Tax/Payments block relative to 2024 (22a→23a, 22→23c, 23→24, 24→26, 26→27, 27→28a) — proving line numbers are anti-durable for compute keys. Embedding them in the cross-revision API surface would force a breaking key change on every IRS renumbering.
+
+**Local-variable exception:** internal locals in helper functions (e.g. `line_1a`, `line_22a`, `line_23e` in `_compute_income`/`_compute_total_tax`/`_compute_payments_and_balance`) keep IRS-line-numbered names. These mirror form arithmetic during computation and are not part of the public API; their line-numbered names make the math read like the form instructions.
+
 ## XLS Spreadsheet Details
 
 ### Federal 2025

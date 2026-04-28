@@ -5,16 +5,16 @@ import unittest
 from tenforty.forms import f8949
 from tenforty.forms.f8949 import Form8949Lot
 from tenforty.models import Form1099B, Scenario, TaxReturnConfig
-from tests.helpers import plan_d_attestation_defaults
+from tests.helpers import scope_out_attestation_defaults
 
 # Per-row PDF-mapping shape contract lives with pdf_f8949 (separate task).
 
 
 def _make_scenario(lots: list[Form1099B], **config_overrides) -> Scenario:
-    kw = plan_d_attestation_defaults()
+    kw = scope_out_attestation_defaults()
     kw.update(config_overrides)
     # has_foreign_accounts and prior_year_itemized are already included in
-    # plan_d_attestation_defaults(); pass them via **kw only to avoid duplicates.
+    # scope_out_attestation_defaults(); pass them via **kw only to avoid duplicates.
     cfg = TaxReturnConfig(
         year=2025, filing_status="single",
         birthdate="1985-04-20", state="CA",

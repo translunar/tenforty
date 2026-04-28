@@ -1,3 +1,4 @@
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from pypdf import PdfReader, PdfWriter
@@ -8,12 +9,36 @@ from tenforty.rounding import irs_round
 class PdfFiller:
     """Fills PDF form fields with computed tax values."""
 
+    @staticmethod
+    def _render_scalar(value: object) -> str:
+        """Render a scalar value to its PDF string form.
+
+        Numerics are IRS half-up rounded to whole dollars; everything else
+        is str()-coerced. Bools are explicitly rejected — bool-valued fields
+        must be registered in the form's checkbox_states map and routed
+        through fill() so the per-field XFA appearance state is written.
+        Falling through to "Yes"/"Off" here would silently render the cell
+        empty in pypdf for any IRS XFA form whose checkboxes use non-/Yes
+        on-states."""
+        if isinstance(value, bool):
+            raise ValueError(
+                "PdfFiller._render_scalar does not accept bool values; "
+                "bool-valued fields must be registered in the form's "
+                "checkbox_states map and routed through fill()."
+            )
+        if isinstance(value, (int, float)):
+            return str(irs_round(value))
+        return str(value)
+
     def fill(
         self,
         template_path: Path,
         output_path: Path,
         field_mapping: dict[str, str],
         values: dict[str, object],
+        aggregations: Mapping[str, tuple[str, ...]] | None = None,
+        derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
+        checkbox_states: Mapping[str, str] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
@@ -21,11 +46,23 @@ class PdfFiller:
         rounding before being rendered — the 1040 and its schedules
         display whole-dollar amounts.
 
+        After the 1:1 mapping pass, aggregation cells are filled by summing
+        their constituent compute keys (missing/None inputs count as 0, and
+        the cell is skipped only when ALL inputs are absent). Derivation cells
+        are filled by calling their lambda with the full values dict.
+
         Args:
             template_path: Path to the fillable PDF template.
             output_path: Path to write the filled PDF.
             field_mapping: Maps our result keys to PDF field names.
             values: Computed results from the engine.
+            aggregations: Maps PDF field path → tuple of compute keys to sum.
+            derivations: Maps PDF field path → lambda(values) → value.
+            checkbox_states: Maps compute key → PDF "on" state string for
+                forms whose checkbox fields use non-standard state names
+                (e.g. IRS XFA forms use "/1", "/2", "/3" instead of "/Yes").
+                When a bool-valued key is listed here, the on-state from this
+                dict is written for True; "/Off" is written for False.
 
         Returns:
             Path to the filled PDF.
@@ -34,16 +71,34 @@ class PdfFiller:
         writer = PdfWriter(clone_from=reader)
 
         pdf_fields: dict[str, str] = {}
+
         for result_key, pdf_field_name in field_mapping.items():
             if result_key in values and values[result_key] is not None:
-                value = values[result_key]
-                if isinstance(value, bool):
-                    rendered = str(value)
-                elif isinstance(value, (int, float)):
-                    rendered = str(irs_round(value))
+                v = values[result_key]
+                if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
+                    pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
                 else:
-                    rendered = str(value)
-                pdf_fields[pdf_field_name] = rendered
+                    pdf_fields[pdf_field_name] = self._render_scalar(v)
+
+        if aggregations:
+            for pdf_field, compute_keys in aggregations.items():
+                present_keys = [k for k in compute_keys if k in values and values[k] is not None]
+                # Skip when every input is missing — nothing to write.
+                if not present_keys:
+                    continue
+                total = sum(values[k] for k in compute_keys if k in values and values[k] is not None)
+                pdf_fields[pdf_field] = self._render_scalar(total)
+
+        if derivations:
+            for pdf_field, lambda_fn in derivations.items():
+                try:
+                    result = lambda_fn(values)
+                except KeyError:
+                    # A required input key is absent from values; skip this cell
+                    # rather than writing a broken or partial value.
+                    continue
+                if result is not None:
+                    pdf_fields[pdf_field] = self._render_scalar(result)
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)

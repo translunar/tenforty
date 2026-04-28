@@ -12,7 +12,7 @@ from tenforty.models import (
     RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import make_k1_scenario, make_simple_scenario, plan_d_attestation_defaults
+from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_attestation_defaults
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -189,7 +189,7 @@ class TestShouldCompute8949(unittest.TestCase):
             config=TaxReturnConfig(
                 year=2025, filing_status="single",
                 birthdate="1985-04-20", state="CA",
-                **plan_d_attestation_defaults(),
+                **scope_out_attestation_defaults(),
             ),
             form1099_b=list(lots),
         )
@@ -224,7 +224,7 @@ class TestShouldEmit8949Pdf(unittest.TestCase):
             config=TaxReturnConfig(
                 year=2025, filing_status="single",
                 birthdate="1985-04-20", state="CA",
-                **plan_d_attestation_defaults(),
+                **scope_out_attestation_defaults(),
             ),
             form1099_b=list(lots),
         )
