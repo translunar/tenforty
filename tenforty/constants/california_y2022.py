@@ -1,7 +1,6 @@
 """California Form 540 constants for tax year 2022.
 
-All values extracted from FTB Form 540 (TY2022) at
-``pdfs/california/2022/f540.pdf``:
+Values extracted from FTB Form 540 (TY2022) at ``pdfs/california/2022/f540.pdf``:
 
 - ``STANDARD_DEDUCTION``: side 2, line 18 worksheet
 - ``EXEMPTION_CREDIT``: side 1, lines 7-10 multipliers (N × per-person)
@@ -10,6 +9,15 @@ All values extracted from FTB Form 540 (TY2022) at
 - ``DEPENDENT_EXEMPTION_AMOUNT``: side 2, line 10 ($433 each)
 - ``AGI_PHASEOUT_THRESHOLD``: side 2, line 32 ("If your federal AGI is
   more than $229,908, see instructions")
+
+Rate schedules extracted from FTB ``pdfs/california/2022/tax_rate_schedules.pdf``
+(2022 California Tax Rate Schedules, Personal Income Tax Booklet 2022 page 93):
+
+- ``RATE_SCHEDULE``: Schedule X (Single/MFS), Schedule Y (MFJ/QSS), Schedule
+  Z (HoH); 9 brackets each, top rate 12.30%. Schedule Y thresholds are
+  exactly 2× Schedule X. Schedule Z is FTB-published independently and does
+  NOT equal Schedule X × 2 (e.g., HoH first non-zero threshold $20,212 vs
+  SINGLE×2 = $20,198, a $14 quirk).
 """
 
 from tenforty.models import FilingStatus
@@ -36,3 +44,49 @@ AGI_PHASEOUT_THRESHOLD: int = 229_908
 # Used by T11 final-liability compute as a gate. If federal AGI exceeds
 # this, the exemption credit phases out (FTB instructions formula); v1
 # raises NotImplementedError rather than computing the phaseout.
+
+# Rate schedules — Source: tax_rate_schedules.pdf (FTB 2022, p. 93 in booklet).
+
+_SCHEDULE_X = [  # Single / MFS
+    (0, 0.01),
+    (10_099, 0.02),
+    (23_942, 0.04),
+    (37_788, 0.06),
+    (52_455, 0.08),
+    (66_295, 0.093),
+    (338_639, 0.103),
+    (406_364, 0.113),
+    (677_275, 0.123),
+]
+
+_SCHEDULE_Y = [  # MFJ / QSS — thresholds exactly 2× Schedule X
+    (0, 0.01),
+    (20_198, 0.02),
+    (47_884, 0.04),
+    (75_576, 0.06),
+    (104_910, 0.08),
+    (132_590, 0.093),
+    (677_278, 0.103),
+    (812_728, 0.113),
+    (1_354_550, 0.123),
+]
+
+_SCHEDULE_Z = [  # HoH — FTB-published independently; close to but not equal to X × 2
+    (0, 0.01),
+    (20_212, 0.02),
+    (47_887, 0.04),
+    (61_730, 0.06),
+    (76_397, 0.08),
+    (90_240, 0.093),
+    (460_547, 0.103),
+    (552_658, 0.113),
+    (921_095, 0.123),
+]
+
+RATE_SCHEDULE: dict[FilingStatus, list[tuple[int, float]]] = {
+    FilingStatus.SINGLE: _SCHEDULE_X,
+    FilingStatus.MARRIED_SEPARATELY: _SCHEDULE_X,
+    FilingStatus.MARRIED_JOINTLY: _SCHEDULE_Y,
+    FilingStatus.QUALIFYING_WIDOW: _SCHEDULE_Y,
+    FilingStatus.HEAD_OF_HOUSEHOLD: _SCHEDULE_Z,
+}
