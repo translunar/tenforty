@@ -132,7 +132,7 @@ def compute(
     voluntary_contributions: list[VoluntaryContribution] | None = None,
     ca_itemized: int | None = None,
     renter_credit_eligible: bool = False,
-) -> dict[str, int]:
+) -> dict[str, int | FilingStatus]:
     """California Form 540 final-liability compute.
 
     Pipeline: AGI phaseout gate → deduction selection → taxable income →
@@ -198,4 +198,5 @@ def compute(
         "f540_estimated_tax_penalty": irs_round(estimated_tax_penalty),
         "f540_estimated_payments": irs_round(estimated_payments),
         "f540_total_liability": irs_round(final),
+        "f540_filing_status": filing_status,
     }
