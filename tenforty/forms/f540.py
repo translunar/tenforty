@@ -13,7 +13,8 @@ is gated in T11's final-liability compute, not here.
 import importlib
 import math
 
-from tenforty.models import FilingStatus
+from tenforty.models import FilingStatus, VoluntaryContribution
+from tenforty.rounding import irs_round
 
 
 def _load_ca_constants(year: int):
@@ -104,3 +105,97 @@ def compute_ca_tax(
 
     # Rate Schedule branch: income > $100,000 — walk directly on taxable_income
     return round(_walk_rate_schedule(rate_schedule, taxable_income))
+
+
+def _compute_renters_credit(
+    year: int,
+    filing_status: FilingStatus,
+    ca_agi: int,
+) -> int:
+    """CA renter's credit. Per oracle Q4: gate uses CA AGI (not federal)."""
+    constants = _load_ca_constants(year)
+    if ca_agi > constants.RENTER_CREDIT_AGI_THRESHOLD[filing_status]:
+        return 0
+    return constants.RENTER_CREDIT_AMOUNT[filing_status]
+
+
+def compute(
+    year: int,
+    filing_status: FilingStatus,
+    federal_agi: int,
+    ca_agi: int,
+    num_dependents: int = 0,
+    estimated_payments: int = 0,
+    use_tax: int = 0,
+    estimated_tax_penalty: int = 0,
+    ptet_credit: int = 0,
+    voluntary_contributions: list[VoluntaryContribution] | None = None,
+    ca_itemized: int | None = None,
+    renter_credit_eligible: bool = False,
+) -> dict[str, int]:
+    """California Form 540 final-liability compute.
+
+    Pipeline: AGI phaseout gate → deduction selection → taxable income →
+    CA tax → exemption credit (base + dependent) → renter's credit (CA AGI
+    gate per oracle Q4) → voluntary contributions → final liability.
+
+    Returns flat dict keyed by ``f540_<semantic>``; all values are int
+    (post-``irs_round`` where the input is float).
+
+    Raises NotImplementedError if ``federal_agi`` exceeds the year's
+    AGI_PHASEOUT_THRESHOLD (exemption-credit phaseout formula deferred
+    from v1 per plan).
+    """
+    constants = _load_ca_constants(year)
+
+    # AGI phaseout gate
+    if federal_agi > constants.AGI_PHASEOUT_THRESHOLD:
+        raise NotImplementedError(
+            f"Federal AGI ${federal_agi} exceeds CA exemption-credit phaseout "
+            f"threshold ${constants.AGI_PHASEOUT_THRESHOLD} for tax year {year}; "
+            f"phaseout formula not implemented in v1."
+        )
+
+    std_ded = compute_standard_deduction(year, filing_status)
+    deduction = max(std_ded, ca_itemized or 0)
+    taxable_income = max(0, ca_agi - deduction)
+    ca_tax = compute_ca_tax(year, filing_status, taxable_income)
+
+    # Exemption credits
+    base = compute_exemption_credit(year, filing_status)
+    dep = constants.DEPENDENT_EXEMPTION_AMOUNT * num_dependents
+    exemption = base + dep
+
+    # Renter's credit
+    renters = _compute_renters_credit(year, filing_status, ca_agi) if renter_credit_eligible else 0
+
+    # Voluntary contributions
+    vc_list = voluntary_contributions or []
+    voluntary_total = sum(vc.amount for vc in vc_list)
+
+    total_credits = exemption + renters + ptet_credit
+
+    final = (
+        ca_tax
+        - total_credits
+        + voluntary_total      # voluntary contributions ADD to liability
+        + use_tax
+        + estimated_tax_penalty
+        - estimated_payments
+    )
+
+    return {
+        "f540_ca_agi": irs_round(ca_agi),
+        "f540_deduction": irs_round(deduction),
+        "f540_taxable_income": irs_round(taxable_income),
+        "f540_ca_tax": ca_tax,
+        "f540_exemption_credit": exemption,
+        "f540_renter_credit": renters,
+        "f540_ptet_credit": ptet_credit,
+        "f540_total_credits": irs_round(total_credits),
+        "f540_voluntary_contributions": irs_round(voluntary_total),
+        "f540_use_tax": irs_round(use_tax),
+        "f540_estimated_tax_penalty": irs_round(estimated_tax_penalty),
+        "f540_estimated_payments": irs_round(estimated_payments),
+        "f540_total_liability": irs_round(final),
+    }

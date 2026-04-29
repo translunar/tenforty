@@ -1,10 +1,12 @@
+import importlib
 import unittest
 
-from tenforty.models import FilingStatus
+from tenforty.models import FilingStatus, VoluntaryContribution
 from tenforty.forms.f540 import (
     compute_standard_deduction,
     compute_exemption_credit,
     compute_ca_tax,
+    compute,
 )
 
 
@@ -241,3 +243,194 @@ class ComputeCaTaxUnsupportedYearTests(unittest.TestCase):
             compute_ca_tax(year=2020, filing_status=FilingStatus.SINGLE, taxable_income=50_000)
         self.assertIn("2020", str(ctx.exception))
         self.assertIn("2021-2025", str(ctx.exception))
+
+
+class ComputePipelineWalkTests(unittest.TestCase):
+    """Hand-walked oracles for compute() pipeline (TY2025)."""
+
+    def test_ty2025_single_50k_no_credits(self):
+        result = compute(
+            year=2025,
+            filing_status=FilingStatus.SINGLE,
+            federal_agi=50_000,
+            ca_agi=50_000,
+        )
+        self.assertEqual(result["f540_ca_agi"], 50_000)
+        self.assertEqual(result["f540_deduction"], 5_706)
+        self.assertEqual(result["f540_taxable_income"], 44_294)
+        self.assertEqual(result["f540_ca_tax"], 1_193)
+        self.assertEqual(result["f540_exemption_credit"], 153)
+        self.assertEqual(result["f540_renter_credit"], 0)
+        self.assertEqual(result["f540_total_credits"], 153)
+        self.assertEqual(result["f540_total_liability"], 1_040)
+
+    def test_ty2025_mfj_100k_two_dependents_no_renter(self):
+        result = compute(
+            year=2025,
+            filing_status=FilingStatus.MARRIED_JOINTLY,
+            federal_agi=100_000,
+            ca_agi=100_000,
+            num_dependents=2,
+        )
+        self.assertEqual(result["f540_deduction"], 11_412)
+        self.assertEqual(result["f540_taxable_income"], 88_588)
+        self.assertEqual(result["f540_ca_tax"], 2_386)
+        # 306 base + 2 × $475 dependent = 1,256
+        self.assertEqual(result["f540_exemption_credit"], 1_256)
+        self.assertEqual(result["f540_total_credits"], 1_256)
+        self.assertEqual(result["f540_total_liability"], 1_130)
+
+    def test_ty2025_single_40k_renter_eligible(self):
+        result = compute(
+            year=2025,
+            filing_status=FilingStatus.SINGLE,
+            federal_agi=40_000,
+            ca_agi=40_000,
+            renter_credit_eligible=True,
+        )
+        self.assertEqual(result["f540_taxable_income"], 34_294)
+        self.assertEqual(result["f540_ca_tax"], 736)
+        self.assertEqual(result["f540_exemption_credit"], 153)
+        self.assertEqual(result["f540_renter_credit"], 60)
+        self.assertEqual(result["f540_total_credits"], 213)
+        self.assertEqual(result["f540_total_liability"], 523)
+
+
+class AgiPhaseoutGateTests(unittest.TestCase):
+    """AGI phaseout gate fires for federal_agi > AGI_PHASEOUT_THRESHOLD."""
+
+    def test_phaseout_gate_fires_all_5_years(self):
+        for year in range(2021, 2026):
+            with self.subTest(year=year):
+                constants = importlib.import_module(
+                    f"tenforty.constants.california_y{year}"
+                )
+                with self.assertRaises(NotImplementedError) as ctx:
+                    compute(
+                        year=year,
+                        filing_status=FilingStatus.SINGLE,
+                        federal_agi=constants.AGI_PHASEOUT_THRESHOLD + 1,
+                        ca_agi=50_000,
+                    )
+                self.assertIn(str(year), str(ctx.exception))
+                self.assertIn("phaseout", str(ctx.exception).lower())
+
+    def test_phaseout_gate_strict_at_threshold_does_not_fire(self):
+        # At exactly the threshold, gate uses strict `>`, so does NOT fire.
+        for year in range(2021, 2026):
+            with self.subTest(year=year):
+                constants = importlib.import_module(
+                    f"tenforty.constants.california_y{year}"
+                )
+                # Should not raise; produce a valid dict
+                result = compute(
+                    year=year,
+                    filing_status=FilingStatus.SINGLE,
+                    federal_agi=constants.AGI_PHASEOUT_THRESHOLD,
+                    ca_agi=50_000,
+                )
+                self.assertIsInstance(result, dict)
+
+
+class ChrisPatMFJ125kFinalLiabilityTests(unittest.TestCase):
+    """Cross-pipeline check: feed Chris+Pat MFJ $125k taxable through compute()."""
+
+    def test_chris_pat_mfj_125k_pipeline_all_years(self):
+        for year, expected_ca_tax in EXPECTED_CHRIS_PAT_MFJ_125K.items():
+            with self.subTest(year=year):
+                std_ded = EXPECTED_STANDARD_DEDUCTION[year][FilingStatus.MARRIED_JOINTLY]
+                exemption = EXPECTED_EXEMPTION_CREDIT[year][FilingStatus.MARRIED_JOINTLY]
+                ca_agi = 125_000 + std_ded
+                result = compute(
+                    year=year,
+                    filing_status=FilingStatus.MARRIED_JOINTLY,
+                    federal_agi=ca_agi,
+                    ca_agi=ca_agi,
+                )
+                self.assertEqual(result["f540_taxable_income"], 125_000)
+                self.assertEqual(result["f540_ca_tax"], expected_ca_tax)
+                self.assertEqual(result["f540_total_liability"], expected_ca_tax - exemption)
+
+
+class SignConventionTests(unittest.TestCase):
+    """Verify sign convention for each line item in the final-liability formula."""
+
+    BASELINE_KWARGS = dict(
+        year=2025,
+        filing_status=FilingStatus.SINGLE,
+        federal_agi=50_000,
+        ca_agi=50_000,
+    )
+
+    def test_voluntary_contribution_increases_liability(self):
+        baseline = compute(**self.BASELINE_KWARGS)
+        with_vc = compute(
+            **self.BASELINE_KWARGS,
+            voluntary_contributions=[VoluntaryContribution("WLD", 50.0)],
+        )
+        self.assertEqual(
+            with_vc["f540_total_liability"],
+            baseline["f540_total_liability"] + 50,
+        )
+
+    def test_use_tax_increases_liability(self):
+        baseline = compute(**self.BASELINE_KWARGS)
+        with_use = compute(**self.BASELINE_KWARGS, use_tax=25)
+        self.assertEqual(
+            with_use["f540_total_liability"],
+            baseline["f540_total_liability"] + 25,
+        )
+
+    def test_estimated_tax_penalty_increases_liability(self):
+        baseline = compute(**self.BASELINE_KWARGS)
+        with_pen = compute(**self.BASELINE_KWARGS, estimated_tax_penalty=15)
+        self.assertEqual(
+            with_pen["f540_total_liability"],
+            baseline["f540_total_liability"] + 15,
+        )
+
+    def test_estimated_payments_decreases_liability(self):
+        baseline = compute(**self.BASELINE_KWARGS)
+        with_pay = compute(**self.BASELINE_KWARGS, estimated_payments=200)
+        self.assertEqual(
+            with_pay["f540_total_liability"],
+            baseline["f540_total_liability"] - 200,
+        )
+
+    def test_ptet_credit_decreases_liability(self):
+        baseline = compute(**self.BASELINE_KWARGS)
+        with_ptet = compute(**self.BASELINE_KWARGS, ptet_credit=100)
+        self.assertEqual(
+            with_ptet["f540_total_liability"],
+            baseline["f540_total_liability"] - 100,
+        )
+
+
+class VoluntaryContributionAggregationTests(unittest.TestCase):
+    """voluntary_contributions=None and =[] both yield $0; multi-item sums."""
+
+    BASELINE_KWARGS = dict(
+        year=2025,
+        filing_status=FilingStatus.SINGLE,
+        federal_agi=50_000,
+        ca_agi=50_000,
+    )
+
+    def test_none_voluntary_yields_zero(self):
+        result = compute(**self.BASELINE_KWARGS, voluntary_contributions=None)
+        self.assertEqual(result["f540_voluntary_contributions"], 0)
+
+    def test_empty_list_voluntary_yields_zero(self):
+        result = compute(**self.BASELINE_KWARGS, voluntary_contributions=[])
+        self.assertEqual(result["f540_voluntary_contributions"], 0)
+
+    def test_multiple_voluntary_contributions_sum(self):
+        result = compute(
+            **self.BASELINE_KWARGS,
+            voluntary_contributions=[
+                VoluntaryContribution("WLD", 25.0),
+                VoluntaryContribution("KID", 30.0),
+                VoluntaryContribution("ALZ", 45.0),
+            ],
+        )
+        self.assertEqual(result["f540_voluntary_contributions"], 100)
