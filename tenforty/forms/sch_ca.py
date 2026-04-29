@@ -13,7 +13,7 @@ Produces compute output keys:
 """
 
 from collections import defaultdict
-from tenforty.models import CASchCAAdjustment, DivergenceDirection
+from tenforty.models import CASchCAAdjustment, DivergenceDirection, DivergenceSource
 from tenforty.rounding import irs_round
 
 
@@ -51,3 +51,71 @@ def compute(
     federal_agi = federal_results.get("agi", 0.0)
     out["sch_ca_ca_agi"] = irs_round(federal_agi - total_sub + total_add)
     return out
+
+
+def derive_auto_divergences(federal_results: dict) -> list[CASchCAAdjustment]:
+    """Generate mechanical divergences from federal results.
+
+    Each entry in this catalog represents a federal-vs-CA difference where
+    the value is fully determined by federal data alone — no user input
+    needed. The kernel adds these to user-supplied worksheet divergences
+    before routing.
+    """
+    divergences = []
+
+    if (ui := federal_results.get("schedule_1_unemployment_compensation", 0.0)) > 0:
+        divergences.append(CASchCAAdjustment(
+            source=DivergenceSource.AUTO_DERIVED,
+            sch_ca_line="Part I §B 7",
+            direction=DivergenceDirection.SUBTRACTION,
+            amount=ui,
+            description="Unemployment compensation excluded by CA per R&TC 17083",
+            federal_source="Sch 1 line 7",
+            pub1001_ref="p.17",
+        ))
+
+    if (ss := federal_results.get("form_1040_taxable_social_security", 0.0)) > 0:
+        divergences.append(CASchCAAdjustment(
+            source=DivergenceSource.AUTO_DERIVED,
+            sch_ca_line="Part I §A 6",
+            direction=DivergenceDirection.SUBTRACTION,
+            amount=ss,
+            description="Social Security benefits excluded by CA per R&TC 17087",
+            federal_source="1040 line 6b (taxable portion)",
+            pub1001_ref="p.10",
+        ))
+
+    if (refund := federal_results.get("schedule_1_state_local_tax_refund", 0.0)) > 0:
+        divergences.append(CASchCAAdjustment(
+            source=DivergenceSource.AUTO_DERIVED,
+            sch_ca_line="Part I §B 1",
+            direction=DivergenceDirection.SUBTRACTION,
+            amount=refund,
+            description="State income tax refund not taxed by CA per R&TC 17131",
+            federal_source="Sch 1 line 1",
+            pub1001_ref="p.11",
+        ))
+
+    if (rrb := federal_results.get("form_1040_railroad_retirement_tier_1_2", 0.0)) > 0:
+        divergences.append(CASchCAAdjustment(
+            source=DivergenceSource.AUTO_DERIVED,
+            sch_ca_line="Part I §A 5b",
+            direction=DivergenceDirection.SUBTRACTION,
+            amount=rrb,
+            description="Railroad retirement excluded by CA per R&TC 17087",
+            federal_source="1040 line 5b (RRB component)",
+            pub1001_ref="p.9",
+        ))
+
+    if (pfl := federal_results.get("schedule_1_pfl_benefits", 0.0)) > 0:
+        divergences.append(CASchCAAdjustment(
+            source=DivergenceSource.AUTO_DERIVED,
+            sch_ca_line="Part I §B 7",
+            direction=DivergenceDirection.SUBTRACTION,
+            amount=pfl,
+            description="Paid Family Leave benefits excluded by CA",
+            federal_source="Sch 1 line 7 (PFL portion)",
+            pub1001_ref="p.17",
+        ))
+
+    return divergences
