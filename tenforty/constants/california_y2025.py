@@ -19,6 +19,18 @@ Personal Income Tax Booklet):
   Schedule Y thresholds are exactly 2× Schedule X. Schedule Z is FTB-
   published independently and does NOT equal Schedule X × 2 (e.g., HoH
   first non-zero threshold $22,173 vs SINGLE×2 = $22,158, a $15 quirk).
+
+Nonrefundable Renter's Credit values extracted from the FTB 2025 540-2EZ
+Booklet at ``pdfs/california/2025/booklet_2ez.pdf`` p.13, "Nonrefundable
+Renter's Credit Qualification Record" Q2 (AGI threshold) and Q11 (amount).
+
+The regular TY2025 540 Personal Income Tax Booklet was not yet published
+at extraction time (April 2026); the 540-2EZ Booklet contains the identical
+Renter's Credit values per FTB §17053.5 (the credit is form-agnostic).
+Re-source from the regular 540 booklet at /simplify pass once published:
+
+- ``RENTER_CREDIT_AGI_THRESHOLD``: $53,994 single/MFS, $107,988 MFJ/HoH/QSS
+- ``RENTER_CREDIT_AMOUNT``: $60 single/MFS, $120 MFJ/HoH/QSS
 """
 
 from tenforty.models import FilingStatus
@@ -93,4 +105,27 @@ RATE_SCHEDULE: dict[FilingStatus, list[tuple[int, float]]] = {
     FilingStatus.MARRIED_JOINTLY: _SCHEDULE_Y,
     FilingStatus.QUALIFYING_WIDOW: _SCHEDULE_Y,
     FilingStatus.HEAD_OF_HOUSEHOLD: _SCHEDULE_Z,
+}
+
+# Nonrefundable Renter's Credit — Source: pdfs/california/2025/booklet_2ez.pdf
+# p.13 Q2 (AGI threshold) and Q11 (amount). The regular TY2025 540 booklet
+# was not published at extraction time (April 2026); 2EZ booklet contains
+# identical Renter's Credit values per FTB §17053.5 (form-agnostic).
+# Filing-status mapping per FTB Q11 bullet rules; the MFS-living-apart
+# $30 split edge case is out of v1 scope.
+
+RENTER_CREDIT_AGI_THRESHOLD: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 53_994,
+    FilingStatus.MARRIED_SEPARATELY: 53_994,
+    FilingStatus.MARRIED_JOINTLY: 107_988,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 107_988,
+    FilingStatus.QUALIFYING_WIDOW: 107_988,
+}
+
+RENTER_CREDIT_AMOUNT: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 60,
+    FilingStatus.MARRIED_SEPARATELY: 60,
+    FilingStatus.MARRIED_JOINTLY: 120,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 120,
+    FilingStatus.QUALIFYING_WIDOW: 120,
 }

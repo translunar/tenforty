@@ -19,6 +19,13 @@ Rate schedules extracted from FTB ``pdfs/california/2021/tax_rate_schedules.pdf`
   NOT equal Schedule X × 2 (e.g., HoH first non-zero threshold $18,663 vs
   SINGLE×2 = $18,650, a $13 quirk). Note: TY2021 FTB form still used the
   older "Qualifying Widow(er)" terminology; tenforty maps QSS to QUALIFYING_WIDOW.
+
+Nonrefundable Renter's Credit values extracted from FTB Personal Income Tax
+Booklet (TY2021) at ``pdfs/california/2021/booklet.pdf`` p.23, "Nonrefundable
+Renter's Credit Qualification Record" Q2 (AGI threshold) and Q11 (amount):
+
+- ``RENTER_CREDIT_AGI_THRESHOLD``: $45,448 single/MFS, $90,896 MFJ/HoH/QSS
+- ``RENTER_CREDIT_AMOUNT``: $60 single/MFS, $120 MFJ/HoH/QSS
 """
 
 from tenforty.models import FilingStatus
@@ -90,4 +97,24 @@ RATE_SCHEDULE: dict[FilingStatus, list[tuple[int, float]]] = {
     FilingStatus.MARRIED_JOINTLY: _SCHEDULE_Y,
     FilingStatus.QUALIFYING_WIDOW: _SCHEDULE_Y,
     FilingStatus.HEAD_OF_HOUSEHOLD: _SCHEDULE_Z,
+}
+
+# Nonrefundable Renter's Credit — Source: pdfs/california/2021/booklet.pdf p.23
+# Q2 (AGI threshold) and Q11 (amount). Filing-status mapping per FTB Q11 bullet
+# rules; the MFS-living-apart $30 split edge case is out of v1 scope.
+
+RENTER_CREDIT_AGI_THRESHOLD: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 45_448,
+    FilingStatus.MARRIED_SEPARATELY: 45_448,
+    FilingStatus.MARRIED_JOINTLY: 90_896,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 90_896,
+    FilingStatus.QUALIFYING_WIDOW: 90_896,
+}
+
+RENTER_CREDIT_AMOUNT: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 60,
+    FilingStatus.MARRIED_SEPARATELY: 60,
+    FilingStatus.MARRIED_JOINTLY: 120,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 120,
+    FilingStatus.QUALIFYING_WIDOW: 120,
 }
