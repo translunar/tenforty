@@ -11,6 +11,7 @@ is gated in T11's final-liability compute, not here.
 """
 
 import importlib
+import math
 
 from tenforty.models import FilingStatus
 
@@ -92,7 +93,6 @@ def compute_ca_tax(
         # (Tax Table) → $100,001 (Rate Schedule) is real (~$3–5 difference per
         # FTB encoding) and is not a bug — the two branches use distinct
         # computation methods by FTB design.
-        import math
         bin_high = 50 + 100 * math.ceil((taxable_income - 50) / 100)
         midpoint = bin_high - 49.5
         return round(_walk_rate_schedule(rate_schedule, midpoint))
