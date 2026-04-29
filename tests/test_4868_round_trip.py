@@ -68,6 +68,17 @@ class TestBalanceDueSingle(unittest.TestCase):
             address_city="Austin",
             address_state="TX",
             address_zip="78701",
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 15000, "total_payments": 12000, "wages": 90000}
@@ -118,6 +129,17 @@ class TestRefundCase(unittest.TestCase):
             address_city="Los Angeles",
             address_state="CA",
             address_zip="90001",
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 10000, "total_payments": 12500}
@@ -158,6 +180,17 @@ class TestMFJSpouseSSN(unittest.TestCase):
             address_city="New York",
             address_state="NY",
             address_zip="10001",
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 20000, "total_payments": 18000}
@@ -197,6 +230,17 @@ class TestSingleFilerSpouseFieldsBlank(unittest.TestCase):
             address_city="Seattle",
             address_state="WA",
             address_zip="98101",
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 5000, "total_payments": 4000}

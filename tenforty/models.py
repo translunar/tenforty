@@ -368,6 +368,18 @@ class TaxReturnConfig:
     # `s_corp_return.scope_outs.refundable_credits` (mirroring §1374 /
     # §1375 caller-supplied amounts).
     acknowledges_no_elective_payment_election: bool | None = None
+    # --- CA-specific scope-out attestations (11 unconditional) ---
+    acknowledges_no_540nr_filing: bool | None = None
+    acknowledges_no_ca_amt_preferences: bool | None = None
+    acknowledges_no_ca_sch_d_federal_state_divergence: bool | None = None
+    acknowledges_no_ca_nol_carryover: bool | None = None
+    acknowledges_no_ca_depreciation_divergence: bool | None = None
+    acknowledges_no_ca_ira_basis_divergence: bool | None = None
+    acknowledges_no_ca_rdp_status: bool | None = None
+    acknowledges_no_excess_business_loss_carryover: bool | None = None
+    acknowledges_no_1031_personal_property_divergence: bool | None = None
+    acknowledges_no_ic_worker_reclassification: bool | None = None
+    acknowledges_no_other_state_tax_credit: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None

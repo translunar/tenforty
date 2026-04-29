@@ -46,6 +46,17 @@ def make_scenario_with_identity() -> Scenario:
             acknowledges_no_other_basis_adjustments=False,
             acknowledges_no_28_rate_gain=False,
             acknowledges_no_unrecaptured_section_1250=False,
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
         ),
     )
 

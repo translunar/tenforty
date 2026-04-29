@@ -20,6 +20,17 @@ class TestReturnOrchestrator(unittest.TestCase):
                 filing_status="single",
                 birthdate="1990-06-15",
                 state="CA",
+                acknowledges_no_540nr_filing=False,
+                acknowledges_no_ca_amt_preferences=False,
+                acknowledges_no_ca_sch_d_federal_state_divergence=False,
+                acknowledges_no_ca_nol_carryover=False,
+                acknowledges_no_ca_depreciation_divergence=False,
+                acknowledges_no_ca_ira_basis_divergence=False,
+                acknowledges_no_ca_rdp_status=False,
+                acknowledges_no_excess_business_loss_carryover=False,
+                acknowledges_no_1031_personal_property_divergence=False,
+                acknowledges_no_ic_worker_reclassification=False,
+                acknowledges_no_other_state_tax_credit=False,
             ),
             w2s=[
                 W2(

@@ -33,7 +33,8 @@ class Attestation:
     field: str
     triggered_when: Callable[[Scenario], bool]
     load_error: str
-    compute_error: str
+    compute_error: str  # required — preserve existing signature
+    applies_in_years: frozenset[int] | None = None  # None = all years; trailing optional
 
 
 def _has_any_k1(s: Scenario) -> bool:
@@ -521,15 +522,173 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
 )
 
 
-def validate_load_time(cfg) -> None:
-    """Iterate _ATTESTATIONS and raise ValueError for any None field.
+# CA-specific scope-out attestations (11 entries; year-aware)
+_CA_ATTESTATIONS = (
+    Attestation(
+        field="acknowledges_no_540nr_filing",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_540nr_filing` is required "
+            "and must be either true or false. Form 540NR (nonresident or "
+            "part-year-resident return) is not implemented in tenforty v1; "
+            "v1 supports full-year-resident filing only. Set true to affirm "
+            "that you were a full-year California resident for the tax year."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_amt_preferences",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_amt_preferences` is "
+            "required and must be either true or false. California Schedule "
+            "P (Alternative Minimum Tax) is not computed by tenforty v1. "
+            "Set true to affirm you have NONE of the following preferences: "
+            "bonus depreciation under IRC §168(k); §179 expense election; "
+            "ISO exercises; private-activity municipal bond interest; "
+            "real-estate operating losses outside passive limits; %-depletion. "
+            "Compute will raise NotImplementedError if any of these signals "
+            "appear and this attestation is False."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_sch_d_federal_state_divergence",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_sch_d_federal_state_divergence` "
+            "is required and must be either true or false. Sub-plan-3 v1 ships "
+            "CA Schedule D (540) as a federal pass-through; the federal-vs-CA "
+            "divergences (§1202 QSBS exclusion, §1045 QSBS rollover, §1400Z QOZ "
+            "fund deferrals, pre-1987 inherited basis, Peace Corps principal-"
+            "residence service) are NOT modeled. Set true to affirm none apply. "
+            "Compute will raise NotImplementedError if any divergence signal "
+            "appears and this attestation is False."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_nol_carryover",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_nol_carryover` is "
+            "required. CA Net Operating Loss carryovers (FTB 3805V) are not "
+            "tracked across multiple years by tenforty v1; the CA NOL "
+            "suspension rules (TY2024-2026 for AGI ≥ $1M) and CA-specific "
+            "recomputation are out of scope. Supply any prior-year NOL "
+            "deduction directly via worksheet entries on Sch CA Part I §B 9b."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_depreciation_divergence",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_depreciation_divergence` "
+            "is required. CA depreciation diverges from federal in many forms "
+            "(§168(k) bonus disallowed, §179 limit $25k vs federal $1.16M+, "
+            "MACRS recovery period differences for residential rental and "
+            "commercial property, §280F luxury-auto cap differences). Compute "
+            "the federal-vs-CA reconciliation externally (FTB 3885A) and supply "
+            "the addback directly via worksheet entries; tenforty v1 does not "
+            "re-derive the difference."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_ira_basis_divergence",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_ira_basis_divergence` "
+            "is required. CA IRA / Roth IRA basis can diverge from federal "
+            "due to multi-year residency changes and SE-income deduction "
+            "differences (FTB Pub 1005). Multi-year basis tracking is out of "
+            "tenforty v1's scope; supply any divergence directly via worksheet "
+            "entries on Sch CA Part I §A 4a/4b."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_ca_rdp_status",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ca_rdp_status` is required "
+            "and must be either true or false. Registered Domestic Partner (RDP) "
+            "filing status is a CA-specific filing status with no federal analog "
+            "and is not implemented in tenforty v1. Set true to affirm you are "
+            "NOT filing as RDP."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_excess_business_loss_carryover",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_excess_business_loss_carryover` "
+            "is required. IRC §461(l) Excess Business Loss carryover (FTB 3461) "
+            "involves multi-year carryforward tracking and CA-specific non-"
+            "conformity to TCJA/CARES/ARPA/IRA modifications. Multi-year "
+            "carryover state is out of tenforty v1's scope; supply current-year "
+            "EBL adjustment directly via worksheet entries."
+        ),
+        compute_error="",
+        applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
+    ),
+    Attestation(
+        field="acknowledges_no_1031_personal_property_divergence",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_1031_personal_property_divergence` "
+            "is required. Federal §1031 like-kind exchange was limited to real "
+            "property by TCJA (post-2017); CA conformed to that limitation only "
+            "for taxpayers with AGI ≥ $250,000 (single) / $500,000 (HoH/MFJ). "
+            "Below the threshold, CA still allows broader §1031 nonrecognition "
+            "(including personal property). tenforty v1 does not model this "
+            "below-threshold divergence; supply any §1031 personal-property "
+            "adjustment directly via worksheet entries."
+        ),
+        compute_error="",
+        applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
+    ),
+    Attestation(
+        field="acknowledges_no_ic_worker_reclassification",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_ic_worker_reclassification` "
+            "is required and must be either true or false. CA may reclassify "
+            "federally-classified independent contractors as employees under "
+            "Prop 22 / AB5; this affects multiple Sch CA lines (wages, Sch C "
+            "income/deduction, SE tax). tenforty v1 does not model the "
+            "reclassification; if any of your federal Sch C income would be "
+            "reclassified as wages by CA law, this is out of scope."
+        ),
+        compute_error="",
+    ),
+    Attestation(
+        field="acknowledges_no_other_state_tax_credit",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_other_state_tax_credit` is "
+            "required. CA Schedule S (Other State Tax Credit) is for filers "
+            "with income taxed by both California and another state, not "
+            "implemented in tenforty v1 (single-state focus). Set true to "
+            "affirm you have no out-of-state tax credit to claim."
+        ),
+        compute_error="",
+    ),
+)
 
-    Separate from compute-time enforcement because load runs before a
-    Scenario object exists (only TaxReturnConfig is constructed at this
-    point). Therefore `triggered_when` is not consulted here — any None
-    field raises regardless of whether the trigger would fire."""
+_ATTESTATIONS = _ATTESTATIONS + _CA_ATTESTATIONS
+
+
+def validate_load_time(cfg) -> None:
+    """Raise ValueError for any attestation field that's None when its
+    applies_in_years range covers cfg.year."""
     for a in _ATTESTATIONS:
-        if getattr(cfg, a.field) is None:
+        if a.applies_in_years is not None and cfg.year not in a.applies_in_years:
+            continue  # skip year-bounded attestations outside their range
+        value = getattr(cfg, a.field, None)
+        if value is None:
             raise ValueError(a.load_error)
 
 
