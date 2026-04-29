@@ -107,3 +107,122 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
         result = sch_ca_compute(ca540=ca540, federal_results=federal_results)
         self.assertEqual(result["sch_ca_total_subtractions"], 2_000.0)
         self.assertEqual(result["sch_ca_ca_agi"], 75_000.0 - 2_000.0)
+
+
+class SchCaColAPassthroughTests(unittest.TestCase):
+    """Col A federal-amount passthrough (T14 PDF mapping support).
+
+    The kernel emits `sch_ca_line_<line>_col_a` keys for every entry in
+    `_FEDERAL_TO_SCH_CA_COL_A_MAP` whose federal value is present and
+    truthy. v1 covers 20 lines: §A 1z/2/3/4/5b/6/7, §B 1/3/4/5/6/7/8z,
+    §C 11/13/15/17/20/21. Federal compute output keys are sourced from
+    f1040 (semantic-named, e.g. `wages`, `taxable_interest`) for §A and
+    sch_1 (line-keyed `sch_1_line_<N>_*`) for §B and §C. PDF mapping for
+    these widget targets lives in pdf_sch_ca.
+    """
+
+    def test_federal_agi_always_emitted(self):
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results={"agi": 60_000.0},
+        )
+        self.assertEqual(result["sch_ca_federal_agi"], 60_000.0)
+
+    def test_col_a_emitted_for_section_a_keys(self):
+        # Section A: federal Form 1040 income lines, semantic-keyed.
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results={
+                "agi": 200_000.0,
+                "wages": 120_000.0,
+                "taxable_interest": 1_500.0,
+                "ordinary_dividends": 3_200.0,
+                "ira_taxable": 8_000.0,
+                "pensions_taxable": 25_000.0,
+                "social_security_taxable": 18_000.0,
+                "capital_gain_loss": 4_500.0,
+            },
+        )
+        self.assertEqual(result["sch_ca_line_part_i_a_1z_col_a"], 120_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_2_col_a"], 1_500.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_3_col_a"], 3_200.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_4_col_a"], 8_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_5b_col_a"], 25_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_6_col_a"], 18_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_a_7_col_a"], 4_500.0)
+
+    def test_col_a_emitted_for_section_b_keys(self):
+        # Section B: federal Schedule 1 additional income, line-keyed.
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results={
+                "agi": 100_000.0,
+                "sch_1_line_1_taxable_refunds": 800.0,
+                "sch_1_line_3_business_income": 25_000.0,
+                "sch_1_line_4_other_gains": 1_000.0,
+                "sch_1_line_5_rental_re_royalty": 14_500.0,
+                "sch_1_line_6_farm_income": 3_000.0,
+                "sch_1_line_7_unemployment": 2_500.0,
+                "sch_1_line_8z_other_income": 600.0,
+            },
+        )
+        self.assertEqual(result["sch_ca_line_part_i_b_1_col_a"], 800.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_3_col_a"], 25_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_4_col_a"], 1_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_5_col_a"], 14_500.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_6_col_a"], 3_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_7_col_a"], 2_500.0)
+        self.assertEqual(result["sch_ca_line_part_i_b_8z_col_a"], 600.0)
+
+    def test_col_a_emitted_for_section_c_keys(self):
+        # Section C: federal Schedule 1 adjustments to income.
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results={
+                "agi": 100_000.0,
+                "sch_1_line_11_educator": 250.0,
+                "sch_1_line_13_hsa": 4_300.0,
+                "sch_1_line_15_se_tax": 1_700.0,
+                "sch_1_line_17_se_health": 6_200.0,
+                "sch_1_line_20_ira": 7_000.0,
+                "sch_1_line_21_student_loan_interest": 2_500.0,
+            },
+        )
+        self.assertEqual(result["sch_ca_line_part_i_c_11_col_a"], 250.0)
+        self.assertEqual(result["sch_ca_line_part_i_c_13_col_a"], 4_300.0)
+        self.assertEqual(result["sch_ca_line_part_i_c_15_col_a"], 1_700.0)
+        self.assertEqual(result["sch_ca_line_part_i_c_17_col_a"], 6_200.0)
+        self.assertEqual(result["sch_ca_line_part_i_c_20_col_a"], 7_000.0)
+        self.assertEqual(result["sch_ca_line_part_i_c_21_col_a"], 2_500.0)
+
+    def test_col_a_not_emitted_when_federal_value_zero_or_absent(self):
+        # When federal_results lacks every passthrough key, the kernel
+        # emits only the always-emitted totals (federal_agi, totals,
+        # ca_agi). Verify no `_col_a` key sneaks out.
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results={"agi": 50_000.0},
+        )
+        col_a_keys = [k for k in result if k.endswith("_col_a")]
+        self.assertEqual(
+            col_a_keys, [],
+            f"Expected no _col_a keys with empty federal income, got {col_a_keys}",
+        )
+
+    def test_col_a_passthrough_map_covers_expected_lines(self):
+        # Verify the kernel's federal→Sch-CA-line map enumerates exactly
+        # the 20 lines the v1 PDF mapping wires (§A 7 + §B 7 + §C 6).
+        from tenforty.forms.sch_ca import _FEDERAL_TO_SCH_CA_COL_A_MAP
+        expected_lines = frozenset({
+            "Part I §A 1z", "Part I §A 2", "Part I §A 3", "Part I §A 4",
+            "Part I §A 5b", "Part I §A 6", "Part I §A 7",
+            "Part I §B 1", "Part I §B 3", "Part I §B 4",
+            "Part I §B 5", "Part I §B 6", "Part I §B 7", "Part I §B 8z",
+            "Part I §C 11", "Part I §C 13", "Part I §C 15",
+            "Part I §C 17", "Part I §C 20", "Part I §C 21",
+        })
+        self.assertEqual(
+            frozenset(_FEDERAL_TO_SCH_CA_COL_A_MAP.values()),
+            expected_lines,
+            "Col A passthrough map must cover exactly the 20 v1-wired Sch CA lines.",
+        )
