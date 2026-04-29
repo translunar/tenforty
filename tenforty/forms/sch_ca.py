@@ -25,13 +25,14 @@ def _normalize_line(sch_ca_line: str) -> str:
             .strip("_"))
 
 
-def compute(
-    divergences: list[CASchCAAdjustment],
-    federal_results: dict,
-) -> dict:
+def compute(ca540, federal_results: dict) -> dict:
+    if ca540 is None:
+        return {}
+    auto = derive_auto_divergences(federal_results)
+    all_divergences = list(ca540.divergences) + auto
     subtractions = defaultdict(float)
     additions = defaultdict(float)
-    for adj in divergences:
+    for adj in all_divergences:
         bucket = subtractions if adj.direction == DivergenceDirection.SUBTRACTION else additions
         bucket[adj.sch_ca_line] += adj.amount
 
