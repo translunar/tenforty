@@ -11,6 +11,9 @@ per-task variants should compose on top of `_make_ca_v1_smoke_scenario`
 rather than duplicating the attestation block.
 """
 
+import tempfile
+from pathlib import Path
+
 from tenforty.models import (
     CA540Return,
     FilingStatus,
@@ -66,3 +69,17 @@ def _make_ca_v1_smoke_scenario() -> Scenario:
         ),
         ca540=CA540Return(),
     )
+
+
+def _write_ca_yaml(ca_yaml_dict: dict, tmp_dir: Path | None = None) -> Path:
+    """Materialize a CA YAML dict to a tempfile and return its Path.
+
+    Mirrors the on-disk format that T18's CLI will consume:
+    top-level `ca540:` block + optional `federal_context:` sibling.
+    """
+    import yaml
+    if tmp_dir is None:
+        tmp_dir = Path(tempfile.mkdtemp())
+    path = tmp_dir / "scenario.ca.yaml"
+    path.write_text(yaml.safe_dump(ca_yaml_dict))
+    return path

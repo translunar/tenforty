@@ -19,7 +19,7 @@ from pathlib import Path
 
 from tenforty.models import FilingStatus, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
-from tests._ca_fixtures import _make_ca_v1_smoke_scenario
+from tests._ca_fixtures import _make_ca_v1_smoke_scenario, _write_ca_yaml
 
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -179,6 +179,95 @@ class EmitCaPdfsInternalTests(unittest.TestCase):
         for path in emitted.values():
             self.assertTrue(path.exists(), f"PDF not written: {path}")
             self.assertGreater(path.stat().st_size, 1_000)
+
+
+class RunFullCaliforniaReturnTests(unittest.TestCase):
+    """Tests for ReturnOrchestrator.run_full_california_return (SP3-T17).
+
+    Exercises the canonical CA-state entry point end-to-end: load CA YAML,
+    re-derive federal results, run Sch CA + Sch D 540 + 540 main, emit
+    state PDFs. Also covers the two hard-error guards in
+    _build_effective_ca540 and the v1 no-op contract for
+    _verify_ca_yaml_freshness.
+    """
+
+    def _make_orchestrator(self, output_dir: Path) -> ReturnOrchestrator:
+        return ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=output_dir / "work",
+        )
+
+    def test_full_pipeline_renders_state_pdfs(self):
+        scenario = _make_ca_v1_smoke_scenario()
+        # The smoke fixture sets ca540=CA540Return(); T17 hard-errors when
+        # both an in-memory ca540 and a populated CA YAML ca540: block are
+        # supplied. Clear the in-memory side so the CA YAML is the sole
+        # source of truth for this happy-path test.
+        scenario.ca540 = None
+
+        tmp_dir = Path(tempfile.mkdtemp())
+        ca_yaml_path = _write_ca_yaml(
+            {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0}},
+            tmp_dir=tmp_dir,
+        )
+
+        output_dir = Path(tempfile.mkdtemp())
+        orchestrator = self._make_orchestrator(output_dir)
+        ca_results, ca_pdfs = orchestrator.run_full_california_return(
+            scenario=scenario,
+            ca_yaml_path=ca_yaml_path,
+            output_dir=output_dir,
+        )
+
+        self.assertIn("f540_total_liability", ca_results)
+        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca", "sch_d_540"})
+        for path in ca_pdfs.values():
+            self.assertTrue(path.exists(), f"PDF not written: {path}")
+            self.assertGreater(path.stat().st_size, 1_000)
+
+    def test_hard_error_when_both_in_memory_and_yaml_populated(self):
+        # Smoke scenario already sets ca540=CA540Return() — leave it.
+        scenario = _make_ca_v1_smoke_scenario()
+        ca_yaml_path = _write_ca_yaml(
+            {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0}},
+        )
+
+        output_dir = Path(tempfile.mkdtemp())
+        orchestrator = self._make_orchestrator(output_dir)
+        with self.assertRaisesRegex(ValueError, "choose one loading mode"):
+            orchestrator.run_full_california_return(
+                scenario=scenario,
+                ca_yaml_path=ca_yaml_path,
+                output_dir=output_dir,
+            )
+
+    def test_hard_error_when_ca_yaml_lacks_ca540_block(self):
+        scenario = _make_ca_v1_smoke_scenario()
+        scenario.ca540 = None
+        ca_yaml_path = _write_ca_yaml({"federal_context": {}})
+
+        output_dir = Path(tempfile.mkdtemp())
+        orchestrator = self._make_orchestrator(output_dir)
+        with self.assertRaisesRegex(ValueError, r"no `ca540:` block"):
+            orchestrator.run_full_california_return(
+                scenario=scenario,
+                ca_yaml_path=ca_yaml_path,
+                output_dir=output_dir,
+            )
+
+    def test_verify_ca_yaml_freshness_is_v1_noop(self):
+        # Contract: the v1 stub MUST return None and MUST NOT raise on any
+        # input. This guarantees users aren't blocked while the post-v1
+        # freshness representation is still being designed. This is NOT a
+        # tautology — it asserts behavioral contract on a function with a
+        # locked signature, not "x == x".
+        scenario = _make_ca_v1_smoke_scenario()
+        output_dir = Path(tempfile.mkdtemp())
+        orchestrator = self._make_orchestrator(output_dir)
+        result = orchestrator._verify_ca_yaml_freshness(
+            scenario, Path("/nonexistent"), {}
+        )
+        self.assertIsNone(result)
 
 
 if __name__ == "__main__":

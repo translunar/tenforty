@@ -1,6 +1,8 @@
 import dataclasses
 from pathlib import Path
 
+import yaml
+
 from tenforty.attestations import enforce_compute_time
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
@@ -17,6 +19,9 @@ from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import f1120s as form_f1120s
+from tenforty.forms import sch_ca as form_sch_ca
+from tenforty.forms import sch_d_540 as form_sch_d_540
+from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
 from tenforty.constants import y2025
 from tenforty.oracle.flattener import flatten_scenario
@@ -39,6 +44,7 @@ from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.models import (
+    CA540Return,
     EntityType,
     FilingStatus,
     K1Allocation,
@@ -624,6 +630,172 @@ class ReturnOrchestrator:
         results = {**corp_results, **results_1040}
         emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
         return results, emitted
+
+    def run_full_california_return(
+        self,
+        scenario: Scenario,
+        ca_yaml_path: Path,
+        output_dir: Path,
+    ) -> tuple[dict, dict[str, Path]]:
+        """Canonical CA-state entry point. Re-derives federal results, runs
+        Sch CA + Sch D 540 + 540 main compute, emits state PDFs.
+
+        The CA YAML at ``ca_yaml_path`` is the v1 source-of-truth for
+        CA-specific data (divergences, voluntary contributions, estimated
+        payments, etc.). Convention: place it next to the federal YAML as
+        ``<basename>.ca.yaml`` (e.g. ``alice_2025.yaml`` +
+        ``alice_2025.ca.yaml``); not enforced by this method.
+
+        The CA YAML's envelope:
+            ca540:                  # required — CA540Return fields
+              divergences: [...]
+              estimated_payments: 0.0
+              ...
+            federal_context:        # optional — reserved for post-v1 freshness
+              ...
+
+        v1 gaps (tracked as follow-ups, not addressed in this method):
+        - Renter's credit eligibility is hard-coded False (no field on
+          CA540Return yet).
+        - CA itemized deductions are not supported (CA disallows the federal
+          SALT cap, etc. — separate from federal Sch A).
+        - Freshness verification of the CA YAML's federal_context block
+          against live federal compute outputs is a no-op stub.
+
+        Returns ``(ca_results, ca_pdfs)`` where ``ca_results`` is the merged
+        compute dict (with header keys) and ``ca_pdfs`` maps form basename
+        to PDF path.
+        """
+        # 1. Load CA YAML (envelope: top-level ca540: required, federal_context: optional).
+        with open(ca_yaml_path) as f:
+            ca_yaml = yaml.safe_load(f) or {}
+
+        # 2. Freshness check — v1 no-op stub.
+        self._verify_ca_yaml_freshness(scenario, ca_yaml_path, ca_yaml)
+
+        # 3. Build effective CA540Return — ca_yaml is authoritative, but conflict-detect.
+        effective_ca540 = self._build_effective_ca540(scenario.ca540, ca_yaml)
+
+        # 4. Re-derive federal results.
+        federal_results = self.compute_federal(scenario)
+
+        # 5. Temporary sch_1 bridge (until issue #80 ships) — derive_auto_divergences
+        #    needs sch_1.compute output that compute_federal doesn't yet expose.
+        #    Match T14b's E2E test bridge comment style.
+        sch_e_results = form_sch_e.compute(scenario, upstream={})
+        sch_1_results = form_sch_1.compute(
+            scenario, upstream={"sch_e": sch_e_results},
+        )
+        federal_results_with_sch_1 = {**federal_results, **sch_1_results}
+
+        # 6. CA computes — Sch CA → Sch D 540 → Form 540 main.
+        sch_ca_results = form_sch_ca.compute(
+            effective_ca540, federal_results_with_sch_1,
+        )
+        sch_d_540_results = form_sch_d_540.compute(
+            federal_results_with_sch_1, scenario.config.__dict__,
+        )
+        f540_results = form_f540.compute(
+            year=scenario.config.year,
+            filing_status=scenario.config.filing_status,
+            federal_agi=federal_results_with_sch_1["agi"],
+            ca_agi=sch_ca_results["sch_ca_ca_agi"],
+            num_dependents=len(scenario.config.dependents),
+            estimated_payments=int(effective_ca540.estimated_payments),
+            use_tax=int(effective_ca540.use_tax),
+            estimated_tax_penalty=int(effective_ca540.estimated_tax_penalty),
+            ptet_credit=int(effective_ca540.ptet_credit),
+            voluntary_contributions=effective_ca540.voluntary_contributions,
+            # v1 defaults (tracked follow-ups):
+            # - renter_credit_eligible: False (no CA540Return field yet)
+            # - ca_itemized: None (CA itemized deductions not supported in v1)
+        )
+        # Note: f540.compute raises NotImplementedError when federal_agi
+        # exceeds the year's CA AGI phaseout threshold; we let it propagate
+        # without wrapping. Load-time scope-out attestations are the gate;
+        # if a scenario reaches this method, it has already passed
+        # _validate_scenario_config.
+
+        # 7. Header merge — T17 owns this; T16's _emit_ca_pdfs_internal
+        #    trusts the dict as-is.
+        header_keys = {
+            "f540_taxpayer_name": scenario.config.full_name,
+            "f540_taxpayer_ssn": scenario.config.ssn,
+            "sch_ca_taxpayer_name": scenario.config.full_name,
+            "sch_ca_taxpayer_ssn": scenario.config.ssn,
+            "sch_d_540_taxpayer_name": scenario.config.full_name,
+            "sch_d_540_taxpayer_ssn": scenario.config.ssn,
+        }
+        ca_results = {
+            **sch_ca_results,
+            **sch_d_540_results,
+            **f540_results,
+            **header_keys,
+        }
+
+        # 8. Emit PDFs.
+        ca_pdfs = self._emit_ca_pdfs_internal(scenario, ca_results, output_dir)
+
+        return ca_results, ca_pdfs
+
+    def _verify_ca_yaml_freshness(
+        self,
+        scenario: Scenario,
+        ca_yaml_path: Path,
+        ca_yaml: dict,
+    ) -> None:
+        """Verify the CA YAML's federal_context block is consistent with
+        the live federal compute outputs.
+
+        v1: no-op stub. The CA YAML envelope reserves a ``federal_context:``
+        sibling block for post-v1 freshness verification (hash or value
+        comparison against live ``compute_federal()`` outputs to catch
+        "user re-ran federal but didn't refresh CA YAML"). The exact
+        representation is deferred — getting it wrong would be more
+        annoying than helpful.
+
+        TODO: post-v1 — verify federal_context against live
+        compute_federal() outputs (e.g., agi, sch_e_total) and raise on
+        mismatch.
+        """
+        return None
+
+    def _build_effective_ca540(
+        self,
+        in_memory_ca540: CA540Return | None,
+        ca_yaml: dict,
+    ) -> CA540Return:
+        """Build the effective CA540Return from the CA YAML.
+
+        v1 source-of-truth is the file at ``ca_yaml_path`` (the CA YAML).
+        If ``in_memory_ca540`` is also populated (from T4's combined-YAML
+        loading mode), that's a misuse — caller should choose ONE loading
+        mode. Hard-error to surface the confusion.
+
+        Raises:
+            ValueError: if ``ca_yaml`` lacks a populated ``ca540:`` block.
+            ValueError: if ``in_memory_ca540`` is populated AND a populated
+                ``ca_yaml.ca540`` block is supplied (mutually exclusive
+                loading modes).
+        """
+        ca540_block = ca_yaml.get("ca540")
+        if not ca540_block:
+            raise ValueError(
+                f"CA YAML has no `ca540:` block (or block is empty). If you "
+                f"meant to pass a federal-only YAML, use "
+                f"ReturnOrchestrator.run_full_return() instead of "
+                f"run_full_california_return()."
+            )
+        if in_memory_ca540 is not None:
+            raise ValueError(
+                "Scenario.ca540 is populated AND a separate ca_yaml_path was "
+                "supplied; choose one loading mode (combined-YAML via "
+                "load_scenario(), or separate CA YAML via "
+                "run_full_california_return)."
+            )
+        # Reuse the existing _load_ca540 from tenforty.scenario.
+        from tenforty.scenario import _load_ca540
+        return _load_ca540(ca540_block)
 
     def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch 1 when either Part I total (line 10) or Part II total
