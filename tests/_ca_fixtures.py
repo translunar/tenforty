@@ -1,0 +1,68 @@
+"""Shared fixtures for Sub-plan 3 / California 540 tests.
+
+Non-test helper module. The leading underscore prevents pytest from
+collecting it as a test file. Tests across SP3 tasks T16-T19 import from
+here instead of from each other to avoid test-to-test import dependencies.
+
+The smoke scenario here is intentionally minimal — a CA-resident single
+filer with all 40+ load-time attestations declared. Future SP3 tasks
+(T17 `run_full_california_return`) will reuse this same scenario, so
+per-task variants should compose on top of `_make_ca_v1_smoke_scenario`
+rather than duplicating the attestation block.
+"""
+
+from tenforty.models import (
+    CA540Return,
+    FilingStatus,
+    Scenario,
+    TaxReturnConfig,
+)
+from tests.helpers import scope_out_attestation_defaults
+
+
+def _make_ca_v1_smoke_scenario() -> Scenario:
+    """Build a minimal CA-resident Scenario for SP3 smoke tests.
+
+    Single filing status, year=2025, all load-time attestations declared
+    (via `scope_out_attestation_defaults`). The CA-specific scope-out
+    attestations are flipped True so the load-time CA gates pass; the
+    federal scope-outs that aren't relevant to CA pipeline emit stay at
+    their helper defaults.
+    """
+    attestations = scope_out_attestation_defaults()
+    # Flip every CA-specific scope-out to True so the v1 single-filer
+    # smoke scenario passes the load-time CA gates (no NOL carryover,
+    # no depreciation divergence, no IRA basis divergence, etc.).
+    for ca_key in (
+        "acknowledges_no_540nr_filing",
+        "acknowledges_no_ca_amt_preferences",
+        "acknowledges_no_ca_sch_d_federal_state_divergence",
+        "acknowledges_no_ca_nol_carryover",
+        "acknowledges_no_ca_depreciation_divergence",
+        "acknowledges_no_ca_ira_basis_divergence",
+        "acknowledges_no_ca_rdp_status",
+        "acknowledges_no_excess_business_loss_carryover",
+        "acknowledges_no_1031_personal_property_divergence",
+        "acknowledges_no_ic_worker_reclassification",
+        "acknowledges_no_other_state_tax_credit",
+        "acknowledges_no_railroad_retirement_benefits",
+        "acknowledges_no_paid_family_leave_benefits",
+    ):
+        attestations[ca_key] = True
+    return Scenario(
+        config=TaxReturnConfig(
+            year=2025,
+            filing_status=FilingStatus.SINGLE,
+            birthdate="1980-01-01",
+            state="CA",
+            first_name="Smoke",
+            last_name="Test",
+            ssn="000-00-0000",
+            address="1 Example Ave",
+            address_city="Los Angeles",
+            address_state="CA",
+            address_zip="90001",
+            **attestations,
+        ),
+        ca540=CA540Return(),
+    )

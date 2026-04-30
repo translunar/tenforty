@@ -35,6 +35,9 @@ from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
+from tenforty.mappings.pdf_f540 import PdfF540
+from tenforty.mappings.pdf_sch_ca import PdfSchCa
+from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.models import (
     EntityType,
     FilingStatus,
@@ -529,6 +532,71 @@ class ReturnOrchestrator:
                 emitted[f"1120s_k1_{i}"] = k1_output
 
         return emitted
+
+    def _emit_ca_pdfs_internal(
+        self,
+        scenario: Scenario,
+        ca_results: dict,
+        output_dir: Path,
+    ) -> dict[str, Path]:
+        """Render the three CA-state PDFs (f540, sch_ca, sch_d_540) from
+        a CA compute results dict.
+
+        Mechanical helper: consumes ``ca_results`` as-is and writes PDFs.
+        Does NOT mutate, merge, or augment ``ca_results`` — callers
+        (T17 ``run_full_california_return``) are responsible for ensuring
+        required PDF compute keys (e.g. ``f540_taxpayer_name``,
+        ``sch_ca_taxpayer_ssn``, ``sch_d_540_taxpayer_name``, etc.) are
+        present in the dict before invocation.
+
+        Returns a dict with exactly the keys ``{"f540", "sch_ca",
+        "sch_d_540"}`` mapping to the filled PDF paths.
+        """
+        output_dir.mkdir(parents=True, exist_ok=True)
+        year = scenario.config.year
+        filler = PdfFiller()
+
+        f540_template = _PDFS_ROOT / "california" / str(year) / "f540.pdf"
+        f540_output = output_dir / f"f540_{year}.pdf"
+        filler.fill(
+            template_path=f540_template,
+            output_path=f540_output,
+            field_mapping=PdfF540.get_mapping(year),
+            values=ca_results,
+            aggregations=PdfF540.get_aggregations(year),
+            derivations=PdfF540.get_derivations(year),
+            checkbox_states=PdfF540.get_checkbox_states(year),
+        )
+
+        sch_ca_template = _PDFS_ROOT / "california" / str(year) / "sch_ca.pdf"
+        sch_ca_output = output_dir / f"sch_ca_{year}.pdf"
+        filler.fill(
+            template_path=sch_ca_template,
+            output_path=sch_ca_output,
+            field_mapping=PdfSchCa.get_mapping(year),
+            values=ca_results,
+            aggregations=PdfSchCa.get_aggregations(year),
+            derivations=PdfSchCa.get_derivations(year),
+            checkbox_states=PdfSchCa.get_checkbox_states(year),
+        )
+
+        sch_d_540_template = _PDFS_ROOT / "california" / str(year) / "sch_d_540.pdf"
+        sch_d_540_output = output_dir / f"sch_d_540_{year}.pdf"
+        filler.fill(
+            template_path=sch_d_540_template,
+            output_path=sch_d_540_output,
+            field_mapping=PdfSchD540.get_mapping(year),
+            values=ca_results,
+            aggregations=PdfSchD540.get_aggregations(year),
+            derivations=PdfSchD540.get_derivations(year),
+            checkbox_states=PdfSchD540.get_checkbox_states(year),
+        )
+
+        return {
+            "f540": f540_output,
+            "sch_ca": sch_ca_output,
+            "sch_d_540": sch_d_540_output,
+        }
 
     def run_full_return(
         self,
