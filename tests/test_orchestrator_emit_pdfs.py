@@ -57,6 +57,8 @@ def make_scenario_with_identity() -> Scenario:
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         ),
     )
 

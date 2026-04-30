@@ -27,6 +27,8 @@ config:
   acknowledges_no_1031_personal_property_divergence: false
   acknowledges_no_ic_worker_reclassification: false
   acknowledges_no_other_state_tax_credit: false
+  acknowledges_no_railroad_retirement_benefits: false
+  acknowledges_no_paid_family_leave_benefits: false
   acknowledges_sch_a_sales_tax_unsupported: false
   acknowledges_qbi_below_threshold: false
   acknowledges_unlimited_at_risk: false

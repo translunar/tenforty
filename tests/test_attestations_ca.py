@@ -17,15 +17,18 @@ _EXPECTED_CA_FIELDS = frozenset({
     "acknowledges_no_1031_personal_property_divergence",
     "acknowledges_no_ic_worker_reclassification",
     "acknowledges_no_other_state_tax_credit",
+    "acknowledges_no_railroad_retirement_benefits",
+    "acknowledges_no_paid_family_leave_benefits",
 })
 
 
 class CaAttestationRegistryTests(unittest.TestCase):
-    def test_all_eleven_ca_attestations_registered(self):
+    def test_all_ca_attestations_registered(self):
         registered = {a.field for a in _ATTESTATIONS if a.field.startswith(
             ("acknowledges_no_540nr", "acknowledges_no_ca_", "acknowledges_no_excess_business_loss",
              "acknowledges_no_1031_personal_property", "acknowledges_no_ic_worker",
-             "acknowledges_no_other_state_tax")
+             "acknowledges_no_other_state_tax", "acknowledges_no_railroad_retirement",
+             "acknowledges_no_paid_family_leave")
         )}
         self.assertEqual(registered, _EXPECTED_CA_FIELDS)
 
@@ -42,6 +45,8 @@ class CaAttestationRegistryTests(unittest.TestCase):
         year_bounded = {
             "acknowledges_no_excess_business_loss_carryover": {2021, 2022, 2023, 2024, 2025},
             "acknowledges_no_1031_personal_property_divergence": {2021, 2022, 2023, 2024, 2025},
+            "acknowledges_no_railroad_retirement_benefits": {2021, 2022, 2023, 2024, 2025},
+            "acknowledges_no_paid_family_leave_benefits": {2021, 2022, 2023, 2024, 2025},
         }
         for field_name, expected_years in year_bounded.items():
             attestation = next(a for a in _ATTESTATIONS if a.field == field_name)
@@ -74,4 +79,30 @@ class CaAttestationLoadGateTests(unittest.TestCase):
             acknowledges_no_1031_personal_property_divergence=None,
         )
         # Should NOT raise — attestation doesn't apply in 2018
+        validate_load_time(cfg)
+
+    def test_railroad_retirement_unset_raises_at_load_time(self):
+        cfg = self._make_cfg_with_ca(acknowledges_no_railroad_retirement_benefits=None)
+        with self.assertRaises(ValueError) as ctx:
+            validate_load_time(cfg)
+        self.assertIn("Railroad", str(ctx.exception))
+
+    def test_paid_family_leave_unset_raises_at_load_time(self):
+        cfg = self._make_cfg_with_ca(acknowledges_no_paid_family_leave_benefits=None)
+        with self.assertRaises(ValueError) as ctx:
+            validate_load_time(cfg)
+        self.assertIn("Paid Family Leave", str(ctx.exception))
+
+    def test_year_2018_skips_railroad_retirement(self):
+        cfg = self._make_cfg_with_ca(
+            year=2018,
+            acknowledges_no_railroad_retirement_benefits=None,
+        )
+        validate_load_time(cfg)
+
+    def test_year_2018_skips_paid_family_leave(self):
+        cfg = self._make_cfg_with_ca(
+            year=2018,
+            acknowledges_no_paid_family_leave_benefits=None,
+        )
         validate_load_time(cfg)

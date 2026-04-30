@@ -53,6 +53,8 @@ _YAML_WITHOUT_CA540 = textwrap.dedent("""\
       acknowledges_no_1031_personal_property_divergence: false
       acknowledges_no_ic_worker_reclassification: false
       acknowledges_no_other_state_tax_credit: false
+      acknowledges_no_railroad_retirement_benefits: false
+      acknowledges_no_paid_family_leave_benefits: false
 """)
 
 
@@ -100,6 +102,8 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
       acknowledges_no_1031_personal_property_divergence: false
       acknowledges_no_ic_worker_reclassification: false
       acknowledges_no_other_state_tax_credit: false
+      acknowledges_no_railroad_retirement_benefits: false
+      acknowledges_no_paid_family_leave_benefits: false
     ca540:
       estimated_payments: 1500.0
       use_tax: 25.0
@@ -136,3 +140,19 @@ class CA540YamlLoaderTests(unittest.TestCase):
         self.assertEqual(scenario.ca540.divergences[0].amount, 4300.0)
         self.assertEqual(scenario.ca540.divergences[0].description, "HSA contribution disallowed")
         self.assertEqual(scenario.ca540.divergences[0].pub1001_ref, "p.9")
+
+    def test_load_scenario_default_rrb_pfl_unset(self):
+        # When the ca540 block omits rrb_tier_1_2_amount and pfl_amount,
+        # the loader leaves them None (kernel reads None as "no divergence").
+        scenario = self._write_and_load(_YAML_WITH_CA540)
+        self.assertIsNone(scenario.ca540.rrb_tier_1_2_amount)
+        self.assertIsNone(scenario.ca540.pfl_amount)
+
+    def test_load_scenario_with_rrb_and_pfl(self):
+        yaml_text = _YAML_WITH_CA540.replace(
+            "ca540:\n",
+            "ca540:\n  rrb_tier_1_2_amount: 9500.0\n  pfl_amount: 1200.0\n",
+        )
+        scenario = self._write_and_load(yaml_text)
+        self.assertEqual(scenario.ca540.rrb_tier_1_2_amount, 9500.0)
+        self.assertEqual(scenario.ca540.pfl_amount, 1200.0)

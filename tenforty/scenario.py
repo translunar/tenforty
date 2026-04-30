@@ -188,6 +188,14 @@ def _load_ca540(data: dict | None) -> CA540Return | None:
         use_tax=float(data.get("use_tax", 0.0)),
         estimated_tax_penalty=float(data.get("estimated_tax_penalty", 0.0)),
         ptet_credit=float(data.get("ptet_credit", 0.0)),
+        rrb_tier_1_2_amount=(
+            float(data["rrb_tier_1_2_amount"])
+            if data.get("rrb_tier_1_2_amount") is not None else None
+        ),
+        pfl_amount=(
+            float(data["pfl_amount"])
+            if data.get("pfl_amount") is not None else None
+        ),
         divergences=[
             _load_ca_divergence(d)
             for d in data.get("divergences", [])

@@ -1,8 +1,15 @@
 # tests/test_sch_ca_compute.py
+import tempfile
 import unittest
+from pathlib import Path
 
+from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms.sch_ca import compute as sch_ca_compute
 from tenforty.models import CA540Return, CASchCAAdjustment, DivergenceDirection, DivergenceSource
+from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.scenario import load_scenario
+
+from tests.helpers import FIXTURES_DIR, REPO_ROOT, needs_libreoffice
 
 
 class SchCaKernelTests(unittest.TestCase):
@@ -87,7 +94,7 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
         ]
         federal_results = {
             "agi": 100_000.0,
-            "schedule_1_unemployment_compensation": 4500.0,
+            "sch_1_line_7_unemployment": 4500.0,
         }
         ca540 = CA540Return(divergences=worksheet_divergences)
         result = sch_ca_compute(ca540=ca540, federal_results=federal_results)
@@ -102,7 +109,7 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
         ca540 = CA540Return(divergences=[])
         federal_results = {
             "agi": 75_000.0,
-            "schedule_1_unemployment_compensation": 2_000.0,
+            "sch_1_line_7_unemployment": 2_000.0,
         }
         result = sch_ca_compute(ca540=ca540, federal_results=federal_results)
         self.assertEqual(result["sch_ca_total_subtractions"], 2_000.0)
@@ -226,3 +233,93 @@ class SchCaColAPassthroughTests(unittest.TestCase):
             expected_lines,
             "Col A passthrough map must cover exactly the 20 v1-wired Sch CA lines.",
         )
+
+
+@needs_libreoffice
+class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
+    """Pipe REAL federal compute output into sch_ca.compute and assert
+    auto-derived divergences fire on actual produced keys.
+
+    Guards the T14b realignment: the kernel's auto-derive catalog reads
+    `sch_1_line_1_taxable_refunds`, `sch_1_line_7_unemployment`, and
+    `social_security_taxable` — keys actually emitted by sch_1.compute and
+    f1040.compute. A stub-based unit test alone cannot catch a regression
+    where these producers rename a key out from under the kernel.
+
+    NOTE — orchestrator wiring gap (tracked as task #80): `compute_federal`
+    currently returns only the f1040.compute dict; sch_1.compute is invoked
+    separately at PDF-emit time. The manual composition below
+    (`{**f1040_results, **sch_1.compute(scenario, upstream={})}`) is a
+    TEMPORARY BRIDGE; once #80 lands and `compute_federal` plumbs sch_1
+    output through, callers can drop the manual sch_1 invocation and feed
+    `compute_federal_results` straight into `sch_ca.compute`.
+    """
+
+    def _run_federal(self, fixture_name: str):
+        scenario = load_scenario(FIXTURES_DIR / fixture_name)
+        with tempfile.TemporaryDirectory() as tmp:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                work_dir=Path(tmp),
+            )
+            f1040_results = orch.compute_federal(scenario)
+        sch_1_results = form_sch_1.compute(scenario, upstream={})
+        return scenario, {**f1040_results, **sch_1_results}
+
+    def test_state_refund_auto_derive_fires_on_real_federal_output(self):
+        scenario, federal_results = self._run_federal("state_refund_benefit_rule.yaml")
+        self.assertIn("sch_1_line_1_taxable_refunds", federal_results,
+            "sch_1.compute must emit sch_1_line_1_taxable_refunds for the kernel to consume")
+        self.assertGreater(federal_results["sch_1_line_1_taxable_refunds"], 0)
+
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results=federal_results,
+        )
+        self.assertIn("sch_ca_line_part_i_b_1_subtractions", result,
+            "Auto-derived state-refund subtraction must route to Part I §B 1")
+        self.assertEqual(
+            result["sch_ca_line_part_i_b_1_subtractions"],
+            federal_results["sch_1_line_1_taxable_refunds"],
+        )
+        self.assertGreaterEqual(result["sch_ca_total_subtractions"],
+            federal_results["sch_1_line_1_taxable_refunds"])
+        self.assertLess(result["sch_ca_ca_agi"], result["sch_ca_federal_agi"])
+
+    def test_unemployment_auto_derive_fires_on_real_federal_output(self):
+        scenario, federal_results = self._run_federal("unemployment_withholding.yaml")
+        self.assertIn("sch_1_line_7_unemployment", federal_results,
+            "sch_1.compute must emit sch_1_line_7_unemployment for the kernel to consume")
+        self.assertGreater(federal_results["sch_1_line_7_unemployment"], 0)
+
+        result = sch_ca_compute(
+            ca540=CA540Return(divergences=[]),
+            federal_results=federal_results,
+        )
+        self.assertIn("sch_ca_line_part_i_b_7_subtractions", result,
+            "Auto-derived unemployment subtraction must route to Part I §B 7")
+        self.assertEqual(
+            result["sch_ca_line_part_i_b_7_subtractions"],
+            federal_results["sch_1_line_7_unemployment"],
+        )
+
+    def test_rrb_named_field_routes_to_sch_ca_5b(self):
+        # Federal compute does not separately surface RRB — the taxpayer
+        # supplies the RRB-only amount on CA540Return and the kernel routes
+        # it as a §A 5b Col B subtraction.
+        scenario, federal_results = self._run_federal("simple_w2.yaml")
+        result = sch_ca_compute(
+            ca540=CA540Return(rrb_tier_1_2_amount=4_200.0),
+            federal_results=federal_results,
+        )
+        self.assertEqual(result.get("sch_ca_line_part_i_a_5b_subtractions"), 4_200.0)
+        self.assertGreaterEqual(result["sch_ca_total_subtractions"], 4_200.0)
+
+    def test_pfl_named_field_routes_to_sch_ca_b7(self):
+        scenario, federal_results = self._run_federal("simple_w2.yaml")
+        result = sch_ca_compute(
+            ca540=CA540Return(pfl_amount=1_500.0),
+            federal_results=federal_results,
+        )
+        self.assertEqual(result.get("sch_ca_line_part_i_b_7_subtractions"), 1_500.0)
+        self.assertGreaterEqual(result["sch_ca_total_subtractions"], 1_500.0)

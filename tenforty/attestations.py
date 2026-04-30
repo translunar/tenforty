@@ -676,6 +676,41 @@ _CA_ATTESTATIONS = (
         ),
         compute_error="",
     ),
+    Attestation(
+        field="acknowledges_no_railroad_retirement_benefits",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_railroad_retirement_benefits` is "
+            "required and must be either true or false. California excludes Railroad "
+            "Retirement Board (Tier 1 and Tier 2) benefits from taxation under "
+            "R&TC 17087. tenforty v1 does NOT auto-derive an RRB subtraction from "
+            "federal data alone because federal compute lumps RRB into "
+            "`pensions_taxable` (1040 line 5b) without separating Tier 1/2 from other "
+            "pension income. If you received RRB benefits, set "
+            "`CA540Return.rrb_tier_1_2_amount` to the RRB portion of your line 5b "
+            "amount; the kernel will route it as a §A 5b Col B subtraction. Set true "
+            "to affirm you have no RRB benefits."
+        ),
+        compute_error="",
+        applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
+    ),
+    Attestation(
+        field="acknowledges_no_paid_family_leave_benefits",
+        triggered_when=_never,
+        load_error=(
+            "Scenario config field `acknowledges_no_paid_family_leave_benefits` is "
+            "required and must be either true or false. California excludes Paid "
+            "Family Leave benefits paid by the EDD from CA taxation (FTB Pub 1001 "
+            "p.17); PFL is reported on Form 1099-G alongside unemployment but is "
+            "not separately surfaced by tenforty v1's federal compute layer (no PFL "
+            "field on `Form1099G`; `sch_1.compute` aggregates only UI into line 7). "
+            "If you received CA PFL benefits, set `CA540Return.pfl_amount` to the "
+            "PFL portion; the kernel will route it as a §B 7 Col B subtraction. Set "
+            "true to affirm you have no PFL benefits."
+        ),
+        compute_error="",
+        applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
+    ),
 )
 
 _ATTESTATIONS = _ATTESTATIONS + _CA_ATTESTATIONS

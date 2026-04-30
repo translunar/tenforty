@@ -380,6 +380,8 @@ class TaxReturnConfig:
     acknowledges_no_1031_personal_property_divergence: bool | None = None
     acknowledges_no_ic_worker_reclassification: bool | None = None
     acknowledges_no_other_state_tax_credit: bool | None = None
+    acknowledges_no_railroad_retirement_benefits: bool | None = None
+    acknowledges_no_paid_family_leave_benefits: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
@@ -615,6 +617,16 @@ class CA540Return:
     use_tax: float = 0.0  # 540 line 91 (use tax owed on out-of-state purchases)
     estimated_tax_penalty: float = 0.0  # 540 line 113 (FTB 5805 result)
     ptet_credit: float = 0.0  # 540 line 50 (Sub-plan 4 wires this; default $0)
+    # Federal compute lumps RRB Tier 1/2 into 1040 line 5b (pensions_taxable)
+    # without separating it; the taxpayer supplies the RRB-only amount here
+    # so the Sch CA kernel can route it as an §A 5b Col B subtraction
+    # (R&TC 17087, FTB Pub 1001 p.10).
+    rrb_tier_1_2_amount: float | None = None
+    # PFL benefits paid by the EDD are reported on Form 1099-G alongside
+    # unemployment but tenforty v1's Form1099G dataclass does not separate
+    # them; the taxpayer supplies the PFL-only amount here so the kernel
+    # can route it as an §B 7 Col B subtraction (FTB Pub 1001 p.17).
+    pfl_amount: float | None = None
     divergences: list[CASchCAAdjustment] = field(default_factory=list)
 
 

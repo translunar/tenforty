@@ -72,7 +72,7 @@ def _normalize_line(sch_ca_line: str) -> str:
 def compute(ca540, federal_results: dict) -> dict:
     if ca540 is None:
         return {}
-    auto = derive_auto_divergences(federal_results)
+    auto = derive_auto_divergences(federal_results, ca540=ca540)
     all_divergences = list(ca540.divergences) + auto
     subtractions = defaultdict(float)
     additions = defaultdict(float)
@@ -105,17 +105,24 @@ def compute(ca540, federal_results: dict) -> dict:
     return out
 
 
-def derive_auto_divergences(federal_results: dict) -> list[CASchCAAdjustment]:
-    """Generate mechanical divergences from federal results.
+def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAdjustment]:
+    """Generate mechanical divergences from federal results and named
+    CA540Return fields.
 
-    Each entry in this catalog represents a federal-vs-CA difference where
-    the value is fully determined by federal data alone — no user input
-    needed. The kernel adds these to user-supplied worksheet divergences
-    before routing.
+    Federal-only catalog entries (UI, SS, state-tax refund) read from
+    `federal_results` keys produced by f1040.compute / sch_1.compute and
+    fire whenever the federal value is positive — no user input needed.
+
+    Named-field entries (RRB, PFL) read from CA540Return fields the
+    taxpayer supplies because federal compute does not separately
+    surface them: RRB is lumped into `pensions_taxable` (1040 line 5b)
+    and PFL is reported on 1099-G alongside UI without separation.
+    These fire only when `ca540` is provided AND the corresponding
+    field is set to a positive amount.
     """
     divergences = []
 
-    if (ui := federal_results.get("schedule_1_unemployment_compensation", 0.0)) > 0:
+    if (ui := federal_results.get("sch_1_line_7_unemployment", 0.0)) > 0:
         divergences.append(CASchCAAdjustment(
             source=DivergenceSource.AUTO_DERIVED,
             sch_ca_line="Part I §B 7",
@@ -126,7 +133,7 @@ def derive_auto_divergences(federal_results: dict) -> list[CASchCAAdjustment]:
             pub1001_ref="p.17",
         ))
 
-    if (ss := federal_results.get("form_1040_taxable_social_security", 0.0)) > 0:
+    if (ss := federal_results.get("social_security_taxable", 0.0)) > 0:
         divergences.append(CASchCAAdjustment(
             source=DivergenceSource.AUTO_DERIVED,
             sch_ca_line="Part I §A 6",
@@ -137,7 +144,7 @@ def derive_auto_divergences(federal_results: dict) -> list[CASchCAAdjustment]:
             pub1001_ref="p.10",
         ))
 
-    if (refund := federal_results.get("schedule_1_state_local_tax_refund", 0.0)) > 0:
+    if (refund := federal_results.get("sch_1_line_1_taxable_refunds", 0.0)) > 0:
         divergences.append(CASchCAAdjustment(
             source=DivergenceSource.AUTO_DERIVED,
             sch_ca_line="Part I §B 1",
@@ -148,26 +155,26 @@ def derive_auto_divergences(federal_results: dict) -> list[CASchCAAdjustment]:
             pub1001_ref="p.11",
         ))
 
-    if (rrb := federal_results.get("form_1040_railroad_retirement_tier_1_2", 0.0)) > 0:
-        divergences.append(CASchCAAdjustment(
-            source=DivergenceSource.AUTO_DERIVED,
-            sch_ca_line="Part I §A 5b",
-            direction=DivergenceDirection.SUBTRACTION,
-            amount=rrb,
-            description="Railroad retirement excluded by CA per R&TC 17087",
-            federal_source="1040 line 5b (RRB component)",
-            pub1001_ref="p.9",
-        ))
-
-    if (pfl := federal_results.get("schedule_1_pfl_benefits", 0.0)) > 0:
-        divergences.append(CASchCAAdjustment(
-            source=DivergenceSource.AUTO_DERIVED,
-            sch_ca_line="Part I §B 7",
-            direction=DivergenceDirection.SUBTRACTION,
-            amount=pfl,
-            description="Paid Family Leave benefits excluded by CA",
-            federal_source="Sch 1 line 7 (PFL portion)",
-            pub1001_ref="p.17",
-        ))
+    if ca540 is not None:
+        if (rrb := ca540.rrb_tier_1_2_amount or 0.0) > 0:
+            divergences.append(CASchCAAdjustment(
+                source=DivergenceSource.AUTO_DERIVED,
+                sch_ca_line="Part I §A 5b",
+                direction=DivergenceDirection.SUBTRACTION,
+                amount=rrb,
+                description="Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087",
+                federal_source="CA540Return.rrb_tier_1_2_amount",
+                pub1001_ref="p.10",
+            ))
+        if (pfl := ca540.pfl_amount or 0.0) > 0:
+            divergences.append(CASchCAAdjustment(
+                source=DivergenceSource.AUTO_DERIVED,
+                sch_ca_line="Part I §B 7",
+                direction=DivergenceDirection.SUBTRACTION,
+                amount=pfl,
+                description="Paid Family Leave benefits excluded by CA per FTB Pub 1001",
+                federal_source="CA540Return.pfl_amount",
+                pub1001_ref="p.17",
+            ))
 
     return divergences

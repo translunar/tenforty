@@ -79,6 +79,8 @@ class TestBalanceDueSingle(unittest.TestCase):
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 15000, "total_payments": 12000, "wages": 90000}
@@ -140,6 +142,8 @@ class TestRefundCase(unittest.TestCase):
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 10000, "total_payments": 12500}
@@ -191,6 +195,8 @@ class TestMFJSpouseSSN(unittest.TestCase):
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 20000, "total_payments": 18000}
@@ -241,6 +247,8 @@ class TestSingleFilerSpouseFieldsBlank(unittest.TestCase):
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
         results = {"total_tax": 5000, "total_payments": 4000}

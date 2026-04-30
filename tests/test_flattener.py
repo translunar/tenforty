@@ -32,6 +32,8 @@ def _simple_scenario() -> Scenario:
             acknowledges_no_1031_personal_property_divergence=False,
             acknowledges_no_ic_worker_reclassification=False,
             acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         ),
         w2s=[
             W2(
@@ -95,6 +97,8 @@ class TestFlattenScenario(unittest.TestCase):
                 acknowledges_no_1031_personal_property_divergence=False,
                 acknowledges_no_ic_worker_reclassification=False,
                 acknowledges_no_other_state_tax_credit=False,
+                acknowledges_no_railroad_retirement_benefits=False,
+                acknowledges_no_paid_family_leave_benefits=False,
             ),
             form1099_div=[Form1099DIV(
                 payer="Brokerage Inc",
@@ -122,6 +126,8 @@ class TestFlattenScenario(unittest.TestCase):
                 acknowledges_no_1031_personal_property_divergence=False,
                 acknowledges_no_ic_worker_reclassification=False,
                 acknowledges_no_other_state_tax_credit=False,
+                acknowledges_no_railroad_retirement_benefits=False,
+                acknowledges_no_paid_family_leave_benefits=False,
             ),
             form1098s=[
                 Form1098(lender="Mortgage Co", mortgage_interest=8000, property_tax=3000),
@@ -155,6 +161,8 @@ class TestFlattenRentalProperty(unittest.TestCase):
                 acknowledges_no_1031_personal_property_divergence=False,
                 acknowledges_no_ic_worker_reclassification=False,
                 acknowledges_no_other_state_tax_credit=False,
+                acknowledges_no_railroad_retirement_benefits=False,
+                acknowledges_no_paid_family_leave_benefits=False,
             ),
             rental_properties=[RentalProperty(
                 address="42 Test Blvd, Faketown TX 99999",
