@@ -80,10 +80,7 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     lots_by_box: dict[str, list[Form8949Lot]] = defaultdict(list)
     for lot in lots:
         lots_by_box[lot.box].append(lot)
-    result: dict = {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
-    }
+    result: dict = {**scenario.config.pdf_header()}
     for letter in ("a", "b", "c", "d", "e", "f"):
         box_lots = lots_by_box[letter]
         if box_lots and letter in _CHECKBOX_LETTERS:

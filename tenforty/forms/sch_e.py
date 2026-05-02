@@ -42,10 +42,7 @@ _EXPENSE_FIELDS = (
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     f1040 = upstream.get("f1040", {})
-    result: dict = {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
-    }
+    result: dict = {**scenario.config.pdf_header()}
     if not scenario.rental_properties:
         return result
 

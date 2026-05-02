@@ -138,6 +138,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             })
 
     return {
+        **scenario.config.pdf_header(),
         "f8582_line_1a_activities_with_income": passive_income_total,
         "f8582_line_1b_activities_with_loss": passive_loss_total,
         "f8582_line_1c_prior_year_unallowed_loss": prior_carryforward_total,
@@ -147,6 +148,4 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8582_line_11_allowed_loss": allowed_loss,
         "f8582_special_allowance": allowance,
         "per_activity_carryforwards": per_activity_carryforwards,
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
     }

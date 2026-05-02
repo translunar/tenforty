@@ -56,10 +56,7 @@ def compute(
 ) -> tuple[dict, K1FanoutData]:
     _enforce_scope_gates(scenario)
 
-    result: dict = {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
-    }
+    result: dict = {**scenario.config.pdf_header()}
 
     interest_additions: list[PayerAmount] = []
     dividend_additions: list[PayerAmount] = []
