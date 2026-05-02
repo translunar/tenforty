@@ -161,8 +161,8 @@ class XlsAgreesWithNativeSch1ForNonK1Scenario(unittest.TestCase):
     """Sanity: for a non-K-1 scenario, the XLS-sourced per-line keys in
     compute_federal results agree with what forms/sch_1.compute would
     produce reading the same merged result dict as upstream. This
-    pins path (a) and the native compute as consistent for scenarios
-    that don't trip the Sch E Part II blind spot.
+    pins the XLS oracle path and the native compute as consistent for
+    scenarios that don't trip the Sch E Part II blind spot.
     """
 
     def test_unemployment_scenario_xls_matches_native(self):
@@ -190,7 +190,7 @@ class XlsAgreesWithNativeSch1ForNonK1Scenario(unittest.TestCase):
         }
         native = sch_1_compute(scenario, upstream)
 
-        # Path-(a) XLS values must agree with native compute on every
+        # XLS-oracle values must agree with native compute on every
         # per-line key the native module computes. Line 4 (other gains)
         # is intentionally excluded — native sch_1.compute hard-zeros it,
         # so any oracle non-zero would flag a divergence we don't yet
@@ -213,5 +213,5 @@ class XlsAgreesWithNativeSch1ForNonK1Scenario(unittest.TestCase):
             self.assertEqual(
                 results[key],
                 native[key],
-                f"path-(a)/native disagreement on {key}",
+                f"XLS-oracle/native disagreement on {key}",
             )
