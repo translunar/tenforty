@@ -6,8 +6,12 @@ the header name, f1_2 is the SSN, f1_3..f1_26 map to lines 1..24 in
 order.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class Pdf8959:
+
+class Pdf8959(PdfFormMapping[dict]):
+    _FORM_NAME = "Form 8959"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -23,8 +27,3 @@ class Pdf8959:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Form 8959 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]
