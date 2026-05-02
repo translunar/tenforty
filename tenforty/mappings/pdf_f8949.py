@@ -19,6 +19,8 @@ copy of the page for each box.
 import enum
 from dataclasses import dataclass
 
+from tenforty.mappings.registry import PdfFormMapping
+
 
 _COL_NAMES: tuple[str, ...] = (
     "description",
@@ -129,7 +131,9 @@ def _build_scalars_2025() -> dict[str, str]:
     return scalars
 
 
-class PdfF8949:
+class PdfF8949(PdfFormMapping[dict]):
+    _FORM_NAME = "Form 8949"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": _build_scalars_2025(),
@@ -140,8 +144,3 @@ class PdfF8949:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Form 8949 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]
