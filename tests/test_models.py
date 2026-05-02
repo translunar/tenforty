@@ -1,6 +1,7 @@
 import dataclasses
 import unittest
 from pathlib import Path
+from types import MappingProxyType
 
 import tempfile
 
@@ -585,7 +586,6 @@ class TestTaxReturnConfigPdfHeader(unittest.TestCase):
         return TaxReturnConfig(**defaults)
 
     def test_returns_name_and_ssn_keys(self) -> None:
-        from types import MappingProxyType
         cfg = self._config(first_name="Taxpayer", last_name="A", ssn="000-00-3333")
         header = cfg.pdf_header()
         self.assertIsInstance(header, MappingProxyType)
@@ -619,7 +619,7 @@ class TestTaxReturnConfigPdfHeader(unittest.TestCase):
         # Confirms the call-site idiom `{**scenario.config.pdf_header()}`
         # works — `**` reads from any Mapping, mutable or read-only.
         cfg = self._config(first_name="Taxpayer", last_name="A", ssn="000-00-3333")
-        result = {"some_other_key": 42, **cfg.pdf_header()}
+        result = {**cfg.pdf_header(), "some_other_key": 42}
         self.assertEqual(result["taxpayer_name"], "Taxpayer A")
         self.assertEqual(result["taxpayer_ssn"], "000-00-3333")
         self.assertEqual(result["some_other_key"], 42)
