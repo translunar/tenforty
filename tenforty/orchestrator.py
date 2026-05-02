@@ -59,6 +59,17 @@ from tenforty.types import UpstreamState
 _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 
 
+# CA-state PDF emit table: (basename, mapping_class). Drives the
+# uniform fill loop in `_emit_ca_pdfs_internal` — each entry produces
+# `<basename>_<year>.pdf` from the year-keyed mapping/aggregations/
+# derivations/checkbox_states on the mapping class.
+_CA_FORMS_BY_BASENAME: tuple[tuple[str, type], ...] = (
+    ("f540", PdfF540),
+    ("sch_ca", PdfSchCa),
+    ("sch_d_540", PdfSchD540),
+)
+
+
 def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
     """Convert sch_b.compute's payer-lists into the flat row slots that the
     Sch B PDF mapping expects (interest_payer_{i}, interest_amount_{i}, and
@@ -562,47 +573,22 @@ class ReturnOrchestrator:
         year = scenario.config.year
         filler = PdfFiller()
 
-        f540_template = _PDFS_ROOT / "california" / str(year) / "f540.pdf"
-        f540_output = output_dir / f"f540_{year}.pdf"
-        filler.fill(
-            template_path=f540_template,
-            output_path=f540_output,
-            field_mapping=PdfF540.get_mapping(year),
-            values=ca_results,
-            aggregations=PdfF540.get_aggregations(year),
-            derivations=PdfF540.get_derivations(year),
-            checkbox_states=PdfF540.get_checkbox_states(year),
-        )
+        emitted: dict[str, Path] = {}
+        for basename, mapping_cls in _CA_FORMS_BY_BASENAME:
+            template = _PDFS_ROOT / "california" / str(year) / f"{basename}.pdf"
+            output_path = output_dir / f"{basename}_{year}.pdf"
+            filler.fill(
+                template_path=template,
+                output_path=output_path,
+                field_mapping=mapping_cls.get_mapping(year),
+                values=ca_results,
+                aggregations=mapping_cls.get_aggregations(year),
+                derivations=mapping_cls.get_derivations(year),
+                checkbox_states=mapping_cls.get_checkbox_states(year),
+            )
+            emitted[basename] = output_path
 
-        sch_ca_template = _PDFS_ROOT / "california" / str(year) / "sch_ca.pdf"
-        sch_ca_output = output_dir / f"sch_ca_{year}.pdf"
-        filler.fill(
-            template_path=sch_ca_template,
-            output_path=sch_ca_output,
-            field_mapping=PdfSchCa.get_mapping(year),
-            values=ca_results,
-            aggregations=PdfSchCa.get_aggregations(year),
-            derivations=PdfSchCa.get_derivations(year),
-            checkbox_states=PdfSchCa.get_checkbox_states(year),
-        )
-
-        sch_d_540_template = _PDFS_ROOT / "california" / str(year) / "sch_d_540.pdf"
-        sch_d_540_output = output_dir / f"sch_d_540_{year}.pdf"
-        filler.fill(
-            template_path=sch_d_540_template,
-            output_path=sch_d_540_output,
-            field_mapping=PdfSchD540.get_mapping(year),
-            values=ca_results,
-            aggregations=PdfSchD540.get_aggregations(year),
-            derivations=PdfSchD540.get_derivations(year),
-            checkbox_states=PdfSchD540.get_checkbox_states(year),
-        )
-
-        return {
-            "f540": f540_output,
-            "sch_ca": sch_ca_output,
-            "sch_d_540": sch_d_540_output,
-        }
+        return emitted
 
     def run_full_return(
         self,
@@ -700,12 +686,8 @@ class ReturnOrchestrator:
             filing_status=scenario.config.filing_status,
             federal_agi=federal_results_with_sch_1["agi"],
             ca_agi=sch_ca_results["sch_ca_ca_agi"],
+            ca540=effective_ca540,
             num_dependents=len(scenario.config.dependents),
-            estimated_payments=int(effective_ca540.estimated_payments),
-            use_tax=int(effective_ca540.use_tax),
-            estimated_tax_penalty=int(effective_ca540.estimated_tax_penalty),
-            ptet_credit=int(effective_ca540.ptet_credit),
-            voluntary_contributions=effective_ca540.voluntary_contributions,
             # v1 defaults (tracked follow-ups):
             # - renter_credit_eligible: False (no CA540Return field yet)
             # - ca_itemized: None (CA itemized deductions not supported in v1)

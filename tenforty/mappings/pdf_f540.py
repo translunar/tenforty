@@ -152,6 +152,66 @@ _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {}
 # does not enforce ownership for them. PdfFiller catches KeyError and
 # skips the cell when a required key is absent; lambdas returning
 # `None` are also skipped (no value written).
+#
+# Named helpers below extract sub-expressions that recur across multiple
+# derivation lambdas. Each helper is called from at least 2 places — see
+# call counts in inline comments.
+
+
+def _line_33(c: Mapping[str, object]) -> float:
+    """Line 33 = max(0, line 31 − line 32). Called from 540_form_2032,
+    540_form_2036, _line_47-consumers (3006/3010/3027/4004/4005)."""
+    return max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
+
+
+def _line_47(c: Mapping[str, object]) -> float:
+    """Line 47 = total credits (renter + ptet + [PLANNED] line40/43-45).
+    Called from 540_form_3005, 540_form_3006, 540_form_3010, 540_form_3027,
+    540_form_4004, 540_form_4005."""
+    return (
+        c["f540_renter_credit"]
+        + c.get("f540_ptet_credit", 0)
+        + c.get("f540_line40_child_dep_care", 0)
+        + c.get("f540_line43_credit_amount", 0)
+        + c.get("f540_line44_credit_amount", 0)
+        + c.get("f540_line45_sch_p_credits", 0)
+    )
+
+
+def _line_48(c: Mapping[str, object]) -> float:
+    """Line 48 = max(0, line 35 − line 47). In v1 line 35 == line 33
+    (line 34 OUT_OF_V1_SCOPE defaults 0). Called from 540_form_3006,
+    540_form_3010, 540_form_3027, 540_form_4004, 540_form_4005."""
+    return max(0, _line_33(c) - _line_47(c))
+
+
+def _line_64(c: Mapping[str, object]) -> float:
+    """Line 64 = line 48 + 61 + 62 + 63. Lines 61-63 ([PLANNED] AMT,
+    behavioral health, other taxes/recapture) default 0. Called from
+    540_form_3010, 540_form_3027, 540_form_4004, 540_form_4005."""
+    return (
+        _line_48(c)
+        + c.get("f540_line61_amt", 0)
+        + c.get("f540_line62_behavioral_health", 0)
+        + c.get("f540_line63_other_taxes", 0)
+    )
+
+
+def _line_93(c: Mapping[str, object]) -> float:
+    """Line 93 = max(0, line 78 − line 91). Line 78 ≈ estimated_payments
+    in v1 (other [PLANNED] payment lines default 0). Called from
+    540_form_3023, 540_form_3025, 540_form_3026, 540_form_3027,
+    540_form_4004, 540_form_4005."""
+    return max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
+
+
+def _line_95(c: Mapping[str, object]) -> float:
+    """Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
+    ([PLANNED]; defaults 0). Called from 540_form_3025, 540_form_3027,
+    540_form_4004, 540_form_4005."""
+    return max(0, _line_93(c) - c.get("f540_line92_isr_penalty", 0))
+
+
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Filing-status radio group (page 1, line 1-5). Verbose state
     # strings per the FTB convention; T12 anomaly C.
@@ -163,54 +223,20 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     "540_form_2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
     "540_form_2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
     # Line 33 = max(0, line 31 − line 32). Line 31 = ca_tax, line 32 = exemption.
-    "540_form_2032": lambda c: max(0, c["f540_ca_tax"] - c["f540_exemption_credit"]),
+    "540_form_2032": lambda c: _line_33(c),
     # Line 35 = line 33 + line 34. Line 34 (Sch G-1 / FTB 5870A) is
-    # OUT_OF_V1_SCOPE, defaults 0.
-    "540_form_2036": lambda c: max(0, c["f540_ca_tax"] - c["f540_exemption_credit"]),
+    # OUT_OF_V1_SCOPE, defaults 0 — so v1 line 35 == line 33.
+    "540_form_2036": lambda c: _line_33(c),
     # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45,
     # all default 0 in v1). Note: this is NOT compute()'s
     # f540_total_credits, which includes exemption credit (already
     # subtracted at line 32). T13 anomaly D — see module-level note.
-    "540_form_3005": lambda c: (
-        c["f540_renter_credit"]
-        + c.get("f540_ptet_credit", 0)
-        + c.get("f540_line40_child_dep_care", 0)
-        + c.get("f540_line43_credit_amount", 0)
-        + c.get("f540_line44_credit_amount", 0)
-        + c.get("f540_line45_sch_p_credits", 0)
-    ),
+    "540_form_3005": lambda c: _line_47(c),
     # Line 48 = max(0, line 35 − line 47).
-    "540_form_3006": lambda c: max(
-        0,
-        max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
-        - (
-            c["f540_renter_credit"]
-            + c.get("f540_ptet_credit", 0)
-            + c.get("f540_line40_child_dep_care", 0)
-            + c.get("f540_line43_credit_amount", 0)
-            + c.get("f540_line44_credit_amount", 0)
-            + c.get("f540_line45_sch_p_credits", 0)
-        ),
-    ),
+    "540_form_3006": lambda c: _line_48(c),
     # Line 64 = line 48 + 61 + 62 + 63. Lines 61-63 ([PLANNED] AMT,
     # behavioral health, other taxes/recapture) default 0.
-    "540_form_3010": lambda c: (
-        max(
-            0,
-            max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
-            - (
-                c["f540_renter_credit"]
-                + c.get("f540_ptet_credit", 0)
-                + c.get("f540_line40_child_dep_care", 0)
-                + c.get("f540_line43_credit_amount", 0)
-                + c.get("f540_line44_credit_amount", 0)
-                + c.get("f540_line45_sch_p_credits", 0)
-            ),
-        )
-        + c.get("f540_line61_amt", 0)
-        + c.get("f540_line62_behavioral_health", 0)
-        + c.get("f540_line63_other_taxes", 0)
-    ),
+    "540_form_3010": lambda c: _line_64(c),
     # Line 78 = sum lines 71-77. Only line 72 = estimated_payments is
     # in v1; lines 71/73-77 ([PLANNED] CA withholding, 592-B/593,
     # Program 4.0, EITC, YCTC, FYTC) default 0.
@@ -225,109 +251,30 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
     # Line 93 = max(0, line 78 − line 91). Line 78 ≈ estimated_payments
     # in v1 (other [PLANNED] payment lines default 0).
-    "540_form_3023": lambda c: max(
-        0, c["f540_estimated_payments"] - c["f540_use_tax"]
-    ),
+    "540_form_3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
     "540_form_3024": lambda c: max(
         0, c["f540_use_tax"] - c["f540_estimated_payments"]
     ),
     # Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
     # ([PLANNED]; defaults 0).
-    "540_form_3025": lambda c: max(
-        0,
-        max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
-        - c.get("f540_line92_isr_penalty", 0),
-    ),
+    "540_form_3025": lambda c: _line_95(c),
     # Line 96 = max(0, line 92 − line 93). With line 92 defaulting 0,
     # this is 0 in v1.
     "540_form_3026": lambda c: max(
         0,
-        c.get("f540_line92_isr_penalty", 0)
-        - max(0, c["f540_estimated_payments"] - c["f540_use_tax"]),
+        c.get("f540_line92_isr_penalty", 0) - _line_93(c),
     ),
     # Line 97 = max(0, line 95 − line 64). The "overpaid tax" branch.
-    "540_form_3027": lambda c: max(
-        0,
-        max(
-            0,
-            max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
-            - c.get("f540_line92_isr_penalty", 0),
-        )
-        - (
-            max(
-                0,
-                max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
-                - (
-                    c["f540_renter_credit"]
-                    + c.get("f540_ptet_credit", 0)
-                    + c.get("f540_line40_child_dep_care", 0)
-                    + c.get("f540_line43_credit_amount", 0)
-                    + c.get("f540_line44_credit_amount", 0)
-                    + c.get("f540_line45_sch_p_credits", 0)
-                ),
-            )
-            + c.get("f540_line61_amt", 0)
-            + c.get("f540_line62_behavioral_health", 0)
-            + c.get("f540_line63_other_taxes", 0)
-        ),
-    ),
+    "540_form_3027": lambda c: max(0, _line_95(c) - _line_64(c)),
     # Line 99 = line 97 − line 98 (line 98 carryover-to-2026 is
     # [OUT_OF_V1_SCOPE]; defaults 0). Equals line 97 in v1.
     "540_form_4004": lambda c: (
-        max(
-            0,
-            max(
-                0,
-                max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
-                - c.get("f540_line92_isr_penalty", 0),
-            )
-            - (
-                max(
-                    0,
-                    max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
-                    - (
-                        c["f540_renter_credit"]
-                        + c.get("f540_ptet_credit", 0)
-                        + c.get("f540_line40_child_dep_care", 0)
-                        + c.get("f540_line43_credit_amount", 0)
-                        + c.get("f540_line44_credit_amount", 0)
-                        + c.get("f540_line45_sch_p_credits", 0)
-                    ),
-                )
-                + c.get("f540_line61_amt", 0)
-                + c.get("f540_line62_behavioral_health", 0)
-                + c.get("f540_line63_other_taxes", 0)
-            ),
-        )
+        max(0, _line_95(c) - _line_64(c))
         - c.get("f540_line98_applied_to_2026_estimated", 0)
     ),
     # Line 100 = max(0, line 64 − line 95). The "tax due" branch.
-    "540_form_4005": lambda c: max(
-        0,
-        (
-            max(
-                0,
-                max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
-                - (
-                    c["f540_renter_credit"]
-                    + c.get("f540_ptet_credit", 0)
-                    + c.get("f540_line40_child_dep_care", 0)
-                    + c.get("f540_line43_credit_amount", 0)
-                    + c.get("f540_line44_credit_amount", 0)
-                    + c.get("f540_line45_sch_p_credits", 0)
-                ),
-            )
-            + c.get("f540_line61_amt", 0)
-            + c.get("f540_line62_behavioral_health", 0)
-            + c.get("f540_line63_other_taxes", 0)
-        )
-        - max(
-            0,
-            max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
-            - c.get("f540_line92_isr_penalty", 0),
-        ),
-    ),
+    "540_form_4005": lambda c: max(0, _line_64(c) - _line_95(c)),
     # Line 111 (owe) — sign-split branch of f540_total_liability.
     # Returns the value when positive (owed); None otherwise (skipped).
     "540_form_5002": lambda c: (

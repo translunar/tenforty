@@ -13,7 +13,7 @@ is gated in T11's final-liability compute, not here.
 import importlib
 import math
 
-from tenforty.models import FilingStatus, VoluntaryContribution
+from tenforty.models import CA540Return, FilingStatus
 from tenforty.rounding import irs_round
 
 
@@ -124,12 +124,9 @@ def compute(
     filing_status: FilingStatus,
     federal_agi: int,
     ca_agi: int,
+    ca540: CA540Return,
+    *,
     num_dependents: int = 0,
-    estimated_payments: int = 0,
-    use_tax: int = 0,
-    estimated_tax_penalty: int = 0,
-    ptet_credit: int = 0,
-    voluntary_contributions: list[VoluntaryContribution] | None = None,
     ca_itemized: int | None = None,
     renter_credit_eligible: bool = False,
 ) -> dict[str, int | FilingStatus]:
@@ -138,6 +135,17 @@ def compute(
     Pipeline: AGI phaseout gate → deduction selection → taxable income →
     CA tax → exemption credit (base + dependent) → renter's credit (CA AGI
     gate per oracle Q4) → voluntary contributions → final liability.
+
+    The ``ca540`` dataclass carries the user-supplied CA-return inputs
+    that don't fit on Form 540's per-line schema:
+    ``estimated_payments``, ``use_tax``, ``estimated_tax_penalty``,
+    ``ptet_credit``, ``voluntary_contributions``. ``num_dependents``
+    stays a separate kwarg because it derives from the federal scenario
+    (``len(scenario.config.dependents)``), not from CA540Return.
+    ``ca_itemized`` stays a separate kwarg because it's a scenario-time
+    decision (Sch CA-derived), not stored on CA540Return.
+    ``renter_credit_eligible`` likewise stays a kwarg pending its
+    promotion to a CA540Return field (v1 follow-up).
 
     Returns flat dict keyed by ``f540_<semantic>``; all values are int
     (post-``irs_round`` where the input is float).
@@ -156,6 +164,14 @@ def compute(
             f"phaseout formula not implemented in v1."
         )
 
+    # Truncate CA540Return float fields to int — preserves the
+    # pre-existing call-site contract (orchestrator did int(...) before
+    # passing in; tests/oracles assume the same truncation behavior).
+    estimated_payments = int(ca540.estimated_payments)
+    use_tax = int(ca540.use_tax)
+    estimated_tax_penalty = int(ca540.estimated_tax_penalty)
+    ptet_credit = int(ca540.ptet_credit)
+
     std_ded = compute_standard_deduction(year, filing_status)
     deduction = max(std_ded, ca_itemized or 0)
     taxable_income = max(0, ca_agi - deduction)
@@ -170,8 +186,7 @@ def compute(
     renters = _compute_renters_credit(year, filing_status, ca_agi) if renter_credit_eligible else 0
 
     # Voluntary contributions
-    vc_list = voluntary_contributions or []
-    voluntary_total = sum(vc.amount for vc in vc_list)
+    voluntary_total = sum(vc.amount for vc in ca540.voluntary_contributions)
 
     total_credits = exemption + renters + ptet_credit
 

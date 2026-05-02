@@ -1,7 +1,7 @@
 import importlib
 import unittest
 
-from tenforty.models import FilingStatus, VoluntaryContribution
+from tenforty.models import CA540Return, FilingStatus, VoluntaryContribution
 from tenforty.forms.f540 import (
     compute_standard_deduction,
     compute_exemption_credit,
@@ -254,6 +254,7 @@ class ComputePipelineWalkTests(unittest.TestCase):
             filing_status=FilingStatus.SINGLE,
             federal_agi=50_000,
             ca_agi=50_000,
+            ca540=CA540Return(),
         )
         self.assertEqual(result["f540_ca_agi"], 50_000)
         self.assertEqual(result["f540_deduction"], 5_706)
@@ -270,6 +271,7 @@ class ComputePipelineWalkTests(unittest.TestCase):
             filing_status=FilingStatus.MARRIED_JOINTLY,
             federal_agi=100_000,
             ca_agi=100_000,
+            ca540=CA540Return(),
             num_dependents=2,
         )
         self.assertEqual(result["f540_deduction"], 11_412)
@@ -286,6 +288,7 @@ class ComputePipelineWalkTests(unittest.TestCase):
             filing_status=FilingStatus.SINGLE,
             federal_agi=40_000,
             ca_agi=40_000,
+            ca540=CA540Return(),
             renter_credit_eligible=True,
         )
         self.assertEqual(result["f540_taxable_income"], 34_294)
@@ -311,6 +314,7 @@ class AgiPhaseoutGateTests(unittest.TestCase):
                         filing_status=FilingStatus.SINGLE,
                         federal_agi=constants.AGI_PHASEOUT_THRESHOLD + 1,
                         ca_agi=50_000,
+                        ca540=CA540Return(),
                     )
                 self.assertIn(str(year), str(ctx.exception))
                 self.assertIn("phaseout", str(ctx.exception).lower())
@@ -328,6 +332,7 @@ class AgiPhaseoutGateTests(unittest.TestCase):
                     filing_status=FilingStatus.SINGLE,
                     federal_agi=constants.AGI_PHASEOUT_THRESHOLD,
                     ca_agi=50_000,
+                    ca540=CA540Return(),
                 )
                 self.assertIsInstance(result, dict)
 
@@ -346,6 +351,7 @@ class ChrisPatMFJ125kFinalLiabilityTests(unittest.TestCase):
                     filing_status=FilingStatus.MARRIED_JOINTLY,
                     federal_agi=ca_agi,
                     ca_agi=ca_agi,
+                    ca540=CA540Return(),
                 )
                 self.assertEqual(result["f540_taxable_income"], 125_000)
                 self.assertEqual(result["f540_ca_tax"], expected_ca_tax)
@@ -363,10 +369,12 @@ class SignConventionTests(unittest.TestCase):
     )
 
     def test_voluntary_contribution_increases_liability(self):
-        baseline = compute(**self.BASELINE_KWARGS)
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
         with_vc = compute(
             **self.BASELINE_KWARGS,
-            voluntary_contributions=[VoluntaryContribution("WLD", 50.0)],
+            ca540=CA540Return(
+                voluntary_contributions=[VoluntaryContribution("WLD", 50.0)],
+            ),
         )
         self.assertEqual(
             with_vc["f540_total_liability"],
@@ -374,32 +382,41 @@ class SignConventionTests(unittest.TestCase):
         )
 
     def test_use_tax_increases_liability(self):
-        baseline = compute(**self.BASELINE_KWARGS)
-        with_use = compute(**self.BASELINE_KWARGS, use_tax=25)
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
+        with_use = compute(**self.BASELINE_KWARGS, ca540=CA540Return(use_tax=25))
         self.assertEqual(
             with_use["f540_total_liability"],
             baseline["f540_total_liability"] + 25,
         )
 
     def test_estimated_tax_penalty_increases_liability(self):
-        baseline = compute(**self.BASELINE_KWARGS)
-        with_pen = compute(**self.BASELINE_KWARGS, estimated_tax_penalty=15)
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
+        with_pen = compute(
+            **self.BASELINE_KWARGS,
+            ca540=CA540Return(estimated_tax_penalty=15),
+        )
         self.assertEqual(
             with_pen["f540_total_liability"],
             baseline["f540_total_liability"] + 15,
         )
 
     def test_estimated_payments_decreases_liability(self):
-        baseline = compute(**self.BASELINE_KWARGS)
-        with_pay = compute(**self.BASELINE_KWARGS, estimated_payments=200)
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
+        with_pay = compute(
+            **self.BASELINE_KWARGS,
+            ca540=CA540Return(estimated_payments=200),
+        )
         self.assertEqual(
             with_pay["f540_total_liability"],
             baseline["f540_total_liability"] - 200,
         )
 
     def test_ptet_credit_decreases_liability(self):
-        baseline = compute(**self.BASELINE_KWARGS)
-        with_ptet = compute(**self.BASELINE_KWARGS, ptet_credit=100)
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
+        with_ptet = compute(
+            **self.BASELINE_KWARGS,
+            ca540=CA540Return(ptet_credit=100),
+        )
         self.assertEqual(
             with_ptet["f540_total_liability"],
             baseline["f540_total_liability"] - 100,
@@ -407,7 +424,8 @@ class SignConventionTests(unittest.TestCase):
 
 
 class VoluntaryContributionAggregationTests(unittest.TestCase):
-    """voluntary_contributions=None and =[] both yield $0; multi-item sums."""
+    """CA540Return().voluntary_contributions defaults to []; explicit [] also
+    yields $0; multi-item sums correctly."""
 
     BASELINE_KWARGS = dict(
         year=2025,
@@ -416,21 +434,28 @@ class VoluntaryContributionAggregationTests(unittest.TestCase):
         ca_agi=50_000,
     )
 
-    def test_none_voluntary_yields_zero(self):
-        result = compute(**self.BASELINE_KWARGS, voluntary_contributions=None)
+    def test_default_voluntary_yields_zero(self):
+        # CA540Return() defaults voluntary_contributions to []; replaces the
+        # legacy None-pass case (the new signature requires CA540Return).
+        result = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
         self.assertEqual(result["f540_voluntary_contributions"], 0)
 
     def test_empty_list_voluntary_yields_zero(self):
-        result = compute(**self.BASELINE_KWARGS, voluntary_contributions=[])
+        result = compute(
+            **self.BASELINE_KWARGS,
+            ca540=CA540Return(voluntary_contributions=[]),
+        )
         self.assertEqual(result["f540_voluntary_contributions"], 0)
 
     def test_multiple_voluntary_contributions_sum(self):
         result = compute(
             **self.BASELINE_KWARGS,
-            voluntary_contributions=[
-                VoluntaryContribution("WLD", 25.0),
-                VoluntaryContribution("KID", 30.0),
-                VoluntaryContribution("ALZ", 45.0),
-            ],
+            ca540=CA540Return(
+                voluntary_contributions=[
+                    VoluntaryContribution("WLD", 25.0),
+                    VoluntaryContribution("KID", 30.0),
+                    VoluntaryContribution("ALZ", 45.0),
+                ],
+            ),
         )
         self.assertEqual(result["f540_voluntary_contributions"], 100)

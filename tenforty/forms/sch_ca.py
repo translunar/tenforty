@@ -105,6 +105,57 @@ def compute(ca540, federal_results: dict) -> dict:
     return out
 
 
+# Auto-derived divergence catalog — federal-results-keyed entries.
+# Each tuple: (federal_key, sch_ca_line, description, federal_source,
+# pub1001_ref). All entries fire as SUBTRACTION when the federal value
+# is positive; no user input needed.
+_FEDERAL_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
+    (
+        "sch_1_line_7_unemployment",
+        "Part I §B 7",
+        "Unemployment compensation excluded by CA per R&TC 17083",
+        "Sch 1 line 7",
+        "p.17",
+    ),
+    (
+        "social_security_taxable",
+        "Part I §A 6",
+        "Social Security benefits excluded by CA per R&TC 17087",
+        "1040 line 6b (taxable portion)",
+        "p.10",
+    ),
+    (
+        "sch_1_line_1_taxable_refunds",
+        "Part I §B 1",
+        "State income tax refund not taxed by CA per R&TC 17131",
+        "Sch 1 line 1",
+        "p.11",
+    ),
+)
+
+# Auto-derived divergence catalog — CA540Return-attribute-keyed entries.
+# Each tuple: (ca540_attr, sch_ca_line, description, federal_source,
+# pub1001_ref). Federal compute does not separately surface these
+# values, so the taxpayer supplies them on CA540Return; entries fire as
+# SUBTRACTION when the attribute is provided AND positive.
+_CA540_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
+    (
+        "rrb_tier_1_2_amount",
+        "Part I §A 5b",
+        "Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087",
+        "CA540Return.rrb_tier_1_2_amount",
+        "p.10",
+    ),
+    (
+        "pfl_amount",
+        "Part I §B 7",
+        "Paid Family Leave benefits excluded by CA per FTB Pub 1001",
+        "CA540Return.pfl_amount",
+        "p.17",
+    ),
+)
+
+
 def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAdjustment]:
     """Generate mechanical divergences from federal results and named
     CA540Return fields.
@@ -120,61 +171,35 @@ def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAd
     These fire only when `ca540` is provided AND the corresponding
     field is set to a positive amount.
     """
-    divergences = []
+    divergences: list[CASchCAAdjustment] = []
 
-    if (ui := federal_results.get("sch_1_line_7_unemployment", 0.0)) > 0:
-        divergences.append(CASchCAAdjustment(
-            source=DivergenceSource.AUTO_DERIVED,
-            sch_ca_line="Part I §B 7",
-            direction=DivergenceDirection.SUBTRACTION,
-            amount=ui,
-            description="Unemployment compensation excluded by CA per R&TC 17083",
-            federal_source="Sch 1 line 7",
-            pub1001_ref="p.17",
-        ))
-
-    if (ss := federal_results.get("social_security_taxable", 0.0)) > 0:
-        divergences.append(CASchCAAdjustment(
-            source=DivergenceSource.AUTO_DERIVED,
-            sch_ca_line="Part I §A 6",
-            direction=DivergenceDirection.SUBTRACTION,
-            amount=ss,
-            description="Social Security benefits excluded by CA per R&TC 17087",
-            federal_source="1040 line 6b (taxable portion)",
-            pub1001_ref="p.10",
-        ))
-
-    if (refund := federal_results.get("sch_1_line_1_taxable_refunds", 0.0)) > 0:
-        divergences.append(CASchCAAdjustment(
-            source=DivergenceSource.AUTO_DERIVED,
-            sch_ca_line="Part I §B 1",
-            direction=DivergenceDirection.SUBTRACTION,
-            amount=refund,
-            description="State income tax refund not taxed by CA per R&TC 17131",
-            federal_source="Sch 1 line 1",
-            pub1001_ref="p.11",
-        ))
+    for fed_key, sch_ca_line, description, federal_source, pub1001_ref \
+            in _FEDERAL_AUTO_DIVERGENCES:
+        amount = federal_results.get(fed_key, 0.0)
+        if amount > 0:
+            divergences.append(CASchCAAdjustment(
+                source=DivergenceSource.AUTO_DERIVED,
+                sch_ca_line=sch_ca_line,
+                direction=DivergenceDirection.SUBTRACTION,
+                amount=amount,
+                description=description,
+                federal_source=federal_source,
+                pub1001_ref=pub1001_ref,
+            ))
 
     if ca540 is not None:
-        if (rrb := ca540.rrb_tier_1_2_amount or 0.0) > 0:
-            divergences.append(CASchCAAdjustment(
-                source=DivergenceSource.AUTO_DERIVED,
-                sch_ca_line="Part I §A 5b",
-                direction=DivergenceDirection.SUBTRACTION,
-                amount=rrb,
-                description="Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087",
-                federal_source="CA540Return.rrb_tier_1_2_amount",
-                pub1001_ref="p.10",
-            ))
-        if (pfl := ca540.pfl_amount or 0.0) > 0:
-            divergences.append(CASchCAAdjustment(
-                source=DivergenceSource.AUTO_DERIVED,
-                sch_ca_line="Part I §B 7",
-                direction=DivergenceDirection.SUBTRACTION,
-                amount=pfl,
-                description="Paid Family Leave benefits excluded by CA per FTB Pub 1001",
-                federal_source="CA540Return.pfl_amount",
-                pub1001_ref="p.17",
-            ))
+        for ca540_attr, sch_ca_line, description, federal_source, pub1001_ref \
+                in _CA540_AUTO_DIVERGENCES:
+            amount = getattr(ca540, ca540_attr) or 0.0
+            if amount > 0:
+                divergences.append(CASchCAAdjustment(
+                    source=DivergenceSource.AUTO_DERIVED,
+                    sch_ca_line=sch_ca_line,
+                    direction=DivergenceDirection.SUBTRACTION,
+                    amount=amount,
+                    description=description,
+                    federal_source=federal_source,
+                    pub1001_ref=pub1001_ref,
+                ))
 
     return divergences
