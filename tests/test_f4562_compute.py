@@ -121,6 +121,23 @@ class F4562ComputeTests(unittest.TestCase):
         with self.assertRaisesRegex(NotImplementedError, "Mixed conventions"):
             form_f4562.compute(_scenario_with_assets(a, b), upstream={})
 
+    def test_basis_rounding_at_half_boundary_follows_irs_half_up(self):
+        # Python's built-in round() uses banker's rounding: round(200_000.5) == 200_000
+        # (rounds to nearest even). The IRS rule is always round half up, so 200_000.5
+        # must become 200_001. Two assets whose bases sum to exactly X.5 exercise this
+        # boundary and expose any banker's-rounding bug.
+        a = DepreciableAsset(
+            description="Main equipment", date_placed_in_service=date(2025, 3, 1),
+            basis=200_000.0, recovery_class="5-year", convention="half-year",
+        )
+        b = DepreciableAsset(
+            description="Accessory", date_placed_in_service=date(2025, 4, 1),
+            basis=0.5, recovery_class="5-year", convention="half-year",
+        )
+        r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
+        # IRS half-up: 200_000.5 → 200_001. Banker's rounding would yield 200_000.
+        self.assertEqual(r["f4562_line_19b_basis"], 200_001)
+
 
 if __name__ == "__main__":
     unittest.main()
