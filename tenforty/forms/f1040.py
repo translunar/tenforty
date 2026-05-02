@@ -21,6 +21,8 @@ _RENAMES: dict[str, str] = {
 # native math) to read either name without a second lookup.
 _ALIASES: dict[str, str] = {
     "schd_line16": "capital_gain_loss",
+    "sch_1_line_10": "sch_1_line_10_total_additional_income",
+    "sch_1_line_26": "sch_1_line_26_total_adjustments",
 }
 
 assert not (set(_RENAMES) & set(_ALIASES)), (
