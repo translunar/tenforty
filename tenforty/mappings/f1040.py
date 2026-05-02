@@ -220,6 +220,11 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "1099-G",
             "g_ag_6": "1099-G",
             "g_market_gain_6": "1099-G",
+            # Schedule 1 line 4 (other gains/losses): direct cell ref
+            # because the value isn't named in the workbook. Cell AJ19
+            # holds ROUND(AC19,0); line 10's SUM references the same
+            # rounded expression inline.
+            "sch_1_line_4_other_gains": "Sch. 1",
             **_f8949_all_sheet_map(),
         },
     }
@@ -425,6 +430,9 @@ class F1040(FormMapping):
             # consumers that need per-line granularity.
             "sch_1_line_1_taxable_refunds": "Sch1_Line1",
             "sch_1_line_3_business_income": "BusinessIncomeLoss",
+            # Line 4 has no named range; direct cell ref to AJ19
+            # (rounded display of AC19). SHEET_MAP routes to "Sch. 1".
+            "sch_1_line_4_other_gains": "AJ19",
             "sch_1_line_5_rental_re_royalty": "SchE_IncomeLoss",
             "sch_1_line_6_farm_income": "FarmIncomeLoss",
             "sch_1_line_7_unemployment": "UnEmploymentComp",

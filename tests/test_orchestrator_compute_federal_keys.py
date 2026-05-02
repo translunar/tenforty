@@ -90,3 +90,20 @@ class ComputeFederalExposesSch1PartIPerLine(unittest.TestCase):
                 results[key], 0,
                 f"expected zero for {key} in simple W-2-only scenario",
             )
+
+
+@needs_libreoffice
+class ComputeFederalExposesSch1Line4(unittest.TestCase):
+    """Line 4 (other gains) has no named range — direct cell ref via
+    SHEET_MAP. The simple-scenario value is zero, but the key must be
+    present so kernel auto-derive can read it."""
+
+    def test_line_4_present_in_results(self):
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+        self.assertIn("sch_1_line_4_other_gains", results)
+        self.assertEqual(results["sch_1_line_4_other_gains"], 0)
