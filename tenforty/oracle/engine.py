@@ -46,7 +46,7 @@ class SpreadsheetEngine:
 
         self._write_inputs(working_copy, input_map, sheet_map, inputs)
         recalculated = self._recalculate(working_copy, work_dir)
-        return self._read_outputs(recalculated, output_map)
+        return self._read_outputs(recalculated, output_map, sheet_map)
 
     def _write_inputs(
         self,
@@ -140,18 +140,21 @@ class SpreadsheetEngine:
         self,
         workbook_path: Path,
         output_map: dict[str, str],
+        sheet_map: dict[str, str],
     ) -> dict[str, object]:
         wb = openpyxl.load_workbook(workbook_path, data_only=True)
         named_ranges = {n.name: n for n in wb.defined_names.values()}
         results: dict[str, object] = {}
 
-        for output_key, named_range in output_map.items():
-            if named_range not in named_ranges:
+        for output_key, cell_ref in output_map.items():
+            if cell_ref in named_ranges:
+                defn = named_ranges[cell_ref]
+                sheet_name, cell_addr = _resolve_named_range(defn)
+                results[output_key] = wb[sheet_name][cell_addr].value
+            elif output_key in sheet_map:
+                sheet_name = sheet_map[output_key]
+                results[output_key] = wb[sheet_name][cell_ref].value
+            else:
                 results[output_key] = None
-                continue
-
-            defn = named_ranges[named_range]
-            sheet_name, cell_addr = _resolve_named_range(defn)
-            results[output_key] = wb[sheet_name][cell_addr].value
 
         return results

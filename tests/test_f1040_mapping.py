@@ -105,7 +105,18 @@ class TestF1040MappingValidity(unittest.TestCase):
                 continue
             wb = openpyxl.load_workbook(workbook_path, read_only=False)
             inputs = F1040.get_inputs(year)
+            outputs = F1040.get_outputs(year)
             for key, sheet_name in sheet_map.items():
+                # SHEET_MAP serves both input writes and output reads (the
+                # engine falls back to SHEET_MAP in _write_inputs and
+                # _read_outputs alike). Merged-cell concern only applies
+                # to writes — reading a merged cell is safe.
+                if key not in inputs:
+                    self.assertIn(
+                        key, outputs,
+                        f"{year} SHEET_MAP key '{key}' is in neither INPUTS nor OUTPUTS",
+                    )
+                    continue
                 cell_ref = inputs[key]
                 cell = wb[sheet_name][cell_ref]
                 self.assertNotIsInstance(
