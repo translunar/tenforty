@@ -10,6 +10,7 @@ import yaml
 from datetime import date
 
 from tenforty.forms import sch_d as sch_d_module
+from tests.helpers import scope_out_attestation_defaults
 from tenforty.models import (
     DepreciableAsset,
     FilingStatus,
@@ -563,24 +564,9 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
 
 class TestTaxReturnConfigPdfHeader(unittest.TestCase):
     def _config(self, **kw) -> "TaxReturnConfig":
-        from tenforty.models import TaxReturnConfig
         defaults = dict(
             year=2025, filing_status="single", birthdate="1990-06-15", state="CA",
-            has_foreign_accounts=False,
-            acknowledges_sch_a_sales_tax_unsupported=False,
-            acknowledges_qbi_below_threshold=False,
-            acknowledges_unlimited_at_risk=False, basis_tracked_externally=False,
-            acknowledges_no_partnership_se_earnings=False,
-            acknowledges_no_section_1231_gain=False,
-            acknowledges_no_more_than_four_k1s=False,
-            acknowledges_no_k1_credits=False,
-            acknowledges_no_section_179=False,
-            acknowledges_no_estate_trust_k1=False,
-            prior_year_itemized=False,
-            acknowledges_no_wash_sale_adjustments=False,
-            acknowledges_no_other_basis_adjustments=False,
-            acknowledges_no_28_rate_gain=False,
-            acknowledges_no_unrecaptured_section_1250=False,
+            **scope_out_attestation_defaults(),
         )
         defaults.update(kw)
         return TaxReturnConfig(**defaults)
