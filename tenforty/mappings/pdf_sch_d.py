@@ -39,8 +39,12 @@ repeater-aware filler call; the repeaters block is empty because Sch D
 writes scalar cells only.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class PdfSchD:
+
+class PdfSchD(PdfFormMapping[dict]):
+    _FORM_NAME = "Schedule D"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -179,8 +183,3 @@ class PdfSchD:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Schedule D PDF mapping for year {year}")
-        return cls._MAPPINGS[year]
