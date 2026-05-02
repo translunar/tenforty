@@ -1,19 +1,6 @@
 """PDF field mapping for IRS 2025 Schedule K-1 (Form 1120-S)."""
 
-
-class PdfF1120SK1:
-    """PDF field mapping for IRS Schedule K-1 (Form 1120-S).
-
-    Single flat registry — Schedule K-1 is a single-page form with a 1:1
-    correspondence between K1Allocation fields and PDF cells (no combined
-    cells, no derivations, no structural suppressions). Matches the
-    `Pdf1040` flat-mapping precedent."""
-
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year == 2025:
-            return _MAPPING_2025
-        raise ValueError(f"No Sch K-1 mapping for year {year}")
+from tenforty.mappings.registry import PdfFormMapping
 
 
 _MAPPING_2025: dict[str, str] = {
@@ -39,3 +26,15 @@ _MAPPING_2025: dict[str, str] = {
         "topmostSubform[0].Page1[0].RightCol[0].Lines1-12[0].f1_21[0]"
     ),
 }
+
+
+class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
+    """PDF field mapping for IRS Schedule K-1 (Form 1120-S).
+
+    Single flat registry — Schedule K-1 is a single-page form with a 1:1
+    correspondence between K1Allocation fields and PDF cells (no combined
+    cells, no derivations, no structural suppressions). Matches the
+    `Pdf1040` flat-mapping precedent."""
+
+    _FORM_NAME = "Schedule K-1 (Form 1120-S)"
+    _MAPPINGS: dict[int, dict[str, str]] = {2025: _MAPPING_2025}
