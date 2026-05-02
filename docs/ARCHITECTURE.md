@@ -177,7 +177,7 @@ def setUpClass(cls):
 ### Speed Optimization
 
 - Current: ~18s per scenario (cold-start LibreOffice)
-- `UnoEngine` exists using `unoconvert` but provides NO meaningful speedup (file-based conversion is still ~16-18s)
+- The `unoconvert`/`unoserver` daemon path was investigated and dropped: file-based conversion is still ~16-18s because LibreOffice XLSX parsing/exporting dominates, not process startup
 - **In-process UNO API achieves ~0.1s/scenario** (benchmarked, documented in `docs/superpowers/plans/2026-04-09-verification-and-speed.md` appendix). Requires: macOS code re-signing of LibreOffice's Python, running under LO's Python 3.12, keeping document open in memory.
 - Prerequisite for in-process UNO on macOS:
   ```bash

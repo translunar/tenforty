@@ -24,20 +24,7 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_k1s(scenario, flat)
     _flatten_1099_b(scenario, flat)
 
-    _reject_unhandled(scenario)
-
     return flat
-
-
-def _reject_unhandled(scenario: Scenario) -> None:
-    """Reserved hook for future form types that cannot yet be flattened.
-
-    Currently a no-op: every modeled form type has an explicit flattener.
-    When a new unhandled form type is added to the Scenario schema, raise
-    NotImplementedError here so callers fail loudly rather than silently
-    dropping data.
-    """
-    return
 
 
 def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:

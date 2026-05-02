@@ -254,34 +254,36 @@ class TestE2ECapitalGains(unittest.TestCase):
     """Scenario: W-2 + stock sales → Schedule D + 8949."""
 
     def setUp(self):
-        self.work_dir = Path(tempfile.mkdtemp())
-        self.scenario = _make_capital_gains_scenario()
-        self.orchestrator = ReturnOrchestrator(
-            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.work_dir,
-        )
+        # Compute once per class; XLS recalc is expensive (~3-15s per call)
+        if not hasattr(self.__class__, '_results'):
+            self.__class__._work_dir = Path(tempfile.mkdtemp())
+            self.__class__._scenario = _make_capital_gains_scenario()
+            orchestrator = ReturnOrchestrator(
+                spreadsheets_dir=SPREADSHEETS_DIR,
+                work_dir=self.__class__._work_dir,
+            )
+            self.__class__._results = orchestrator.compute_federal(self.__class__._scenario)
+        self.work_dir = self.__class__._work_dir
+        self.scenario = self.__class__._scenario
+        self.results = self.__class__._results
 
     def test_engine_produces_capital_gain_output(self):
         """Engine should compute net capital gain/loss from 1099-B data."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
         # Schedule D should have a net gain (5000 LT gain - 1000 ST loss = 4000 net)
-        schd = results.get("schd_line16")
+        schd = self.results.get("schd_line16")
         self.assertIsNotNone(schd, "Schedule D line 16 should be computed")
 
     def test_capital_gains_in_agi(self):
         """AGI should include capital gains."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        agi = float(results["agi"])
+        agi = float(self.results["agi"])
         # AGI should exceed wages alone (100000) because of net capital gain
         self.assertGreater(agi, 100000)
 
     def test_invariants(self):
-        results = self.orchestrator.compute_federal(self.scenario)
-        assert_agi_consistent(self, results, self.scenario)
-        assert_taxable_income_consistent(self, results)
-        assert_tax_is_non_negative(self, results)
-        assert_w2_withholding_matches_input(self, results, self.scenario)
+        assert_agi_consistent(self, self.results, self.scenario)
+        assert_taxable_income_consistent(self, self.results)
+        assert_tax_is_non_negative(self, self.results)
+        assert_w2_withholding_matches_input(self, self.results, self.scenario)
 
 
 @needs_libreoffice
@@ -289,34 +291,36 @@ class TestE2EScheduleK1(unittest.TestCase):
     """Scenario: W-2 + S-corp K-1 rental income → Schedule E Part II."""
 
     def setUp(self):
-        self.work_dir = Path(tempfile.mkdtemp())
-        self.scenario = _make_k1_scenario()
-        self.orchestrator = ReturnOrchestrator(
-            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.work_dir,
-        )
+        # Compute once per class; XLS recalc is expensive (~3-15s per call)
+        if not hasattr(self.__class__, '_results'):
+            self.__class__._work_dir = Path(tempfile.mkdtemp())
+            self.__class__._scenario = _make_k1_scenario()
+            orchestrator = ReturnOrchestrator(
+                spreadsheets_dir=SPREADSHEETS_DIR,
+                work_dir=self.__class__._work_dir,
+            )
+            self.__class__._results = orchestrator.compute_federal(self.__class__._scenario)
+        self.work_dir = self.__class__._work_dir
+        self.scenario = self.__class__._scenario
+        self.results = self.__class__._results
 
     def test_k1_rental_income_in_agi(self):
         """K-1 rental income should flow into AGI via Schedule E Part II → Schedule 1."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        agi = float(results["agi"])
+        agi = float(self.results["agi"])
         # AGI should exceed wages (130000) because of K-1 rental income (6000)
         self.assertGreater(agi, 130000)
 
     def test_schedule_e_has_value(self):
         """Schedule E should show the K-1 pass-through."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
         # Schedule E line 41 is total rental/partnership income
-        sche = results.get("sche_line41")
+        sche = self.results.get("sche_line41")
         self.assertIsNotNone(sche, "Schedule E line 41 should be computed")
         self.assertNotEqual(float(sche), 0)
 
     def test_invariants(self):
-        results = self.orchestrator.compute_federal(self.scenario)
-        assert_taxable_income_consistent(self, results)
-        assert_tax_is_non_negative(self, results)
-        assert_w2_withholding_matches_input(self, results, self.scenario)
+        assert_taxable_income_consistent(self, self.results)
+        assert_tax_is_non_negative(self, self.results)
+        assert_w2_withholding_matches_input(self, self.results, self.scenario)
 
 
 @needs_libreoffice
@@ -329,17 +333,22 @@ class TestE2EComprehensive(unittest.TestCase):
     """
 
     def setUp(self):
-        self.work_dir = Path(tempfile.mkdtemp())
-        self.scenario = _make_comprehensive_scenario()
-        self.orchestrator = ReturnOrchestrator(
-            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.work_dir,
-        )
+        # Compute once per class; XLS recalc is expensive (~3-15s per call)
+        if not hasattr(self.__class__, '_results'):
+            self.__class__._work_dir = Path(tempfile.mkdtemp())
+            self.__class__._scenario = _make_comprehensive_scenario()
+            orchestrator = ReturnOrchestrator(
+                spreadsheets_dir=SPREADSHEETS_DIR,
+                work_dir=self.__class__._work_dir,
+            )
+            self.__class__._results = orchestrator.compute_federal(self.__class__._scenario)
+        self.work_dir = self.__class__._work_dir
+        self.scenario = self.__class__._scenario
+        self.results = self.__class__._results
 
     def test_all_income_sources_in_agi(self):
         """AGI should reflect wages + interest + dividends + cap gains + K-1 rental."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        agi = float(results["agi"])
+        agi = float(self.results["agi"])
         wages = 150000
         # AGI should exceed wages because of investment income + K-1
         self.assertGreater(agi, wages)
@@ -348,30 +357,23 @@ class TestE2EComprehensive(unittest.TestCase):
 
     def test_itemizes_with_mortgage(self):
         """Should itemize: mortgage ($18k) + property tax ($6k) > standard ($15,750)."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        deductions = float(results.get("total_deductions", 0))
+        deductions = float(self.results.get("total_deductions", 0))
         self.assertGreater(deductions, 15750)
 
     def test_schedule_d_has_capital_gain(self):
         """Schedule D should show the long-term gain from 1099-B."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
-        schd = results.get("schd_line16")
+        schd = self.results.get("schd_line16")
         self.assertIsNotNone(schd)
 
     def test_withholding_creates_refund_or_reasonable_owed(self):
         """With $30k withheld on ~$165k total income, should be close to break-even."""
-        results = self.orchestrator.compute_federal(self.scenario)
-
         # Just verify the math is internally consistent
-        assert_refund_or_owed_consistent(self, results)
+        assert_refund_or_owed_consistent(self, self.results)
 
     def test_all_invariants(self):
-        results = self.orchestrator.compute_federal(self.scenario)
-        assert_taxable_income_consistent(self, results)
-        assert_tax_is_non_negative(self, results)
-        assert_w2_withholding_matches_input(self, results, self.scenario)
+        assert_taxable_income_consistent(self, self.results)
+        assert_tax_is_non_negative(self, self.results)
+        assert_w2_withholding_matches_input(self, self.results, self.scenario)
 
 
 # --- Invariant extensions needed for new forms ---

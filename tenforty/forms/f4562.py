@@ -27,6 +27,7 @@ from collections import defaultdict
 
 from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.models import Scenario
+from tenforty.rounding import irs_round
 
 # Recovery class → Form 4562 Section B row label (lowercase letter).
 _CLASS_TO_ROW: dict[str, str] = {
@@ -98,7 +99,10 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         result[f"{prefix}_date_placed_in_service"] = (
             f"{earliest.month:02d}/{earliest.year:04d}"
         )
-        result[f"{prefix}_basis"] = int(round(class_total_basis))
+        # irs_round rather than built-in round: IRS always rounds .5 up,
+        # while Python's round() uses banker's (half-to-even) which diverges
+        # at .5 boundaries (e.g. round(200_000.5) == 200_000, not 200_001).
+        result[f"{prefix}_basis"] = int(irs_round(class_total_basis))
         result[f"{prefix}_recovery_period"] = _recovery_period_text(recovery_class)
         result[f"{prefix}_convention"] = _convention_text(convention)
         result[f"{prefix}_method"] = _PROPERTY_METHOD[convention]
