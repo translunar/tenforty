@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tenforty.forms.sch_1 import compute as sch_1_compute
 from tenforty.models import Form1099G
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import (
@@ -153,3 +154,63 @@ class ComputeFederalExposesSch1PartIIPerLine(unittest.TestCase):
         results = orchestrator.compute_federal(scenario)
         self.assertEqual(results["sch_1_line_21_student_loan_interest"], 0)
         self.assertIsNotNone(results["sch_1_line_21_student_loan_interest"])
+
+
+@needs_libreoffice
+class XlsAgreesWithNativeSch1ForNonK1Scenario(unittest.TestCase):
+    """Sanity: for a non-K-1 scenario, the XLS-sourced per-line keys in
+    compute_federal results agree with what forms/sch_1.compute would
+    produce reading the same merged result dict as upstream. This
+    pins path (a) and the native compute as consistent for scenarios
+    that don't trip the Sch E Part II blind spot.
+    """
+
+    def test_unemployment_scenario_xls_matches_native(self):
+        scenario = make_simple_scenario()
+        scenario.form1099_g = [
+            Form1099G(payer="State", unemployment_compensation=4_200.0),
+        ]
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+
+        # The native compute reads `sch_e_line_26_total` from upstream
+        # to drive line 5; results carries `sche_line26` (oracle key)
+        # but not the renamed sch_e_line_26_total. Build an upstream
+        # snapshot mirroring what the orchestrator's _compute_1040_pipeline
+        # would synthesize.
+        upstream = {
+            "f1040": results,
+            "sch_e": {
+                "sch_e_line_26_total": results.get("sche_line26", 0),
+            },
+        }
+        native = sch_1_compute(scenario, upstream)
+
+        # Path-(a) XLS values must agree with native compute on every
+        # per-line key the native module computes. Line 4 (other gains)
+        # is intentionally excluded — native sch_1.compute hard-zeros it,
+        # so any oracle non-zero would flag a divergence we don't yet
+        # have native coverage for.
+        for key in [
+            "sch_1_line_1_taxable_refunds",
+            "sch_1_line_3_business_income",
+            "sch_1_line_5_rental_re_royalty",
+            "sch_1_line_6_farm_income",
+            "sch_1_line_7_unemployment",
+            "sch_1_line_11_educator",
+            "sch_1_line_13_hsa",
+            "sch_1_line_15_se_tax",
+            "sch_1_line_17_se_health",
+            "sch_1_line_20_ira",
+            "sch_1_line_21_student_loan_interest",
+            "sch_1_line_10_total_additional_income",
+            "sch_1_line_26_total_adjustments",
+        ]:
+            self.assertEqual(
+                results[key],
+                native[key],
+                f"path-(a)/native disagreement on {key}",
+            )
