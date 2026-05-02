@@ -107,3 +107,49 @@ class ComputeFederalExposesSch1Line4(unittest.TestCase):
         results = orchestrator.compute_federal(scenario)
         self.assertIn("sch_1_line_4_other_gains", results)
         self.assertEqual(results["sch_1_line_4_other_gains"], 0)
+
+
+@needs_libreoffice
+class ComputeFederalExposesSch1PartIIPerLine(unittest.TestCase):
+    """Part II per-line breakdown keys (lines 11, 13, 15, 17, 20, 21).
+
+    A simple W-2 scenario doesn't drive any of these; we just assert
+    the keys exist and are zero so kernel auto-derive can read them
+    without KeyError guards.
+    """
+
+    def test_part_ii_lines_present_for_simple_scenario(self):
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+        for key in [
+            "sch_1_line_11_educator",
+            "sch_1_line_13_hsa",
+            "sch_1_line_15_se_tax",
+            "sch_1_line_17_se_health",
+            "sch_1_line_20_ira",
+            "sch_1_line_21_student_loan_interest",
+        ]:
+            self.assertIn(key, results, f"missing Part II key: {key}")
+            self.assertEqual(
+                results[key], 0,
+                f"expected zero for {key} in simple W-2-only scenario",
+            )
+
+    def test_student_loan_interest_coerced_from_none_to_zero(self):
+        """Line 21's named range points at a raw input cell that
+        resolves to None (not 0) for an empty scenario. The rekey
+        shim's _NUMERIC_SCH_1_KEYS coercion canonicalizes that to
+        a numeric 0 so downstream kernel arithmetic doesn't TypeError.
+        """
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+        self.assertEqual(results["sch_1_line_21_student_loan_interest"], 0)
+        self.assertIsNotNone(results["sch_1_line_21_student_loan_interest"])

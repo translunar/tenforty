@@ -31,6 +31,34 @@ assert not (set(_RENAMES) & set(_ALIASES)), (
 )
 
 
+# Numeric Sch 1 line keys whose underlying XLS cells may resolve to
+# Python None (raw input cells, blank when no input given). Downstream
+# consumers (Sch CA kernel auto-derive) do arithmetic on these values;
+# None would TypeError. The rekey shim canonicalizes None -> 0 here so
+# every consumer can rely on a numeric type.
+_NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
+    "sch_1_line_1_taxable_refunds",
+    "sch_1_line_3_business_income",
+    "sch_1_line_4_other_gains",
+    "sch_1_line_5_rental_re_royalty",
+    "sch_1_line_6_farm_income",
+    "sch_1_line_7_unemployment",
+    # Both forms of line 10 and line 26 are aliased; coerce both so the
+    # mirror invariant (short == long) holds even when the underlying
+    # workbook cell returns None.
+    "sch_1_line_10",
+    "sch_1_line_10_total_additional_income",
+    "sch_1_line_11_educator",
+    "sch_1_line_13_hsa",
+    "sch_1_line_15_se_tax",
+    "sch_1_line_17_se_health",
+    "sch_1_line_20_ira",
+    "sch_1_line_21_student_loan_interest",
+    "sch_1_line_26",
+    "sch_1_line_26_total_adjustments",
+})
+
+
 def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     """Translate raw engine output into a PDF-ready 1040 result dict."""
     translated: dict = dict(raw_1040)
@@ -42,6 +70,10 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     for old, new in _ALIASES.items():
         if old in translated:
             translated[new] = translated[old]
+
+    for key in _NUMERIC_SCH_1_KEYS:
+        if translated.get(key) is None:
+            translated[key] = 0
 
     if "agi" in translated:
         translated["agi_page2"] = translated["agi"]

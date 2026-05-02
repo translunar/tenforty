@@ -436,6 +436,14 @@ class F1040(FormMapping):
             "sch_1_line_5_rental_re_royalty": "SchE_IncomeLoss",
             "sch_1_line_6_farm_income": "FarmIncomeLoss",
             "sch_1_line_7_unemployment": "UnEmploymentComp",
+            # Schedule 1 Part II per-line breakdowns (XLS-sourced;
+            # named ranges in the Sch. 1 sheet).
+            "sch_1_line_11_educator": "EducatorExpenses",
+            "sch_1_line_13_hsa": "HSA_Deduct",
+            "sch_1_line_15_se_tax": "SE_Deduct",
+            "sch_1_line_17_se_health": "SEHealthInsDeduct",
+            "sch_1_line_20_ira": "IRADeduct",
+            "sch_1_line_21_student_loan_interest": "StudentLoanIntDeduct",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
             "interest_income": "Interest_Inc",
