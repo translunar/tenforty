@@ -179,8 +179,9 @@ class XlsAgreesWithNativeSch1ForNonK1Scenario(unittest.TestCase):
         # The native compute reads `sch_e_line_26_total` from upstream
         # to drive line 5; results carries `sche_line26` (oracle key)
         # but not the renamed sch_e_line_26_total. Build an upstream
-        # snapshot mirroring what the orchestrator's _compute_1040_pipeline
-        # would synthesize.
+        # snapshot mirroring what the orchestrator's _emit_pdfs_internal
+        # synthesizes when it calls sch_1.compute (see orchestrator.py
+        # ~line 413: `upstream={**upstream, "sch_e": sch_e_values}`).
         upstream = {
             "f1040": results,
             "sch_e": {
