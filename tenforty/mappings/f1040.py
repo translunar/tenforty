@@ -419,6 +419,15 @@ class F1040(FormMapping):
             # Schedule 1 line 26 (Total Adjustments to Income). Oracle
             # cross-check target for forms.sch_1.compute's native math.
             "sch_1_line_26": "Sch1A_Deductions",
+            # Schedule 1 Part I per-line breakdowns (XLS-sourced; named
+            # ranges in the Sch. 1 sheet). These keys feed downstream
+            # Sch CA kernel auto-derive and other state-return
+            # consumers that need per-line granularity.
+            "sch_1_line_1_taxable_refunds": "Sch1_Line1",
+            "sch_1_line_3_business_income": "BusinessIncomeLoss",
+            "sch_1_line_5_rental_re_royalty": "SchE_IncomeLoss",
+            "sch_1_line_6_farm_income": "FarmIncomeLoss",
+            "sch_1_line_7_unemployment": "UnEmploymentComp",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
             "interest_income": "Interest_Inc",

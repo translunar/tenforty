@@ -45,3 +45,48 @@ class ComputeFederalExposesSch1LongFormTotals(unittest.TestCase):
             results["sch_1_line_26_total_adjustments"],
             results["sch_1_line_26"],
         )
+
+
+@needs_libreoffice
+class ComputeFederalExposesSch1PartIPerLine(unittest.TestCase):
+    """Part I per-line breakdown keys (lines 1, 3, 5, 6, 7).
+
+    Line 4 (other gains) is covered separately in
+    ComputeFederalExposesSch1Line4 because it lacks a named range and
+    requires a SHEET_MAP entry rather than a named-range OUTPUTS entry.
+    """
+
+    def test_unemployment_appears_as_sch_1_line_7(self):
+        scenario = make_simple_scenario()
+        scenario.form1099_g = [
+            Form1099G(payer="State", unemployment_compensation=5000.0),
+        ]
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+        self.assertEqual(results["sch_1_line_7_unemployment"], 5000)
+
+    def test_part_i_lines_present_for_simple_scenario(self):
+        """Even a no-Sch-1-income scenario should expose all Part I keys
+        as zero — kernel auto-derive needs the keys to exist before it
+        can read them."""
+        scenario = make_simple_scenario()
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR,
+            work_dir=Path(tempfile.mkdtemp()),
+        )
+        results = orchestrator.compute_federal(scenario)
+        for key in [
+            "sch_1_line_1_taxable_refunds",
+            "sch_1_line_3_business_income",
+            "sch_1_line_5_rental_re_royalty",
+            "sch_1_line_6_farm_income",
+            "sch_1_line_7_unemployment",
+        ]:
+            self.assertIn(key, results, f"missing Part I key: {key}")
+            self.assertEqual(
+                results[key], 0,
+                f"expected zero for {key} in simple W-2-only scenario",
+            )
