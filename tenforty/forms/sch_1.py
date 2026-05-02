@@ -94,6 +94,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     )
 
     return {
+        **scenario.config.pdf_header(),
         "sch_1_line_1_taxable_refunds": taxable_refunds_line_1,
         "sch_1_line_3_business_income": business_income_line_3,
         "sch_1_line_4_other_gains": capital_gain_line_4,
@@ -109,6 +110,4 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_1_line_20_ira": ira_deduction_line_20,
         "sch_1_line_21_student_loan_interest": student_loan_interest_line_21,
         "sch_1_line_26_total_adjustments": total_adjustments_line_26,
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
     }

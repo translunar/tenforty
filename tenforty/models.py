@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import date as _date
 from enum import Enum
+from types import MappingProxyType
+from typing import Mapping
 
 
 @dataclass
@@ -393,6 +395,12 @@ class TaxReturnConfig:
         first = self.first_name.strip()
         last = self.last_name.strip()
         return f"{first} {last}".strip()
+
+    def pdf_header(self) -> Mapping[str, str]:
+        return MappingProxyType({
+            "taxpayer_name": self.full_name,
+            "taxpayer_ssn": self.ssn,
+        })
 
 
 @dataclass

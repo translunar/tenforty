@@ -78,8 +78,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_24 = line_22 + line_23
 
     result: dict = {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
+        **scenario.config.pdf_header(),
         "f8959_line_1": irs_round(line_1),
         "f8959_line_2": irs_round(line_2),
         "f8959_line_3": irs_round(line_3),

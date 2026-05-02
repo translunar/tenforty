@@ -54,14 +54,13 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     total_dividends = sum(p["amount"] for p in dividend_payers)
 
     return {
+        **scenario.config.pdf_header(),
         "interest_payers": interest_payers,
         "total_interest": total_interest,
         "excludable_savings_bond": 0,
         "taxable_interest": total_interest,
         "dividend_payers": dividend_payers,
         "total_ordinary_dividends": total_dividends,
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
     }
 
 

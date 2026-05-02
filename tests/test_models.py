@@ -1,6 +1,7 @@
 import dataclasses
 import unittest
 from pathlib import Path
+from types import MappingProxyType
 
 import tempfile
 
@@ -558,6 +559,70 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
     def test_only_first(self) -> None:
         cfg = self._config(first_name="Taxpayer")
         self.assertEqual(cfg.full_name, "Taxpayer")
+
+
+class TestTaxReturnConfigPdfHeader(unittest.TestCase):
+    def _config(self, **kw) -> "TaxReturnConfig":
+        from tenforty.models import TaxReturnConfig
+        defaults = dict(
+            year=2025, filing_status="single", birthdate="1990-06-15", state="CA",
+            has_foreign_accounts=False,
+            acknowledges_sch_a_sales_tax_unsupported=False,
+            acknowledges_qbi_below_threshold=False,
+            acknowledges_unlimited_at_risk=False, basis_tracked_externally=False,
+            acknowledges_no_partnership_se_earnings=False,
+            acknowledges_no_section_1231_gain=False,
+            acknowledges_no_more_than_four_k1s=False,
+            acknowledges_no_k1_credits=False,
+            acknowledges_no_section_179=False,
+            acknowledges_no_estate_trust_k1=False,
+            prior_year_itemized=False,
+            acknowledges_no_wash_sale_adjustments=False,
+            acknowledges_no_other_basis_adjustments=False,
+            acknowledges_no_28_rate_gain=False,
+            acknowledges_no_unrecaptured_section_1250=False,
+        )
+        defaults.update(kw)
+        return TaxReturnConfig(**defaults)
+
+    def test_returns_name_and_ssn_keys(self) -> None:
+        cfg = self._config(first_name="Taxpayer", last_name="A", ssn="000-00-3333")
+        header = cfg.pdf_header()
+        self.assertIsInstance(header, MappingProxyType)
+        self.assertEqual(header["taxpayer_name"], "Taxpayer A")
+        self.assertEqual(header["taxpayer_ssn"], "000-00-3333")
+        self.assertEqual(set(header.keys()), {"taxpayer_name", "taxpayer_ssn"})
+
+    def test_uses_full_name_stripping(self) -> None:
+        cfg = self._config(first_name="  Taxpayer  ", last_name=" A ", ssn="000-00-3333")
+        self.assertEqual(cfg.pdf_header()["taxpayer_name"], "Taxpayer A")
+
+    def test_empty_name_and_ssn_pass_through(self) -> None:
+        cfg = self._config()
+        header = cfg.pdf_header()
+        self.assertEqual(header["taxpayer_name"], "")
+        self.assertEqual(header["taxpayer_ssn"], "")
+
+    def test_returns_readonly_mapping(self) -> None:
+        # MappingProxyType raises TypeError on any mutation attempt — guards
+        # against a downstream caller accidentally writing into the header.
+        cfg = self._config(first_name="Taxpayer", last_name="A", ssn="000-00-3333")
+        header = cfg.pdf_header()
+        with self.assertRaises(TypeError):
+            header["taxpayer_name"] = "MUTATED"
+        with self.assertRaises(TypeError):
+            del header["taxpayer_name"]
+        # The original mapping is unchanged.
+        self.assertEqual(header["taxpayer_name"], "Taxpayer A")
+
+    def test_unpacks_into_dict_literal(self) -> None:
+        # Confirms the call-site idiom `{**scenario.config.pdf_header()}`
+        # works — `**` reads from any Mapping, mutable or read-only.
+        cfg = self._config(first_name="Taxpayer", last_name="A", ssn="000-00-3333")
+        result = {**cfg.pdf_header(), "some_other_key": 42}
+        self.assertEqual(result["taxpayer_name"], "Taxpayer A")
+        self.assertEqual(result["taxpayer_ssn"], "000-00-3333")
+        self.assertEqual(result["some_other_key"], 42)
 
 
 class TestScheduleK1EntityTypeEnum(unittest.TestCase):

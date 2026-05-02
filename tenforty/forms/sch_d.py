@@ -37,8 +37,7 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     line_16 = line_7 + line_15
 
     return {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
+        **scenario.config.pdf_header(),
 
         "sch_d_line_1a_proceeds": line_1a["proceeds"],
         "sch_d_line_1a_basis": line_1a["basis"],
