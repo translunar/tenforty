@@ -25,7 +25,7 @@ These exist because agents have failure modes humans contributing to a codebase 
 
 3. **Halt on premise-wrong.** When a brief's premise turns out factually wrong (cell ref doesn't exist, form behaves differently than assumed, oracle disagrees in a way that suggests the implementation is wrong), HALT and surface. Never silently expand scope. Never bridge with assumptions. Never reshape failing assertions to make them pass.
 
-4. **Plan before execute.** Non-trivial implementation work gets a written plan first, reviewed by Juno before execution. The plan goes to disk (gitignored, `docs/plans/<date>-<feature>.md`); Juno reads it via TUI; team-lead provides technical review; Juno approves. Then the team-member dispatches implementer subagents per task using `superpowers:subagent-driven-development`.
+4. **Plan before execute.** Non-trivial implementation work gets a written plan first, reviewed by Juno before execution. The plan goes to **`~/Projects/tenforty/docs/plans/<date>-<feature>.md`** — the canonical Obsidian vault location, NOT the worktree-local `docs/plans/`. (The path is gitignored, so the absolute location matters even though the relative path looks identical from each worktree.) Juno reads via her Obsidian vault rooted at `~/Projects/tenforty/`; team-lead provides technical review; Juno approves. Then the team-member dispatches implementer subagents per task using `superpowers:subagent-driven-development`.
 
 ## Emotional safety and feedback culture
 
