@@ -106,6 +106,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     )
 
     return {
+        **scenario.config.pdf_header(),
         "sch_a_line_1_medical_gross": medical_gross,
         "sch_a_line_2_agi": agi,
         "sch_a_line_3_medical_floor": medical_floor,
@@ -126,6 +127,4 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_a_line_15_casualty": line_15_casualty,
         "sch_a_line_16_other": line_16_other,
         "sch_a_line_17_total": line_17_total,
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
     }
