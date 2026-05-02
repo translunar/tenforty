@@ -11,7 +11,7 @@ Mirrors the five-registry design from `pdf_f540.py` (and SP2's
   (additions) widgets where the form has them. Plus the Line 27 Col A
   federal-AGI passthrough and Line 27 Col B/C totals, and 2 [PLANNED]
   orchestrator-supplied keys (taxpayer name + SSN on page 1) reserved
-  for T18/T19 wiring.
+  for future wiring.
 - `_AGGREGATIONS_2025` — empty for Sch CA. Per-line and total sums are
   emitted directly by the kernel; no PDF cell receives a sum of
   multiple compute keys at fill time.
@@ -31,7 +31,7 @@ Mirrors the five-registry design from `pdf_f540.py` (and SP2's
   on page 5 (`540ca_form - 5000 CB`, page-5 Col B header checkbox) is
   out-of-scope for v1.
 
-Field paths come from the T14 probe artifact at
+Field paths come from the probe artifact at
 `docs/plans/sp3-t14-sch-ca-probe.md` (gitignored). Widget→line
 assignments are tooltip-verified (`/TU` annotations on each widget
 in the source PDF). pypdf reports flat field names with a leading
@@ -88,7 +88,7 @@ class PdfSchCa:
 
 
 # Direct 1:1 mappings — compute keys with a direct PDF cell + [PLANNED]
-# orchestrator-supplied keys reserved for T18/T19 wiring. Widget IDs are
+# orchestrator-supplied keys reserved for future wiring. Widget IDs are
 # tooltip-verified against the 2025 PDF /TU annotations.
 _MAPPING_2025: dict[str, str] = {
     # Page 1 — Taxpayer header ([PLANNED]: orchestrator-supplied)
@@ -188,8 +188,7 @@ _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {}
 
 
 # No within-form derivations in v1. Sch D (540) capital-gain pass-through
-# and Part II itemized-adjustment sums are deferred to later sub-plan
-# tasks.
+# and Part II itemized-adjustment sums are deferred to a later phase.
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {}
 
 

@@ -96,15 +96,15 @@ def compute_ca_tax(
         # computation methods by FTB design.
         bin_high = 50 + 100 * math.ceil((taxable_income - 50) / 100)
         midpoint = bin_high - 49.5
-        return round(_walk_rate_schedule(rate_schedule, midpoint))
+        return irs_round(_walk_rate_schedule(rate_schedule, midpoint))
 
     if taxable_income <= 100_000:
         # Truncated last bin: $99,951–$100,000, midpoint $99,975.5
         midpoint = 99_975.5
-        return round(_walk_rate_schedule(rate_schedule, midpoint))
+        return irs_round(_walk_rate_schedule(rate_schedule, midpoint))
 
     # Rate Schedule branch: income > $100,000 — walk directly on taxable_income
-    return round(_walk_rate_schedule(rate_schedule, taxable_income))
+    return irs_round(_walk_rate_schedule(rate_schedule, taxable_income))
 
 
 def _compute_renters_credit(

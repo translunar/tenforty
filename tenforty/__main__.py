@@ -63,8 +63,6 @@ def _which_applied(standard: float, schedule_a: float, applied: float) -> str:
 
 
 def _print_emitted_pdfs(emitted: dict) -> None:
-    # Resolve sys.stdout at call time, not at function-def time, so test
-    # patches of sys.stdout (StringIO capture) work correctly.
     print()
     print("=== Emitted PDFs ===")
     for form, path in emitted.items():

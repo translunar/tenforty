@@ -5,13 +5,13 @@ Mirrors the five-registry design from `pdf_f1120s.py`:
 - `_MAPPING_2025` — direct compute_key → PDF-field-path. The 11 compute
   output keys with a direct cell + 14 [PLANNED] orchestrator-supplied
   keys (taxpayer/spouse/address/email/phone/county) reserved for
-  T18/T19 wiring.
+  future wiring.
 - `_AGGREGATIONS_2025` — empty for f540. All within-form sums on Form
   540 are encoded as DERIVATIONS (max(0, ...) clamps, sign-split flow)
   rather than pure +/- of compute keys.
 - `_DERIVATIONS_2025` — PDF cells whose value is computed from compute
   outputs at fill time. Includes (a) form-internal arithmetic per the
-  T12 probe artifact, (b) the sign-split flow for `f540_total_liability`
+  probe artifact, (b) the sign-split flow for `f540_total_liability`
   → owe (`540_form_5002`) / refund (`540_form_5007`), (c) the verbose
   filing-status radio group (`540_form_1036 RB`), and (d) the two
   tax-source checkboxes on line 31 (Tax Table vs Rate Schedule).
@@ -25,14 +25,14 @@ Mirrors the five-registry design from `pdf_f1120s.py`:
   are either out-of-scope or wired through DERIVATIONS that emit the
   `/Yes`/`/Off` state string directly.
 
-Field paths come from the T12 probe artifact at
+Field paths come from the probe artifact at
 `docs/plans/sp3-t12-f540-probe.md` (gitignored). pypdf reports flat
 field names (`540_form_<page><seq>`), simpler than the IRS XFA
 `topmostSubform[0].PageN[0]....` convention used in SP2.
 
 The verbose FTB filing-status radio appearance states (`/1 . Single.`,
 etc.) live byte-for-byte in `_FILING_STATUS_RB_STATES` to isolate this
-known-brittle convention from caller code (T12 anomaly C).
+known-brittle FTB encoding anomaly from caller code.
 """
 
 from collections.abc import Callable, Mapping
@@ -101,7 +101,7 @@ class PdfF540:
 
 
 # Direct 1:1 mappings — compute keys with a direct PDF cell + [PLANNED]
-# orchestrator-supplied keys reserved for T18/T19 wiring.
+# orchestrator-supplied keys reserved for future wiring.
 _MAPPING_2025: dict[str, str] = {
     # Page 1 — Taxpayer / spouse / address ([PLANNED]: orchestrator-supplied)
     "f540_taxpayer_first_name":      "540_form_1003",
@@ -214,7 +214,7 @@ def _line_95(c: Mapping[str, object]) -> float:
 
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Filing-status radio group (page 1, line 1-5). Verbose state
-    # strings per the FTB convention; T12 anomaly C.
+    # strings per the FTB convention (FTB encoding anomaly).
     "540_form_1036 RB": lambda c: _FILING_STATUS_RB_STATES[c["f540_filing_status"]],
     # Line 31 tax-source checkboxes. f540_taxable_income ≤ 100,000 →
     # Tax Table; > 100,000 → Rate Schedule. The lambda returns the
@@ -230,7 +230,8 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45,
     # all default 0 in v1). Note: this is NOT compute()'s
     # f540_total_credits, which includes exemption credit (already
-    # subtracted at line 32). T13 anomaly D — see module-level note.
+    # subtracted at line 32). See module-level note on line-47 vs
+    # compute() total-credits semantic divergence.
     "540_form_3005": lambda c: _line_47(c),
     # Line 48 = max(0, line 35 − line 47).
     "540_form_3006": lambda c: _line_48(c),
@@ -311,7 +312,8 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
     # "total credits" excludes exemption — different semantic. v1
     # derives line 47 directly from renter + ptet + [PLANNED] credits;
     # the compute() key is internal-only for the final-liability calc.
-    # T13 anomaly D — surfaced as follow-up.
+    # Surfaced as a follow-up (line-47 vs compute() total-credits
+    # semantic divergence).
     "f540_total_credits",
 })
 

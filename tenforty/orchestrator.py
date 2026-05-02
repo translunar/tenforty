@@ -561,7 +561,7 @@ class ReturnOrchestrator:
 
         Mechanical helper: consumes ``ca_results`` as-is and writes PDFs.
         Does NOT mutate, merge, or augment ``ca_results`` — callers
-        (T17 ``run_full_california_return``) are responsible for ensuring
+        (``run_full_california_return``) are responsible for ensuring
         required PDF compute keys (e.g. ``f540_taxpayer_name``,
         ``sch_ca_taxpayer_ssn``, ``sch_d_540_taxpayer_name``, etc.) are
         present in the dict before invocation.
@@ -698,8 +698,8 @@ class ReturnOrchestrator:
         # if a scenario reaches this method, it has already passed
         # _validate_scenario_config.
 
-        # 7. Header merge — T17 owns this; T16's _emit_ca_pdfs_internal
-        #    trusts the dict as-is.
+        # 7. Header merge — happens here; _emit_ca_pdfs_internal stays
+        #    PDF-only and trusts the dict as-is.
         header_keys = {
             "f540_taxpayer_name": scenario.config.full_name,
             "f540_taxpayer_ssn": scenario.config.ssn,
@@ -726,19 +726,8 @@ class ReturnOrchestrator:
         ca_yaml_path: Path,
         ca_yaml: dict,
     ) -> None:
-        """Verify the CA YAML's federal_context block is consistent with
-        the live federal compute outputs.
-
-        v1: no-op stub. The CA YAML envelope reserves a ``federal_context:``
-        sibling block for post-v1 freshness verification (hash or value
-        comparison against live ``compute_federal()`` outputs to catch
-        "user re-ran federal but didn't refresh CA YAML"). The exact
-        representation is deferred — getting it wrong would be more
-        annoying than helpful.
-
-        TODO: post-v1 — verify federal_context against live
-        compute_federal() outputs (e.g., agi, sch_e_total) and raise on
-        mismatch.
+        """v1 no-op stub; reserved for post-v1 federal_context freshness
+        check (verify CA YAML matches live compute_federal outputs).
         """
         return None
 
