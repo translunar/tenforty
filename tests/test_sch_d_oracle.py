@@ -1,9 +1,9 @@
 """Cross-check Schedule D native compute against the XLSX oracle.
 
-Currently a skip-stub: the oracle flattener explicitly rejects
-``scenario.form1099_b`` (see ``tenforty/oracle/flattener.py::_reject_unhandled``),
-so there is no oracle-visible path for 1099-B capital gain activity. When
-1099-B flattening is added, this test should come alive and compare
+Currently a skip-stub: the oracle flattener does not yet support 1099-B
+(no ``_flatten_1099_b_oracle`` routing path), so there is no oracle-visible
+path for 1099-B capital gain activity. When oracle-side 1099-B flattening is
+added and ``_SUPPORTS_1099B`` opts in, this test should come alive and compare
 ``sch_d['sch_d_line_16_total']`` against
 ``irs_round(f1040['capital_gain_loss'])``.
 """
@@ -24,8 +24,8 @@ class SchDOracleTests(unittest.TestCase):
                 "replace this stub with a real cross-check."
             )
         self.skipTest(
-            "Oracle flattener rejects 1099-B; Sch D oracle cross-check "
-            "deferred until 1099-B flattening lands."
+            "Oracle flattener does not yet support 1099-B for the Sch D "
+            "cross-check; deferred until `_SUPPORTS_1099B` opts in."
         )
 
 

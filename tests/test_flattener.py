@@ -263,8 +263,8 @@ class TestFlatten1099B(unittest.TestCase):
         self.assertEqual(flat["f8949_box_a_lot_1_description"], "L1")
         self.assertEqual(flat["f8949_box_a_lot_2_description"], "L2")
 
-    def test_reject_unhandled_no_longer_blocks_1099_b(self) -> None:
-        """The pre-existing _reject_unhandled gate for form1099_b is gone."""
+    def test_flatten_scenario_accepts_1099_b_lots(self) -> None:
+        """flatten_scenario accepts 1099-B input without raising NotImplementedError."""
         s = self._scenario_with_lots([
             Form1099B(
                 broker="Brokerage Inc", description="X",
