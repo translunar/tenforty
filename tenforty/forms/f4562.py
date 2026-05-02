@@ -51,10 +51,7 @@ _PROPERTY_METHOD = {
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
-    result: dict = {
-        "taxpayer_name": scenario.config.full_name,
-        "taxpayer_ssn": scenario.config.ssn,
-    }
+    result: dict = {**scenario.config.pdf_header()}
     assets_by_class: dict[str, list] = defaultdict(list)
     for asset in scenario.depreciable_assets:
         assets_by_class[asset.recovery_class].append(asset)
