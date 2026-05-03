@@ -27,12 +27,25 @@ _TABLE_NS = "urn:oasis:names:tc:opendocument:xmlns:table:1.0"
 
 @dataclass
 class FodsDivergences:
-    """Importer return value: typed lists per Sch CA vs. Sch D 540 routing."""
+    """Importer return value: per-routing-target divergence lists.
+
+    The .fods worksheet groups Pub 1001 divergences across two distinct
+    downstream targets. ``sch_ca`` carries Schedule CA (540) Part I/II
+    line-level adjustments (additions and subtractions to federal AGI
+    components); these are routed by the SP3 generic Sch CA kernel.
+    ``sch_d_540`` carries Schedule D (540) capital-gains divergences
+    (§1202 QSBS, §1045 rollover, §1400Z, pre-1987 inherited basis,
+    Peace Corps PR, etc.); these are surfaced for visibility only until
+    California Schedule D (540) user-divergence compute support ships."""
+
     sch_ca: list[CASchCAAdjustment] = field(default_factory=list)
     sch_d_540: list[CASchD540Adjustment] = field(default_factory=list)
 
 
 def import_fods_divergences(fods_path: Path) -> FodsDivergences:
+    # str() coercion is required: xml.dom.minidom.parse expects a path-as-string
+    # or a file-like object; passing a Path raises AttributeError because
+    # minidom calls .read() on non-str inputs.
     doc = parse(str(fods_path))
     tables = doc.getElementsByTagNameNS(_TABLE_NS, "table")
     if not tables:
