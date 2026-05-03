@@ -209,7 +209,7 @@ class TestDispatch(unittest.TestCase):
         # Orchestrator must NOT have run_full_california_return called.
         MockOrchestrator.return_value.run_full_california_return.assert_not_called()
 
-    def test_fods_returns_2_and_skips_orchestrator(self):
+    def test_fods_returns_0_and_skips_orchestrator(self):
         with patch.object(sys, "argv", [
             "tenforty", "fods", "in.yaml", "out.fods",
         ]), patch(
@@ -217,7 +217,7 @@ class TestDispatch(unittest.TestCase):
         ) as MockOrchestrator:
             with patch("sys.stdout", io.StringIO()), patch("sys.stderr", io.StringIO()):
                 result = main()
-        self.assertEqual(result, 2)
+        self.assertEqual(result, 0)
         MockOrchestrator.assert_not_called()
 
 
@@ -238,10 +238,10 @@ class TestSubprocessHelp(unittest.TestCase):
         result = self._run("ca", "--help")
         self.assertEqual(result.returncode, 0)
 
-    def test_fods_help_exits_zero_and_mentions_subplan(self):
+    def test_fods_help_exits_zero_and_mentions_ca_redirect(self):
         result = self._run("fods", "--help")
         self.assertEqual(result.returncode, 0)
-        self.assertIn("Sub-plan 3.5", result.stdout)
+        self.assertIn("tenforty ca", result.stdout)
 
 
 class TestBackwardCompatRouter(unittest.TestCase):
