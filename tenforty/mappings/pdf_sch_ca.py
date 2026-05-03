@@ -42,8 +42,10 @@ form).
 
 from collections.abc import Callable, Mapping
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class PdfSchCa:
+
+class PdfSchCa(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for FTB Schedule CA (540).
 
     Five-registry design (see module docstring). The partition invariant
@@ -53,11 +55,8 @@ class PdfSchCa:
     compute keys but do not own them.
     """
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year == 2025:
-            return _MAPPING_2025
-        raise ValueError(f"No Schedule CA (540) mapping for year {year}")
+    _FORM_NAME = "Schedule CA (540)"
+    _MAPPINGS: dict[int, dict[str, str]] = {}  # populated below after _MAPPING_2025
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
@@ -223,3 +222,6 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
 # All v1 checkboxes are out-of-scope. The single /Btn widget on the
 # 2025 form (page 5 Col B section header) has no compute key wired.
 _CHECKBOX_STATES_2025: dict[str, str] = {}
+
+
+PdfSchCa._MAPPINGS = {2025: _MAPPING_2025}

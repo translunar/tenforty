@@ -47,8 +47,10 @@ widgets as named (no unnamed visual placeholders observed).
 
 from collections.abc import Callable, Mapping
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class PdfSchD540:
+
+class PdfSchD540(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for FTB Schedule D (540).
 
     Five-registry design (see module docstring). The partition invariant
@@ -62,11 +64,8 @@ class PdfSchD540:
     leaving blank.
     """
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year == 2025:
-            return _MAPPING_2025
-        raise ValueError(f"No Schedule D (540) mapping for year {year}")
+    _FORM_NAME = "Schedule D (540)"
+    _MAPPINGS: dict[int, dict[str, str]] = {}  # populated below after _MAPPING_2025
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
@@ -223,3 +222,6 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
 # The 2025 Sch D (540) PDF has no /Btn widgets; all 125 named widgets
 # are /Tx. No checkbox states are required.
 _CHECKBOX_STATES_2025: dict[str, str] = {}
+
+
+PdfSchD540._MAPPINGS = {2025: _MAPPING_2025}

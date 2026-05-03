@@ -37,6 +37,7 @@ known-brittle FTB encoding anomaly from caller code.
 
 from collections.abc import Callable, Mapping
 
+from tenforty.mappings.registry import PdfFormMapping
 from tenforty.models import FilingStatus
 
 
@@ -54,7 +55,7 @@ _FILING_STATUS_RB_STATES: dict[FilingStatus, str] = {
 }
 
 
-class PdfF540:
+class PdfF540(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for FTB Form 540 (California Resident).
 
     Five-registry design (see module docstring). The partition invariant
@@ -66,11 +67,8 @@ class PdfF540:
     orchestrator at fill time (e.g., `[PLANNED]` taxpayer keys).
     """
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year == 2025:
-            return _MAPPING_2025
-        raise ValueError(f"No Form 540 mapping for year {year}")
+    _FORM_NAME = "Form 540"
+    _MAPPINGS: dict[int, dict[str, str]] = {}  # populated below after _MAPPING_2025
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
@@ -322,3 +320,6 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
 # through DERIVATIONS that emit "/Yes" / "/Off" strings directly. No
 # bool compute keys are mapped to checkbox cells in v1.
 _CHECKBOX_STATES_2025: dict[str, str] = {}
+
+
+PdfF540._MAPPINGS = {2025: _MAPPING_2025}
