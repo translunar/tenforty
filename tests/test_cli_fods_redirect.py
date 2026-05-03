@@ -5,7 +5,7 @@ from tenforty.__main__ import main
 
 
 class FodsRedirectTests(unittest.TestCase):
-    def test_fods_subcommand_prints_redirect_and_exits_nonzero(self):
+    def test_fods_subcommand_prints_redirect_and_exits_zero(self):
         import sys
         old_argv, sys.argv = sys.argv, ["tenforty", "fods"]
         old_stderr = sys.stderr
