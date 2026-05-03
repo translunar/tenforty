@@ -37,4 +37,4 @@ def import_fods_divergences(fods_path: Path) -> FodsDivergences:
     tables = doc.getElementsByTagNameNS(_TABLE_NS, "table")
     if not tables:
         return FodsDivergences()
-    raise NotImplementedError("multi-tab parsing arrives in T2")
+    raise NotImplementedError("non-empty .fods parsing not yet implemented")
