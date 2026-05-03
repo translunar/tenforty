@@ -47,7 +47,10 @@ class ImportFodsDivergencesPerTabTests(unittest.TestCase):
     def test_extra_user_rows_does_not_corrupt_total(self):
         result = import_fods_divergences(FIXTURES / "extra_user_rows.fods")
         self.assertEqual(len(result.sch_ca), 1)
-        self.assertEqual(result.sch_ca[0].amount, 123.0)
+        adj = result.sch_ca[0]
+        self.assertEqual(adj.amount, 123.0)
+        self.assertEqual(adj.direction, DivergenceDirection.SUBTRACTION)
+        self.assertEqual(adj.sch_ca_line, "Part I §A 2")
 
     def test_sch_d_540_tab_routes_to_sch_d_540_list(self):
         result = import_fods_divergences(FIXTURES / "single_tab_sch_d_540.fods")

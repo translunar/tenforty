@@ -75,9 +75,9 @@ def _route_tab(table: Element, out: FodsDivergences) -> None:
     sub_total, add_total = _row_totals(rows[1])
     if label == _SCH_D_540_LABEL:
         if sub_total:
-            out.sch_d_540.append(_make_sch_d_540(DivergenceDirection.SUBTRACTION, sub_total, label))
+            out.sch_d_540.append(_make_sch_d_540(label, DivergenceDirection.SUBTRACTION, sub_total))
         if add_total:
-            out.sch_d_540.append(_make_sch_d_540(DivergenceDirection.ADDITION, add_total, label))
+            out.sch_d_540.append(_make_sch_d_540(label, DivergenceDirection.ADDITION, add_total))
         return
     if sub_total:
         out.sch_ca.append(_make_sch_ca(label, DivergenceDirection.SUBTRACTION, sub_total))
@@ -135,7 +135,7 @@ def _make_sch_ca(
 
 
 def _make_sch_d_540(
-    direction: DivergenceDirection, amount: float, label: str,
+    label: str, direction: DivergenceDirection, amount: float,
 ) -> CASchD540Adjustment:
     return CASchD540Adjustment(
         source=DivergenceSource.WORKSHEET,
