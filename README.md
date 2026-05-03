@@ -1,40 +1,32 @@
 # tenforty
 
-A tax preparation harness that uses spreadsheets as the computation engine and verifies results through multiple independent paths.
+An open-source US federal + California individual income tax preparation tool. Compute returns, cross-check against independent oracles, fill IRS / FTB PDFs.
 
-## Why this exists
+## Mission
 
-Filing US taxes by hand is error-prone. Tax software is expensive and opaque. LLM-generated tax code is fast to write but hard to trust — how do you know the calculations are right?
+Tax compliance is functionally mandatory in the US, but the tools to do it correctly are gatekept: paywalled commercial software, deliberately complex IRS forms, expensive professional preparers. The cost of compliance falls disproportionately on people without resources to navigate the system. The status quo is designed to extract from the lower and middle classes while favoring the wealthy.
 
-tenforty takes a different approach: **don't write tax calculations at all.** Instead, delegate computation to an existing, battle-tested Excel spreadsheet maintained by a human tax expert, and use Python to orchestrate the data flow, fill PDF forms, and verify everything matches.
-
-The key insight: the IRS publishes fillable PDFs. A third-party maintains an Excel spreadsheet with every federal form. If we feed the same inputs to both and they agree, we have high confidence the results are correct — without writing (or trusting) a single line of tax math.
+tenforty is open-source, transparent, and verifiable. Anyone can audit the math. Anyone can run it. The same compute path that handles a complex multi-state return with K-1 pass-throughs handles a simple W-2 + standard-deduction return.
 
 ## How it works
 
-```
-scenario.yaml → SpreadsheetEngine → ResultTranslator → PdfFiller → filled 1040.pdf
-     │                  │                                    │
-     │           LibreOffice headless              IRS fillable PDF
-     │           recalculates the XLS              template
-     │                  │                                    │
-     └──────────────────┴────── round-trip verifier ─────────┘
-                                (values must match)
-```
+Three orchestrator entry points, one per return type:
 
-1. **Scenario file** (YAML) describes your tax situation: W-2s, 1099s, 1098s, filing status
-2. **SpreadsheetEngine** writes inputs into the third-party XLS, triggers LibreOffice to recalculate, reads computed results
-3. **ResultTranslator** maps engine output keys to PDF field names
-4. **PdfFiller** fills the IRS's fillable PDF forms with the computed values
-5. **Round-trip verifier** reads the filled PDF back and asserts every value matches what the engine computed
+- **Federal 1040** (`compute_federal` / `run_full_return`) — uses a third-party Excel spreadsheet ([incometaxspreadsheet.com](https://sites.google.com/view/incometaxspreadsheet/home)) for production math; native Python orchestrates the workbook, fills IRS PDFs, and cross-checks results.
+- **Corporate 1120-S** (`compute_corporate` / `run_full_return`) — native Python compute (no third-party XLS exists for 1120-S); waterfalls synthesized K-1s into the federal 1040 pipeline.
+- **California 540** (`run_full_california_return`) — native Python compute (no third-party XLS exists for CA); reads federal results downstream and applies state-specific divergences via Schedule CA (540).
+
+Each form is cross-checked against an independent reference: either the third-party XLS (federal) or a hand-coded reference oracle on a separate git branch (1120-S, California). No single implementation is trusted in isolation.
+
+For the structural picture (modules, oracle isolation, PDF mapping pattern), see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Quick start
 
 ### Prerequisites
 
 - Python 3.12+
-- LibreOffice (`brew install --cask libreoffice`)
-- The 2025 federal XLS from [incometaxspreadsheet.com](https://sites.google.com/view/incometaxspreadsheet/home) (already included at `spreadsheets/federal/2025/1040.xlsx`)
+- LibreOffice (`brew install --cask libreoffice` on macOS)
+- The 2025 federal XLS from [incometaxspreadsheet.com](https://sites.google.com/view/incometaxspreadsheet/home) (already at `spreadsheets/federal/2025/1040.xlsx`)
 
 ### Setup
 
@@ -51,19 +43,23 @@ source .venv/bin/activate
 python -m pytest tests/ -v
 ```
 
-Tests that require LibreOffice (~18s each) are skipped if it's not installed. Tests that require the IRS f1040 PDF template are skipped if it's not at `/tmp/f1040_2025.pdf`.
+Tests that require LibreOffice (~18s each) are skipped if it's not installed.
 
-### Prepare a tax return
+### Prepare and file a return
 
-The quickest way to run a return is the CLI:
+The CLI has subcommands per return type:
 
 ```bash
-python -m tenforty ~/Documents/Taxes/2025/scenario.yaml
+# Federal 1040 only
+python -m tenforty federal ~/Documents/Taxes/2025/scenario.yaml --output-dir ~/Documents/Taxes/2025/
+
+# California 540 (downstream of federal)
+python -m tenforty ca ~/Documents/Taxes/2025/scenario.yaml --output-dir ~/Documents/Taxes/2025/
 ```
 
-It loads the scenario, runs `ReturnOrchestrator.compute_federal()`, and prints the computed federal values (wages, AGI, taxable income, total tax, overpaid, etc.). An optional second argument overrides the spreadsheets directory (default: `./spreadsheets`).
+The CA subcommand reads a separate `scenario.ca.yaml` file alongside the federal YAML by default (`<basename>.ca.yaml` convention) — see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the federal-first downstream flow. Outputs are filled IRS / FTB PDFs in `--output-dir`.
 
-Create a scenario file (e.g., `~/Documents/Taxes/2025/scenario.yaml`):
+A federal scenario file looks like:
 
 ```yaml
 config:
@@ -86,115 +82,77 @@ form1099_int:
     interest: 250.00
 ```
 
-Run the pipeline:
-
-```python
-from pathlib import Path
-from tenforty.scenario import load_scenario
-from tenforty.orchestrator import ReturnOrchestrator
-
-scenario = load_scenario(Path("~/Documents/Taxes/2025/scenario.yaml").expanduser())
-orchestrator = ReturnOrchestrator(
-    spreadsheets_dir=Path("spreadsheets"),
-    work_dir=Path("/tmp/tenforty"),
-)
-results = orchestrator.compute_federal(scenario)
-
-for key in ["wages", "agi", "taxable_income", "total_tax", "overpaid"]:
-    print(f"  {key}: ${float(results[key]):,.0f}")
-```
-
-### Fill a PDF
-
-```python
-from tenforty.filing.pdf import PdfFiller
-from tenforty.mappings.pdf_1040 import Pdf1040
-from tenforty.result_translator import ResultTranslator
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
-
-translator = ResultTranslator(F1040_PDF_SPEC)
-translated = translator.translate(results, scenario)
-
-filler = PdfFiller()
-filler.fill(
-    template_path=Path("/tmp/f1040_2025.pdf"),
-    output_path=Path("~/Documents/Taxes/2025/f1040_draft.pdf").expanduser(),
-    field_mapping=Pdf1040.get_mapping(2025),
-    values=translated,
-)
-```
-
 ## For agents
 
-If you're an AI agent pointed at this repository, here's how to orient:
+If you're an AI agent working on this codebase: read [CLAUDE.md](CLAUDE.md) for team norms, agent-protocol standards, and the feedback / partnership culture. Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the structural picture.
 
-### Architecture
+## Contribution
 
-- `tenforty/models.py` — Dataclasses for tax documents (W2, Form1099INT, Form1099DIV, Form1099B, Form1098, ScheduleK1, Scenario)
-- `tenforty/scenario.py` — Loads YAML scenario files into model instances
-- `tenforty/flattener.py` — Converts structured Scenario into flat `dict[str, object]` for the engine. **Raises NotImplementedError if the scenario contains form types it can't handle yet** (prevents silent data loss)
-- `tenforty/engine.py` — SpreadsheetEngine: writes inputs to XLS via openpyxl, recalculates via `soffice --headless`, reads outputs. Core function: `_resolve_named_range(defn)` parses XLS named ranges
-- `tenforty/mappings/` — Maps between our key names and spreadsheet cells / PDF fields:
-  - `registry.py` — `FormMapping` base class with `get_inputs(year)`, `get_outputs(year)`, `inherit()`
-  - `f1040.py` — Federal 1040 XLS mapping (INPUTS, OUTPUTS, SHEET_MAP). Covers W-2, 1099-INT/DIV, Schedule A, Schedule E cells
-  - `pdf_1040.py` — IRS f1040.pdf field mapping (69 fields mapped to opaque PDF field names like `topmostSubform[0].Page1[0].f1_47[0]`)
-- `tenforty/result_translator.py` — Bridges engine output keys to PDF field keys. Handles renames (one-to-one), expansions (one-to-many), and scenario field extraction
-- `tenforty/translations/f1040_pdf.py` — Concrete translation spec for federal 1040
-- `tenforty/orchestrator.py` — Coordinates computation across forms in dependency order
-- `tenforty/filing/pdf.py` — Fills PDF forms via pypdf. Must use `PdfWriter(clone_from=reader)` (not `append_pages_from_reader`)
+### Code standards
 
-### Testing
+These apply to anyone touching the code, human or agent.
 
-- `tests/helpers.py` — Shared constants, `libreoffice_available()`, skip decorators
-- `tests/invariants.py` — Structural assertions (`assert_agi_consistent`, `assert_tax_is_non_negative`, etc.) and `verify_pdf_round_trip` for end-to-end verification
-- `tests/fixtures/` — Synthetic YAML scenarios (all dollar amounts divisible by 50, all employer names from an allowlist)
-- `scripts/verify_no_personal_data.py` — Pre-commit hook scans for personal data leaks (denylist, allowlist, heuristics, git history)
+- **No PII in fixtures.** Synthetic test data only — invented from scratch, not rounded real numbers. Allowlisted employer / payer names. Real personal tax data lives outside the repo (e.g. `~/Documents/Taxes/`); the repo never sees it. A pre-commit hook (`scripts/verify_no_personal_data.py`) enforces this.
+- **No corner-cutting.** No tautology assertions (`assertEqual(0, 0)`, etc.). If a test can't be satisfied as written, fix the test or the code; don't reshape the assertion to pass.
+- **All imports at file top.** No function-local imports.
+- **Comments explain WHY, not WHAT.** Well-named code documents what; comments document the non-obvious why — a constraint, an invariant, a workaround for a specific bug, a reference to an external instruction.
+- **No task-number references in production code or commit messages.** Internal task identifiers belong in plan documents only. Production code and commit messages describe the change in form-specific or behavior-specific terms.
+- **Compute keys are semantic, not line-numbered.** `f1120s_total_tax`, not `f1120s_line_22_total_tax`. Line numbers belong in the PDF mapping module (form-revision-specific).
+- **TDD with `unittest.TestCase`.** All tests subclass `unittest.TestCase`; pytest is the runner; never bare-function pytest tests.
 
-### Key patterns
+### Verification approach
 
-- **Year-keyed mappings**: `F1040.get_inputs(2025)` returns the 2025 mapping. Add `2026` key for next year.
-- **Two types of cell references**: Named ranges (e.g., `"File_Single"`) resolved by openpyxl, and direct cell refs (e.g., `"C3"`) that need a `SHEET_MAP` entry to know which sheet they're on.
-- **Flattener rejects unknown forms**: If you add a new form type to the Scenario model, you must also add a `_flatten_*` function or the flattener will raise `NotImplementedError`.
-- **Personal data never enters the repo**: Real tax data lives in `~/Documents/Taxes/`. Test fixtures use synthetic data. A pre-commit hook enforces this.
+The core idea: **use independently-maintained systems as verification oracles.** Federal forms cross-check Python compute against the third-party XLS. 1120-S and California forms cross-check Python compute against hand-coded reference oracles on separate git branches (see Oracle isolation in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
 
-### Adding a new tax year
+Structural invariants (AGI ≤ income, tax ≥ 0, refund + owed = payments - tax, etc.) catch logical errors without knowing the "right" answer.
 
-1. Download the new XLS → `spreadsheets/federal/YYYY/1040.xlsx`
-2. Add `YYYY` key to `F1040.INPUTS` and `F1040.OUTPUTS` (use `inherit()` for minimal diffs)
-3. Download the new IRS f1040.pdf, label fields, update `Pdf1040._MAPPINGS`
-4. Update `docs/coverage/YYYY-field-coverage.md`
-
-### Adding a new form (e.g., Schedule C)
-
-1. Add cell references to `F1040.INPUTS` and `SHEET_MAP`
-2. Add output named ranges to `F1040.OUTPUTS`
-3. Add a model in `models.py`, a `_flatten_*` function in `flattener.py`
-4. If it has its own PDF, create a `PdfScheduleC` mapping and translation spec
-5. Write e2e test with a fixture that exercises the form
-
-## Verification approach
-
-The core idea: **use independently-maintained systems as verification oracles.**
-
-| System | Maintained by | Role |
-|--------|--------------|------|
-| Federal XLS spreadsheet | Third-party tax expert (updated annually) | Primary computation engine |
-| IRS fillable PDFs | The IRS | Output format + secondary verification |
-| Our Python code | Us | Orchestration, data flow, testing — no tax math |
-
-The round-trip verifier proves the chain is unbroken: engine → translator → PDF filler → read back. If any mapping is wrong, the verifier catches it.
-
-Structural invariants (AGI = income - adjustments, tax >= 0, refund + owed = payments - tax) catch logical errors without knowing the "right" answer.
-
-The pre-commit hook catches personal data leaks before they reach git history.
+Round-trip PDF verification confirms the chain end-to-end: scenario → compute → fill PDF → read back → values match.
 
 ## Project status
 
-**Working:** Federal 1040 pipeline (W-2, 1099-INT, 1099-DIV with capital gain distributions, 1098 mortgage/property tax, Schedule A itemized deductions). PDF filling and round-trip verification for the 1040.
+### Currently working
 
-**In progress:** Schedule D/8949 (capital gains from stock sales), Schedule E Part II (K-1 pass-through from S-corp). Tests are written but RED — the flattener correctly rejects these form types until implementation is complete.
+**Federal 1040 spine:**
+- Form 1040 (W-2, 1099-INT, 1099-DIV with capital gain distributions, 1099-G unemployment + state refunds, 1099-B with capital gain transactions, 1098 mortgage/property tax)
+- Schedule 1 (additional income + adjustments, with per-line breakdowns)
+- Schedule A (itemized deductions, including OBBBA SALT cap)
+- Schedule B (interest + dividend reporting)
+- Schedule D (capital gains)
+- Schedule E Part I (rental real estate + royalties)
+- Schedule E Part II (K-1 pass-through, with `K1FanoutData` sidecar feeding Sch D, Form 8582, Form 8995)
+- Form 8949 (capital gain transaction detail)
+- Form 8959 (Additional Medicare Tax)
+- Form 8995 (QBI deduction, simplified)
+- Form 8582 (passive activity loss limitations)
+- Form 4562 (depreciation — straight-line MACRS)
+- Form 4868 (extension)
 
-**Planned:** California 540/540-CA, Form 1120-S, Form 8962 (Premium Tax Credit), Playwright automation for freefilefillableforms.com.
+**Federal corporate:**
+- Form 1120-S (S-corp return + per-shareholder Schedule K-1 fan-out)
+
+**California:**
+- Form 540 (CA individual return + tax + credits + final liability)
+- Schedule CA (540) (federal-vs-CA divergence kernel: auto-derived divergences + named `CA540Return` fields + multi-row worksheet rows)
+- Schedule D (540) (capital gains, federal pass-through gated by attestation)
+- 13 year-bounded CA-specific scope-out attestations (AMT, §1202 QSBS, §1031 like-kind, kiddie tax, lump-sum distributions, RRB, PFL, etc.)
+
+**PDF emit + verification:**
+- PDF filling for every form listed above (federal + CA)
+- Round-trip PDF verification
+- 5-registry mapping pattern (mapping / aggregations / derivations / suppressed / checkbox-states)
+- Pre-commit personal-data scanner
+
+**CLI:**
+- `tenforty federal <path>` and `tenforty ca <path>` subcommands
+
+### Not yet implemented
+
+- **Form 6251** (federal AMT). Not yet modeled. A scenario that would owe AMT will silently underreport — to be addressed by adding the form to the data model and compute pipeline.
+- **Schedule C** (self-employment). Not yet modeled. Self-employment income flows have no representation in the `Scenario` schema.
+- **Form 8962** (Premium Tax Credit). Marketplace health insurance reconciliation.
+- **`.fods` worksheet generator** for user-friendly editing of California-vs-federal divergences (one tab per Sch CA line of additions/subtractions). Worksheet rows currently authored manually in YAML.
+- **Additional state returns** (every state besides California).
+- **FreeFileFillableForms automation** (Playwright-driven submission pipeline).
 
 ## License
 

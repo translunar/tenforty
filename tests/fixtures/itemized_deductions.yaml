@@ -16,6 +16,19 @@ config:
   acknowledges_cogs_aggregate_only: false
   acknowledges_officer_comp_aggregate_only: false
   acknowledges_no_elective_payment_election: false
+  acknowledges_no_540nr_filing: false
+  acknowledges_no_ca_amt_preferences: false
+  acknowledges_no_ca_sch_d_federal_state_divergence: false
+  acknowledges_no_ca_nol_carryover: false
+  acknowledges_no_ca_depreciation_divergence: false
+  acknowledges_no_ca_ira_basis_divergence: false
+  acknowledges_no_ca_rdp_status: false
+  acknowledges_no_excess_business_loss_carryover: false
+  acknowledges_no_1031_personal_property_divergence: false
+  acknowledges_no_ic_worker_reclassification: false
+  acknowledges_no_other_state_tax_credit: false
+  acknowledges_no_railroad_retirement_benefits: false
+  acknowledges_no_paid_family_leave_benefits: false
   acknowledges_sch_a_sales_tax_unsupported: false
   acknowledges_qbi_below_threshold: false
   acknowledges_unlimited_at_risk: false

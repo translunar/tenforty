@@ -1,4 +1,8 @@
-"""CLI entry point: python -m tenforty scenario.yaml"""
+"""CLI entry point: ``python -m tenforty {federal,ca,fods} ...``.
+
+Backward-compat: ``python -m tenforty <yaml>`` (no subcommand) is still
+accepted and routed to the ``federal`` subcommand. See ``_route_argv``.
+"""
 
 import argparse
 import sys
@@ -15,6 +19,8 @@ GENERIC_OUTPUT_KEYS = [
     "taxable_income", "total_tax", "federal_withheld", "total_payments",
     "overpaid", "sche_line26", "sche_line41", "schd_line16",
 ]
+
+_SUBCOMMANDS = ("federal", "ca", "fods")
 
 
 def print_results(results: dict, stream: TextIO = sys.stdout) -> None:
@@ -56,30 +62,107 @@ def _which_applied(standard: float, schedule_a: float, applied: float) -> str:
     return "indeterminate"
 
 
-def main() -> int:
+def _print_emitted_pdfs(emitted: dict) -> None:
+    print()
+    print("=== Emitted PDFs ===")
+    for form, path in emitted.items():
+        print(f"  {form:4s}  -> {path}")
+
+
+def _route_argv(argv: list[str]) -> list[str]:
+    """Backward-compat router: insert ``federal`` when bare YAML is given.
+
+    Pre-processes ``sys.argv``-shape lists so legacy ``python -m tenforty
+    foo.yaml`` invocations continue to work. Rules:
+    - ``len(argv) < 2``: leave alone (argparse will show usage).
+    - ``argv[1].startswith("-")``: leave alone (top-level flag like --help).
+    - ``argv[1]`` already a known subcommand: leave alone.
+    - Otherwise: insert ``"federal"`` at index 1.
+    """
+    if len(argv) < 2:
+        return list(argv)
+    first = argv[1]
+    if first.startswith("-") or first in _SUBCOMMANDS:
+        return list(argv)
+    return [argv[0], "federal", *argv[1:]]
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    """Build the top-level argparse parser with all three subcommands."""
     parser = argparse.ArgumentParser(
         prog="python -m tenforty",
-        description="Compute a federal tax return from a scenario YAML file.",
+        description=(
+            "Compute a federal or California tax return from scenario YAML "
+            "files. Use one of the subcommands below."
+        ),
     )
-    parser.add_argument("scenario", type=Path, help="Path to your tax scenario YAML file")
-    parser.add_argument(
-        "--spreadsheets-dir",
-        type=Path,
-        default=Path("spreadsheets"),
+    subparsers = parser.add_subparsers(dest="subcommand", required=True)
+
+    p_fed = subparsers.add_parser(
+        "federal",
+        help="Compute a federal return from a scenario YAML",
+    )
+    p_fed.add_argument(
+        "scenario", type=Path,
+        help="Path to your tax scenario YAML file",
+    )
+    p_fed.add_argument(
+        "--spreadsheets-dir", type=Path, default=Path("spreadsheets"),
         metavar="DIR",
         help="Path to spreadsheets directory (default: ./spreadsheets)",
     )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=None,
-        metavar="DIR",
+    p_fed.add_argument(
+        "--output-dir", type=Path, default=None, metavar="DIR",
         help="When set, fill and emit 1040 and 4868 PDFs to this directory",
     )
 
-    args = parser.parse_args()
-    scenario_path = args.scenario.expanduser()
+    p_ca = subparsers.add_parser(
+        "ca",
+        help="Compute a California 540 return from federal + CA YAMLs",
+    )
+    p_ca.add_argument(
+        "federal_scenario", type=Path,
+        help="Path to the federal scenario YAML file",
+    )
+    p_ca.add_argument(
+        "ca_scenario", type=Path, nargs="?", default=None,
+        help=(
+            "Path to the CA scenario YAML file. If omitted, defaults to "
+            "<federal>.ca.yaml next to the federal YAML."
+        ),
+    )
+    p_ca.add_argument(
+        "--spreadsheets-dir", type=Path, default=Path("spreadsheets"),
+        metavar="DIR",
+        help="Path to spreadsheets directory (default: ./spreadsheets)",
+    )
+    p_ca.add_argument(
+        "--output-dir", type=Path, required=True, metavar="DIR",
+        help="Directory to write the CA-state PDFs to (required)",
+    )
 
+    p_fods = subparsers.add_parser(
+        "fods",
+        help="Sub-plan 3.5: emit FODS spreadsheet (not yet implemented)",
+        description=(
+            "Sub-plan 3.5 will emit a FODS spreadsheet representation of a "
+            "return. This subcommand is reserved and not yet implemented."
+        ),
+    )
+    p_fods.add_argument(
+        "scenario", type=Path, nargs="?", default=None,
+        help="Path to scenario YAML (reserved for Sub-plan 3.5)",
+    )
+    p_fods.add_argument(
+        "output", type=Path, nargs="?", default=None,
+        help="Path to output FODS file (reserved for Sub-plan 3.5)",
+    )
+
+    return parser
+
+
+def _run_federal(args: argparse.Namespace) -> int:
+    scenario_path = args.scenario.expanduser()
     try:
         scenario = load_scenario(scenario_path)
     except FileNotFoundError as e:
@@ -102,12 +185,68 @@ def main() -> int:
     print_results(results)
 
     if emitted is not None:
-        print()
-        print("=== Emitted PDFs ===")
-        for form, path in emitted.items():
-            print(f"  {form:4s}  -> {path}")
+        _print_emitted_pdfs(emitted)
 
     return 0
+
+
+def _run_ca(args: argparse.Namespace) -> int:
+    federal_yaml = args.federal_scenario
+    if args.ca_scenario is not None:
+        ca_yaml = args.ca_scenario
+    else:
+        ca_yaml = federal_yaml.with_suffix(".ca.yaml")
+        if not ca_yaml.exists():
+            print(
+                f"CA YAML not found at inferred path {ca_yaml}. "
+                f"Pass it explicitly: tenforty ca {federal_yaml} "
+                f"/path/to/alternate.yaml",
+                file=sys.stderr,
+            )
+            return 1
+
+    try:
+        scenario = load_scenario(federal_yaml.expanduser())
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    orchestrator = ReturnOrchestrator(
+        spreadsheets_dir=args.spreadsheets_dir,
+        work_dir=Path("/tmp/tenforty_work"),
+    )
+
+    print(f"Computing {scenario.config.year} California 540 return ({scenario.config.filing_status})...")
+    _ca_results, emitted = orchestrator.run_full_california_return(
+        scenario=scenario,
+        ca_yaml_path=ca_yaml,
+        output_dir=args.output_dir,
+    )
+
+    _print_emitted_pdfs(emitted)
+    return 0
+
+
+def _run_fods(_args: argparse.Namespace) -> int:
+    print("Sub-plan 3.5 not yet implemented", file=sys.stderr)
+    return 2
+
+
+def main() -> int:
+    sys.argv = _route_argv(sys.argv)
+    parser = _build_parser()
+    args = parser.parse_args()
+
+    if args.subcommand == "federal":
+        return _run_federal(args)
+    if args.subcommand == "ca":
+        return _run_ca(args)
+    if args.subcommand == "fods":
+        return _run_fods(args)
+    # subparsers(required=True) prevents this branch; keep an explicit
+    # fall-through for static analysers.
+    parser.error(f"Unknown subcommand: {args.subcommand!r}")
+    return 2
 
 
 if __name__ == "__main__":

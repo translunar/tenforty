@@ -4,6 +4,7 @@ import subprocess
 import unittest
 from pathlib import Path
 
+from tenforty.attestations import _CA_ATTESTATIONS
 from tenforty.models import Scenario, TaxReturnConfig, W2
 from tenforty.attestations import _ATTESTATIONS
 
@@ -11,6 +12,13 @@ REPO_ROOT = Path(__file__).parent.parent
 SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 F1040_PDF = Path("/tmp/f1040_2025.pdf")
+
+# Set of CA scope-out attestation field names, derived from the registry.
+# Single source of truth for tests that need to iterate every CA scope-out
+# (e.g. setting them all True in a smoke scenario). Tests that need to
+# verify the registry's coverage against an EXPECTED list keep their own
+# literal to avoid a tautology — see tests/test_attestations_ca.py.
+CA_SCOPE_OUT_FIELDS: frozenset[str] = frozenset(a.field for a in _CA_ATTESTATIONS)
 
 
 def libreoffice_available() -> bool:

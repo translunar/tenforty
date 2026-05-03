@@ -54,6 +54,20 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_cogs_aggregate_only",
             "acknowledges_officer_comp_aggregate_only",
             "acknowledges_no_elective_payment_election",
+            # CA-specific scope-out attestations (SP3-T3)
+            "acknowledges_no_540nr_filing",
+            "acknowledges_no_ca_amt_preferences",
+            "acknowledges_no_ca_sch_d_federal_state_divergence",
+            "acknowledges_no_ca_nol_carryover",
+            "acknowledges_no_ca_depreciation_divergence",
+            "acknowledges_no_ca_ira_basis_divergence",
+            "acknowledges_no_ca_rdp_status",
+            "acknowledges_no_excess_business_loss_carryover",
+            "acknowledges_no_1031_personal_property_divergence",
+            "acknowledges_no_ic_worker_reclassification",
+            "acknowledges_no_other_state_tax_credit",
+            "acknowledges_no_railroad_retirement_benefits",
+            "acknowledges_no_paid_family_leave_benefits",
         }
         self.assertEqual(expected, fields)
 
@@ -100,6 +114,20 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_cogs_aggregate_only=False,
             acknowledges_officer_comp_aggregate_only=False,
             acknowledges_no_elective_payment_election=False,
+            # CA-specific scope-out attestations (SP3-T3)
+            acknowledges_no_540nr_filing=False,
+            acknowledges_no_ca_amt_preferences=False,
+            acknowledges_no_ca_sch_d_federal_state_divergence=False,
+            acknowledges_no_ca_nol_carryover=False,
+            acknowledges_no_ca_depreciation_divergence=False,
+            acknowledges_no_ca_ira_basis_divergence=False,
+            acknowledges_no_ca_rdp_status=False,
+            acknowledges_no_excess_business_loss_carryover=False,
+            acknowledges_no_1031_personal_property_divergence=False,
+            acknowledges_no_ic_worker_reclassification=False,
+            acknowledges_no_other_state_tax_credit=False,
+            acknowledges_no_railroad_retirement_benefits=False,
+            acknowledges_no_paid_family_leave_benefits=False,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise
