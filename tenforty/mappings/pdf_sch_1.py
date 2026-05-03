@@ -11,11 +11,15 @@ mapping (amount column x≈504, rows top-to-bottom) determined which
 f1_NN/f2_NN field corresponds to which IRS line number.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
+
 _PAGE1 = "topmostSubform[0].Page1[0]"
 _PAGE2 = "topmostSubform[0].Page2[0]"
 
 
-class PdfSch1:
+class PdfSch1(PdfFormMapping[dict]):
+    _FORM_NAME = "Schedule 1"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -43,8 +47,3 @@ class PdfSch1:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Schedule 1 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

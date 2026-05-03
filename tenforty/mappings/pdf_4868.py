@@ -13,9 +13,13 @@ Probe methodology: each text field was filled with its short name (e.g.
 position on the rendered page was matched to the printed label.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class Pdf4868:
+
+class Pdf4868(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Form 4868 (Automatic Extension)."""
+
+    _FORM_NAME = "Form 4868"
 
     # Note on checkboxes: c1_1 and c1_2 are /Btn (checkbox) fields.
     # PdfFiller currently writes text values only; checkbox /Btn fields
@@ -70,8 +74,3 @@ class Pdf4868:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

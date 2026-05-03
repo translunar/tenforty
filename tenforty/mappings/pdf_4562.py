@@ -26,6 +26,8 @@ where `base` is the first f1_N for that row — this module encodes the
 base explicitly rather than relying on arithmetic.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
+
 _P1 = "topmostSubform[0].Page1[0]"
 _P2 = "topmostSubform[0].Page2[0]"
 _SB = f"{_P1}.SectionBTable[0]"
@@ -71,7 +73,9 @@ def _all_row_fields() -> dict[str, str]:
     return out
 
 
-class Pdf4562:
+class Pdf4562(PdfFormMapping[dict]):
+    _FORM_NAME = "Form 4562"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -84,8 +88,3 @@ class Pdf4562:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Form 4562 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

@@ -16,86 +16,7 @@ docs/plans/t14-f1120s-probe.md for the per-line rationale.
 """
 
 from collections.abc import Callable, Mapping
-
-
-class PdfF1120S:
-    """PDF field mapping for IRS Form 1120-S.
-
-    Unlike `Pdf1040`, which uses a single flat compute-key → PDF-field
-    dict, this class exposes a five-registry design because the 2025
-    Form 1120-S has structural patterns that a flat map cannot express:
-
-    - `_MAPPING_<year>` — direct 1:1 compute-key → PDF-field-path. Most
-      keys live here. This is the same shape as `Pdf1040._MAPPINGS`.
-    - `_AGGREGATIONS_<year>` — PDF cells that receive the *sum* of
-      multiple compute keys. The 2025 form combined former lines 23a +
-      23b into a single line-24a cell, and the §453 deferred-interest
-      amount must be folded into the line-23c "Total tax" write-in
-      because no separate fillable cell exists.
-    - `_DERIVATIONS_<year>` — PDF cells whose value is *computed* from
-      compute outputs (e.g., line 28b refund = overpayment − credited).
-      These never receive a single compute key directly.
-    - `_SUPPRESSED_<year>` — compute keys that have *no* fillable cell
-      on the year's form. v1 declares them out-of-scope-for-PDF and
-      relies on attestations to ensure the user reports them externally.
-    - `_CHECKBOX_STATES_<year>` — for boolean compute keys whose target
-      PDF cell is an IRS XFA checkbox, this maps the compute key to the
-      per-field "on" appearance state name (e.g. `"/1"`, `"/2"`, `"/3"`)
-      because IRS XFA forms use non-conventional state names rather than
-      the usual `"/Yes"`.
-
-    These extensions did not exist for F1040 because the 1040's PDF
-    fields line up 1:1 with compute outputs at the keys we expose. They
-    are necessary for 1120-S because the IRS reorganized the Tax and
-    Payments section on the 2025 revision (consolidating cells, dropping
-    the built-in-gains-tax line, and converting some former cells into
-    write-in adjustments).
-
-    The partition invariant (enforced by the mapping test) is that every
-    expected compute key is OWNED by exactly one of `_MAPPING_<year>`,
-    `_AGGREGATIONS_<year>`, or `_SUPPRESSED_<year>`. Derivations consume
-    compute keys but do not own them; see the comment block above
-    `_DERIVATIONS_2025` for the convention.
-    """
-
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year == 2025:
-            return _MAPPING_2025
-        raise ValueError(f"No Form 1120-S mapping for year {year}")
-
-    @classmethod
-    def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
-        if year == 2025:
-            return _AGGREGATIONS_2025
-        raise ValueError(f"No Form 1120-S aggregations for year {year}")
-
-    @classmethod
-    def get_derivations(
-        cls,
-        year: int,
-    ) -> dict[str, Callable[[Mapping[str, object]], object]]:
-        if year == 2025:
-            return _DERIVATIONS_2025
-        raise ValueError(f"No Form 1120-S derivations for year {year}")
-
-    @classmethod
-    def get_suppressed(cls, year: int) -> frozenset[str]:
-        if year == 2025:
-            return _SUPPRESSED_2025
-        raise ValueError(f"No Form 1120-S suppressions for year {year}")
-
-    @classmethod
-    def get_checkbox_states(cls, year: int) -> dict[str, str]:
-        """Return compute key → PDF "on" state for IRS XFA checkbox fields.
-
-        IRS XFA forms use per-field state names ("/1", "/2", "/3") rather than
-        the conventional "/Yes". These overrides are passed to PdfFiller.fill()
-        so that bool compute keys toggle the correct appearance state.
-        """
-        if year == 2025:
-            return _CHECKBOX_STATES_2025
-        raise ValueError(f"No Form 1120-S checkbox states for year {year}")
+from tenforty.mappings.registry import PdfFormMapping
 
 
 # Direct 1:1 mappings — most compute keys go here.
@@ -174,6 +95,83 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_sch_k_investment_income":           "topmostSubform[0].Page4[0].f4_1[0]",
     "f1120s_sch_k_income_loss_reconciliation":  "topmostSubform[0].Page4[0].f4_4[0]",
 }
+
+
+class PdfF1120S(PdfFormMapping[dict[str, str]]):
+    """PDF field mapping for IRS Form 1120-S.
+
+    Unlike `Pdf1040`, which uses a single flat compute-key → PDF-field
+    dict, this class exposes a five-registry design because the 2025
+    Form 1120-S has structural patterns that a flat map cannot express:
+
+    - `_MAPPING_<year>` — direct 1:1 compute-key → PDF-field-path. Most
+      keys live here. This is the same shape as `Pdf1040._MAPPINGS`.
+    - `_AGGREGATIONS_<year>` — PDF cells that receive the *sum* of
+      multiple compute keys. The 2025 form combined former lines 23a +
+      23b into a single line-24a cell, and the §453 deferred-interest
+      amount must be folded into the line-23c "Total tax" write-in
+      because no separate fillable cell exists.
+    - `_DERIVATIONS_<year>` — PDF cells whose value is *computed* from
+      compute outputs (e.g., line 28b refund = overpayment − credited).
+      These never receive a single compute key directly.
+    - `_SUPPRESSED_<year>` — compute keys that have *no* fillable cell
+      on the year's form. v1 declares them out-of-scope-for-PDF and
+      relies on attestations to ensure the user reports them externally.
+    - `_CHECKBOX_STATES_<year>` — for boolean compute keys whose target
+      PDF cell is an IRS XFA checkbox, this maps the compute key to the
+      per-field "on" appearance state name (e.g. `"/1"`, `"/2"`, `"/3"`)
+      because IRS XFA forms use non-conventional state names rather than
+      the usual `"/Yes"`.
+
+    These extensions did not exist for F1040 because the 1040's PDF
+    fields line up 1:1 with compute outputs at the keys we expose. They
+    are necessary for 1120-S because the IRS reorganized the Tax and
+    Payments section on the 2025 revision (consolidating cells, dropping
+    the built-in-gains-tax line, and converting some former cells into
+    write-in adjustments).
+
+    The partition invariant (enforced by the mapping test) is that every
+    expected compute key is OWNED by exactly one of `_MAPPING_<year>`,
+    `_AGGREGATIONS_<year>`, or `_SUPPRESSED_<year>`. Derivations consume
+    compute keys but do not own them; see the comment block above
+    `_DERIVATIONS_2025` for the convention.
+    """
+
+    _FORM_NAME = "Form 1120-S"
+    _MAPPINGS: dict[int, dict[str, str]] = {2025: _MAPPING_2025}
+
+    @classmethod
+    def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
+        if year == 2025:
+            return _AGGREGATIONS_2025
+        raise ValueError(f"No Form 1120-S aggregations for year {year}")
+
+    @classmethod
+    def get_derivations(
+        cls,
+        year: int,
+    ) -> dict[str, Callable[[Mapping[str, object]], object]]:
+        if year == 2025:
+            return _DERIVATIONS_2025
+        raise ValueError(f"No Form 1120-S derivations for year {year}")
+
+    @classmethod
+    def get_suppressed(cls, year: int) -> frozenset[str]:
+        if year == 2025:
+            return _SUPPRESSED_2025
+        raise ValueError(f"No Form 1120-S suppressions for year {year}")
+
+    @classmethod
+    def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        """Return compute key → PDF "on" state for IRS XFA checkbox fields.
+
+        IRS XFA forms use per-field state names ("/1", "/2", "/3") rather than
+        the conventional "/Yes". These overrides are passed to PdfFiller.fill()
+        so that bool compute keys toggle the correct appearance state.
+        """
+        if year == 2025:
+            return _CHECKBOX_STATES_2025
+        raise ValueError(f"No Form 1120-S checkbox states for year {year}")
 
 
 # PDF cells that receive a sum of multiple compute keys.
