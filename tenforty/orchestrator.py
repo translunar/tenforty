@@ -694,11 +694,11 @@ class ReturnOrchestrator:
         )
         if fods_div.sch_ca:
             effective_ca540 = effective_ca540.with_extra_divergences(fods_div.sch_ca)
-        # Sch D 540 worksheet entries are stored on the resolved snapshot for user
-        # visibility but are NOT consumed by sch_d_540.compute. Until California
-        # Schedule D (540) user-divergence compute support ships, the existing
-        # acknowledges_no_ca_sch_d_federal_state_divergence attestation keeps the
-        # compute path safe (raise-or-pass-through).
+        # fods_div.sch_d_540 is parsed and discarded at this layer. A subsequent
+        # resolved-snapshot writer will surface these worksheet entries for user
+        # visibility; until California Schedule D (540) user-divergence compute
+        # support ships, the existing acknowledges_no_ca_sch_d_federal_state_divergence
+        # attestation keeps the compute path safe (raise-or-pass-through).
 
         # 4. Re-derive federal results. compute_federal exposes sch_1_line_*
         #    keys directly (per #80), so downstream CA computes consume the
