@@ -32,7 +32,7 @@ class FodsDivergences:
     The .fods worksheet groups Pub 1001 divergences across two distinct
     downstream targets. ``sch_ca`` carries Schedule CA (540) Part I/II
     line-level adjustments (additions and subtractions to federal AGI
-    components); these are routed by the SP3 generic Sch CA kernel.
+    components); these are routed by the generic Schedule CA kernel.
     ``sch_d_540`` carries Schedule D (540) capital-gains divergences
     (§1202 QSBS, §1045 rollover, §1400Z, pre-1987 inherited basis,
     Peace Corps PR, etc.); these are surfaced for visibility only until
