@@ -140,6 +140,20 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-dir", type=Path, required=True, metavar="DIR",
         help="Directory to write the CA-state PDFs to (required)",
     )
+    p_ca.add_argument(
+        "--divergences", type=Path, default=None, metavar="PATH",
+        help=(
+            "Explicit path to the CA divergences .fods worksheet. If omitted, "
+            "tenforty looks for <basename>.ca.fods next to the federal YAML."
+        ),
+    )
+    p_ca.add_argument(
+        "--no-fods", action="store_true",
+        help=(
+            "Disable .fods auto-discovery. Use when CA divergences are managed "
+            "directly in the .ca.yaml's `divergences:` list."
+        ),
+    )
 
     p_fods = subparsers.add_parser(
         "fods",
@@ -221,6 +235,9 @@ def _run_ca(args: argparse.Namespace) -> int:
         scenario=scenario,
         ca_yaml_path=ca_yaml,
         output_dir=args.output_dir,
+        federal_yaml_path=federal_yaml,
+        fods_path=args.divergences,
+        disable_fods=args.no_fods,
     )
 
     _print_emitted_pdfs(emitted)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import Enum
 from types import MappingProxyType
@@ -648,6 +648,9 @@ class CA540Return:
     # can route it as an §B 7 Col B subtraction (FTB Pub 1001 p.17).
     pfl_amount: float | None = None
     divergences: list[CASchCAAdjustment] = field(default_factory=list)
+
+    def with_extra_divergences(self, extra: list["CASchCAAdjustment"]) -> "CA540Return":
+        return replace(self, divergences=[*self.divergences, *extra])
 
 
 @dataclass

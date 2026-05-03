@@ -20,6 +20,7 @@ from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import f1120s as form_f1120s
 from tenforty.forms import sch_ca as form_sch_ca
+from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -617,11 +618,31 @@ class ReturnOrchestrator:
         emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
         return results, emitted
 
+    def discover_fods_divergences(
+        self, federal_yaml_path: Path, fods_override: Path | None = None,
+    ) -> FodsDivergences:
+        """Locate and parse the `<basename>.ca.fods` worksheet, if any.
+
+        Discovery rules:
+        - If ``fods_override`` is given, parse it (no auto-discovery).
+        - Otherwise look for ``<basename>.ca.fods`` next to the federal YAML.
+        - Return empty FodsDivergences if no .fods is found and no override given.
+        """
+        if fods_override is not None:
+            return import_fods_divergences(fods_override)
+        candidate = federal_yaml_path.with_suffix(".ca.fods")
+        if candidate.exists():
+            return import_fods_divergences(candidate)
+        return FodsDivergences()
+
     def run_full_california_return(
         self,
         scenario: Scenario,
         ca_yaml_path: Path,
         output_dir: Path,
+        federal_yaml_path: Path | None = None,
+        fods_path: Path | None = None,
+        disable_fods: bool = False,
     ) -> tuple[dict, dict[str, Path]]:
         """Canonical CA-state entry point. Re-derives federal results, runs
         Sch CA + Sch D 540 + 540 main compute, emits state PDFs.
@@ -661,6 +682,23 @@ class ReturnOrchestrator:
 
         # 3. Build effective CA540Return — ca_yaml is authoritative, but conflict-detect.
         effective_ca540 = self._build_effective_ca540(scenario.ca540, ca_yaml)
+
+        # 3b. Discover and merge .fods worksheet divergences, if any.
+        fods_div = (
+            FodsDivergences()
+            if disable_fods or federal_yaml_path is None
+            else self.discover_fods_divergences(
+                federal_yaml_path=federal_yaml_path,
+                fods_override=fods_path,
+            )
+        )
+        if fods_div.sch_ca:
+            effective_ca540 = effective_ca540.with_extra_divergences(fods_div.sch_ca)
+        # Sch D 540 worksheet entries are stored on the resolved snapshot for user
+        # visibility but are NOT consumed by sch_d_540.compute. Until California
+        # Schedule D (540) user-divergence compute support ships, the existing
+        # acknowledges_no_ca_sch_d_federal_state_divergence attestation keeps the
+        # compute path safe (raise-or-pass-through).
 
         # 4. Re-derive federal results. compute_federal exposes sch_1_line_*
         #    keys directly (per #80), so downstream CA computes consume the
