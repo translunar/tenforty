@@ -6,10 +6,14 @@ column amount cells (x≈504) are the line-totals (4, 7, 10, 14, 17);
 the left-column x≈410 cells carry individual subparts.
 """
 
+from tenforty.mappings.registry import PdfFormMapping
+
 _PAGE1 = "form1[0].Page1[0]"
 
 
-class PdfSchA:
+class PdfSchA(PdfFormMapping[dict]):
+    _FORM_NAME = "Schedule A"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -45,8 +49,3 @@ class PdfSchA:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Schedule A PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

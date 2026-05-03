@@ -31,6 +31,8 @@ Assignment (2025):
     f1_66 = Line 6 (sum)
 """
 
+from tenforty.mappings.registry import PdfFormMapping
+
 _PAGE1 = "topmostSubform[0].Page1[0]"
 
 # Row 1's payer field is namespaced inside Line1_ReadOrder; all other
@@ -94,15 +96,10 @@ def _build_2025_mapping() -> dict[str, str]:
     return m
 
 
-class PdfSchB:
+class PdfSchB(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Schedule B (2025)."""
 
+    _FORM_NAME = "Schedule B"
     _MAPPINGS: dict[int, dict[str, str]] = {
         2025: _build_2025_mapping(),
     }
-
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Schedule B PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

@@ -26,8 +26,12 @@ Field names enumerated from ``pdfs/federal/2025/f8995.pdf``:
   f1_33  Line 17 (net QBI loss carryforward — zero in v1)
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class PdfF8995:
+
+class PdfF8995(PdfFormMapping[dict]):
+    _FORM_NAME = "Form 8995"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -62,8 +66,3 @@ class PdfF8995:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Form 8995 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

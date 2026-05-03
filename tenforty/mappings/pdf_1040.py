@@ -9,9 +9,13 @@ Field names use the full path format:
     topmostSubform[0].Page1[0].f1_47[0]
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class Pdf1040:
+
+class Pdf1040(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Form 1040."""
+
+    _FORM_NAME = "Form 1040"
 
     _MAPPINGS: dict[int, dict[str, str]] = {
         2025: {
@@ -160,8 +164,3 @@ class Pdf1040:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict[str, str]:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

@@ -33,8 +33,12 @@ Field names enumerated from ``pdfs/federal/2025/f8582.pdf``:
   f1_19  Line 11 — allowed loss
 """
 
+from tenforty.mappings.registry import PdfFormMapping
 
-class PdfF8582:
+
+class PdfF8582(PdfFormMapping[dict]):
+    _FORM_NAME = "Form 8582"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -52,8 +56,3 @@ class PdfF8582:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Form 8582 PDF mapping for year {year}")
-        return cls._MAPPINGS[year]

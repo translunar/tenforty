@@ -25,6 +25,8 @@ Page 2 field discovery notes (2025 form):
   - Line 41 total pass-through (f2_76).
 """
 
+from tenforty.mappings.registry import PdfFormMapping
+
 _P2 = "topmostSubform[0].Page2[0]"
 _T28AF = f"{_P2}.Table_Line28a-f[0]"
 _T28GK = f"{_P2}.Table_Line28g-k[0]"
@@ -61,7 +63,9 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
     }
 
 
-class PdfSchE:
+class PdfSchE(PdfFormMapping[dict]):
+    _FORM_NAME = "Schedule E"
+
     _MAPPINGS: dict[int, dict] = {
         2025: {
             "scalars": {
@@ -183,8 +187,3 @@ class PdfSchE:
         },
     }
 
-    @classmethod
-    def get_mapping(cls, year: int) -> dict:
-        if year not in cls._MAPPINGS:
-            raise ValueError(f"No Schedule E PDF mapping for year {year}")
-        return cls._MAPPINGS[year]
