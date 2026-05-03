@@ -4,69 +4,224 @@ This document captures everything an agent or developer needs to work on tenfort
 
 ## Core Concept
 
-**tenforty is a harness, not a calculator.** Tax computations live in spreadsheets. The Python code orchestrates data flow, fills PDF forms, and verifies correctness. We never write tax math.
+tenforty computes US federal + California individual income tax returns. Each form has at least two independent implementations, and they're cross-checked. No single implementation is trusted in isolation.
 
-The verification approach: feed the same inputs to an independently-maintained Excel spreadsheet AND to IRS fillable PDFs. If both agree, we trust the result — without writing (or trusting) a single line of tax calculation code.
+**Production calculators, by form:**
+- **Federal 1040 spine** (1040, Sch 1, Sch A, Sch D, Sch E, etc.): a third-party Excel spreadsheet (incometaxspreadsheet.com). Native Python `forms/sch_*.compute` modules are PDF-emit helpers + cross-checkers.
+- **Form 1120-S** (S-corp): native Python. Wired via `compute_corporate`.
+- **California 540 + Sch CA + Sch D 540 + Sch P 540**: native Python. Wired via `run_full_california_return`.
+
+**Cross-checkers, by form:**
+- Federal forms: native Python `forms/*.compute` produces `oracle_*` keys; structural-invariant assertions; round-trip PDF verification.
+- Form 1120-S: hand-coded reference oracle on `oracle/f1120s-reference`.
+- California forms: hand-coded reference oracles on `oracle/ca-540-reference`, `oracle/ca-sch-d-540-reference`, `oracle/ca-sch-p-540-reference`.
+
+**Oracle isolation.** Reference oracles live on separate git branches and are air-gapped from implementation. Implementers don't read oracle source; cross-checks are run separately; tie-breaking between implementation and oracle is a CPA-domain adjudication, not a code-domain one. This prevents convergent bugs.
+
+**XLS dependency.** The federal spine's production calculator is a third-party spreadsheet. Whether to port it to native Python — demoting the XLS to oracle-only — is open. Most federal forms already have native Python compute used as PDF-emit helpers and cross-checkers; a port is mostly wiring + replacing the rekey shim in `forms/f1040.py`. Cost is bounded (days, not months); whether vendor-risk insurance justifies the investment is undecided.
 
 ## Pipeline
 
+Three orchestrator entry points, one per return type. All start from a `Scenario` (loaded via `scenario.load_scenario`).
+
+### Federal 1040 (XLS-driven)
+
 ```
-scenario.yaml
-    ↓ load_scenario()
-Scenario (dataclasses)
+Scenario
     ↓ flatten_scenario()
-dict[str, object]  (flat key-value pairs)
+flat input dict
     ↓ SpreadsheetEngine.compute()
-        ↓ openpyxl writes inputs to XLS cells
-        ↓ soffice --headless recalculates (~18s)
-        ↓ openpyxl reads computed outputs
-dict[str, object]  (engine results)
-    ↓ ResultTranslator.translate()
-dict[str, object]  (PDF-namespace keys)
-    ↓ PdfFiller.fill()
-filled f1040.pdf
+raw engine output
+    ↓ form_1040.compute()                 [rekey shim]
+1040 results dict
+    ↓ _emit_pdfs_internal()               [per-form compute + PdfFiller.fill]
+filled federal PDFs
+```
+
+`compute_federal(scenario)` runs the first three steps. `run_full_return(scenario)` runs all four.
+
+### Corporate 1120-S (native Python)
+
+```
+Scenario.s_corp_return
+    ↓ form_f1120s.compute()
+1120-S results + synthesized K-1s
+    ↓ append K-1s to effective Scenario
+flows into Federal 1040 pipeline
+```
+
+`compute_corporate(scenario)` runs 1120-S in isolation. `run_full_return(scenario)` waterfalls 1120-S → 1040 when `scenario.s_corp_return` is set.
+
+### California (native Python, downstream of federal)
+
+```
+Scenario + ca.yaml
+    ↓ run_full_california_return()
+verify ca.yaml, build effective CA540Return
+    ↓ compute_federal()                   [federal pipeline above]
+    ↓ sch_ca.compute()                    [federal-vs-CA divergences]
+    ↓ sch_d_540.compute()                 [federal pass-through]
+    ↓ f540.compute()                      [CA tax + credits + final liability]
+    ↓ _emit_ca_pdfs_internal()
+filled CA PDFs
 ```
 
 ## Module Map
 
-### Core Pipeline
+### Core pipeline
 
-| Module | Purpose | Key Types/Functions |
-|--------|---------|-------------------|
-| `models.py` | Dataclasses for tax documents | `W2`, `Form1099INT`, `Form1099DIV`, `Form1099B`, `Form1098`, `ScheduleK1`, `RentalProperty`, `TaxReturnConfig`, `Scenario`, `FilingStatus` |
-| `scenario.py` | YAML → Scenario | `load_scenario(path)`. Uses `_FORM_REGISTRY` dict to map YAML keys to model classes. Add new form types here. |
-| `flattener.py` | Scenario → flat dict | `flatten_scenario(scenario)`. One `_flatten_*` function per form type. **Raises NotImplementedError for unhandled form types** — prevents silent data loss. |
-| `engine.py` | Spreadsheet computation | `SpreadsheetEngine.compute(path, mapping, year, inputs, work_dir)`. `_resolve_named_range(defn)` parses XLS named ranges. |
-| `orchestrator.py` | High-level API | `ReturnOrchestrator.compute_federal(scenario)`. Finds the right XLS, flattens, computes. |
-| `result_translator.py` | Engine keys → PDF keys | `ResultTranslator(spec).translate(results, scenario)`. Handles renames, expansions, scenario field extraction. |
-| `filing/pdf.py` | Fill PDF forms | `PdfFiller.fill(template, output, mapping, values)`. **Must use `PdfWriter(clone_from=reader)` — `append_pages_from_reader` strips form fields.** |
-| `__main__.py` | CLI | `python -m tenforty scenario.yaml [spreadsheets_dir]` |
+| Module | Purpose | Key entry points |
+|--------|---------|-----------------|
+| `models.py` | Dataclasses for tax inputs and results | `Scenario`, `TaxReturnConfig`, `FilingStatus`, `W2`, `Form1099*`, `ScheduleK1`, `RentalProperty`, `SCorpReturn`, `CA540Return`, `CASchCAAdjustment`, ... |
+| `scenario.py` | YAML → `Scenario` | `load_scenario(path)`. `_FORM_REGISTRY` maps YAML keys to model classes; add new forms here. |
+| `oracle/flattener.py` | `Scenario` → flat input dict for the XLS engine | `flatten_scenario(scenario)`. Raises `NotImplementedError` on unhandled forms (prevents silent data loss). |
+| `oracle/engine.py` | Spreadsheet computation | `SpreadsheetEngine.compute(...)`. Resolves named ranges and direct cell refs against the workbook. |
+| `orchestrator.py` | Entry points | `compute_federal`, `compute_corporate`, `run_full_return`, `run_full_california_return`. Internal: `_compute_1040_pipeline`, `_emit_pdfs_internal`, `_emit_ca_pdfs_internal`. |
+| `attestations.py` | Year-bounded scope-out registry | `_FEDERAL_ATTESTATIONS`, `_SCORP_ATTESTATIONS`, `_CA_ATTESTATIONS`, `validate_load_time(scenario)`, `enforce_compute_time(...)`. |
+| `filing/pdf.py` | PDF fill | `PdfFiller.fill(...)`. Use `PdfWriter(clone_from=reader)` — `append_pages_from_reader` strips form fields. |
+| `__main__.py` | CLI subcommands | `tenforty federal \| ca \| fods <path> [...]` |
 
-### Mappings
+The `oracle/` package houses `engine.py` and `flattener.py` — the XLS subsystem. The naming anticipates the post-TY2025 port decision (XLS demoted to cross-check oracle only); for now they do production work for `compute_federal`, and they'll stay in `oracle/` pending that decision. If the port doesn't happen, they should move back to `tenforty/` root.
 
-| Module | Purpose | Notes |
-|--------|---------|-------|
-| `mappings/registry.py` | Base class | `FormMapping` with `get_inputs(year)`, `get_outputs(year)`, `inherit()` |
-| `mappings/f1040.py` | XLS cell mapping | `F1040` — covers ALL sheets in the federal workbook (W-2s, 1099-INT, 1099-DIV, Sch. A, Sch. E, etc.). Has `INPUTS`, `OUTPUTS`, and `SHEET_MAP`. |
-| `mappings/pdf_1040.py` | PDF field mapping | `Pdf1040` — 69 fields mapped to opaque IRS field names. **Does not inherit from FormMapping** (intentional — output-only, different pattern). |
-| `translations/f1040_pdf.py` | Engine→PDF key bridge | `F1040_PDF_SPEC` — renames (`interest_income`→`taxable_interest`) and expansions (`agi`→`[agi, agi_page2]`). |
+### Forms (`forms/`)
 
-### Two Types of Cell References in F1040
+One module per IRS/FTB form. Two roles:
+- **Production calculator** — when no XLS exists for the form (1120-S, all CA forms). The orchestrator wires these into `compute_federal` / `compute_corporate` / `run_full_california_return`.
+- **PDF-emit helper + cross-checker** — when the XLS handles the production math (federal 1040 spine: 1040 rekey shim, sch_a, sch_b, sch_d, sch_e, sch_e_part_ii, sch_1, f8949, f8959, f8582, f8995, f4562, f4868). Called at PDF emit time; produces `oracle_*` keys for cross-check.
 
-1. **Named ranges** (e.g., `"File_Single"`, `"Adj_Gross_Inc"`) — resolved by openpyxl from the workbook's defined names. Used for filing status, birthdate, and output values.
-2. **Direct cell refs** (e.g., `"C3"`, `"V33"`) — require a `SHEET_MAP` entry mapping the input key to a sheet name. Used for W-2 fields, 1099 fields, Schedule E expense lines.
+`forms/depreciation/` has shared MACRS helpers.
 
-The engine checks: is the value a named range? → resolve it. Is the key in SHEET_MAP? → use that sheet + the cell ref. Neither? → raise ValueError.
+### Mappings (`mappings/`)
 
-### Compute output keys (Python-compute forms)
+| Module | Purpose |
+|--------|---------|
+| `registry.py` | Base `FormMapping` class with `inherit()` for year-over-year deltas |
+| `f1040.py` | XLS cell mapping — `INPUTS`, `OUTPUTS`, `SHEET_MAP` for the `compute_federal` pipeline |
+| `pdf_*.py` | PDF field mappings, one per form, exposing the 5-registry pattern |
 
-For forms whose math is implemented in Python (`tenforty/forms/*.py`) rather than via the XLS engine — currently 1120-S; future CA 540 — the `compute()` function returns a flat `dict[str, object]` whose keys are the public API surface consumed by the PDF mapping module.
+### 5-registry PDF mapping pattern
 
-**Convention:** compute output keys use **semantic-noun basenames**, never IRS line numbers. Examples: `f1120s_total_tax`, `f1120s_overpayment`, `f1120s_sch_k_ordinary_business_income`. Not `f1120s_line_22_total_tax`, not `f1120s_sch_k_line_1_ordinary_business_income`.
+Each `pdf_*.py` exposes five `@classmethod` getters per year:
+- `get_mapping(year)` — compute-key → PDF-field mapping
+- `get_aggregations(year)` — multi-key composition (e.g., first + last name → taxpayer_name)
+- `get_derivations(year)` — computed-from-results lambdas
+- `get_suppressed(year)` — fields intentionally rendered blank
+- `get_checkbox_states(year)` — XFA appearance-state names per checkbox value
 
-**Why:** line numbers belong in the PDF mapping module, which is form-revision-specific (e.g. `_MAPPING_2025`). The 2025 1120-S renumbered the entire Tax/Payments block relative to 2024 (22a→23a, 22→23c, 23→24, 24→26, 26→27, 27→28a) — proving line numbers are anti-durable for compute keys. Embedding them in the cross-revision API surface would force a breaking key change on every IRS renumbering.
+`PdfFiller.fill` consumes all five; the partition `(mapping ∪ aggregations ∪ derivations ∪ suppressed)` must cover every addressable widget on the PDF.
 
-**Local-variable exception:** internal locals in helper functions (e.g. `line_1a`, `line_22a`, `line_23e` in `_compute_income`/`_compute_total_tax`/`_compute_payments_and_balance`) keep IRS-line-numbered names. These mirror form arithmetic during computation and are not part of the public API; their line-numbered names make the math read like the form instructions.
+### Constants (`constants/`)
+
+- `y2025.py`, ... — federal per-year constants (brackets, exemptions, deductions, phaseouts, SALT cap)
+- `california_y2021.py` ... `california_y2025.py` — CA per-year constants (brackets, exemption credit, standard deduction, renter's credit thresholds)
+
+### Two cell-reference styles in the XLS
+
+1. **Named ranges** (e.g. `Adj_Gross_Inc`, `Additional_Income`, `File_Single`) — defined in the workbook, resolved by openpyxl. Used for filing status flags, schedule totals, and the AGI-adjacent outputs that the rekey shim consumes.
+2. **Direct cell refs** (e.g. `C28`, `D6`) — require a `SHEET_MAP` entry mapping the input/output key to a sheet name. Used for W-2 fields, 1099 line items, Schedule E expense rows.
+
+The engine resolves named ranges first; if not a named range, looks up `SHEET_MAP` for the cell ref; otherwise raises.
+
+### Compute output keys (native-Python forms)
+
+Forms whose math is in Python (production calculators for 1120-S and California; PDF-emit helpers + cross-checkers for federal 1040 spine forms) return a flat `dict[str, object]` whose keys are the public API surface consumed by the PDF mapping module.
+
+**Convention:** compute output keys use semantic-noun basenames, never IRS/FTB line numbers. Examples: `f1120s_total_tax`, `f1120s_sch_k_ordinary_business_income`, `f540_ca_tax`, `sch_ca_ca_agi`. Not `f1120s_line_22_total_tax`, not `f540_line_64_ca_tax`.
+
+**Why:** line numbers belong in the PDF mapping module, which is form-revision-specific. The 2025 1120-S renumbered its entire Tax/Payments block relative to 2024 (22a→23a, 22→23c, 23→24, 24→26, 26→27, 27→28a) — proof that line numbers are anti-durable for compute keys. Embedding them in the cross-revision API surface would force breaking changes on every IRS/FTB renumbering.
+
+**Local-variable exception:** internal locals in helper functions (e.g. `line_1a`, `line_22a` inside `_compute_income`) keep IRS-line-numbered names. They mirror form arithmetic during computation and aren't part of the public API; line-numbered locals make the math read like the form instructions.
+
+## Federal-first downstream state returns
+
+State returns (currently California) compute downstream of the federal return. The federal pipeline produces results; the state pipeline reads those results and applies state-specific divergences.
+
+### Inputs
+
+- A `Scenario` (federal inputs, loaded via `scenario.load_scenario`).
+- A separate CA YAML file (`<basename>.ca.yaml` by convention) — contains the `ca540:` block with state-specific inputs (estimated payments, use tax, voluntary contributions, divergence worksheet rows, named single-amount fields). Loaded into `Scenario.ca540` as a `CA540Return` dataclass.
+
+The federal YAML and CA YAML are kept as separate files so the user can edit CA divergences without re-running federal compute, and to keep federal-first downstream-only flow explicit.
+
+### Pipeline shape (`run_full_california_return`)
+
+1. Load + validate CA YAML; build effective `CA540Return`.
+2. Run federal pipeline (`compute_federal`).
+3. `sch_ca.compute(ca540, federal_results)` — federal-vs-CA divergences.
+4. `sch_d_540.compute(federal_results, config)` — federal pass-through, gated by attestation.
+5. `f540.compute(...)` — CA tax + credits + final liability.
+6. Header-merge taxpayer name/SSN into result dict.
+7. `_emit_ca_pdfs_internal` fills the three CA PDFs.
+
+### Sch CA generic kernel
+
+`forms/sch_ca.compute` produces line-by-line federal-vs-CA divergences from three input classes:
+- **Auto-derived** — kernel computes from federal results alone (e.g. social security subtraction).
+- **Named `CA540Return` fields** — single-amount values not on federal forms (RRB tier-1/2, PFL amounts).
+- **Worksheet rows** — multi-row user entries in `ca540.divergences[]`, each carrying `{ca_section, ca_line, federal_amount, addition_amount, subtraction_amount, source_note}`.
+
+Worksheet rows can be authored manually in YAML, or generated as a multi-tab `.fods` (OpenDocument Flat XML Spreadsheet) — one tab per Sch CA line that admits additions or subtractions — that the user opens in LibreOffice, fills in, and saves. tenforty reads the filled `.fods` back and converts to the YAML form. The generator + reader are planned but not yet implemented.
+
+### CA-specific scope-out attestations
+
+The kernel scopes out areas it doesn't fully implement (CA AMT, §1202 QSBS, §1031 like-kind exchanges, kiddie tax, lump-sum distributions, etc.). Each scope-out is a year-bounded attestation in `_CA_ATTESTATIONS` (TY2021-2025); some have `applies_in_years` to limit to specific years (e.g. §461(l) excess-business-loss). Users must affirm each scope-out at scenario load; otherwise the loader raises with a substantive `load_error` pointing at the workaround.
+
+## Oracle isolation
+
+Reference oracles live on separate git branches and are air-gapped from implementation. Implementers don't read oracle source. This prevents convergent bugs — an implementation that's wrong in the same way as its checker isn't actually checked.
+
+### Oracle branches
+
+| Branch | Form |
+|--------|------|
+| `oracle/k1-reference` | Schedule K-1 |
+| `oracle/f1120s-reference` | Form 1120-S |
+| `oracle/ca-540-reference` | CA Form 540 + Sch CA (540) |
+| `oracle/ca-sch-d-540-reference` | CA Sch D (540) |
+| `oracle/ca-sch-p-540-reference` | CA Sch P (540) |
+| `oracle/ca-100s-reference` | CA Form 100S (S-corp) |
+
+Each branch carries a hand-coded `tests/oracles/<form>_reference.py` plus internal-consistency tests for the oracle itself. The XLS workbook plays the same checker role for federal 1040 spine forms (and is also the production calculator there, until the port).
+
+### Process
+
+- **Implementers** don't read `tests/oracles/*`, oracle branches, or adjudication notes; don't import oracle modules. Integration tests call public oracle helpers (`compute_ca_540(ca_input)`, etc.) as black-box functions.
+- **Cross-checks** run as integration tests in branches that include both implementation and oracle — typically only at integration / merge time.
+- **Reviewers** read the oracle output and compare to native compute output. Disagreements surface as bug reports at field-name / structural level; specific values and formulas don't leak from oracle to implementer.
+
+### Tie-breaking
+
+When implementation and oracle disagree, the reviewer **does not consult IRS/FTB instructions** to break ties. That's a CPA-domain adjudication, not a code-domain one. Process: surface the disagreement, propose competing readings of the tax rule, let a separate CPA pass decide. If the reviewer runs to the source every disagreement, the oracle's role as an independent check collapses.
+
+### History
+
+The oracle-branch pattern emerged accidentally — oracles started intended to live alongside production code, but ended up on separate branches for non-architectural reasons. The result turned out to be a feature: branch-level separation enforces the air-gap mechanically.
+
+## Compute-once discipline
+
+Each form's `compute()` runs at most once per orchestration. When compute output is consumed by multiple downstream callers (e.g. an emit step plus another form's compute), running it twice risks divergence between the two callers' views. A single canonical run with the result merged into the orchestrator's results dict gives downstream consumers a single source of truth.
+
+### Pattern
+
+When a form's compute output is needed by multiple consumers:
+
+1. Lift the compute call into `_compute_1040_pipeline` (or `run_full_california_return` for state forms).
+2. Merge its output into the result dict the orchestrator returns.
+3. Have the emit pipeline read those keys from the passed-in `results` instead of recomputing.
+
+### Sidecar pattern for non-PDF data
+
+When a form's compute produces both PDF render values AND structured downstream data (e.g. K-1 fan-out tables, depreciation schedules), the convention is to return a `(pdf_dict, sidecar_dataclass)` tuple. The orchestrator stores the sidecar as a typed value in the upstream-state dict (e.g. `upstream["k1_fanout"]`) so downstream consumers read structured data rather than re-parsing PDF strings.
+
+Example: `forms/sch_e_part_ii.compute(scenario, upstream) -> tuple[dict, K1FanoutData]`. The fan-out is consumed by Sch E (rolls up totals), Form 8582 (passive activity loss), Form 8995 (QBI deduction), and Sch D (K-1 capital gain distributions).
+
+### Enforcement
+
+`TestComputeOnceDiscipline` (in the test suite) instruments key form `compute()` functions and asserts call-count == 1 across a representative orchestration. Any new form lifted into the compute pipeline should be added to this test.
+
+### Migration status
+
+Most federal 1040 spine forms still run their `compute()` only at PDF emit time. The discipline applies primarily to forms already lifted into the compute pipeline (currently `sch_e_part_ii` for K-1 fan-out; `sch_e` lifts as part of the per-line-breakdowns work). The eventual federal-spine port would lift every form into the compute pipeline.
 
 ## XLS Spreadsheet Details
 
@@ -85,7 +240,7 @@ For forms whose math is implemented in Python (`tenforty/forms/*.py`) rather tha
 - **W-2 state wages**: Cell C26 is NOT state wages (it's RRTA medicare tax). State wages = C28, state tax withheld = C29.
 - **1099-INT/DIV cell refs**: The interest/dividend input cells are on specific columns for "Payer #1". Interest → D6 on 1099-INT sheet. Ordinary dividends → D6, qualified → D7, cap gain distributions → D8 on 1099-DIV sheet.
 - **Tax uses IRS tax table rounding**: The XLS matches the IRS tax table ($50 brackets) rather than exact bracket math, so computed tax may differ by a few dollars from manual calculation.
-- **LibreOffice recalculation**: `soffice --headless --calc --convert-to xlsx` forces a full recalculation. Takes ~18s for this large workbook.
+- **LibreOffice recalculation**: `soffice --headless --calc --convert-to xlsx` forces a full recalculation. Takes ~18s for this large workbook (cold start). Each `compute_federal` call pays this cost; an in-process UNO API path achieves ~0.1s but requires the macOS codesign workaround (see Speed Optimization).
 
 ## Testing
 
@@ -151,88 +306,58 @@ def setUpClass(cls):
 - Real scenario files: `~/Documents/Taxes/YYYY/scenario.yaml` — NEVER in the repo.
 - The `.gitignore` covers `personal/`, `private/`, `scenario_real.yaml`, and `scripts/personal_data_config.yaml`.
 
-## Known Limitations & Future Work
+## Speed
 
-### Currently Working
+For project status (what's shipped, what's planned), see [README.md](../README.md) § Project status. This section covers the operational performance of the XLS engine.
 
-- Federal 1040 (W-2, 1099-INT, 1099-DIV with cap gain distributions, 1098 mortgage/property tax, Schedule A itemized, Schedule E Part I rental property)
-- PDF filling for f1040.pdf
-- Round-trip PDF verification (15/69 fields verified)
-- CLI entry point
-
-### Intentionally RED Tests (forms not yet wired)
-
-- `test_e2e_full_return.py` — 11 tests fail with `NotImplementedError`:
-  - **1099-B** (capital gains from stock sales) — needs `_flatten_1099_b()` + 8949 cell mappings
-  - **Schedule K-1** (S-corp pass-through) — needs `_flatten_k1s()` + Schedule E Part II cell mappings
-
-### Not Yet Implemented
-
-- California 540 / 540-CA (need own spreadsheets)
-- Form 1120-S (S-corp return, separate spreadsheet)
-- Form 8962 (Premium Tax Credit)
-- Schedule PDF mappings (Schedule A, D, E PDFs)
-- Playwright automation for freefilefillableforms.com
-
-### Speed Optimization
-
-- Current: ~18s per scenario (cold-start LibreOffice)
-- The `unoconvert`/`unoserver` daemon path was investigated and dropped: file-based conversion is still ~16-18s because LibreOffice XLSX parsing/exporting dominates, not process startup
-- **In-process UNO API achieves ~0.1s/scenario** (benchmarked, documented in `docs/superpowers/plans/2026-04-09-verification-and-speed.md` appendix). Requires: macOS code re-signing of LibreOffice's Python, running under LO's Python 3.12, keeping document open in memory.
-- Prerequisite for in-process UNO on macOS:
+- `oracle/engine.py` (default): cold-start LibreOffice via `soffice --headless --calc --convert-to xlsx`. ~18s per scenario.
+- `oracle/uno_engine.py`: warm `unoserver` daemon. ~2-3s per scenario when the daemon is running. Start via `scripts/start_unoserver.sh`.
+- An in-process UNO API path achieves ~0.1s/scenario but requires running under LibreOffice's bundled Python 3.12 plus a macOS code-signing dance:
   ```bash
   codesign --force --sign - "/Applications/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/LibreOfficePython"
   codesign --force --sign - "/Applications/LibreOffice.app/Contents/Frameworks/LibreOfficePython.framework"
   codesign --force --deep --sign - "/Applications/LibreOffice.app"
   ```
+- Practical sweet spot: `unoserver` daemon (~2-3s) is fast enough for development iteration without the codesign workaround.
 
 ## How To
 
+This section covers extending the codebase. For running an actual tax return as a user, see [README.md](../README.md) § Quick Start.
+
 ### Add a new tax year
 
-1. Download new XLS → `spreadsheets/federal/YYYY/1040.xlsx`
-2. Add `YYYY` key to `F1040.INPUTS` and `F1040.OUTPUTS` (use `inherit()` for minimal diffs)
-3. Convert to ODS: `python scripts/convert_to_ods.py spreadsheets/federal/YYYY/1040.xlsx`
-4. Download new f1040.pdf, label fields (fill with field names, render), update `Pdf1040._MAPPINGS`
-5. Create `docs/coverage/YYYY-field-coverage.md`
-6. Run full test suite
+1. Download new XLS → `spreadsheets/federal/YYYY/1040.xlsx` (or update existing if the vendor ships an in-place revision).
+2. Add `YYYY` key to `F1040.INPUTS`, `F1040.OUTPUTS`, and `F1040.SHEET_MAP` in `mappings/f1040.py` — use `inherit()` from the prior year for minimal diffs; only override the cells that changed.
+3. Add `tenforty/constants/yYYYY.py` with that year's brackets, exemptions, deductions, phaseouts, SALT cap, etc.
+4. Per-form PDF mappings: download new IRS PDFs, label fields, update each `mappings/pdf_*.py` with year-specific deltas via `inherit()`.
+5. Update test fixtures and oracle modules for any year-specific scope changes.
+6. Run the full test suite; cross-check the new year's compute against the new year's XLS.
 
 ### Add a new form type
 
-1. Add dataclass in `models.py`
-2. Add field to `Scenario`
-3. Add `_flatten_*` function in `flattener.py`
-4. Add cell references to `F1040.INPUTS` and `F1040.SHEET_MAP`
-5. Add output named ranges to `F1040.OUTPUTS`
-6. Add to `_FORM_REGISTRY` in `scenario.py`
-7. If the form has its own PDF, create a `Pdf*` mapping class and translation spec
-8. Write tests (unit + e2e)
-9. Remove the form from the `_reject_unhandled` check in `flattener.py`
+1. Add the form's data model in `models.py` as a dataclass; add a list / optional field to `Scenario`.
+2. Add a `_flatten_*` function in `oracle/flattener.py`. Route as INPUTS to the XLS (if there's a third-party XLS sheet for the form) or add a native-Python compute step in the orchestrator pipeline.
+3. Register the form in `_FORM_REGISTRY` in `scenario.py` so the YAML loader can recognize it.
+4. If native-Python: add `forms/<form>.py` with a `compute()` returning `dict[str, object]`. Register the call in the orchestrator.
+5. PDF mapping: create `mappings/pdf_<form>.py` exposing the 5-registry pattern.
+6. Tests: unit tests for compute, mapping partition tests, and at least one e2e test that exercises the form end-to-end.
+7. Hand-coded reference oracle: create on a new `oracle/<form>-reference` branch; air-gap from implementation.
+
+### Add a state return
+
+1. Identify the state's required forms; fetch each year's PDF templates into `pdfs/<state>/YYYY/`.
+2. Add per-year constants to `tenforty/constants/<state>_yYYYY.py` (brackets, deductions, phaseouts).
+3. Build a `run_full_<state>_return` orchestrator entry point on `ReturnOrchestrator`, mirroring `run_full_california_return`. State compute is downstream of federal: read federal results, apply state-specific divergences, run state forms.
+4. Native-Python form modules in `forms/` (state forms typically have no third-party XLS).
+5. State-specific scope-out attestations in `attestations.py` as a year-bounded registry, mirroring `_CA_ATTESTATIONS`.
+6. PDF mappings: one `mappings/pdf_<form>.py` per state form, 5-registry pattern.
+7. Hand-coded reference oracles: one `oracle/<state>-<form>-reference` branch per state form.
+8. Add a `tenforty <state>` CLI subcommand in `__main__.py`.
 
 ### Debug a wrong value
 
-1. Check the flattened keys: `flatten_scenario(scenario)` — is the value present?
-2. Check the cell mapping: does `F1040.get_inputs(2025)[key]` point to the right cell?
-3. Check the sheet: is the key in `F1040.SHEET_MAP`?
-4. Open the XLS manually and check the cell — is it merged? Is it the right row/column?
-5. Check the engine output: `orchestrator.compute_federal(scenario)` — does the value appear?
-6. If the value is for a PDF, check the translation: does `F1040_PDF_SPEC` rename or expand it?
-
-### Run the user's real taxes
-
-```bash
-python -m tenforty ~/Documents/Taxes/2025/scenario.yaml
-```
-
-The scenario file is outside the repo. Results print to terminal only. To generate a filled PDF:
-
-```python
-from tenforty.filing.pdf import PdfFiller
-from tenforty.mappings.pdf_1040 import Pdf1040
-from tenforty.result_translator import ResultTranslator
-from tenforty.translations.f1040_pdf import F1040_PDF_SPEC
-
-translator = ResultTranslator(F1040_PDF_SPEC)
-translated = translator.translate(results, scenario)
-PdfFiller().fill(Path("/tmp/f1040_2025.pdf"), Path("output.pdf"), Pdf1040.get_mapping(2025), translated)
-```
+1. Identify which compute path produced the value: federal XLS path (`compute_federal`) or native-Python form (`forms/<form>.compute`)?
+2. Federal XLS path: check the flattened input via `flatten_scenario(scenario)`. Check the cell mapping in `F1040.INPUTS` (and `SHEET_MAP` for direct cell refs). Check the corresponding OUTPUTS entry. Open the XLS manually if needed; verify the cell is the right row/column and not merged.
+3. Native-Python form: read `forms/<form>.py` compute body. Trace inputs from upstream (the `upstream` dict) and from `scenario`. Add a print or a debugger checkpoint.
+4. Cross-check against the oracle: does the corresponding `tests/oracles/<form>_reference` module produce a different value? If yes, surface as a bug report at the field-name / structural level (per oracle isolation rules).
+5. PDF render path: check the relevant `mappings/pdf_<form>.py` to see whether the compute key flows to the right PDF widget and whether suppression / aggregation / derivation rules apply.

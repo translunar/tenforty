@@ -7,7 +7,11 @@ from tenforty.attestations import validate_load_time
 from tenforty.models import (
     AccountingMethod,
     Address,
+    CA540Return,
+    CASchCAAdjustment,
     DepreciableAsset,
+    DivergenceDirection,
+    DivergenceSource,
     EntityType,
     FilingStatus,
     Form1098,
@@ -26,6 +30,7 @@ from tenforty.models import (
     Scenario,
     ScheduleK1,
     TaxReturnConfig,
+    VoluntaryContribution,
     W2,
 )
 
@@ -152,6 +157,52 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
     )
 
 
+def _load_voluntary_contribution(data: dict) -> VoluntaryContribution:
+    return VoluntaryContribution(
+        fund_code=data["fund_code"],
+        amount=float(data["amount"]),
+    )
+
+
+def _load_ca_divergence(data: dict) -> CASchCAAdjustment:
+    return CASchCAAdjustment(
+        source=DivergenceSource(data["source"]),
+        sch_ca_line=data["sch_ca_line"],
+        direction=DivergenceDirection(data["direction"]),
+        amount=float(data["amount"]),
+        description=data["description"],
+        federal_source=data.get("federal_source"),
+        pub1001_ref=data.get("pub1001_ref"),
+    )
+
+
+def _load_ca540(data: dict | None) -> CA540Return | None:
+    if data is None:
+        return None
+    return CA540Return(
+        voluntary_contributions=[
+            _load_voluntary_contribution(vc)
+            for vc in data.get("voluntary_contributions", [])
+        ],
+        estimated_payments=float(data.get("estimated_payments", 0.0)),
+        use_tax=float(data.get("use_tax", 0.0)),
+        estimated_tax_penalty=float(data.get("estimated_tax_penalty", 0.0)),
+        ptet_credit=float(data.get("ptet_credit", 0.0)),
+        rrb_tier_1_2_amount=(
+            float(data["rrb_tier_1_2_amount"])
+            if data.get("rrb_tier_1_2_amount") is not None else None
+        ),
+        pfl_amount=(
+            float(data["pfl_amount"])
+            if data.get("pfl_amount") is not None else None
+        ),
+        divergences=[
+            _load_ca_divergence(d)
+            for d in data.get("divergences", [])
+        ],
+    )
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
@@ -214,7 +265,8 @@ def load_scenario(path: Path) -> Scenario:
         form_data[field_name] = [model_cls(**item) for item in items]
 
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
-    scenario = Scenario(config=config, s_corp_return=s_corp_return, **form_data)
+    ca540 = _load_ca540(data.get("ca540"))
+    scenario = Scenario(config=config, s_corp_return=s_corp_return, ca540=ca540, **form_data)
     _validate_schedule_k1s(scenario)
     return scenario
 
