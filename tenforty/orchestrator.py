@@ -662,29 +662,22 @@ class ReturnOrchestrator:
         # 3. Build effective CA540Return — ca_yaml is authoritative, but conflict-detect.
         effective_ca540 = self._build_effective_ca540(scenario.ca540, ca_yaml)
 
-        # 4. Re-derive federal results.
+        # 4. Re-derive federal results. compute_federal exposes sch_1_line_*
+        #    keys directly (per #80), so downstream CA computes consume the
+        #    federal results dict without an interim bridge.
         federal_results = self.compute_federal(scenario)
 
-        # 5. Temporary sch_1 bridge (until issue #80 ships) — derive_auto_divergences
-        #    needs sch_1.compute output that compute_federal doesn't yet expose.
-        #    Match T14b's E2E test bridge comment style.
-        sch_e_results = form_sch_e.compute(scenario, upstream={})
-        sch_1_results = form_sch_1.compute(
-            scenario, upstream={"sch_e": sch_e_results},
-        )
-        federal_results_with_sch_1 = {**federal_results, **sch_1_results}
-
-        # 6. CA computes — Sch CA → Sch D 540 → Form 540 main.
+        # 5. CA computes — Sch CA → Sch D 540 → Form 540 main.
         sch_ca_results = form_sch_ca.compute(
-            effective_ca540, federal_results_with_sch_1,
+            effective_ca540, federal_results,
         )
         sch_d_540_results = form_sch_d_540.compute(
-            federal_results_with_sch_1, scenario.config.__dict__,
+            federal_results, scenario.config.__dict__,
         )
         f540_results = form_f540.compute(
             year=scenario.config.year,
             filing_status=scenario.config.filing_status,
-            federal_agi=federal_results_with_sch_1["agi"],
+            federal_agi=federal_results["agi"],
             ca_agi=sch_ca_results["sch_ca_ca_agi"],
             ca540=effective_ca540,
             num_dependents=len(scenario.config.dependents),
