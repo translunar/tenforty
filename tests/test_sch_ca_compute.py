@@ -2,10 +2,11 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms.sch_ca import compute as sch_ca_compute
-from tenforty.models import CA540Return, CASchCAAdjustment, DivergenceDirection, DivergenceSource
+from tenforty.models import CA540Return, CASchCAAdjustment, DivergenceDirection, DivergenceSource, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 
@@ -255,16 +256,30 @@ class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
     `compute_federal_results` straight into `sch_ca.compute`.
     """
 
+    # Cache federal compute results per fixture across test methods. Multiple
+    # tests in this class reuse the same fixture (e.g. simple_w2.yaml drives
+    # both the RRB and PFL named-field routing tests); without this cache
+    # each method re-runs LibreOffice + sch_1.compute, costing ~5-10s/dup.
+    # Tests treat the returned dict as read-only input to sch_ca_compute;
+    # mutations would be a test bug, so no defensive copy is added.
+    _federal_cache: ClassVar[dict[str, tuple[Scenario, dict]]] = {}
+
+    @classmethod
+    def _compute_federal_cached(cls, fixture_name: str) -> tuple[Scenario, dict]:
+        if fixture_name not in cls._federal_cache:
+            scenario = load_scenario(FIXTURES_DIR / fixture_name)
+            with tempfile.TemporaryDirectory() as tmp:
+                orch = ReturnOrchestrator(
+                    spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                    work_dir=Path(tmp),
+                )
+                f1040_results = orch.compute_federal(scenario)
+            sch_1_results = form_sch_1.compute(scenario, upstream={})
+            cls._federal_cache[fixture_name] = (scenario, {**f1040_results, **sch_1_results})
+        return cls._federal_cache[fixture_name]
+
     def _run_federal(self, fixture_name: str):
-        scenario = load_scenario(FIXTURES_DIR / fixture_name)
-        with tempfile.TemporaryDirectory() as tmp:
-            orch = ReturnOrchestrator(
-                spreadsheets_dir=REPO_ROOT / "spreadsheets",
-                work_dir=Path(tmp),
-            )
-            f1040_results = orch.compute_federal(scenario)
-        sch_1_results = form_sch_1.compute(scenario, upstream={})
-        return scenario, {**f1040_results, **sch_1_results}
+        return self._compute_federal_cached(fixture_name)
 
     def test_state_refund_auto_derive_fires_on_real_federal_output(self):
         scenario, federal_results = self._run_federal("state_refund_benefit_rule.yaml")

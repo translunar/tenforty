@@ -20,7 +20,7 @@ from tenforty.models import (
     Scenario,
     TaxReturnConfig,
 )
-from tests.helpers import scope_out_attestation_defaults
+from tests.helpers import CA_SCOPE_OUT_FIELDS, scope_out_attestation_defaults
 
 
 def _make_ca_v1_smoke_scenario() -> Scenario:
@@ -36,21 +36,7 @@ def _make_ca_v1_smoke_scenario() -> Scenario:
     # Flip every CA-specific scope-out to True so the v1 single-filer
     # smoke scenario passes the load-time CA gates (no NOL carryover,
     # no depreciation divergence, no IRA basis divergence, etc.).
-    for ca_key in (
-        "acknowledges_no_540nr_filing",
-        "acknowledges_no_ca_amt_preferences",
-        "acknowledges_no_ca_sch_d_federal_state_divergence",
-        "acknowledges_no_ca_nol_carryover",
-        "acknowledges_no_ca_depreciation_divergence",
-        "acknowledges_no_ca_ira_basis_divergence",
-        "acknowledges_no_ca_rdp_status",
-        "acknowledges_no_excess_business_loss_carryover",
-        "acknowledges_no_1031_personal_property_divergence",
-        "acknowledges_no_ic_worker_reclassification",
-        "acknowledges_no_other_state_tax_credit",
-        "acknowledges_no_railroad_retirement_benefits",
-        "acknowledges_no_paid_family_leave_benefits",
-    ):
+    for ca_key in CA_SCOPE_OUT_FIELDS:
         attestations[ca_key] = True
     return Scenario(
         config=TaxReturnConfig(
