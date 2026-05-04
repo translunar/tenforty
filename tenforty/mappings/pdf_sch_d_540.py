@@ -54,9 +54,10 @@ class PdfSchD540(PdfFormMapping[dict[str, str]]):
     (as a value), `_AGGREGATIONS_<year>` (as a key),
     `_DERIVATIONS_<year>` (as a key), or `_SUPPRESSED_<year>`. This
     differs from f540's compute-key-side partition because Sch D (540)
-    v1 has only one compute key in scope; the partition that matters
-    here is which PDF cells the filler is responsible for vs. silently
-    leaving blank.
+    has a small fixed set of compute keys (federal net, CA net,
+    subtraction total, addition total, plus orchestrator-supplied
+    header keys); the partition that matters here is which PDF cells
+    the filler is responsible for vs. silently leaving blank.
     """
 
     _FORM_NAME = "Schedule D (540)"
@@ -115,23 +116,18 @@ _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {}
 
 
 # PDF cells whose value is derived from compute outputs at fill time.
-#
-# Convention: derivation lambdas consume compute keys but do not own
-# them. Keys referenced via `c[...]` must already appear in
-# `_MAPPING_2025`, `_AGGREGATIONS_2025`, or `_SUPPRESSED_2025`. (The
-# only consumed key here, `sch_d_540_net_capital_gain`, is owned in
-# `_MAPPING_2025`.) Derivations that need federal-results passthrough
-# read from a separate compute key reserved by the orchestrator.
+# Derivation lambdas consume compute keys via `c[...]`. Keys may be
+# either widget-mapped (also appearing as a value in `_MAPPING_2025`)
+# or compute-only (emitted by `sch_d_540.compute()` for derivation use
+# without a direct PDF cell, e.g. `sch_d_540_federal_net`).
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
-    # Line 10 — federal Form 1040 line 7a (federal Sch D net). Under
-    # the v1 zero-divergence attestation this equals line 8; we
-    # consume `sch_d_540_net_capital_gain` directly rather than
-    # introducing a separate orchestrator-supplied key for the
-    # federal value.
-    "540 sch D - 4020": lambda c: c["sch_d_540_net_capital_gain"],
-    # Line 11 — California gain from line 8 or loss from line 9. With
-    # zero divergence and no separate loss-limit treatment in v1,
-    # this is the same value as line 10 (and line 8).
+    # Line 10 — federal Sch D line 16 (pre-CA-divergence). Distinct
+    # from line 8 (CA net = federal_net − subs + adds) when worksheet
+    # entries exist; equal otherwise.
+    "540 sch D - 4020": lambda c: c["sch_d_540_federal_net"],
+    # Line 11 — California gain from line 8 or loss from line 9. v1
+    # does not implement a separate CA loss-limit; consumes the CA
+    # net (line 8) directly.
     "540 sch D - 4021": lambda c: c["sch_d_540_net_capital_gain"],
 }
 

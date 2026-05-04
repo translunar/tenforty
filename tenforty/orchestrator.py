@@ -738,7 +738,6 @@ class ReturnOrchestrator:
         )
         sch_d_540_results = form_sch_d_540.compute(
             federal_results,
-            scenario.config.__dict__,
             worksheet_adjustments=fods_div.sch_d_540,
         )
         f540_results = form_f540.compute(

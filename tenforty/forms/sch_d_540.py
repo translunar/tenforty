@@ -16,7 +16,6 @@ from tenforty.rounding import irs_round
 
 def compute(
     federal_results: dict,
-    config: dict,
     worksheet_adjustments: Sequence[CASchD540Adjustment] = (),
 ) -> dict:
     federal_net = federal_results.get("schd_line16", 0.0) or 0.0
@@ -27,6 +26,7 @@ def compute(
     net = federal_net - subs + adds
 
     return {
+        "sch_d_540_federal_net": irs_round(federal_net),
         "sch_d_540_net_capital_gain": irs_round(net),
         "sch_d_540_total_subtractions": irs_round(subs),
         "sch_d_540_total_additions": irs_round(adds),
