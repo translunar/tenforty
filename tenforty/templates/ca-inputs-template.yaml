@@ -1,0 +1,14 @@
+# Starter CA inputs template. Copy to <basename>.ca.yaml next to your
+# federal YAML, edit as needed, then run `tenforty ca <federal.yaml>`.
+#
+# Divergences are sourced from <basename>.ca.fods (auto-discovered by
+# tenforty ca). Author your divergences in the .fods worksheet, not here.
+
+ca540:
+  estimated_payments: 0.0          # CA Form 540-ES quarterly total
+  voluntary_contributions: []      # list of {name: str, amount: float}
+  use_tax: 0.0                     # CA 540 line 91 (use tax)
+  estimated_tax_penalty: 0.0       # CA 540 line 113 (FTB Form 5805)
+  ptet_credit: 0.0                 # CA 540 line 50 (PTET credit)
+  rrb_tier_1_2_amount: null        # null | float — RRB Tier 1/2 (auto-derive input)
+  pfl_amount: null                 # null | float — Paid Family Leave (auto-derive input)

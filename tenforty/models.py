@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import Enum
 from types import MappingProxyType
@@ -603,6 +603,26 @@ class CASchCAAdjustment:
 
 
 @dataclass
+class CASchD540Adjustment:
+    """A single Schedule D (540) federal-vs-CA capital-gains adjustment.
+
+    Mirrors ``CASchCAAdjustment``'s shape so the importer can route Sch D
+    540 worksheet tabs (§1202 QSBS, §1045 rollover, §1400Z, pre-1987
+    inherited basis, Peace Corps PR, etc.) into a separate typed list.
+
+    Compute-side wiring is the immediate follow-up: California Schedule D
+    (540) user-divergence compute support. Until that follow-up ships, these
+    adjustments are imported and surfaced in ``<basename>.ca-resolved.yaml``
+    for visibility but are NOT consumed by ``sch_d_540.compute``."""
+
+    source: DivergenceSource
+    direction: DivergenceDirection
+    amount: float
+    description: str
+    pub1001_ref: str | None = None
+
+
+@dataclass
 class CA540Return:
     """California 540 (resident, full-year) return data.
 
@@ -628,6 +648,9 @@ class CA540Return:
     # can route it as an §B 7 Col B subtraction (FTB Pub 1001 p.17).
     pfl_amount: float | None = None
     divergences: list[CASchCAAdjustment] = field(default_factory=list)
+
+    def with_extra_divergences(self, extra: list["CASchCAAdjustment"]) -> "CA540Return":
+        return replace(self, divergences=[*self.divergences, *extra])
 
 
 @dataclass
