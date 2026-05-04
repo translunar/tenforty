@@ -25,7 +25,6 @@ config:
   acknowledges_no_elective_payment_election: true
   acknowledges_no_540nr_filing: true
   acknowledges_no_ca_amt_preferences: true
-  acknowledges_no_ca_sch_d_federal_state_divergence: true
   acknowledges_no_ca_nol_carryover: true
   acknowledges_no_ca_depreciation_divergence: true
   acknowledges_no_ca_ira_basis_divergence: true

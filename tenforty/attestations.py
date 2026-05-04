@@ -553,21 +553,6 @@ _CA_ATTESTATIONS = (
         compute_error="",
     ),
     Attestation(
-        field="acknowledges_no_ca_sch_d_federal_state_divergence",
-        triggered_when=_never,
-        load_error=(
-            "Scenario config field `acknowledges_no_ca_sch_d_federal_state_divergence` "
-            "is required and must be either true or false. Sub-plan-3 v1 ships "
-            "CA Schedule D (540) as a federal pass-through; the federal-vs-CA "
-            "divergences (§1202 QSBS exclusion, §1045 QSBS rollover, §1400Z QOZ "
-            "fund deferrals, pre-1987 inherited basis, Peace Corps principal-"
-            "residence service) are NOT modeled. Set true to affirm none apply. "
-            "Compute will raise NotImplementedError if any divergence signal "
-            "appears and this attestation is False."
-        ),
-        compute_error="",
-    ),
-    Attestation(
         field="acknowledges_no_ca_nol_carryover",
         triggered_when=_never,
         load_error=(

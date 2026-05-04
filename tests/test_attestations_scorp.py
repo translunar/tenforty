@@ -56,7 +56,6 @@ def _make_scorp_cfg(**overrides) -> TaxReturnConfig:
         has_foreign_accounts=False, prior_year_itemized=False,
         acknowledges_no_540nr_filing=False,
         acknowledges_no_ca_amt_preferences=False,
-        acknowledges_no_ca_sch_d_federal_state_divergence=False,
         acknowledges_no_ca_nol_carryover=False,
         acknowledges_no_ca_depreciation_divergence=False,
         acknowledges_no_ca_ira_basis_divergence=False,

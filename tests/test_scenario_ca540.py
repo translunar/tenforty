@@ -44,7 +44,6 @@ _YAML_WITHOUT_CA540 = textwrap.dedent("""\
       acknowledges_no_elective_payment_election: false
       acknowledges_no_540nr_filing: false
       acknowledges_no_ca_amt_preferences: false
-      acknowledges_no_ca_sch_d_federal_state_divergence: false
       acknowledges_no_ca_nol_carryover: false
       acknowledges_no_ca_depreciation_divergence: false
       acknowledges_no_ca_ira_basis_divergence: false
@@ -93,7 +92,6 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
       acknowledges_no_elective_payment_election: false
       acknowledges_no_540nr_filing: false
       acknowledges_no_ca_amt_preferences: false
-      acknowledges_no_ca_sch_d_federal_state_divergence: false
       acknowledges_no_ca_nol_carryover: false
       acknowledges_no_ca_depreciation_divergence: false
       acknowledges_no_ca_ira_basis_divergence: false
