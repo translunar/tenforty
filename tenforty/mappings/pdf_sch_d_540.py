@@ -1,16 +1,14 @@
 """PDF field mapping for FTB 2025 Schedule D (540).
 
 Mirrors the five-registry design from `pdf_f540.py` and `pdf_sch_ca.py`.
-The Sch D (540) v1 surface is intentionally narrow because v1 gates
-federal-state divergence (§1202 QSBS, §1045 QSBS rollover, §1400Z QOZ
-deferrals, pre-1987 inherited basis, Peace Corps principal residence)
-behind the
-`acknowledges_no_ca_sch_d_federal_state_divergence` attestation. With
-the attestation True, `sch_d_540.compute()` emits exactly one key —
-`sch_d_540_net_capital_gain` — equal to federal Sch D net (line 16).
+`sch_d_540.compute()` now emits three keys driven by worksheet entries:
+`sch_d_540_net_capital_gain` (federal Sch D net, line 16),
+`sch_d_540_total_subtractions` (line 12a subtraction total → Sch CA Col B),
+and `sch_d_540_total_additions` (line 12b addition total → Sch CA Col C).
 
-- `_MAPPING_2025` — direct compute_key → PDF-field-path. Three entries:
-  the single compute output (line 8 net gain/loss) plus two `[PLANNED]`
+- `_MAPPING_2025` — direct compute_key → PDF-field-path. Five entries:
+  the three compute outputs (line 8 net gain/loss, line 12a subtraction
+  total, line 12b addition total) plus two `[PLANNED]`
   orchestrator-supplied keys (filer name on line above row 1, filer SSN
   in the box to its right).
 - `_AGGREGATIONS_2025` — empty for Sch D (540). The form has no PDF cell
@@ -19,21 +17,18 @@ the attestation True, `sch_d_540.compute()` emits exactly one key —
   rather than synthesised at fill time.
 - `_DERIVATIONS_2025` — two entries: line 10 (federal Sch D net)
   passthrough and line 11 (CA gain from line 8 / loss from line 9).
-  Under the v1 zero-divergence attestation, line 10 == line 8 ==
-  line 11; the form still benefits from displaying these explicitly so
-  the §A line 7a flow-through to Schedule CA (lines 12a/12b) reads
-  correctly as zero rather than blank.
+  Lines 10 and 11 display the federal and CA net capital gain so that
+  the §A line 7a flow-through to Schedule CA reads correctly.
 - `_SUPPRESSED_2025` — extended SP3 SUPPRESSED semantics: includes
   (a) all 110 detail-row cells (rows 1a..1v columns a–e) — these are
   per-transaction inputs that v1 does not enumerate; the federal Sch D
-  worksheet is the source of truth, (b) line 2 K-1 net (d/e), line 3
+  worksheet is the source of truth, and (b) line 2 K-1 net (d/e), line 3
   capital gain distributions, lines 4–7 (within-form sums of the
   detail rows + carryover), line 9 ($3,000/$1,500 loss limit; v1
-  defers loss-limit display to consumers reading the federal Sch D),
-  and (c) lines 12a/12b (federal-state divergence delta routed to
-  Sch CA §A line 7a Col B/C; structurally zero under the v1 no-
-  divergence attestation, suppressed rather than rendered as 0 to
-  avoid noise on a divergence-only cell).
+  defers loss-limit display to consumers reading the federal Sch D).
+  Lines 12a/12b are no longer suppressed — they are driven by
+  `sch_d_540_total_subtractions` and `sch_d_540_total_additions` in
+  `_MAPPING_2025`.
 - `_CHECKBOX_STATES_2025` — empty for Sch D (540). The 2025 form has
   no /Btn widgets; all 125 named widgets are /Tx text widgets.
 
@@ -102,9 +97,13 @@ _MAPPING_2025: dict[str, str] = {
     "sch_d_540_taxpayer_name":      "540 sch D - 1001",
     "sch_d_540_taxpayer_ssn":       "540 sch D - 1002",
     # Page 4 — Line 8: Net gain or (loss). Combine line 4 and line 7.
-    # This is the sole compute output of `sch_d_540.compute()` —
     # `sch_d_540_net_capital_gain` = irs_round(federal Sch D line 16).
     "sch_d_540_net_capital_gain":   "540 sch D - 4018",
+    # Page 4 — Lines 12a/12b: federal-state divergence delta routed to
+    # Schedule CA (540) §A line 7a Col B/C. Driven by worksheet entries
+    # accumulated in `sch_d_540.compute()`.
+    "sch_d_540_total_subtractions": "540 sch D - 4022",  # line 12a → Sch CA Col B
+    "sch_d_540_total_additions":    "540 sch D - 4023",  # line 12b → Sch CA Col C
 }
 
 
@@ -137,18 +136,15 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
 }
 
 
-# PDF cells with no direct compute backing on the 2025 form. Three
-# subsets:
+# PDF cells with no direct compute backing on the 2025 form. Two subsets:
 #   (a) detail rows 1a..1v columns a–e (110 cells) — per-transaction
 #       inputs not enumerated by v1; federal Sch D worksheet is the
 #       source of truth.
 #   (b) within-form sums (lines 2, 3, 4, 5, 6, 7, 9) — derivable from
 #       (a) but v1 does not enumerate transactions, so suppression is
 #       the honest v1 behaviour rather than rendering 0 in a sum cell.
-#   (c) lines 12a/12b — federal-state divergence delta. Structurally
-#       zero under the v1 no-divergence attestation; suppressing
-#       avoids rendering "0" on a divergence-only cell that, when
-#       blank, signals "no divergence" more clearly to a human reader.
+# Lines 12a/12b are NOT suppressed; they are mapped in `_MAPPING_2025`
+# and driven by worksheet entries via `sch_d_540.compute()`.
 _SUPPRESSED_2025: frozenset[str] = frozenset({
     # (a) Detail rows 1a..1f (page 1, 1003..1032 = 30 cells)
     "540 sch D - 1003", "540 sch D - 1004", "540 sch D - 1005",
@@ -210,12 +206,6 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
     "540 sch D - 4017",  # line 7: total 2025 loss (line 5 + line 6)
     # (b) Line 9 — smaller of loss / $3,000 / $1,500 MFS
     "540 sch D - 4019",
-    # (c) Lines 12a/12b — federal-state divergence delta routed to
-    # Schedule CA (540) §A line 7a Col B/C. Structurally zero under
-    # the v1 zero-divergence attestation; rendering "0" on a
-    # divergence-only cell would add noise.
-    "540 sch D - 4022",  # line 12a: line 10 − line 11 (Col B add to Sch CA)
-    "540 sch D - 4023",  # line 12b: line 11 − line 10 (Col C add to Sch CA)
 })
 
 
