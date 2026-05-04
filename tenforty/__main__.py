@@ -140,22 +140,37 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output-dir", type=Path, required=True, metavar="DIR",
         help="Directory to write the CA-state PDFs to (required)",
     )
+    p_ca.add_argument(
+        "--divergences", type=Path, default=None, metavar="PATH",
+        help=(
+            "Explicit path to the CA divergences .fods worksheet. If omitted, "
+            "tenforty looks for <basename>.ca.fods next to the federal YAML."
+        ),
+    )
+    p_ca.add_argument(
+        "--no-fods", action="store_true",
+        help=(
+            "Disable .fods auto-discovery. Use when CA divergences are managed "
+            "directly in the .ca.yaml's `divergences:` list."
+        ),
+    )
 
     p_fods = subparsers.add_parser(
         "fods",
-        help="Sub-plan 3.5: emit FODS spreadsheet (not yet implemented)",
+        help="Note: .fods is auto-discovered by `tenforty ca`. This subcommand prints a redirect message.",
         description=(
-            "Sub-plan 3.5 will emit a FODS spreadsheet representation of a "
-            "return. This subcommand is reserved and not yet implemented."
+            "Note: .fods worksheet handling is now built into `tenforty ca`. "
+            "Place your edited <basename>.ca.fods next to your federal YAML "
+            "and run: tenforty ca <federal.yaml> --output-dir DIR"
         ),
     )
     p_fods.add_argument(
         "scenario", type=Path, nargs="?", default=None,
-        help="Path to scenario YAML (reserved for Sub-plan 3.5)",
+        help="(Deprecated: kept for backward compatibility)",
     )
     p_fods.add_argument(
         "output", type=Path, nargs="?", default=None,
-        help="Path to output FODS file (reserved for Sub-plan 3.5)",
+        help="(Deprecated: kept for backward compatibility)",
     )
 
     return parser
@@ -221,6 +236,9 @@ def _run_ca(args: argparse.Namespace) -> int:
         scenario=scenario,
         ca_yaml_path=ca_yaml,
         output_dir=args.output_dir,
+        federal_yaml_path=federal_yaml,
+        fods_path=args.divergences,
+        disable_fods=args.no_fods,
     )
 
     _print_emitted_pdfs(emitted)
@@ -228,8 +246,13 @@ def _run_ca(args: argparse.Namespace) -> int:
 
 
 def _run_fods(_args: argparse.Namespace) -> int:
-    print("Sub-plan 3.5 not yet implemented", file=sys.stderr)
-    return 2
+    print(
+        "Note: .fods worksheet handling is now built into `tenforty ca`. "
+        "Place your edited <basename>.ca.fods next to your federal YAML "
+        "and run: tenforty ca <federal.yaml> --output-dir DIR",
+        file=sys.stderr,
+    )
+    return 0
 
 
 def main() -> int:

@@ -20,6 +20,7 @@ from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import f1120s as form_f1120s
 from tenforty.forms import sch_ca as form_sch_ca
+from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -45,6 +46,7 @@ from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.models import (
     CA540Return,
+    CASchD540Adjustment,
     EntityType,
     FilingStatus,
     K1Allocation,
@@ -153,6 +155,38 @@ def _flatten_k1_party(
             f"{type(party).__name__}"
         )
     return flat
+
+
+def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
+    """Serialize a CA540Return to a plain dict suitable for YAML emission.
+
+    Called only by ``_emit_ca_resolved_snapshot``; not intended for use
+    outside the resolved-snapshot writer path.
+    """
+    return {
+        "estimated_payments": ca540.estimated_payments,
+        "use_tax": ca540.use_tax,
+        "estimated_tax_penalty": ca540.estimated_tax_penalty,
+        "ptet_credit": ca540.ptet_credit,
+        "rrb_tier_1_2_amount": ca540.rrb_tier_1_2_amount,
+        "pfl_amount": ca540.pfl_amount,
+        "voluntary_contributions": [
+            {"name": v.name, "amount": v.amount}
+            for v in ca540.voluntary_contributions
+        ],
+        "divergences": [
+            {
+                "source": d.source.name,
+                "sch_ca_line": d.sch_ca_line,
+                "direction": d.direction.name,
+                "amount": d.amount,
+                "description": d.description,
+                "federal_source": d.federal_source,
+                "pub1001_ref": d.pub1001_ref,
+            }
+            for d in ca540.divergences
+        ],
+    }
 
 
 class ReturnOrchestrator:
@@ -617,11 +651,31 @@ class ReturnOrchestrator:
         emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
         return results, emitted
 
+    def discover_fods_divergences(
+        self, federal_yaml_path: Path, fods_override: Path | None = None,
+    ) -> FodsDivergences:
+        """Locate and parse the `<basename>.ca.fods` worksheet, if any.
+
+        Discovery rules:
+        - If ``fods_override`` is given, parse it (no auto-discovery).
+        - Otherwise look for ``<basename>.ca.fods`` next to the federal YAML.
+        - Return empty FodsDivergences if no .fods is found and no override given.
+        """
+        if fods_override is not None:
+            return import_fods_divergences(fods_override)
+        candidate = federal_yaml_path.with_suffix(".ca.fods")
+        if candidate.exists():
+            return import_fods_divergences(candidate)
+        return FodsDivergences()
+
     def run_full_california_return(
         self,
         scenario: Scenario,
         ca_yaml_path: Path,
         output_dir: Path,
+        federal_yaml_path: Path | None = None,
+        fods_path: Path | None = None,
+        disable_fods: bool = False,
     ) -> tuple[dict, dict[str, Path]]:
         """Canonical CA-state entry point. Re-derives federal results, runs
         Sch CA + Sch D 540 + 540 main compute, emits state PDFs.
@@ -661,6 +715,23 @@ class ReturnOrchestrator:
 
         # 3. Build effective CA540Return — ca_yaml is authoritative, but conflict-detect.
         effective_ca540 = self._build_effective_ca540(scenario.ca540, ca_yaml)
+
+        # 3b. Discover and merge .fods worksheet divergences, if any.
+        fods_div = (
+            FodsDivergences()
+            if disable_fods or federal_yaml_path is None
+            else self.discover_fods_divergences(
+                federal_yaml_path=federal_yaml_path,
+                fods_override=fods_path,
+            )
+        )
+        if fods_div.sch_ca:
+            effective_ca540 = effective_ca540.with_extra_divergences(fods_div.sch_ca)
+        # fods_div.sch_d_540 is parsed and discarded at this layer. A subsequent
+        # resolved-snapshot writer will surface these worksheet entries for user
+        # visibility; until California Schedule D (540) user-divergence compute
+        # support ships, the existing acknowledges_no_ca_sch_d_federal_state_divergence
+        # attestation keeps the compute path safe (raise-or-pass-through).
 
         # 4. Re-derive federal results. compute_federal exposes sch_1_line_*
         #    keys directly (per #80), so downstream CA computes consume the
@@ -711,6 +782,17 @@ class ReturnOrchestrator:
         # 8. Emit PDFs.
         ca_pdfs = self._emit_ca_pdfs_internal(scenario, ca_results, output_dir)
 
+        # 9. Emit resolved snapshot (skipped when no federal_yaml_path — older
+        #    callers without a federal YAML don't get a snapshot).
+        if federal_yaml_path is not None:
+            self._emit_ca_resolved_snapshot(
+                federal_yaml_path=federal_yaml_path,
+                output_dir=output_dir,
+                effective_ca540=effective_ca540,
+                federal_results=federal_results,
+                sch_d_540_adjustments=fods_div.sch_d_540,
+            )
+
         return ca_results, ca_pdfs
 
     def _verify_ca_yaml_freshness(
@@ -723,6 +805,40 @@ class ReturnOrchestrator:
         check (verify CA YAML matches live compute_federal outputs).
         """
         return None
+
+    def _emit_ca_resolved_snapshot(
+        self,
+        federal_yaml_path: Path,
+        output_dir: Path,
+        effective_ca540: CA540Return,
+        federal_results: dict,
+        sch_d_540_adjustments: list[CASchD540Adjustment],
+    ) -> None:
+        """Write a debug ``<basename>.ca-resolved.yaml`` capturing the merged
+        in-memory CA view (federal context + ca540 with all divergences
+        flattened + Sch D 540 worksheet entries). User-facing review artifact;
+        never read back by tenforty."""
+        basename = federal_yaml_path.stem
+        snapshot_path = output_dir / f"{basename}.ca-resolved.yaml"
+        payload = {
+            "federal_context": {
+                "year": federal_results.get("year"),
+                "agi": federal_results.get("agi"),
+                "filing_status": federal_results.get("filing_status"),
+            },
+            "ca540": _ca540_to_yaml_dict(effective_ca540),
+            "sch_d_540_divergences": [
+                {
+                    "source": d.source.name,
+                    "direction": d.direction.name,
+                    "amount": d.amount,
+                    "description": d.description,
+                    "pub1001_ref": d.pub1001_ref,
+                }
+                for d in sch_d_540_adjustments
+            ],
+        }
+        snapshot_path.write_text(yaml.safe_dump(payload, sort_keys=False))
 
     def _build_effective_ca540(
         self,
