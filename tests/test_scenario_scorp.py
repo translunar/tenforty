@@ -50,7 +50,6 @@ _YAML_WITH_SCORP = textwrap.dedent("""\
       # CA-specific scope-out attestations (Sub-plan 3, Task 3)
       acknowledges_no_540nr_filing: false
       acknowledges_no_ca_amt_preferences: false
-      acknowledges_no_ca_sch_d_federal_state_divergence: false
       acknowledges_no_ca_nol_carryover: false
       acknowledges_no_ca_depreciation_divergence: false
       acknowledges_no_ca_ira_basis_divergence: false
@@ -152,7 +151,6 @@ _MINIMAL_NO_SCORP_YAML = textwrap.dedent("""\
       # CA-specific scope-out attestations (Sub-plan 3, Task 3)
       acknowledges_no_540nr_filing: false
       acknowledges_no_ca_amt_preferences: false
-      acknowledges_no_ca_sch_d_federal_state_divergence: false
       acknowledges_no_ca_nol_carryover: false
       acknowledges_no_ca_depreciation_divergence: false
       acknowledges_no_ca_ira_basis_divergence: false

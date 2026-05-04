@@ -8,7 +8,6 @@ from tests.helpers import scope_out_attestation_defaults
 _EXPECTED_CA_FIELDS = frozenset({
     "acknowledges_no_540nr_filing",
     "acknowledges_no_ca_amt_preferences",
-    "acknowledges_no_ca_sch_d_federal_state_divergence",
     "acknowledges_no_ca_nol_carryover",
     "acknowledges_no_ca_depreciation_divergence",
     "acknowledges_no_ca_ira_basis_divergence",

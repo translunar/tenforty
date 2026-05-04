@@ -46,7 +46,6 @@ def _base_config(**overrides) -> dict:
         # CA-specific scope-out attestations (Sub-plan 3, Task 3)
         "acknowledges_no_540nr_filing": False,
         "acknowledges_no_ca_amt_preferences": False,
-        "acknowledges_no_ca_sch_d_federal_state_divergence": False,
         "acknowledges_no_ca_nol_carryover": False,
         "acknowledges_no_ca_depreciation_divergence": False,
         "acknowledges_no_ca_ira_basis_divergence": False,

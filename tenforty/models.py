@@ -371,7 +371,6 @@ class TaxReturnConfig:
     # --- CA-specific scope-out attestations (11 unconditional) ---
     acknowledges_no_540nr_filing: bool | None = None
     acknowledges_no_ca_amt_preferences: bool | None = None
-    acknowledges_no_ca_sch_d_federal_state_divergence: bool | None = None
     acknowledges_no_ca_nol_carryover: bool | None = None
     acknowledges_no_ca_depreciation_divergence: bool | None = None
     acknowledges_no_ca_ira_basis_divergence: bool | None = None
