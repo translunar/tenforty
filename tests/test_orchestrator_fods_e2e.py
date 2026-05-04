@@ -57,5 +57,29 @@ class ResolvedSnapshotE2ETests(unittest.TestCase):
         self.assertEqual(sub_lines[0]["amount"], 123.0)
 
 
+    def test_sch_d_540_worksheet_entry_affects_net(self):
+        """An e2e scenario with a Sch D 540 worksheet subtraction
+        produces a divergent net capital gain in ca_results."""
+        shutil.copy(
+            FIXTURES / "single_tab_sch_d_540.fods", self.tmp / "main.ca.fods"
+        )
+        scenario = load_scenario(self.federal)
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.tmp / "work",
+        )
+        ca_results, _ = orchestrator.run_full_california_return(
+            scenario=scenario,
+            ca_yaml_path=self.tmp / "main.ca.yaml",
+            output_dir=self.output_dir,
+            federal_yaml_path=self.federal,
+        )
+        # The fixture's federal Sch D net is 0 (no 1099-B in e2e_main),
+        # so a 750 subtraction yields net = -750.
+        self.assertEqual(ca_results["sch_d_540_net_capital_gain"], -750)
+        self.assertEqual(ca_results["sch_d_540_total_subtractions"], 750)
+        self.assertEqual(ca_results["sch_d_540_total_additions"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
