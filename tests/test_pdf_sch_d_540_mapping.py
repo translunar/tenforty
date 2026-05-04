@@ -196,6 +196,14 @@ class PdfSchD540MappingTests(unittest.TestCase):
         self.assertIn("540 sch D - 4020", derivations)
         self.assertIn("540 sch D - 4021", derivations)
 
+    def test_lines_12a_12b_mapped_for_divergences(self):
+        """Lines 12a (subtraction total) and 12b (addition total) must be
+        present in the 2025 mapping so user-supplied Sch D divergences
+        render on the PDF, not just in compute output."""
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2025)
+        self.assertIn("sch_d_540_total_subtractions", mapping)
+        self.assertIn("sch_d_540_total_additions", mapping)
+
     def test_2025_every_pdf_target_is_a_real_pdf_field(self):
         """Every PDF field path referenced (in mapping values, aggregation
         keys, or derivation keys) must resolve to a field that exists in
