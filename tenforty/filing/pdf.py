@@ -109,15 +109,6 @@ class PdfFiller:
         return output_path
 
     @staticmethod
-    def _render(value) -> str:
-        """Stringify a scalar value for PDF field writing (mirrors existing fill logic)."""
-        if isinstance(value, bool):
-            return "Yes" if value else "Off"
-        if isinstance(value, (int, float)):
-            return str(value)
-        return str(value)
-
-    @staticmethod
     def _expand_repeaters(mapping: dict, values: dict) -> dict[str, str]:
         """Flatten a {scalars, repeaters} mapping + values into a flat field dict.
 
@@ -131,7 +122,7 @@ class PdfFiller:
         for result_key, pdf_field in mapping.get("scalars", {}).items():
             v = values.get(result_key)
             if v is not None:
-                flat[pdf_field] = PdfFiller._render(v)
+                flat[pdf_field] = PdfFiller._render_scalar(v)
 
         for section_name, section in mapping.get("repeaters", {}).items():
             rows = values.get(section_name) or []
@@ -153,7 +144,7 @@ class PdfFiller:
                     v = row.get(inner_key)
                     if v is not None:
                         field = template.replace("{i}", str(i))
-                        flat[field] = PdfFiller._render(v)
+                        flat[field] = PdfFiller._render_scalar(v)
         return flat
 
     def fill_with_repeaters(

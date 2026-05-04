@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import date as _date
+from datetime import date
 from enum import Enum
 from types import MappingProxyType
 from typing import Mapping
@@ -438,11 +438,11 @@ class DepreciableAsset:
     """
 
     description: str
-    date_placed_in_service: _date
+    date_placed_in_service: date
     basis: float
     recovery_class: str
     convention: str
-    disposed: _date | None = None
+    disposed: date | None = None
 
 
 @dataclass
@@ -556,8 +556,8 @@ class SCorpReturn:
     name: str
     ein: str
     address: Address
-    date_incorporated: _date
-    s_election_effective_date: _date
+    date_incorporated: date
+    s_election_effective_date: date
 
     income: SCorpIncome
     deductions: SCorpDeductions

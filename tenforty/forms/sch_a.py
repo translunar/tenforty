@@ -112,7 +112,23 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_a_line_3_medical_floor": medical_floor,
         "sch_a_line_4_medical_deductible": medical_deductible,
         "sch_a_line_5a_state_income_tax": state_income_tax_line_5a,
-        "sch_a_line_5a_sales_tax_checkbox": False,
+        # sch_a_line_5a_sales_tax_checkbox is intentionally omitted here.
+        #
+        # Today there is no compute path that drives this checkbox True — the
+        # sales-tax election is out of scope for v1 (see module docstring).
+        # Emitting `False` would route through fill_with_repeaters's scalar
+        # path, which (before the _render → _render_scalar unification in this
+        # commit) silently coerced the bool via _render's "Off" branch instead
+        # of going through the project-required checkbox_states registry. That
+        # was a latent policy bypass.
+        #
+        # When a future implementation adds the sales-tax election:
+        #   • emit True only when the filer actually elects sales tax;
+        #   • add a _CHECKBOX_STATES registry entry on pdf_sch_a (see
+        #     tenforty/filing/pdf_sch_a.py) so the value is routed through
+        #     the checkbox-state-aware fill path;
+        #   • do NOT re-introduce a bare True/False literal in this dict,
+        #     because _render_scalar now raises on bool to enforce that policy.
         "sch_a_line_5b_property_tax": property_tax_line_5b,
         "sch_a_line_5c_personal_property_tax": personal_property_tax_line_5c,
         "sch_a_line_5d_salt_sum": line_5d,
