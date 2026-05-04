@@ -86,6 +86,71 @@ class ExpandRepeatersTests(unittest.TestCase):
         self.assertEqual(expanded, {"a_pdf": "present"})
 
 
+    def test_repeater_numeric_values_are_irs_rounded(self):
+        """Repeater cells with non-integer numeric values must be IRS half-up
+        rounded to whole-dollar strings, matching the scalar fill() path.
+
+        Use 2.5 as the boundary input: irs_round(2.5) → 3 (half-up), but
+        Python's built-in round(2.5) → 2 (banker's). A correct fix renders "3".
+        """
+        mapping = {
+            "scalars": {},
+            "repeaters": {
+                "rows": {
+                    "template": {"amt": "Row{i}.amt[0]"},
+                    "max_slots": 2,
+                    "overflow": "raise",
+                },
+            },
+        }
+        values = {"rows": [{"amt": 2.5}, {"amt": 1234.7}]}
+        expanded = PdfFiller._expand_repeaters(mapping, values)
+        self.assertEqual(expanded["Row1.amt[0]"], "3")     # 2.5 -> 3 (half-up)
+        self.assertEqual(expanded["Row2.amt[0]"], "1235")  # 1234.7 -> 1235
+
+    def test_scalar_in_scalars_dict_is_irs_rounded(self):
+        """Scalar cells in a {scalars, repeaters} payload must also be
+        IRS-rounded, matching the scalar fill() path. (Currently both paths
+        diverge from fill()'s behavior — see _render vs _render_scalar.)
+        """
+        mapping = {
+            "scalars": {"total": "Page1.total[0]"},
+            "repeaters": {},
+        }
+        values = {"total": 99.5}
+        expanded = PdfFiller._expand_repeaters(mapping, values)
+        self.assertEqual(expanded["Page1.total[0]"], "100")  # 99.5 -> 100
+
+    def test_repeater_bool_value_raises(self):
+        """Bool values in a repeater row must raise, matching the scalar
+        fill() path's fail-fast. Bool-valued fields must be routed through
+        a checkbox_states registry, not the scalar/repeater render path.
+        """
+        mapping = {
+            "scalars": {},
+            "repeaters": {
+                "rows": {
+                    "template": {"flag": "Row{i}.flag[0]"},
+                    "max_slots": 2,
+                    "overflow": "raise",
+                },
+            },
+        }
+        values = {"rows": [{"flag": True}]}
+        with self.assertRaises(ValueError):
+            PdfFiller._expand_repeaters(mapping, values)
+
+    def test_scalar_bool_in_scalars_dict_raises(self):
+        """Bool in a scalars dict (under fill_with_repeaters path) must also raise."""
+        mapping = {
+            "scalars": {"flag": "Page1.flag[0]"},
+            "repeaters": {},
+        }
+        values = {"flag": True}
+        with self.assertRaises(ValueError):
+            PdfFiller._expand_repeaters(mapping, values)
+
+
 class FillWithRepeatersTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
