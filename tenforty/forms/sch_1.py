@@ -46,7 +46,16 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     alimony_line_2a = 0
     business_income_line_3 = 0
     capital_gain_line_4 = 0
-    rental_re_royalty_line_5 = irs_round(sch_e.get("sch_e_line_26_total", 0))
+    # Sch 1 line 5: rental real estate, royalties, partnerships, S corps.
+    # Sources from both Sch E parts:
+    #   Part I  (rentals/royalties)      → sch_e_line_26_total
+    #   Part II (partnerships/S corps)   → sch_e_line_41_total_pte
+    # The orchestrator merges both into the "sch_e" upstream slot so both keys
+    # are accessible here.
+    rental_re_royalty_line_5 = irs_round(
+        sch_e.get("sch_e_line_26_total", 0)
+        + sch_e.get("sch_e_line_41_total_pte", 0)
+    )
     farm_income_line_6 = 0
     unemployment_line_7 = irs_round(
         sum(g.unemployment_compensation for g in scenario.form1099_g),
