@@ -20,6 +20,15 @@ class FederalParamsTests(unittest.TestCase):
         self.assertEqual(bounds, sorted(bounds))
         self.assertTrue(math.isinf(p.ordinary_brackets[-1][0]))
 
+    def test_2024_single_spot_values(self):
+        p = load(2024)
+        single = FilingStatus.SINGLE.value
+        self.assertEqual(p.standard_deduction[single], 14_600)
+        self.assertEqual(p.qdcgt_breakpoints[single], (47_025, 518_900))
+        self.assertEqual(p.addl_medicare_threshold[single], 200_000)
+        # 2024 SALT cap is the pre-OBBBA $10,000.
+        self.assertEqual(p.salt_cap[single], 10_000)
+
     def test_unknown_year_raises(self):
         with self.assertRaises(ValueError):
             load(1999)
