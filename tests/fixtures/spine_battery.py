@@ -1,8 +1,8 @@
-"""Synthetic scenario battery for the 2025 penny-parity gate.
+"""Synthetic scenario battery for the penny-parity gate (2025 and 2024).
 
 Each builder returns a single-filer Scenario whose income is high enough to
-clear the EIC scope-gate (wages ≥ $68,676, the MFJ no-child ceiling), so
-_compute_1040_pipeline routes to the native spine rather than the workbook.
+clear the EIC scope-gate (wages ≥ the MFJ no-child EIC ceiling for that year),
+so _compute_1040_pipeline routes to the native spine rather than the workbook.
 
 All identities and amounts are fully synthetic — no real personal data.
 
@@ -13,6 +13,14 @@ Key 2025 boundaries exercised:
   - addl_medicare_boundary:            wages just above $200,000 Additional Medicare
   - zero_tax_refund:                   withholding > tax → overpaid / refund
   - owes_tax:                          withholding < tax → amount owed
+
+Key 2024 boundaries exercised (same branches, 2024 params):
+  - canonical_wage_investment_rental_2024: wage + interest + qdivs + LTCG + rental
+  - qdcgt_15_to_20_boundary_2024:          QDCGT into 20% band (income > $518,900)
+  - qbi_threshold_boundary_2024:           income near 2024 QBI threshold ($191,950)
+  - addl_medicare_boundary_2024:           wages just above $200,000 threshold
+  - zero_tax_refund_2024:                  withholding > tax → overpaid / refund
+  - owes_tax_2024:                         withholding < tax → amount owed
 """
 
 from tenforty.models import (
@@ -43,6 +51,27 @@ def _base_config(**overrides) -> TaxReturnConfig:
     merged = {**defaults, **overrides}
     return TaxReturnConfig(
         year=2025,
+        filing_status="single",
+        birthdate="1985-03-01",
+        state="CA",
+        first_name="Example",
+        last_name="Filer",
+        ssn="000-00-0000",
+        **merged,
+    )
+
+
+def _base_config_2024(**overrides) -> TaxReturnConfig:
+    """Return a single-filer TaxReturnConfig for tax year 2024.
+
+    Mirrors _base_config but with year=2024 so both the native params lookup
+    and the workbook path use the 2024 workbook (spreadsheets/federal/2024/1040.xlsx).
+    """
+    defaults = scope_out_attestation_defaults()
+    defaults["prior_year_itemized"] = False
+    merged = {**defaults, **overrides}
+    return TaxReturnConfig(
+        year=2024,
         filing_status="single",
         birthdate="1985-03-01",
         state="CA",
@@ -297,6 +326,248 @@ def build_owes_tax() -> Scenario:
     )
 
 
+def build_canonical_wage_investment_rental_2024() -> Scenario:
+    """2024 canonical shape: wages + interest + qualified dividends + LTCG + rental.
+
+    Income ~$195,000. Exercises:
+    - Sch B interest (< threshold, but present)
+    - QDCGT with both 0% and 15% bands active (2024 breakpoints: $0/$47,025/$518,900)
+    - Rental property flowing through Sch E → Sch 1 → AGI
+    - Standard deduction (2024: $14,600)
+    - No Additional Medicare (wages below $200k)
+
+    EIC gate: wages $150k >> $66,819 MFJ 3-child ceiling → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer A",
+                wages=150_000.0,
+                federal_tax_withheld=28_000.0,
+                ss_wages=150_000.0,        # below 2024 SS wage base of $168,600
+                ss_tax_withheld=9_300.0,
+                medicare_wages=150_000.0,
+                medicare_tax_withheld=2_175.0,
+            ),
+        ],
+        form1099_int=[
+            Form1099INT(payer="Synthetic Bank", interest=2_000.0),
+        ],
+        form1099_div=[
+            Form1099DIV(
+                payer="Synthetic Brokerage",
+                ordinary_dividends=5_000.0,
+                qualified_dividends=4_000.0,
+            ),
+        ],
+        form1099_b=[
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Stock Fund",
+                date_acquired="2022-01-15",
+                date_sold="2024-06-01",
+                proceeds=20_000.0,
+                cost_basis=14_000.0,
+                short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ],
+        rental_properties=[
+            RentalProperty(
+                address="100 Synthetic Ave",
+                property_type=1,
+                fair_rental_days=365,
+                personal_use_days=0,
+                rents_received=18_000.0,
+                mortgage_interest=7_000.0,
+                taxes=2_500.0,
+                depreciation=4_500.0,
+            ),
+        ],
+    )
+
+
+def build_qdcgt_15_to_20_boundary_2024() -> Scenario:
+    """2024 QDCGT 15% → 20% boundary: taxable income above $518,900 single breakpoint.
+
+    Wages $500k + $50k LTCG + $20k qualified dividends pushes preferential
+    income into the 20% band. Exercises the 20% QDCGT slice.
+
+    EIC gate: wages $500k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer B",
+                wages=500_000.0,
+                federal_tax_withheld=150_000.0,
+                ss_wages=168_600.0,        # 2024 SS wage base
+                ss_tax_withheld=10_453.0,
+                medicare_wages=500_000.0,
+                medicare_tax_withheld=7_250.0,
+            ),
+        ],
+        form1099_div=[
+            Form1099DIV(
+                payer="Synthetic Brokerage",
+                ordinary_dividends=22_000.0,
+                qualified_dividends=20_000.0,
+            ),
+        ],
+        form1099_b=[
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Index Fund",
+                date_acquired="2021-03-10",
+                date_sold="2024-09-15",
+                proceeds=80_000.0,
+                cost_basis=30_000.0,
+                short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ],
+    )
+
+
+def build_qbi_threshold_boundary_2024() -> Scenario:
+    """2024 QBI threshold boundary: income near the $191,950 single-filer QBI threshold.
+
+    Wages $180k + rental income ~$10k brings total near the 2024 QBI threshold.
+    acknowledges_qbi_below_threshold=True because no K-1 QBI is present.
+
+    EIC gate: wages $180k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(acknowledges_qbi_below_threshold=True),
+        w2s=[
+            W2(
+                employer="Synthetic Employer C",
+                wages=180_000.0,
+                federal_tax_withheld=38_000.0,
+                ss_wages=168_600.0,        # 2024 SS wage base
+                ss_tax_withheld=10_453.0,
+                medicare_wages=180_000.0,
+                medicare_tax_withheld=2_610.0,
+            ),
+        ],
+        form1099_int=[
+            Form1099INT(payer="Synthetic Bank", interest=3_000.0),
+        ],
+        rental_properties=[
+            RentalProperty(
+                address="200 Synthetic Blvd",
+                property_type=1,
+                fair_rental_days=365,
+                personal_use_days=0,
+                rents_received=20_000.0,
+                mortgage_interest=8_000.0,
+                taxes=3_000.0,
+                depreciation=5_000.0,
+            ),
+        ],
+    )
+
+
+def build_addl_medicare_boundary_2024() -> Scenario:
+    """2024 Additional Medicare Tax boundary: wages $210,000 > $200,000 threshold.
+
+    The $10,000 excess × 0.9% = $90 Additional Medicare Tax on Form 8959.
+    Wages-only scenario for clean isolation of the Additional-Medicare branch.
+
+    EIC gate: wages $210k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer D",
+                wages=210_000.0,
+                federal_tax_withheld=48_000.0,
+                ss_wages=168_600.0,        # 2024 SS wage base
+                ss_tax_withheld=10_453.0,
+                medicare_wages=210_000.0,
+                medicare_tax_withheld=3_045.0,
+            ),
+        ],
+    )
+
+
+def build_zero_tax_refund_2024() -> Scenario:
+    """2024 over-withheld scenario: large withholding relative to tax → refund.
+
+    Wages $130,000 (clears EIC gate of $66,819), modest interest.
+    Taxable income = $130,500 − $14,600 std deduction = $115,900, which is
+    above the $100,000 tax-table cutoff (avoids discrete table vs. schedule
+    discrepancy).
+
+    Withholding ($30,000) exceeds expected tax (~$22k) → refund scenario.
+
+    EIC gate: wages $130k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer E",
+                wages=130_000.0,
+                federal_tax_withheld=30_000.0,
+                ss_wages=130_000.0,
+                ss_tax_withheld=8_060.0,
+                medicare_wages=130_000.0,
+                medicare_tax_withheld=1_885.0,
+            ),
+        ],
+        form1099_int=[
+            Form1099INT(payer="Synthetic Bank", interest=500.0),
+        ],
+    )
+
+
+def build_owes_tax_2024() -> Scenario:
+    """2024 under-withheld scenario: withholding well below tax liability → owes.
+
+    Wages $130k + LTCG $25k + qualified divs $8k. Withholding $15,000 is
+    deliberately low relative to the expected tax (~$30k+) → amount owed.
+
+    EIC gate: wages $130k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer F",
+                wages=130_000.0,
+                federal_tax_withheld=15_000.0,
+                ss_wages=130_000.0,
+                ss_tax_withheld=8_060.0,
+                medicare_wages=130_000.0,
+                medicare_tax_withheld=1_885.0,
+            ),
+        ],
+        form1099_div=[
+            Form1099DIV(
+                payer="Synthetic Brokerage",
+                ordinary_dividends=9_000.0,
+                qualified_dividends=8_000.0,
+            ),
+        ],
+        form1099_b=[
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Growth Fund",
+                date_acquired="2020-05-20",
+                date_sold="2024-11-10",
+                proceeds=45_000.0,
+                cost_basis=20_000.0,
+                short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ],
+    )
+
+
 # Public battery: list of (name, builder) pairs iterated by the parity test.
 BATTERY: list[tuple[str, object]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
@@ -305,4 +576,14 @@ BATTERY: list[tuple[str, object]] = [
     ("addl_medicare_boundary", build_addl_medicare_boundary),
     ("zero_tax_refund", build_zero_tax_refund),
     ("owes_tax", build_owes_tax),
+]
+
+# 2024 battery: same branches, 2024 params + 2024 workbook.
+BATTERY_2024: list[tuple[str, object]] = [
+    ("canonical_wage_investment_rental_2024", build_canonical_wage_investment_rental_2024),
+    ("qdcgt_15_to_20_boundary_2024", build_qdcgt_15_to_20_boundary_2024),
+    ("qbi_threshold_boundary_2024", build_qbi_threshold_boundary_2024),
+    ("addl_medicare_boundary_2024", build_addl_medicare_boundary_2024),
+    ("zero_tax_refund_2024", build_zero_tax_refund_2024),
+    ("owes_tax_2024", build_owes_tax_2024),
 ]

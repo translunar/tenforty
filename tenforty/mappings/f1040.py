@@ -3,10 +3,17 @@ from typing import NamedTuple
 from tenforty.mappings.registry import FormMapping
 
 
-# Form 8949 XLS row slots: each subsection box gets 11 lot rows on its sheet,
-# Part I at row 41 and Part II at row 91 (21 blank rows in between are form
-# headers). Boxes C/F ("no 1099-B received") are out of scope — Form1099B
-# implies a 1099-B was received.
+# Form 8949 XLS row slots: each subsection box gets 11 lot rows on its sheet.
+# The input columns (AJ=description, AK=date_acquired, etc.) are the same in
+# both years; only the row_base and checkbox_cell differ by year.
+#
+# 2025 layout: ST lot rows start at 41, LT lot rows start at 91.
+# 2024 layout: ST lot rows start at 35, LT lot rows start at 88.
+#   (The 2024 workbook has more physical lot rows — 20 ST, 28 LT — but we
+#   only need 11 rows for the parity battery, which uses at most 1 lot.)
+#
+# Boxes C/F ("no 1099-B received") are out of scope — Form1099B implies a
+# 1099-B was received.
 _F8949_LOT_ROWS = 11
 _F8949_LOT_COLS = {
     "description":       "AJ",
@@ -22,16 +29,30 @@ _F8949_LOT_COLS = {
 class _F8949BoxSlot(NamedTuple):
     letter: str
     sheet: str
-    row_base: int        # Part I starts at row 41, Part II at row 91
+    row_base: int        # first lot data row for this box's section
     checkbox_cell: str   # per-box "X" gate read by Sch. D rollup formulas
 
 
-_F8949_BOX_SLOTS: tuple[_F8949BoxSlot, ...] = (
+# 2025: ST Part I lot rows start at 41, LT Part II lot rows start at 91.
+# LT checkboxes (Box D/E) are at C75/C77.
+_F8949_BOX_SLOTS_2025: tuple[_F8949BoxSlot, ...] = (
     _F8949BoxSlot("a", "8949A", 41, "C25"),  # short-term, basis reported
     _F8949BoxSlot("b", "8949B", 41, "C27"),  # short-term, basis not reported
     _F8949BoxSlot("d", "8949A", 91, "C75"),  # long-term,  basis reported
     _F8949BoxSlot("e", "8949B", 91, "C77"),  # long-term,  basis not reported
 )
+
+# 2024: ST Part I lot rows start at 35, LT Part II lot rows start at 88.
+# LT checkboxes (Box D/E) are at C78/C80 in the 2024 workbook layout.
+_F8949_BOX_SLOTS_2024: tuple[_F8949BoxSlot, ...] = (
+    _F8949BoxSlot("a", "8949A", 35, "C25"),  # short-term, basis reported
+    _F8949BoxSlot("b", "8949B", 35, "C27"),  # short-term, basis not reported
+    _F8949BoxSlot("d", "8949A", 88, "C78"),  # long-term,  basis reported
+    _F8949BoxSlot("e", "8949B", 88, "C80"),  # long-term,  basis not reported
+)
+
+# Backward-compatible alias (used by existing callers that don't pass a year).
+_F8949_BOX_SLOTS = _F8949_BOX_SLOTS_2025
 
 
 def _f8949_box_inputs(slot: _F8949BoxSlot) -> dict[str, str]:
@@ -55,16 +76,16 @@ def _f8949_box_sheet_map(slot: _F8949BoxSlot) -> dict[str, str]:
     return out
 
 
-def _f8949_all_inputs() -> dict[str, str]:
+def _f8949_all_inputs(slots: tuple = _F8949_BOX_SLOTS_2025) -> dict[str, str]:
     out: dict[str, str] = {}
-    for slot in _F8949_BOX_SLOTS:
+    for slot in slots:
         out |= _f8949_box_inputs(slot)
     return out
 
 
-def _f8949_all_sheet_map() -> dict[str, str]:
+def _f8949_all_sheet_map(slots: tuple = _F8949_BOX_SLOTS_2025) -> dict[str, str]:
     out: dict[str, str] = {}
-    for slot in _F8949_BOX_SLOTS:
+    for slot in slots:
         out |= _f8949_box_sheet_map(slot)
     return out
 
@@ -229,7 +250,7 @@ class F1040(FormMapping):
             "k1_d_8582_net_income": "8582",
             "k1_d_8582_net_loss": "8582",
             "k1_d_8582_prior_year_loss": "8582",
-            **_f8949_all_sheet_map(),
+            **_f8949_all_sheet_map(_F8949_BOX_SLOTS_2024),
         },
         2025: {
             "w2_wages_1": "W-2s",
@@ -530,7 +551,7 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "I11",
             "g_ag_6": "I12",
             "g_market_gain_6": "I15",
-            **_f8949_all_inputs(),
+            **_f8949_all_inputs(_F8949_BOX_SLOTS_2024),
         },
         2025: {
             "filing_status_single": "File_Single",
