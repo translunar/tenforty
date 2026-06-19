@@ -58,3 +58,30 @@ class PdfF1120SK1MappingTests(unittest.TestCase):
             else:
                 seen[pdf_field] = compute_key
         self.assertEqual(duplicates, [])
+
+    def test_2024_every_k1_allocation_key_is_mapped(self):
+        mapping = pdf_f1120s_k1.PdfF1120SK1.get_mapping(2024)
+        mapped = set(mapping.keys())
+        missing = _EXPECTED_K1_KEYS - mapped
+        self.assertEqual(missing, set())
+
+    def test_2024_every_value_is_a_real_pdf_field(self):
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2024" / "f1120s_k1.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+        mapping = pdf_f1120s_k1.PdfF1120SK1.get_mapping(2024)
+        bad = {k: v for k, v in mapping.items() if v not in real_fields}
+        self.assertEqual(bad, {})
+
+    def test_2024_every_pdf_field_has_at_most_one_compute_key(self):
+        """Each 2024 K-1 PDF cell is filled by exactly one compute key."""
+        mapping = pdf_f1120s_k1.PdfF1120SK1.get_mapping(2024)
+        seen: dict[str, str] = {}
+        duplicates: list[tuple[str, str, str]] = []
+        for compute_key, pdf_field in mapping.items():
+            if pdf_field in seen:
+                duplicates.append((pdf_field, seen[pdf_field], compute_key))
+            else:
+                seen[pdf_field] = compute_key
+        self.assertEqual(duplicates, [])
