@@ -230,13 +230,23 @@ class ReturnOrchestrator:
     def _compute_1040_pipeline(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
-        """Run the 1040 pipeline (spreadsheet evaluation + f1040.compute).
+        """1040 pipeline. Repointed at the native spine in the cutover task;
+        currently delegates to the workbook oracle path unchanged."""
+        return self._compute_1040_via_workbook(effective_scenario)
+
+    def _compute_1040_via_workbook(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, object]:
+        """Run the 1040 pipeline via the XLSX oracle (spreadsheet evaluation + f1040.compute).
 
         Accepts the already-resolved effective scenario (with any synthesized
         K-1s already appended). Returns the 1040 results dict only — corp keys
         are merged by the caller. This is the single source of truth for the
         spreadsheet evaluation step, the 1099-G withholding supplement, and
         the form_1040.compute step.
+
+        Remains reachable as a test-only oracle after the cutover task
+        repoints _compute_1040_pipeline at the native spine.
         """
         year = effective_scenario.config.year
         spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
