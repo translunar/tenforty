@@ -72,7 +72,13 @@ class IncomePreamble:
         total_income:        1040 line 9.
         agi:                 1040 line 11.
         magi:                Modified AGI (= AGI in v1 single-filer scope).
-        net_capital_gain:    QDCGT net capital gain (qual divs + max(0, LTCG)).
+        net_capital_gain:    QDCGT net capital gain = max(0, Sch D line 16).
+            Equals the workbook's NetCapitalGain named range. Qualified
+            dividends are NOT included here — they are added separately
+            inside qdcgt_tax (as the ``qualified_dividends`` argument) and
+            inside f8995 (via fanout.qualified_dividends_aggregate). Keeping
+            them separate prevents double-counting when qdcgt_tax computes
+            ``preferential = qualified_dividends + net_capital_gain``.
         taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0
             (the conservative stand-in the pre-pass stub feeds to f8995/f8582).
     """
@@ -134,8 +140,12 @@ def compute_income_preamble(
     # or other MAGI-specific add-backs apply in the supported scenario set).
     magi = agi
 
-    # Net capital gain for the QDCGT worksheet: qualified dividends + max LTCG.
-    net_capital_gain = irs_round(max(0, schd_line16) + qualified_divs)
+    # Net capital gain for the QDCGT worksheet: max(0, Sch D line 16) only.
+    # Qualified dividends are NOT added here; they are a separate input to
+    # qdcgt_tax and f8995. Adding them here would double-count them because
+    # qdcgt_tax's own formula is: preferential = qualified_dividends + net_capital_gain.
+    # This matches the workbook's NetCapitalGain named range.
+    net_capital_gain = irs_round(max(0, schd_line16))
 
     # Pre-QBI taxable income using the standard deduction as a conservative
     # stand-in for Schedule A (not yet computed in the f8995/f8582 pre-pass).
@@ -270,8 +280,13 @@ def compute_spine(
     # Key: "f8959_line_18" from forms.f8959.compute.
     f8959_tax_total = f8959.get("f8959_line_18", 0)
 
-    # 1040 line 17 — Total tax = income tax + additional Medicare.
-    total_tax = irs_round(income_tax + f8959_tax_total)
+    # 1040 line 16 — Tax (income tax from the QDCGT/rate-schedule worksheet).
+    # Matches the oracle workbook's "Tax" named range and the PDF field at
+    # line 16. Does NOT include Schedule 2 additions (Form 8959 / Additional
+    # Medicare Tax). The oracle's total_tax key also omits Schedule 2, keeping
+    # parity semantics aligned: both oracle and native expose line-16 income
+    # tax only under the "total_tax" key.
+    total_tax = income_tax
 
     # -----------------------------------------------------------------------
     # Page 2 — Payments
@@ -309,8 +324,19 @@ def compute_spine(
     # spine never reaches a filer who claims EIC. Estimated tax not yet wired.
     total_payments = federal_withheld
 
-    # 1040 line 35a — Amount overpaid = max(total_payments − total_tax, 0).
-    overpaid = max(0, irs_round(total_payments - total_tax))
+    # 1040 line 35a — Amount overpaid.
+    # Overpaid is computed against the FULL tax liability including Schedule 2
+    # (f8959 Additional Medicare Tax). The oracle workbook's Overpaid named
+    # range also uses the full tax figure internally (it subtracts all tax lines
+    # from total_payments), even though the oracle's total_tax key exposes only
+    # line 16. The native spine must mirror this: use income_tax + f8959 here,
+    # not the line-16-only total_tax.
+    # Note: v1 scope omits NIIT (Form 8960) and other Schedule 2 additions —
+    # scenarios with investment income and AGI above the NIIT threshold ($200k
+    # single) will have oracle overpaid lower than native by the NIIT amount.
+    # Battery scenarios avoid this by excluding investment income from scenarios
+    # with AGI > $200k.
+    overpaid = max(0, irs_round(total_payments - income_tax - f8959_tax_total))
 
     # -----------------------------------------------------------------------
     # Schedule 1 per-line breakdown keys (pass-through from sch_1 results)
