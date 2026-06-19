@@ -260,21 +260,68 @@ class ReturnOrchestrator:
         enforce_compute_time(effective_scenario)
         return effective_scenario, corp_results
 
+    def _scenario_in_spine_scope(self, effective_scenario: Scenario) -> bool:
+        """Return True iff the native 1040 spine (v1) can compute this scenario.
+
+        The spine's v1 scope is single filers whose return does NOT involve
+        the Earned Income Credit (line 27a). Anything outside that scope is
+        routed to the XLSX oracle, which still covers the full 1040 surface.
+
+        The EIC check is a CHEAP published-threshold gate only — it never
+        computes the credit. A scenario is treated as *possibly* EIC-eligible
+        (and therefore out of scope) when it has positive earned income and an
+        AGI estimate below the year's EIC income ceiling for its dependent
+        count. The ceiling uses the MFJ (largest) phase-out-end amount, so the
+        gate is conservative: it may route a not-actually-eligible low-income
+        filer to the workbook, but never lets an eligible one through the spine
+        (which performs no EIC math). The workbook then computes any real EIC.
+        """
+        from tenforty.models import FilingStatus
+        from tenforty.params.federal import load as load_params
+
+        if effective_scenario.config.filing_status is not FilingStatus.SINGLE:
+            return False
+
+        cfg = effective_scenario.config
+        earned_income = sum(w.wages for w in effective_scenario.w2s)
+        if earned_income <= 0:
+            # No earned income → no EIC possible; nothing else takes the spine
+            # out of scope for a single filer.
+            return True
+
+        params = load_params(cfg.year)
+        ceilings = params.eic_income_ceiling or {}
+        if not ceilings:
+            # No ceiling data → cannot cheaply rule EIC in or out; be safe.
+            return True
+
+        # Cheap AGI estimate: earned income + interest + ordinary dividends.
+        # (Conservative for the ceiling comparison — additional income only
+        # raises AGI, which can only push the scenario further out of EIC range,
+        # so omitting Sch 1/Sch D here cannot let an eligible filer slip past.)
+        agi_estimate = (
+            earned_income
+            + sum(f.interest for f in effective_scenario.form1099_int)
+            + sum(f.ordinary_dividends for f in effective_scenario.form1099_div)
+        )
+        num_children = min(len(cfg.dependents), max(ceilings))
+        ceiling = ceilings.get(num_children, max(ceilings.values()))
+        # Below the ceiling → possibly EIC-eligible → out of spine scope.
+        return agi_estimate >= ceiling
+
     def _compute_1040_pipeline(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
-        """Native 1040 spine. Gathers the native schedule computes and assembles
-        the 1040 via forms.f1040_spine; the workbook is no longer used in
-        production for single filers (see _compute_1040_via_workbook for the
-        oracle path, which remains active for non-single filers that fall
-        outside the v1 spine scope)."""
-        from tenforty.models import FilingStatus
+        """Native 1040 spine for in-scope scenarios; XLSX oracle otherwise.
+
+        Runs the native spine (gather native schedule computes → compute_spine)
+        only when ``_scenario_in_spine_scope`` holds (single filer, not
+        EIC-eligible). Out-of-scope scenarios fall back to
+        ``_compute_1040_via_workbook`` so the workbook covers the full 1040
+        surface (non-single filers, EIC, etc.) until the spine is extended."""
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
-        # Native spine v1 scope: single filers only.  Non-single filing
-        # statuses fall back to the XLSX oracle path until the spine is
-        # extended to cover them.
-        if effective_scenario.config.filing_status is not FilingStatus.SINGLE:
+        if not self._scenario_in_spine_scope(effective_scenario):
             return self._compute_1040_via_workbook(effective_scenario)
         params = load_params(effective_scenario.config.year)
         schedule_results = self._compute_native_schedules(effective_scenario)
@@ -310,8 +357,8 @@ class ReturnOrchestrator:
         8. F8582 — needs k1_fanout + sch_e + f1040 stub (magi).
         9. Sch A — needs agi from the f1040 stub.
         """
+        from tenforty.forms import f1040_spine
         from tenforty.params.federal import load as _load_params
-        from tenforty.rounding import irs_round as _irs_round
 
         # --- Step 1: Sch E Part II (K-1 fanout) ---
         if self._should_emit_sch_e_part_ii(effective_scenario):
@@ -347,40 +394,25 @@ class ReturnOrchestrator:
 
         # --- Step 7: AGI pre-compute stub ---
         # F8995 and F8582 need upstream["f1040"]["magi"] /
-        # "taxable_income_before_qbi_deduction". Build a lightweight stub
-        # from parts already known.  Sch A is not yet computed, so use the
+        # "taxable_income_before_qbi_deduction". Build a lightweight stub from
+        # the SHARED income preamble so the AGI/total-income math has a single
+        # source of truth with compute_spine (they cannot drift). Sch A is not
+        # yet computed, so the preamble's pre-QBI taxable income uses the
         # standard deduction as a conservative stand-in for the QBI-threshold
         # check in f8995 (over-estimates taxable income slightly if itemized
         # beats std, which is safe: the threshold guard is generous).
         _params = _load_params(effective_scenario.config.year)
-        wages_pre = _irs_round(sum(w.wages for w in effective_scenario.w2s))
-        taxable_int_pre = _irs_round(
-            sum(f.interest for f in effective_scenario.form1099_int)
+        _preamble = f1040_spine.compute_income_preamble(
+            effective_scenario,
+            _params,
+            {"sch_1": sch_1_results, "sch_d": sch_d_results},
         )
-        ord_divs_pre = _irs_round(
-            sum(f.ordinary_dividends for f in effective_scenario.form1099_div)
-        )
-        qual_divs_pre = _irs_round(
-            sum(f.qualified_dividends for f in effective_scenario.form1099_div)
-        )
-        schd_line16_pre = sch_d_results.get("sch_d_line_16_total", 0)
-        sch_1_line_10 = sch_1_results.get("sch_1_line_10_total_additional_income", 0)
-        sch_1_line_26 = sch_1_results.get("sch_1_line_26_total_adjustments", 0)
-        total_income_pre = _irs_round(
-            wages_pre + taxable_int_pre + ord_divs_pre
-            + schd_line16_pre + sch_1_line_10
-        )
-        agi_pre = _irs_round(total_income_pre - sch_1_line_26)
-        std_ded_pre = _params.standard_deduction[
-            effective_scenario.config.filing_status.value
-        ]
-        taxable_pre = max(0, _irs_round(agi_pre - std_ded_pre))
-        net_cap_gain_pre = _irs_round(max(0, schd_line16_pre) + qual_divs_pre)
         f1040_stub: dict = {
-            "agi": agi_pre,
-            "magi": agi_pre,
-            "taxable_income_before_qbi_deduction": taxable_pre,
-            "net_capital_gain": net_cap_gain_pre,
+            "agi": _preamble.agi,
+            "magi": _preamble.magi,
+            "taxable_income_before_qbi_deduction":
+                _preamble.taxable_income_before_qbi_std,
+            "net_capital_gain": _preamble.net_capital_gain,
         }
 
         # --- Step 8: F8995 (needs k1_fanout + f1040 stub) ---

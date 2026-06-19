@@ -43,112 +43,119 @@ Output keys match ``F1040.OUTPUTS[2025]`` exactly so PDF mappings and
 CA consumers are unaffected.
 """
 
+from dataclasses import dataclass
+
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import FilingStatus, Scenario
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
 
-def _compute_eic(
-    earned_income: int,
-    agi: int,
-    investment_income: int,
-    num_qualifying_children: int,
-    filing_status: FilingStatus,
-    params: FederalParams,
-) -> int:
-    """Compute the Earned Income Credit using the IRS EIC Table lookup logic.
+@dataclass(frozen=True)
+class IncomePreamble:
+    """Form 1040 income/AGI figures derived once from inputs + schedule results.
 
-    Mirrors the workbook's EIC Table computation: the table publishes a credit
-    amount for each $50 income bracket; the bracket value is derived from the
-    midpoint ``round((at_least + but_less_than) / 2, 2)``, which simplifies to
-    ``row_start + 25`` for integer $50-increment rows.  The LOOKUP function in
-    the workbook finds the last row where ``at_least <= worksheet_amount``.
+    Single source of truth for the line 1-15 arithmetic so the orchestrator's
+    f8995/f8582 pre-pass stub and ``compute_spine`` cannot drift. The pre-pass
+    uses the standard deduction as a stand-in for Schedule A (which is not yet
+    computed at that point); ``compute_spine`` recomputes ``total_deductions``
+    and the post-QBI taxable income with the actual deduction choice.
+
+    Attributes:
+        wages:               1040 line 1a (sum of W-2 box 1).
+        taxable_interest:    1040 line 2b (sum of 1099-INT box 1).
+        ordinary_divs:       1040 line 3b (sum of 1099-DIV box 1a).
+        qualified_divs:      1040 line 3a (sum of 1099-DIV box 1b).
+        schd_line16:         Schedule D line 16 net capital gain/loss.
+        sch_1_line_10:       Schedule 1 line 10 total additional income.
+        sch_1_line_26:       Schedule 1 line 26 total adjustments.
+        total_income:        1040 line 9.
+        agi:                 1040 line 11.
+        magi:                Modified AGI (= AGI in v1 single-filer scope).
+        net_capital_gain:    QDCGT net capital gain (qual divs + max(0, LTCG)).
+        taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0
+            (the conservative stand-in the pre-pass stub feeds to f8995/f8582).
+    """
+    wages: int
+    taxable_interest: int
+    ordinary_divs: int
+    qualified_divs: int
+    schd_line16: int
+    sch_1_line_10: int
+    sch_1_line_26: int
+    total_income: int
+    agi: int
+    magi: int
+    net_capital_gain: int
+    taxable_income_before_qbi_std: int
+
+
+def compute_income_preamble(
+    scenario: Scenario,
+    params: FederalParams,
+    schedule_results: dict[str, dict],
+) -> IncomePreamble:
+    """Compute the shared 1040 income → AGI preamble (lines 1-11 + helpers).
+
+    Called from both the orchestrator's f8995/f8582 pre-pass (to build the
+    upstream f1040 stub) and ``compute_spine`` so the AGI/total-income math has
+    a single definition.  ``schedule_results`` need only contain ``sch_1`` and
+    ``sch_d`` for this computation; missing keys default to 0.
 
     Args:
-        earned_income: W-2 wages (and tips/other compensation); excludes
-            interest, dividends, and other investment income.
-        agi: Adjusted Gross Income from Form 1040 line 11.
-        investment_income: Sum of tax-exempt interest + taxable interest +
-            ordinary dividends + max(0, net capital gain).  If this exceeds
-            the EIC investment income limit, the credit is $0.
-        num_qualifying_children: Number of qualifying children (0, 1, 2, or 3+).
-            Use 3 for three or more.
-        filing_status: FilingStatus of the filer.
-        params: Year-specific federal parameters (must contain eic_params).
+        scenario: The tax scenario (filer inputs).
+        params: Year-specific federal parameters.
+        schedule_results: Keyed dict of schedule return dicts (sch_1, sch_d, …).
 
     Returns:
-        EIC amount (0 or positive integer).  Returns 0 if not eligible.
+        IncomePreamble with the line 1-11 figures and the std-deduction-based
+        pre-QBI taxable income stand-in.
     """
-    if params.eic_params is None:
-        return 0
-    if earned_income <= 0:
-        return 0
+    sch_1 = schedule_results.get("sch_1", {})
+    sch_d = schedule_results.get("sch_d", {})
 
-    children_key = min(num_qualifying_children, 3)
-    eic_p = params.eic_params.get(children_key)
-    if eic_p is None:
-        return 0
+    wages = irs_round(sum(w.wages for w in scenario.w2s))
+    taxable_interest = irs_round(sum(f.interest for f in scenario.form1099_int))
+    ordinary_divs = irs_round(
+        sum(f.ordinary_dividends for f in scenario.form1099_div)
+    )
+    qualified_divs = irs_round(
+        sum(f.qualified_dividends for f in scenario.form1099_div)
+    )
+    schd_line16 = sch_d.get("sch_d_line_16_total", 0)
+    sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
+    sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
 
-    # Investment income limit (hard-coded per-year constant in the workbook's
-    # N58 cell on the EIC worksheet; $11,950 for 2025).
-    # If investment income exceeds the limit, no EIC is available.
-    # This limit is stored as a constant in the EIC worksheet rather than in
-    # the EIC Table parameters; for now it is read from the params module via
-    # a dedicated attribute if present, otherwise the spine is conservative.
-    eic_investment_limit = getattr(params, "eic_investment_income_limit", None)
-    if eic_investment_limit is None:
-        # Fallback: allow the EIC — investment income check is advisory
-        pass
-    elif investment_income > eic_investment_limit:
-        return 0
+    total_income = irs_round(
+        wages + taxable_interest + ordinary_divs + schd_line16 + sch_1_line_10
+    )
+    agi = irs_round(total_income - sch_1_line_26)
+    # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
+    # or other MAGI-specific add-backs apply in the supported scenario set).
+    magi = agi
 
-    # Phase-out thresholds depend on filing status.
-    is_mfj = (filing_status is FilingStatus.MARRIED_JOINTLY)
-    po_start = eic_p.phase_out_start_mfj if is_mfj else eic_p.phase_out_start
-    po_end   = eic_p.phase_out_end_mfj   if is_mfj else eic_p.phase_out_end
+    # Net capital gain for the QDCGT worksheet: qualified dividends + max LTCG.
+    net_capital_gain = irs_round(max(0, schd_line16) + qualified_divs)
 
-    # Worksheet amount = greater of earned income or AGI (IRS EIC worksheet).
-    worksheet_amount = max(earned_income, agi)
+    # Pre-QBI taxable income using the standard deduction as a conservative
+    # stand-in for Schedule A (not yet computed in the f8995/f8582 pre-pass).
+    std_deduction = params.standard_deduction[scenario.config.filing_status.value]
+    taxable_income_before_qbi_std = max(0, irs_round(agi - std_deduction))
 
-    # If worksheet amount >= phase-out end, credit is zero.
-    if worksheet_amount >= po_end:
-        return 0
-
-    # EIC Table row lookup: find row_start = floor(worksheet_amount / 50) * 50.
-    # The table covers worksheet amounts starting at 1; the first row (1-50) uses
-    # midpoint = round((1+50)/2, 2) - 1 = 25 - 1 = 24.5 (special case).
-    # For all other rows the midpoint = row_start + 25.
-    row_start = int(worksheet_amount // 50) * 50
-    if row_start == 0:
-        # Below $50 row: worksheet amount in [1, 50), midpoint formula = ROUND((1+50)/2,2)-1 = 24.5
-        midpoint = 24.5
-    else:
-        midpoint = row_start + 25.0
-
-    # Compute phase-in rate and phase-out rate matching the workbook formulas:
-    #   N7 = ROUND(N3/N4, 4)   — phase-in rate
-    #   N9 = -ROUND(N3/(N6-N5), 7)  — phase-out rate (negative)
-    phase_in_rate = round(eic_p.max_credit / eic_p.phase_in_end, 4)
-    phase_out_rate = -round(eic_p.max_credit / (po_end - po_start), 7)
-
-    # Three-branch formula mirroring EIC Table column C formula:
-    #   IF(L > phase_out_start,
-    #       MAX(0, max_credit + ROUND(phase_out_rate * (L - phase_out_start), 0)),
-    #       IF(L > phase_in_end,
-    #           max_credit,
-    #           ROUND(phase_in_rate * L, 0)
-    #       )
-    #   )
-    if midpoint > po_start:
-        raw = eic_p.max_credit + round(phase_out_rate * (midpoint - po_start), 0)
-        credit = max(0, int(raw))
-    elif midpoint > eic_p.phase_in_end:
-        credit = eic_p.max_credit
-    else:
-        credit = int(round(phase_in_rate * midpoint, 0))
-
-    return credit
+    return IncomePreamble(
+        wages=wages,
+        taxable_interest=taxable_interest,
+        ordinary_divs=ordinary_divs,
+        qualified_divs=qualified_divs,
+        schd_line16=schd_line16,
+        sch_1_line_10=sch_1_line_10,
+        sch_1_line_26=sch_1_line_26,
+        total_income=total_income,
+        agi=agi,
+        magi=magi,
+        net_capital_gain=net_capital_gain,
+        taxable_income_before_qbi_std=taxable_income_before_qbi_std,
+    )
 
 
 def compute_spine(
@@ -178,64 +185,31 @@ def compute_spine(
         )
 
     # Convenience accessors for each schedule sub-dict.
-    sch_1 = schedule_results.get("sch_1", {})
     sch_a = schedule_results.get("sch_a", {})
-    sch_d = schedule_results.get("sch_d", {})
     sch_e = schedule_results.get("sch_e", {})
     f8959 = schedule_results.get("f8959", {})
     f8995 = schedule_results.get("f8995", {})
     f8582 = schedule_results.get("f8582", {})
 
     # -----------------------------------------------------------------------
-    # Page 1 — Income
+    # Page 1 — Income + Adjustments → AGI (shared preamble)
     # -----------------------------------------------------------------------
+    # Lines 1-11 are computed by the shared preamble so the orchestrator's
+    # f8995/f8582 pre-pass and this spine share one source of truth for AGI.
+    preamble = compute_income_preamble(scenario, params, schedule_results)
+    wages = preamble.wages
+    taxable_interest = preamble.taxable_interest
+    ordinary_divs = preamble.ordinary_divs
+    qualified_divs = preamble.qualified_divs
+    schd_line16 = preamble.schd_line16
+    sch_1_line_10 = preamble.sch_1_line_10
+    sch_1_line_26 = preamble.sch_1_line_26
+    total_income = preamble.total_income
+    agi = preamble.agi
+    magi = preamble.magi
 
-    # 1040 line 1a — Wages (sum of all W-2 boxes 1).
-    wages = irs_round(sum(w.wages for w in scenario.w2s))
-
-    # 1040 line 2b — Taxable interest (sum of 1099-INT box 1).
-    taxable_interest = irs_round(
-        sum(f.interest for f in scenario.form1099_int)
-    )
-
-    # 1040 line 3b — Ordinary dividends (sum of 1099-DIV box 1a).
-    ordinary_divs = irs_round(
-        sum(f.ordinary_dividends for f in scenario.form1099_div)
-    )
-
-    # 1040 line 3a — Qualified dividends (sum of 1099-DIV box 1b).
-    qualified_divs = irs_round(
-        sum(f.qualified_dividends for f in scenario.form1099_div)
-    )
-
-    # 1040 line 7 — Net capital gain/loss from Schedule D line 16.
-    # Key: sch_d_line_16_total from forms.sch_d.compute.
-    schd_line16 = sch_d.get("sch_d_line_16_total", 0)
-
-    # Schedule 1 line 10 — Total additional income.
-    # Key: sch_1_line_10_total_additional_income from forms.sch_1.compute.
-    sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
-
-    # 1040 line 8 — Additional income from Schedule 1 line 10.
-    # 1040 line 9 — Total income = lines 1 + 2b + 3b + 7 + 8.
-    total_income = irs_round(
-        wages + taxable_interest + ordinary_divs + schd_line16 + sch_1_line_10
-    )
-
-    # -----------------------------------------------------------------------
-    # Page 1 — Adjustments to Income (Schedule 1 Part II)
-    # -----------------------------------------------------------------------
-
-    # 1040 line 10 — Adjustments from Schedule 1 line 26.
-    # Key: sch_1_line_26_total_adjustments from forms.sch_1.compute.
-    sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
-
-    # 1040 line 11 — Adjusted Gross Income = total income − adjustments.
-    agi = irs_round(total_income - sch_1_line_26)
-
-    # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
-    # or other MAGI-specific add-backs apply in the supported scenario set).
-    magi = agi
+    # Schedule 1 sub-dict still needed for the per-line breakdown pass-through.
+    sch_1 = schedule_results.get("sch_1", {})
 
     # -----------------------------------------------------------------------
     # Page 2 — Deductions
@@ -275,9 +249,9 @@ def compute_spine(
     # Page 2 — Tax and Credits
     # -----------------------------------------------------------------------
 
-    # Net capital gain for QDCGT worksheet: qualified dividends + max(0, LTCG).
-    # Use Sch D line 16 as the net cap gain input.
-    net_capital_gain = irs_round(max(0, schd_line16) + qualified_divs)
+    # Net capital gain for QDCGT worksheet (qualified dividends + max(0, LTCG))
+    # comes from the shared preamble.
+    net_capital_gain = preamble.net_capital_gain
 
     # 1040 line 16 — Tax from Qualified Dividends & Capital Gain Tax Worksheet.
     income_tax = qdcgt_tax(
@@ -328,27 +302,12 @@ def compute_spine(
         fed_withheld_w2 + fed_withheld_1099 + addl_medicare_withheld
     )
 
-    # 1040 line 27a — Earned Income Credit (EIC).
-    # Earned income = wages (v1 scope: no self-employment income).
-    eic_earned_income = wages
-    # Investment income for EIC limit check = taxable interest + ordinary
-    # dividends + max(0, net capital gains); tax-exempt interest = 0 in v1.
-    eic_investment_income = irs_round(
-        taxable_interest + ordinary_divs + max(0, schd_line16)
-    )
-    # Number of qualifying children = 0 for v1 scope (no dependents wired).
-    eic_num_children = 0
-    eic = _compute_eic(
-        earned_income=eic_earned_income,
-        agi=agi,
-        investment_income=eic_investment_income,
-        num_qualifying_children=eic_num_children,
-        filing_status=filing_status,
-        params=params,
-    )
-
-    # 1040 line 33 — Total payments = withholding + EIC (+ estimated tax, etc.).
-    total_payments = irs_round(federal_withheld + eic)
+    # 1040 line 33 — Total payments.
+    # v1 scope: withholding only. The native spine does NOT compute the Earned
+    # Income Credit (line 27a) — EIC-eligible scenarios fall back to the XLSX
+    # oracle in _compute_1040_pipeline (see _scenario_in_spine_scope), so the
+    # spine never reaches a filer who claims EIC. Estimated tax not yet wired.
+    total_payments = federal_withheld
 
     # 1040 line 35a — Amount overpaid = max(total_payments − total_tax, 0).
     overpaid = max(0, irs_round(total_payments - total_tax))
@@ -438,7 +397,6 @@ def compute_spine(
         "federal_withheld_other": addl_medicare_withheld,  # line 25c
         "federal_withheld": federal_withheld,       # line 25d total
         "additional_medicare_withheld": addl_medicare_withheld,
-        "eic": eic if eic else None,               # line 27a (None if 0 → blank PDF)
         "total_payments": total_payments,
         "overpaid": overpaid,
         # Schedule 1 line 10 and 26 totals — both short and long-form keys
