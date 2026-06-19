@@ -17,6 +17,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pypdf
+
 from tenforty.__main__ import _build_parser, _route_argv, main
 
 
@@ -153,7 +155,13 @@ class TestDispatch(unittest.TestCase):
         fake_scenario.config.year = 2025
         fake_scenario.config.filing_status = "single"
         fake_results = {"f540_total_liability": 0}
-        fake_emitted = {"f540": out_dir / "f540.pdf"}
+        f540_pdf = out_dir / "f540.pdf"
+        _writer = pypdf.PdfWriter()
+        _writer.add_blank_page(width=72, height=72)
+        with open(f540_pdf, "wb") as _f:
+            _writer.write(_f)
+        _writer.close()
+        fake_emitted = {"f540": f540_pdf}
 
         with patch.object(sys, "argv", [
             "tenforty", "ca", str(fed_yaml),

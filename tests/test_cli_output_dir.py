@@ -7,10 +7,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pypdf
+
 from tenforty.__main__ import main
 
 
 REPO_ROOT = Path(__file__).parent.parent
+
+
+def _blank_pdf(path: Path) -> Path:
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    with open(path, "wb") as f:
+        writer.write(f)
+    writer.close()
+    return path
 
 
 class TestArgparseWiring(unittest.TestCase):
@@ -42,10 +53,11 @@ class TestArgparseWiring(unittest.TestCase):
         fake_scenario.config.year = 2025
         fake_scenario.config.filing_status = "single"
 
-        fake_emitted = {"4868": tmpdir / "f4868_2025.pdf"}
-
-        # Create a dummy file so the path exists for output verification
-        fake_emitted["4868"].write_bytes(b"dummy")
+        fake_emitted = {
+            "1040": _blank_pdf(tmpdir / "f1040_2025.pdf"),
+            "sch_e": _blank_pdf(tmpdir / "f1040se_2025.pdf"),
+            "4868": _blank_pdf(tmpdir / "f4868_2025.pdf"),
+        }
 
         with patch.object(sys, "argv", [
             "tenforty",
@@ -67,7 +79,13 @@ class TestArgparseWiring(unittest.TestCase):
         self.assertEqual(result, 0)
         mock_orch.run_full_return.assert_called_once()
         output = captured.getvalue()
-        self.assertIn("=== Emitted PDFs ===", output)
+        self.assertIn("=== Assembled return packet(s) ===", output)
+        # Combined packet written; loose member forms pruned (combined-only).
+        self.assertTrue((tmpdir / "f1040_2025_complete.pdf").exists())
+        self.assertFalse((tmpdir / "f1040_2025.pdf").exists())
+        self.assertFalse((tmpdir / "f1040se_2025.pdf").exists())
+        # Form 4868 is a separate filing — retained as a standalone loose PDF.
+        self.assertTrue((tmpdir / "f4868_2025.pdf").exists())
         self.assertIn("4868", output)
 
     def test_no_output_dir_skips_emit_pdfs(self):

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import TextIO
 
+from tenforty import pdf_packet
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.rounding import irs_round
 from tenforty.scenario import load_scenario
@@ -62,11 +63,37 @@ def _which_applied(standard: float, schedule_a: float, applied: float) -> str:
     return "indeterminate"
 
 
-def _print_emitted_pdfs(emitted: dict) -> None:
+def _assemble_packets_and_prune(
+    emitted: dict, output_dir: Path, year: int
+) -> tuple[dict, list[Path]]:
+    """Assemble combined packet(s) from loose emitted PDFs, then remove the
+    loose form files that went into a packet (combined-only).
+
+    Files claimed by no packet are retained: the standalone Form 4868
+    (a separate filing) and any defensively-unclassified key. Returns
+    ``(combined, retained)`` where ``combined`` maps packet name → packet PDF
+    path and ``retained`` lists the loose files kept on disk.
+    """
+    combined = pdf_packet.assemble_all(emitted, output_dir, year)
+    retained: list[Path] = []
+    for key, path in emitted.items():
+        if pdf_packet.classify_key(key) in (None, "standalone"):
+            retained.append(path)
+        else:
+            path.unlink(missing_ok=True)
+    return combined, retained
+
+
+def _print_packets(combined: dict, retained: list[Path]) -> None:
     print()
-    print("=== Emitted PDFs ===")
-    for form, path in emitted.items():
-        print(f"  {form:4s}  -> {path}")
+    print("=== Assembled return packet(s) ===")
+    for name, path in combined.items():
+        print(f"  {name:20s} -> {path}")
+    if retained:
+        print()
+        print("=== Standalone files (filed separately) ===")
+        for path in retained:
+            print(f"  {path}")
 
 
 def _route_argv(argv: list[str]) -> list[str]:
@@ -200,7 +227,9 @@ def _run_federal(args: argparse.Namespace) -> int:
     print_results(results)
 
     if emitted is not None:
-        _print_emitted_pdfs(emitted)
+        combined, retained = _assemble_packets_and_prune(
+            emitted, args.output_dir, scenario.config.year)
+        _print_packets(combined, retained)
 
     return 0
 
@@ -241,7 +270,9 @@ def _run_ca(args: argparse.Namespace) -> int:
         disable_fods=args.no_fods,
     )
 
-    _print_emitted_pdfs(emitted)
+    combined, retained = _assemble_packets_and_prune(
+        emitted, args.output_dir, scenario.config.year)
+    _print_packets(combined, retained)
     return 0
 
 
