@@ -40,6 +40,22 @@ class PdfF8582(PdfFormMapping[dict]):
     _FORM_NAME = "Form 8582"
 
     _MAPPINGS: dict[int, dict] = {
+        2024: {
+            "scalars": {
+                # Header — 2024 uses non-zero-padded field names (f1_1, f1_2).
+                "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
+                "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_2[0]",
+                # Part I — Rental Real Estate Activities with Active Participation
+                # Field numbers match 2025 but without zero-padding for digits 1-9.
+                "f8582_line_1a_activities_with_income": "topmostSubform[0].Page1[0].f1_3[0]",
+                "f8582_line_1b_activities_with_loss": "topmostSubform[0].Page1[0].f1_4[0]",
+                "f8582_line_1c_prior_year_unallowed_loss": "topmostSubform[0].Page1[0].f1_5[0]",
+                "f8582_line_1d_combine": "topmostSubform[0].Page1[0].f1_6[0]",
+                # Line 11 — allowed passive loss (same number, non-zero-padded)
+                "f8582_line_11_allowed_loss": "topmostSubform[0].Page1[0].f1_19[0]",
+            },
+            "repeaters": {},
+        },
         2025: {
             "scalars": {
                 "taxpayer_name": "topmostSubform[0].Page1[0].f1_01[0]",

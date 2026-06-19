@@ -33,6 +33,31 @@ class PdfF8995(PdfFormMapping[dict]):
     _FORM_NAME = "Form 8995"
 
     _MAPPINGS: dict[int, dict] = {
+        2024: {
+            "scalars": {
+                # Header — 2024 uses non-zero-padded field names (f1_1, f1_2).
+                "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
+                "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_2[0]",
+                # Line 1 table row: 2024 uses Ln1A_Row1 subform (vs Row1i in 2025).
+                # Col c (QBI amount) is the 3rd field (f1_5) in the 3-column row.
+                "f8995_line_1_qbi": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]",
+                # Line 2: total QBI — 2024 uses ReadOrderSubForm[0] (vs Line2_ReadOrder in 2025).
+                "f8995_line_2_total_qbi": "topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]",
+                # Lines 3–6: same direct field paths as 2025.
+                "f8995_line_3_component": "topmostSubform[0].Page1[0].f1_19[0]",
+                "f8995_line_4_reit_ptp": "topmostSubform[0].Page1[0].f1_20[0]",
+                "f8995_line_5_reit_ptp_component": "topmostSubform[0].Page1[0].f1_21[0]",
+                # Line 6: same Line6_ReadOrder path as 2025.
+                "f8995_line_6_total_before_limit": "topmostSubform[0].Page1[0].Line6_ReadOrder[0].f1_22[0]",
+                # Lines 11–15: same direct paths as 2025.
+                "f8995_line_11_taxable_income": "topmostSubform[0].Page1[0].f1_27[0]",
+                "f8995_line_12_net_capital_gain": "topmostSubform[0].Page1[0].f1_28[0]",
+                "f8995_line_13_subtract": "topmostSubform[0].Page1[0].f1_29[0]",
+                "f8995_line_14_income_limit": "topmostSubform[0].Page1[0].f1_30[0]",
+                "f8995_line_15_qbi_deduction": "topmostSubform[0].Page1[0].f1_31[0]",
+            },
+            "repeaters": {},
+        },
         2025: {
             "scalars": {
                 "taxpayer_name": "topmostSubform[0].Page1[0].f1_01[0]",

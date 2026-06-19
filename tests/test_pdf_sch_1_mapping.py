@@ -24,7 +24,7 @@ class PdfSch1MappingTests(unittest.TestCase):
 
     def test_unknown_year_raises(self):
         with self.assertRaisesRegex(ValueError, "No Schedule 1 PDF mapping"):
-            PdfSch1.get_mapping(2024)
+            PdfSch1.get_mapping(2023)
 
 
 if __name__ == "__main__":

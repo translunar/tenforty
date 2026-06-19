@@ -96,10 +96,18 @@ def _build_2025_mapping() -> dict[str, str]:
     return m
 
 
+def _build_2024_mapping() -> dict[str, str]:
+    # The 2024 Schedule B PDF uses the same field paths as 2025.
+    # Both years share identical topmostSubform/Page1 structure with the
+    # same Line1_ReadOrder and ReadOrderControl subform containers.
+    return _build_2025_mapping()
+
+
 class PdfSchB(PdfFormMapping[dict[str, str]]):
-    """PDF field mapping for IRS Schedule B (2025)."""
+    """PDF field mapping for IRS Schedule B."""
 
     _FORM_NAME = "Schedule B"
     _MAPPINGS: dict[int, dict[str, str]] = {
+        2024: _build_2024_mapping(),
         2025: _build_2025_mapping(),
     }
