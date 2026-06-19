@@ -29,6 +29,17 @@ class FederalParamsTests(unittest.TestCase):
         # 2024 SALT cap is the pre-OBBBA $10,000.
         self.assertEqual(p.salt_cap[single], 10_000)
 
+    def test_2025_eic_income_ceiling_spot_values(self):
+        # 2025 MFJ EITC maximum-AGI limits (Rev. Proc. 2024-40), used as the
+        # orchestrator's conservative scope-gate threshold. Pinned so a future
+        # from-memory edit can't silently regress them (a too-low ceiling would
+        # admit possibly-EIC-eligible single filers to the no-EIC native spine).
+        p = load(2025)
+        self.assertEqual(
+            p.eic_income_ceiling,
+            {0: 26_214, 1: 57_554, 2: 64_430, 3: 68_675},
+        )
+
     def test_unknown_year_raises(self):
         with self.assertRaises(ValueError):
             load(1999)

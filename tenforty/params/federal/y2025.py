@@ -7,12 +7,13 @@ from tenforty.params.federal import FederalParams
 _S = FilingStatus.SINGLE.value
 
 # EIC income ceilings keyed by number of qualifying children (0, 1, 2, 3+).
-# These are the MFJ phase-out-end amounts from the 2025 EIC Table — the
-# maximum AGI at which any filing status can still claim EIC for that child
+# These are the 2025 MFJ EITC maximum-AGI limits (Rev. Proc. 2024-40) — the
+# largest AGI at which any filing status can still claim EITC for that child
 # count. Using the MFJ (largest) ceiling makes the orchestrator's scope-gate
 # conservative: a scenario below the ceiling MIGHT be EIC-eligible and is
 # routed to the workbook oracle (no EIC math happens in the native spine).
-_EIC_CEILING = {0: 26_214, 1: 57_310, 2: 63_398, 3: 68_675}
+# Conservative scope-gate threshold only; no credit math depends on these.
+_EIC_CEILING = {0: 26_214, 1: 57_554, 2: 64_430, 3: 68_675}
 
 PARAMS = FederalParams(
     year=2025,
