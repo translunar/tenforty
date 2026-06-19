@@ -28,4 +28,7 @@ def load(year: int) -> FederalParams:
     if year == 2025:
         from tenforty.params.federal.y2025 import PARAMS
         return PARAMS
+    if year == 2024:
+        from tenforty.params.federal.y2024 import PARAMS
+        return PARAMS
     raise ValueError(f"No federal parameters for year {year}")
