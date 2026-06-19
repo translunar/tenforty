@@ -331,11 +331,15 @@ def compute_spine(
     # from total_payments), even though the oracle's total_tax key exposes only
     # line 16. The native spine must mirror this: use income_tax + f8959 here,
     # not the line-16-only total_tax.
-    # Note: v1 scope omits NIIT (Form 8960) and other Schedule 2 additions —
-    # scenarios with investment income and AGI above the NIIT threshold ($200k
-    # single) will have oracle overpaid lower than native by the NIIT amount.
-    # Battery scenarios avoid this by excluding investment income from scenarios
-    # with AGI > $200k.
+    # Note: NIIT (Form 8960) is computed by NEITHER the native spine nor the
+    # workbook oracle — the oracle workbook exports no Form 8960 named range, so
+    # both sides are symmetrically pre-NIIT. Consequently high-income scenarios
+    # WITH investment income (e.g. the qdcgt_15_to_20_boundary battery scenario,
+    # AGI ~$570k with ~$72k net investment income) are INCLUDED in the parity
+    # battery and pass — because both native and oracle omit the same NIIT term.
+    # A future task that implements NIIT on the native side must expect those
+    # battery scenarios to start diverging until the oracle side is also updated
+    # to compute (or export) NIIT.
     overpaid = max(0, irs_round(total_payments - income_tax - f8959_tax_total))
 
     # -----------------------------------------------------------------------
