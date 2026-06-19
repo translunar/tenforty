@@ -199,11 +199,12 @@ def build_addl_medicare_boundary() -> Scenario:
     The $10,000 excess × 0.9% = $90 Additional Medicare Tax on Form 8959.
     Exercises the f8959 line 18 flow.
 
-    NO investment income: NIIT (Form 8960) is not implemented in the native
-    spine but is computed by the oracle workbook. Including dividends with
-    AGI > $200k would cause the oracle's overpaid to differ from native's
-    by the NIIT amount. Keeping this scenario wages-only ensures the oracle
-    and native agree on overpaid and total_tax (both line-16 income tax only).
+    Wages-only (no investment income) to keep this scenario a clean isolation
+    of the Additional-Medicare branch. (NIIT does not enter here regardless,
+    since neither the native spine nor the oracle workbook computes Form 8960
+    — see the qdcgt_15_to_20_boundary scenario, which DOES carry investment
+    income at AGI > $200k and still passes because both sides omit NIIT
+    symmetrically.)
     """
     return Scenario(
         config=_base_config(),
