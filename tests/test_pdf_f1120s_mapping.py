@@ -141,3 +141,83 @@ class PdfF1120SMappingTests(unittest.TestCase):
             bad, [],
             f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
         )
+
+    def test_2024_every_compute_key_is_accounted_for(self):
+        """Partition invariant for 2024: same logic as the 2025 test."""
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2024)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2024)
+        suppressed = pdf_f1120s.PdfF1120S.get_suppressed(2024)
+
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(
+            missing, set(),
+            f"{len(missing)} compute keys are unaccounted for: {sorted(missing)}",
+        )
+
+        in_mapping = set(mapping.keys())
+        double = (
+            (in_mapping & agg_contributors)
+            | (in_mapping & suppressed)
+            | (agg_contributors & suppressed)
+        )
+        self.assertEqual(
+            double, set(),
+            f"{len(double)} keys are double-accounted: {sorted(double)}",
+        )
+
+    def test_2024_every_pdf_target_is_a_real_pdf_field(self):
+        """Every field path referenced in the 2024 registries must exist
+        in pdfs/federal/2024/f1120s.pdf."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2024" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2024)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2024)
+        derivations = pdf_f1120s.PdfF1120S.get_derivations(2024)
+
+        all_targets = (
+            set(mapping.values())
+            | set(aggregations.keys())
+            | set(derivations.keys())
+        )
+        bad = sorted(p for p in all_targets if p not in real_fields)
+        self.assertEqual(
+            bad, [],
+            f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
+        )
+
+    def test_2024_checkbox_on_states_match_pdf_appearance_states(self):
+        """Every on-state in `_CHECKBOX_STATES_2024` must be a real appearance
+        state of its target checkbox/radio widget in the 2024 PDF.
+
+        A wrong on-state (e.g. "/Yes" where the IRS XFA form uses "/1") would
+        silently render as "/Off" — the value never gets checked. pypdf's
+        get_fields() exposes the available appearance states for a /Btn field
+        under the "/_States_" key (a list like ["/1", "/Off"]); this test
+        asserts the mapped on-state is present in that list. The compute key →
+        widget field path is resolved through `get_mapping(2024)`.
+        """
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2024" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        fields = reader.get_fields() or {}
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2024)
+        checkbox_states = pdf_f1120s.PdfF1120S.get_checkbox_states(2024)
+
+        bad: list[str] = []
+        for compute_key, on_state in checkbox_states.items():
+            field_path = mapping[compute_key]
+            field = fields.get(field_path)
+            available = list(field.get("/_States_", [])) if field else []
+            if on_state not in available:
+                bad.append(
+                    f"{compute_key}: on-state {on_state!r} not in widget "
+                    f"states {available} for field {field_path!r}"
+                )
+        self.assertEqual(bad, [], "\n".join(bad))
