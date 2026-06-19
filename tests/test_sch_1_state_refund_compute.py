@@ -79,5 +79,41 @@ class TaxBenefitRuleTests(unittest.TestCase):
         self.assertEqual(out["sch_1_line_1_taxable_refunds"], 10_000)
 
 
+class TaxBenefitRuleYearAwarenessTests(unittest.TestCase):
+    """Verify sch_1.compute uses year-correct prior_year_salt_cap from FederalParams."""
+
+    def test_2024_prior_year_salt_cap_10k_single(self):
+        """A 2024 return uses FederalParams.prior_year_salt_cap (looks back to 2023).
+        For single: $10k. Refund of $12k capped at $10k SALT cap."""
+        s = make_simple_scenario()
+        s.config.year = 2024
+        s.config.prior_year_itemized = True
+        s.config.prior_year_itemized_deduction_amount = 30_000.0
+        s.config.prior_year_standard_deduction_amount = 13_850.0  # 2023 single std deduction
+        s.form1099_g = [Form1099G(payer="State", state_tax_refund=12_000.0,
+                                   state_tax_refund_tax_year=2023)]
+        out = form_sch_1.compute(s, upstream={"sch_e": {}})
+        # recovery_cap = 30_000 - 13_850 = 16_150
+        # prior_year_salt_cap = 10_000
+        # taxable = min(12_000, 16_150, 10_000) = 10_000
+        self.assertEqual(out["sch_1_line_1_taxable_refunds"], 10_000)
+
+    def test_2025_prior_year_salt_cap_10k_single(self):
+        """A 2025 return uses FederalParams.prior_year_salt_cap (looks back to 2024).
+        For single: $10k. Same $10k cap applies."""
+        s = make_simple_scenario()
+        s.config.year = 2025
+        s.config.prior_year_itemized = True
+        s.config.prior_year_itemized_deduction_amount = 30_000.0
+        s.config.prior_year_standard_deduction_amount = 14_600.0  # 2024 single std deduction
+        s.form1099_g = [Form1099G(payer="State", state_tax_refund=12_000.0,
+                                   state_tax_refund_tax_year=2024)]
+        out = form_sch_1.compute(s, upstream={"sch_e": {}})
+        # recovery_cap = 30_000 - 14_600 = 15_400
+        # prior_year_salt_cap = 10_000
+        # taxable = min(12_000, 15_400, 10_000) = 10_000
+        self.assertEqual(out["sch_1_line_1_taxable_refunds"], 10_000)
+
+
 if __name__ == "__main__":
     unittest.main()
