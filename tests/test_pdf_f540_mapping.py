@@ -52,7 +52,7 @@ class PdfF540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_f540.PdfF540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2024, 2026):
+        for year in (2021, 2022, 2023, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_f540.PdfF540.get_mapping(year)
@@ -137,3 +137,26 @@ class PdfF540MappingTests(unittest.TestCase):
             bad, [],
             f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
         )
+
+    def test_2024_partition_invariant(self):
+        mapping = pdf_f540.PdfF540.get_mapping(2024)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2024)
+        suppressed = pdf_f540.PdfF540.get_suppressed(2024)
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(missing, set(), f"unaccounted: {sorted(missing)}")
+        double = ((set(mapping) & agg_contributors) | (set(mapping) & suppressed)
+                  | (agg_contributors & suppressed))
+        self.assertEqual(double, set(), f"double-accounted: {sorted(double)}")
+
+    def test_2024_every_pdf_target_is_a_real_pdf_field(self):
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2024" / "f540.pdf")
+        real = set(reader.get_fields() or {})
+        mapping = pdf_f540.PdfF540.get_mapping(2024)
+        derivations = pdf_f540.PdfF540.get_derivations(2024)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2024)
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2024 PDF: {bad}")

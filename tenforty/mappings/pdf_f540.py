@@ -72,6 +72,8 @@ class PdfF540(PdfFormMapping[dict[str, str]]):
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
+        if year == 2024:
+            return _AGGREGATIONS_2024
         if year == 2025:
             return _AGGREGATIONS_2025
         raise ValueError(f"No Form 540 aggregations for year {year}")
@@ -81,18 +83,24 @@ class PdfF540(PdfFormMapping[dict[str, str]]):
         cls,
         year: int,
     ) -> dict[str, Callable[[Mapping[str, object]], object]]:
+        if year == 2024:
+            return _DERIVATIONS_2024
         if year == 2025:
             return _DERIVATIONS_2025
         raise ValueError(f"No Form 540 derivations for year {year}")
 
     @classmethod
     def get_suppressed(cls, year: int) -> frozenset[str]:
+        if year == 2024:
+            return _SUPPRESSED_2024
         if year == 2025:
             return _SUPPRESSED_2025
         raise ValueError(f"No Form 540 suppressions for year {year}")
 
     @classmethod
     def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        if year == 2024:
+            return _CHECKBOX_STATES_2024
         if year == 2025:
             return _CHECKBOX_STATES_2025
         raise ValueError(f"No Form 540 checkbox states for year {year}")
@@ -322,4 +330,145 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2025: dict[str, str] = {}
 
 
-PdfF540._MAPPINGS = {2025: _MAPPING_2025}
+# ── 2024 registries ─────────────────────────────────────────────────────────
+#
+# Field names use hyphen prefix `540-NNNN` (vs 2025's `540_form_NNNN`).
+# Sequence numbers and semantic line assignments are identical between
+# years — verified against `/TU` tooltips from the 2024 PDF probe.
+
+_FILING_STATUS_RB_STATES_2024: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE: "/Box 1 . Single.",
+    FilingStatus.MARRIED_JOINTLY: (
+        "/Box 2 . Married/Registered Domestic Partner filing jointly "
+        "(even if only one spouse/Registered Domestic Partner had income). See instructions."
+    ),
+    FilingStatus.MARRIED_SEPARATELY: (
+        "/Box 3 . Married or Registered Domestic Partner filing separately."
+    ),
+    FilingStatus.HEAD_OF_HOUSEHOLD: (
+        "/Box 4 . Head of household (with qualifying person). See instructions."
+    ),
+    FilingStatus.QUALIFYING_WIDOW: (
+        "/Box 5 . Qualifying surviving spouse or Registered Domestic Partner."
+    ),
+}
+
+
+_MAPPING_2024: dict[str, str] = {
+    # Page 1 — Taxpayer / spouse / address ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_first_name":      "540-1003",
+    "f540_taxpayer_middle_initial":  "540-1004",
+    "f540_taxpayer_last_name":       "540-1005",
+    "f540_taxpayer_suffix":          "540-1006",
+    "f540_taxpayer_ssn":             "540-1007",
+    "f540_spouse_first_name":        "540-1008",
+    "f540_spouse_last_name":         "540-1010",
+    "f540_spouse_ssn":               "540-1012",
+    "f540_address_street":           "540-1015",
+    "f540_address_city":             "540-1018",
+    "f540_address_state":            "540-1019",
+    "f540_address_zip":              "540-1020",
+    "f540_residence_county":         "540-1028",
+    # Page 2 — Taxable income + tax
+    "f540_ca_agi":                   "540-2023",  # line 17
+    "f540_deduction":                "540-2024",  # line 18
+    "f540_taxable_income":           "540-2025",  # line 19
+    "f540_ca_tax":                   "540-2030",  # line 31
+    "f540_exemption_credit":         "540-2031",  # line 32
+    # Page 3 — Credits + payments + use tax
+    "f540_renter_credit":            "540-3004",  # line 46
+    "f540_estimated_payments":       "540-3012",  # line 72
+    "f540_use_tax":                  "540-3019",  # line 91
+    # Page 4 — Voluntary contributions
+    "f540_voluntary_contributions":  "540-4024",  # line 110
+    # Page 5 — Estimated tax penalty
+    "f540_estimated_tax_penalty":    "540-5005",  # line 113
+    # Page 6 — Sign block ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_email":           "540-6002",
+    "f540_taxpayer_phone":           "540-6003",
+}
+
+
+_AGGREGATIONS_2024: dict[str, tuple[str, ...]] = {}
+
+
+_DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Filing-status radio group (page 1, line 1-5). Verbose state strings
+    # per the 2024 FTB PDF probe (different from 2025 strings).
+    "540-1036 RB": lambda c: _FILING_STATUS_RB_STATES_2024[c["f540_filing_status"]],
+    # Line 31 tax-source checkboxes. f540_taxable_income ≤ 100,000 →
+    # Tax Table; > 100,000 → Rate Schedule. On-states `/Yes`/`/Off` per probe.
+    "540-2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
+    "540-2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    # Line 33 = max(0, line 31 − line 32).
+    "540-2032": lambda c: _line_33(c),
+    # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
+    "540-2036": lambda c: _line_33(c),
+    # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45).
+    "540-3005": lambda c: _line_47(c),
+    # Line 48 = max(0, line 35 − line 47).
+    "540-3006": lambda c: _line_48(c),
+    # Line 64 = line 48 + 61 + 62 + 63.
+    "540-3010": lambda c: _line_64(c),
+    # Line 78 = sum lines 71-77.
+    "540-3018": lambda c: (
+        c.get("f540_line71_ca_withholding", 0)
+        + c["f540_estimated_payments"]
+        + c.get("f540_line73_592b_593_withholding", 0)
+        + c.get("f540_line74_program_40_motion_picture", 0)
+        + c.get("f540_line75_eitc", 0)
+        + c.get("f540_line76_yctc", 0)
+        + c.get("f540_line77_fytc", 0)
+    ),
+    # Line 93 = max(0, line 78 − line 91).
+    "540-3023": lambda c: _line_93(c),
+    # Line 94 = max(0, line 91 − line 78).
+    "540-3024": lambda c: max(
+        0, c["f540_use_tax"] - c["f540_estimated_payments"]
+    ),
+    # Line 95 = max(0, line 93 − line 92).
+    "540-3025": lambda c: _line_95(c),
+    # Line 96 = max(0, line 92 − line 93).
+    "540-3026": lambda c: max(
+        0,
+        c.get("f540_line92_isr_penalty", 0) - _line_93(c),
+    ),
+    # Line 97 = max(0, line 95 − line 64).
+    "540-3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    # Line 99 = line 97 − line 98.
+    "540-4004": lambda c: (
+        max(0, _line_95(c) - _line_64(c))
+        - c.get("f540_line98_applied_to_2026_estimated", 0)
+    ),
+    # Line 100 = max(0, line 64 − line 95).
+    "540-4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    # Line 111 (owe) — sign-split branch of f540_total_liability.
+    "540-5002": lambda c: (
+        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
+    ),
+    # Line 115 (refund) — sign-split branch of f540_total_liability.
+    "540-5007": lambda c: (
+        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
+    ),
+}
+
+
+_SUPPRESSED_2024: frozenset[str] = frozenset({
+    # Consumed-by-derivation only (sign-split: 540-5002 owe / 540-5007 refund).
+    "f540_total_liability",
+    # Consumed-by-derivation only (filing-status RB lookup via
+    # _FILING_STATUS_RB_STATES_2024).
+    "f540_filing_status",
+    # PTET credit — claimed via line 43/44 with credit code; concrete
+    # cell allocation deferred to Sub-plan 4.
+    "f540_ptet_credit",
+    # Compute()'s f540_total_credits includes exemption_credit
+    # (subtracted at line 32 on the form); different semantic from line 47.
+    "f540_total_credits",
+})
+
+
+_CHECKBOX_STATES_2024: dict[str, str] = {}
+
+
+PdfF540._MAPPINGS = {2024: _MAPPING_2024, 2025: _MAPPING_2025}
