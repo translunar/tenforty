@@ -80,7 +80,7 @@ class PdfSchCaMappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2024, 2026):
+        for year in (2021, 2022, 2023, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_ca.PdfSchCa.get_mapping(year)
@@ -191,3 +191,101 @@ class PdfSchCaMappingTests(unittest.TestCase):
             bad, [],
             f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
         )
+
+    # ------------------------------------------------------------------
+    # 2024 tests
+    # ------------------------------------------------------------------
+
+    def test_2024_get_mapping_returns_dict(self):
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2024)
+        self.assertIsInstance(mapping, dict)
+        self.assertGreater(len(mapping), 0)
+
+    def test_2024_get_aggregations_is_empty(self):
+        # Per-line and total sums are kernel-emitted; no PDF cell
+        # receives a sum of multiple compute keys at fill time.
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2024), {})
+
+    def test_2024_get_derivations_is_empty(self):
+        # No within-form arithmetic wired in v1.
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2024), {})
+
+    def test_2024_get_checkbox_states_is_empty(self):
+        # The single /Btn widget on the 2024 form is out-of-scope for v1.
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2024), {})
+
+    def test_2024_partition_invariant(self):
+        """Every expected kernel-emitted compute key is OWNED by exactly
+        one of `_MAPPING_2024`, `_AGGREGATIONS_2024`, or
+        `_SUPPRESSED_2024`. Derivation lambdas (none in Sch CA v1)
+        CONSUME compute keys but do not OWN them.
+        """
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2024)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2024)
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2024)
+
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(
+            missing, set(),
+            f"{len(missing)} compute keys are unaccounted for: {sorted(missing)}",
+        )
+
+        in_mapping = set(mapping.keys()) & _EXPECTED_COMPUTE_KEYS
+        double = (
+            (in_mapping & agg_contributors)
+            | (in_mapping & suppressed)
+            | (agg_contributors & suppressed)
+        )
+        self.assertEqual(
+            double, set(),
+            f"{len(double)} keys are double-accounted: {sorted(double)}",
+        )
+
+    def test_2024_ca_agi_is_suppressed_transit_only(self):
+        # sch_ca_ca_agi has no Sch CA PDF cell; it flows to f540 line 13
+        # via the f540_ca_agi mapping. Verify the ownership.
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2024)
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2024)
+        self.assertIn("sch_ca_ca_agi", suppressed)
+        self.assertNotIn("sch_ca_ca_agi", mapping)
+
+    def test_2024_column_omissions_suppressed(self):
+        # Lines whose 2024 form omits a column widget must declare the
+        # omission via SUPPRESSED so worksheet divergences routed there
+        # are explicitly known to flow through totals only.
+        # Tooltip-verified: same column structure as 2025.
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2024)
+        # Lines with no Col C widget (subtraction-only conformance)
+        for key in (
+            "sch_ca_line_part_i_a_6_additions",   # SS
+            "sch_ca_line_part_i_b_1_additions",   # state refund
+            "sch_ca_line_part_i_b_7_additions",   # UI
+            "sch_ca_line_part_i_c_11_additions",  # educator
+            "sch_ca_line_part_i_c_13_additions",  # HSA
+            "sch_ca_line_part_i_c_15_additions",  # SE tax
+            "sch_ca_line_part_i_c_17_additions",  # SE health
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, suppressed)
+        # Line with no Col B widget (addition-only conformance)
+        self.assertIn("sch_ca_line_part_i_c_21_subtractions", suppressed)
+
+    def test_2024_every_pdf_target_is_a_real_pdf_field(self):
+        """Every PDF field path referenced (in mapping values, aggregation
+        keys, or derivation keys) must resolve to a field that exists in
+        pdfs/california/2024/sch_ca.pdf.
+        """
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2024" / "sch_ca.pdf")
+        real = set(reader.get_fields() or {})
+
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2024)
+        derivations = pdf_sch_ca.PdfSchCa.get_derivations(2024)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2024)
+
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2024 PDF: {bad}")
