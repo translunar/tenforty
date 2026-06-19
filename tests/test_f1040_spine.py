@@ -9,8 +9,8 @@ class SpineAssemblyTests(unittest.TestCase):
     def test_standard_deduction_selected_when_larger(self):
         scenario = make_simple_scenario()  # synthetic single W-2 only
         params = load(2025)
-        # No itemized inputs -> schedule_a_total small -> standard applied.
-        schedule_results = {"sch_a": {"schedule_a_total": 0}}
+        # No itemized inputs -> sch_a_line_17_total small -> standard applied.
+        schedule_results = {"sch_a": {"sch_a_line_17_total": 0}}
         out = compute_spine(scenario, params, schedule_results)
         self.assertEqual(out["standard_deduction"], 15_750)
         self.assertEqual(out["total_deductions"], 15_750)
@@ -26,8 +26,8 @@ class SpineAssemblyTests(unittest.TestCase):
         params = load(2025)
         qbi_deduction = 1500
         out = compute_spine(scenario, params,
-                            {"sch_a": {"schedule_a_total": 0},
-                             "f8995": {"f8995_line_15": qbi_deduction}})
+                            {"sch_a": {"sch_a_line_17_total": 0},
+                             "f8995": {"f8995_line_15_qbi_deduction": qbi_deduction}})
         self.assertEqual(
             out["taxable_income_before_qbi_deduction"],
             out["taxable_income"] + qbi_deduction,

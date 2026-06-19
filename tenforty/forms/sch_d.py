@@ -30,10 +30,17 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
     k1_short = irs_round(sum(fanout.sch_d_short_term_additions))
     k1_long = irs_round(sum(fanout.sch_d_long_term_additions))
 
+    # Sch D line 13 — capital gain distributions from 1099-DIV box 2a.
+    # These are treated as long-term capital gains and enter the long-term
+    # total (line 15) before rolling into the net total (line 16).
+    line_13 = irs_round(
+        sum(f.capital_gain_distributions for f in scenario.form1099_div)
+    )
+
     line_7 = (line_1a["gain"] + line_1b["gain"] + line_2["gain"]
               + line_3["gain"] + k1_short)
     line_15 = (line_8a["gain"] + line_8b["gain"] + line_9["gain"]
-               + line_10["gain"] + k1_long)
+               + line_10["gain"] + k1_long + line_13)
     line_16 = line_7 + line_15
 
     return {
@@ -67,6 +74,7 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
         "sch_d_line_10_basis": line_10["basis"],
         "sch_d_line_10_gain": line_10["gain"],
         "sch_d_line_12_net_long_k1": k1_long,
+        "sch_d_line_13_cap_gain_dist": line_13,
         "sch_d_line_15_net_long": line_15,
 
         "sch_d_line_16_total": line_16,

@@ -49,6 +49,7 @@ from tenforty.models import (
     CASchD540Adjustment,
     EntityType,
     FilingStatus,
+    ItemizedDeductions,
     K1Allocation,
     K1AllocationEntity,
     K1AllocationShareholder,
@@ -189,6 +190,38 @@ def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
     }
 
 
+def _scenario_with_effective_itemized(scenario: Scenario) -> Scenario:
+    """Return a Scenario whose itemized_deductions field is populated.
+
+    YAML fixtures use ``form1098s`` (a list of Form1098 objects) to carry
+    mortgage interest and property tax.  ``forms.sch_a.compute`` reads from
+    ``scenario.itemized_deductions`` (an ItemizedDeductions dataclass).  This
+    helper bridges the two representations so the native sch_a compute path
+    works for both fixture styles without mutating the caller's scenario.
+
+    Merging rules:
+    - If ``scenario.itemized_deductions`` is already set, return the scenario
+      unchanged (direct itemized_deductions takes precedence; callers that set
+      both are already signalling their intent).
+    - If ``scenario.form1098s`` is non-empty, synthesize an ItemizedDeductions
+      from the summed mortgage_interest and property_tax across all 1098s.
+      Other ItemizedDeductions fields (medical, state income tax, charity) are
+      left at 0.0 — they are not carried on Form 1098.
+    - If neither is set, return the scenario unchanged (no itemized deductions).
+    """
+    if scenario.itemized_deductions is not None:
+        return scenario
+    if not scenario.form1098s:
+        return scenario
+    total_mortgage = sum(f.mortgage_interest for f in scenario.form1098s)
+    total_property_tax = sum(f.property_tax for f in scenario.form1098s)
+    effective_itemized = ItemizedDeductions(
+        mortgage_interest=total_mortgage,
+        property_tax=total_property_tax,
+    )
+    return dataclasses.replace(scenario, itemized_deductions=effective_itemized)
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -230,9 +263,169 @@ class ReturnOrchestrator:
     def _compute_1040_pipeline(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
-        """1040 pipeline. Repointed at the native spine in the cutover task;
-        currently delegates to the workbook oracle path unchanged."""
-        return self._compute_1040_via_workbook(effective_scenario)
+        """Native 1040 spine. Gathers the native schedule computes and assembles
+        the 1040 via forms.f1040_spine; the workbook is no longer used in
+        production for single filers (see _compute_1040_via_workbook for the
+        oracle path, which remains active for non-single filers that fall
+        outside the v1 spine scope)."""
+        from tenforty.models import FilingStatus
+        from tenforty.params.federal import load as load_params
+        from tenforty.forms import f1040_spine
+        # Native spine v1 scope: single filers only.  Non-single filing
+        # statuses fall back to the XLSX oracle path until the spine is
+        # extended to cover them.
+        if effective_scenario.config.filing_status is not FilingStatus.SINGLE:
+            return self._compute_1040_via_workbook(effective_scenario)
+        params = load_params(effective_scenario.config.year)
+        schedule_results = self._compute_native_schedules(effective_scenario)
+        spine_result = f1040_spine.compute_spine(
+            effective_scenario, params, schedule_results,
+        )
+        # Forward f8949 box-total keys into the final result dict so oracle
+        # cross-check consumers (e.g. test_f8949_oracle.py) can read them
+        # from compute_federal — mirroring the workbook path which exposed
+        # these as named-range OUTPUTS.
+        f8949_result = schedule_results.get("f8949", {})
+        return {**f8949_result, **spine_result}
+
+    def _compute_native_schedules(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, dict]:
+        """Run each native schedule compute in dependency order.
+
+        Returns a dict keyed by schedule name, each value being that
+        schedule's raw compute dict.  The spine consumes these via
+        ``schedule_results[name][key]``.
+
+        Ordering mirrors _emit_pdfs_internal:
+        1. Sch E Part II (K-1 fanout) — provides K1FanoutData sidecar used
+           by sch_d, f8995, and f8582.
+        2. Sch E (Part I rental, merged with Part II fields under "sch_e").
+        3. Sch 1 — needs sch_e.
+        4. Sch D — needs k1_fanout (via f8949 if applicable).
+        5. F8959 — standalone (W-2 Medicare wages only at v1 scope).
+        6. AGI pre-compute stub — provides agi/magi/taxable_income_before_qbi
+           from parts already computed (uses std deduction as stand-in for sch_a).
+        7. F8995 — needs k1_fanout + f1040 stub (taxable_income_before_qbi).
+        8. F8582 — needs k1_fanout + sch_e + f1040 stub (magi).
+        9. Sch A — needs agi from the f1040 stub.
+        """
+        from tenforty.params.federal import load as _load_params
+        from tenforty.rounding import irs_round as _irs_round
+
+        # --- Step 1: Sch E Part II (K-1 fanout) ---
+        if self._should_emit_sch_e_part_ii(effective_scenario):
+            part_ii_fields, k1_fanout = form_sch_e_part_ii.compute(
+                effective_scenario, upstream={},
+            )
+        else:
+            part_ii_fields = {}
+            k1_fanout = K1FanoutData.empty()
+
+        upstream: UpstreamState = {"k1_fanout": k1_fanout}
+
+        # --- Step 2: F8949 (needed by sch_d) ---
+        if self._should_compute_8949(effective_scenario):
+            upstream["f8949"] = form_f8949.compute(effective_scenario, upstream)
+
+        # --- Step 3: Sch E Part I (rental), merged with Part II fields ---
+        # Merge so the spine can read both sch_e_line_26_total (Part I) and
+        # sch_e_line_41_total_pte (Part II) from the same "sch_e" slot.
+        sch_e_part_i = form_sch_e.compute(effective_scenario, upstream={})
+        sch_e_combined = {**sch_e_part_i, **part_ii_fields}
+
+        # --- Step 4: Sch 1 (needs sch_e) ---
+        sch_1_results = form_sch_1.compute(
+            effective_scenario, upstream={"sch_e": sch_e_combined},
+        )
+
+        # --- Step 5: Sch D (needs k1_fanout + f8949) ---
+        sch_d_results = form_sch_d.compute(effective_scenario, upstream=upstream)
+
+        # --- Step 6: F8959 (standalone W-2 wages only) ---
+        f8959_results = form_8959.compute(effective_scenario, upstream={})
+
+        # --- Step 7: AGI pre-compute stub ---
+        # F8995 and F8582 need upstream["f1040"]["magi"] /
+        # "taxable_income_before_qbi_deduction". Build a lightweight stub
+        # from parts already known.  Sch A is not yet computed, so use the
+        # standard deduction as a conservative stand-in for the QBI-threshold
+        # check in f8995 (over-estimates taxable income slightly if itemized
+        # beats std, which is safe: the threshold guard is generous).
+        _params = _load_params(effective_scenario.config.year)
+        wages_pre = _irs_round(sum(w.wages for w in effective_scenario.w2s))
+        taxable_int_pre = _irs_round(
+            sum(f.interest for f in effective_scenario.form1099_int)
+        )
+        ord_divs_pre = _irs_round(
+            sum(f.ordinary_dividends for f in effective_scenario.form1099_div)
+        )
+        qual_divs_pre = _irs_round(
+            sum(f.qualified_dividends for f in effective_scenario.form1099_div)
+        )
+        schd_line16_pre = sch_d_results.get("sch_d_line_16_total", 0)
+        sch_1_line_10 = sch_1_results.get("sch_1_line_10_total_additional_income", 0)
+        sch_1_line_26 = sch_1_results.get("sch_1_line_26_total_adjustments", 0)
+        total_income_pre = _irs_round(
+            wages_pre + taxable_int_pre + ord_divs_pre
+            + schd_line16_pre + sch_1_line_10
+        )
+        agi_pre = _irs_round(total_income_pre - sch_1_line_26)
+        std_ded_pre = _params.standard_deduction[
+            effective_scenario.config.filing_status.value
+        ]
+        taxable_pre = max(0, _irs_round(agi_pre - std_ded_pre))
+        net_cap_gain_pre = _irs_round(max(0, schd_line16_pre) + qual_divs_pre)
+        f1040_stub: dict = {
+            "agi": agi_pre,
+            "magi": agi_pre,
+            "taxable_income_before_qbi_deduction": taxable_pre,
+            "net_capital_gain": net_cap_gain_pre,
+        }
+
+        # --- Step 8: F8995 (needs k1_fanout + f1040 stub) ---
+        f8995_results = form_f8995.compute(
+            effective_scenario,
+            upstream={"k1_fanout": k1_fanout, "f1040": f1040_stub},
+        )
+
+        # --- Step 9: F8582 (needs k1_fanout + sch_e + f1040 stub) ---
+        f8582_results = form_f8582.compute(
+            effective_scenario,
+            upstream={
+                **upstream,
+                "sch_e": sch_e_combined,
+                "f1040": f1040_stub,
+            },
+        )
+
+        # --- Step 10: Sch A (needs agi from f1040 stub) ---
+        # Build an effective scenario with itemized_deductions populated from
+        # form1098s when itemized_deductions is not set directly. This bridges
+        # the YAML fixture model (which uses form1098s for mortgage/property-tax)
+        # to forms.sch_a.compute, which reads from scenario.itemized_deductions.
+        sch_a_scenario = _scenario_with_effective_itemized(effective_scenario)
+        sch_a_results = (
+            form_sch_a.compute(
+                sch_a_scenario,
+                upstream={"f1040": f1040_stub},
+            )
+            if sch_a_scenario.itemized_deductions is not None
+            else {}
+        )
+
+        return {
+            "sch_1": sch_1_results,
+            "sch_a": sch_a_results,
+            "sch_d": sch_d_results,
+            "sch_e": sch_e_combined,
+            "f8959": f8959_results,
+            "f8995": f8995_results,
+            "f8582": f8582_results,
+            # f8949 included so _compute_1040_pipeline can forward box totals
+            # into the final result for oracle cross-check consumers.
+            "f8949": upstream.get("f8949", {}),
+        }
 
     def _compute_1040_via_workbook(
         self, effective_scenario: Scenario,
