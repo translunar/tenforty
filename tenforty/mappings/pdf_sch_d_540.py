@@ -1,4 +1,4 @@
-"""PDF field mapping for FTB 2025 Schedule D (540).
+"""PDF field mapping for FTB Schedule D (540) — TY2024 and TY2025.
 
 Mirrors the five-registry design from `pdf_f540.py` and `pdf_sch_ca.py`.
 `sch_d_540.compute()` now emits three keys driven by worksheet entries:
@@ -6,6 +6,7 @@ Mirrors the five-registry design from `pdf_f540.py` and `pdf_sch_ca.py`.
 `sch_d_540_total_subtractions` (line 12a subtraction total → Sch CA Col B),
 and `sch_d_540_total_additions` (line 12b addition total → Sch CA Col C).
 
+TY2025 registries (`_*_2025`):
 - `_MAPPING_2025` — direct compute_key → PDF-field-path. Five entries:
   the three compute outputs (line 8 net gain/loss, line 12a subtraction
   total, line 12b addition total) plus two `[PLANNED]`
@@ -32,12 +33,20 @@ and `sch_d_540_total_additions` (line 12b addition total → Sch CA Col C).
 - `_CHECKBOX_STATES_2025` — empty for Sch D (540). The 2025 form has
   no /Btn widgets; all 125 named widgets are /Tx text widgets.
 
-Field paths come from a direct probe of
-`pdfs/california/2025/sch_d_540.pdf` via pypdf on 2026-04-29.
-Tooltip-verified (`/TU` annotations on each widget identify line +
-column). The flat naming convention is `'540 sch D - PRRR'` where P is
-page index (1–4) and RRR is per-page sequence; pypdf reports all 125
-widgets as named (no unnamed visual placeholders observed).
+TY2024 registries (`_*_2024`):
+- Same five-registry design and same five compute keys as 2025.
+- Different field-naming scheme: `'540D - NNNN'` (no 'sch' segment,
+  page-less numbering) vs. 2025's `'540 sch D - PRRR'`.
+- Different page layout: all 22 detail rows 1a..1v fit on page 1
+  (1003..1112), followed by lines 2–7 (1113..1119), then lines 8–12
+  on page 2 (2001..2006). 125 named widgets total, all /Tx.
+- `_SUPPRESSED_2024` covers (a) 110 detail-row cells (1003..1112),
+  (b) within-form sums / carryover / loss-limit cells (1113..1119,
+  2002) — 118 entries total.
+
+Field paths come from a direct probe of the respective form PDFs via
+pypdf. Tooltip-verified (`/TU` annotations on each widget identify
+line + column). Probed 2025 on 2026-04-29; 2024 on 2026-06-19.
 """
 
 from collections.abc import Callable, Mapping
@@ -65,6 +74,8 @@ class PdfSchD540(PdfFormMapping[dict[str, str]]):
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
+        if year == 2024:
+            return _AGGREGATIONS_2024
         if year == 2025:
             return _AGGREGATIONS_2025
         raise ValueError(f"No Schedule D (540) aggregations for year {year}")
@@ -74,18 +85,24 @@ class PdfSchD540(PdfFormMapping[dict[str, str]]):
         cls,
         year: int,
     ) -> dict[str, Callable[[Mapping[str, object]], object]]:
+        if year == 2024:
+            return _DERIVATIONS_2024
         if year == 2025:
             return _DERIVATIONS_2025
         raise ValueError(f"No Schedule D (540) derivations for year {year}")
 
     @classmethod
     def get_suppressed(cls, year: int) -> frozenset[str]:
+        if year == 2024:
+            return _SUPPRESSED_2024
         if year == 2025:
             return _SUPPRESSED_2025
         raise ValueError(f"No Schedule D (540) suppressions for year {year}")
 
     @classmethod
     def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        if year == 2024:
+            return _CHECKBOX_STATES_2024
         if year == 2025:
             return _CHECKBOX_STATES_2025
         raise ValueError(f"No Schedule D (540) checkbox states for year {year}")
@@ -210,4 +227,71 @@ _SUPPRESSED_2025: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2025: dict[str, str] = {}
 
 
-PdfSchD540._MAPPINGS = {2025: _MAPPING_2025}
+# ---------------------------------------------------------------------------
+# TY2024 registries
+# Field-naming scheme: '540D - NNNN' (no page prefix, no 'sch' segment).
+# Probed from pdfs/california/2024/sch_d_540.pdf on 2026-06-19.
+# ---------------------------------------------------------------------------
+
+# Direct 1:1 mappings — same five compute keys as 2025, different PDF
+# field paths. 2024 form layout: page 1 = header + all detail rows +
+# lines 2–7; page 2 = lines 8–12.
+_MAPPING_2024: dict[str, str] = {
+    # Page 1 — Header ([PLANNED]: orchestrator-supplied)
+    "sch_d_540_taxpayer_name":      "540D - 1001",
+    "sch_d_540_taxpayer_ssn":       "540D - 1002",
+    # Page 2 — Line 8: Net gain or (loss). Combine line 4 and line 7.
+    # `sch_d_540_net_capital_gain` = irs_round(federal Sch D line 16).
+    "sch_d_540_net_capital_gain":   "540D - 2001",
+    # Page 2 — Lines 12a/12b: federal-state divergence delta routed to
+    # Schedule CA (540) §A line 7a Col B/C. Driven by worksheet entries
+    # accumulated in `sch_d_540.compute()`.
+    "sch_d_540_total_subtractions": "540D - 2005",  # line 12a → Sch CA Col B
+    "sch_d_540_total_additions":    "540D - 2006",  # line 12b → Sch CA Col C
+}
+
+
+# No PDF cell on Sch D (540) 2024 receives a sum of multiple compute
+# keys at fill time. Within-form sums (lines 4, 5, 7) are SUPPRESSED.
+_AGGREGATIONS_2024: dict[str, tuple[str, ...]] = {}
+
+
+# PDF cells whose value is derived from compute outputs at fill time.
+# Lambda bodies are identical to 2025; only the field-name keys differ.
+_DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Line 10 — federal Sch D line 16 (pre-CA-divergence). Distinct
+    # from line 8 (CA net = federal_net − subs + adds) when worksheet
+    # entries exist; equal otherwise.
+    "540D - 2003": lambda c: c["sch_d_540_federal_net"],
+    # Line 11 — California gain from line 8 or loss from line 9. v1
+    # does not implement a separate CA loss-limit; consumes the CA
+    # net (line 8) directly.
+    "540D - 2004": lambda c: c["sch_d_540_net_capital_gain"],
+}
+
+
+# PDF cells with no direct compute backing on the 2024 form. Two subsets:
+#   (a) detail rows 1a..1v columns a–e (1003..1112 = 110 cells) — per-
+#       transaction inputs not enumerated by v1; federal Sch D worksheet
+#       is the source of truth.
+#   (b) within-form sums and carryover (1113..1119 = lines 2–7, 7 cells)
+#       + line 9 loss limit (2002, 1 cell) — derivable from (a) but v1
+#       does not enumerate transactions, so suppression is the honest v1
+#       behaviour rather than rendering 0 in a sum cell.
+# Lines 12a/12b are NOT suppressed; they are mapped in `_MAPPING_2024`
+# and driven by worksheet entries via `sch_d_540.compute()`.
+_SUPPRESSED_2024: frozenset[str] = frozenset(
+    # (a) Detail rows 1a..1v (page 1, 1003..1112 = 110 cells)
+    {f"540D - {n}" for n in range(1003, 1113)}
+    # (b) Within-form sums / carryover / loss-limit (1113..1119 + 2002)
+    | {f"540D - {n}" for n in range(1113, 1120)}
+    | {"540D - 2002"}
+)
+
+
+# The 2024 Sch D (540) PDF has no /Btn widgets; all 125 named widgets
+# are /Tx. No checkbox states are required.
+_CHECKBOX_STATES_2024: dict[str, str] = {}
+
+
+PdfSchD540._MAPPINGS = {2024: _MAPPING_2024, 2025: _MAPPING_2025}
