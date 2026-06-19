@@ -4,16 +4,16 @@ Native-Python compute. Aggregates additional-income categories from
 upstream form results (primarily Sch E rental income) and
 adjustment-to-income categories from scenario fields.
 
-V1 scope: line 5 (rental/royalty via Sch E) is the only populated
-additional-income line. Other Part I categories (business income,
-unemployment, farm income, etc.) and all of Part II (adjustments)
-are zero in v1 — the compute function writes 0 to those keys so the
-PDF fills cleanly. When a future scenario drives one of those lines,
-populate the value here; line 10 and line 26 sums already reference
+V1 scope: line 5 (rental real estate, royalties, partnerships, S corps)
+is the only populated additional-income line. Other Part I categories
+(business income, unemployment, farm income, etc.) and all of Part II
+(adjustments) are zero in v1 — the compute function writes 0 to those
+keys so the PDF fills cleanly. When a future scenario drives one of those
+lines, populate the value here; line 10 and line 26 sums already reference
 the variables by name, so the wiring is a one-line edit.
 """
 
-from tenforty.constants import y2025
+from tenforty.params.federal import load as load_federal_params
 from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
@@ -28,6 +28,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     marker; scenarios with unemployment / business / farm income should
     NOT run that oracle assertion.
     """
+    params = load_federal_params(scenario.config.year)
     sch_e = upstream.get("sch_e", {})
 
     refund_total = sum(g.state_tax_refund for g in scenario.form1099_g)
@@ -38,7 +39,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
         recovery_cap = max(0.0, itemized - standard)
         salt_cap = float(
-            y2025.PRIOR_YEAR_SALT_CAP[scenario.config.filing_status]
+            params.prior_year_salt_cap[scenario.config.filing_status.value]
         )
         taxable_refunds_line_1 = irs_round(
             min(refund_total, recovery_cap, salt_cap)
