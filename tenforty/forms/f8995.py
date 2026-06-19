@@ -10,18 +10,19 @@ K-1-only scenarios rarely realize a meaningful STCL worth netting; a
 scenario with a meaningful STCL will slightly under-state the deduction.
 """
 
-from tenforty.constants import y2025
+from tenforty.params.federal import load as load_federal_params
 from tenforty.models import K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
+    params = load_federal_params(scenario.config.year)
     fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
     f1040 = upstream.get("f1040", {})
 
     taxable_income = float(f1040.get("taxable_income_before_qbi_deduction", 0))
     net_cap_gain = float(f1040.get("net_capital_gain", 0))
-    threshold = y2025.QBI_THRESHOLD[scenario.config.filing_status]
+    threshold = params.qbi_threshold[scenario.config.filing_status.value]
 
     qbi_total = fanout.qbi_aggregate
     qualified_divs = fanout.qualified_dividends_aggregate
