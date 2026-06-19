@@ -29,6 +29,34 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
     # state (unchecked) is correct for the typical extension filing.
 
     _MAPPINGS: dict[int, dict[str, str]] = {
+        2024: {
+            # === VoucherHeader — fiscal-year date fields ===
+            "fiscal_year_begin": "topmostSubform[0].Page1[0].VoucherHeader[0].f1_1[0]",
+            "fiscal_year_end_month": "topmostSubform[0].Page1[0].VoucherHeader[0].f1_2[0]",
+            "fiscal_year_end_year": "topmostSubform[0].Page1[0].VoucherHeader[0].f1_3[0]",
+
+            # === Part I — Identification ===
+            # 2024 uses Part1_ReadOrder (not PartI_ReadOrder as in 2025).
+            "full_name": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_4[0]",
+            "address": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_5[0]",
+            "address_city": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_6[0]",
+            "address_state": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_7[0]",
+            "address_zip": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_8[0]",
+            "ssn": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_9[0]",
+            "spouse_ssn": "topmostSubform[0].Page1[0].Part1_ReadOrder[0].f1_10[0]",
+
+            # === Part II — Individual Income Tax ===
+            "estimated_total_tax": "topmostSubform[0].Page1[0].f1_11[0]",
+            "total_payments": "topmostSubform[0].Page1[0].f1_12[0]",
+            "balance_due": "topmostSubform[0].Page1[0].f1_13[0]",
+            "amount_paying_with_extension": "topmostSubform[0].Page1[0].f1_14[0]",
+            "out_of_country": "topmostSubform[0].Page1[0].c1_1[0]",
+            "nonresident_alien": "topmostSubform[0].Page1[0].c1_2[0]",
+
+            # === Form 4868-V payment voucher ===
+            # 2024 uses Col3 (not Col4 as in 2025).
+            "voucher_amount": "topmostSubform[0].Page3[0].Col3[0].f3_1[0]",
+        },
         2025: {
             # === VoucherHeader — fiscal-year date fields ===
             # These appear in the header line: "For calendar year 2025, or

@@ -45,7 +45,7 @@ class Pdf4562MappingTests(unittest.TestCase):
 
     def test_unknown_year_raises(self):
         with self.assertRaisesRegex(ValueError, "No Form 4562 PDF mapping"):
-            Pdf4562.get_mapping(2024)
+            Pdf4562.get_mapping(2023)
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ class PdfSchAMappingTests(unittest.TestCase):
 
     def test_unknown_year_raises(self):
         with self.assertRaisesRegex(ValueError, "No Schedule A PDF mapping"):
-            PdfSchA.get_mapping(2024)
+            PdfSchA.get_mapping(2023)
 
 
 if __name__ == "__main__":
