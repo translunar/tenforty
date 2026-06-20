@@ -99,8 +99,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # Page 2 field numbers are identical to 2025.
             # Line 11b (AGI repeated at top of page 2)
             "agi_page2": "topmostSubform[0].Page2[0].f2_01[0]",
-            # Line 12e: Standard deduction or itemized deductions
-            "standard_deduction": "topmostSubform[0].Page2[0].f2_02[0]",
+            # Line 12: Standard deduction OR itemized deductions — the
+            # deduction actually applied. Reads `applied_deduction` (not
+            # `standard_deduction`, which is 0 when itemizing → would render
+            # line 12 = 0 for itemizers).
+            "applied_deduction": "topmostSubform[0].Page2[0].f2_02[0]",
             # Line 13a: Qualified business income deduction
             "qbi_deduction": "topmostSubform[0].Page2[0].f2_03[0]",
             # Line 13b: Additional deductions from Schedule 1-A
@@ -240,8 +243,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # === Page 2: Tax and Credits (Lines 11b-24) ===
             # Line 11b (AGI repeated at top of page 2)
             "agi_page2": "topmostSubform[0].Page2[0].f2_01[0]",
-            # Line 12e: Standard deduction or itemized deductions
-            "standard_deduction": "topmostSubform[0].Page2[0].f2_02[0]",
+            # Line 12: Standard deduction OR itemized deductions — the
+            # deduction actually applied. Reads `applied_deduction` (not
+            # `standard_deduction`, which is 0 when itemizing → would render
+            # line 12 = 0 for itemizers).
+            "applied_deduction": "topmostSubform[0].Page2[0].f2_02[0]",
             # Line 13a: Qualified business income deduction
             "qbi_deduction": "topmostSubform[0].Page2[0].f2_03[0]",
             # Line 13b: Additional deductions from Schedule 1-A
