@@ -1482,11 +1482,11 @@
 
 - sch_ca_line: "Part II 5e"
   section_title: "SALT Cap"
-  description: "SALT cap: TCJA $10k / OBBBA $40k ($20k MFS) TY2025-2029; CA has no SALT cap on property tax"
+  description: "SALT cap: TCJA $10k ($5k MFS), flat with no income phaseout for TY2024; CA has no SALT cap on property tax"
   direction: "Add"
   common: true
   pub1001_page: 23
-  ircrtc: "IRC §164(b)(6) (TCJA / OBBBA)"
+  ircrtc: "IRC §164(b)(6) (TCJA)"
 
 # ── Part II 6 ─────────────────────────────────────────────────────────────────
 
