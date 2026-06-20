@@ -30,7 +30,15 @@ from tests.helpers import REPO_ROOT, needs_libreoffice
 PARITY_KEYS = (
     "agi",
     "total_income",
-    "standard_deduction",
+    # NOTE: `standard_deduction` is intentionally NOT compared. It is an
+    # ambiguous intermediate for itemizers — the workbook reports the standard
+    # deduction amount *available* (always), while the native spine reports 0
+    # when itemized deductions win (the standard deduction was not applied).
+    # `total_deductions` below is the meaningful comparison: the std-or-itemized
+    # deduction actually subtracted from AGI to reach taxable income. Asserting
+    # parity on `standard_deduction` itself needs its own decision (the
+    # native-vs-workbook Form 1040 line-12 representation for itemizers);
+    # tracked separately.
     "total_deductions",
     "taxable_income",
     "taxable_income_before_qbi_deduction",
@@ -38,6 +46,8 @@ PARITY_KEYS = (
     "total_payments",
     "overpaid",
     "net_capital_gain",
+    "schedule_a_total",
+    "sch_a_line_5e_salt_capped",
 )
 
 
