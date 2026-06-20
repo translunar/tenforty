@@ -16,6 +16,12 @@ constant `_EXPECTED_NAMED_FIELDS_2025` so this test does not depend on
 pypdf for its partition assertion (pypdf is still used in the
 field-existence test, but as a confirmation, not as the source of
 truth).
+
+TY2024 probe note: the 2024 sch_d_540.pdf also surfaces 125 /Tx widgets
+(no /Btn, no unnamed placeholders), but with a DIFFERENT naming scheme
+(`540D - NNNN`) and a different layout: all 22 detail rows 1a..1v fit on
+a single page (1003..1112), followed by lines 2–7 (1113..1119), with
+lines 8–12 on page 2 (2001..2006). Probed 2026-06-19.
 """
 
 from pathlib import Path
@@ -89,7 +95,7 @@ class PdfSchD540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2024, 2026):
+        for year in (2021, 2022, 2023, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_d_540.PdfSchD540.get_mapping(year)
@@ -240,5 +246,193 @@ class PdfSchD540MappingTests(unittest.TestCase):
             _EXPECTED_NAMED_FIELDS_2025,
             real_fields,
             "Canonical _EXPECTED_NAMED_FIELDS_2025 has drifted from the "
+            "actual PDF; update the constant after re-probing.",
+        )
+
+
+# ---------------------------------------------------------------------------
+# TY2024 support
+# ---------------------------------------------------------------------------
+
+# Canonical TY2024 named-field enumeration for sch_d_540.pdf.
+#
+# Source: extracted via direct probe of pdfs/california/2024/sch_d_540.pdf
+# using pypdf.PdfReader.get_fields() on 2026-06-19; documented as the
+# authoritative TY2024 named-field set for this form.
+#
+# Layout (differs from 2025 — all detail rows on a single page):
+# - Header (page 1):
+#     1001 = filer name
+#     1002 = filer SSN
+# - Detail rows 1a..1v (22 rows × 5 columns a–e = 110 fields, page 1):
+#     1a → 1003-1007, 1b → 1008-1012, 1c → 1013-1017,
+#     1d → 1018-1022, 1e → 1023-1027, 1f → 1028-1032,
+#     1g → 1033-1037, 1h → 1038-1042, 1i → 1043-1047,
+#     1j → 1048-1052, 1k → 1053-1057, 1l → 1058-1062,
+#     1m → 1063-1067, 1n → 1068-1072, 1o → 1073-1077,
+#     1p → 1078-1082, 1q → 1083-1087, 1r → 1088-1092,
+#     1s → 1093-1097, 1t → 1098-1102, 1u → 1103-1107,
+#     1v → 1108-1112
+# - Lines 2–7 (page 1): 1113-1119 (7 fields)
+# - Lines 8–12 (page 2): 2001-2006 (6 fields)
+#
+# Total: 2 + 110 + 7 + 6 = 125 named fields. Naming scheme: '540D - NNNN'
+# (space before dash, no 'sch' segment — distinct from 2025's
+# '540 sch D - PRRR'). PdfFiller addresses fields by /T.
+def _build_expected_named_fields_2024() -> frozenset[str]:
+    fields: list[str] = []
+    # Header (page 1, 1001..1002)
+    fields.append("540D - 1001")
+    fields.append("540D - 1002")
+    # Page 1: detail rows 1a..1v + lines 2–7 (1003..1119)
+    for n in range(1003, 1120):
+        fields.append(f"540D - {n}")
+    # Page 2: lines 8–12 (2001..2006)
+    for n in range(2001, 2007):
+        fields.append(f"540D - {n}")
+    return frozenset(fields)
+
+
+_EXPECTED_NAMED_FIELDS_2024: frozenset[str] = _build_expected_named_fields_2024()
+
+
+class PdfSchD540Mapping2024Tests(unittest.TestCase):
+    def test_2024_get_mapping_returns_dict(self):
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2024)
+        self.assertIsInstance(mapping, dict)
+        self.assertGreater(len(mapping), 0)
+
+    def test_2024_get_aggregations_is_empty(self):
+        self.assertEqual(pdf_sch_d_540.PdfSchD540.get_aggregations(2024), {})
+
+    def test_2024_get_checkbox_states_is_empty(self):
+        # The 2024 Sch D (540) PDF has no /Btn widgets — pure /Tx.
+        self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2024), {})
+
+    def test_2024_net_capital_gain_in_mapping(self):
+        # Line 8 (net gain/loss) maps to 540D - 2001 on the 2024 form,
+        # per /TU annotation: "Line 8. Net gain or (loss). Combine line 4 and line 7."
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2024)
+        self.assertIn("sch_d_540_net_capital_gain", mapping)
+        self.assertEqual(mapping["sch_d_540_net_capital_gain"], "540D - 2001")
+
+    def test_2024_get_derivations_includes_federal_passthrough_lines(self):
+        # Line 10 (federal net) → 540D - 2003
+        # Line 11 (CA gain from line 8) → 540D - 2004
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2024)
+        self.assertIn("540D - 2003", derivations)
+        self.assertIn("540D - 2004", derivations)
+
+    def test_2024_lines_12a_12b_mapped_for_divergences(self):
+        """Lines 12a (subtraction total) and 12b (addition total) must be
+        present in the 2024 mapping so user-supplied Sch D divergences
+        render on the PDF, not just in compute output."""
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2024)
+        self.assertIn("sch_d_540_total_subtractions", mapping)
+        self.assertIn("sch_d_540_total_additions", mapping)
+
+    def test_2024_partition_invariant_covers_all_named_widgets_exactly_once(self):
+        """The union of MAPPING-values, AGGREGATIONS-keys,
+        DERIVATIONS-keys, and SUPPRESSED equals the canonical set of
+        TY2024 named PDF field names; pairwise intersections are empty.
+        """
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2024)
+        aggregations = pdf_sch_d_540.PdfSchD540.get_aggregations(2024)
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2024)
+        suppressed = pdf_sch_d_540.PdfSchD540.get_suppressed(2024)
+
+        mapping_targets = set(mapping.values())
+        aggregation_targets = set(aggregations.keys())
+        derivation_targets = set(derivations.keys())
+
+        self.assertEqual(
+            mapping_targets & aggregation_targets,
+            set(),
+            "PDF field appears in both MAPPING values and AGGREGATIONS keys",
+        )
+        self.assertEqual(
+            mapping_targets & derivation_targets,
+            set(),
+            "PDF field appears in both MAPPING values and DERIVATIONS keys",
+        )
+        self.assertEqual(
+            mapping_targets & suppressed,
+            set(),
+            "PDF field appears in both MAPPING values and SUPPRESSED",
+        )
+        self.assertEqual(
+            aggregation_targets & derivation_targets,
+            set(),
+            "PDF field appears in both AGGREGATIONS keys and DERIVATIONS keys",
+        )
+        self.assertEqual(
+            aggregation_targets & suppressed,
+            set(),
+            "PDF field appears in both AGGREGATIONS keys and SUPPRESSED",
+        )
+        self.assertEqual(
+            derivation_targets & suppressed,
+            set(),
+            "PDF field appears in both DERIVATIONS keys and SUPPRESSED",
+        )
+
+        accounted = (
+            mapping_targets
+            | aggregation_targets
+            | derivation_targets
+            | suppressed
+        )
+
+        missing = _EXPECTED_NAMED_FIELDS_2024 - accounted
+        self.assertEqual(
+            missing,
+            set(),
+            f"{len(missing)} PDF fields are unaccounted for: {sorted(missing)}",
+        )
+
+        extra = accounted - _EXPECTED_NAMED_FIELDS_2024
+        self.assertEqual(
+            extra,
+            set(),
+            f"{len(extra)} accounted PDF fields are not in the canonical "
+            f"TY2024 named-field set: {sorted(extra)}",
+        )
+
+    def test_2024_every_pdf_target_is_a_real_pdf_field(self):
+        """Every PDF field path referenced (in mapping values, aggregation
+        keys, or derivation keys) must resolve to a field that exists in
+        pdfs/california/2024/sch_d_540.pdf.
+
+        Also confirms the canonical `_EXPECTED_NAMED_FIELDS_2024` set
+        matches the actual PDF (guards against drift if the form
+        artifact is updated).
+        """
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "california" / "2024" / "sch_d_540.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2024)
+        aggregations = pdf_sch_d_540.PdfSchD540.get_aggregations(2024)
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2024)
+
+        all_targets = (
+            set(mapping.values())
+            | set(aggregations.keys())
+            | set(derivations.keys())
+        )
+        bad = sorted(p for p in all_targets if p not in real_fields)
+        self.assertEqual(
+            bad,
+            [],
+            f"{len(bad)} mapped/aggregated/derived field paths do not "
+            f"exist in the PDF: {bad}",
+        )
+
+        # Confirm canonical set matches reality.
+        self.assertEqual(
+            _EXPECTED_NAMED_FIELDS_2024,
+            real_fields,
+            "Canonical _EXPECTED_NAMED_FIELDS_2024 has drifted from the "
             "actual PDF; update the constant after re-probing.",
         )
