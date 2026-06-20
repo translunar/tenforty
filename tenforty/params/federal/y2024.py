@@ -17,7 +17,9 @@ _EIC_CEILING = {0: 25_511, 1: 56_004, 2: 62_688, 3: 66_819}
 
 PARAMS = FederalParams(
     year=2024,
-    standard_deduction={_S: 14_600},
+    standard_deduction={
+        _S: 14_600, _MFJ: 29_200, _MFS: 14_600, _HOH: 21_900, _QW: 29_200,
+    },
     # 2024 single tax-rate schedule: (upper_bound, marginal_rate).
     ordinary_brackets=(
         (11_600.0, 0.10),
