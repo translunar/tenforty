@@ -7,6 +7,9 @@ _ROOT = Path(__file__).parent.parent
 MODULES = [
     _ROOT / "tenforty/forms/f1040_spine.py",
     _ROOT / "tenforty/forms/f1040_tax.py",
+    _ROOT / "tenforty/forms/sch_a.py",
+    _ROOT / "tenforty/forms/f8995.py",
+    _ROOT / "tenforty/forms/sch_1.py",
 ]
 
 
