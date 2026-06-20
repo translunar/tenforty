@@ -113,3 +113,21 @@ class FederalParamsQbiThresholdTests(unittest.TestCase):
         p = load(2024)
         self.assertEqual(p.qbi_threshold["single"], 191_950)
         self.assertEqual(p.qbi_threshold["married_jointly"], 383_900)
+
+
+class StandardDeductionAllStatusesTests(unittest.TestCase):
+    def test_2025_standard_deduction_all_statuses(self):
+        p = load(2025)
+        self.assertEqual(p.standard_deduction["single"], 15_750)
+        self.assertEqual(p.standard_deduction["married_jointly"], 31_500)
+        self.assertEqual(p.standard_deduction["married_separately"], 15_750)
+        self.assertEqual(p.standard_deduction["head_of_household"], 23_625)
+        self.assertEqual(p.standard_deduction["qualifying_widow"], 31_500)
+
+    def test_2024_standard_deduction_all_statuses(self):
+        p = load(2024)
+        self.assertEqual(p.standard_deduction["single"], 14_600)
+        self.assertEqual(p.standard_deduction["married_jointly"], 29_200)
+        self.assertEqual(p.standard_deduction["married_separately"], 14_600)
+        self.assertEqual(p.standard_deduction["head_of_household"], 21_900)
+        self.assertEqual(p.standard_deduction["qualifying_widow"], 29_200)
