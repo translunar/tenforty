@@ -1,6 +1,7 @@
 import importlib
 import unittest
 
+from tenforty.constants import california_y2024 as ca2024
 from tenforty.models import CA540Return, FilingStatus, VoluntaryContribution
 from tenforty.forms.f540 import (
     compute_standard_deduction,
@@ -459,3 +460,54 @@ class VoluntaryContributionAggregationTests(unittest.TestCase):
             ),
         )
         self.assertEqual(result["f540_voluntary_contributions"], 100)
+
+
+class California2024ConstantsTests(unittest.TestCase):
+    """Pin constants/california_y2024.py to FTB-published 2024 values.
+
+    This is the by-construction validation for the 2024 CA port: the CA
+    compute logic is already validated for 2025 and reads everything from
+    these per-year constants, so correct 2024 constants ⇒ correct 2024
+    compute. Each value is confirmed against the FTB 2024 Form 540 booklet
+    and 2024 California Tax Rate Schedules (booklet p. 75).
+    """
+
+    def test_standard_deduction(self):
+        # Source: FTB Form 540 (TY2024) side 2, line 18 worksheet
+        self.assertEqual(ca2024.STANDARD_DEDUCTION[FilingStatus.SINGLE], 5_540)
+        self.assertEqual(ca2024.STANDARD_DEDUCTION[FilingStatus.MARRIED_JOINTLY], 11_080)
+
+    def test_exemption_credit(self):
+        # Source: FTB Form 540 (TY2024) side 1, lines 7-10; per-person = $149
+        self.assertEqual(ca2024.EXEMPTION_CREDIT[FilingStatus.SINGLE], 149)      # 1 × $149
+        self.assertEqual(ca2024.EXEMPTION_CREDIT[FilingStatus.MARRIED_JOINTLY], 298)  # 2 × $149
+
+    def test_dependent_exemption_and_phaseout(self):
+        # Source: FTB Form 540 (TY2024) side 2, line 10 ($461 each)
+        self.assertEqual(ca2024.DEPENDENT_EXEMPTION_AMOUNT, 461)
+        # Source: FTB Form 540 (TY2024) side 2, line 32
+        self.assertEqual(ca2024.AGI_PHASEOUT_THRESHOLD, 244_857)
+
+    def test_rate_schedule_single_endpoints(self):
+        # Source: FTB 2024 Tax Rate Schedules (booklet p. 75), Schedule X
+        sched = ca2024.RATE_SCHEDULE[FilingStatus.SINGLE]
+        # 9 brackets; lowest bracket starts at 1% from $0
+        self.assertEqual(len(sched), 9)
+        self.assertEqual(sched[0], (0, 0.01))
+        # Top marginal rate is 12.3% (1% mental-health surcharge above $1M
+        # is handled separately, not as a RATE_SCHEDULE row)
+        self.assertEqual(sched[-1][1], 0.123)
+
+    def test_rate_schedule_mfj_endpoints(self):
+        # Source: FTB 2024 Tax Rate Schedules (booklet p. 75), Schedule Y
+        # MFJ thresholds are exactly 2× Schedule X
+        sched = ca2024.RATE_SCHEDULE[FilingStatus.MARRIED_JOINTLY]
+        self.assertEqual(len(sched), 9)
+        self.assertEqual(sched[0], (0, 0.01))
+        self.assertEqual(sched[-1][1], 0.123)
+
+    def test_renter_credit_single(self):
+        # Source: FTB Personal Income Tax Booklet (TY2024) p. 25,
+        # "Nonrefundable Renter's Credit Qualification Record" Q2 + Q11
+        self.assertEqual(ca2024.RENTER_CREDIT_AGI_THRESHOLD[FilingStatus.SINGLE], 52_421)
+        self.assertEqual(ca2024.RENTER_CREDIT_AMOUNT[FilingStatus.SINGLE], 60)
