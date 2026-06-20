@@ -265,5 +265,40 @@ class TestShouldEmit8949Pdf(unittest.TestCase):
         self.assertFalse(self.orch._should_emit_8949_pdf(scen, upstream))
 
 
+class OrchestratorSchAYearAwarenessTests(unittest.TestCase):
+    """Verify _should_emit_sch_a uses year-correct standard deduction."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name),
+        )
+
+    def _scenario_with_charity(self, year: int, charitable_contributions: float) -> Scenario:
+        """Single-filer scenario with only charitable deductions — no SALT complexity."""
+        s = make_simple_scenario()
+        s.config.year = year
+        s.itemized_deductions = ItemizedDeductions(
+            charitable_contributions=charitable_contributions,
+        )
+        return s
+
+    def test_2024_emits_sch_a_when_deductions_exceed_14600(self):
+        """2024 standard deduction is $14,600. $15,000 charitable > $14,600 → True."""
+        scenario = self._scenario_with_charity(year=2024, charitable_contributions=15_000)
+        self.assertTrue(self.orchestrator._should_emit_sch_a(
+            scenario, {"f1040": {"agi": 100_000, "magi": 100_000}},
+        ))
+
+    def test_2025_does_not_emit_sch_a_when_deductions_below_15750(self):
+        """2025 standard deduction is $15,750. $15,000 charitable < $15,750 → False."""
+        scenario = self._scenario_with_charity(year=2025, charitable_contributions=15_000)
+        self.assertFalse(self.orchestrator._should_emit_sch_a(
+            scenario, {"f1040": {"agi": 100_000, "magi": 100_000}},
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
