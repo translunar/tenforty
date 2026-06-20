@@ -95,4 +95,14 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
         (translated.get("taxable_income") or 0) + qbi_deduction
     )
 
+    # Form 1040 line 12 — the deduction actually applied (std or itemized).
+    # The workbook exposes the standard amount (standard_deduction) and the
+    # itemized total (schedule_a_total) separately; the larger is what the
+    # filer takes. The line-12 PDF cell reads this (see pdf_1040 f2_02),
+    # mirroring the native spine's `applied_deduction`.
+    translated["applied_deduction"] = max(
+        translated.get("standard_deduction") or 0,
+        translated.get("schedule_a_total") or 0,
+    )
+
     return translated

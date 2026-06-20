@@ -407,6 +407,10 @@ def compute_spine(
         "schedule_a_total": schedule_a_total,
         "sch_a_line_5e_salt_capped": sch_a_line_5e_salt_capped,
         "total_deductions": total_deductions,
+        # Form 1040 line 12 — the deduction actually applied (std or itemized).
+        # `standard_deduction` above is 0 when itemizing, so the line-12 PDF
+        # cell reads this instead (see pdf_1040 f2_02). Equals total_deductions.
+        "applied_deduction": max(standard_deduction_amount, schedule_a_total),
         # Taxable income
         "taxable_income_before_qbi_deduction": taxable_income_before_qbi,
         "_qbi_deduction_1040": qbi_deduction,
