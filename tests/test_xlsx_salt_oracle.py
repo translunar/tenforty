@@ -7,8 +7,8 @@ OBBBA §164(b)(6) cap structure (TY2025-2029):
   - Phaseout: threshold $500,000 MAGI (T21), rate 30% (T18)
   - Floors: $10,000 single/MFJ/HoH (T16), $5,000 MFS (T15)
 
-Matches the constants in tenforty.constants.y2025. Without this check,
-a later Sch A oracle diff could be silently wrong on both sides.
+Matches FederalParams (tenforty.params.federal.load(2025)). Without this
+check, a later Sch A oracle diff could be silently wrong on both sides.
 """
 
 import unittest
@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from tenforty.constants import y2025
 from tenforty.models import FilingStatus
+from tenforty.params.federal import load as load_federal_params
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +33,7 @@ class XlsxSaltOracleTests(unittest.TestCase):
     def setUpClass(cls):
         cls.wb = load_workbook(WORKBOOK_PATH, data_only=False)
         cls.sch_a = cls.wb["Sch. A"]
+        cls.params = load_federal_params(2025)
 
     def test_salt_deduct_limit_named_range_resolves_to_p22(self):
         dn = self.wb.defined_names.get("SALT_Deduct_Limit")
@@ -44,27 +45,27 @@ class XlsxSaltOracleTests(unittest.TestCase):
         # P17: single/MFJ/HoH starting cap; P16: MFS starting cap.
         self.assertEqual(
             self.sch_a["P17"].value,
-            y2025.SALT_CAP_STARTING[FilingStatus.SINGLE],
+            self.params.salt_cap_starting[FilingStatus.SINGLE.value],
         )
         self.assertEqual(
             self.sch_a["P16"].value,
-            y2025.SALT_CAP_STARTING[FilingStatus.MARRIED_SEPARATELY],
+            self.params.salt_cap_starting[FilingStatus.MARRIED_SEPARATELY.value],
         )
 
     def test_floors_match_constants(self):
         # T16: single/MFJ/HoH floor; T15: MFS floor.
         self.assertEqual(
             self.sch_a["T16"].value,
-            y2025.SALT_CAP_FLOOR[FilingStatus.SINGLE],
+            self.params.salt_cap_floor[FilingStatus.SINGLE.value],
         )
         self.assertEqual(
             self.sch_a["T15"].value,
-            y2025.SALT_CAP_FLOOR[FilingStatus.MARRIED_SEPARATELY],
+            self.params.salt_cap_floor[FilingStatus.MARRIED_SEPARATELY.value],
         )
 
     def test_phaseout_threshold_and_rate_match_constants(self):
-        self.assertEqual(self.sch_a["T21"].value, y2025.SALT_PHASEOUT_THRESHOLD)
-        self.assertEqual(self.sch_a["T18"].value, y2025.SALT_PHASEOUT_RATE)
+        self.assertEqual(self.sch_a["T21"].value, self.params.salt_phaseout_threshold)
+        self.assertEqual(self.sch_a["T18"].value, self.params.salt_phaseout_rate)
 
     def test_p22_formula_is_obbba_shaped(self):
         # Sanity-check the formula structure so a silent revert of the OBBBA
