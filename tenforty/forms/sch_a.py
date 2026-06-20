@@ -76,7 +76,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     medical_floor = irs_round(agi * params.medical_agi_floor_pct)
     medical_deductible = max(0, medical_gross - medical_floor)
 
-    state_income_tax_line_5a = irs_round(it.state_income_tax)
+    # Line 5a — state and local income taxes. Sourced primarily from W-2
+    # box 17 (state_tax_withheld) summed across all W-2s. `it.state_income_tax`
+    # is ADDITIONAL state income tax the filer paid that is NOT on a W-2 —
+    # e.g. quarterly estimated state payments or a prior-year state balance
+    # paid during the tax year. It is NOT the W-2 withholding (that lives in
+    # box 17); adding both is correct precisely because they are disjoint
+    # sources — using it.state_income_tax for the W-2 amount would double-count.
+    w2_state_income_tax = sum(w.state_tax_withheld for w in scenario.w2s)
+    state_income_tax_line_5a = irs_round(w2_state_income_tax + it.state_income_tax)
     property_tax_line_5b = irs_round(it.property_tax)
     personal_property_tax_line_5c = 0
     line_5d = (
