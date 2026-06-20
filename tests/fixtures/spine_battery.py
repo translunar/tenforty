@@ -24,6 +24,7 @@ Key 2024 boundaries exercised (same branches, 2024 params):
 """
 
 from tenforty.models import (
+    Form1098,
     Form1099DIV,
     Form1099INT,
     Form1099B,
@@ -326,6 +327,51 @@ def build_owes_tax() -> Scenario:
     )
 
 
+def build_itemizer_with_w2_state_tax() -> Scenario:
+    """Single itemizer whose Schedule A SALT includes W-2 box 17 state tax.
+
+    Exercises the Sch A line 5a state-income-tax path, which is sourced from
+    W-2 box 17 (`state_tax_withheld`), NOT from itemized_deductions. Mortgage
+    interest + property tax (carried on Form 1098) push the itemized total
+    above the standard deduction in both years, so the divergence binds on
+    total_deductions / taxable_income as well as the Sch A keys.
+
+    Inputs reach BOTH paths through channels each reads identically:
+      - mortgage_interest + property_tax via form1098s (native bridges these
+        into itemized_deductions; the flattener feeds them to the workbook);
+      - state income tax via W-2 box 17 (the workbook's Sch A line 5a source).
+
+    2025 SALT (cap $40k, under phaseout): line 5d = 9,000 + 6,000 = 15,000,
+    line 5e = 15,000 (under cap); line 17 = 20,000 mortgage + 15,000 = 35,000.
+    2024 SALT (flat cap $10k): line 5d = 15,000, line 5e = 10,000 (capped);
+    line 17 = 20,000 + 10,000 = 30,000. Both clear the standard deduction.
+
+    EIC gate: wages $150k >> the no-child EIC ceiling → routes native.
+    """
+    return Scenario(
+        config=_base_config(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer G",
+                wages=150_000.0,
+                federal_tax_withheld=28_000.0,
+                ss_wages=150_000.0,
+                ss_tax_withheld=9_300.0,
+                medicare_wages=150_000.0,
+                medicare_tax_withheld=2_175.0,
+                state_tax_withheld=9_000.0,  # W-2 box 17 — feeds Sch A line 5a
+            ),
+        ],
+        form1098s=[
+            Form1098(
+                lender="Synthetic Mortgage Co",
+                mortgage_interest=20_000.0,
+                property_tax=6_000.0,
+            ),
+        ],
+    )
+
+
 def build_canonical_wage_investment_rental_2024() -> Scenario:
     """2024 canonical shape: wages + interest + qualified dividends + LTCG + rental.
 
@@ -568,6 +614,41 @@ def build_owes_tax_2024() -> Scenario:
     )
 
 
+def build_itemizer_with_w2_state_tax_2024() -> Scenario:
+    """2024 single itemizer whose Sch A SALT includes W-2 box 17 state tax.
+
+    Mirror of build_itemizer_with_w2_state_tax with 2024 params + workbook.
+    2024 SALT cap is the flat $10,000 (single), so line 5d = 9,000 + 6,000 =
+    15,000 caps to line 5e = 10,000; line 17 = 20,000 mortgage + 10,000 =
+    30,000, above the 2024 standard deduction ($14,600). This also exercises
+    the year-aware SALT cap (the cap binds here, unlike 2025's $40k cap).
+
+    EIC gate: wages $150k >> $66,819 → routes native.
+    """
+    return Scenario(
+        config=_base_config_2024(),
+        w2s=[
+            W2(
+                employer="Synthetic Employer G",
+                wages=150_000.0,
+                federal_tax_withheld=28_000.0,
+                ss_wages=150_000.0,
+                ss_tax_withheld=9_300.0,
+                medicare_wages=150_000.0,
+                medicare_tax_withheld=2_175.0,
+                state_tax_withheld=9_000.0,  # W-2 box 17 — feeds Sch A line 5a
+            ),
+        ],
+        form1098s=[
+            Form1098(
+                lender="Synthetic Mortgage Co",
+                mortgage_interest=20_000.0,
+                property_tax=6_000.0,
+            ),
+        ],
+    )
+
+
 # Public battery: list of (name, builder) pairs iterated by the parity test.
 BATTERY: list[tuple[str, object]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
@@ -576,6 +657,7 @@ BATTERY: list[tuple[str, object]] = [
     ("addl_medicare_boundary", build_addl_medicare_boundary),
     ("zero_tax_refund", build_zero_tax_refund),
     ("owes_tax", build_owes_tax),
+    ("itemizer_with_w2_state_tax", build_itemizer_with_w2_state_tax),
 ]
 
 # 2024 battery: same branches, 2024 params + 2024 workbook.
@@ -586,4 +668,5 @@ BATTERY_2024: list[tuple[str, object]] = [
     ("addl_medicare_boundary_2024", build_addl_medicare_boundary_2024),
     ("zero_tax_refund_2024", build_zero_tax_refund_2024),
     ("owes_tax_2024", build_owes_tax_2024),
+    ("itemizer_with_w2_state_tax_2024", build_itemizer_with_w2_state_tax_2024),
 ]
