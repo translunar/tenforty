@@ -12,17 +12,18 @@ V1 scope notes (read before extending):
      under-deducted. Adding support requires a scenario sales-tax field
      and a `prefer_sales_tax` flag gating line 5a.
 
-  2. SALT cap uses the OBBBA structure from constants.y2025. Below the
-     phaseout threshold, cap = SALT_CAP_STARTING[filing_status]. Above
-     SALT_PHASEOUT_THRESHOLD MAGI, compute raises NotImplementedError —
-     the 30%-rate phaseout math is scoped out of v1.
+  2. SALT cap is year-aware via FederalParams. When params.salt_phaseout_threshold
+     is None (2024 and earlier flat-cap years), the cap = salt_cap_starting[status]
+     and high MAGI never raises. When threshold is set (2025 OBBBA), below-threshold
+     scenarios use salt_cap_starting[status]; above-threshold raises NotImplementedError
+     (phaseout math is scoped out of v1).
 
   3. Lines 15 (casualty) and 16 (other) are hardcoded to 0. Line 17's
      sum references them by variable, so wiring a future scenario field
      is a one-line edit.
 """
 
-from tenforty.constants import y2025
+from tenforty.params.federal import load as load_federal_params
 from tenforty.models import ItemizedDeductions, Scenario
 from tenforty.rounding import irs_round
 
@@ -33,9 +34,11 @@ NO_INCOME_TAX_STATES = frozenset({
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
+    params = load_federal_params(scenario.config.year)
     f1040 = upstream["f1040"]
     agi = f1040["agi"]
     magi = f1040.get("magi", agi)
+    status = scenario.config.filing_status.value
 
     state = (scenario.config.state or "").upper()
     if (
@@ -50,13 +53,19 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             "Sch A, or wait until sales-tax support lands."
         )
 
-    if magi > y2025.SALT_PHASEOUT_THRESHOLD:
+    # Year-aware SALT phaseout gate.
+    # salt_phaseout_threshold = None → flat cap year (e.g. 2024); no phaseout check.
+    # threshold set → if MAGI exceeds it, phaseout math is unimplemented (v1 scope-out).
+    if (
+        params.salt_phaseout_threshold is not None
+        and magi > params.salt_phaseout_threshold
+    ):
         raise NotImplementedError(
-            f"SALT phaseout (MAGI > ${y2025.SALT_PHASEOUT_THRESHOLD:,}) "
+            f"SALT phaseout (MAGI > ${params.salt_phaseout_threshold:,}) "
             "not supported in v1. Expected behaviour: cap reduces from "
-            f"{y2025.SALT_CAP_STARTING[scenario.config.filing_status]:,} "
-            f"at rate {y2025.SALT_PHASEOUT_RATE} toward "
-            f"{y2025.SALT_CAP_FLOOR[scenario.config.filing_status]:,} "
+            f"{params.salt_cap_starting[status]:,} "
+            f"at rate {params.salt_phaseout_rate} toward "
+            f"{params.salt_cap_floor[status]:,} "
             "per OBBBA. Implement in forms.sch_a.compute when the first "
             "taxpayer above threshold appears."
         )
@@ -64,7 +73,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     it = scenario.itemized_deductions or ItemizedDeductions()
 
     medical_gross = irs_round(it.medical_expenses)
-    medical_floor = irs_round(agi * y2025.MEDICAL_AGI_FLOOR_PCT)
+    medical_floor = irs_round(agi * params.medical_agi_floor_pct)
     medical_deductible = max(0, medical_gross - medical_floor)
 
     state_income_tax_line_5a = irs_round(it.state_income_tax)
@@ -75,7 +84,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         + property_tax_line_5b
         + personal_property_tax_line_5c
     )
-    starting_cap = y2025.SALT_CAP_STARTING[scenario.config.filing_status]
+    starting_cap = params.salt_cap_starting[status]
     line_5e_salt_capped = min(line_5d, starting_cap)
 
     other_taxes_line_6 = 0

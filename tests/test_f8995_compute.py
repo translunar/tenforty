@@ -89,5 +89,28 @@ class F8995ThresholdGateTests(unittest.TestCase):
         self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
 
 
+class F8995QbiThresholdYearAwarenessTests(unittest.TestCase):
+    """Verify f8995.compute uses year-correct QBI threshold from FederalParams."""
+
+    def test_2024_threshold_191950_gates_correctly(self):
+        """2024 single threshold is $191,950. Taxable income of $195k exceeds it
+        → NotImplementedError when QBI > 0 and attestation is False."""
+        s, upstream = _scenario_with_qbi(qbi=20_000.0, taxable_income=195_000.0)
+        s.config.year = 2024
+        s.config.acknowledges_qbi_below_threshold = False
+        with self.assertRaisesRegex(NotImplementedError, "acknowledges_qbi_below_threshold"):
+            f8995.compute(s, upstream=upstream)
+
+    def test_2025_threshold_197300_does_not_gate_at_195k(self):
+        """2025 single threshold is $197,300. Taxable income of $195k is below it
+        → should NOT raise; deduction computed normally."""
+        s, upstream = _scenario_with_qbi(qbi=20_000.0, taxable_income=195_000.0)
+        s.config.year = 2025
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertIn("f8995_line_15_qbi_deduction", out)
+        self.assertGreater(out["f8995_line_15_qbi_deduction"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -111,5 +111,44 @@ class SchASalesTaxGateTests(unittest.TestCase):
         self.assertEqual(r["sch_a_line_5d_salt_sum"], 7_000)
 
 
+class SchASaltYearAwarenessTests(unittest.TestCase):
+    """Verify sch_a.compute uses year-correct SALT cap from FederalParams."""
+
+    def test_2024_salt_flat_10k_single(self):
+        """2024 SALT cap is flat $10k for single — no phaseout."""
+        s = _scenario(state_income_tax=6_000, property_tax=5_000)
+        s.config.year = 2024
+        upstream = {"f1040": {"agi": 100_000, "magi": 100_000}}
+        r = form_sch_a.compute(s, upstream=upstream)
+        # SALT sum = 11_000; 2024 flat cap = 10_000
+        self.assertEqual(r["sch_a_line_5d_salt_sum"], 11_000)
+        self.assertEqual(r["sch_a_line_5e_salt_capped"], 10_000)
+
+    def test_2024_high_magi_does_not_raise(self):
+        """2024 has no phaseout threshold — even $600k MAGI should not raise."""
+        s = _scenario(state_income_tax=8_000, property_tax=3_000)
+        s.config.year = 2024
+        upstream = {"f1040": {"agi": 600_000, "magi": 600_000}}
+        # Should NOT raise NotImplementedError — 2024 is flat cap
+        r = form_sch_a.compute(s, upstream=upstream)
+        self.assertEqual(r["sch_a_line_5e_salt_capped"], 10_000)
+
+    def test_2025_salt_40k_under_phaseout_threshold(self):
+        """2025 scenario below $500k MAGI → cap = $40k starting, no raise."""
+        s = _scenario(state_income_tax=35_000, property_tax=10_000)
+        s.config.year = 2025
+        upstream = {"f1040": {"agi": 300_000, "magi": 300_000}}
+        r = form_sch_a.compute(s, upstream=upstream)
+        self.assertEqual(r["sch_a_line_5e_salt_capped"], 40_000)
+
+    def test_2025_above_500k_still_raises(self):
+        """2025 scenario above $500k MAGI still raises NotImplementedError."""
+        s = _scenario(state_income_tax=50_000, property_tax=30_000)
+        s.config.year = 2025
+        upstream = {"f1040": {"agi": 600_000, "magi": 600_000}}
+        with self.assertRaisesRegex(NotImplementedError, "SALT phaseout"):
+            form_sch_a.compute(s, upstream=upstream)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,6 @@ from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
-from tenforty.constants import y2025
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
@@ -1145,7 +1144,9 @@ class ReturnOrchestrator:
             return False
         sch_a = form_sch_a.compute(scenario, upstream={"f1040": f1040})
         total = sch_a.get("sch_a_line_17_total", 0)
-        std = y2025.STANDARD_DEDUCTION[scenario.config.filing_status]
+        from tenforty.params.federal import load as _load_federal_params
+        _params = _load_federal_params(scenario.config.year)
+        std = _params.standard_deduction[scenario.config.filing_status.value]
         return total > std
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
