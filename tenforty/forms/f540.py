@@ -1,40 +1,28 @@
 """California Form 540 main-form compute helpers.
 
 Year-parameterized lookups for the standard deduction and the
-basic exemption credit (un-phased-out). Year-specific constants
-live in tenforty/constants/california_y{year}.py modules and are
-loaded dynamically.
+basic exemption credit (un-phased-out). Year-specific values live
+in tenforty/params/california/y{year}.py modules, loaded via the
+manifest-gated params.california.load().
 
 The exemption credit returned here is the un-phased-out lookup;
 the AGI phaseout (when federal AGI exceeds the per-year threshold)
-is gated in T11's final-liability compute, not here.
+is gated in the final-liability compute, not here.
 """
 
-import importlib
 import math
 
 from tenforty.models import CA540Return, FilingStatus
+from tenforty.params import california as ca_params
 from tenforty.rounding import irs_round
 
 
-def _load_ca_constants(year: int):
-    try:
-        return importlib.import_module(f"tenforty.constants.california_y{year}")
-    except ImportError as e:
-        raise NotImplementedError(
-            f"CA Form 540 not implemented for tax year {year} "
-            f"(tenforty v1 supports tax years 2021-2025)."
-        ) from e
-
-
 def compute_standard_deduction(year: int, filing_status: FilingStatus) -> int:
-    constants = _load_ca_constants(year)
-    return constants.STANDARD_DEDUCTION[filing_status]
+    return ca_params.load(year).standard_deduction[filing_status.value]
 
 
 def compute_exemption_credit(year: int, filing_status: FilingStatus) -> int:
-    constants = _load_ca_constants(year)
-    return constants.EXEMPTION_CREDIT[filing_status]
+    return ca_params.load(year).exemption_credit[filing_status.value]
 
 
 def _walk_rate_schedule(schedule: list[tuple[int, float]], income: float) -> float:
@@ -65,8 +53,8 @@ def compute_ca_tax(
 ) -> int:
     """California Form 540 line 31 — tax on taxable income.
 
-    For year ∉ {2021..2025} raises NotImplementedError (delegate to
-    _load_ca_constants — same shape as compute_standard_deduction).
+    For unsupported years raises NotImplementedError (manifest-gated
+    params.california.load).
 
     For taxable_income ≤ 0 returns 0.
     For 0 < taxable_income ≤ 100_000 uses the FTB Tax Table branch
@@ -74,8 +62,7 @@ def compute_ca_tax(
     the FTB Rate Schedule branch directly. Returns the computed
     tax rounded to the nearest dollar (FTB convention).
     """
-    constants = _load_ca_constants(year)
-    rate_schedule = constants.RATE_SCHEDULE[filing_status]
+    rate_schedule = ca_params.load(year).rate_schedule[filing_status.value]
 
     if taxable_income <= 0:
         return 0
@@ -113,10 +100,10 @@ def _compute_renters_credit(
     ca_agi: int,
 ) -> int:
     """CA renter's credit. Per oracle Q4: gate uses CA AGI (not federal)."""
-    constants = _load_ca_constants(year)
-    if ca_agi > constants.RENTER_CREDIT_AGI_THRESHOLD[filing_status]:
+    params = ca_params.load(year)
+    if ca_agi > params.renter_credit_agi_threshold[filing_status.value]:
         return 0
-    return constants.RENTER_CREDIT_AMOUNT[filing_status]
+    return params.renter_credit_amount[filing_status.value]
 
 
 def compute(
@@ -154,13 +141,13 @@ def compute(
     AGI_PHASEOUT_THRESHOLD (exemption-credit phaseout formula deferred
     from v1 per plan).
     """
-    constants = _load_ca_constants(year)
+    params = ca_params.load(year)
 
     # AGI phaseout gate
-    if federal_agi > constants.AGI_PHASEOUT_THRESHOLD:
+    if federal_agi > params.agi_phaseout_threshold:
         raise NotImplementedError(
             f"Federal AGI ${federal_agi} exceeds CA exemption-credit phaseout "
-            f"threshold ${constants.AGI_PHASEOUT_THRESHOLD} for tax year {year}; "
+            f"threshold ${params.agi_phaseout_threshold} for tax year {year}; "
             f"phaseout formula not implemented in v1."
         )
 
@@ -179,7 +166,7 @@ def compute(
 
     # Exemption credits
     base = compute_exemption_credit(year, filing_status)
-    dep = constants.DEPENDENT_EXEMPTION_AMOUNT * num_dependents
+    dep = params.dependent_exemption_amount * num_dependents
     exemption = base + dep
 
     # Renter's credit
