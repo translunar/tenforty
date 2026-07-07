@@ -4,7 +4,7 @@ Year-agnostic spine/tax logic reads everything from FederalParams; there are
 no `if year ==` branches in the math. Adding a year = adding one yNNNN module.
 """
 import importlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from tenforty import years as year_manifest
 
@@ -16,6 +16,10 @@ class FederalParams:
     ordinary_brackets: tuple[tuple[float, float], ...]  # (upper_bound, rate)
     qdcgt_breakpoints: dict[str, tuple[int, int]]        # (0%-top, 15%-top)
     addl_medicare_threshold: dict[str, int]
+    # SSA OASDI (Social Security) wage base for the year. Not used by the
+    # spine's tax math (W-2s carry withheld amounts); used by fixtures to
+    # generate year-correct synthetic W-2s.
+    ss_wage_base: int
     qbi_threshold: dict[str, int]
     # SALT cap structure (replaces the removed scalar salt_cap field).
     # Keys are FilingStatus.value strings throughout.
@@ -35,7 +39,7 @@ class FederalParams:
     prior_year_salt_cap: dict[str, int]
     # EIC income ceilings keyed by number of qualifying children (0, 1, 2, 3+).
     # Scope-gate threshold only; no EIC math in the native spine.
-    eic_income_ceiling: dict[int, int] = field(default_factory=dict)
+    eic_income_ceiling: dict[int, int]
 
 
 def load(year: int) -> FederalParams:

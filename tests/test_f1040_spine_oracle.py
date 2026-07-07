@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.fixtures.spine_battery import BATTERY, BATTERY_2024
+from tests.fixtures.spine_battery import battery_for
 from tests.helpers import REPO_ROOT, needs_libreoffice
 
 # Keys asserted penny-exact between native and oracle paths.
@@ -92,7 +92,7 @@ def _run_parity_battery(test_case: unittest.TestCase, battery) -> None:
 class SpineParity2025Tests(unittest.TestCase):
     @pytest.mark.oracle
     def test_native_matches_workbook_pennywise(self):
-        _run_parity_battery(self, BATTERY)
+        _run_parity_battery(self, battery_for(2025))
 
 
 @needs_libreoffice
@@ -101,7 +101,7 @@ class SpineParity2024Tests(unittest.TestCase):
 
     @pytest.mark.oracle
     def test_native_matches_workbook_pennywise(self):
-        _run_parity_battery(self, BATTERY_2024)
+        _run_parity_battery(self, battery_for(2024))
 
 
 if __name__ == "__main__":

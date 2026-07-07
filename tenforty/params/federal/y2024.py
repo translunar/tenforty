@@ -32,6 +32,7 @@ PARAMS = FederalParams(
     ),
     qdcgt_breakpoints={_S: (47_025, 518_900)},
     addl_medicare_threshold={_S: 200_000},
+    ss_wage_base=168_600,  # SSA 2024 OASDI wage base
     # Form 8995 simple-path threshold (Rev. Proc. 2023-34): single $191,950,
     # MFJ = 2× = $383,900 (confirmed against Rev. Proc. 2023-34).
     qbi_threshold={

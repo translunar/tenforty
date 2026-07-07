@@ -11,12 +11,12 @@ from pathlib import Path
 
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT
-from tests.fixtures.spine_battery import build_canonical_wage_investment_rental_2024
+from tests.fixtures.spine_battery import build_canonical_wage_investment_rental
 
 
 class Emit2024Tests(unittest.TestCase):
     def test_emits_2024_federal_packet(self):
-        scenario = build_canonical_wage_investment_rental_2024()
+        scenario = build_canonical_wage_investment_rental(2024)
         with tempfile.TemporaryDirectory() as tmp:
             orch = ReturnOrchestrator(
                 spreadsheets_dir=REPO_ROOT / "spreadsheets",
