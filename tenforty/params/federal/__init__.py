@@ -3,7 +3,10 @@
 Year-agnostic spine/tax logic reads everything from FederalParams; there are
 no `if year ==` branches in the math. Adding a year = adding one yNNNN module.
 """
+import importlib
 from dataclasses import dataclass, field
+
+from tenforty import years as year_manifest
 
 
 @dataclass(frozen=True)
@@ -36,10 +39,11 @@ class FederalParams:
 
 
 def load(year: int) -> FederalParams:
-    if year == 2025:
-        from tenforty.params.federal.y2025 import PARAMS
-        return PARAMS
-    if year == 2024:
-        from tenforty.params.federal.y2024 import PARAMS
-        return PARAMS
-    raise ValueError(f"No federal parameters for year {year}")
+    if year not in year_manifest.FEDERAL_YEARS:
+        raise ValueError(
+            f"No federal parameters for year {year} "
+            f"(supported federal tax years: "
+            f"{year_manifest.describe(year_manifest.FEDERAL_YEARS)})"
+        )
+    module = importlib.import_module(f"tenforty.params.federal.y{year}")
+    return module.PARAMS
