@@ -60,38 +60,30 @@ class PdfSchCa(PdfFormMapping[dict[str, str]]):
 
     @classmethod
     def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
-        if year == 2024:
-            return _AGGREGATIONS_2024
-        if year == 2025:
-            return _AGGREGATIONS_2025
-        raise ValueError(f"No Schedule CA (540) aggregations for year {year}")
+        if year not in _AGGREGATIONS_BY_YEAR:
+            raise ValueError(f"No Schedule CA (540) aggregations for year {year}")
+        return _AGGREGATIONS_BY_YEAR[year]
 
     @classmethod
     def get_derivations(
         cls,
         year: int,
     ) -> dict[str, Callable[[Mapping[str, object]], object]]:
-        if year == 2024:
-            return _DERIVATIONS_2024
-        if year == 2025:
-            return _DERIVATIONS_2025
-        raise ValueError(f"No Schedule CA (540) derivations for year {year}")
+        if year not in _DERIVATIONS_BY_YEAR:
+            raise ValueError(f"No Schedule CA (540) derivations for year {year}")
+        return _DERIVATIONS_BY_YEAR[year]
 
     @classmethod
     def get_suppressed(cls, year: int) -> frozenset[str]:
-        if year == 2024:
-            return _SUPPRESSED_2024
-        if year == 2025:
-            return _SUPPRESSED_2025
-        raise ValueError(f"No Schedule CA (540) suppressions for year {year}")
+        if year not in _SUPPRESSED_BY_YEAR:
+            raise ValueError(f"No Schedule CA (540) suppressions for year {year}")
+        return _SUPPRESSED_BY_YEAR[year]
 
     @classmethod
     def get_checkbox_states(cls, year: int) -> dict[str, str]:
-        if year == 2024:
-            return _CHECKBOX_STATES_2024
-        if year == 2025:
-            return _CHECKBOX_STATES_2025
-        raise ValueError(f"No Schedule CA (540) checkbox states for year {year}")
+        if year not in _CHECKBOX_STATES_BY_YEAR:
+            raise ValueError(f"No Schedule CA (540) checkbox states for year {year}")
+        return _CHECKBOX_STATES_BY_YEAR[year]
 
 
 # Direct 1:1 mappings — compute keys with a direct PDF cell + [PLANNED]
@@ -373,3 +365,18 @@ _CHECKBOX_STATES_2024: dict[str, str] = {}
 
 
 PdfSchCa._MAPPINGS[2024] = _MAPPING_2024
+
+# Year-keyed dispatch tables for the four registries above — replaces
+# `if year == <literal>` branching with membership-gated dict lookup.
+_AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
+    2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
+}
+_DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
+    2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
+}
+_SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
+}
+_CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+}
