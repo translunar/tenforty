@@ -39,9 +39,14 @@ SUPPORTED = {
     2024: YearSupport(federal=True, california=True, workbook=True),
     2025: YearSupport(federal=True, california=True, workbook=True),
 }
+
+FEDERAL_FORMS = ("f1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
+                 "f4562", "f4868", "f8582", "f8949", "f8959", "f8995",
+                 "f1120s", "f1120s_k1")
+CALIFORNIA_FORMS = ("f540", "sch_ca", "sch_d_540")
 ```
 
-Everything that today independently encodes year support is instead checked against the manifest. Declaring a year without completing its pack fails the completeness gate; completing a pack without declaring it also fails. No silent half-support in either direction.
+The manifest declares **both dimensions of the support grid**: the year list and the form set per jurisdiction. Everything that today independently encodes year support is instead checked against the manifest. Declaring a year without completing its pack fails the completeness gate; completing a pack without declaring it also fails; adding a form to the form set is a one-line change that reddens every supported year until each year carries that form's pack pieces. No silent half-support in any direction.
 
 ### Year pack — what a supported year must have, by convention
 
@@ -57,6 +62,10 @@ Everything that today independently encodes year support is instead checked agai
 | Workbook (optional) | `spreadsheets/federal/YYYY/1040.xlsx` | n/a |
 
 "Add year Y" = run the runbook: fetch assets → scaffold the pack → transcribe params under the dual-transcription protocol → diff/probe mappings → gates green. Identical procedure forward or backfill.
+
+### Params fields never get defaults
+
+Every field on `FederalParams` / `CaliforniaParams` is required — no dataclass defaults, ever. A default would let an existing year silently pass with a possibly-wrong value when a new field is added; required fields are what turn a schema addition into an all-years red gate (every year's params module fails to construct until the new value is transcribed and attested for that year). A harness test asserts no params dataclass field carries a default, so the rule survives future editors. Values that happen to repeat across years (e.g. a floor percentage unchanged since 2024) are still written out explicitly in each year's module, with their citation.
 
 ## 2. Validation: correct without the workbook
 
@@ -144,6 +153,18 @@ All tooling is deterministic; agents operate it, never substitute for it.
 9. Non-gating filed-return reconciliation, if a return was filed for that year (Layer 7).
 
 A thin repo skill wraps the runbook so "add year YYYY" invokes it verbatim.
+
+### Component ports: the transpose
+
+The support grid is two-dimensional (year × component), so porting a new component to every supported year is the same procedure with the loop inverted — no new machinery. Worked example, adding EIC to the spine:
+
+1. **Schema:** EIC parameters become new required fields on `FederalParams` (no defaults, per the rule above) → every supported year's params module fails to construct until that year's EIC values are dual-transcribed and attested.
+2. **Battery:** the Layer-3 coverage assertion goes red until EIC boundary builders exist — written once, year-generic, generated for every year for free.
+3. **Forms:** Schedule EIC joins `FEDERAL_FORMS` → completeness gate red for every year until each year's blank PDF is fetched and its mapping probed (diff / probe-or-nothing apply per year exactly as in a year port).
+4. **Oracles:** the EIC table is itself a published per-year table in the 1040 instructions — the same `ingest_tax_table.py` mechanism yields a Layer-2 machine-checkable oracle for the new component; years with registered workbooks re-run the Layer-6 acceptance gate with the new scenarios in scope.
+5. **Scope:** `_scenario_in_spine_scope` widens — one year-agnostic change, backstopped by the parity gates.
+
+The runbook applies with steps 4–7 iterated per supported year instead of per form. Component math itself remains year-agnostic and AST-guarded; only its data is per-year, and the gates enumerate exactly which (year, piece) cells are missing.
 
 ## 5. Proof phases (after the simplification phase)
 
