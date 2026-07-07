@@ -3,32 +3,9 @@
 from tenforty.mappings.registry import PdfFormMapping
 
 
-_MAPPING_2025: dict[str, str] = {
-    # Part I — Information About the Corporation
-    # Field A: Corporation's employer identification number
-    "entity_ein":               "topmostSubform[0].Page1[0].LeftCol[0].f1_06[0]",
-    # Field B: Corporation's name, address, city, state, and ZIP code —
-    # a single multi-line text area; the orchestrator builds the
-    # concatenated name+address string before writing.
-    "entity_name_and_address":  "topmostSubform[0].Page1[0].LeftCol[0].f1_07[0]",
-    # Part II — Information About the Shareholder
-    # Field E: Shareholder's identifying number (SSN or EIN)
-    "shareholder_ssn_or_ein":   "topmostSubform[0].Page1[0].LeftCol[0].f1_11[0]",
-    # Field F1: Shareholder's name, address, city, state, and ZIP code —
-    # same combined multi-line text area as field B above.
-    "shareholder_name_and_address": "topmostSubform[0].Page1[0].LeftCol[0].f1_12[0]",
-    # Field G: Current year allocation percentage
-    "ownership_percentage":     "topmostSubform[0].Page1[0].LeftCol[0].f1_16[0]",
-    # Part III — Shareholder's Share of Current Year Income, Deductions,
-    #             Credits, and Other Items
-    # Line 1: Ordinary business income (loss)
-    "box_1_ordinary_business_income": (
-        "topmostSubform[0].Page1[0].RightCol[0].Lines1-12[0].f1_21[0]"
-    ),
-}
-
-
-_MAPPING_2024: dict[str, str] = {
+# 2024 and 2025 Schedule K-1 (1120-S) PDFs share an identical field tree
+# (pinned by tests/test_mapping_year_identity.py); one payload serves both.
+_FIELDS: dict[str, str] = {
     # Part I — Information About the Corporation
     # Field A: Corporation's employer identification number
     "entity_ein":               "topmostSubform[0].Page1[0].LeftCol[0].f1_06[0]",
@@ -62,4 +39,4 @@ class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
     `Pdf1040` flat-mapping precedent."""
 
     _FORM_NAME = "Schedule K-1 (Form 1120-S)"
-    _MAPPINGS: dict[int, dict[str, str]] = {2024: _MAPPING_2024, 2025: _MAPPING_2025}
+    _MAPPINGS: dict[int, dict[str, str]] = {2024: _FIELDS, 2025: _FIELDS}
