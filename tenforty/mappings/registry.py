@@ -50,3 +50,31 @@ class PdfFormMapping[MappingT]:
                 f"No {cls._FORM_NAME} PDF mapping for year {year}"
             )
         return cls._MAPPINGS[year]
+
+
+def inherit_pdf_fields(
+    base: dict[str, str],
+    *,
+    root_swap: tuple[str, str] | None = None,
+    overrides: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """Build a year's PDF field dict from another year's.
+
+    IRS re-issues often keep a form's field tree intact and only rename
+    the root widget container (form1[0] <-> topmostSubform[0]). root_swap
+    applies that rename to every value; overrides then replaces the fields
+    that genuinely moved. Keys are never added or removed — a form whose
+    key set changes between years needs an explicit dict, not inherit.
+    """
+    if root_swap is not None:
+        old_root, new_root = root_swap
+        derived = {k: v.replace(old_root, new_root) for k, v in base.items()}
+    else:
+        derived = dict(base)
+    if overrides:
+        unknown = set(overrides) - set(base)
+        if unknown:
+            raise ValueError(
+                f"inherit_pdf_fields overrides for unknown keys: {sorted(unknown)}")
+        derived.update(overrides)
+    return derived

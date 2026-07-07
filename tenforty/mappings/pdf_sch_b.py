@@ -78,7 +78,7 @@ INTEREST_MAX_ROWS = len(_INTEREST_ROW_FIELDS)   # 14
 DIVIDEND_MAX_ROWS = len(_DIVIDEND_ROW_FIELDS)   # 16
 
 
-def _build_2025_mapping() -> dict[str, str]:
+def _build_fields() -> dict[str, str]:
     m: dict[str, str] = {
         "taxpayer_name": f"{_PAGE1}.f1_01[0]",
         "taxpayer_ssn": f"{_PAGE1}.f1_02[0]",
@@ -96,18 +96,15 @@ def _build_2025_mapping() -> dict[str, str]:
     return m
 
 
-def _build_2024_mapping() -> dict[str, str]:
-    # The 2024 Schedule B PDF uses the same field paths as 2025.
-    # Both years share identical topmostSubform/Page1 structure with the
-    # same Line1_ReadOrder and ReadOrderControl subform containers.
-    return _build_2025_mapping()
+# 2024 and 2025 Schedule B PDFs share identical topmostSubform/Page1
+# structure with the same Line1_ReadOrder and ReadOrderControl subform
+# containers (pinned by tests/test_mapping_year_identity.py); one payload
+# serves both years.
+_FIELDS: dict[str, str] = _build_fields()
 
 
 class PdfSchB(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Schedule B."""
 
     _FORM_NAME = "Schedule B"
-    _MAPPINGS: dict[int, dict[str, str]] = {
-        2024: _build_2024_mapping(),
-        2025: _build_2025_mapping(),
-    }
+    _MAPPINGS: dict[int, dict[str, str]] = {2024: _FIELDS, 2025: _FIELDS}
