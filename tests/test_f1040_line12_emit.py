@@ -63,7 +63,7 @@ class Form1040Line12EmitTests(unittest.TestCase):
         (20k mortgage + 15k SALT: 9k W-2 box 17 + 6k property, under the 2025
         $40k cap). No QBI, so line 14 == line 12.
         """
-        lines = _emit_and_read_1040(build_itemizer_with_w2_state_tax())
+        lines = _emit_and_read_1040(build_itemizer_with_w2_state_tax(2025))
         self.assertEqual(lines["line_12"], 35_000)
         # Line 14 = line 12 + line 13a (QBI = 0 here) stays consistent.
         self.assertEqual(lines["line_14"], lines["line_12"] + lines["line_13a"])

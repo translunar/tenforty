@@ -35,6 +35,7 @@ PARAMS = FederalParams(
     ),
     qdcgt_breakpoints={_S: (48_350, 533_400)},
     addl_medicare_threshold={_S: 200_000},
+    ss_wage_base=176_100,  # SSA 2025 OASDI wage base
     # Form 8995 simple-path threshold (Rev. Proc. 2024-40).
     # Single/MFS/HoH may use Form 8995; MFJ/QW threshold is exactly double.
     qbi_threshold={
