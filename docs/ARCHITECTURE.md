@@ -78,6 +78,7 @@ filled CA PDFs
 | `oracle/engine.py` | Spreadsheet computation | `SpreadsheetEngine.compute(...)`. Resolves named ranges and direct cell refs against the workbook. |
 | `orchestrator.py` | Entry points | `compute_federal`, `compute_corporate`, `run_full_return`, `run_full_california_return`. Internal: `_compute_1040_pipeline`, `_emit_pdfs_internal`, `_emit_ca_pdfs_internal`. |
 | `attestations.py` | Year-bounded scope-out registry | `_FEDERAL_ATTESTATIONS`, `_SCORP_ATTESTATIONS`, `_CA_ATTESTATIONS`, `validate_load_time(scenario)`, `enforce_compute_time(...)`. |
+| `years.py` | Year-support manifest | `FEDERAL_YEARS`, `CALIFORNIA_YEARS`, `FEDERAL_FORMS`, `describe`. |
 | `filing/pdf.py` | PDF fill | `PdfFiller.fill(...)`. Use `PdfWriter(clone_from=reader)` — `append_pages_from_reader` strips form fields. |
 | `__main__.py` | CLI subcommands | `tenforty federal \| ca \| fods <path> [...]` |
 
@@ -110,10 +111,15 @@ Each `pdf_*.py` exposes five `@classmethod` getters per year:
 
 `PdfFiller.fill` consumes all five; the partition `(mapping ∪ aggregations ∪ derivations ∪ suppressed)` must cover every addressable widget on the PDF.
 
-### Constants (`constants/`)
+### Params (`params/`)
 
-- `y2025.py`, ... — federal per-year constants (brackets, exemptions, deductions, phaseouts, SALT cap)
-- `california_y2021.py` ... `california_y2025.py` — CA per-year constants (brackets, exemption credit, standard deduction, renter's credit thresholds)
+- `params/federal/yYYYY.py` — per-year `FederalParams` (brackets, deductions, thresholds, SALT structure, SS wage base). No field defaults — adding a schema field forces every year to supply a cited value.
+- `params/california/yYYYY.py` — per-year `CaliforniaParams` (brackets, exemption credit, standard deduction, renter's credit).
+- Both `load(year)` functions gate on `tenforty/years.py` (the support manifest) and resolve year modules by name; adding a year touches zero load() lines.
+
+### Year-support manifest (`years.py`)
+
+Single source of truth for supported years (`FEDERAL_YEARS`, `CALIFORNIA_YEARS`, `CALIFORNIA_COMPUTE_ONLY_YEARS`, `WORKBOOK_YEARS`) and form sets (`FEDERAL_FORMS`, `CALIFORNIA_FORMS`). Error messages and test parameterizations derive from it. CA 2021–2023 are compute-only: 540 math validated against FTB worked examples, no PDF emit.
 
 ### Two cell-reference styles in the XLS
 
@@ -328,10 +334,12 @@ This section covers extending the codebase. For running an actual tax return as 
 
 1. Download new XLS → `spreadsheets/federal/YYYY/1040.xlsx` (or update existing if the vendor ships an in-place revision).
 2. Add `YYYY` key to `F1040.INPUTS`, `F1040.OUTPUTS`, and `F1040.SHEET_MAP` in `mappings/f1040.py` — use `inherit()` from the prior year for minimal diffs; only override the cells that changed.
-3. Add `tenforty/constants/yYYYY.py` with that year's brackets, exemptions, deductions, phaseouts, SALT cap, etc.
+3. Add `params/federal/yYYYY.py` (and `params/california/yYYYY.py` for CA) with that year's cited values; declare the year in `tenforty/years.py`.
 4. Per-form PDF mappings: download new IRS PDFs, label fields, update each `mappings/pdf_*.py` with year-specific deltas via `inherit()`.
 5. Update test fixtures and oracle modules for any year-specific scope changes.
 6. Run the full test suite; cross-check the new year's compute against the new year's XLS.
+
+The full procedure is being consolidated into `docs/runbooks/add-tax-year.md` (see `docs/specs/2026-07-06-year-extension-harness-design.md`).
 
 ### Add a new form type
 
@@ -346,7 +354,7 @@ This section covers extending the codebase. For running an actual tax return as 
 ### Add a state return
 
 1. Identify the state's required forms; fetch each year's PDF templates into `pdfs/<state>/YYYY/`.
-2. Add per-year constants to `tenforty/constants/<state>_yYYYY.py` (brackets, deductions, phaseouts).
+2. Add per-year params to `tenforty/params/<state>/yYYYY.py` (brackets, deductions, phaseouts), gated by a `load(year)` function against `tenforty/years.py`, mirroring `params/california/`.
 3. Build a `run_full_<state>_return` orchestrator entry point on `ReturnOrchestrator`, mirroring `run_full_california_return`. State compute is downstream of federal: read federal results, apply state-specific divergences, run state forms.
 4. Native-Python form modules in `forms/` (state forms typically have no third-party XLS).
 5. State-specific scope-out attestations in `attestations.py` as a year-bounded registry, mirroring `_CA_ATTESTATIONS`.
