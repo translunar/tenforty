@@ -30,6 +30,11 @@ class FederalParams:
     salt_cap_starting: dict[str, int]
     salt_phaseout_threshold: int | None
     salt_phaseout_rate: float
+    # SALT cap FLOOR — the cap the deduction is limited to at/after any
+    # phaseout. In 2024 this simply IS the flat cap ($10,000; $5,000 MFS,
+    # IRC §164(b)(6)); in 2025 it is the floor the OBBBA cap phases down to
+    # (same $10k/$5k). It is the officially published cap amount, NOT a
+    # phaseout-only concept.
     salt_cap_floor: dict[str, int]
     # Medical-expense AGI floor (Sch A line 3 = AGI × this).
     medical_agi_floor_pct: float
@@ -38,7 +43,11 @@ class FederalParams:
     # a 2024 return looks back to 2023 (also $10k/$5k).
     prior_year_salt_cap: dict[str, int]
     # EIC income ceilings keyed by number of qualifying children (0, 1, 2, 3+).
-    # Scope-gate threshold only; no EIC math in the native spine.
+    # Scope-gate threshold only; no EIC math in the native spine. Each value is
+    # the LARGEST AGI at which ANY filing status can still claim the EITC —
+    # i.e. the MFJ-column maximum by construction (MFJ has the highest ceiling).
+    # A deliberately conservative gate: it only ever fires for single filers,
+    # where a higher ceiling errs safe.
     eic_income_ceiling: dict[int, int]
 
 
