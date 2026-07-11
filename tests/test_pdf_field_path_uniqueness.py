@@ -33,18 +33,23 @@ from tenforty.mappings.registry import PdfFormMapping
 #   page-level totals scalars (total_proceeds, total_basis, total_adjustment,
 #   total_gain) on page 1 are shared between the box_a_* and box_b_* compute
 #   keys, and the same four on page 2 are shared between box_d_* and box_e_*.
-#   This yields exactly 8 intentionally shared scalar paths — all of them
-#   totals fields.  Checkboxes are NOT shared (they use different array
-#   indices: c{page}_1[0] vs c{page}_1[1]).
+#   This yields exactly 8 intentionally shared scalar paths PER YEAR — all of
+#   them totals fields.  Checkboxes are NOT shared (they use different array
+#   indices: c{page}_1[0] vs c{page}_1[1]).  Each supported year contributes
+#   its own 8 (the field numbers differ across years — e.g. f1_91.. in TY2025,
+#   f1_115.. in TY2024 — but the sharing structure is identical), so the
+#   derived allowlist holds 8 * len(_MAPPINGS) paths.
 # ---------------------------------------------------------------------------
 
 def _derive_f8949_shared_paths() -> frozenset[str]:
-    """Return the frozenset of scalar paths that appear more than once in
-    PdfF8949._MAPPINGS[2025]['scalars'].  Used to build the allowlist from
-    the live source so the constant stays in sync automatically."""
-    scalars: dict[str, str] = PdfF8949._MAPPINGS[2025]["scalars"]
-    counts = Counter(scalars.values())
-    return frozenset(path for path, count in counts.items() if count > 1)
+    """Return the frozenset of scalar paths that appear more than once in any
+    year's PdfF8949 scalars.  Built from the live source across every declared
+    year so the allowlist stays in sync automatically as years are added."""
+    shared: set[str] = set()
+    for payload in PdfF8949._MAPPINGS.values():
+        counts = Counter(payload["scalars"].values())
+        shared.update(path for path, count in counts.items() if count > 1)
+    return frozenset(shared)
 
 
 _KNOWN_SHARED_PATHS: dict[type, frozenset[str]] = {
@@ -211,18 +216,23 @@ class PdfFieldPathUniquenessTest(unittest.TestCase):
                                     + "\n".join(details)
                                 )
 
-    def test_f8949_allowlist_has_exactly_8_entries(self) -> None:
-        """Sanity-check: the PdfF8949 allowlist must contain exactly 8 paths.
+    def test_f8949_allowlist_has_8_shared_totals_per_year(self) -> None:
+        """Sanity-check: the PdfF8949 allowlist holds exactly 8 shared paths
+        PER declared year — the four page-1 totals shared by boxes A/B and the
+        four page-2 totals shared by boxes D/E.  The count therefore scales as
+        8 * len(_MAPPINGS).
 
         If this fails, the audit in pdf_f8949.py has diverged from the
         allowlist derivation — reconcile before proceeding.
         """
         allowlist = _KNOWN_SHARED_PATHS[PdfF8949]
+        expected = 8 * len(PdfF8949._MAPPINGS)
         self.assertEqual(
             len(allowlist),
-            8,
-            f"Expected exactly 8 shared paths for PdfF8949, got {len(allowlist)}: "
-            f"{sorted(allowlist)}",
+            expected,
+            f"Expected {expected} shared paths for PdfF8949 "
+            f"(8 totals × {len(PdfF8949._MAPPINGS)} years), "
+            f"got {len(allowlist)}: {sorted(allowlist)}",
         )
 
     def test_f8949_allowlist_paths_are_totals_only(self) -> None:

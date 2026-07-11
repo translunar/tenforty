@@ -55,13 +55,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # stays green while the holes are real. Every entry here is WORK OWED —
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
-    # f8949: mapping is 2025-only AND the blank template is absent for
-    # BOTH years — the orchestrator resolves pdfs/federal/<year>/f8949.pdf,
-    # so any scenario with a non-basis-reported lot would crash at emit.
-    ("federal", "f8949", 2024),
-    ("federal", "f8949", 2025),
-})
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
