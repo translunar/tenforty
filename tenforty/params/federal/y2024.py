@@ -37,7 +37,9 @@ PARAMS = FederalParams(
     # MFJ = 2× = $383,900 (confirmed against Rev. Proc. 2023-34).
     qbi_threshold={
         _S: 191_950, _MFS: 191_950, _HOH: 191_950,
-        _MFJ: 383_900, _QW: 383_900,
+        # QSS = Rev. Proc. 2023-34 §3.27 "All Other Returns" (191_950), NOT
+        # the MFJ amount — adjudicated by Juno 2026-07-11 (Layer-1 catch).
+        _MFJ: 383_900, _QW: 191_950,
     },
     # 2024 SALT cap: flat pre-OBBBA $10k / $5k MFS, no income phaseout.
     # salt_phaseout_threshold = None → flat cap, never raises for high MAGI.
