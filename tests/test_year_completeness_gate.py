@@ -6,8 +6,6 @@ checked property. KNOWN_GAPS entries are work owed, not permission."""
 import importlib
 import unittest
 
-from pypdf import PdfReader
-
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
 from tenforty.mappings.catalog import CATALOG, KNOWN_GAPS

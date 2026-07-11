@@ -3,7 +3,7 @@
 Each builder takes the tax year and returns a single-filer Scenario whose
 income is high enough to clear the EIC scope-gate, so _compute_1040_pipeline
 routes to the native spine rather than the workbook. battery_for(year)
-yields the same seven boundary scenarios for any supported year — adding a
+yields the same eight boundary scenarios for any supported year — adding a
 year adds zero code here.
 
 All identities and amounts are fully synthetic — no real personal data.
