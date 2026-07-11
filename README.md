@@ -141,6 +141,7 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 - Round-trip PDF verification
 - 5-registry mapping pattern (mapping / aggregations / derivations / suppressed / checkbox-states)
 - Pre-commit personal-data scanner
+- Year-extension harness: manifest-driven completeness gate, published-tax-table oracles, dual-transcription param attestation, add-tax-year runbook
 
 **CLI:**
 - `tenforty federal <path>` and `tenforty ca <path>` subcommands
