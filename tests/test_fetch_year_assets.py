@@ -36,6 +36,21 @@ class DownloadPlanTests(unittest.TestCase):
             "f1120s.pdf", "f1120s_k1.pdf", "i1040tt.pdf",
         })
 
+    def test_federal_tax_table_stem_switches_to_p1040_from_2025(self):
+        # The IRS discontinued the standalone i1040tt document after tax
+        # year 2024 and moved the Tax Table into p1040; the on-disk
+        # role-name (i1040tt.pdf) stays stable, only the source stem moves.
+        by_dest_2024 = {d.dest.name: d.url
+                        for d in build_download_plan("federal", 2024)}
+        by_dest_2025 = {d.dest.name: d.url
+                        for d in build_download_plan("federal", 2025)}
+        self.assertEqual(
+            by_dest_2024["i1040tt.pdf"],
+            "https://www.irs.gov/pub/irs-prior/i1040tt--2024.pdf")
+        self.assertEqual(
+            by_dest_2025["i1040tt.pdf"],
+            "https://www.irs.gov/pub/irs-prior/p1040--2025.pdf")
+
     def test_california_plan_uses_ftb_scheme(self):
         plan = build_download_plan("california", 2023)
         by_dest = {d.dest.name: d.url for d in plan}

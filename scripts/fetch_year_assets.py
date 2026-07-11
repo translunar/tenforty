@@ -8,6 +8,7 @@ every fetched file is validated (PDF magic bytes, >50KB) and the run hard-
 stops on the first failure — a 404 HTML page must never land in pdfs/.
 
 The IRS prior-year scheme is stable: irs.gov/pub/irs-prior/<stem>--<year>.pdf
+(the federal tax-table stem is year-dependent — see _federal_tax_table_stem).
 The FTB scheme is ftb.ca.gov/forms/<year>/<year>-<doc>.pdf. If the FTB
 renames a document (they occasionally do), edit _CALIFORNIA_DOCS — the
 validation guarantees a wrong guess fails loudly rather than corrupting
@@ -42,8 +43,19 @@ _FEDERAL_DOCS: list[tuple[str, str]] = [
     ("f1120s", "f1120s.pdf"),
     # IRS URL stem has no underscore; the repo's on-disk convention does.
     ("f1120sk1", "f1120s_k1.pdf"),
-    ("i1040tt", "i1040tt.pdf"),  # Tax Table instructions — Layer-2 oracle source
 ]
+
+# The federal tax table's IRS source stem is year-dependent: the standalone
+# "i1040tt" document was discontinued after tax year 2024 and the Tax Table
+# folded into "p1040". The on-disk destination stays i1040tt.pdf for every
+# year — a stable role-name that the ingester and year packs rely on — so
+# only the URL stem moves, not the filename.
+_FEDERAL_TAX_TABLE_DEST = "i1040tt.pdf"
+
+
+def _federal_tax_table_stem(year: int) -> str:
+    return "i1040tt" if year <= 2024 else "p1040"
+
 
 # (FTB doc suffix, destination filename).
 _CALIFORNIA_DOCS: list[tuple[str, str]] = [
@@ -65,12 +77,14 @@ class Download:
 
 def build_download_plan(jurisdiction: str, year: int) -> list[Download]:
     if jurisdiction == "federal":
+        docs = _FEDERAL_DOCS + [
+            (_federal_tax_table_stem(year), _FEDERAL_TAX_TABLE_DEST)]
         return [
             Download(
                 url=f"https://www.irs.gov/pub/irs-prior/{stem}--{year}.pdf",
                 dest=_PDFS / "federal" / str(year) / dest_name,
             )
-            for stem, dest_name in _FEDERAL_DOCS
+            for stem, dest_name in docs
         ]
     if jurisdiction == "california":
         return [
