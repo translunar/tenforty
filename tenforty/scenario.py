@@ -19,6 +19,7 @@ from tenforty.models import (
     Form1099DIV,
     Form1099G,
     Form1099INT,
+    ItemizedDeductions,
     RentalProperty,
     SCorpDeductions,
     SCorpIncome,
@@ -45,6 +46,15 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "rental_properties": (RentalProperty, "rental_properties"),
     "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
+
+# Every top-level YAML key the loader recognizes. The loader is fail-closed:
+# any key outside this set raises rather than being silently dropped (a
+# dropped `itemized_deductions:` block is how a filed-return reconciliation
+# first surfaced this gap — a typo must not vanish without a sound).
+_KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
+    {"config", "s_corp_return", "ca540", "itemized_deductions"}
+    | set(_FORM_REGISTRY)
+)
 
 
 def _coerce_date(value) -> datetime.date:
@@ -256,6 +266,17 @@ def load_scenario(path: Path) -> Scenario:
     with open(path) as f:
         data = yaml.safe_load(f)
 
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Scenario YAML must be a mapping at the top level, got "
+            f"{type(data).__name__}")
+
+    unknown = set(data) - _KNOWN_TOP_LEVEL_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown top-level key(s) in scenario YAML: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_TOP_LEVEL_KEYS)}")
+
     config = TaxReturnConfig(**data["config"])
     _validate_scenario_config(config)
 
@@ -266,7 +287,12 @@ def load_scenario(path: Path) -> Scenario:
 
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
     ca540 = _load_ca540(data.get("ca540"))
-    scenario = Scenario(config=config, s_corp_return=s_corp_return, ca540=ca540, **form_data)
+    itemized_raw = data.get("itemized_deductions")
+    itemized_deductions = (
+        ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)
+    scenario = Scenario(
+        config=config, s_corp_return=s_corp_return, ca540=ca540,
+        itemized_deductions=itemized_deductions, **form_data)
     _validate_schedule_k1s(scenario)
     return scenario
 
