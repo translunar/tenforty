@@ -71,10 +71,6 @@ _MIN_WIDTH = 5
 _MAX_WIDTH = 200
 
 
-def _to_int(token: str) -> int:
-    return int(token.replace(",", ""))
-
-
 def _numeric(text: str):
     """Return the integer value of a numeric cell token, else None."""
     m = _NUM_RE.fullmatch(text.strip())
