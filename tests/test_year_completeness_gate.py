@@ -20,20 +20,6 @@ from tests.helpers import REPO_ROOT
 _PDFS = REPO_ROOT / "pdfs"
 _PROBE_UNSUPPORTED_YEAR = 1999
 
-# Divergence-catalog ledger: the CA divergence catalog
-# (spreadsheets/california/<year>/catalog.yaml) is authored by Plan 3 Phase C
-# (human-judgment work) and does not exist yet. Each CA year still awaiting its
-# catalog is enumerated here so the hole stays VISIBLE (skipped-with-reason),
-# never silently omitted from the gate. Plan 3 Phase C MUST author the catalogs
-# and EMPTY this ledger — mirroring the KNOWN_GAPS-empty requirement at Plan-3
-# acceptance. A CA year NOT listed here whose catalog is missing FAILS the gate;
-# adding a new CA year reddens the gate unless its catalog exists or this ledger
-# is deliberately grown (both visible acts).
-DIVERGENCE_CATALOG_PENDING: frozenset[tuple[str, int]] = frozenset({
-    ("california", 2024),
-    ("california", 2025),
-})
-
 
 class FederalCompletenessTests(unittest.TestCase):
     def test_every_federal_year_has_a_complete_pack(self):
@@ -77,14 +63,16 @@ class CaliforniaCompletenessTests(unittest.TestCase):
             with self.subTest(year=year, piece="tax_table"):
                 self.assertGreater(len(load_table("california", year)), 500)
             with self.subTest(year=year, piece="divergence_catalog"):
-                if ("california", year) in DIVERGENCE_CATALOG_PENDING:
-                    self.skipTest(
-                        f"divergence catalog for {year} pending Plan-3 Phase C "
-                        f"(DIVERGENCE_CATALOG_PENDING) — Plan 3 authors the "
-                        f"catalog and removes this ledger entry")
-                catalog = (REPO_ROOT / "spreadsheets" / "california"
-                           / str(year) / "catalog.yaml")
+                # The CA divergence catalog is authored per year as
+                # sch_ca_divergences-<year>.catalog.yaml (the populated,
+                # hand-authored artifact consumed by
+                # scripts/build_sch_ca_fods.py). Adding a new CA year to the
+                # manifest reddens this gate until that year's catalog ships.
+                catalog = (REPO_ROOT / "spreadsheets" / "california" / str(year)
+                           / f"sch_ca_divergences-{year}.catalog.yaml")
                 self.assertTrue(catalog.exists(), f"missing {catalog}")
+                self.assertGreater(catalog.stat().st_size, 0,
+                                   f"{catalog} is empty")
             for (juris, form), entry in sorted(CATALOG.items()):
                 if juris != "california" or (juris, form, year) in KNOWN_GAPS:
                     continue
