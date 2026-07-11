@@ -91,13 +91,21 @@ class ScheduleK1Like(Protocol):
 # $241,950 single which was the 2024 value. CPA confirmation required
 # before any downstream code consumes these constants.
 #
+# ADJUDICATED (Juno, 2026-07-11): qss corrected from 394_600 to 197_300.
+# Rev. Proc. 2023-34 §3.27 tabulates §199A threshold amounts in exactly three
+# rows — Married Individuals Filing Joint Returns / Filing Separate Returns /
+# All Other Returns — with no surviving-spouse grouping in the joint row, so
+# QSS takes the "All Other Returns" amount (2025: $197,300 per the same table
+# structure in Rev. Proc. 2024-40). QSS files an individual return; §199A(e)(2)
+# doubles the threshold only for "a joint return."
+#
 # SOURCE (draft): https://www.irs.gov/pub/irs-dft/i8995--dft.pdf
 QBI_SIMPLE_THRESHOLD_2025 = {
     "single": 197_300.0,   # VERIFY
     "mfj":    394_600.0,   # VERIFY
     "hoh":    197_300.0,   # VERIFY
     "mfs":    197_300.0,   # VERIFY
-    "qss":    394_600.0,   # VERIFY
+    "qss":    197_300.0,   # adjudicated 2026-07-11; see ADJUDICATED note above
 }
 
 # Form 8582 $25k special allowance for active-participation rental real
