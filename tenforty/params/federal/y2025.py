@@ -40,7 +40,9 @@ PARAMS = FederalParams(
     # Single/MFS/HoH may use Form 8995; MFJ/QW threshold is exactly double.
     qbi_threshold={
         _S: 197_300, _MFS: 197_300, _HOH: 197_300,
-        _MFJ: 394_600, _QW: 394_600,
+        # QSS = Rev. Proc. 2024-40 "All Other Returns" (197_300), NOT the MFJ
+        # amount — adjudicated by Juno 2026-07-11 (Layer-1 catch).
+        _MFJ: 394_600, _QW: 197_300,
     },
     # OBBBA SALT cap structure for TY2025–2029 (IRC §164(b)(6) as amended).
     # Starting caps: $40k single/MFJ/HoH/QW; $20k MFS.

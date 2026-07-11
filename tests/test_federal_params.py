@@ -106,13 +106,21 @@ class FederalParamsQbiThresholdTests(unittest.TestCase):
         self.assertEqual(p.qbi_threshold["married_separately"], 197_300)
         self.assertEqual(p.qbi_threshold["head_of_household"], 197_300)
         self.assertEqual(p.qbi_threshold["married_jointly"], 394_600)
-        self.assertEqual(p.qbi_threshold["qualifying_widow"], 394_600)
+        # QSS falls under Rev. Proc. 2024-40 "All Other Returns" (there is no
+        # "and Surviving Spouses" grouping in the joint row), NOT the MFJ
+        # amount. Corrected from a prior 394_600 (MFJ) — adjudicated by Juno
+        # against Rev. Proc. 2023-34 §3.27 verbatim, 2026-07-11 (Layer-1
+        # attestation catch).
+        self.assertEqual(p.qbi_threshold["qualifying_widow"], 197_300)
 
     def test_2024_qbi_threshold_single(self):
         """2024 single QBI threshold (Rev. Proc. 2023-34)."""
         p = load(2024)
         self.assertEqual(p.qbi_threshold["single"], 191_950)
         self.assertEqual(p.qbi_threshold["married_jointly"], 383_900)
+        # QSS = "All Other Returns" = 191_950, not the MFJ 383_900 (same
+        # §3.27 adjudication as 2025).
+        self.assertEqual(p.qbi_threshold["qualifying_widow"], 191_950)
 
 
 class StandardDeductionAllStatusesTests(unittest.TestCase):
