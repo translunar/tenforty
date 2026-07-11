@@ -1,9 +1,10 @@
 import unittest
 
-from tenforty.forms.f1040_tax import tax_from_schedule, qdcgt_tax
+from tenforty.forms.f1040_tax import tax_from_schedule, qdcgt_tax, ordinary_tax
 from tenforty.models import FilingStatus
 from tenforty.params.federal import load
 from tenforty.rounding import irs_round
+from tenforty.tax_table import tax_from_table
 
 
 class TaxFromScheduleTests(unittest.TestCase):
@@ -47,3 +48,25 @@ class QdcgtWorksheetTests(unittest.TestCase):
     def test_non_single_raises(self):
         with self.assertRaises(NotImplementedError):
             qdcgt_tax(100_000, 0, 0, self.p, FilingStatus.MARRIED_JOINTLY)
+
+
+class OrdinaryTaxTableTests(unittest.TestCase):
+    """ordinary_tax routes below-$100k income through the published Tax
+    Table (matching what a filer reads off the page) and $100k+ through
+    the rate schedule."""
+
+    def test_below_ceiling_uses_table(self):
+        params = load(2025)
+        self.assertEqual(
+            ordinary_tax(75_000.0, params, FilingStatus.SINGLE),
+            tax_from_table(75_000.0, 2025, FilingStatus.SINGLE))
+
+    def test_at_ceiling_uses_schedule(self):
+        params = load(2025)
+        self.assertEqual(
+            ordinary_tax(100_000.0, params, FilingStatus.SINGLE),
+            tax_from_schedule(100_000.0, params))
+
+    def test_zero_income_is_zero(self):
+        params = load(2025)
+        self.assertEqual(ordinary_tax(0.0, params, FilingStatus.SINGLE), 0)

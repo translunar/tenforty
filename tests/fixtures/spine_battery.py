@@ -269,6 +269,23 @@ def build_owes_tax(year: int) -> Scenario:
     )
 
 
+def build_tax_table_band(year: int) -> Scenario:
+    """Taxable income inside the Tax Table's range (< $100k).
+
+    Wages $90,000 (clears every EIC ceiling) minus the standard deduction
+    lands taxable income around $75k — squarely in table territory. The
+    workbook reads the same published table, so parity here proves the
+    spine's table lookup end-to-end (the other scenarios deliberately sit
+    above $100k, where table and schedule coincide).
+    """
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[_w2(year, employer="Synthetic Employer H", wages=90_000.0,
+                 federal_tax_withheld=16_000.0)],
+        form1099_int=[Form1099INT(payer="Synthetic Bank", interest=1_000.0)],
+    )
+
+
 def build_itemizer_with_w2_state_tax(year: int) -> Scenario:
     """Single itemizer whose Schedule A SALT includes W-2 box 17 state tax.
 
@@ -313,6 +330,7 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("addl_medicare_boundary", build_addl_medicare_boundary),
     ("zero_tax_refund", build_zero_tax_refund),
     ("owes_tax", build_owes_tax),
+    ("tax_table_band", build_tax_table_band),
     ("itemizer_with_w2_state_tax", build_itemizer_with_w2_state_tax),
 ]
 

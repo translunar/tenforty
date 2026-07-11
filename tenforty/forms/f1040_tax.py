@@ -7,6 +7,7 @@ no `if year ==` branches here.
 from tenforty.models import FilingStatus
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
+from tenforty.tax_table import TABLE_CEILING, tax_from_table
 
 
 def tax_from_schedule(taxable_income: float, params: FederalParams) -> int:
@@ -22,6 +23,18 @@ def tax_from_schedule(taxable_income: float, params: FederalParams) -> int:
         tax += (slice_top - lower) * rate
         lower = upper
     return irs_round(tax)
+
+
+def ordinary_tax(taxable_income: float, params: FederalParams,
+                 filing_status: FilingStatus) -> int:
+    """Tax the way the 1040 instructions direct: the published Tax Table
+    for taxable income under $100,000, the rate schedule at or above.
+    The two differ by a few dollars (table bins carry midpoint tax)."""
+    if taxable_income <= 0:
+        return 0
+    if taxable_income < TABLE_CEILING:
+        return tax_from_table(taxable_income, params.year, filing_status)
+    return tax_from_schedule(taxable_income, params)
 
 
 def qdcgt_tax(
@@ -53,8 +66,8 @@ def qdcgt_tax(
     amt_taxed_20 = remaining - amt_taxed_15
 
     worksheet_tax = (
-        tax_from_schedule(ordinary, params)
+        ordinary_tax(ordinary, params, filing_status)
         + irs_round(amt_taxed_15 * 0.15)
         + irs_round(amt_taxed_20 * 0.20)
     )
-    return min(worksheet_tax, tax_from_schedule(ti, params))
+    return min(worksheet_tax, ordinary_tax(ti, params, filing_status))

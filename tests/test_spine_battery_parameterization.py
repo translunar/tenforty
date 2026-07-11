@@ -13,6 +13,7 @@ _EXPECTED_NAMES = [
     "addl_medicare_boundary",
     "zero_tax_refund",
     "owes_tax",
+    "tax_table_band",
     "itemizer_with_w2_state_tax",
 ]
 
