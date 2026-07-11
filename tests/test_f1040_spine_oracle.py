@@ -1,11 +1,11 @@
-"""Penny-parity gate: native 1040 spine vs XLSX oracle, 2025 and 2024.
+"""Penny-parity gate: native 1040 spine vs XLSX oracle, every workbook year in the manifest.
 
 For each battery scenario, runs both the native spine path
 (_compute_1040_pipeline) and the XLSX oracle (_compute_1040_via_workbook)
 on the same effective scenario and asserts penny-exact equality across
 PARITY_KEYS.
 
-The 2024 class proves the year-seam: the SAME native spine, with 2024 params
+The 2024 sweep proves the year-seam: the SAME native spine, with 2024 params
 swapped in, matches the 2024 workbook penny-for-penny.
 
 ROUTING GUARD: Every battery scenario must route to the NATIVE spine, not
@@ -23,6 +23,7 @@ import pytest
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures.spine_battery import battery_for
 from tests.helpers import REPO_ROOT, needs_libreoffice
+from tenforty import years as year_manifest
 
 # Keys asserted penny-exact between native and oracle paths.
 # f8949 box keys are excluded (raw workbook outputs, not in scope here).
@@ -51,14 +52,14 @@ PARITY_KEYS = (
 )
 
 
-def _run_parity_battery(test_case: unittest.TestCase, battery) -> None:
+def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> None:
     """Run penny-parity check for every (name, builder) pair in battery.
 
-    Shared logic for both the 2025 and 2024 parity test classes so that
+    Shared logic for the parity sweep over every workbook year so that
     the routing guard and assertion loop are maintained in one place.
     """
     for name, build in battery:
-        with test_case.subTest(scenario=name):
+        with test_case.subTest(year=year, scenario=name):
             scenario = build()
             with tempfile.TemporaryDirectory() as tmp:
                 orch = ReturnOrchestrator(
@@ -89,19 +90,16 @@ def _run_parity_battery(test_case: unittest.TestCase, battery) -> None:
 
 
 @needs_libreoffice
-class SpineParity2025Tests(unittest.TestCase):
-    @pytest.mark.oracle
-    def test_native_matches_workbook_pennywise(self):
-        _run_parity_battery(self, battery_for(2025))
-
-
-@needs_libreoffice
-class SpineParity2024Tests(unittest.TestCase):
-    """Year-seam proof: same native spine, 2024 params, matches 2024 workbook."""
+class SpineParityTests(unittest.TestCase):
+    """One gate, every registered workbook year. Registering a new year's
+    workbook in the manifest extends this gate to it automatically —
+    the year-seam proof (same spine, swapped params, matches that year's
+    workbook) runs for every year that has an oracle to match."""
 
     @pytest.mark.oracle
-    def test_native_matches_workbook_pennywise(self):
-        _run_parity_battery(self, battery_for(2024))
+    def test_native_matches_every_workbook_pennywise(self):
+        for year in year_manifest.WORKBOOK_YEARS:
+            _run_parity_battery(self, battery_for(year), year=year)
 
 
 if __name__ == "__main__":
