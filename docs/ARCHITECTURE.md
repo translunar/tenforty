@@ -332,14 +332,7 @@ This section covers extending the codebase. For running an actual tax return as 
 
 ### Add a new tax year
 
-1. Download new XLS → `spreadsheets/federal/YYYY/1040.xlsx` (or update existing if the vendor ships an in-place revision).
-2. Add `YYYY` key to `F1040.INPUTS`, `F1040.OUTPUTS`, and `F1040.SHEET_MAP` in `mappings/f1040.py` — use `inherit()` from the prior year for minimal diffs; only override the cells that changed.
-3. Add `params/federal/yYYYY.py` (and `params/california/yYYYY.py` for CA) with that year's cited values; declare the year in `tenforty/years.py`.
-4. Per-form PDF mappings: download new IRS PDFs, label fields, update each `mappings/pdf_*.py` with year-specific deltas via `inherit()`.
-5. Update test fixtures and oracle modules for any year-specific scope changes.
-6. Run the full test suite; cross-check the new year's compute against the new year's XLS.
-
-The full procedure is being consolidated into `docs/runbooks/add-tax-year.md` (see `docs/specs/2026-07-06-year-extension-harness-design.md`).
+See `docs/runbooks/add-tax-year.md` — the machine-checked port procedure (both directions).
 
 ### Add a new form type
 
