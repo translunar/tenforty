@@ -237,6 +237,25 @@ class RateScheduleBoundaryAnchors2025Tests(unittest.TestCase):
                 )
 
 
+class HighIncomeBinMidpointTests(unittest.TestCase):
+    """Regression pin for the midpoint-convention fix (Layer-2 oracle
+    disagreement): the FTB Tax Table uses the integer bin midpoint."""
+
+    def test_high_income_bin_uses_integer_midpoint(self):
+        # FTB Tax Table 2024, bin $70,651–$70,750, Single column = $3,117.
+        # The integer bin midpoint (70,700) reproduces it; the half-dollar
+        # midpoint (70,700.5) rounds $1 high. Regression pin for the
+        # midpoint-convention fix (Layer-2 oracle disagreement).
+        self.assertEqual(
+            compute_ca_tax(year=2024, filing_status=FilingStatus.SINGLE,
+                           taxable_income=70_700),
+            3_117)
+        self.assertEqual(
+            compute_ca_tax(year=2024, filing_status=FilingStatus.MARRIED_SEPARATELY,
+                           taxable_income=70_700),
+            3_117)
+
+
 class ComputeCaTaxUnsupportedYearTests(unittest.TestCase):
     """Oracle 5: NotImplementedError contract for unsupported years."""
 

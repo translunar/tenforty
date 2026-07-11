@@ -74,20 +74,22 @@ def compute_ca_tax(
     if taxable_income <= 99_950:
         # Why: FTB Tax Table covers $1–$100,000 in fixed bins. Each regular
         # bin is 100 integers wide; the bin's published tax equals
-        # round(rate_schedule_walk(bin_midpoint)). The midpoint formula
-        # bin_high - 49.5 works for all regular (100-wide) bins from $51–$99,950
-        # but does NOT extend to the truncated last bin ($99,951–$100,000, width
-        # 50, midpoint $99,975.5). The boundary discontinuity at $100,000
-        # (Tax Table) → $100,001 (Rate Schedule) is real (~$3–5 difference per
-        # FTB encoding) and is not a bug — the two branches use distinct
-        # computation methods by FTB design.
+        # round(rate_schedule_walk(bin_midpoint)), where the FTB uses the
+        # INTEGER midpoint (bin_high - 50, e.g. 70,700 for the $70,651–$70,750
+        # bin). Empirically the integer midpoint reproduces 8,008/8,008
+        # published CA cells for 2024–2025 exactly; the half-dollar midpoint
+        # (bin_high - 49.5) mismatched 64 of them by +$1 at rounding
+        # boundaries (Layer-2 oracle, tests/test_tax_table_oracle.py). The
+        # boundary discontinuity at $100,000 (Tax Table) → $100,001 (Rate
+        # Schedule) is real (~$3–5 difference per FTB encoding) and is not a
+        # bug — the two branches use distinct computation methods by FTB design.
         bin_high = 50 + 100 * math.ceil((taxable_income - 50) / 100)
-        midpoint = bin_high - 49.5
+        midpoint = bin_high - 50
         return irs_round(_walk_rate_schedule(rate_schedule, midpoint))
 
     if taxable_income <= 100_000:
-        # Truncated last bin: $99,951–$100,000, midpoint $99,975.5
-        midpoint = 99_975.5
+        # Truncated last bin: $99,951–$100,000, integer midpoint $99,975
+        midpoint = 99_975
         return irs_round(_walk_rate_schedule(rate_schedule, midpoint))
 
     # Rate Schedule branch: income > $100,000 — walk directly on taxable_income
