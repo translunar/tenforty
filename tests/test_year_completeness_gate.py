@@ -78,6 +78,7 @@ class CaliforniaCompletenessTests(unittest.TestCase):
                     template = (_PDFS / juris / str(year)
                                 / f"{entry.template_stem}.pdf")
                     self.assertTrue(template.exists(), f"missing {template}")
+                    self.assertGreater(template.stat().st_size, 50_000)
                 with self.subTest(year=year, form=form, piece="mapping"):
                     entry.mapping_cls.get_mapping(year)
 
