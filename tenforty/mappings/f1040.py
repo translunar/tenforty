@@ -924,3 +924,26 @@ F1040.OUTPUTS[2023] = F1040.inherit(2024, {
     "sch_a_line_5e_salt_capped": "M29",   # 'Sch. A' col -1 (2024 N29)
 }, source="outputs")
 F1040.SHEET_MAP[2023] = dict(F1040.SHEET_MAP[2024])
+
+# 2022's workbook matches 2023's layout EXCEPT the 'Sch. A' sheet, which the
+# vendor reorganized vs 2023. Only the three 'Sch. A' cell-ADDRESS references
+# need overrides (the named-range outputs Standard/TotalDeductions/QBID resolve
+# by name); each verified per-cell against spreadsheets/federal/{2022,2023}/1040.xlsx:
+#  - property_tax input +1 row (2023 M25 -> 2022 M26): 2022 reader
+#    O27='=ROUND(M26,0)' mirrors 2023 O26='=ROUND(M25,0)'.
+#  - sch_a_line_5e_salt_capped output +1 row (2023 M29 -> 2022 M30): 2022
+#    M30='=IF(Q30<>"",ROUND(Q30,0),MIN(M28,O22))' mirrors 2023 M29's MIN(M27,O21).
+#  - mortgage_interest input: the mortgage debt-limit block shifted -2 rows, so
+#    2023 S37 -> 2022 S35. The 2022 deduction reader M38='=MIN(S43,ROUND(S35,0))'
+#    consumes S35 exactly as 2023 M37='=MIN(S42,ROUND(S37,0))' consumes S37; the
+#    debt limits (2023 S35/S36=1M/500k) sit at 2022 S33/S34.
+# The 'Sch 1, Line 1 (SALT)' worksheet and all other input sheets align with
+# 2023 (spot-checked). The cell-drift smoke over the itemizer scenario confirms.
+F1040.INPUTS[2022] = F1040.inherit(2023, {
+    "mortgage_interest": "S35",   # 'Sch. A' mortgage block -2 rows (2023 S37)
+    "property_tax": "M26",        # 'Sch. A' +1 row (2023 M25)
+}, source="inputs")
+F1040.OUTPUTS[2022] = F1040.inherit(2023, {
+    "sch_a_line_5e_salt_capped": "M30",   # 'Sch. A' +1 row (2023 M29)
+}, source="outputs")
+F1040.SHEET_MAP[2022] = dict(F1040.SHEET_MAP[2023])
