@@ -366,17 +366,157 @@ _CHECKBOX_STATES_2024: dict[str, str] = {}
 
 PdfSchCa._MAPPINGS[2024] = _MAPPING_2024
 
+
+# ---------------------------------------------------------------------------
+# 2023 registries — tooltip-read from pdfs/california/2023/sch_ca.pdf,
+# filled-emit-verified.
+#
+# THIRD FTB naming scheme: bare zero-padded numbers ('1027', '2035') — the
+# '540ca_form - ' prefix of 2024/2025 is GONE (matching the 2023 Sch D (540)
+# and Form 540). Each field's /TU tooltip was compared against the 2025 field
+# of the same line+column: 54 of 57 fields keep the identical sequence number
+# (the prefix is merely stripped). The exception is line 8z's three cells,
+# which SHIFTED 2038/2039/2040 -> 2035/2036/2037 because the 2023 form
+# enumerates its 8a-8u other-income sub-lines with different field numbers
+# ahead of 8z — an invisible-shift trap caught by the tooltip read, NOT by
+# assuming the prefix-strip carried every number. (The §A line-7 tooltip reads
+# "Line 7" in 2023 vs "Line 7a" in 2025 — same capital-gain cell/column,
+# benign wording.) Column structure (which lines lack Col B/C) is identical to
+# 2024/2025 per the Step-1 conformity review.
+# ---------------------------------------------------------------------------
+
+_MAPPING_2023: dict[str, str] = {
+    # Page 1 — Taxpayer header ([PLANNED]: orchestrator-supplied)
+    "sch_ca_taxpayer_name":                       "1000",
+    "sch_ca_taxpayer_ssn":                        "1001",
+    # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
+    "sch_ca_line_part_i_a_1z_col_a":              "1027",
+    "sch_ca_line_part_i_a_1z_subtractions":       "1028",
+    "sch_ca_line_part_i_a_1z_additions":          "1029",
+    # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
+    "sch_ca_line_part_i_a_2_col_a":               "1031",
+    "sch_ca_line_part_i_a_2_subtractions":        "1032",
+    "sch_ca_line_part_i_a_2_additions":           "1033",
+    # Page 1 §A line 3 — Ordinary dividends (federal 1040 line 3b)
+    "sch_ca_line_part_i_a_3_col_a":               "1035",
+    "sch_ca_line_part_i_a_3_subtractions":        "1036",
+    "sch_ca_line_part_i_a_3_additions":           "1037",
+    # Page 1 §A line 4 — IRA distributions (federal 1040 line 4b)
+    "sch_ca_line_part_i_a_4_col_a":               "1039",
+    "sch_ca_line_part_i_a_4_subtractions":        "1040",
+    "sch_ca_line_part_i_a_4_additions":           "1041",
+    # Page 1 §A line 5b — Pensions/annuities (incl. RRB Tier 1/2)
+    "sch_ca_line_part_i_a_5b_col_a":              "1043",
+    "sch_ca_line_part_i_a_5b_subtractions":       "1044",
+    "sch_ca_line_part_i_a_5b_additions":          "1045",
+    # Page 1 §A line 6 — Social Security benefits (no Col C — CA never
+    # taxes more than federal taxes; addition impossible)
+    "sch_ca_line_part_i_a_6_col_a":               "1047",
+    "sch_ca_line_part_i_a_6_subtractions":        "1048",
+    # Page 1 §A line 7a — Capital gain or (loss) (2023 tooltip: "Line 7")
+    "sch_ca_line_part_i_a_7_col_a":               "1049",
+    "sch_ca_line_part_i_a_7_subtractions":        "1050",
+    "sch_ca_line_part_i_a_7_additions":           "1051",
+    # Page 1 §B line 1 — Taxable refunds (no Col C — CA never taxes
+    # state refunds; addition impossible)
+    "sch_ca_line_part_i_b_1_col_a":               "1052",
+    "sch_ca_line_part_i_b_1_subtractions":        "1053",
+    # Page 1 §B line 3 — Business income or (loss)
+    "sch_ca_line_part_i_b_3_col_a":               "1056",
+    "sch_ca_line_part_i_b_3_subtractions":        "1057",
+    "sch_ca_line_part_i_b_3_additions":           "1058",
+    # Page 1 §B line 4 — Other gains
+    "sch_ca_line_part_i_b_4_col_a":               "1059",
+    "sch_ca_line_part_i_b_4_subtractions":        "1060",
+    "sch_ca_line_part_i_b_4_additions":           "1061",
+    # Page 1 §B line 5 — Rental/royalties/partnership/S-corp
+    "sch_ca_line_part_i_b_5_col_a":               "1062",
+    "sch_ca_line_part_i_b_5_subtractions":        "1063",
+    "sch_ca_line_part_i_b_5_additions":           "1064",
+    # Page 1 §B line 6 — Farm income
+    "sch_ca_line_part_i_b_6_col_a":               "1065",
+    "sch_ca_line_part_i_b_6_subtractions":        "1066",
+    "sch_ca_line_part_i_b_6_additions":           "1067",
+    # Page 1 §B line 7 — Unemployment compensation (no Col C — UI
+    # excluded by CA; addition impossible)
+    "sch_ca_line_part_i_b_7_col_a":               "1068",
+    "sch_ca_line_part_i_b_7_subtractions":        "1069",
+    # Page 2 §B line 8z — Other income (write-in catch-all). SHIFTED to
+    # 2035/2036/2037 in 2023 (2024/2025 use 2038/2039/2040).
+    "sch_ca_line_part_i_b_8z_col_a":              "2035",
+    "sch_ca_line_part_i_b_8z_subtractions":       "2036",
+    "sch_ca_line_part_i_b_8z_additions":          "2037",
+    # Page 3 §C line 11 — Educator expenses (no Col C — CA conforms
+    # fully; addition impossible)
+    "sch_ca_line_part_i_c_11_col_a":              "3010",
+    "sch_ca_line_part_i_c_11_subtractions":       "3011",
+    # Page 3 §C line 13 — HSA deduction (no Col C — CA disallows HSA;
+    # subtractions only, addition impossible)
+    "sch_ca_line_part_i_c_13_col_a":              "3015",
+    "sch_ca_line_part_i_c_13_subtractions":       "3016",
+    # Page 3 §C line 15 — Deductible part of self-employment tax (no
+    # Col C — federal/CA conform; addition impossible)
+    "sch_ca_line_part_i_c_15_col_a":              "3019",
+    "sch_ca_line_part_i_c_15_subtractions":       "3020",
+    # Page 3 §C line 17 — Self-employed health insurance (no Col C —
+    # CA conforms; addition impossible)
+    "sch_ca_line_part_i_c_17_col_a":              "3022",
+    "sch_ca_line_part_i_c_17_subtractions":       "3023",
+    # Page 3 §C line 20 — IRA deduction
+    "sch_ca_line_part_i_c_20_col_a":              "3029",
+    "sch_ca_line_part_i_c_20_subtractions":       "3030",
+    "sch_ca_line_part_i_c_20_additions":          "3031",
+    # Page 3 §C line 21 — Student loan interest deduction (no Col B —
+    # CA permits MORE than federal; subtraction impossible)
+    "sch_ca_line_part_i_c_21_col_a":              "3032",
+    "sch_ca_line_part_i_c_21_additions":          "3033",
+    # Page 4 line 27 — Part I Total: Col A federal AGI passthrough
+    # + Col B total subtractions + Col C total additions
+    "sch_ca_federal_agi":                         "4032",
+    "sch_ca_total_subtractions":                  "4033",
+    "sch_ca_total_additions":                     "4034",
+}
+
+
+_AGGREGATIONS_2023: dict[str, tuple[str, ...]] = {}
+
+
+_DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {}
+
+
+# Column structure identical to 2024/2025 (Step-1 conformity review):
+# same subtraction-only §A/§B lines lack Col C, and §C line 21 lacks Col B.
+_SUPPRESSED_2023: frozenset[str] = frozenset({
+    # Transit value — flows to f540 line 13 via f540_ca_agi mapping.
+    "sch_ca_ca_agi",
+    # Form column-omissions (2023 PDF lacks the corresponding widget).
+    "sch_ca_line_part_i_a_6_additions",
+    "sch_ca_line_part_i_b_1_additions",
+    "sch_ca_line_part_i_b_7_additions",
+    "sch_ca_line_part_i_c_11_additions",
+    "sch_ca_line_part_i_c_13_additions",
+    "sch_ca_line_part_i_c_15_additions",
+    "sch_ca_line_part_i_c_17_additions",
+    "sch_ca_line_part_i_c_21_subtractions",
+})
+
+
+_CHECKBOX_STATES_2023: dict[str, str] = {}
+
+
+PdfSchCa._MAPPINGS[2023] = _MAPPING_2023
+
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
-    2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
+    2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
-    2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
+    2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
-    2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
+    2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+    2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }
