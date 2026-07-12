@@ -108,3 +108,10 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
 # fields-on-template gate re-verifies existence; the 2023 emit + parity gates
 # verify positions.
 Pdf4868._MAPPINGS[2023] = Pdf4868._MAPPINGS[2024]
+
+# 2022's Form 4868 keeps 2023's identical field-NAME inventory and mapped paths.
+# The page-1 amount cells (lines 4-7) have identical geometry; the only nudge is
+# the page-3 voucher/confirmation field (Col3.f3_1, +9.2pt from 2023 instructions
+# reflow) — same field, same line, marker-probed on the 2022 and 2023 page-3
+# renders. So 2022 reuses the 2023 payload.
+Pdf4868._MAPPINGS[2022] = Pdf4868._MAPPINGS[2023]

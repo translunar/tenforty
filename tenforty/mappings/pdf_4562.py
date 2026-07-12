@@ -176,3 +176,7 @@ class Pdf4562(PdfFormMapping[dict]):
 # fields-on-template gate re-verifies existence; the 2023 emit + parity gates
 # verify positions.
 Pdf4562._MAPPINGS[2023] = Pdf4562._MAPPINGS[2024]
+
+# 2022's Form 4562 keeps 2023's identical field-NAME inventory and mapped paths;
+# the sole widget nudge is on an unmapped field. So 2022 reuses the 2023 payload.
+Pdf4562._MAPPINGS[2022] = Pdf4562._MAPPINGS[2023]

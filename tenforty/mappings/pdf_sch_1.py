@@ -97,3 +97,10 @@ class PdfSch1(PdfFormMapping[dict]):
         },
     }
 
+
+# 2022's Schedule 1 keeps 2023's identical field-NAME inventory and the same
+# mapped paths (form1[0] root). Widget geometry has two isolated sub-row nudges
+# vs 2023 (header SSN -1pt; line-10 total f1_36 +12pt), neither changing a line:
+# marker-probed on pdfs/federal/2022/f1040s1.probe.pdf, f1_36 renders on line 10
+# and every mapped field on its 2023 line. So 2022 reuses the 2023 payload.
+PdfSch1._MAPPINGS[2022] = PdfSch1._MAPPINGS[2023]
