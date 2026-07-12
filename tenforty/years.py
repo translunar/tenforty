@@ -17,13 +17,13 @@ from collections.abc import Iterable
 FEDERAL_YEARS: tuple[int, ...] = (2023, 2024, 2025)
 
 # Full California pipeline: 540 compute + PDF emit + divergence catalog.
-CALIFORNIA_YEARS: tuple[int, ...] = (2024, 2025)
+CALIFORNIA_YEARS: tuple[int, ...] = (2023, 2024, 2025)
 
 # CA 540 math only — validated against FTB-published worked examples
 # (see tests/test_ca540_compute.py oracles), but no PDF mappings, emit
 # path, or divergence catalog. A year leaves this tier by completing
 # its pack and moving to CALIFORNIA_YEARS.
-CALIFORNIA_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021, 2022, 2023)
+CALIFORNIA_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021, 2022)
 
 # Years with a third-party XLS workbook registered at
 # spreadsheets/federal/<year>/1040.xlsx. Optional per year: the workbook
