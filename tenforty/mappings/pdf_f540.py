@@ -463,19 +463,166 @@ _SUPPRESSED_2024: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2024: dict[str, str] = {}
 
 
-PdfF540._MAPPINGS = {2024: _MAPPING_2024, 2025: _MAPPING_2025}
+# ── 2023 registries ─────────────────────────────────────────────────────────
+#
+# THIRD FTB field-naming scheme: bare zero-padded numbers (`2023`, `3004`,
+# `1036 CB`) with NO `540_form_`/`540-` prefix — matching the 2023 Sch D (540)
+# and Sch CA schemes. Each widget carries a descriptive `/TU` tooltip naming
+# its line, so the mapping was read from those tooltips and filled-emit-verified
+# on the real 2023 template.
+#
+# TWO structural divergences from 2024/2025 — both invisible-shift traps caught
+# only by reading tooltips + the /Btn probe, NOT by assuming the sequence
+# numbers carried over:
+#   1. Filing status is FIVE separate line-1..5 checkboxes (1036/1037/1038/
+#      1040/1041 CB), not the single verbose-export radio group `NNNN RB`.
+#   2. Several back-page cells shifted their sequence number vs 2024/2025:
+#      line 110 -> 4026 (not 4024), line 113 -> 5006 (not 5005),
+#      line 111 owe -> 4027 (not 5002), line 115 refund -> 5008 (not 5007).
+
+_MAPPING_2023: dict[str, str] = {
+    # Page 1 — Taxpayer / spouse / address ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_first_name":      "1003",
+    "f540_taxpayer_middle_initial":  "1004",
+    "f540_taxpayer_last_name":       "1005",
+    "f540_taxpayer_suffix":          "1006",
+    "f540_taxpayer_ssn":             "1007",
+    "f540_spouse_first_name":        "1008",
+    "f540_spouse_last_name":         "1010",
+    "f540_spouse_ssn":               "1012",
+    "f540_address_street":           "1015",
+    "f540_address_city":             "1018",
+    "f540_address_state":            "1019",
+    "f540_address_zip":              "1020",
+    "f540_residence_county":         "1028",
+    # Page 2 — Taxable income + tax
+    "f540_ca_agi":                   "2023",  # line 17
+    "f540_deduction":                "2024",  # line 18
+    "f540_taxable_income":           "2025",  # line 19
+    "f540_ca_tax":                   "2030",  # line 31
+    "f540_exemption_credit":         "2031",  # line 32
+    # Page 3 — Credits + payments + use tax
+    "f540_renter_credit":            "3004",  # line 46
+    "f540_estimated_payments":       "3012",  # line 72
+    "f540_use_tax":                  "3019",  # line 91
+    # Page 4 — Voluntary contributions (line 110 -> 4026, SHIFTED from 4024)
+    "f540_voluntary_contributions":  "4026",  # line 110
+    # Page 5 — Estimated tax penalty (line 113 -> 5006, SHIFTED from 5005)
+    "f540_estimated_tax_penalty":    "5006",  # line 113
+    # Page 6 — Sign block ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_email":           "6002",
+    "f540_taxpayer_phone":           "6003",
+}
+
+
+_AGGREGATIONS_2023: dict[str, tuple[str, ...]] = {}
+
+
+# 2023 filing status: FIVE line-1..5 checkboxes (structural divergence #1).
+# Source of truth for both the derivations below and the coverage test.
+_FILING_STATUS_CB_2023: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE:             "1036 CB",  # Line 1. Single
+    FilingStatus.MARRIED_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
+    FilingStatus.MARRIED_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
+    FilingStatus.HEAD_OF_HOUSEHOLD:  "1040 CB",  # Line 4. Head of household
+    FilingStatus.QUALIFYING_WIDOW:   "1041 CB",  # Line 5. Qualifying surviving spouse / RDP
+}
+
+
+_DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Line 31 tax-source checkboxes (checkbox A = tax table, B = rate
+    # schedule). On-states `/Yes`/`/Off` per the 2023 /Btn probe.
+    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
+    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    # Line 33 = max(0, line 31 − line 32).
+    "2032": lambda c: _line_33(c),
+    # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
+    "2036": lambda c: _line_33(c),
+    # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45).
+    "3005": lambda c: _line_47(c),
+    # Line 48 = max(0, line 35 − line 47).
+    "3006": lambda c: _line_48(c),
+    # Line 64 = line 48 + 61 + 62 + 63.
+    "3010": lambda c: _line_64(c),
+    # Line 78 = sum lines 71-77 (only line 72 = estimated_payments in v1).
+    "3018": lambda c: (
+        c.get("f540_line71_ca_withholding", 0)
+        + c["f540_estimated_payments"]
+        + c.get("f540_line73_592b_593_withholding", 0)
+        + c.get("f540_line74_program_40_motion_picture", 0)
+        + c.get("f540_line75_eitc", 0)
+        + c.get("f540_line76_yctc", 0)
+        + c.get("f540_line77_fytc", 0)
+    ),
+    # Line 93 = max(0, line 78 − line 91).
+    "3023": lambda c: _line_93(c),
+    # Line 94 = max(0, line 91 − line 78).
+    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    # Line 95 = max(0, line 93 − line 92).
+    "3025": lambda c: _line_95(c),
+    # Line 96 = max(0, line 92 − line 93).
+    "3026": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
+    # Line 97 = max(0, line 95 − line 64).
+    "3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    # Line 99 = line 97 − line 98.
+    "4004": lambda c: (
+        max(0, _line_95(c) - _line_64(c))
+        - c.get("f540_line98_applied_to_2026_estimated", 0)
+    ),
+    # Line 100 = max(0, line 64 − line 95).
+    "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    # Line 111 (owe) — sign-split branch of f540_total_liability
+    # (cell 4027, SHIFTED from 2024/2025's 5002).
+    "4027": lambda c: (
+        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
+    ),
+    # Line 115 (refund) — sign-split branch of f540_total_liability
+    # (cell 5008, SHIFTED from 2024/2025's 5007).
+    "5008": lambda c: (
+        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
+    ),
+}
+
+# Filing-status checkboxes, generated from _FILING_STATUS_CB_2023 so the
+# coverage test can assert every FilingStatus has a cell. Default-arg binding
+# (`_s=status`) captures each status in its own lambda closure.
+for _status, _cb in _FILING_STATUS_CB_2023.items():
+    _DERIVATIONS_2023[_cb] = (
+        lambda c, _s=_status: "/Yes" if c["f540_filing_status"] == _s else "/Off"
+    )
+del _status, _cb
+
+
+_SUPPRESSED_2023: frozenset[str] = frozenset({
+    # Consumed-by-derivation only (sign-split: 4027 owe / 5008 refund).
+    "f540_total_liability",
+    # Consumed-by-derivation only (filing-status checkboxes via
+    # _FILING_STATUS_CB_2023).
+    "f540_filing_status",
+    # PTET credit — line 43/44 with credit code; cell allocation deferred.
+    "f540_ptet_credit",
+    # compute()'s f540_total_credits includes exemption_credit (subtracted
+    # at line 32); different semantic from line 47.
+    "f540_total_credits",
+})
+
+
+_CHECKBOX_STATES_2023: dict[str, str] = {}
+
+
+PdfF540._MAPPINGS = {2023: _MAPPING_2023, 2024: _MAPPING_2024, 2025: _MAPPING_2025}
 
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
-    2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
+    2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
-    2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
+    2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
-    2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
+    2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+    2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }
