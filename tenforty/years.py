@@ -14,7 +14,7 @@ module gates on it, so any import here risks a cycle.
 from collections.abc import Iterable
 
 # Full federal pipeline: native spine compute + PDF emit.
-FEDERAL_YEARS: tuple[int, ...] = (2024, 2025)
+FEDERAL_YEARS: tuple[int, ...] = (2023, 2024, 2025)
 
 # Full California pipeline: 540 compute + PDF emit + divergence catalog.
 CALIFORNIA_YEARS: tuple[int, ...] = (2024, 2025)
