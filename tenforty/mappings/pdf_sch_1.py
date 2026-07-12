@@ -63,5 +63,37 @@ class PdfSch1(PdfFormMapping[dict]):
             ),
             "repeaters": {},
         },
+        # 2023 keeps the form1[0] root but the IRS renumbered Part I: a
+        # top-of-Schedule-1 1099-K entry field added in 2024 shifted lines
+        # 3-7 down one field number, line 7 (unemployment) is flat (not
+        # nested in Line8a_ReadOrder), line 10's total moved, and line 26
+        # shifted because the line-24 "other adjustments" block differs in
+        # field count. Every path rendered-position probed against
+        # pdfs/federal/2023/f1040s1.probe.pdf (the differ reports CHANGED, and
+        # several 2024 field numbers exist on the 2023 template at DIFFERENT
+        # lines — inheritance would silently mis-map, so these are probed).
+        2023: {
+            "scalars": inherit_pdf_fields(
+                _SCALARS_2025,
+                root_swap=("topmostSubform[0]", "form1[0]"),
+                overrides={
+                    "sch_1_line_3_business_income":
+                        "form1[0].Page1[0].f1_06[0]",
+                    "sch_1_line_4_other_gains":
+                        "form1[0].Page1[0].f1_07[0]",
+                    "sch_1_line_5_rental_re_royalty":
+                        "form1[0].Page1[0].f1_08[0]",
+                    "sch_1_line_6_farm_income":
+                        "form1[0].Page1[0].f1_09[0]",
+                    "sch_1_line_7_unemployment":
+                        "form1[0].Page1[0].f1_10[0]",
+                    "sch_1_line_10_total_additional_income":
+                        "form1[0].Page1[0].f1_36[0]",
+                    "sch_1_line_26_total_adjustments":
+                        "form1[0].Page2[0].f2_31[0]",
+                },
+            ),
+            "repeaters": {},
+        },
     }
 
