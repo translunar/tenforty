@@ -25,6 +25,8 @@ Page 2 field discovery notes (2025 form):
   - Line 41 total pass-through (f2_76).
 """
 
+import re
+
 from tenforty.mappings.registry import PdfFormMapping
 
 _P2 = "topmostSubform[0].Page2[0]"
@@ -184,10 +186,34 @@ def _build_fields() -> dict:
 _FIELDS: dict = _build_fields()
 
 
+def _to_2022(fields: dict) -> dict:
+    """2022 Schedule E zero-pads single-digit TEXT-field leaves (f1_3 -> f1_03)
+    while leaving checkbox leaves (c2_2) and already-two-digit leaves unchanged.
+    This asymmetry is an IRS naming quirk, not a structural change: the container
+    tree is otherwise byte-identical to 2023. Verified two ways — every resulting
+    path exists on the 2022 template's AcroForm inventory (single, unambiguous
+    resolution: 60 same-leaf + 12 padded-leaf, 0 unresolved), and marker-probed
+    (pdfs/federal/2022/f1040se.probe.pdf) with each field rendering on the same
+    line as its 2023 counterpart across both pages (line 1a–26 Part I, line
+    28–43 Parts II–V)."""
+    def pad(path: str) -> str:
+        head, _, leaf = path.rpartition(".")
+        leaf = re.sub(r"^(f\d)_(\d)(\[0\])$",
+                      lambda m: f"{m.group(1)}_0{m.group(2)}{m.group(3)}", leaf)
+        return f"{head}.{leaf}"
+    return {"scalars": {k: pad(v) for k, v in fields["scalars"].items()},
+            "repeaters": {}}
+
+
+_FIELDS_2022: dict = _to_2022(_FIELDS)
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
     # 2023's field tree is byte-identical to 2024's (verified: identical
-    # AcroForm field-path sets), so one payload serves all three years.
-    _MAPPINGS: dict[int, dict] = {2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+    # AcroForm field-path sets), so one payload serves all three years. 2022
+    # zero-pads single-digit text-field leaves (see _to_2022).
+    _MAPPINGS: dict[int, dict] = {
+        2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
 
