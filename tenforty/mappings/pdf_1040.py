@@ -100,8 +100,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "social_security_taxable": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_50[0]",
             # Line 7: Capital gain or (loss)
             "capital_gain_loss": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_51[0]",
-            # Line 8: Other income from Schedule 1, line 10
-            "other_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_52[0]",
+            # Line 8: Additional income from Schedule 1, line 10. Sources the
+            # FULL Schedule 1 line-10 total (`sch_1_line_10`), not the
+            # rental-only `other_income` key — otherwise line 8 understates
+            # additional income (e.g. omits 1099-G unemployment) and the return
+            # fails to foot against line 9 / the attached Schedule 1.
+            "sch_1_line_10": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_52[0]",
             # Line 9: Total income
             "total_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_53[0]",
             # Line 10: Adjustments to income from Schedule 1, line 26
@@ -249,8 +253,10 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "capital_gain_loss": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_53[0]",
             # Line 7b: Amount for the "includes child's capital gain or (loss)" checkbox
             "child_capital_gain": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_54[0]",
-            # Line 8: Other income from Schedule 1, line 10
-            "other_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_55[0]",
+            # Line 8: Additional income from Schedule 1, line 10 — the full Sch 1
+            # line-10 total (`sch_1_line_10`), not the rental-only `other_income`
+            # key (see the 2023 note above; footing fix, all years).
+            "sch_1_line_10": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_55[0]",
             # Line 9: Total income
             "total_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_56[0]",
             # Line 10: Adjustments to income from Schedule 1, line 26
@@ -394,8 +400,10 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "capital_gain_loss": "topmostSubform[0].Page1[0].f1_70[0]",
             # Line 7b: Amount for the "includes child's capital gain or (loss)" checkbox
             "child_capital_gain": "topmostSubform[0].Page1[0].f1_71[0]",
-            # Line 8: Other income from Schedule 1, line 10
-            "other_income": "topmostSubform[0].Page1[0].f1_72[0]",
+            # Line 8: Additional income from Schedule 1, line 10 — the full Sch 1
+            # line-10 total (`sch_1_line_10`), not the rental-only `other_income`
+            # key (see the 2023 note above; footing fix, all years).
+            "sch_1_line_10": "topmostSubform[0].Page1[0].f1_72[0]",
             # Line 9: Total income
             "total_income": "topmostSubform[0].Page1[0].f1_73[0]",
             # Line 10: Adjustments to income from Schedule 1, line 26

@@ -114,6 +114,36 @@ class Emit2023Tests(unittest.TestCase):
                 "AGI did not land on Form 1040 line 11",
             )
 
+            # --- Footing: the emitted 1040 must be arithmetically consistent ---
+            # Form 1040 line 8 ("additional income from Schedule 1, line 10")
+            # must equal the attached Schedule 1's line 10 total — otherwise the
+            # printed return is internally inconsistent (an IRS-visible
+            # arithmetic error). And line 9 total income must foot: it equals the
+            # sum of the income lines including line 8. With a 1099-G present,
+            # line 10 = rental 4,000 + unemployment 8,000 = 12,000, so line 8
+            # must read 12,000 (not the rental-only $4,000 the `other_income`
+            # key carried before this cell was repointed to `sch_1_line_10`).
+            line8 = _int_value(
+                f1040_fields, "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_52[0]"
+            )
+            sch1_line10 = _int_value(
+                sch1_fields, sch1_map["sch_1_line_10_total_additional_income"]
+            )
+            self.assertEqual(
+                line8, sch1_line10,
+                "Form 1040 line 8 must equal Schedule 1 line 10 (footing)",
+            )
+            income_lines = sum(
+                _int_value(f1040_fields, f1040_map[k])
+                for k in ("wages", "taxable_interest", "ordinary_dividends",
+                          "capital_gain_loss")
+            )
+            self.assertEqual(
+                _int_value(f1040_fields, f1040_map["total_income"]),
+                income_lines + line8,
+                "Form 1040 line 9 total income must foot (sum of income lines + line 8)",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
