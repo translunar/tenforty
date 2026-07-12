@@ -88,3 +88,7 @@ class PdfF8582(PdfFormMapping[dict]):
         },
     }
 
+
+# 2022's Form 8582 keeps 2023's identical field-NAME inventory and mapped paths;
+# the only mapped nudge is the header SSN (+1pt x, cosmetic). 2022 reuses 2023.
+PdfF8582._MAPPINGS[2022] = PdfF8582._MAPPINGS[2023]
