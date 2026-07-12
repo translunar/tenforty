@@ -38,6 +38,16 @@ only: irs.gov, ssa.gov" rule via the irs.gov leg.
 """
 import math
 
+# Fields that are None because they are DELIBERATELY NOT APPLICABLE for this
+# tax year (as opposed to None = "could not source"). Lets the gate distinguish
+# the two. TY2023 predates OBBBA, so the SALT deduction is a flat statutory cap
+# (IRC §164(b)(6)) with no income-based phaseout — the phaseout regime begins
+# in 2025. salt_phaseout_rate is a real 0.0 value (no reduction), not None, so
+# it needs no not-applicable declaration.
+NOT_APPLICABLE: dict[str, str] = {
+    "salt_phaseout_threshold": "No SALT phaseout under the 2023 flat cap (IRC §164(b)(6)); the phaseout regime begins with OBBBA in 2025.",
+}
+
 ATTESTED: dict[str, object] = {
     "year": 2023,
 
