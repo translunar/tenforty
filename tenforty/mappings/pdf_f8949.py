@@ -99,6 +99,9 @@ _GEOM: dict[int, _Geometry] = {
     2024: _Geometry(container="Table_Line1[0]", rows_per_page=14,
                     pad=1, totals_base=115),
 }
+# 2023's Form 8949 field tree is byte-identical to 2024's (verified: identical
+# AcroForm field-path sets), so it reuses 2024's row geometry unchanged.
+_GEOM[2023] = _GEOM[2024]
 
 
 def _fnum(page: int, n: int, geom: _Geometry) -> str:

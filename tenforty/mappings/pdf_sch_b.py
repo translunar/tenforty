@@ -107,4 +107,8 @@ class PdfSchB(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Schedule B."""
 
     _FORM_NAME = "Schedule B"
-    _MAPPINGS: dict[int, dict[str, str]] = {2024: _FIELDS, 2025: _FIELDS}
+    # 2023's field tree is byte-identical to 2024's (verified: identical
+    # AcroForm field-path sets), so one payload serves all three years.
+    _MAPPINGS: dict[int, dict[str, str]] = {
+        2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS,
+    }

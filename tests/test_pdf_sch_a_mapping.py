@@ -29,8 +29,10 @@ class PdfSchAMappingTests(unittest.TestCase):
         self.assertEqual(PdfSchA.get_mapping(2025)["repeaters"], {})
 
     def test_unknown_year_raises(self):
+        # 2023 is now supported (inherits 2024's identical field tree); use a
+        # genuinely unsupported year to exercise the fail-closed path.
         with self.assertRaisesRegex(ValueError, "No Schedule A PDF mapping"):
-            PdfSchA.get_mapping(2023)
+            PdfSchA.get_mapping(1999)
 
 
 if __name__ == "__main__":

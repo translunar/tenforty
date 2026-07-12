@@ -62,3 +62,10 @@ class PdfSchA(PdfFormMapping[dict]):
         },
     }
 
+
+# 2023's Schedule A field tree is byte-identical to 2024's (verified: identical
+# AcroForm field-path sets), so 2023 reuses the 2024 payload unchanged. The
+# fields-on-template gate re-verifies existence; the 2023 emit + parity gates
+# verify positions.
+PdfSchA._MAPPINGS[2023] = PdfSchA._MAPPINGS[2024]
+
