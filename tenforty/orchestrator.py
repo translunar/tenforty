@@ -974,6 +974,29 @@ class ReturnOrchestrator:
             federal_results,
             worksheet_adjustments=fods_div.sch_d_540,
         )
+        # Schedule CA Part II — CA itemized deductions. Computed only when the
+        # federal return itemized (schedule_a_total > 0); a federally-standard
+        # return gets no Part II and f540.compute keeps the CA standard
+        # deduction (it selects max(std, ca_itemized)). v1 scope: CA itemizes
+        # iff the federal return itemized.
+        # CA Part II is computed only when the federal return actually APPLIED
+        # itemized deductions (not merely produced a nonzero raw Schedule A
+        # total) — see sch_ca.federal_itemization_applied.
+        ca_part_ii = {}
+        if form_sch_ca.federal_itemization_applied(federal_results):
+            # compute_federal surfaces only schedule_a_total + line 5e, so
+            # recompute the full federal Schedule A line breakdown (medical,
+            # property, mortgage, charity) for Part II to read. Uses the same
+            # effective-itemized scenario the federal Sch A used, so the
+            # breakdown is consistent with schedule_a_total. NOTE: this inherits
+            # forms.sch_a.compute's scope gates — for a CA resident only the
+            # 2025 SALT-phaseout gate can fire (MAGI above threshold), the same
+            # limitation the federal Sch A emit path already carries.
+            sch_a_full = form_sch_a.compute(
+                _scenario_with_effective_itemized(scenario),
+                {"f1040": federal_results},
+            )
+            ca_part_ii = form_sch_ca.compute_part_ii_itemized(sch_a_full)
         f540_results = form_f540.compute(
             year=scenario.config.year,
             filing_status=scenario.config.filing_status,
@@ -981,9 +1004,9 @@ class ReturnOrchestrator:
             ca_agi=sch_ca_results["sch_ca_ca_agi"],
             ca540=effective_ca540,
             num_dependents=len(scenario.config.dependents),
-            # v1 defaults (tracked follow-ups):
+            ca_itemized=ca_part_ii.get("ca_itemized_total"),
+            # v1 default (tracked follow-up):
             # - renter_credit_eligible: False (no CA540Return field yet)
-            # - ca_itemized: None (CA itemized deductions not supported in v1)
         )
         # Note: f540.compute raises NotImplementedError when federal_agi
         # exceeds the year's CA AGI phaseout threshold; we let it propagate
@@ -1003,6 +1026,7 @@ class ReturnOrchestrator:
         }
         ca_results = {
             **sch_ca_results,
+            **ca_part_ii,
             **sch_d_540_results,
             **f540_results,
             **header_keys,

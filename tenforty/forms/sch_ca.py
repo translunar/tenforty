@@ -156,6 +156,68 @@ _CA540_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
 )
 
 
+def federal_itemization_applied(federal_results: dict) -> bool:
+    """True iff the federal return APPLIED itemized deductions.
+
+    ``schedule_a_total`` is the RAW Schedule A total and is emitted even when
+    the standard deduction won (a filer with a little mortgage interest below
+    the standard deduction still has a positive ``schedule_a_total``). The
+    signal for "itemized was actually taken" is ``applied_deduction ==
+    schedule_a_total`` — ``applied_deduction`` is ``max(standard, sch_a_total)``
+    on both the native-spine and workbook federal result dicts. CA Part II is
+    computed only when this is true (v1 scope: CA itemizes iff federal does).
+    """
+    total = federal_results.get("schedule_a_total", 0)
+    return total > 0 and federal_results.get("applied_deduction") == total
+
+
+def compute_part_ii_itemized(sch_a_results: dict) -> dict:
+    """Schedule CA (540) Part II — California itemized deductions.
+
+    Start from the federal Schedule A line amounts (``sch_a_results`` — the
+    dict returned by ``forms.sch_a.compute``) and apply CA's Part II
+    adjustments, scoped to the
+    lines this v1 supports (medical + taxes; mortgage/charity conform):
+
+    - **Medical (Part II lines 1–4).** CA conforms to the federal
+      7.5%-of-AGI floor AND — per the 2024 Schedule CA (540) form — Part II
+      line 2's printed instruction is "Enter amount from federal Form 1040 or
+      1040-SR, line 11" (FEDERAL AGI). So lines 1–4 replicate federal
+      Schedule A exactly: CA medical is the federal medical deductible,
+      passed through unchanged. (Recomputing the floor against CA AGI would
+      be wrong — the form uses federal AGI.)
+    - **Taxes (Part II lines 5–7).** CA disallows the deduction of state and
+      local *income* tax (federal line 5a) and applies NO SALT cap. So CA
+      deductible taxes = property + personal-property tax, uncapped, with the
+      state-income-tax portion excluded.
+    - **Mortgage / charity (lines 8, 11–14).** Conform for the amounts in
+      scope — pass the federal values through. NOTE: CA's $1,000,000
+      acquisition-debt limit (vs the federal $750,000) is OUT OF SCOPE; the
+      pass-through is only valid for conforming amounts (0 here). This is
+      documented, not gated.
+
+    The caller computes this ONLY when the federal return itemized (federal
+    ``schedule_a_total > 0``); a federal standard-deduction return gets no
+    Part II and Form 540 keeps the CA standard deduction. (v1 scope: CA
+    itemizes iff the federal return itemized — independent CA itemization on a
+    federally-standard return is not modeled.)
+    """
+    medical = sch_a_results.get("sch_a_line_4_medical_deductible", 0)
+    # State/local income tax (line 5a) is disallowed; no CA SALT cap applies.
+    ca_taxes = (sch_a_results.get("sch_a_line_5b_property_tax", 0)
+                + sch_a_results.get("sch_a_line_5c_personal_property_tax", 0))
+    mortgage = sch_a_results.get("sch_a_line_8a_mortgage_interest", 0)
+    charity = sch_a_results.get("sch_a_line_14_charity_total", 0)
+    total = medical + ca_taxes + mortgage + charity
+    return {
+        "sch_ca_part_ii_medical": medical,
+        "sch_ca_part_ii_taxes": ca_taxes,
+        "sch_ca_part_ii_mortgage": mortgage,
+        "sch_ca_part_ii_charity": charity,
+        "ca_itemized_total": total,
+    }
+
+
 def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAdjustment]:
     """Generate mechanical divergences from federal results and named
     CA540Return fields.

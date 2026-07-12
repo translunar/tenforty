@@ -22,6 +22,12 @@ class CaliforniaParams:
     dependent_exemption_amount: int
     # Form 540 line 32 gate: federal AGI above this triggers the
     # exemption-credit phaseout; v1 raises NotImplementedError there.
+    # This same threshold ALSO gates the Schedule CA Part II itemized-deduction
+    # AGI limitation (Sch CA line 29): the two are printed as the same figure
+    # on the 2024–2025 CA tax booklet (verified coincident via the params
+    # attestation), so the existing f540 NotImplementedError scopes out the
+    # line-29 reduction too. If FTB ever decouples them, this field must split
+    # into separate exemption-phaseout and itemized-limitation thresholds.
     agi_phaseout_threshold: int
     # (threshold_inclusive, marginal_rate_at_or_above_threshold) entries
     # walked by forms.f540._walk_rate_schedule.
