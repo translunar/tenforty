@@ -296,12 +296,14 @@ class PdfF1120SMappingTests(unittest.TestCase):
 
     def test_2023_tax_exempt_interest_maps_to_schedule_k_line_16a(self):
         """Renumbering pin: on the 2023 Schedule K, line 16a "Tax-exempt
-        interest income" is field f3_42 (verified by marker-probe render,
-        pdfs/federal/2023/f1120s.probe.pdf). 2024/2025 map this key to f3_43,
-        which on the 2023 form is line 16b "Other tax-exempt income" — the same
-        path exists on the template, so only the rendered position distinguishes
-        the correct cell. This pin guards against a silent inherit that would
-        land tax-exempt interest on the wrong line."""
+        interest income" is field f3_42 (verified by filled-emit on the real
+        template; probe render pdfs/federal/2023/f1120s.probe.pdf). The IRS
+        shifted the Schedule K AMT/other-items block by one field between years,
+        so line 16a is f3_42 in 2023 but f3_43 in 2024/2025 — BOTH correct for
+        their own year (filled-emit-confirmed on each template; f3_43 is line
+        16b "Other tax-exempt income" on the 2023 form, but line 16a on the
+        2024/2025 forms). This pin guards 2023 against a silent inherit of
+        2024's f3_43, which on the 2023 form would land the value on line 16b."""
         m2023 = pdf_f1120s.PdfF1120S.get_mapping(2023)
         self.assertEqual(
             m2023["f1120s_sch_k_tax_exempt_interest"],

@@ -210,24 +210,23 @@ _MAPPING_2024: dict[str, str] = {
 
 # ── 2023 registries ──────────────────────────────────────────────────────────
 #
-# The 2023 Form 1120-S is structurally identical to 2024: a field-tree diff
-# of pdfs/federal/2023/f1120s.pdf vs pdfs/federal/2024/f1120s.pdf shows a
-# SINGLE difference — 2024 carries one extra Schedule K field, Page3 f3_48
-# (unmapped) — so f1_*, f2_*/c2_*, f3_1–f3_47, and f4_* share identical paths
-# between the two years. Page 1 (income/deductions/tax/payments, Item B code
-# f1_8), Schedule B (Page 2), and Schedule K lines on Pages 3–4 therefore
-# inherit the 2024 registries unchanged, EXCEPT for one render-corrected cell:
+# The 2023 Form 1120-S shares 2024's AcroForm field-NAME set (a field-tree
+# diff shows a single difference — 2024 carries one extra field, Page3 f3_48),
+# so Page 1 (income/deductions/tax/payments, Item B code f1_8), Schedule B
+# (Page 2), and the Schedule K lines on Pages 3–4 inherit the 2024 registries.
 #
-#   f1120s_sch_k_tax_exempt_interest → f3_42 (2024/2025 use f3_43).
+# EXCEPT one cell, because identical field NAMES do NOT guarantee identical
+# field-to-LINE assignments — the IRS shifted the Schedule K AMT/other-items
+# block by one field between 2023 and 2024. Verified by filled-emit on each
+# year's real template (probe render committed as f1120s.probe.pdf):
 #
-# A marker-probe render of the 2023 template (committed as
-# pdfs/federal/2023/f1120s.probe.pdf) shows Schedule K line 16a "Tax-exempt
-# interest income" is field f3_42; f3_43 is line 16b "Other tax-exempt
-# income". Because f3_42/f3_43 are the SAME paths in 2024, the 2024/2025
-# mapping's f3_43 lands this value on line 16b — a wrong-line mapping that a
-# path-existence check cannot catch (both fields exist). 2023 is mapped to the
-# render-correct f3_42 here; the 2024/2025 discrepancy is reported separately
-# for adjudication and deliberately NOT changed in this pack.
+#   Line 16a "Tax-exempt interest income":  2023 → f3_42,  2024/2025 → f3_43
+#   Line 15f "Other AMT items":             2023 → f3_41,  2024/2025 → f3_42
+#
+# So f1120s_sch_k_tax_exempt_interest is f3_42 for 2023 but f3_43 for
+# 2024/2025 — BOTH correct for their own year. This is the renumbering trap:
+# a path-existence check passes either way (both fields exist on every
+# template); only the rendered position distinguishes the right cell.
 _MAPPING_2023: dict[str, str] = {
     **_MAPPING_2024,
     "f1120s_sch_k_tax_exempt_interest": "topmostSubform[0].Page3[0].f3_42[0]",
