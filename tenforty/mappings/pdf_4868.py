@@ -102,3 +102,9 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
         },
     }
 
+
+# 2023's Form 4868 field tree is byte-identical to 2024's (verified: identical
+# AcroForm field-path sets), so 2023 reuses the 2024 payload unchanged. The
+# fields-on-template gate re-verifies existence; the 2023 emit + parity gates
+# verify positions.
+Pdf4868._MAPPINGS[2023] = Pdf4868._MAPPINGS[2024]

@@ -28,4 +28,6 @@ _FIELDS: dict = {
 class Pdf8959(PdfFormMapping[dict]):
     _FORM_NAME = "Form 8959"
 
-    _MAPPINGS: dict[int, dict] = {2024: _FIELDS, 2025: _FIELDS}
+    # 2023's field tree is byte-identical to 2024's (verified: identical
+    # AcroForm field-path sets), so one payload serves all three years.
+    _MAPPINGS: dict[int, dict] = {2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}

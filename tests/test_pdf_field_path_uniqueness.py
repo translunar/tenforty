@@ -216,22 +216,33 @@ class PdfFieldPathUniquenessTest(unittest.TestCase):
                                     + "\n".join(details)
                                 )
 
-    def test_f8949_allowlist_has_8_shared_totals_per_year(self) -> None:
+    def test_f8949_allowlist_has_8_shared_totals_per_layout(self) -> None:
         """Sanity-check: the PdfF8949 allowlist holds exactly 8 shared paths
-        PER declared year — the four page-1 totals shared by boxes A/B and the
-        four page-2 totals shared by boxes D/E.  The count therefore scales as
-        8 * len(_MAPPINGS).
+        PER DISTINCT field-tree layout — the four page-1 totals shared by boxes
+        A/B and the four page-2 totals shared by boxes D/E.  Each layout numbers
+        those totals differently (f1_91.. in TY2025, f1_115.. in TY2024), so
+        distinct layouts contribute disjoint 8-path sets.  Years that reuse an
+        identical field tree (TY2023 inherits TY2024's) share ONE layout, so the
+        count scales as 8 × distinct layouts, not 8 × years.
 
         If this fails, the audit in pdf_f8949.py has diverged from the
         allowlist derivation — reconcile before proceeding.
         """
         allowlist = _KNOWN_SHARED_PATHS[PdfF8949]
-        expected = 8 * len(PdfF8949._MAPPINGS)
+        distinct_layouts = {
+            frozenset(
+                path
+                for path, count in Counter(payload["scalars"].values()).items()
+                if count > 1
+            )
+            for payload in PdfF8949._MAPPINGS.values()
+        }
+        expected = 8 * len(distinct_layouts)
         self.assertEqual(
             len(allowlist),
             expected,
             f"Expected {expected} shared paths for PdfF8949 "
-            f"(8 totals × {len(PdfF8949._MAPPINGS)} years), "
+            f"(8 totals × {len(distinct_layouts)} distinct layouts), "
             f"got {len(allowlist)}: {sorted(allowlist)}",
         )
 
