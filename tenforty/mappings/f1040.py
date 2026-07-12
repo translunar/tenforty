@@ -889,3 +889,38 @@ class F1040(FormMapping):
             "f8949_box_e_total_gain":       "F8949BLTH",
         },
     }
+
+
+# --- Federal 2023 workbook wiring -------------------------------------------
+# 2023 inherits the 2024 XLS cell/named-range mapping: the 2024 workbook carries
+# the pre-2025 layout (the W-2 sheet's 6-fewer-rows-before-state-fields shift and
+# the F8949 box slots at rows 35/88), which the TY2023 workbook from the same
+# vendor lineage shares. Two families of per-year drift were found empirically
+# (native-vs-oracle smoke + the full parity sweep) and are handled here:
+#
+# 1. Stray vendor data: the distributed workbook shipped with a hardcoded
+#    -2,800 "amount of adjustment" at 8949A!AP115 (the last, otherwise-empty
+#    row of the box-D long-term sum range Q88:Q115), which understated capital
+#    gain by $2,800. Cleared in the committed workbook (surgical XML edit; no
+#    formula/structure touched).
+#
+# 2. The 'Sch. A' sheet is shifted ONE COLUMN LEFT vs 2024 (verified: 2023 M29
+#    holds 2024 N29's formula with every column -1 — R->Q, N->M, P->O; the
+#    mortgage debt-limit cells and "Home mortgage interest" label move T->S;
+#    property-tax reader O26='=ROUND(M25,0)' mirrors 2024 P26='=ROUND(N25,0)').
+#    The named-range outputs (Standard/TotalDeductions/QBID) resolve by NAME so
+#    they need no override, but the three Schedule A cell-ADDRESS references do:
+#    mortgage_interest T37->S37 and property_tax N25->M25 (inputs), and the
+#    sch_a_line_5e_salt_capped output N29->M29. The 'Sch 1, Line 1 (SALT)'
+#    worksheet did NOT shift (O6/O8 still read P6/P8), so its filing-status
+#    inputs are unchanged. With these three overrides the itemizer scenario
+#    itemizes to 30,000 (line 5e capped at 10,000) and every scenario's line-5e
+#    output reads 0 instead of None — native==oracle across the battery.
+F1040.INPUTS[2023] = F1040.inherit(2024, {
+    "mortgage_interest": "S37",   # 'Sch. A' col -1 (2024 T37)
+    "property_tax": "M25",        # 'Sch. A' col -1 (2024 N25)
+}, source="inputs")
+F1040.OUTPUTS[2023] = F1040.inherit(2024, {
+    "sch_a_line_5e_salt_capped": "M29",   # 'Sch. A' col -1 (2024 N29)
+}, source="outputs")
+F1040.SHEET_MAP[2023] = dict(F1040.SHEET_MAP[2024])
