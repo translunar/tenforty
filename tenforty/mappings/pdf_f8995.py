@@ -97,3 +97,20 @@ class PdfF8995(PdfFormMapping[dict]):
 # fields-on-template gate re-verifies existence; the 2023 emit + parity gates
 # verify positions.
 PdfF8995._MAPPINGS[2023] = PdfF8995._MAPPINGS[2024]
+
+# 2022's Form 8995 differs from 2023 in exactly one mapped field: line 6 drops
+# the Line6_ReadOrder accessibility wrapper that 2023–2025 place around it, so
+# f1_22 sits directly under Page1[0]. Marker-probed on
+# pdfs/federal/2022/f8995.probe.pdf: the f1_22 marker renders on line 6, and the
+# f1_18/f1_19/…/f1_31 markers render on lines 2–15 exactly as their semantic
+# keys assert. Every other mapped field's full path is byte-identical to 2023's
+# (verified against the 2022 template's AcroForm inventory); the header uses the
+# non-zero-padded f1_1/f1_2 like 2023/2024.
+PdfF8995._MAPPINGS[2022] = {
+    "scalars": {
+        **PdfF8995._MAPPINGS[2023]["scalars"],
+        "f8995_line_6_total_before_limit":
+            "topmostSubform[0].Page1[0].f1_22[0]",
+    },
+    "repeaters": {},
+}
