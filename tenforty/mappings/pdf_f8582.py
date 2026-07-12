@@ -70,5 +70,21 @@ class PdfF8582(PdfFormMapping[dict]):
             },
             "repeaters": {},
         },
+        # 2023 uses the SAME zero-padded field names as 2025 (2024 was the
+        # anomaly, dropping the zero-pad on digits 1-9). Every path
+        # rendered-position probed against pdfs/federal/2023/f8582.probe.pdf.
+        2023: {
+            "scalars": {
+                "taxpayer_name": "topmostSubform[0].Page1[0].f1_01[0]",
+                "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_02[0]",
+                "f8582_line_1a_activities_with_income": "topmostSubform[0].Page1[0].f1_03[0]",
+                "f8582_line_1b_activities_with_loss": "topmostSubform[0].Page1[0].f1_04[0]",
+                "f8582_line_1c_prior_year_unallowed_loss": "topmostSubform[0].Page1[0].f1_05[0]",
+                "f8582_line_1d_combine": "topmostSubform[0].Page1[0].f1_06[0]",
+                # Line 11 — allowed passive loss (Part II total)
+                "f8582_line_11_allowed_loss": "topmostSubform[0].Page1[0].f1_19[0]",
+            },
+            "repeaters": {},
+        },
     }
 
