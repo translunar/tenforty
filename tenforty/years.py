@@ -29,7 +29,7 @@ CALIFORNIA_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021, 2022, 2023)
 # spreadsheets/federal/<year>/1040.xlsx. Optional per year: the workbook
 # is an acceptance oracle and the out-of-spine-scope fallback, not a
 # requirement for support.
-WORKBOOK_YEARS: tuple[int, ...] = (2024, 2025)
+WORKBOOK_YEARS: tuple[int, ...] = (2023, 2024, 2025)
 
 # Form sets per jurisdiction — the second dimension of the support grid.
 # Names match the mappings/pdf_<name>.py module basenames.
