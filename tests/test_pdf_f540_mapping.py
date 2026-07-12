@@ -52,7 +52,7 @@ class PdfF540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_f540.PdfF540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2026):
+        for year in (2021, 2022, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_f540.PdfF540.get_mapping(year)
@@ -160,3 +160,66 @@ class PdfF540MappingTests(unittest.TestCase):
         targets = set(mapping.values()) | set(derivations) | set(aggregations)
         bad = sorted(t for t in targets if t not in real)
         self.assertEqual(bad, [], f"field paths not in 2024 PDF: {bad}")
+
+
+class PdfF540MappingTests2023(unittest.TestCase):
+    """Mapping-shape / field-existence tests for the TY2023 Form 540 mapping.
+
+    2023 is a THIRD FTB field-naming scheme: bare zero-padded numbers ('2023',
+    '3004', '1036 CB') — no '540_form_'/'540-' prefix. Two structural
+    divergences from 2024/2025, both invisible-shift traps caught only by
+    reading /TU tooltips + the /Btn probe (verified by filled-emit on the real
+    2023 template): (1) filing status is FIVE line-1..5 checkboxes, not a single
+    verbose-export radio group; (2) several back-page cells shifted their
+    sequence number (line 110->4026, 113->5006, 111 owe->4027, 115 refund->5008).
+    """
+
+    def test_2023_get_aggregations_and_checkbox_states_empty(self):
+        self.assertEqual(pdf_f540.PdfF540.get_aggregations(2023), {})
+        self.assertEqual(pdf_f540.PdfF540.get_checkbox_states(2023), {})
+
+    def test_2023_partition_invariant(self):
+        mapping = pdf_f540.PdfF540.get_mapping(2023)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2023)
+        suppressed = pdf_f540.PdfF540.get_suppressed(2023)
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(missing, set(), f"unaccounted: {sorted(missing)}")
+        in_mapping = set(mapping.keys()) & _EXPECTED_COMPUTE_KEYS
+        double = ((in_mapping & agg_contributors) | (in_mapping & suppressed)
+                  | (agg_contributors & suppressed))
+        self.assertEqual(double, set(), f"double-accounted: {sorted(double)}")
+
+    def test_2023_every_pdf_target_is_a_real_pdf_field(self):
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2023" / "f540.pdf")
+        real = set(reader.get_fields() or {})
+        mapping = pdf_f540.PdfF540.get_mapping(2023)
+        derivations = pdf_f540.PdfF540.get_derivations(2023)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2023)
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2023 PDF: {bad}")
+
+    def test_2023_filing_status_checkboxes_cover_all_statuses(self):
+        # 2023's five-checkbox filing status must cover every FilingStatus,
+        # and each mapped checkbox must be a derivation cell (driven /Yes/Off).
+        cb_table = pdf_f540._FILING_STATUS_CB_2023
+        derivations = pdf_f540.PdfF540.get_derivations(2023)
+        for status in FilingStatus:
+            with self.subTest(status=status):
+                self.assertIn(status, cb_table)
+                self.assertIn(cb_table[status], derivations)
+        # All five checkboxes are distinct cells.
+        self.assertEqual(len(set(cb_table.values())), len(FilingStatus))
+
+    def test_2023_back_page_cells_shifted_from_2024(self):
+        # Pin the four sequence-number shifts vs 2024/2025 that only the
+        # tooltip read caught (regression guard against a copy-forward).
+        mapping = pdf_f540.PdfF540.get_mapping(2023)
+        derivations = pdf_f540.PdfF540.get_derivations(2023)
+        self.assertEqual(mapping["f540_voluntary_contributions"], "4026")  # line 110
+        self.assertEqual(mapping["f540_estimated_tax_penalty"], "5006")    # line 113
+        self.assertIn("4027", derivations)  # line 111 (owe)
+        self.assertIn("5008", derivations)  # line 115 (refund)
