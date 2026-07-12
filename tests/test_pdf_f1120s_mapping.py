@@ -221,3 +221,94 @@ class PdfF1120SMappingTests(unittest.TestCase):
                     f"states {available} for field {field_path!r}"
                 )
         self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_2023_every_compute_key_is_accounted_for(self):
+        """Partition invariant for 2023: same logic as the 2025/2024 tests."""
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2023)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2023)
+        suppressed = pdf_f1120s.PdfF1120S.get_suppressed(2023)
+
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(
+            missing, set(),
+            f"{len(missing)} compute keys are unaccounted for: {sorted(missing)}",
+        )
+
+        in_mapping = set(mapping.keys())
+        double = (
+            (in_mapping & agg_contributors)
+            | (in_mapping & suppressed)
+            | (agg_contributors & suppressed)
+        )
+        self.assertEqual(
+            double, set(),
+            f"{len(double)} keys are double-accounted: {sorted(double)}",
+        )
+
+    def test_2023_every_pdf_target_is_a_real_pdf_field(self):
+        """Every field path referenced in the 2023 registries must exist
+        in pdfs/federal/2023/f1120s.pdf."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2023" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2023)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2023)
+        derivations = pdf_f1120s.PdfF1120S.get_derivations(2023)
+
+        all_targets = (
+            set(mapping.values())
+            | set(aggregations.keys())
+            | set(derivations.keys())
+        )
+        bad = sorted(p for p in all_targets if p not in real_fields)
+        self.assertEqual(
+            bad, [],
+            f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
+        )
+
+    def test_2023_checkbox_on_states_match_pdf_appearance_states(self):
+        """Every on-state in the 2023 checkbox states must be a real appearance
+        state of its target widget in the 2023 PDF (same check as 2024)."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2023" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        fields = reader.get_fields() or {}
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2023)
+        checkbox_states = pdf_f1120s.PdfF1120S.get_checkbox_states(2023)
+
+        bad: list[str] = []
+        for compute_key, on_state in checkbox_states.items():
+            field_path = mapping[compute_key]
+            field = fields.get(field_path)
+            available = list(field.get("/_States_", [])) if field else []
+            if on_state not in available:
+                bad.append(
+                    f"{compute_key}: on-state {on_state!r} not in widget "
+                    f"states {available} for field {field_path!r}"
+                )
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_2023_tax_exempt_interest_maps_to_schedule_k_line_16a(self):
+        """Renumbering pin: on the 2023 Schedule K, line 16a "Tax-exempt
+        interest income" is field f3_42 (verified by marker-probe render,
+        pdfs/federal/2023/f1120s.probe.pdf). 2024/2025 map this key to f3_43,
+        which on the 2023 form is line 16b "Other tax-exempt income" — the same
+        path exists on the template, so only the rendered position distinguishes
+        the correct cell. This pin guards against a silent inherit that would
+        land tax-exempt interest on the wrong line."""
+        m2023 = pdf_f1120s.PdfF1120S.get_mapping(2023)
+        self.assertEqual(
+            m2023["f1120s_sch_k_tax_exempt_interest"],
+            "topmostSubform[0].Page3[0].f3_42[0]",
+        )
+        # And it genuinely differs from the 2024 mapping (f3_43).
+        self.assertNotEqual(
+            m2023["f1120s_sch_k_tax_exempt_interest"],
+            pdf_f1120s.PdfF1120S.get_mapping(2024)["f1120s_sch_k_tax_exempt_interest"],
+        )
