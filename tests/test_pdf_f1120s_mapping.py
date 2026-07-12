@@ -314,3 +314,103 @@ class PdfF1120SMappingTests(unittest.TestCase):
             m2023["f1120s_sch_k_tax_exempt_interest"],
             pdf_f1120s.PdfF1120S.get_mapping(2024)["f1120s_sch_k_tax_exempt_interest"],
         )
+
+    def test_2022_every_compute_key_is_accounted_for(self):
+        """Partition invariant for 2022: same logic as the 2023-2025 tests."""
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2022)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2022)
+        suppressed = pdf_f1120s.PdfF1120S.get_suppressed(2022)
+
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(
+            missing, set(),
+            f"{len(missing)} compute keys are unaccounted for: {sorted(missing)}",
+        )
+
+        in_mapping = set(mapping.keys())
+        double = (
+            (in_mapping & agg_contributors)
+            | (in_mapping & suppressed)
+            | (agg_contributors & suppressed)
+        )
+        self.assertEqual(
+            double, set(),
+            f"{len(double)} keys are double-accounted: {sorted(double)}",
+        )
+
+    def test_2022_every_pdf_target_is_a_real_pdf_field(self):
+        """Every field path referenced in the 2022 registries must exist
+        in pdfs/federal/2022/f1120s.pdf."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2022" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2022)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2022)
+        derivations = pdf_f1120s.PdfF1120S.get_derivations(2022)
+
+        all_targets = (
+            set(mapping.values())
+            | set(aggregations.keys())
+            | set(derivations.keys())
+        )
+        bad = sorted(p for p in all_targets if p not in real_fields)
+        self.assertEqual(
+            bad, [],
+            f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
+        )
+
+    def test_2022_checkbox_on_states_match_pdf_appearance_states(self):
+        """Every on-state in the 2022 checkbox states must be a real appearance
+        state of its target widget in the 2022 PDF (same check as 2023/2024)."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2022" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        fields = reader.get_fields() or {}
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2022)
+        checkbox_states = pdf_f1120s.PdfF1120S.get_checkbox_states(2022)
+
+        bad: list[str] = []
+        for compute_key, on_state in checkbox_states.items():
+            field_path = mapping[compute_key]
+            field = fields.get(field_path)
+            available = list(field.get("/_States_", [])) if field else []
+            if on_state not in available:
+                bad.append(
+                    f"{compute_key}: on-state {on_state!r} not in widget "
+                    f"states {available} for field {field_path!r}"
+                )
+        self.assertEqual(bad, [], "\n".join(bad))
+
+    def test_2022_structural_delta_vs_2023(self):
+        """Pins the two 2022-vs-2023 structural differences (filled-emit-
+        confirmed on pdfs/federal/2022/f1120s.probe.pdf):
+
+        1. 2022 lacks 2023's line-19 "Energy efficient commercial buildings
+           (Form 7205)" field, so every mapped field from line 19 onward is
+           2023's minus one — e.g. Other deductions is f1_33 (2023: f1_34).
+        2. 2022 lacks 2023's line-24d "Elective payment election (Form 3800)"
+           field, so `f1120s_refundable_credits` (2023: mapped to that cell)
+           is SUPPRESSED, not mapped.
+
+        Schedule K line 16a tax-exempt interest is f3_42, same as 2023 (the
+        2024/2025 f3_43 shift does not reach back to 2022)."""
+        m2022 = pdf_f1120s.PdfF1120S.get_mapping(2022)
+        self.assertEqual(
+            m2022["f1120s_other_deductions"],
+            "topmostSubform[0].Page1[0].f1_33[0]",
+        )
+        self.assertNotIn("f1120s_refundable_credits", m2022)
+        self.assertIn(
+            "f1120s_refundable_credits",
+            pdf_f1120s.PdfF1120S.get_suppressed(2022),
+        )
+        self.assertEqual(
+            m2022["f1120s_sch_k_tax_exempt_interest"],
+            "topmostSubform[0].Page3[0].f3_42[0]",
+        )
