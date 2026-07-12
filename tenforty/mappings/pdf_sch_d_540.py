@@ -286,19 +286,52 @@ _SUPPRESSED_2024: frozenset[str] = frozenset(
 _CHECKBOX_STATES_2024: dict[str, str] = {}
 
 
-PdfSchD540._MAPPINGS = {2024: _MAPPING_2024, 2025: _MAPPING_2025}
+# ---------------------------------------------------------------------------
+# TY2023 registries
+# Field-naming scheme: bare zero-padded numbers ('1001', '2001', ...), no
+# '540D'/'540 sch D' prefix — a third distinct FTB naming scheme. Each widget
+# carries a descriptive /TU tooltip identifying its line; the mapping below was
+# read from those tooltips on the 2023 template (probe committed as
+# pdfs/california/2023/sch_d_540.probe.pdf) and filled-emit-verified: distinct
+# values written to lines 8/10/11/12a/12b render on the correct lines of page 2.
+# Layout matches 2024 (page 1 = header + detail rows 1a..1v + lines 2-7;
+# page 2 = lines 8-12); only the field names differ.
+# ---------------------------------------------------------------------------
+_MAPPING_2023: dict[str, str] = {
+    "sch_d_540_taxpayer_name":      "1001",  # /TU "Name or Names as shown on return"
+    "sch_d_540_taxpayer_ssn":       "1002",  # /TU "Social Security Number ..."
+    "sch_d_540_net_capital_gain":   "2001",  # /TU "Line 8 . Net gain or (loss)..."
+    "sch_d_540_total_subtractions": "2005",  # /TU "Line 12 a. ... Sch CA §A line 7 col B"
+    "sch_d_540_total_additions":    "2006",  # /TU "Line 12 b. ... col C"
+}
+_AGGREGATIONS_2023: dict[str, tuple[str, ...]] = {}
+_DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
+    "2003": lambda c: c["sch_d_540_federal_net"],       # /TU "Line 10 . ... federal ... line 7"
+    "2004": lambda c: c["sch_d_540_net_capital_gain"],  # /TU "Line 11 . California gain ..."
+}
+# Detail rows 1a..1v + within-form sums/carryover (1003..1119) and the line-9
+# loss limit (2002) — no direct compute backing, same as 2024/2025.
+_SUPPRESSED_2023: frozenset[str] = frozenset(
+    {f"{n}" for n in range(1003, 1120)} | {"2002"}
+)
+_CHECKBOX_STATES_2023: dict[str, str] = {}
+
+
+PdfSchD540._MAPPINGS = {
+    2023: _MAPPING_2023, 2024: _MAPPING_2024, 2025: _MAPPING_2025,
+}
 
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
-    2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
+    2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
-    2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
+    2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
-    2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
+    2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+    2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }

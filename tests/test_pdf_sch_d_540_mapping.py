@@ -95,7 +95,7 @@ class PdfSchD540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2026):
+        for year in (2021, 2022, 2026):  # 2023 is now a supported PDF-mapping year
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_d_540.PdfSchD540.get_mapping(year)
@@ -436,3 +436,49 @@ class PdfSchD540Mapping2024Tests(unittest.TestCase):
             "Canonical _EXPECTED_NAMED_FIELDS_2024 has drifted from the "
             "actual PDF; update the constant after re-probing.",
         )
+
+
+class PdfSchD540MappingTests2023(unittest.TestCase):
+    """TY2023 Sch D (540) mapping — a THIRD FTB field-naming scheme (bare
+    zero-padded numbers '1001'/'2001', no '540D'/'540 sch D' prefix). The
+    mapping was read from the widgets' /TU tooltips on the 2023 template and
+    filled-emit-verified (probe committed as
+    pdfs/california/2023/sch_d_540.probe.pdf). Partition is checked against the
+    live probe rather than a hardcoded constant.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        pdf_path = (Path(__file__).resolve().parent.parent
+                    / "pdfs" / "california" / "2023" / "sch_d_540.pdf")
+        cls.real_fields = frozenset(PdfReader(pdf_path).get_fields() or {})
+
+    def test_2023_renumbered_cells(self):
+        """Line 8 net gain, line 12a/12b Sch-CA deltas land on the bare-number
+        2023 widgets read from the /TU tooltips."""
+        m = pdf_sch_d_540.PdfSchD540.get_mapping(2023)
+        self.assertEqual(m["sch_d_540_net_capital_gain"], "2001")     # line 8
+        self.assertEqual(m["sch_d_540_total_subtractions"], "2005")   # line 12a
+        self.assertEqual(m["sch_d_540_total_additions"], "2006")      # line 12b
+        d = pdf_sch_d_540.PdfSchD540.get_derivations(2023)
+        self.assertEqual(set(d), {"2003", "2004"})                    # lines 10, 11
+
+    def test_2023_partition_covers_every_widget_exactly_once(self):
+        P = pdf_sch_d_540.PdfSchD540
+        mapping_t = set(P.get_mapping(2023).values())
+        agg_t = set(P.get_aggregations(2023).keys())
+        deriv_t = set(P.get_derivations(2023).keys())
+        supp = set(P.get_suppressed(2023))
+        # pairwise disjoint
+        parts = [mapping_t, agg_t, deriv_t, supp]
+        for i in range(len(parts)):
+            for j in range(i + 1, len(parts)):
+                self.assertEqual(parts[i] & parts[j], set(),
+                                 "a 2023 widget is owned by two registries")
+        accounted = mapping_t | agg_t | deriv_t | supp
+        self.assertEqual(
+            accounted, self.real_fields,
+            "2023 partition does not exactly cover the live probe field set")
+
+    def test_2023_no_checkbox_states(self):
+        self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2023), {})
