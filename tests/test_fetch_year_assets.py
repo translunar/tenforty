@@ -36,6 +36,20 @@ class DownloadPlanTests(unittest.TestCase):
             "f1120s.pdf", "f1120s_k1.pdf", "i1040tt.pdf",
         })
 
+    def test_f1120s_k1_url_uses_f1120ssk_stem(self):
+        # The IRS source stem for Schedule K-1 (Form 1120-S) is f1120ssk for
+        # every year (irs-prior/f1120ssk--YYYY.pdf). The earlier f1120sk1 stem
+        # never existed — it 404s — and the bug went unexercised because the
+        # 2024/2025 K-1 blanks were already on disk and the fetcher skips
+        # existing files. The on-disk destination stays f1120s_k1.pdf.
+        for year in (2023, 2024, 2025):
+            with self.subTest(year=year):
+                by_dest = {d.dest.name: d.url
+                           for d in build_download_plan("federal", year)}
+                self.assertEqual(
+                    by_dest["f1120s_k1.pdf"],
+                    f"https://www.irs.gov/pub/irs-prior/f1120ssk--{year}.pdf")
+
     def test_federal_tax_table_stem_switches_to_p1040_from_2025(self):
         # The IRS discontinued the standalone i1040tt document after tax
         # year 2024 and moved the Tax Table into p1040; the on-disk
