@@ -80,7 +80,7 @@ class PdfSchCaMappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2023, 2026):
+        for year in (2021, 2022, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_ca.PdfSchCa.get_mapping(year)
@@ -289,3 +289,80 @@ class PdfSchCaMappingTests(unittest.TestCase):
         targets = set(mapping.values()) | set(derivations) | set(aggregations)
         bad = sorted(t for t in targets if t not in real)
         self.assertEqual(bad, [], f"field paths not in 2024 PDF: {bad}")
+
+    # ------------------------------------------------------------------
+    # 2023 tests
+    #
+    # 2023 is the THIRD FTB naming scheme: bare numbers ('1027', '2035'),
+    # no '540ca_form - ' prefix. 54 of 57 fields keep the same sequence
+    # number as 2025 (prefix stripped); line 8z's three cells SHIFTED
+    # 2038/2039/2040 -> 2035/2036/2037 (invisible-shift trap, tooltip-
+    # caught). Column structure identical to 2024/2025 (Step-1 conformity).
+    # ------------------------------------------------------------------
+
+    def test_2023_registries_empty_where_expected(self):
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2023), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2023), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2023), {})
+
+    def test_2023_partition_invariant(self):
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2023)
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2023)
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(missing, set(), f"unaccounted: {sorted(missing)}")
+        in_mapping = set(mapping.keys()) & _EXPECTED_COMPUTE_KEYS
+        double = ((in_mapping & agg_contributors) | (in_mapping & suppressed)
+                  | (agg_contributors & suppressed))
+        self.assertEqual(double, set(), f"double-accounted: {sorted(double)}")
+
+    def test_2023_bare_number_scheme_no_prefix(self):
+        # Every 2023 field path is a bare number — the '540ca_form - '
+        # prefix of 2024/2025 must be gone.
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        for key, field in mapping.items():
+            with self.subTest(key=key):
+                self.assertNotIn("540ca_form", field)
+                self.assertTrue(field.isdigit(), f"{field!r} not a bare number")
+
+    def test_2023_line_8z_shifted_from_2024(self):
+        # The one sequence-number shift vs 2024/2025 — regression guard
+        # against assuming the prefix-strip carried every number.
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        self.assertEqual(mapping["sch_ca_line_part_i_b_8z_col_a"], "2035")
+        self.assertEqual(mapping["sch_ca_line_part_i_b_8z_subtractions"], "2036")
+        self.assertEqual(mapping["sch_ca_line_part_i_b_8z_additions"], "2037")
+
+    def test_2023_ca_agi_is_suppressed_transit_only(self):
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2023)
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        self.assertIn("sch_ca_ca_agi", suppressed)
+        self.assertNotIn("sch_ca_ca_agi", mapping)
+
+    def test_2023_column_omissions_suppressed(self):
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2023)
+        for key in (
+            "sch_ca_line_part_i_a_6_additions",   # SS
+            "sch_ca_line_part_i_b_1_additions",   # state refund
+            "sch_ca_line_part_i_b_7_additions",   # UI
+            "sch_ca_line_part_i_c_11_additions",  # educator
+            "sch_ca_line_part_i_c_13_additions",  # HSA
+            "sch_ca_line_part_i_c_15_additions",  # SE tax
+            "sch_ca_line_part_i_c_17_additions",  # SE health
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, suppressed)
+        self.assertIn("sch_ca_line_part_i_c_21_subtractions", suppressed)
+
+    def test_2023_every_pdf_target_is_a_real_pdf_field(self):
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2023" / "sch_ca.pdf")
+        real = set(reader.get_fields() or {})
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        derivations = pdf_sch_ca.PdfSchCa.get_derivations(2023)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2023)
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2023 PDF: {bad}")
