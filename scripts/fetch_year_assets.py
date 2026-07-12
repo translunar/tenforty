@@ -41,8 +41,9 @@ _FEDERAL_DOCS: list[tuple[str, str]] = [
     ("f8959", "f8959.pdf"),
     ("f8995", "f8995.pdf"),
     ("f1120s", "f1120s.pdf"),
-    # IRS URL stem has no underscore; the repo's on-disk convention does.
-    ("f1120sk1", "f1120s_k1.pdf"),
+    # IRS source stem for Schedule K-1 (Form 1120-S) is "f1120ssk" for every
+    # year; the repo's on-disk convention uses an underscore (f1120s_k1.pdf).
+    ("f1120ssk", "f1120s_k1.pdf"),
 ]
 
 # The federal tax table's IRS source stem is year-dependent: the standalone
