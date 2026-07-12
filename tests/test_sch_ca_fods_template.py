@@ -5,6 +5,7 @@ from xml.dom.minidom import Element, parse
 REPO_ROOT = Path(__file__).parent.parent
 TEMPLATE_PATH = REPO_ROOT / "spreadsheets" / "california" / "2025" / "sch_ca_input_worksheet.fods"
 TEMPLATE_PATH_2024 = REPO_ROOT / "spreadsheets" / "california" / "2024" / "sch_ca_input_worksheet.fods"
+TEMPLATE_PATH_2023 = REPO_ROOT / "spreadsheets" / "california" / "2023" / "sch_ca_input_worksheet.fods"
 
 _TABLE_NS = "urn:oasis:names:tc:opendocument:xmlns:table:1.0"
 _TEXT_NS = "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
@@ -166,4 +167,37 @@ class TemplateShapeTests2024(unittest.TestCase):
             len(tables_2025),
             "2024 and 2025 worksheets should have the same number of tabs "
             f"(2024: {len(self.tables)}, 2025: {len(tables_2025)})",
+        )
+
+
+class TemplateShapeTests2023(unittest.TestCase):
+    """Structural shape checks for the TY2023 Schedule CA divergence worksheet.
+
+    The 2023 catalog is ported from the 2024 catalog with TY2023 conformity-date
+    adjustments — five rows are DROPPED (provisions first effective after 2023:
+    IDC/percentage-depletion/§43 post-1/1/2024, CA Wildfire Mitigation 1/1/2024+,
+    529->Roth post-2023). All five drops are within Sch CA lines (§B 3, §B 8z)
+    that retain other rows, so the Sch CA LINE structure — and thus the tab
+    count — is identical to 2024/2025; only the per-line row count is smaller.
+    These tests assert the same structural invariants as the other years.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = parse(str(TEMPLATE_PATH_2023))
+        cls.tables = cls.doc.getElementsByTagNameNS(_TABLE_NS, "table")
+
+    def test_template_shape(self):
+        _assert_template_shape(self, self.tables)
+
+    def test_same_tab_count_as_2025(self):
+        """The dropped rows share their Sch CA line with retained rows, so no
+        tab is removed — the tab count must still equal 2025's."""
+        doc_2025 = parse(str(TEMPLATE_PATH))
+        tables_2025 = doc_2025.getElementsByTagNameNS(_TABLE_NS, "table")
+        self.assertEqual(
+            len(self.tables),
+            len(tables_2025),
+            "2023 and 2025 worksheets should have the same number of tabs "
+            f"(2023: {len(self.tables)}, 2025: {len(tables_2025)})",
         )
