@@ -110,3 +110,28 @@ class TestPdf1040Basic(unittest.TestCase):
     def test_unsupported_year_raises(self):
         with self.assertRaises(ValueError):
             Pdf1040.get_mapping(1999)
+
+    def test_2023_supported_with_probed_relocated_paths(self):
+        # 2023 is a supported year. Its layout differs structurally from
+        # 2024 (not a field-name renumbering you can inherit) — these pins
+        # guard the invisible-shift traps the marker-probe caught:
+        #   * Line 10 (adjustments) is f1_54 — the SAME f-number 2024 uses
+        #     for line 7b child_capital_gain. Inheriting 2024 would have put
+        #     adjustments on the wrong line.
+        #   * Lines 12–15 sit on PAGE 1 in 2023 (2024 moved them to page 2),
+        #     so taxable_income is Page1 f1_59, not Page2.
+        #   * Page 2 starts at line 16: tax is Page2 f2_02 (2024: f2_07).
+        #   * 2023 has no line-11b AGI repeat, so agi_page2 is absent.
+        m = Pdf1040.get_mapping(2023)
+        self.assertEqual(
+            m["adjustments"],
+            "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_54[0]",
+        )
+        self.assertEqual(
+            m["taxable_income"], "topmostSubform[0].Page1[0].f1_59[0]"
+        )
+        self.assertEqual(m["total_tax"], "topmostSubform[0].Page2[0].f2_02[0]")
+        self.assertEqual(
+            m["total_tax_liability"], "topmostSubform[0].Page2[0].f2_10[0]"
+        )
+        self.assertNotIn("agi_page2", m)
