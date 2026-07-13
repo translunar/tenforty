@@ -31,7 +31,8 @@ class CatalogShapeTests(unittest.TestCase):
                          set(year_manifest.FEDERAL_FORMS)
                          | set(year_manifest.SCORP_FORMS))
         self.assertEqual(california,
-                         set(year_manifest.CALIFORNIA_FORMS) | {"f100s"})
+                         set(year_manifest.CALIFORNIA_FORMS)
+                         | set(year_manifest.CA_SCORP_FORMS))
 
 
 class FieldsExistOnTemplateTests(unittest.TestCase):

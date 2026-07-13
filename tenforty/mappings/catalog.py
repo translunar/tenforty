@@ -11,6 +11,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f100s import PdfF100S
+from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.mappings.pdf_f540 import PdfF540
@@ -48,6 +49,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "f1120s"): FormEntry(PdfF1120S, "f1120s"),
     ("federal", "f1120s_k1"): FormEntry(PdfF1120SK1, "f1120s_k1"),
     ("california", "f100s"): FormEntry(PdfF100S, "f100s"),
+    ("california", "f100s_k1"): FormEntry(PdfF100SK1, "f100s_k1"),
     ("california", "f540"): FormEntry(PdfF540, "f540"),
     ("california", "sch_ca"): FormEntry(PdfSchCa, "sch_ca"),
     ("california", "sch_d_540"): FormEntry(PdfSchD540, "sch_d_540"),
@@ -61,19 +63,11 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # 2021 federal S-corp emit pack lands in the S-corp emit plan (Plan B):
     # templates + marker-probed mappings not yet fetched/authored. Compute
     # for 2021 is provided by the S-corp compute plan; only emit is owed.
+    # These two federal-2021 cells are the ONLY remaining gaps — both CA
+    # S-corp forms (f100s and f100s_k1) are now fully packed across all
+    # CA_SCORP_YEARS, so california KNOWN_GAPS is empty.
     ("federal", "f1120s", 2021),
     ("federal", "f1120s_k1", 2021),
-    # CA Schedule K-1 (100S): declared in the manifest ahead of its pack, so
-    # the manifest-driven CAScorpCompletenessTests demands each cell. Work owed
-    # per cell: compute module -> Plan A Task 6; attested params -> Plan A
-    # Task 3; PDF mapping + template -> a later Plan B task. Each cell is retired
-    # when its full compute+emit pack lands. (Form 100S itself is now fully
-    # packed and no longer owed — its five cells have been retired.)
-    ("california", "f100s_k1", 2021),
-    ("california", "f100s_k1", 2022),
-    ("california", "f100s_k1", 2023),
-    ("california", "f100s_k1", 2024),
-    ("california", "f100s_k1", 2025),
 })
 
 
