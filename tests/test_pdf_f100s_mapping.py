@@ -22,7 +22,7 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "f100s_depreciation_adjustment", "f100s_net_income_for_tax",
     "f100s_franchise_tax", "f100s_prior_year_overpayment_applied",
     "f100s_estimated_tax_payments", "f100s_total_payments",
-    "f100s_amount_owed", "f100s_overpayment",
+    "f100s_amount_owed", "f100s_overpayment", "f100s_tax_rate",
     "f100s_entity_name", "f100s_entity_ca_corp_number", "f100s_entity_fein",
     "f100s_entity_street", "f100s_entity_city", "f100s_entity_zip",
 })
@@ -41,6 +41,8 @@ _FILL = {
     "f100s_total_payments": 400,
     "f100s_amount_owed": 450,
     "f100s_overpayment": 500,
+    # Rate box is a formatted percentage string at emit; distinctive here.
+    "f100s_tax_rate": "9.9",
     "f100s_entity_name": "TESTCORP",
     "f100s_entity_ca_corp_number": "9999999",
     "f100s_entity_fein": "00-0000000",
