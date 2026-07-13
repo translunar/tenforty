@@ -35,9 +35,12 @@ _SUFFIX: dict[str, str] = {
     "f100s_net_income_for_tax":             "2012",  # Side 2 L20 Net income for tax purposes
     "f100s_franchise_tax":                  "2014",  # Side 2 L21 Tax amount
     "f100s_tax_rate":                       "2013",  # Side 2 L21 Tax RATE %-box (emit-injected: params.franchise_tax_rate formatted as printed %)
+    "f100s_total_tax":                      "2023",  # Side 2 L26 Balance (v1: =L21)
+    "f100s_total_tax_after_other_taxes":    "2027",  # Side 2 L30 Total tax (v1: =L26)
     "f100s_prior_year_overpayment_applied": "2028",  # Side 2 L31 Overpayment from prior year credit
     "f100s_estimated_tax_payments":         "2029",  # Side 2 L32 Estimated tax/QSub payments
     "f100s_total_payments":                 "2033",  # Side 2 L36 Total payments
+    "f100s_payments_balance":               "2035",  # Side 2 L38 Payments balance (v1: =L36)
     "f100s_amount_owed":                    "2037",  # Side 2 L40 Franchise or income tax due
     "f100s_overpayment":                    "2038",  # Side 2 L41 Overpayment
     "f100s_entity_name":                    "1003",  # Side 1 Corporation name (emit-injected)
