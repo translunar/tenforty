@@ -16,6 +16,18 @@ class MissingFiledValueError(ValueError):
     """
 
 
+class OutOfScopeAmendmentError(ValueError):
+    """The filed return carries an amount on a 1040-X line tenforty cannot source.
+
+    tenforty's spine does not compute every amount-bearing 1040-X line (EIC,
+    Schedule 1-A tips/overtime deductions, nonrefundable credits, other taxes,
+    estimated payments). For a simple return those lines are absent/zero and
+    the assembler proceeds. But if the FILED return actually carried a nonzero
+    value on such a line, emitting a blank/zero Column A would silently drop it
+    and produce a wrong Column B — so we refuse loudly instead, naming the line.
+    """
+
+
 # Every AmendmentCase field name; the loader is fail-closed like
 # scenario.load_scenario — any key outside this set raises rather than being
 # silently dropped (a dropped `explanation:` is how a bad packet ships).
