@@ -88,10 +88,15 @@ class AmendmentTierTests(unittest.TestCase):
     def test_amendment_forms_declared(self):
         self.assertEqual(years.AMENDMENT_FORMS, ("f1040x", "schedule_x"))
 
-    def test_every_amendment_form_has_a_revision(self):
-        for form in years.AMENDMENT_FORMS:
-            self.assertIn(form, years.AMENDMENT_TEMPLATE_REVISIONS)
-            self.assertRegex(years.AMENDMENT_TEMPLATE_REVISIONS[form], r"^rev-")
+    def test_f1040x_is_revision_keyed(self):
+        # f1040x files on the current 1040-X revision for every amendable year.
+        self.assertIn("f1040x", years.AMENDMENT_TEMPLATE_REVISIONS)
+        self.assertRegex(years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"], r"^rev-")
+
+    def test_schedule_x_is_year_keyed(self):
+        # The FTB publishes a per-year Schedule X, so it is year-keyed and owes
+        # no revision tag — it must NOT appear in AMENDMENT_TEMPLATE_REVISIONS.
+        self.assertNotIn("schedule_x", years.AMENDMENT_TEMPLATE_REVISIONS)
 
     def test_amendable_years_derive_from_support(self):
         self.assertEqual(
