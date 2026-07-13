@@ -77,7 +77,7 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 # years match years.amendable_california_years(), so the keys match at runtime.
 # Each entry is WORK OWED; all retire when the mapping packs land in Task 6.
 AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str] | tuple[str, int]] = frozenset({
-    ("f1040x", "rev-2025-12"),   # template+probe landed; mapping lands Task 6
+    # f1040x retired: revision-keyed mapping pack landed (Task 6a), gate LIVE.
     ("schedule_x", 2021),        # template+probe landed; mapping lands Task 6
     ("schedule_x", 2022),        # template+probe landed; mapping lands Task 6
     ("schedule_x", 2023),        # template+probe landed; mapping lands Task 6
