@@ -8,7 +8,15 @@ from tests.oracles import f100s_reference
 
 # Battery of CA net-income probes: losses, zero, the low-income floor band,
 # a boundary near where measured tax overtakes the floor, and large incomes.
-NET_INCOMES = [-50_000, -1, 0, 1, 500, 5_000, 53_333, 250_000, 4_000_000]
+# Fractional probes discriminate single- vs two-stage whole-dollar rounding:
+# the ~$1 divergence between round(net*rate) and round(round(net)*rate) is only
+# visible when the $800 floor does NOT mask it, i.e. under first_year=True
+# (99.6, 100.5, 5_000.4) or above the floor-crossing (53_499.6) where measured
+# tax exceeds $800 for non-first-year too.
+NET_INCOMES = [
+    -50_000, -1, 0, 1, 500, 5_000, 53_333, 250_000, 4_000_000,
+    99.6, 100.5, 5_000.4, 53_499.6,
+]
 
 
 class F100SOracleBattery(unittest.TestCase):
