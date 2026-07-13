@@ -719,13 +719,24 @@ class AmendmentCase:
     alongside a corrected scenario and the filed-values file. Carries no tax
     math — only the 1040-X explanation and the original refund figures needed
     to reconcile Columns A/B/C. `prior_amendment_note` is the sole optional
-    field (a filer amending a return that was itself already amended)."""
+    NARRATIVE field (a filer amending a return that was itself already amended).
+
+    CA analogues (`ca_original_refund_*`) carry the California Schedule X
+    original-overpayment context — the CA original overpayment the filer
+    received or applied forward (Schedule X line 2 = received + applied,
+    mirroring federal line 18). They default to ``None`` rather than 0.0 so a
+    FEDERAL-ONLY amendment case still loads without stating them, but
+    ``schedule_x.assemble_ca`` FAILS CLOSED at the point of use if a CA
+    amendment is assembled while either is None: the filer must ASSERT the CA
+    original-payment context (even if it is 0), it is never inferred."""
 
     year: int
     explanation: str
     original_refund_received: float
     original_refund_applied: float
     prior_amendment_note: str | None = None
+    ca_original_refund_received: float | None = None
+    ca_original_refund_applied: float | None = None
 
 
 @dataclass

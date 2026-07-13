@@ -38,6 +38,30 @@ original_refund_applied: 0.0
         with self.assertRaises(ValueError):
             load_amendment_case(_write("year: 2024\n"))
 
+    def test_ca_original_payment_fields_default_to_none(self):
+        # A federal-only amendment case omits the CA analogues entirely;
+        # they load as None (fail-closed at USE in assemble_ca, never
+        # inferred to 0.0 here).
+        case = load_amendment_case(_write(self.GOOD))
+        self.assertIsNone(case.ca_original_refund_received)
+        self.assertIsNone(case.ca_original_refund_applied)
+
+    def test_loads_ca_original_payment_fields(self):
+        case = load_amendment_case(_write(
+            self.GOOD
+            + "ca_original_refund_received: 250.0\n"
+            + "ca_original_refund_applied: 0.0\n"))
+        self.assertEqual(case.ca_original_refund_received, 250.0)
+        self.assertEqual(case.ca_original_refund_applied, 0.0)
+
+    def test_unknown_key_still_fails_closed_with_ca_fields(self):
+        with self.assertRaises(ValueError) as ctx:
+            load_amendment_case(_write(
+                self.GOOD
+                + "ca_original_refund_received: 1.0\n"
+                + "ca_typo: 2\n"))
+        self.assertIn("ca_typo", str(ctx.exception))
+
 
 class FiledValuesReaderTests(unittest.TestCase):
     def test_reads_required_keys(self):
