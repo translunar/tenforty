@@ -45,8 +45,9 @@ CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540")
 SCORP_FEDERAL_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 SCORP_FORMS: tuple[str, ...] = ("f1120s", "f1120s_k1")
 
-# California S-corp family: Form 100S compute (+ emit once the emit plan
-# lands its mappings; the completeness gate tracks the pack contents).
+# California S-corp family: Form 100S compute and emit (emit has landed —
+# PdfF100S/PdfF100SK1 + _emit_ca_scorp_pdfs_internal, exposed via public
+# run_full_california_scorp_return; the completeness gate tracks pack contents).
 CA_SCORP_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 CA_SCORP_FORMS: tuple[str, ...] = ("f100s", "f100s_k1")
 

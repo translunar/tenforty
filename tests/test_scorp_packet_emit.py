@@ -132,15 +132,13 @@ class CaScorpPacketEmitTests(unittest.TestCase):
 
     def test_federal_2021_slice_emits(self):
         # 2021 is an S-corp-only federal year (spec §4: no 1040 spine), so the
-        # corporate set is emitted via the extracted corporate-only method,
+        # corporate set is emitted via the PUBLIC run_full_federal_scorp_return,
         # which does NOT run the individual 1040 pipeline.
         s = _make_v1_scenario(
             gross_receipts=100000.0, compensation_of_officers=30000.0)
         s.config.year = 2021
-        corp = self.orch.compute_corporate(s)
         out_dir = Path(self._tmp.name) / "federal_2021"
-        emitted = self.orch._emit_federal_corporate_pdfs_internal(
-            s, corp, out_dir)
+        corp, emitted = self.orch.run_full_federal_scorp_return(s, out_dir)
 
         f1120s_path = out_dir / "f1120s_2021.pdf"
         k1_path = out_dir / "f1120s_k1_1_2021.pdf"

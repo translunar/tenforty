@@ -1181,6 +1181,21 @@ class ReturnOrchestrator:
             scenario, ca_corporate_results, output_dir)
         return ca_corporate_results, emitted
 
+    def run_full_federal_scorp_return(
+        self, scenario: Scenario, output_dir: Path,
+    ) -> tuple[dict, dict[str, Path]]:
+        """Compute + emit the federal S-corp packet (Form 1120-S + Schedule K-1
+        (1120-S)). Public entry for S-corp-only federal years (e.g. 2021) that
+        have no 1040 spine — emits the corporate set WITHOUT the individual
+        pipeline. Returns (corp_results, emitted_paths); ({}, {}) when not an
+        S-corp scenario."""
+        if scenario.s_corp_return is None:
+            return {}, {}
+        corp_results = self.compute_corporate(scenario)
+        emitted = self._emit_federal_corporate_pdfs_internal(
+            scenario, corp_results, output_dir)
+        return corp_results, emitted
+
     def _verify_ca_yaml_freshness(
         self,
         scenario: Scenario,

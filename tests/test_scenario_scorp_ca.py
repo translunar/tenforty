@@ -148,6 +148,14 @@ class ScorpCALoaderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._write_and_load(bad)
 
+    def test_missing_required_key_raises_valueerror(self):
+        # Dropping a required key must fail-closed with ValueError (contract
+        # consistency with the docstring), not fall through to a bare KeyError.
+        bad = _YAML_WITH_SCORP_CA.replace(
+            "    depreciation_adjustment: 0.0\n", "")
+        with self.assertRaises(ValueError):
+            self._write_and_load(bad)
+
     def test_absent_ca_block_is_none(self):
         s = self._write_and_load(_YAML_WITH_SCORP_NO_CA)
         self.assertIsNone(s.s_corp_return.ca)
