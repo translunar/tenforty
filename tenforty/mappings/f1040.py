@@ -939,11 +939,34 @@ F1040.SHEET_MAP[2023] = dict(F1040.SHEET_MAP[2024])
 #    debt limits (2023 S35/S36=1M/500k) sit at 2022 S33/S34.
 # The 'Sch 1, Line 1 (SALT)' worksheet and all other input sheets align with
 # 2023 (spot-checked). The cell-drift smoke over the itemizer scenario confirms.
+# The 2022 '8582' sheet's passive-activity property table is shifted +1 ROW vs
+# 2023 (proven: the column-sum consumer moved from 2023 N54='=SUM(N49..N53)' to
+# 2022 N55='=SUM(N50..N54)', so the five property rows N49-N53 became N50-N54).
+# Two consequences: (a) the Schedule-E row's net-income/net-loss cells (2023
+# N49/R49) are absorbed into the 2022 header merge N48:Q49 / R48:U49, so they are
+# read-only MergedCells and writing them raises AttributeError; (b) the K-1 rows
+# (2023 N50-N53) stay writable but at 2022 would land one property row too high.
+# Every 8582 cell-address reference therefore needs +1 row (all targets verified
+# writable). Line-11 output likewise: 2023 AE43='=IF(AO21,"",SUM(AE39,AE41))' ->
+# 2022 AE44='=IF(AO21,"",SUM(AE40,AE42))'.
+_SCHE_8582_2022 = {
+    "sche_8582_net_income": "N50", "sche_8582_net_loss": "R50",
+    "k1_a_8582_net_income": "N51", "k1_a_8582_net_loss": "R51",
+    "k1_a_8582_prior_year_loss": "V51",
+    "k1_b_8582_net_income": "N52", "k1_b_8582_net_loss": "R52",
+    "k1_b_8582_prior_year_loss": "V52",
+    "k1_c_8582_net_income": "N53", "k1_c_8582_net_loss": "R53",
+    "k1_c_8582_prior_year_loss": "V53",
+    "k1_d_8582_net_income": "N54", "k1_d_8582_net_loss": "R54",
+    "k1_d_8582_prior_year_loss": "V54",
+}
 F1040.INPUTS[2022] = F1040.inherit(2023, {
     "mortgage_interest": "S35",   # 'Sch. A' mortgage block -2 rows (2023 S37)
     "property_tax": "M26",        # 'Sch. A' +1 row (2023 M25)
+    **_SCHE_8582_2022,            # '8582' property table +1 row (see note above)
 }, source="inputs")
 F1040.OUTPUTS[2022] = F1040.inherit(2023, {
     "sch_a_line_5e_salt_capped": "M30",   # 'Sch. A' +1 row (2023 M29)
+    "f8582_line_11_oracle": "AE44",       # '8582' +1 row (2023 AE43)
 }, source="outputs")
 F1040.SHEET_MAP[2022] = dict(F1040.SHEET_MAP[2023])
