@@ -1,4 +1,9 @@
-"""PDF field mappings for IRS Form 1120-S (2023, 2024, and 2025).
+"""PDF field mappings for IRS Form 1120-S.
+
+Declared years are whatever ``_MAPPINGS`` below carries, which tracks
+``tenforty.years.SCORP_FEDERAL_YEARS`` (the manifest is the single source of
+truth for year support — this docstring intentionally names no year list so it
+cannot go stale).
 
 Direct entries (`_MAPPING_<year>`) map a compute output key to one PDF
 field path. Aggregations (`_AGGREGATIONS_<year>`) describe PDF cells that
@@ -357,6 +362,10 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
 
     _FORM_NAME = "Form 1120-S"
     _MAPPINGS: dict[int, dict[str, str]] = {
+        # 2021 field-to-line assignment verified IDENTICAL to 2022 by
+        # side-by-side marker-probe (pdfs/federal/2021/f1120s.probe.pdf);
+        # both are the pre-2023 layout. Inherits the 2022 mapping verbatim.
+        2021: _MAPPING_2022,
         2022: _MAPPING_2022,
         2023: _MAPPING_2023, 2024: _MAPPING_2024, 2025: _MAPPING_2025,
     }
@@ -549,19 +558,28 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
 _SUPPRESSED_2022: frozenset[str] = frozenset({"f1120s_refundable_credits"})
 
 
+# 2021 inherits every 2022 tax-and-payments registry verbatim: the 2021 and
+# 2022 templates are the identical pre-2023 layout (marker-probe confirmed), so
+# the two aggregation cells (f1_38, f1_39), the refund derivation (f1_48), the
+# refundable_credits suppression, and the Page-2 XFA checkbox on-states all
+# carry over unchanged.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
+    2021: _AGGREGATIONS_2022,
     2022: _AGGREGATIONS_2022,
     2023: _AGGREGATIONS_2024, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
+    2021: _DERIVATIONS_2022,
     2022: _DERIVATIONS_2022,
     2023: _DERIVATIONS_2024, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2021: _SUPPRESSED_2022,
     2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2024, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: _CHECKBOX_STATES_2024,
     2022: _CHECKBOX_STATES_2024,
     2023: _CHECKBOX_STATES_2024, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }

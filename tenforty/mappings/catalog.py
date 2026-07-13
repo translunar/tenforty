@@ -10,6 +10,8 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_8959 import Pdf8959
+from tenforty.mappings.pdf_f100s import PdfF100S
+from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.mappings.pdf_f540 import PdfF540
@@ -46,6 +48,8 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "f8995"): FormEntry(PdfF8995, "f8995"),
     ("federal", "f1120s"): FormEntry(PdfF1120S, "f1120s"),
     ("federal", "f1120s_k1"): FormEntry(PdfF1120SK1, "f1120s_k1"),
+    ("california", "f100s"): FormEntry(PdfF100S, "f100s"),
+    ("california", "f100s_k1"): FormEntry(PdfF100SK1, "f100s_k1"),
     ("california", "f540"): FormEntry(PdfF540, "f540"),
     ("california", "sch_ca"): FormEntry(PdfSchCa, "sch_ca"),
     ("california", "sch_d_540"): FormEntry(PdfSchD540, "sch_d_540"),
@@ -55,6 +59,12 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # stays green while the holes are real. Every entry here is WORK OWED —
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
+#
+# EMPTY: the S-corp emit pack is now complete — no cells owed. The final two
+# gaps (federal f1120s / f1120s_k1 for 2021) were retired when the 2021
+# federal emit slice landed (2021 inherits the marker-probe-verified 2022
+# mappings). Both CA S-corp forms were already fully packed across all
+# CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 

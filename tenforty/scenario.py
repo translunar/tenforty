@@ -21,6 +21,7 @@ from tenforty.models import (
     Form1099INT,
     ItemizedDeductions,
     RentalProperty,
+    SCorpCAInputs,
     SCorpDeductions,
     SCorpIncome,
     SCorpPayments,
@@ -136,6 +137,49 @@ def _load_payments(data: dict) -> SCorpPayments:
     )
 
 
+_KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
+    "first_year", "estimated_tax_payments", "prior_year_overpayment_applied",
+    "state_tax_deducted_federally", "depreciation_adjustment",
+    "apportionment_ca_only",
+})
+
+
+def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
+    """Parse the optional ``s_corp_return.ca`` block fail-closed: an unknown
+    key raises ValueError (mirroring the top-level loader) rather than being
+    silently dropped, and non-100%-CA apportionment raises at load (v1 scope)."""
+    if data is None:
+        return None
+    unknown = set(data) - _KNOWN_SCORP_CA_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in s_corp_return.ca: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_SCORP_CA_KEYS)}")
+    required = (
+        "first_year", "estimated_tax_payments",
+        "prior_year_overpayment_applied", "state_tax_deducted_federally",
+        "depreciation_adjustment", "apportionment_ca_only",
+    )
+    missing = [k for k in required if k not in data]
+    if missing:
+        raise ValueError(
+            f"CA S-corp inputs missing required key(s): {sorted(missing)}")
+    inputs = SCorpCAInputs(
+        first_year=bool(data["first_year"]),
+        estimated_tax_payments=float(data["estimated_tax_payments"]),
+        prior_year_overpayment_applied=float(
+            data["prior_year_overpayment_applied"]),
+        state_tax_deducted_federally=float(data["state_tax_deducted_federally"]),
+        depreciation_adjustment=float(data["depreciation_adjustment"]),
+        apportionment_ca_only=bool(data["apportionment_ca_only"]),
+    )
+    if not inputs.apportionment_ca_only:
+        raise ValueError(
+            "CA S-corp v1 supports only 100% California apportionment "
+            "(s_corp_return.ca.apportionment_ca_only must be true).")
+    return inputs
+
+
 def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
     """Build SCorpReturn from a YAML-parsed dict. Each section uses an
     explicit-field-names loader (not `**` dict-spread) so a typoed YAML
@@ -164,6 +208,7 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         ],
         scope_outs=_load_scope_outs(data.get("scope_outs", {})),
         payments=_load_payments(data.get("payments", {})),
+        ca=_load_scorp_ca(data.get("ca")),
     )
 
 

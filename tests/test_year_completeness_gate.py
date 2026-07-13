@@ -10,6 +10,7 @@ from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
 from tenforty.mappings.catalog import CATALOG, KNOWN_GAPS
 from tenforty.params import california as ca_params
+from tenforty.params import ca_scorp
 from tenforty.params.federal import load as load_federal
 from tenforty.tax_table import load_table
 from tests.fixtures.spine_battery import battery_for
@@ -32,7 +33,9 @@ class FederalCompletenessTests(unittest.TestCase):
             with self.subTest(year=year, piece="battery"):
                 self.assertGreater(len(battery_for(year)), 0)
             for (juris, form), entry in sorted(CATALOG.items()):
-                if juris != "federal" or (juris, form, year) in KNOWN_GAPS:
+                if (juris != "federal"
+                        or form in year_manifest.SCORP_FORMS
+                        or (juris, form, year) in KNOWN_GAPS):
                     continue
                 with self.subTest(year=year, form=form, piece="template"):
                     template = (_PDFS / juris / str(year)
@@ -43,6 +46,14 @@ class FederalCompletenessTests(unittest.TestCase):
                     entry.mapping_cls.get_mapping(year)  # raises if absent
 
     def test_workbook_years_have_workbooks(self):
+        # Layer-6 penny-parity (vs a third-party XLSX workbook) is a FEDERAL
+        # 1040 acceptance layer only; it is deliberately NOT part of the
+        # S-corp family's pack. No third-party workbook exists for Form
+        # 1120-S or CA Form 100S (SCORP_FEDERAL_YEARS / CA_SCORP_YEARS), so
+        # WORKBOOK_YEARS excludes them by design. The named substitute
+        # acceptance oracle for the S-corp family is the hand-coded,
+        # air-gapped tests/oracles/f100s_reference.py, exercised by
+        # tests/test_f100s_oracle_battery.py (spec §7 layer 6).
         for year in year_manifest.WORKBOOK_YEARS:
             with self.subTest(year=year):
                 workbook = (REPO_ROOT / "spreadsheets" / "federal"
@@ -66,6 +77,55 @@ class FederalComputeOnlyCompletenessTests(unittest.TestCase):
                     f"tests.params_attestations.federal_y{year}")
             with self.subTest(year=year, piece="tax_table"):
                 self.assertGreater(len(load_table("federal", year)), 1_000)
+
+class ScorpCompletenessTests(unittest.TestCase):
+    def test_every_scorp_federal_year_has_a_complete_pack(self):
+        for (juris, form), entry in sorted(CATALOG.items()):
+            if juris != "federal" or form not in year_manifest.SCORP_FORMS:
+                continue
+            for year in year_manifest.SCORP_FEDERAL_YEARS:
+                if (juris, form, year) in KNOWN_GAPS:
+                    continue
+                with self.subTest(year=year, form=form, piece="template"):
+                    template = (_PDFS / juris / str(year)
+                                / f"{entry.template_stem}.pdf")
+                    self.assertTrue(template.exists(), f"missing {template}")
+                    self.assertGreater(template.stat().st_size, 50_000)
+                with self.subTest(year=year, form=form, piece="mapping"):
+                    entry.mapping_cls.get_mapping(year)
+
+
+class CAScorpCompletenessTests(unittest.TestCase):
+    """Manifest-driven, tier-aware completeness for the CA S-corp family.
+
+    Unlike the CATALOG-driven federal/California checks above, this gate is
+    driven straight off the manifest (CA_SCORP_FORMS x CA_SCORP_YEARS) so a
+    declared CA-S-corp cell CANNOT be silently packless: if the form is not
+    yet catalogued or computed, the cell reddens here rather than being
+    invisible (years.py: 'no silent half-support in either direction').
+    CA_SCORP is a full compute+emit tier, so each cell owes its year-agnostic
+    compute module and attested per-year params (compute), plus a
+    marker-probe-certified PDF mapping + template (emit). Cells mid-build are
+    listed in KNOWN_GAPS with the plan task that fills them, retired as the
+    full compute+emit pack for each cell lands."""
+
+    def test_every_ca_scorp_cell_has_a_complete_pack(self):
+        for form in year_manifest.CA_SCORP_FORMS:
+            for year in year_manifest.CA_SCORP_YEARS:
+                if ("california", form, year) in KNOWN_GAPS:
+                    continue
+                with self.subTest(year=year, form=form, piece="compute"):
+                    importlib.import_module(f"tenforty.forms.{form}")
+                    self.assertEqual(ca_scorp.load(year).year, year)
+                with self.subTest(year=year, form=form, piece="attestation"):
+                    importlib.import_module(
+                        f"tests.params_attestations.ca_scorp_y{year}")
+                with self.subTest(year=year, form=form, piece="emit"):
+                    entry = CATALOG[("california", form)]
+                    template = (_PDFS / "california" / str(year)
+                                / f"{entry.template_stem}.pdf")
+                    self.assertTrue(template.exists(), f"missing {template}")
+                    entry.mapping_cls.get_mapping(year)
 
 
 class CaliforniaCompletenessTests(unittest.TestCase):

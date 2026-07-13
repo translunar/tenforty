@@ -14,7 +14,11 @@ from tests.helpers import REPO_ROOT
 _PDFS = REPO_ROOT / "pdfs"
 
 
-def _years_for(jurisdiction: str) -> tuple[int, ...]:
+def _years_for(jurisdiction: str, form: str) -> tuple[int, ...]:
+    if form in year_manifest.SCORP_FORMS:
+        return year_manifest.SCORP_FEDERAL_YEARS
+    if form in year_manifest.CA_SCORP_FORMS:
+        return year_manifest.CA_SCORP_YEARS
     return (year_manifest.FEDERAL_YEARS if jurisdiction == "federal"
             else year_manifest.CALIFORNIA_YEARS)
 
@@ -23,14 +27,18 @@ class CatalogShapeTests(unittest.TestCase):
     def test_catalog_covers_manifest_form_sets_exactly(self):
         federal = {form for (juris, form) in CATALOG if juris == "federal"}
         california = {form for (juris, form) in CATALOG if juris == "california"}
-        self.assertEqual(federal, set(year_manifest.FEDERAL_FORMS))
-        self.assertEqual(california, set(year_manifest.CALIFORNIA_FORMS))
+        self.assertEqual(federal,
+                         set(year_manifest.FEDERAL_FORMS)
+                         | set(year_manifest.SCORP_FORMS))
+        self.assertEqual(california,
+                         set(year_manifest.CALIFORNIA_FORMS)
+                         | set(year_manifest.CA_SCORP_FORMS))
 
 
 class FieldsExistOnTemplateTests(unittest.TestCase):
     def test_every_mapped_field_exists_on_blank_template(self):
         for (jurisdiction, form), entry in sorted(CATALOG.items()):
-            for year in _years_for(jurisdiction):
+            for year in _years_for(jurisdiction, form):
                 if (jurisdiction, form, year) in KNOWN_GAPS:
                     continue
                 with self.subTest(jurisdiction=jurisdiction, form=form,
@@ -62,7 +70,7 @@ class CheckboxStatesAreMappedTests(unittest.TestCase):
             cls = entry.mapping_cls
             if not hasattr(cls, "get_checkbox_states"):
                 continue
-            for year in _years_for(jurisdiction):
+            for year in _years_for(jurisdiction, form):
                 if (jurisdiction, form, year) in KNOWN_GAPS:
                     continue
                 with self.subTest(jurisdiction=jurisdiction, form=form,
