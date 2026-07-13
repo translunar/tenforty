@@ -89,6 +89,28 @@ def _guard_out_of_scope(filed: dict) -> None:
             )
 
 
+def _guard_original_overpayment(filed: dict, case: AmendmentCase) -> None:
+    """IF the filed dict carries an ``"overpaid"`` key (the original federal
+    overpayment — NOT a REQUIRED_FILED_KEYS member, checked if-present only),
+    machine-check that the case describes the SAME as-filed-or-as-last-adjusted
+    snapshot: the case's stated original overpayment (line 18 = received +
+    applied) must EXACTLY equal it. Absence of the key is fine (no check);
+    contradiction is not. The tail's net-owed/refund invariant holds only under
+    this equality — this converts it from a documented assumption to a machine
+    check."""
+    if "overpaid" not in filed:
+        return
+    stated = irs_round(case.original_refund_received + case.original_refund_applied)
+    filed_overpay = filed["overpaid"]
+    if stated != filed_overpay:
+        raise ValueError(
+            f"1040-X consistency: case states original overpayment {stated} "
+            f"but the filed return shows {filed_overpay}. Filed values and the "
+            f"amendment case must describe the same as-filed-or-as-last-adjusted "
+            f"snapshot."
+        )
+
+
 def _triple(out: dict, line: str, a: float, c: float) -> None:
     """Emit an A/B/C triple with B = C - A (so A + B == C by construction)."""
     out[f"f1040x_line{line}_a"] = a
@@ -104,9 +126,17 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     Column B is C - A. Lines 16-23 are single-column amounts derived per the
     form's printed arithmetic. ``case`` supplies the original-return overpayment
     (line 18), the Part II explanation, and the amended year.
+
+    The tail's net-owed/refund invariant (line 20/22 tracking corrected total
+    tax against original payments net of the original overpayment) HOLDS ONLY
+    when the case's stated original overpayment equals the filed return's
+    original overpayment; when the filed dict carries an ``"overpaid"`` key,
+    ``_guard_original_overpayment`` makes that precondition a machine check
+    rather than a documented assumption.
     """
     _require_filed_keys(filed)
     _guard_out_of_scope(filed)
+    _guard_original_overpayment(filed, case)
 
     out: dict = {}
 
