@@ -77,6 +77,26 @@ class CaScorpPacketEmitTests(unittest.TestCase):
                                       f100s_map["f100s_franchise_tax"]))),
                     round(float(results["f100s_franchise_tax"])),
                 )
+                # (1b) L26/L30 total-tax intermediates round-trip to the
+                # line-21 franchise tax (v1: no credits, no other taxes).
+                self.assertEqual(
+                    int(float(_read_v(f100s_path,
+                                      f100s_map["f100s_total_tax"]))),
+                    round(float(results["f100s_franchise_tax"])),
+                )
+                self.assertEqual(
+                    int(float(_read_v(
+                        f100s_path,
+                        f100s_map["f100s_total_tax_after_other_taxes"]))),
+                    round(float(results["f100s_franchise_tax"])),
+                )
+                # (1c) L38 payments balance round-trips to total payments
+                # (v1: no use tax, so L38 = L36).
+                self.assertEqual(
+                    int(float(_read_v(f100s_path,
+                                      f100s_map["f100s_payments_balance"]))),
+                    round(float(results["f100s_total_payments"])),
+                )
                 # (2) an identity line — the injected FEIN.
                 self.assertEqual(
                     _read_v(f100s_path, f100s_map["f100s_entity_fein"]),

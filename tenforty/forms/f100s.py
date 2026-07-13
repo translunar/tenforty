@@ -38,10 +38,17 @@ def compute(scenario, upstream) -> dict:
         "f100s_measured_tax": measured,
         "f100s_minimum_tax_applies": minimum_applies,
         "f100s_franchise_tax": irs_round(tax),
+        # v1 pass-through totals so the emitted form is internally consistent
+        # with L40/L41: with no credits (L22-25), no other taxes (L27-29), and
+        # no use tax (L37), the arithmetic collapses to L26=L30=L21 (the tax)
+        # and L38=L36 (total payments).
+        "f100s_total_tax": irs_round(tax),                       # Side 2 L26
+        "f100s_total_tax_after_other_taxes": irs_round(tax),     # Side 2 L30
         "f100s_estimated_tax_payments": irs_round(ca.estimated_tax_payments),
         "f100s_prior_year_overpayment_applied":
             irs_round(ca.prior_year_overpayment_applied),
         "f100s_total_payments": irs_round(payments),
+        "f100s_payments_balance": irs_round(payments),           # Side 2 L38
         "f100s_amount_owed": irs_round(max(delta, 0.0)),
         "f100s_overpayment": irs_round(max(-delta, 0.0)),
     }
