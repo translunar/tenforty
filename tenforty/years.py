@@ -73,6 +73,36 @@ CA_SCORP_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 CA_SCORP_FORMS: tuple[str, ...] = ("f100s", "f100s_k1")
 
 
+# Amendment tier — REVISION-keyed, not year-keyed. An amended return is filed
+# on the CURRENT revision of the amendment form regardless of which tax year is
+# being corrected: one printed template revision of Form 1040-X (and of CA
+# Schedule X) serves EVERY amendable year. So the completeness gate demands the
+# amendment pack (template + probe + mapping) ONCE per (form, revision) — not
+# once per year. AMENDMENT_TEMPLATE_REVISIONS records the revision tag each form
+# is pinned to; the pack is owed against that single revision.
+AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")
+
+# PLACEHOLDER revision tags (each matches r"^rev-"). Task 3 fetches the real
+# templates and CORRECTS these to the templates' actual printed revision dates
+# if the placeholders don't match reality.
+AMENDMENT_TEMPLATE_REVISIONS: dict[str, str] = {
+    "f1040x": "rev-2024-02",
+    "schedule_x": "rev-2024",
+}
+
+
+def amendable_federal_years() -> tuple[int, ...]:
+    """Federal years an amended return can be prepared for: the full-pack
+    years plus the compute-only years (both carry the compute surface a
+    reconciliation needs). Derived from the manifest so it can never drift."""
+    return tuple(sorted(FEDERAL_YEARS + FEDERAL_COMPUTE_ONLY_YEARS))
+
+
+def amendable_california_years() -> tuple[int, ...]:
+    """California analogue of amendable_federal_years()."""
+    return tuple(sorted(CALIFORNIA_YEARS + CALIFORNIA_COMPUTE_ONLY_YEARS))
+
+
 def describe(years: Iterable[int]) -> str:
     """Render a year set for error messages: '2021, 2024, 2025'."""
     return ", ".join(str(y) for y in sorted(years))

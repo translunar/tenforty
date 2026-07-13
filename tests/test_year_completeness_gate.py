@@ -8,7 +8,7 @@ import unittest
 
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
-from tenforty.mappings.catalog import CATALOG, KNOWN_GAPS
+from tenforty.mappings.catalog import AMENDMENT_KNOWN_GAPS, CATALOG, KNOWN_GAPS
 from tenforty.params import california as ca_params
 from tenforty.params import ca_scorp
 from tenforty.params.federal import load as load_federal
@@ -184,6 +184,31 @@ class AttestationYearBoundCoverageTests(unittest.TestCase):
                     f"{sorted(uncovered)} outside its law window — review "
                     f"whether the statute still applies and extend or "
                     f"re-scope deliberately")
+
+
+class AmendmentCompletenessTests(unittest.TestCase):
+    """REVISION-keyed (not year-keyed): each AMENDMENT_FORMS entry owes ONE
+    pack — template at pdfs/<juris>/amendments/<form>.pdf, probe artifact,
+    mapping module resolving get_mapping(revision) — for its declared
+    revision. AMENDMENT_KNOWN_GAPS allowlists cells mid-build, keyed
+    (form, revision), retired as packs land."""
+
+    _JURIS = {"f1040x": "federal", "schedule_x": "california"}
+
+    def test_every_amendment_form_has_its_revision_pack(self):
+        for form in year_manifest.AMENDMENT_FORMS:
+            rev = year_manifest.AMENDMENT_TEMPLATE_REVISIONS[form]
+            if (form, rev) in AMENDMENT_KNOWN_GAPS:
+                continue
+            base = REPO_ROOT / "pdfs" / self._JURIS[form] / "amendments"
+            with self.subTest(form=form, piece="template"):
+                self.assertTrue((base / f"{form}.pdf").exists())
+            with self.subTest(form=form, piece="probe"):
+                self.assertTrue((base / f"{form}.probe.pdf").exists())
+            with self.subTest(form=form, piece="mapping"):
+                mod = importlib.import_module(
+                    f"tenforty.mappings.pdf_{form}")
+                self.assertTrue(mod.get_mapping(rev))
 
 
 class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):
