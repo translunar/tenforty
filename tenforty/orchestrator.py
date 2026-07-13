@@ -171,10 +171,12 @@ def _format_rate_percent(rate: float) -> str:
 def _split_ownership_percent(fraction: float) -> tuple[str, str]:
     """Schedule K-1 (100S) Item A renders the allocation % as two boxes,
     "<whole>.<frac>%". Split an ownership fraction (0-1) into the integer part
-    and a two-digit fractional part: 1.0 -> ("100", "00"); 0.6 -> ("60", "00")."""
-    pct = fraction * 100.0
-    whole = int(pct)
-    frac = round((pct - whole) * 100)
+    and a two-digit fractional part: 1.0 -> ("100", "00"); 0.6 -> ("60", "00");
+    0.29 -> ("29", "00"). Uses integer arithmetic on hundredths-of-a-percent
+    (rather than float truncation) so the fractional box is structurally
+    always two digits in 00-99, never "100"."""
+    hundredths = round(fraction * 10000)  # total hundredths of a percent
+    whole, frac = divmod(hundredths, 100)
     return str(whole), f"{frac:02d}"
 
 
