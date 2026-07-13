@@ -17,8 +17,10 @@ The six f100s_entity_* keys carry the corporation's identity onto Side 1; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
-intentionally unmapped; the line-21 rate box (field 2013) is likewise left
-blank in v1 (the tax amount at field 2014 is mapped).
+intentionally unmapped. The line-21 rate box (field 2013, key f100s_tax_rate)
+IS mapped; its value is injected at emit from the attested
+params.franchise_tax_rate, formatted as the form prints the percentage, so a
+filed 100S reads "1.5% x line 20" complete.
 """
 from tenforty.mappings.registry import PdfFormMapping
 
@@ -27,11 +29,12 @@ from tenforty.mappings.registry import PdfFormMapping
 # NAMESPACE differs by year: 2021-2023 name the widget with the bare number
 # ("1031"); 2024-2025 prefix it ("100S Form 1031"). Same line, two name forms.
 _SUFFIX: dict[str, str] = {
-    "f100s_federal_ordinary_income":        "1031",  # Side 1 L1 Ordinary income (fed 1120-S)
+    "f100s_federal_ordinary_income":        "1031",  # Side 1 L1 Ordinary income; label cites fed 1120-S "line 21" (2021-22) / "line 22" (2023-25) — same field & semantic
     "f100s_state_tax_addback":              "1032",  # Side 1 L2 CA franchise/income tax deducted
     "f100s_depreciation_adjustment":        "1035",  # Side 1 L5 Depreciation & amort adjustments
     "f100s_net_income_for_tax":             "2012",  # Side 2 L20 Net income for tax purposes
     "f100s_franchise_tax":                  "2014",  # Side 2 L21 Tax amount
+    "f100s_tax_rate":                       "2013",  # Side 2 L21 Tax RATE %-box (emit-injected: params.franchise_tax_rate formatted as printed %)
     "f100s_prior_year_overpayment_applied": "2028",  # Side 2 L31 Overpayment from prior year credit
     "f100s_estimated_tax_payments":         "2029",  # Side 2 L32 Estimated tax/QSub payments
     "f100s_total_payments":                 "2033",  # Side 2 L36 Total payments
