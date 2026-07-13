@@ -1,4 +1,9 @@
-"""PDF field mappings for IRS Form 1120-S (2023, 2024, and 2025).
+"""PDF field mappings for IRS Form 1120-S.
+
+Declared years are whatever ``_MAPPINGS`` below carries, which tracks
+``tenforty.years.SCORP_FEDERAL_YEARS`` (the manifest is the single source of
+truth for year support — this docstring intentionally names no year list so it
+cannot go stale).
 
 Direct entries (`_MAPPING_<year>`) map a compute output key to one PDF
 field path. Aggregations (`_AGGREGATIONS_<year>`) describe PDF cells that
