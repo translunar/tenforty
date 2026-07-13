@@ -60,9 +60,18 @@ class TestPdf4868Mapping(unittest.TestCase):
         for key in part_ii_keys:
             self.assertIn(key, mapping, f"Missing Part II key: '{key}'")
 
-    def test_voucher_key_present(self):
-        mapping = Pdf4868.get_mapping(2025)
-        self.assertIn("voucher_amount", mapping)
+    def test_voucher_amount_is_not_mapped(self):
+        # Regression guard (whole-branch review finding): voucher_amount
+        # (= balance due, a compute output) has NO valid PDF target on the
+        # modern Form 4868. The legacy 4868-V payment voucher was removed;
+        # Page3's sole fillable field is the "Enter confirmation number here"
+        # manual-entry blank (marker-probe render-confirmed). Mapping it printed
+        # the balance into that blank on every template year. It must stay
+        # UNMAPPED for all years; line 7 "Amount you're paying" is owned
+        # separately by amount_paying_with_extension.
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertNotIn("voucher_amount", Pdf4868.get_mapping(year))
 
     def test_mapping_values_are_strings(self):
         mapping = Pdf4868.get_mapping(2025)
