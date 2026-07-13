@@ -53,9 +53,13 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
             "out_of_country": "topmostSubform[0].Page1[0].c1_1[0]",
             "nonresident_alien": "topmostSubform[0].Page1[0].c1_2[0]",
 
-            # === Form 4868-V payment voucher ===
-            # 2024 uses Col3 (not Col4 as in 2025).
-            "voucher_amount": "topmostSubform[0].Page3[0].Col3[0].f3_1[0]",
+            # voucher_amount is intentionally NOT mapped. The modern Form 4868
+            # has no detachable 4868-V payment voucher; Page3's sole fillable
+            # field is the "Enter confirmation number here" manual-entry blank
+            # (marker-probe render-confirmed). Mapping voucher_amount there
+            # printed the balance into that blank. It stays a compute output
+            # with no PDF cell. Line 7 "Amount you're paying" is owned by
+            # amount_paying_with_extension (Page1.f1_14).
         },
         2025: {
             # === VoucherHeader — fiscal-year date fields ===
@@ -96,9 +100,9 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
             # Line 9: Nonresident alien filing 1040-NR checkbox (/Btn — see class note)
             "nonresident_alien": "topmostSubform[0].Page1[0].c1_2[0]",
 
-            # === Form 4868-V payment voucher (Page3 in XFA structure) ===
-            # Dollar amount on the detachable payment voucher
-            "voucher_amount": "topmostSubform[0].Page3[0].Col4[0].f3_1[0]",
+            # voucher_amount intentionally NOT mapped — see the 2024 block.
+            # No detachable voucher on the modern form; Page3's only fillable
+            # field is the confirmation-number blank.
         },
     }
 
@@ -108,3 +112,9 @@ class Pdf4868(PdfFormMapping[dict[str, str]]):
 # fields-on-template gate re-verifies existence; the 2023 emit + parity gates
 # verify positions.
 Pdf4868._MAPPINGS[2023] = Pdf4868._MAPPINGS[2024]
+
+# 2022's Form 4868 keeps 2023's identical field-NAME inventory and mapped paths
+# (page-1 amount cells lines 4-7, identical geometry). Page3's only field is the
+# confirmation-number blank, now intentionally unmapped for every year (see the
+# 2024 block). So 2022 reuses the 2023 payload.
+Pdf4868._MAPPINGS[2022] = Pdf4868._MAPPINGS[2023]
