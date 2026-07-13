@@ -37,15 +37,24 @@ Out of scope (explicit):
 - E-file/MeF formats — paper packets only.
 - Amending years without full tenforty federal support — the amendable
   set is DERIVED from the manifest (§5); no special-casing.
-- Amended entity returns as a DIFF exercise: neither the 1120-S nor the
-  100S has a separate "-X" form — both amend by re-filing the COMPLETE
-  corrected return with an "amended return" checkbox (1120-S box H(4);
-  the 100S amended-return checkbox; FTB retired Form 100X for TY2019+)
-  and amended-marked K-1s. The complete-corrected-return emit already
-  exists (S-corp packet), so the three-column assembler does NOT apply
-  to entities and is NOT built for them. What IS in scope (§4a): the
-  checkbox and amended-K-1-mark mappings, so an entity amendment or
-  late original is a scenario flag away.
+- Amended entity returns as a DIFF exercise. FEDERAL: the 1120-S has no
+  separate "-X" form — it amends by re-filing the COMPLETE corrected
+  return with box H(4) "Amended return" checked and amended-marked K-1s.
+  CALIFORNIA (corrected during implementation — the original draft of
+  this section wrongly claimed FTB retired Form 100X and that the 100S
+  carries an amended-return checkbox; template probes proved no such
+  checkbox exists on any 2021–2025 Form 100S, and the current FTB Form
+  100X instructions say "Use Form 100X to amend a previously filed
+  Form 100, Form 100S, or Form 100W"): a CA S-corp amendment files on
+  Form 100X, a revision-keyed three-column form tenforty does NOT yet
+  support — deferred to a followup, needed only if an already-filed
+  100S must be corrected. The K-1 (100S) amended mark DOES exist on the
+  printed schedule and IS mapped. The complete-corrected-return emit
+  already exists (S-corp packet), so the emitted amended-marked
+  100S + K-1s serve as the corrected-return basis for a
+  preparer-completed 100X; the packet manifest says so explicitly.
+  What IS in scope (§4a): the marks that exist on the printed forms —
+  1120-S box H(4), amended K-1 (1120-S), amended K-1 (100S).
 - Multiple sequential amendments of the same year beyond what Column A
   as-last-adjusted supports: the filed-values file is defined as "as
   originally filed OR as last adjusted"; maintaining that file across
@@ -129,16 +138,22 @@ Additions to the EXISTING S-corp mappings, not new machinery:
 
 - `SCorpReturn` gains `amended_return: bool = False` (and the existing
   K-1 allocation emit gains the per-K-1 amended mark when it is set).
-- Mappings: 1120-S box H(4) checkbox; K-1 (1120-S) "Amended K-1"
-  checkbox; 100S amended-return checkbox; K-1 (100S) amended checkbox —
-  each probe-certified per year like any mapped field, with checkbox
-  state read-back in the filled-emit tests.
-- The Part-III-style explanation attachment for an amended 1120-S/100S
-  is a preparer-supplied page in the mailing packet, not a generated
-  form — noted in the packet manifest, out of emit scope.
-- Filing an amended entity return = the normal S-corp packet run with
-  the flag set and corrected inputs. No diff assembler; the agencies
-  receive the complete corrected return either way.
+- Mappings — the THREE marks that exist on the printed forms: 1120-S
+  box H(4) checkbox; K-1 (1120-S) "Amended K-1" checkbox; K-1 (100S)
+  amended checkbox. (The Form 100S itself has NO amended-return
+  checkbox on any supported year — see the §1 correction; the CA
+  filing vehicle is Form 100X, out of scope.) Each mark is
+  probe-certified per year like any mapped field, with checkbox state
+  read-back in the filled-emit tests.
+- The Part-III-style explanation attachment for an amended 1120-S is a
+  preparer-supplied page in the mailing packet, not a generated form —
+  noted in the packet manifest, out of emit scope.
+- Filing an amended FEDERAL entity return = the normal S-corp packet
+  run with the flag set and corrected inputs. No diff assembler; the
+  IRS receives the complete corrected return. For CALIFORNIA, the same
+  flagged run produces the amended-marked 100S + K-1s that accompany a
+  preparer-completed Form 100X; the packet manifest states that 100X
+  itself is not emitted.
 
 ## 5. Manifest — the year-agnostic form family
 
