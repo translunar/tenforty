@@ -55,7 +55,13 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # stays green while the holes are real. Every entry here is WORK OWED —
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
+    # 2021 federal S-corp emit pack lands in the S-corp emit plan (Plan B):
+    # templates + marker-probed mappings not yet fetched/authored. Compute
+    # for 2021 is provided by the S-corp compute plan; only emit is owed.
+    ("federal", "f1120s", 2021),
+    ("federal", "f1120s_k1", 2021),
+})
 
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
