@@ -74,8 +74,8 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 # years.AMENDMENT_TEMPLATE_REVISIONS so the keys match at runtime. Each entry
 # is WORK OWED and is retired as its pack lands in Tasks 3-6.
 AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str]] = frozenset({
-    ("f1040x", "rev-2024-02"),
-    ("schedule_x", "rev-2024"),
+    ("f1040x", "rev-2025-12"),   # template+probe landed Task 3; mapping lands Task 6
+    ("schedule_x", "rev-2024"),  # PLACEHOLDER — becomes year-keyed cells with the Schedule X commit
 })  # pack lands in Tasks 3-6
 
 
