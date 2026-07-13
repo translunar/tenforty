@@ -8,7 +8,7 @@ import unittest
 
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
-from tenforty.mappings.catalog import CATALOG, KNOWN_GAPS
+from tenforty.mappings.catalog import AMENDMENT_KNOWN_GAPS, CATALOG, KNOWN_GAPS
 from tenforty.params import california as ca_params
 from tenforty.params import ca_scorp
 from tenforty.params.federal import load as load_federal
@@ -184,6 +184,41 @@ class AttestationYearBoundCoverageTests(unittest.TestCase):
                     f"{sorted(uncovered)} outside its law window — review "
                     f"whether the statute still applies and extend or "
                     f"re-scope deliberately")
+
+
+class AmendmentCompletenessTests(unittest.TestCase):
+    """MIXED-keyed amendment tier. f1040x is REVISION-keyed (one pack for the
+    current 1040-X revision serves every amendable federal year); schedule_x is
+    YEAR-keyed (the FTB publishes a per-year Schedule X, so one pack per
+    amendable California year). Each cell owes template + probe + mapping.
+    AMENDMENT_KNOWN_GAPS allowlists cells mid-build — keyed (form, revision) for
+    f1040x and (form, year) for schedule_x — retired as packs land."""
+
+    def test_f1040x_revision_pack(self):
+        rev = year_manifest.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
+        if ("f1040x", rev) in AMENDMENT_KNOWN_GAPS:
+            self.skipTest(f"f1040x @ {rev} allowlisted in AMENDMENT_KNOWN_GAPS")
+        base = REPO_ROOT / "pdfs" / "federal" / "amendments"
+        with self.subTest(piece="template"):
+            self.assertTrue((base / "f1040x.pdf").exists())
+        with self.subTest(piece="probe"):
+            self.assertTrue((base / "f1040x.probe.pdf").exists())
+        with self.subTest(piece="mapping"):
+            mod = importlib.import_module("tenforty.mappings.pdf_f1040x")
+            self.assertTrue(mod.get_mapping(rev))
+
+    def test_schedule_x_year_packs(self):
+        base = REPO_ROOT / "pdfs" / "california" / "amendments"
+        for year in year_manifest.amendable_california_years():
+            if ("schedule_x", year) in AMENDMENT_KNOWN_GAPS:
+                continue
+            with self.subTest(year=year, piece="template"):
+                self.assertTrue((base / f"schedule_x_{year}.pdf").exists())
+            with self.subTest(year=year, piece="probe"):
+                self.assertTrue((base / f"schedule_x_{year}.probe.pdf").exists())
+            with self.subTest(year=year, piece="mapping"):
+                mod = importlib.import_module("tenforty.mappings.pdf_schedule_x")
+                self.assertTrue(mod.get_mapping(year))
 
 
 class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):

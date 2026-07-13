@@ -597,6 +597,14 @@ class SCorpReturn:
     scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
     payments: SCorpPayments = field(default_factory=SCorpPayments)
     ca: SCorpCAInputs | None = None
+    # §4a amended-return marks. When True, the emit path checks the
+    # "Amended return" box on Form 1120-S (H(4)), each Schedule K-1
+    # (1120-S) ("Amended K-1"), and each Schedule K-1 (100S) (line E
+    # "amended"). CA S-corp amendments themselves file on Form 100X (not
+    # emitted by tenforty); this flag marks the corrected 100S/K-1 set that
+    # accompanies a preparer-completed 100X. Default False (an ordinary,
+    # non-amended return).
+    amended_return: bool = False
 
 
 class DivergenceSource(str, Enum):
@@ -711,6 +719,32 @@ class K1Allocation:
     shareholder: K1AllocationShareholder
     ownership_percentage: float
     box_1_ordinary_business_income: float
+
+
+@dataclass(frozen=True)
+class AmendmentCase:
+    """The narrative + prior-refund context for an amended return, supplied
+    alongside a corrected scenario and the filed-values file. Carries no tax
+    math — only the 1040-X explanation and the original refund figures needed
+    to reconcile Columns A/B/C. `prior_amendment_note` is the sole optional
+    NARRATIVE field (a filer amending a return that was itself already amended).
+
+    CA analogues (`ca_original_refund_*`) carry the California Schedule X
+    original-overpayment context — the CA original overpayment the filer
+    received or applied forward (Schedule X line 2 = received + applied,
+    mirroring federal line 18). They default to ``None`` rather than 0.0 so a
+    FEDERAL-ONLY amendment case still loads without stating them, but
+    ``schedule_x.assemble_ca`` FAILS CLOSED at the point of use if a CA
+    amendment is assembled while either is None: the filer must ASSERT the CA
+    original-payment context (even if it is 0), it is never inferred."""
+
+    year: int
+    explanation: str
+    original_refund_received: float
+    original_refund_applied: float
+    prior_amendment_note: str | None = None
+    ca_original_refund_received: float | None = None
+    ca_original_refund_applied: float | None = None
 
 
 @dataclass

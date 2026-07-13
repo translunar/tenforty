@@ -6,6 +6,7 @@ complete pack is the (future) completeness gate's job, not this test's.
 """
 import unittest
 
+from tenforty import years
 from tenforty import years as year_manifest
 
 
@@ -81,3 +82,28 @@ class ScorpTiersTests(unittest.TestCase):
 
     def test_ca_scorp_forms_declared(self):
         self.assertEqual(year_manifest.CA_SCORP_FORMS, ("f100s", "f100s_k1"))
+
+
+class AmendmentTierTests(unittest.TestCase):
+    def test_amendment_forms_declared(self):
+        self.assertEqual(years.AMENDMENT_FORMS, ("f1040x", "schedule_x"))
+
+    def test_f1040x_is_revision_keyed(self):
+        # f1040x files on the current 1040-X revision for every amendable year.
+        self.assertIn("f1040x", years.AMENDMENT_TEMPLATE_REVISIONS)
+        self.assertRegex(years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"], r"^rev-")
+
+    def test_schedule_x_is_year_keyed(self):
+        # The FTB publishes a per-year Schedule X, so it is year-keyed and owes
+        # no revision tag — it must NOT appear in AMENDMENT_TEMPLATE_REVISIONS.
+        self.assertNotIn("schedule_x", years.AMENDMENT_TEMPLATE_REVISIONS)
+
+    def test_amendable_years_derive_from_support(self):
+        self.assertEqual(
+            years.amendable_federal_years(),
+            tuple(sorted(years.FEDERAL_YEARS
+                         + years.FEDERAL_COMPUTE_ONLY_YEARS)))
+        self.assertEqual(
+            years.amendable_california_years(),
+            tuple(sorted(years.CALIFORNIA_YEARS
+                         + years.CALIFORNIA_COMPUTE_ONLY_YEARS)))
