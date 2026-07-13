@@ -9,7 +9,9 @@ import importlib
 import unittest
 
 from tenforty import years as year_manifest
+from tenforty.params import ca_scorp
 from tenforty.params import california as ca_params
+from tenforty.params.ca_scorp import CAScorpParams
 from tenforty.params.california import CaliforniaParams
 from tenforty.params.federal import FederalParams
 from tenforty.params.federal import load as load_federal
@@ -94,3 +96,11 @@ class CaliforniaAttestationTests(unittest.TestCase):
             _assert_attested(
                 self, ca_params.load(year), CaliforniaParams,
                 f"tests.params_attestations.california_y{year}")
+
+
+class CAScorpAttestationTests(unittest.TestCase):
+    def test_every_ca_scorp_year_attested(self):
+        for year in year_manifest.CA_SCORP_YEARS:
+            _assert_attested(
+                self, ca_scorp.load(year), CAScorpParams,
+                f"tests.params_attestations.ca_scorp_y{year}")
