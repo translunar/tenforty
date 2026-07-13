@@ -10,7 +10,8 @@ from tenforty.params.federal import load as load_federal
 
 class FederalParamsLoadTests(unittest.TestCase):
     def test_every_manifest_year_loads_and_selfidentifies(self):
-        for year in year_manifest.FEDERAL_YEARS:
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
             with self.subTest(year=year):
                 self.assertEqual(load_federal(year).year, year)
 
