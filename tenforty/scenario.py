@@ -155,6 +155,15 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
         raise ValueError(
             f"Unknown key(s) in s_corp_return.ca: {sorted(unknown)}. "
             f"Known keys: {sorted(_KNOWN_SCORP_CA_KEYS)}")
+    required = (
+        "first_year", "estimated_tax_payments",
+        "prior_year_overpayment_applied", "state_tax_deducted_federally",
+        "depreciation_adjustment", "apportionment_ca_only",
+    )
+    missing = [k for k in required if k not in data]
+    if missing:
+        raise ValueError(
+            f"CA S-corp inputs missing required key(s): {sorted(missing)}")
     inputs = SCorpCAInputs(
         first_year=bool(data["first_year"]),
         estimated_tax_payments=float(data["estimated_tax_payments"]),

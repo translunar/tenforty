@@ -88,3 +88,70 @@ class SchBCheckboxRenderTests(unittest.TestCase):
     def test_owns_foreign_entity_checkbox_is_checked(self):
         v = self._v("topmostSubform[0].Page2[0].c2_4[0]")
         self.assertEqual(v, "/1", f"owns_foreign_entity /V was {v!r}; expected '/1'")
+
+
+class SchBCheckboxRender2021Tests(unittest.TestCase):
+    """2021 certification: the S-corp-only federal year (no 1040 spine) emits
+    its Sch B checkbox states through the PUBLIC run_full_federal_scorp_return.
+
+    get_checkbox_states(2021) dispatches to _CHECKBOX_STATES_2024; this reopens
+    the real filled f1120s_2021.pdf and asserts the same non-default Sch B
+    checkboxes round-trip to their expected on-states, certifying render (not
+    just the mapping table) for 2021."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = tempfile.TemporaryDirectory()
+        scenario = load_scenario(FIXTURES_DIR / "scorp_sch_b_nondefault.yaml")
+        scenario.config.year = 2021
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(cls._tmp.name),
+        )
+        out_dir = Path(cls._tmp.name) / "out"
+        _results, emitted = orch.run_full_federal_scorp_return(scenario, out_dir)
+        reader = PdfReader(str(emitted["1120s"]))
+        cls._fields = reader.get_fields() or {}
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._tmp.cleanup()
+
+    def _v(self, full_field_name: str):
+        field = self._fields.get(full_field_name)
+        if field is None:
+            return None
+        raw = field.get("/V")
+        if raw is None:
+            return None
+        return str(raw)
+
+    # accrual = True  →  c2_1[1] state is /2 (2024 on-states)
+    def test_accounting_method_accrual_checkbox_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_1[1]")
+        self.assertEqual(v, "/2", f"accrual checkbox /V was {v!r}; expected '/2'")
+
+    # cash = False (not selected) →  c2_1[0] should NOT be /1
+    def test_accounting_method_cash_checkbox_is_off(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_1[0]")
+        self.assertNotEqual(v, "/1", f"cash checkbox /V was {v!r}; expected NOT '/1'")
+
+    # other = False (not selected) →  c2_1[2] should NOT be /3
+    def test_accounting_method_other_checkbox_is_off(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_1[2]")
+        self.assertNotEqual(v, "/3", f"other checkbox /V was {v!r}; expected NOT '/3'")
+
+    # has_any_foreign_shareholders = True  →  c2_2[0] state is /1
+    def test_has_any_foreign_shareholders_checkbox_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_2[0]")
+        self.assertEqual(v, "/1", f"has_any_foreign_shareholders /V was {v!r}; expected '/1'")
+
+    # any_c_corp_subsidiaries = True  →  c2_3[0] state is /1
+    def test_any_c_corp_subsidiaries_checkbox_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_3[0]")
+        self.assertEqual(v, "/1", f"any_c_corp_subsidiaries /V was {v!r}; expected '/1'")
+
+    # owns_foreign_entity = True  →  c2_4[0] state is /1
+    def test_owns_foreign_entity_checkbox_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_4[0]")
+        self.assertEqual(v, "/1", f"owns_foreign_entity /V was {v!r}; expected '/1'")

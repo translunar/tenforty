@@ -84,6 +84,8 @@ class PdfF100SK1MappingTests(unittest.TestCase):
                                          f"{year} {key} -> {mapping[key]}")
                     # blank-stays-blank guard: an unmapped Side-1 field (the
                     # calendar-year date field) must remain empty.
-                    guard = fields.get(_guard_field(year))
-                    if guard is not None:
-                        self.assertEqual((guard.get("/V") or ""), "")
+                    name = _guard_field(year)
+                    self.assertIn(
+                        name, fields,
+                        f"guard field {name!r} absent on {year} template")
+                    self.assertEqual((fields[name].get("/V") or ""), "")
