@@ -76,7 +76,19 @@ def load_amendment_case(path: Path) -> AmendmentCase:
         original_refund_received=float(data["original_refund_received"]),
         original_refund_applied=float(data["original_refund_applied"]),
         prior_amendment_note=data.get("prior_amendment_note"),
+        # CA Schedule X analogues: OPTIONAL at load (a federal-only case omits
+        # them) — left None when absent, never coerced to 0.0. schedule_x
+        # .assemble_ca fails closed if a CA amendment needs them while None.
+        ca_original_refund_received=_optional_float(
+            data.get("ca_original_refund_received")),
+        ca_original_refund_applied=_optional_float(
+            data.get("ca_original_refund_applied")),
     )
+
+
+def _optional_float(value: object) -> float | None:
+    """Coerce a present value to float; preserve absence (None) as None."""
+    return None if value is None else float(value)
 
 
 def load_filed_values(
