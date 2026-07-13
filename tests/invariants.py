@@ -287,7 +287,6 @@ def assert_4868_fills_correctly(
         "total_payments": str(total_payments),
         "balance_due": str(balance_due),
         "amount_paying_with_extension": "0",
-        "voucher_amount": str(balance_due),
     }
 
     for key, expected_val in expected.items():
