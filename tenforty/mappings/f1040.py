@@ -970,3 +970,159 @@ F1040.OUTPUTS[2022] = F1040.inherit(2023, {
     "f8582_line_11_oracle": "AE44",       # '8582' +1 row (2023 AE43)
 }, source="outputs")
 F1040.SHEET_MAP[2022] = dict(F1040.SHEET_MAP[2023])
+
+
+# --- Federal 2021 workbook wiring (BOUNDED PARTIAL WIRE) --------------------
+# The TY2021 vendor workbook STRUCTURALLY OMITS the Form 8582 tab (passive-
+# activity loss limitation): proven by named-range absence — F8582_Line9 /
+# F8582_MAGI exist in the 2022 workbook and are gone in 2021, with no renamed
+# equivalent. The passive-activity key group therefore has NO oracle target in
+# 2021 no matter how it is wired. Rather than an ad-hoc drop, those keys are
+# declared in the explicit WORKBOOK_KEY_EXCLUSIONS registry below, which:
+#   (1) the parity harness READS and surfaces as explicit skips-with-reason
+#       (never silently absent),
+#   (2) is typo-guarded — a test asserts every excluded key exists in another
+#       workbook year's map, and
+#   (3) is governed by the restated invariant: a workbook year yields full
+#       penny-parity over its DECLARED surface; exclusions are explicit,
+#       reasoned, and gated.
+# Every OTHER surface is wired off 2022 with full drift discipline — each moved
+# cell is proven by a CONSUMER formula in the 2021 workbook, never by value-
+# equality on a blank data-entry cell. Two sheets drifted vs 2022; the rest are
+# identical (named-range outputs resolve by name and were verified present):
+#
+#  - 'W-2s': the state-tax rows shifted UP 1 (fewer intermediate rows in 2021).
+#    Proven by the box-label column: box 16 label A22->A21, box 17 label
+#    A23->A22 (boxes 1-6 labels at rows 3-8 are unchanged, so C3..C8 are
+#    stable). So w2_state_wages_1 C22->C21 and w2_state_withheld_1 C23->C22.
+#
+#  - 'Sch. E': TWO different shifts in one sheet (a value-equality inference
+#    would have gotten this wrong). The property-header row moved UP 1 while
+#    the income+expense block moved UP 3. Both proven by the same consumer
+#    formula: 2022 AZ24 '=IF(D21<>6,V30,0)' -> 2021 AZ23 '=IF(D20<>6,V27,0)'
+#    (property_type D21->D20 is -1; rents V30->V27 is -3 in the SAME formula),
+#    corroborated by the expense subtotal 2022 V48 '...SUM(V33:AC47)...' ->
+#    2021 V45 '...SUM(V30:AC44)...' (the 15-row expense block -3) and the
+#    depreciation rollups 2022 SUM(V40..)/SUM(V46..) -> 2021 SUM(V37..)/
+#    SUM(V43..). So property cells (D/AA/AF)21 -> (…)20, and the income+
+#    expense cells V30/V33..V47 -> V27/V30..V44.
+#
+#  - 'Sch. A': IDENTICAL to 2022 — mortgage reader MIN(S..,ROUND(S35,0)),
+#    property reader O27='=ROUND(M26,0)', line-5e M30='=…MIN(M28,O22)' all
+#    match, so the three 2022 cell-address overrides (S35/M26/M30) carry
+#    unchanged.
+#  - '8949A'/'8949B': IDENTICAL — F8949 box/total named ranges resolve to the
+#    same cells (C25/C27/C78/C80 checkboxes; Q55/Q116 totals) and the section
+#    headers sit at the same rows, so the 2022 F8949 box slots apply as-is.
+#  - '1099-INT'/'1099-DIV': IDENTICAL — labels at the same rows (D6; 1a/1b/2a
+#    at rows 6/7/8).
+#
+# The 33 named ranges present in 2022 but absent in 2021 (F2555 foreign-income
+# family, IRA-distribution split, the F8582_* set) are scope-documented in the
+# followups ledger; only the 8582 set is referenced by our maps and needs the
+# exclusion. The Sch. E Part II K-1 cells ALSO drifted -3 (same as the income/
+# expense block) and are overridden below — the battery populates no K-1s, but
+# the merged-cell guard requires every input cell be writable, so they are
+# re-homed onto their 2021 anchor cells. 1099-G cells are inherited unchanged
+# (the battery populates no 1099-G, so they are never written); the soffice
+# parity gate is the backstop for any cell we moved.
+
+# (year, key) -> human reason. A workbook year yields full penny-parity over
+# its DECLARED surface; where a vendor workbook structurally omits a form, that
+# form's keys are excluded here — explicitly, with a reason, and gated. NOT an
+# ad-hoc skip. Consumed by tests/test_f1040_spine_oracle.py.
+WORKBOOK_KEY_EXCLUSIONS: dict[tuple[int, str], str] = {}
+_F8582_KEYS_2022 = tuple(
+    k for k, v in F1040.SHEET_MAP[2022].items() if v == "8582")
+for _key in _F8582_KEYS_2022:
+    WORKBOOK_KEY_EXCLUSIONS[(2021, _key)] = (
+        "TY2021 vendor workbook omits the Form 8582 tab (passive-activity "
+        "loss limitation) — no oracle target exists for this key")
+
+_SCHE_2021 = {
+    # property-header region: -1 row (proven by AZ23 IF(D20<>6,...) + row-21->20
+    # property-column consumers).
+    "sche_property_type_a": "D20",
+    "sche_fair_rental_days_a": "AA20",
+    "sche_personal_use_days_a": "AF20",
+    # income + expense region: -3 rows (rents V30->V27 from the same AZ23
+    # formula; the 15-row expense block V33..V47 -> V30..V44 from SUM range).
+    "sche_rents_a": "V27",
+    "sche_advertising_a": "V30",
+    "sche_auto_and_travel_a": "V31",
+    "sche_cleaning_and_maintenance_a": "V32",
+    "sche_commissions_a": "V33",
+    "sche_insurance_a": "V34",
+    "sche_legal_and_professional_fees_a": "V35",
+    "sche_management_fees_a": "V36",
+    "sche_mortgage_interest_a": "V37",
+    "sche_other_interest_a": "V38",
+    "sche_repairs_a": "V39",
+    "sche_supplies_a": "V40",
+    "sche_taxes_a": "V41",
+    "sche_utilities_a": "V42",
+    "sche_depreciation_a": "V43",
+    "sche_other_expenses_a": "V44",
+    # Sch. E Part II (K-1 pass-through) is the SAME -3 shift as the income/
+    # expense block. Proven by the printed entity-letter row markers (col B:
+    # 'A' at 2022 row 80 -> 2021 row 77; income 'A' at 2022 row 88 -> 2021
+    # row 85) and merge-geometry alignment (the entity-name merge C{r}:N{r}
+    # and income merges C{r}:J{r}/K{r}:R{r} each shift -3 onto their writable
+    # anchor cell). Without this override the inherited 2022 rows land on 2021
+    # NON-anchor MergedCells (writes raise) — caught by the merged-cell guard.
+    # The battery exercises no K-1s, so these are wired for map-writability +
+    # completeness, not for parity coverage (K-1 income is not in PARITY_KEYS).
+    "k1_a_entity_name": "C77",
+    "k1_a_entity_type_s_corp": "O77",
+    "k1_a_entity_type_partnership": "O77",
+    "k1_a_entity_ein": "Y77",
+    "k1_b_entity_name": "C78",
+    "k1_b_entity_type_s_corp": "O78",
+    "k1_b_entity_type_partnership": "O78",
+    "k1_b_entity_ein": "Y78",
+    "k1_c_entity_name": "C79",
+    "k1_c_entity_type_s_corp": "O79",
+    "k1_c_entity_type_partnership": "O79",
+    "k1_c_entity_ein": "Y79",
+    "k1_d_entity_name": "C80",
+    "k1_d_entity_type_s_corp": "O80",
+    "k1_d_entity_type_partnership": "O80",
+    "k1_d_entity_ein": "Y80",
+    "k1_a_passive_loss": "C85",
+    "k1_a_passive_income": "K85",
+    "k1_a_nonpassive_loss": "S85",
+    "k1_a_nonpassive_income": "AH85",
+    "k1_b_passive_loss": "C86",
+    "k1_b_passive_income": "K86",
+    "k1_b_nonpassive_loss": "S86",
+    "k1_b_nonpassive_income": "AH86",
+    "k1_c_passive_loss": "C87",
+    "k1_c_passive_income": "K87",
+    "k1_c_nonpassive_loss": "S87",
+    "k1_c_nonpassive_income": "AH87",
+    "k1_d_passive_loss": "C88",
+    "k1_d_passive_income": "K88",
+    "k1_d_nonpassive_loss": "S88",
+    "k1_d_nonpassive_income": "AH88",
+}
+
+
+def _wire_2021() -> None:
+    """Build 2021 maps off 2022 with the proven drift overrides, then drop the
+    exclusion-registry keys from every map (inherit() merges but cannot remove,
+    so the removal is explicit here and single-sourced from the registry)."""
+    excluded = {k for (yr, k) in WORKBOOK_KEY_EXCLUSIONS if yr == 2021}
+    inputs = F1040.inherit(2022, {
+        "w2_state_wages_1": "C21",     # 'W-2s' box-16 row -1 (2022 C22)
+        "w2_state_withheld_1": "C22",  # 'W-2s' box-17 row -1 (2022 C23)
+        **_SCHE_2021,
+    }, source="inputs")
+    outputs = F1040.inherit(2022, {}, source="outputs")  # Sch.A M30 unchanged
+    F1040.INPUTS[2021] = {k: v for k, v in inputs.items() if k not in excluded}
+    F1040.OUTPUTS[2021] = {k: v for k, v in outputs.items()
+                           if k not in excluded}
+    F1040.SHEET_MAP[2021] = {k: v for k, v in F1040.SHEET_MAP[2022].items()
+                             if k not in excluded}
+
+
+_wire_2021()
