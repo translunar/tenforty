@@ -136,6 +136,27 @@ def _require_ca_case_context(case: AmendmentCase) -> None:
         )
 
 
+def _guard_ca_overpayment_matches_filed(filed: dict, case: AmendmentCase) -> None:
+    """Machine-check that the case and the filed values describe the SAME
+    as-filed-or-as-last-adjusted snapshot: the case's stated original
+    overpayment (Schedule X line 2 = received + applied) must EXACTLY equal the
+    filed return's original overpayment (the negative part of the signed filed
+    net liability). The net-owed/refund invariant (L7 - L11 == corrected -
+    filed) holds ONLY under this equality — this guard converts that from a
+    documented assumption into a machine check. A filed OWED return (positive
+    liability) has overpayment 0, forcing the stated overpayment to be 0."""
+    stated = irs_round(
+        case.ca_original_refund_received + case.ca_original_refund_applied)
+    filed_overpay = irs_round(max(0.0, -filed["f540_total_liability"]))
+    if stated != filed_overpay:
+        raise ValueError(
+            f"Schedule X consistency: case states original overpayment {stated} "
+            f"but the filed return shows {filed_overpay}. Filed values and the "
+            f"amendment case must describe the same as-filed-or-as-last-adjusted "
+            f"snapshot."
+        )
+
+
 def assemble_ca(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     """Assemble CA Schedule X Part I line values from filed + corrected f540
     results dicts.
@@ -144,10 +165,16 @@ def assemble_ca(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     ``corrected`` supplies the AMENDED return's net position (trusted — already
     rounded by the f540 compute); ``case`` supplies the original overpayment
     context (line 2) and the Part II explanation + taxable year.
+
+    The net-owed/refund invariant (L7 - L11 == corrected - filed f540 net
+    liability) HOLDS ONLY when the case's stated original overpayment equals
+    the filed return's original overpayment; ``_guard_ca_overpayment_matches_filed``
+    makes that precondition a machine check rather than a documented assumption.
     """
     _require_ca_filed_keys(filed)
     _guard_out_of_scope(filed)
     _require_ca_case_context(case)
+    _guard_ca_overpayment_matches_filed(filed, case)
 
     corrected_tl = corrected["f540_total_liability"]
     filed_tl = filed["f540_total_liability"]

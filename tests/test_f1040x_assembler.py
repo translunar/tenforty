@@ -144,6 +144,42 @@ class F1040XAssemblerTests(unittest.TestCase):
         with self.assertRaises(OutOfScopeAmendmentError):
             assemble(filed, corrected, case)
 
+    def test_federal_overpaid_key_mismatch_refuses(self):
+        # Filed carries an original overpayment of 500, but the case claims the
+        # filer received/applied 1000 — contradictory snapshots. Refuse.
+        filed = self._filed(overpaid=500.0)
+        corrected = self._filed(overpaid=500.0)
+        case = self._case(
+            original_refund_received=1000.0, original_refund_applied=0.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            assemble(filed, corrected, case)
+        msg = str(ctx.exception)
+        self.assertIn("1000", msg)  # stated case overpayment
+        self.assertIn("500", msg)  # filed original overpayment
+
+    def test_federal_overpaid_key_match_passes(self):
+        # Filed original overpayment 500; case received+applied == 500.
+        filed = self._filed(overpaid=500.0)
+        corrected = self._filed(overpaid=500.0)
+        case = self._case(
+            original_refund_received=500.0, original_refund_applied=0.0
+        )
+        out = assemble(filed, corrected, case)
+        self.assertEqual(out["f1040x_line18_overpayment_on_original"], 500)
+
+    def test_federal_overpaid_key_absent_no_check(self):
+        # No "overpaid" key -> the if-present guard does not fire; existing
+        # behavior (no consistency check) is preserved.
+        filed = self._filed()
+        corrected = self._filed()
+        self.assertNotIn("overpaid", filed)
+        case = self._case(
+            original_refund_received=999.0, original_refund_applied=0.0
+        )
+        out = assemble(filed, corrected, case)
+        self.assertEqual(out["f1040x_line18_overpayment_on_original"], 999)
+
     def test_required_filed_keys_are_the_column_a_sources(self):
         self.assertEqual(
             set(REQUIRED_FILED_KEYS),

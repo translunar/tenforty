@@ -181,6 +181,47 @@ class ScheduleXAssemblerTests(unittest.TestCase):
     def test_required_ca_filed_keys(self):
         self.assertEqual(set(REQUIRED_CA_FILED_KEYS), {"f540_total_liability"})
 
+    def test_ca_stated_overpayment_must_match_filed_refuses(self):
+        # Filed original overpaid 200, but the case claims a 5000 overpayment —
+        # they describe different as-filed snapshots. Refuse.
+        filed = self._filed(f540_total_liability=-200.0)
+        corrected = self._corrected(f540_total_liability=-200.0)
+        case = self._case(
+            ca_original_refund_received=5000.0, ca_original_refund_applied=0.0
+        )
+        with self.assertRaises(ValueError) as ctx:
+            assemble_ca(filed, corrected, case)
+        msg = str(ctx.exception)
+        self.assertIn("5000", msg)  # stated case overpayment
+        self.assertIn("200", msg)  # filed original overpayment
+
+    def test_ca_stated_overpayment_matches_passes(self):
+        # Filed original overpaid 200; case states exactly 200 -> consistent.
+        filed = self._filed(f540_total_liability=-200.0)
+        corrected = self._corrected(f540_total_liability=-200.0)
+        case = self._case(
+            ca_original_refund_received=200.0, ca_original_refund_applied=0.0
+        )
+        out = assemble_ca(filed, corrected, case)
+        self.assertEqual(out["schedule_x_line2"], 200)
+
+    def test_ca_filed_owed_requires_zero_stated_overpayment(self):
+        # Filed OWED (positive liability) -> filed original overpayment is 0,
+        # so the stated overpayment must be exactly 0.
+        filed = self._filed(f540_total_liability=500.0)
+        corrected = self._corrected(f540_total_liability=500.0)
+        ok_case = self._case(
+            ca_original_refund_received=0.0, ca_original_refund_applied=0.0
+        )
+        out = assemble_ca(filed, corrected, ok_case)
+        self.assertEqual(out["schedule_x_line2"], 0)
+        # A nonzero stated overpayment against a filed-owed return is refused.
+        bad_case = self._case(
+            ca_original_refund_received=300.0, ca_original_refund_applied=0.0
+        )
+        with self.assertRaises(ValueError):
+            assemble_ca(filed, corrected, bad_case)
+
 
 if __name__ == "__main__":
     unittest.main()
