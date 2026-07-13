@@ -36,8 +36,15 @@ Out of scope (explicit):
 - E-file/MeF formats — paper packets only.
 - Amending years without full tenforty federal support — the amendable
   set is DERIVED from the manifest (§5); no special-casing.
-- Amended entity returns (1120-S superseding/amended, 100S amended) —
-  a separate future workstream if needed.
+- Amended entity returns as a DIFF exercise: neither the 1120-S nor the
+  100S has a separate "-X" form — both amend by re-filing the COMPLETE
+  corrected return with an "amended return" checkbox (1120-S box H(4);
+  the 100S amended-return checkbox; FTB retired Form 100X for TY2019+)
+  and amended-marked K-1s. The complete-corrected-return emit already
+  exists (S-corp packet), so the three-column assembler does NOT apply
+  to entities and is NOT built for them. What IS in scope (§4a): the
+  checkbox and amended-K-1-mark mappings, so an entity amendment or
+  late original is a scenario flag away.
 - Multiple sequential amendments of the same year beyond what Column A
   as-last-adjusted supports: the filed-values file is defined as "as
   originally filed OR as last adjusted"; maintaining that file across
@@ -106,6 +113,23 @@ defers to the preparer.
 CA ignores the selector — the amended 540 is always the complete return,
 plus changed schedules per FTB practice (selector output reused as a
 suggestion list for CA schedule attachments).
+
+## 4a. Entity amended-return marks (small scope)
+
+Additions to the EXISTING S-corp mappings, not new machinery:
+
+- `SCorpReturn` gains `amended_return: bool = False` (and the existing
+  K-1 allocation emit gains the per-K-1 amended mark when it is set).
+- Mappings: 1120-S box H(4) checkbox; K-1 (1120-S) "Amended K-1"
+  checkbox; 100S amended-return checkbox; K-1 (100S) amended checkbox —
+  each probe-certified per year like any mapped field, with checkbox
+  state read-back in the filled-emit tests.
+- The Part-III-style explanation attachment for an amended 1120-S/100S
+  is a preparer-supplied page in the mailing packet, not a generated
+  form — noted in the packet manifest, out of emit scope.
+- Filing an amended entity return = the normal S-corp packet run with
+  the flag set and corrected inputs. No diff assembler; the agencies
+  receive the complete corrected return either way.
 
 ## 5. Manifest — the year-agnostic form family
 
