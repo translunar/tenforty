@@ -97,8 +97,10 @@ class TestBalanceDueSingle(unittest.TestCase):
     def test_line7_amount_paying(self):
         self.assertEqual(self._fields.get(FIELD_LINE7), "0")
 
-    def test_voucher_amount(self):
-        self.assertEqual(self._fields.get(FIELD_VOUCHER), "3000")
+    def test_confirmation_field_stays_blank(self):
+        # voucher_amount is unmapped: the page-3 confirmation-number blank must
+        # NOT receive the balance (it is manual post-payment user entry).
+        self.assertEqual(self._fields.get(FIELD_VOUCHER, ""), "")
 
     def test_ssn_populated(self):
         self.assertEqual(self._fields.get(FIELD_SSN), "000-00-0001")
@@ -156,8 +158,10 @@ class TestRefundCase(unittest.TestCase):
     def test_line6_floored_to_zero(self):
         self.assertEqual(self._fields.get(FIELD_LINE6), "0")
 
-    def test_voucher_amount_zero(self):
-        self.assertEqual(self._fields.get(FIELD_VOUCHER), "0")
+    def test_confirmation_field_stays_blank(self):
+        # voucher_amount unmapped — confirmation-number blank stays empty even
+        # in the refund case.
+        self.assertEqual(self._fields.get(FIELD_VOUCHER, ""), "")
 
 
 @unittest.skipUnless(F4868_TEMPLATE.exists(), "f4868.pdf template not found")

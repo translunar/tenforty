@@ -112,3 +112,8 @@ class PdfSchB(PdfFormMapping[dict[str, str]]):
     _MAPPINGS: dict[int, dict[str, str]] = {
         2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS,
     }
+
+# 2022's Schedule B keeps 2023's identical field-NAME inventory and mapped paths.
+# Geometry has one isolated horizontal nudge (dividend row f1_65 -14.4pt x), which
+# cannot change a line assignment. So 2022 reuses the 2023 payload.
+PdfSchB._MAPPINGS[2022] = PdfSchB._MAPPINGS[2023]

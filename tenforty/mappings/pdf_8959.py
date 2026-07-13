@@ -31,3 +31,7 @@ class Pdf8959(PdfFormMapping[dict]):
     # 2023's field tree is byte-identical to 2024's (verified: identical
     # AcroForm field-path sets), so one payload serves all three years.
     _MAPPINGS: dict[int, dict] = {2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+
+# 2022's Form 8959 keeps 2023's identical field-NAME inventory and mapped paths;
+# the only mapped nudge is the header SSN (+1pt x, cosmetic). 2022 reuses 2023.
+Pdf8959._MAPPINGS[2022] = Pdf8959._MAPPINGS[2023]

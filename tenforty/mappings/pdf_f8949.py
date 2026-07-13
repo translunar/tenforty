@@ -184,3 +184,8 @@ class PdfF8949(PdfFormMapping[dict]):
     _MAPPINGS: dict[int, dict] = {
         year: _build_mapping(geom) for year, geom in _GEOM.items()
     }
+
+# 2022's Form 8949 field tree is byte-identical to 2023's (verified widget-level:
+# same names, pages, and /Rects), so 2022 reuses 2023's row geometry and payload.
+_GEOM[2022] = _GEOM[2023]
+PdfF8949._MAPPINGS[2022] = PdfF8949._MAPPINGS[2023]

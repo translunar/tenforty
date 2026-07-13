@@ -924,3 +924,49 @@ F1040.OUTPUTS[2023] = F1040.inherit(2024, {
     "sch_a_line_5e_salt_capped": "M29",   # 'Sch. A' col -1 (2024 N29)
 }, source="outputs")
 F1040.SHEET_MAP[2023] = dict(F1040.SHEET_MAP[2024])
+
+# 2022's workbook matches 2023's layout EXCEPT the 'Sch. A' sheet, which the
+# vendor reorganized vs 2023. Only the three 'Sch. A' cell-ADDRESS references
+# need overrides (the named-range outputs Standard/TotalDeductions/QBID resolve
+# by name); each verified per-cell against spreadsheets/federal/{2022,2023}/1040.xlsx:
+#  - property_tax input +1 row (2023 M25 -> 2022 M26): 2022 reader
+#    O27='=ROUND(M26,0)' mirrors 2023 O26='=ROUND(M25,0)'.
+#  - sch_a_line_5e_salt_capped output +1 row (2023 M29 -> 2022 M30): 2022
+#    M30='=IF(Q30<>"",ROUND(Q30,0),MIN(M28,O22))' mirrors 2023 M29's MIN(M27,O21).
+#  - mortgage_interest input: the mortgage debt-limit block shifted -2 rows, so
+#    2023 S37 -> 2022 S35. The 2022 deduction reader M38='=MIN(S43,ROUND(S35,0))'
+#    consumes S35 exactly as 2023 M37='=MIN(S42,ROUND(S37,0))' consumes S37; the
+#    debt limits (2023 S35/S36=1M/500k) sit at 2022 S33/S34.
+# The 'Sch 1, Line 1 (SALT)' worksheet and all other input sheets align with
+# 2023 (spot-checked). The cell-drift smoke over the itemizer scenario confirms.
+# The 2022 '8582' sheet's passive-activity property table is shifted +1 ROW vs
+# 2023 (proven: the column-sum consumer moved from 2023 N54='=SUM(N49..N53)' to
+# 2022 N55='=SUM(N50..N54)', so the five property rows N49-N53 became N50-N54).
+# Two consequences: (a) the Schedule-E row's net-income/net-loss cells (2023
+# N49/R49) are absorbed into the 2022 header merge N48:Q49 / R48:U49, so they are
+# read-only MergedCells and writing them raises AttributeError; (b) the K-1 rows
+# (2023 N50-N53) stay writable but at 2022 would land one property row too high.
+# Every 8582 cell-address reference therefore needs +1 row (all targets verified
+# writable). Line-11 output likewise: 2023 AE43='=IF(AO21,"",SUM(AE39,AE41))' ->
+# 2022 AE44='=IF(AO21,"",SUM(AE40,AE42))'.
+_SCHE_8582_2022 = {
+    "sche_8582_net_income": "N50", "sche_8582_net_loss": "R50",
+    "k1_a_8582_net_income": "N51", "k1_a_8582_net_loss": "R51",
+    "k1_a_8582_prior_year_loss": "V51",
+    "k1_b_8582_net_income": "N52", "k1_b_8582_net_loss": "R52",
+    "k1_b_8582_prior_year_loss": "V52",
+    "k1_c_8582_net_income": "N53", "k1_c_8582_net_loss": "R53",
+    "k1_c_8582_prior_year_loss": "V53",
+    "k1_d_8582_net_income": "N54", "k1_d_8582_net_loss": "R54",
+    "k1_d_8582_prior_year_loss": "V54",
+}
+F1040.INPUTS[2022] = F1040.inherit(2023, {
+    "mortgage_interest": "S35",   # 'Sch. A' mortgage block -2 rows (2023 S37)
+    "property_tax": "M26",        # 'Sch. A' +1 row (2023 M25)
+    **_SCHE_8582_2022,            # '8582' property table +1 row (see note above)
+}, source="inputs")
+F1040.OUTPUTS[2022] = F1040.inherit(2023, {
+    "sch_a_line_5e_salt_capped": "M30",   # 'Sch. A' +1 row (2023 M29)
+    "f8582_line_11_oracle": "AE44",       # '8582' +1 row (2023 AE43)
+}, source="outputs")
+F1040.SHEET_MAP[2022] = dict(F1040.SHEET_MAP[2023])

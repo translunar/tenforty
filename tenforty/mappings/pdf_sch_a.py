@@ -69,3 +69,7 @@ class PdfSchA(PdfFormMapping[dict]):
 # verify positions.
 PdfSchA._MAPPINGS[2023] = PdfSchA._MAPPINGS[2024]
 
+
+# 2022's Schedule A field tree is byte-identical to 2023's (verified widget-level:
+# same fully-qualified names, pages, and /Rects), so 2022 reuses the 2023 payload.
+PdfSchA._MAPPINGS[2022] = PdfSchA._MAPPINGS[2023]

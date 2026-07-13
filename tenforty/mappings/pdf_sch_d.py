@@ -313,3 +313,7 @@ class PdfSchD(PdfFormMapping[dict]):
 # fields-on-template gate re-verifies existence; the 2023 emit + parity gates
 # verify positions.
 PdfSchD._MAPPINGS[2023] = PdfSchD._MAPPINGS[2024]
+
+# 2022's Schedule D field tree is byte-identical to 2023's (verified widget-level:
+# same names, pages, and /Rects), so 2022 reuses the 2023 payload.
+PdfSchD._MAPPINGS[2022] = PdfSchD._MAPPINGS[2023]

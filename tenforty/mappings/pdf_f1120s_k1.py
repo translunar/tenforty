@@ -71,3 +71,7 @@ class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
     _MAPPINGS: dict[int, dict[str, str]] = {
         2023: _FIELDS_2023, 2024: _FIELDS, 2025: _FIELDS,
     }
+
+# 2022's Schedule K-1 field tree is byte-identical to 2023's (verified widget-level:
+# same names, pages, and /Rects), so 2022 reuses the 2023 payload.
+PdfF1120SK1._MAPPINGS[2022] = PdfF1120SK1._MAPPINGS[2023]
