@@ -17,14 +17,15 @@ already-validated computation, and arithmetic over the two.
 
 In scope:
 - `forms/f1040x.py`: Form 1040-X assembly — three-column line skeleton
-  (income/deductions/tax/credits/payments/refund-or-owed), Part III
+  (income/deductions/tax/credits/payments/refund-or-owed), Part II
   explanation passthrough, line-18 original-refund handling.
 - CA sibling (`forms/schedule_x.py`): Schedule X assembly over an amended
   540 run; the amended 540 itself is the existing f540 emit of the
   corrected scenario (CA files the COMPLETE corrected return).
 - Amendment-case input files (external, never in the repo — see §2).
 - Changed-forms selector for the federal attachment subset (§4).
-- Year-agnostic template concept in the manifest (§5).
+- Mixed-keying template concept in the manifest (§5): revision-keyed
+  1040-X, year-keyed Schedule X.
 - PDF emit for 1040-X and Schedule X under the marker-probe regime.
 - Packet assembler: gathers the amendment forms + attachments + a printed
   packet manifest listing exactly what mails.
@@ -65,7 +66,7 @@ the user's documents tree (never the repo):
   are now load-bearing legal inputs; the reconciliation review drill is
   their provenance discipline.
 - `amendment.yaml` — what math cannot derive:
-  - `explanation`: Part III / Schedule X Part II text (user/CPA words),
+  - `explanation`: the 1040-X Part II / Schedule X explanation text (user/CPA words),
   - `original_refund_received`: bool + amount context for 1040-X line 18
     (original-return overpayment received or applied),
   - `prior_amendment`: optional note that Column A reflects a prior
@@ -87,7 +88,15 @@ loader contract.
 3. Column B = C − A per line, mapped onto the 1040-X fixed line skeleton.
 4. Refund/owed tail: line 18 (original overpayment) from amendment.yaml,
    then the form's prescribed arithmetic to amount-owed / refund lines.
-5. Part III text passes through verbatim.
+   Per the Dec-2025 revision's actual layout: three columns exist for
+   lines 1-15 only (line 9 reserved — never mapped); lines 16-23 are
+   single-column; the explanation is Part II (page 2).
+5. Explanation text passes through verbatim to Part II.
+6. Out-of-scope refusal guards: amounts tenforty cannot recompute (EIC;
+   TY2025 Schedule 1-A deductions) are NOT mapped — if the filed values
+   carry a nonzero amount for one, assembly raises
+   OutOfScopeAmendmentError naming the reason rather than emitting a
+   blank where the filed return had a value.
 
 The CA path mirrors it: corrected 540 run (the amended 540 emit) +
 Schedule X assembled from filed CA values, the corrected run, and
@@ -135,10 +144,16 @@ Additions to the EXISTING S-corp mappings, not new machinery:
 
 New concept in `tenforty/years.py`:
 
-- `AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")` declared
-  with a TEMPLATE REVISION (e.g. the current IRS/FTB revision date), not
-  per-year templates. One template each; a form field carries WHICH
-  calendar year is being amended.
+- `AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")`, a MIXED
+  tier — each form encodes its agency's actual publication model:
+  - `f1040x` is REVISION-keyed: one current IRS revision (Rev. 12-2025)
+    covers all amendable years; a text write-in field carries which
+    calendar year is being amended (the Dec-2025 revision has no year
+    checkboxes).
+  - `schedule_x` is YEAR-keyed: FTB publishes Schedule X per taxable year
+    (year-specific beginning TY2023; per-year files exist for all
+    amendable years at forms/<year>/<year>-540-x.pdf), so it carries
+    per-year templates/probes/mappings like every other CA form.
 - `amendable_years()` is DERIVED: the years with full federal support
   (Column C requires a full run); CA amendable years likewise derive from
   CA support. No hand-maintained amendable list.
