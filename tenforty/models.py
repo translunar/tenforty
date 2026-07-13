@@ -713,6 +713,21 @@ class K1Allocation:
     box_1_ordinary_business_income: float
 
 
+@dataclass(frozen=True)
+class AmendmentCase:
+    """The narrative + prior-refund context for an amended return, supplied
+    alongside a corrected scenario and the filed-values file. Carries no tax
+    math — only the 1040-X explanation and the original refund figures needed
+    to reconcile Columns A/B/C. `prior_amendment_note` is the sole optional
+    field (a filer amending a return that was itself already amended)."""
+
+    year: int
+    explanation: str
+    original_refund_received: float
+    original_refund_applied: float
+    prior_amendment_note: str | None = None
+
+
 @dataclass
 class Scenario:
     config: TaxReturnConfig
