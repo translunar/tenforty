@@ -73,21 +73,30 @@ CA_SCORP_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 CA_SCORP_FORMS: tuple[str, ...] = ("f100s", "f100s_k1")
 
 
-# Amendment tier — REVISION-keyed, not year-keyed. An amended return is filed
-# on the CURRENT revision of the amendment form regardless of which tax year is
-# being corrected: one printed template revision of Form 1040-X (and of CA
-# Schedule X) serves EVERY amendable year. So the completeness gate demands the
-# amendment pack (template + probe + mapping) ONCE per (form, revision) — not
-# once per year. AMENDMENT_TEMPLATE_REVISIONS records the revision tag each form
-# is pinned to; the pack is owed against that single revision.
+# Amendment tier — a MIXED tier: the two amendment forms are keyed differently
+# because the two tax authorities publish them differently.
+#
+#   f1040x is REVISION-keyed. The IRS files an amended federal return on the
+#   CURRENT revision of Form 1040-X regardless of which tax year is being
+#   corrected: one printed template revision (Rev. December 2025) serves EVERY
+#   amendable federal year. So the gate demands the f1040x pack (template +
+#   probe + mapping) ONCE, against that single revision — not once per year.
+#   AMENDMENT_TEMPLATE_REVISIONS records the revision tag it is pinned to.
+#
+#   schedule_x is YEAR-keyed. The FTB publishes a per-year Schedule X (one
+#   printed form per tax year), so CA amendment support owes one pack — template
+#   + probe + mapping — for EACH year in amendable_california_years(), exactly
+#   like a normal California year-keyed form. schedule_x therefore does NOT
+#   appear in AMENDMENT_TEMPLATE_REVISIONS; its packs live at
+#   pdfs/california/amendments/schedule_x_<year>.pdf and its mapping resolves
+#   get_mapping(year).
 AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")
 
-# PLACEHOLDER revision tags (each matches r"^rev-"). Task 3 fetches the real
-# templates and CORRECTS these to the templates' actual printed revision dates
-# if the placeholders don't match reality.
+# Revision tags for the REVISION-keyed amendment forms ONLY (currently just
+# f1040x; schedule_x is year-keyed and is intentionally absent here). The tag
+# matches r"^rev-".
 AMENDMENT_TEMPLATE_REVISIONS: dict[str, str] = {
-    "f1040x": "rev-2025-12",  # Form 1040-X (Rev. December 2025), fetched Task 3
-    "schedule_x": "rev-2024",  # PLACEHOLDER — schedule_x moves to a YEAR-keyed pack (Schedule X commit)
+    "f1040x": "rev-2025-12",  # Form 1040-X (Rev. December 2025)
 }
 
 

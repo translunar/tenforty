@@ -68,15 +68,22 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
-# amendment pack is REVISION-keyed, not year-keyed, so these entries are
-# (form, revision) 2-tuples (KNOWN_GAPS is a (juris, form, year) 3-tuple; the
-# two shapes never mix). Same placeholder revision tags as
-# years.AMENDMENT_TEMPLATE_REVISIONS so the keys match at runtime. Each entry
-# is WORK OWED and is retired as its pack lands in Tasks 3-6.
-AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str]] = frozenset({
-    ("f1040x", "rev-2025-12"),   # template+probe landed Task 3; mapping lands Task 6
-    ("schedule_x", "rev-2024"),  # PLACEHOLDER — becomes year-keyed cells with the Schedule X commit
-})  # pack lands in Tasks 3-6
+# amendment tier is MIXED-keyed, so this frozenset holds two key SHAPES:
+#   - f1040x is REVISION-keyed → ("f1040x", revision)  e.g. ("f1040x", "rev-2025-12")
+#   - schedule_x is YEAR-keyed → ("schedule_x", year)  e.g. ("schedule_x", 2024)
+# i.e. (str, str) for f1040x and (str, int) for schedule_x. (KNOWN_GAPS above is
+# a (juris, form, year) 3-tuple; none of these three shapes collide.) The
+# revision tag matches years.AMENDMENT_TEMPLATE_REVISIONS and the schedule_x
+# years match years.amendable_california_years(), so the keys match at runtime.
+# Each entry is WORK OWED; all retire when the mapping packs land in Task 6.
+AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str] | tuple[str, int]] = frozenset({
+    ("f1040x", "rev-2025-12"),   # template+probe landed; mapping lands Task 6
+    ("schedule_x", 2021),        # template+probe landed; mapping lands Task 6
+    ("schedule_x", 2022),        # template+probe landed; mapping lands Task 6
+    ("schedule_x", 2023),        # template+probe landed; mapping lands Task 6
+    ("schedule_x", 2024),        # template+probe landed; mapping lands Task 6
+    ("schedule_x", 2025),        # template+probe landed; mapping lands Task 6
+})
 
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
