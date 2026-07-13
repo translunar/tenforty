@@ -61,6 +61,22 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # for 2021 is provided by the S-corp compute plan; only emit is owed.
     ("federal", "f1120s", 2021),
     ("federal", "f1120s_k1", 2021),
+    # CA S-corp family (Form 100S + Schedule K-1 (100S)): declared in the
+    # manifest ahead of its pack, so the manifest-driven
+    # CAScorpCompletenessTests demands each cell. Work owed per cell: compute
+    # module -> Plan A Tasks 5-6 (f100s / f100s_k1); attested params -> Plan A
+    # Task 3; PDF mapping + template -> Plan B Tasks 2-4. Each cell is retired
+    # when its full compute+emit pack lands.
+    ("california", "f100s", 2021),
+    ("california", "f100s", 2022),
+    ("california", "f100s", 2023),
+    ("california", "f100s", 2024),
+    ("california", "f100s", 2025),
+    ("california", "f100s_k1", 2021),
+    ("california", "f100s_k1", 2022),
+    ("california", "f100s_k1", 2023),
+    ("california", "f100s_k1", 2024),
+    ("california", "f100s_k1", 2025),
 })
 
 
