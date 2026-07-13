@@ -19,9 +19,16 @@ class YearManifestTests(unittest.TestCase):
                 self.assertTrue(all(isinstance(y, int) for y in years))
                 self.assertEqual(tuple(sorted(years)), years)
 
-    def test_workbook_years_subset_of_federal(self):
-        self.assertTrue(
-            set(year_manifest.WORKBOOK_YEARS) <= set(year_manifest.FEDERAL_YEARS))
+    def test_workbook_years_subset_of_supported_federal(self):
+        # A workbook year must be a SUPPORTED federal year — full PDF-pack
+        # (FEDERAL_YEARS) OR compute-only (FEDERAL_COMPUTE_ONLY_YEARS). A
+        # compute-only year may still carry a vendor workbook as a BONUS
+        # acceptance oracle (penny-parity over its declared surface) even
+        # though it emits no PDF pack — e.g. TY2021, whose workbook is wired
+        # as a bounded partial (Form 8582 tab absent -> excluded keys).
+        supported = (set(year_manifest.FEDERAL_YEARS)
+                     | set(year_manifest.FEDERAL_COMPUTE_ONLY_YEARS))
+        self.assertTrue(set(year_manifest.WORKBOOK_YEARS) <= supported)
 
     def test_compute_only_disjoint_from_full_california(self):
         self.assertEqual(
