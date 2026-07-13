@@ -1,0 +1,326 @@
+"""End-to-end amendment-packet emit tests (spec §3/§4/§6).
+
+Drives ``ReturnOrchestrator.run_amendment_packet`` over synthetic original +
+amended scenario twins, reopens the REAL filled PDFs, and reads distinctive
+values back. Native throughout (no soffice): the amendment assembly is
+arithmetic over two already-validated runs and the emit is a straight
+PdfFiller fill against the committed 1040-X / Schedule X templates.
+
+The ONE sanctioned recompute-as-filed spot is ``_write_federal_filed`` /
+``_write_ca_filed`` below: the filed-values files are written FROM THE ORIGINAL
+run's outputs, inside the test, because the test controls both sides of the
+amendment. It is done nowhere else.
+"""
+import dataclasses
+import tempfile
+import unittest
+from pathlib import Path
+
+import yaml
+from pypdf import PdfReader
+
+from tenforty import years
+from tenforty.amendment import OutOfScopeAmendmentError
+from tenforty.forms import f1040x as form_f1040x
+from tenforty.forms import schedule_x as form_schedule_x
+from tenforty.mappings.pdf_f1040x import PdfF1040X
+from tenforty.mappings.pdf_schedule_x import PdfScheduleX
+from tenforty.models import AmendmentCase, CA540Return, Form1099INT
+from tenforty.orchestrator import (
+    _CA_COMPUTE_ONLY_NOTE,
+    _FEDERAL_COMPUTE_ONLY_NOTE,
+    ReturnOrchestrator,
+)
+from tests.fixtures.spine_battery import build_canonical_wage_investment_rental
+from tests.helpers import CA_SCOPE_OUT_FIELDS
+
+REPO_ROOT = Path(__file__).parent.parent
+_REVISION = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
+
+
+def _with_ca(scenario):
+    """CA-resident twin of a battery scenario: flip every CA scope-out True and
+    attach an empty CA540Return so the CA pipeline runs."""
+    cfg = dataclasses.replace(
+        scenario.config, **{k: True for k in CA_SCOPE_OUT_FIELDS})
+    return dataclasses.replace(scenario, config=cfg, ca540=CA540Return())
+
+
+def _bump_interest(scenario, amount):
+    """Amended twin differing in ONE income component (taxable interest)."""
+    return dataclasses.replace(
+        scenario, form1099_int=[Form1099INT(payer="Synthetic Bank", interest=amount)])
+
+
+def _wages_and_interest_only(scenario):
+    """Strip the scenario to wages + interest so Sch B's ONLY trigger is the
+    interest threshold (the canonical's $5k dividends would keep Sch B alive)."""
+    return dataclasses.replace(
+        scenario, form1099_div=[], form1099_b=[], rental_properties=[])
+
+
+def _read_v(pdf_path, field_path):
+    """Read one AcroForm field's /V, normalizing thousands-comma / dollar."""
+    fields = PdfReader(str(pdf_path)).get_fields() or {}
+    got = fields[field_path].get("/V") or ""
+    return str(got).replace(",", "").replace("$", "").strip()
+
+
+class AmendmentPacketEmitTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.tmp / "work",
+        )
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    # --- filed-values files: the one sanctioned recompute-as-filed spot -----
+    def _write_federal_filed(self, original_scenario, extra=None):
+        """Write the federal Column-A file from the ORIGINAL run's outputs."""
+        results = self.orch.compute_federal(original_scenario)
+        data = {k: results[k] for k in form_f1040x.REQUIRED_FILED_KEYS}
+        if extra:
+            data.update(extra)
+        path = self.tmp / "federal_filed.yaml"
+        path.write_text(yaml.safe_dump(data))
+        return path, results
+
+    def _balance_withholding(self, scenario):
+        """Rebuild the scenario's single W-2 so federal withholding EXACTLY
+        covers the computed tax → the return has a zero refund/owed balance, so
+        a null self-amendment's tail is exactly zero (line 16, amount-paid-with-
+        original, is an unsourced v1 zero)."""
+        tax = self.orch.compute_federal(scenario)["total_tax"]
+        w2 = dataclasses.replace(
+            scenario.w2s[0], federal_tax_withheld=float(tax))
+        return dataclasses.replace(scenario, w2s=[w2])
+
+    def _write_ca_filed(self, original_scenario, original_federal):
+        """Write the CA Column-A file from the ORIGINAL CA run's net position."""
+        ca = self.orch._compute_ca_results(
+            original_scenario, original_scenario.ca540, original_federal)
+        path = self.tmp / "ca_filed.yaml"
+        path.write_text(yaml.safe_dump(
+            {"f540_total_liability": ca["f540_total_liability"]}))
+        return path, ca
+
+    # ------------------------------------------------------------------ tests
+    def test_happy_path_full_emit_year(self):
+        """Full-emit year (2024) + CA side, amended by one income component.
+
+        Asserts the changed federal forms AND ONLY those attach, both amendment
+        forms + the complete amended 540 emit, the manifest lists each mailed
+        file with a reason, and three distinctive 1040-X values + the Schedule X
+        balance read back from the REAL PDFs."""
+        original = _with_ca(build_canonical_wage_investment_rental(2024))
+        amended = _bump_interest(original, 3_000.0)  # original interest 2_000
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2024, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # (a) amendment forms + complete amended 540 present.
+        for name in ("f1040x_2024.pdf", "f540_amended_2024.pdf",
+                     "schedule_x_2024.pdf", "packet_manifest.txt"):
+            self.assertTrue((out / name).exists(), f"missing {name}")
+
+        # (b) changed federal forms attach; the UNCHANGED ones do NOT.
+        self.assertTrue((out / "f1040sb_2024.pdf").exists())   # sch_b changed
+        self.assertFalse((out / "f1040sd_2024.pdf").exists())  # sch_d unchanged
+        self.assertFalse((out / "f1040se_2024.pdf").exists())  # sch_e unchanged
+        self.assertFalse((out / "f1040s1_2024.pdf").exists())  # sch_1 unchanged
+
+        # (c) manifest lists each mailed file, with a reason.
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertEqual(by_name["f1040x_2024.pdf"].reason, "amendment form")
+        self.assertEqual(by_name["f1040sb_2024.pdf"].reason, "changed")
+        self.assertEqual(
+            by_name["f540_amended_2024.pdf"].reason, "complete amended return")
+        self.assertEqual(by_name["schedule_x_2024.pdf"].reason, "amendment form")
+        # No compute-only notes on a full-emit year.
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+        # The standing spec §4 caveat is always present.
+        self.assertTrue(any("preparer must confirm" in c for c in manifest.caveats))
+        manifest_txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("f1040sb_2024.pdf", manifest_txt)
+        self.assertIn("f540_amended_2024.pdf", manifest_txt)
+
+        # (d) read back REAL values: recompute the corrected picture the packet
+        # used and compare the assembler's figures to what the PDFs carry.
+        corrected_fed = self.orch.compute_federal(amended)
+        expected_x = form_f1040x.assemble(
+            {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS},
+            corrected_fed, case)
+        xmap = PdfF1040X.get_mapping(_REVISION)
+        f1040x_pdf = out / "f1040x_2024.pdf"
+        # Column-B AGI delta == the +$1,000 interest bump.
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line1_b"]))), 1_000)
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line1_b"]))),
+            round(expected_x["f1040x_line1_b"]))
+        # Line 22 (refund on this return) round-trips.
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line22"]))),
+            round(expected_x["f1040x_line22"]))
+        # Part II explanation passes through verbatim.
+        self.assertEqual(
+            _read_v(f1040x_pdf, xmap["f1040x_explanation"]),
+            "Corrected taxable interest income.")
+
+        # Schedule X balance line (L7 amount you owe) round-trips.
+        corrected_ca = self.orch._compute_ca_results(
+            amended, amended.ca540, corrected_fed)
+        expected_sx = form_schedule_x.assemble_ca(
+            {"f540_total_liability": orig_ca["f540_total_liability"]},
+            corrected_ca, case)
+        smap = PdfScheduleX.get_mapping(2024)
+        self.assertEqual(
+            int(float(_read_v(out / "schedule_x_2024.pdf", smap["schedule_x_line7"]))),
+            round(expected_sx["schedule_x_line7"]))
+
+    def test_null_self_amendment(self):
+        """amended == original → only the amendment form (1040-X) mails, Column B
+        is all zero, the changed-forms selection is empty, the refund/owed tail
+        is zero, and the manifest SAYS the selection is empty."""
+        original = self._balance_withholding(
+            build_canonical_wage_investment_rental(2024))  # federal-only, balanced
+        amended = original  # exact self-amendment
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2024, explanation="No changes.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # Only the 1040-X + manifest mail; no attachments, no CA forms.
+        self.assertEqual(
+            sorted(p.name for p in out.iterdir()),
+            ["f1040x_2024.pdf", "packet_manifest.txt"])
+        # Empty selection: no "changed"/"new" mailed files.
+        self.assertEqual(
+            [mf for mf in manifest.mailed_files
+             if mf.reason in ("changed", "new")], [])
+        self.assertTrue(any(
+            "selection is empty" in c for c in manifest.caveats))
+
+        # Column B all zero; refund/owed tail zero.
+        xmap = PdfF1040X.get_mapping(_REVISION)
+        f1040x_pdf = out / "f1040x_2024.pdf"
+        for line in ("f1040x_line1_b", "f1040x_line5_b", "f1040x_line11_b"):
+            self.assertEqual(
+                int(float(_read_v(f1040x_pdf, xmap[line]) or "0")), 0)
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line20"]) or "0")), 0)
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line22"]) or "0")), 0)
+
+    def test_ruling2_out_of_scope_guard_propagates(self):
+        """A filed-values file carrying a nonzero out-of-scope guard key
+        (other_taxes) → the assembler's OutOfScopeAmendmentError propagates out
+        of run_amendment_packet unswallowed."""
+        original = build_canonical_wage_investment_rental(2024)
+        amended = _bump_interest(original, 3_000.0)
+        filed_path, _ = self._write_federal_filed(
+            original, extra={"other_taxes": 500.0})
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2024, explanation="x",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        with self.assertRaises(OutOfScopeAmendmentError):
+            self.orch.run_amendment_packet(
+                original, amended, case, filed_path, ca_filed_path,
+                self.tmp / "packet")
+
+    def test_dropped_form_appears_in_manifest_and_not_attached(self):
+        """The corrected run drops a form the original carried (Sch B, when the
+        amended return removes the interest that put it over threshold) →
+        that form is in the manifest's dropped class and is NOT attached."""
+        original = _wages_and_interest_only(
+            build_canonical_wage_investment_rental(2024))  # interest 2_000 only
+        amended = _bump_interest(original, 0.0)  # no interest → Sch B drops
+
+        filed_path, _ = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2024, explanation="Removed erroneous interest.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        self.assertIn("sch_b", manifest.dropped)
+        self.assertFalse((out / "f1040sb_2024.pdf").exists())
+        manifest_txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("sch_b: no longer applies", manifest_txt)
+
+    def test_federal_compute_only_year_note(self):
+        """Federal compute-only year (2021): the 1040-X emits but no
+        individual-form attachments exist — the manifest carries the distinct
+        federal compute-only note, and none renders on a full-emit year."""
+        self.assertIn(2021, years.FEDERAL_COMPUTE_ONLY_YEARS)
+        original = build_canonical_wage_investment_rental(2021)  # federal-only
+        amended = _bump_interest(original, 3_000.0)
+        filed_path, _ = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2021, explanation="x",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        self.assertIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertTrue((out / "f1040x_2021.pdf").exists())
+        # No year-keyed individual-form attachments for a compute-only year.
+        self.assertFalse((out / "f1040_2021.pdf").exists())
+        self.assertFalse((out / "f1040sb_2021.pdf").exists())
+
+    def test_ca_compute_only_year_note(self):
+        """CA compute-only year (2022): Schedule X emits, but the complete
+        amended 540 cannot — the manifest carries its OWN distinct CA note,
+        separate from the federal one, and the 540 is absent."""
+        self.assertIn(2022, years.CALIFORNIA_COMPUTE_ONLY_YEARS)
+        self.assertIn(2022, years.FEDERAL_YEARS)  # federal side is full-emit
+        original = _with_ca(build_canonical_wage_investment_rental(2022))
+        amended = _bump_interest(original, 3_000.0)
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2022, explanation="x",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0)
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        self.assertIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertTrue((out / "schedule_x_2022.pdf").exists())
+        self.assertFalse((out / "f540_amended_2022.pdf").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
