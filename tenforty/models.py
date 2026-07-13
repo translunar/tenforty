@@ -550,6 +550,32 @@ class SCorpPayments:
     refundable_credits: float = 0.0
 
 
+@dataclass(frozen=True)
+class SCorpCAInputs:
+    """CA-side inputs for Form 100S, hung off ``SCorpReturn.ca`` when a CA
+    S-corp return is requested.
+
+    Balance-sheet scope-out (spec §1): no NEW CA gate is needed — the federal
+    ``SCorpScopeOuts`` attestations already bound this corporation's
+    size/complexity, and the 100S compute reads no balance-sheet inputs.
+    """
+    # True only for the corporation's first taxable year; combined with
+    # ca_scorp params.first_year_minimum_tax_exempt to decide the
+    # minimum-tax floor.
+    first_year: bool
+    estimated_tax_payments: float
+    prior_year_overpayment_applied: float
+    # Franchise/income tax deducted on the FEDERAL 1120-S (cash-basis: the
+    # amount actually paid in-year and deducted federally). Added back on the
+    # 100S. Explicit input, never inferred.
+    state_tax_deducted_federally: float
+    # Net CA depreciation adjustment (CA minus federal, signed) from the
+    # caller's Form 3885-equivalent computation. Scope-out passthrough.
+    depreciation_adjustment: float
+    # v1 supports only 100% CA apportionment; False must raise at load.
+    apportionment_ca_only: bool
+
+
 @dataclass
 class SCorpReturn:
     name: str
@@ -570,6 +596,7 @@ class SCorpReturn:
 
     scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
     payments: SCorpPayments = field(default_factory=SCorpPayments)
+    ca: SCorpCAInputs | None = None
 
 
 class DivergenceSource(str, Enum):
