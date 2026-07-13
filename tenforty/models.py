@@ -597,6 +597,14 @@ class SCorpReturn:
     scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
     payments: SCorpPayments = field(default_factory=SCorpPayments)
     ca: SCorpCAInputs | None = None
+    # §4a amended-return marks. When True, the emit path checks the
+    # "Amended return" box on Form 1120-S (H(4)), each Schedule K-1
+    # (1120-S) ("Amended K-1"), and each Schedule K-1 (100S) (line E
+    # "amended"). CA S-corp amendments themselves file on Form 100X (not
+    # emitted by tenforty); this flag marks the corrected 100S/K-1 set that
+    # accompanies a preparer-completed 100X. Default False (an ordinary,
+    # non-amended return).
+    amended_return: bool = False
 
 
 class DivergenceSource(str, Enum):
