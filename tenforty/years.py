@@ -86,8 +86,8 @@ AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")
 # templates and CORRECTS these to the templates' actual printed revision dates
 # if the placeholders don't match reality.
 AMENDMENT_TEMPLATE_REVISIONS: dict[str, str] = {
-    "f1040x": "rev-2024-02",
-    "schedule_x": "rev-2024",
+    "f1040x": "rev-2025-12",  # Form 1040-X (Rev. December 2025), fetched Task 3
+    "schedule_x": "rev-2024",  # PLACEHOLDER — schedule_x moves to a YEAR-keyed pack (Schedule X commit)
 }
 
 
