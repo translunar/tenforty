@@ -1,3 +1,39 @@
+"""Amendment-case + filed-values loading, fail-closed.
+
+FILED-VALUES FILE CONVENTION (RULING 2 + 3)
+-------------------------------------------
+A filed-values file is the amendment's Column A — the return AS ORIGINALLY
+FILED (or as last adjusted). For the 1040-X assembler to reproduce Column A
+faithfully it must be able to see EVERY amount the filed return carried, so the
+file MUST DECOMPOSE its figures against tenforty's model rather than roll them
+into one line:
+
+  * ``total_tax`` is the MODELED income tax ONLY — the amount tenforty's spine
+    computes (tax on taxable income, incl. QDCGT + Additional Medicare). It is
+    NOT a catch-all "total tax from the 1040". Any tax component tenforty does
+    not model must NOT be folded into ``total_tax``; it goes under its own
+    guard key below.
+
+  * Any UNMODELED filed component goes under its matching out-of-scope GUARD
+    KEY. tenforty does not source these five 1040-X lines, so each has a
+    reserved filed-file key (see ``forms.f1040x._OUT_OF_SCOPE_FILED_KEYS``):
+
+        schedule_1a_deduction   — line 4b (Schedule 1-A tips/overtime/car-loan/seniors, TY2025)
+        nonrefundable_credits   — line 7  (nonrefundable credits)
+        other_taxes             — line 10 (other taxes)
+        estimated_payments      — line 13 (estimated tax payments)
+        earned_income_credit    — line 14 (earned income credit)
+
+WHY THIS IS LOAD-BEARING: an unmodeled component hidden in a COMMENT (or
+silently merged into ``total_tax``) neither fires the assembler's out-of-scope
+guard NOR reaches Column A/C — so it would silently vanish from the amendment
+and ship a fileable-looking-but-wrong 1040-X. Keyed under its guard name, a
+nonzero unmodeled component instead makes ``forms.f1040x.assemble`` REFUSE
+cleanly (OutOfScopeAmendmentError naming the line), which is the correct
+outcome: tenforty cannot amend a return whose filed figures it cannot
+reconstruct. Assert 0 (or omit) a guard key only when the filed return truly
+carried nothing on that line.
+"""
 from dataclasses import MISSING, fields
 from pathlib import Path
 

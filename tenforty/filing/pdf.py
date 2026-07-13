@@ -30,6 +30,56 @@ class PdfFiller:
             return str(irs_round(value))
         return str(value)
 
+    @staticmethod
+    def resolve_fields(
+        field_mapping: dict[str, str],
+        values: dict[str, object],
+        aggregations: Mapping[str, tuple[str, ...]] | None = None,
+        derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
+        checkbox_states: Mapping[str, str] | None = None,
+    ) -> dict[str, str]:
+        """Resolve a flat ``field_mapping`` (+ optional aggregations, derivations,
+        checkbox_states) into the ``{pdf_field_path: rendered_str}`` dict that
+        ``fill`` writes to the template.
+
+        Extracted from ``fill`` so callers can obtain a form's EMIT PAYLOAD
+        (the exact field→value dict that would be rendered) WITHOUT touching a
+        PDF — the changed-forms selector compares these payloads across the
+        as-filed and corrected runs. ``fill`` delegates to this method, so the
+        payload is by construction identical to what would be rendered.
+        """
+        pdf_fields: dict[str, str] = {}
+
+        for result_key, pdf_field_name in field_mapping.items():
+            if result_key in values and values[result_key] is not None:
+                v = values[result_key]
+                if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
+                    pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
+                else:
+                    pdf_fields[pdf_field_name] = PdfFiller._render_scalar(v)
+
+        if aggregations:
+            for pdf_field, compute_keys in aggregations.items():
+                present_keys = [k for k in compute_keys if k in values and values[k] is not None]
+                # Skip when every input is missing — nothing to write.
+                if not present_keys:
+                    continue
+                total = sum(values[k] for k in compute_keys if k in values and values[k] is not None)
+                pdf_fields[pdf_field] = PdfFiller._render_scalar(total)
+
+        if derivations:
+            for pdf_field, lambda_fn in derivations.items():
+                try:
+                    result = lambda_fn(values)
+                except KeyError:
+                    # A required input key is absent from values; skip this cell
+                    # rather than writing a broken or partial value.
+                    continue
+                if result is not None:
+                    pdf_fields[pdf_field] = PdfFiller._render_scalar(result)
+
+        return pdf_fields
+
     def fill(
         self,
         template_path: Path,
@@ -70,35 +120,12 @@ class PdfFiller:
         reader = PdfReader(template_path)
         writer = PdfWriter(clone_from=reader)
 
-        pdf_fields: dict[str, str] = {}
-
-        for result_key, pdf_field_name in field_mapping.items():
-            if result_key in values and values[result_key] is not None:
-                v = values[result_key]
-                if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
-                    pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
-                else:
-                    pdf_fields[pdf_field_name] = self._render_scalar(v)
-
-        if aggregations:
-            for pdf_field, compute_keys in aggregations.items():
-                present_keys = [k for k in compute_keys if k in values and values[k] is not None]
-                # Skip when every input is missing — nothing to write.
-                if not present_keys:
-                    continue
-                total = sum(values[k] for k in compute_keys if k in values and values[k] is not None)
-                pdf_fields[pdf_field] = self._render_scalar(total)
-
-        if derivations:
-            for pdf_field, lambda_fn in derivations.items():
-                try:
-                    result = lambda_fn(values)
-                except KeyError:
-                    # A required input key is absent from values; skip this cell
-                    # rather than writing a broken or partial value.
-                    continue
-                if result is not None:
-                    pdf_fields[pdf_field] = self._render_scalar(result)
+        pdf_fields = self.resolve_fields(
+            field_mapping, values,
+            aggregations=aggregations,
+            derivations=derivations,
+            checkbox_states=checkbox_states,
+        )
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)

@@ -46,9 +46,12 @@ from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
+from tenforty.mappings.pdf_f1040x import PdfF1040X
+from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.models import (
+    AmendmentCase,
     CA540Return,
     CASchD540Adjustment,
     EntityType,
@@ -271,6 +274,110 @@ def _rental_net_income(r: RentalProperty) -> float:
         + r.repairs + r.supplies + r.taxes + r.utilities
         + r.depreciation + r.other_expenses
     )
+
+
+@dataclasses.dataclass(frozen=True)
+class _FederalFormSpec:
+    """One federal individual-return form's fully-prepared emit unit, WITHOUT
+    rendering. Built by ``_federal_individual_emit_specs`` so both the full-set
+    emit (``_emit_pdfs_internal``) and the selective amendment emit
+    (``run_amendment_packet``) drive the SAME per-form path — one fills every
+    spec, the other fills only the selector-chosen subset.
+
+    ``name`` is the stable form identifier used both as the ``emit`` dict key
+    (preserving the historic keys the emit tests assert) AND as the changed-forms
+    selector's form name. ``kind`` is ``"flat"`` (PdfFiller.fill / resolve_fields)
+    or ``"repeater"`` (fill_with_repeaters / _expand_repeaters); ``mapping`` and
+    ``values`` are that form's already-computed emit inputs.
+    """
+
+    name: str
+    template: Path
+    output_name: str
+    kind: str  # "flat" | "repeater"
+    mapping: dict
+    values: dict
+
+
+# Standing caveat (spec §4): the changed-forms selector compares two
+# tenforty-computed pictures, so it structurally CANNOT see a form the filed
+# return carried that tenforty does not model. Always printed on the manifest.
+_ERRONEOUS_INCLUSION_CAVEAT: str = (
+    "Selection compares tenforty-computed as-filed vs corrected; a form the "
+    "filed return included that tenforty does not model cannot be detected "
+    "here — preparer must confirm."
+)
+
+# Federal compute-only year (years.FEDERAL_COMPUTE_ONLY_YEARS): the 1040-X
+# emits, but no year-keyed individual-form PDFs exist to attach.
+_FEDERAL_COMPUTE_ONLY_NOTE: str = (
+    "compute-only year: individual-form attachment emit unavailable; "
+    "preparer supplies changed forms."
+)
+
+# CA compute-only year (years.CALIFORNIA_COMPUTE_ONLY_YEARS): Schedule X emits
+# (year packs exist for every amendable CA year), but the COMPLETE amended 540
+# — which per spec §3 IS the CA amendment — cannot emit (540 emit needs a
+# CALIFORNIA_YEARS pack). A materially bigger hole than the federal note, so it
+# gets its own distinct line.
+_CA_COMPUTE_ONLY_NOTE: str = (
+    "amended Form 540 must be prepared separately; only Schedule X emitted."
+)
+
+
+@dataclasses.dataclass(frozen=True)
+class MailedFile:
+    """One file in the amendment mailing packet: its filename, a short
+    human description, and WHY it is included ("changed" / "new" /
+    "amendment form" / "complete amended return")."""
+
+    filename: str
+    description: str
+    reason: str
+
+
+@dataclasses.dataclass(frozen=True)
+class PacketManifest:
+    """The printed contents of an amendment mailing packet (spec §6).
+
+    ``mailed_files`` is every file that mails, each tagged with why. ``dropped``
+    is the team-lead-ruled class of forms the FILED return carried that the
+    corrected return no longer needs (not attached — noted for the preparer's
+    explanation). ``caveats`` always carries the spec §4 erroneous-inclusion
+    caveat, plus any compute-only notes and the empty-selection note. ``render``
+    produces the human-readable ``packet_manifest.txt`` body.
+    """
+
+    year: int
+    mailed_files: tuple[MailedFile, ...]
+    dropped: tuple[str, ...]
+    caveats: tuple[str, ...]
+
+    def render(self) -> str:
+        lines: list[str] = [
+            f"Amendment packet manifest — tax year {self.year}",
+            "=" * 60,
+            "",
+            "Files to mail:",
+        ]
+        for mf in self.mailed_files:
+            lines.append(f"  - {mf.filename}: {mf.description} [{mf.reason}]")
+        lines.append("")
+        lines.append("Forms no longer applicable (NOT attached):")
+        if self.dropped:
+            for form in self.dropped:
+                lines.append(
+                    f"  - {form}: no longer applies — not attached; preparer "
+                    f"notes in explanation."
+                )
+        else:
+            lines.append("  (none)")
+        lines.append("")
+        lines.append("Caveats:")
+        for caveat in self.caveats:
+            lines.append(f"  - {caveat}")
+        lines.append("")
+        return "\n".join(lines)
 
 
 class ReturnOrchestrator:
@@ -661,14 +768,44 @@ class ReturnOrchestrator:
         Returns a dict mapping form name to the filled PDF path.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        year = scenario.config.year
         filler = PdfFiller()
 
-        # Hoist sch_e_part_ii.compute to run at most once per call to this method.
-        # All downstream consumers (sch_b, sch_d, sch_e, f8995, f8582) share
-        # a single fanout result rather than each recomputing from scratch —
-        # keeping the K-1 fanout computation deterministic and avoiding
-        # redundant spreadsheet evaluation.
+        # Build the per-form emit specs (identical gates/order/values to the
+        # historic inline body — the specs just defer rendering), then fill
+        # EVERY one. run_amendment_packet drives the same specs but fills only
+        # the selector-chosen subset.
+        emitted: dict[str, Path] = {
+            spec.name: self._render_federal_spec(filler, spec, output_dir)
+            for spec in self._federal_individual_emit_specs(scenario, results)
+        }
+
+        # 1120-S emit (only when scenario.s_corp_return is populated).
+        emitted.update(
+            self._emit_federal_corporate_pdfs_internal(
+                scenario, results, output_dir))
+
+        return emitted
+
+    def _federal_individual_emit_specs(
+        self, scenario: Scenario, results: dict,
+    ) -> list[_FederalFormSpec]:
+        """Prepare each federal individual-return form's emit spec WITHOUT
+        rendering — the reusable per-form path shared by ``_emit_pdfs_internal``
+        (fill all) and ``run_amendment_packet`` (fill the selector-chosen
+        subset). Gates, ordering, upstream wiring, and per-form value prep are
+        byte-for-byte the historic inline body; only the ``filler.fill`` calls
+        are deferred to the caller. The federal EMIT tests are the regression
+        guard for this extraction.
+        """
+        year = scenario.config.year
+        specs: list[_FederalFormSpec] = []
+
+        def _fed(basename: str) -> Path:
+            return _PDFS_ROOT / "federal" / str(year) / basename
+
+        # Hoist sch_e_part_ii.compute to run at most once. All downstream
+        # consumers (sch_b, sch_d, sch_e, f8995, f8582) share a single fanout
+        # result rather than each recomputing from scratch.
         if self._should_emit_sch_e_part_ii(scenario):
             part_ii_fields, k1_fanout = form_sch_e_part_ii.compute(scenario, upstream={})
         else:
@@ -680,188 +817,157 @@ class ReturnOrchestrator:
         if self._should_compute_8949(scenario):
             upstream["f8949"] = form_f8949.compute(scenario, upstream)
 
-        f1040_template = _PDFS_ROOT / "federal" / str(year) / "f1040.pdf"
-        # results is already PDF-ready (forms.f1040.compute produced it,
-        # including the 25d sum). No translator, no patch needed.
-        out_1040 = output_dir / f"f1040_{year}.pdf"
-        filler.fill(
-            template_path=f1040_template,
-            output_path=out_1040,
-            field_mapping=Pdf1040.get_mapping(year),
-            values=results,
-        )
+        # f1040 — results is already PDF-ready (forms.f1040.compute produced it).
+        specs.append(_FederalFormSpec(
+            name="1040", template=_fed("f1040.pdf"),
+            output_name=f"f1040_{year}.pdf", kind="flat",
+            mapping=Pdf1040.get_mapping(year), values=results,
+        ))
 
-        f4868_template = _PDFS_ROOT / "federal" / str(year) / "f4868.pdf"
-        out_4868 = output_dir / f"f4868_{year}.pdf"
-        f4868_values = form_4868.compute(scenario, upstream=upstream)
-        filler.fill(
-            template_path=f4868_template,
-            output_path=out_4868,
-            field_mapping=Pdf4868.get_mapping(year),
-            values=f4868_values,
-        )
-
-        emitted: dict[str, Path] = {"1040": out_1040, "4868": out_4868}
+        specs.append(_FederalFormSpec(
+            name="4868", template=_fed("f4868.pdf"),
+            output_name=f"f4868_{year}.pdf", kind="flat",
+            mapping=Pdf4868.get_mapping(year),
+            values=form_4868.compute(scenario, upstream=upstream),
+        ))
 
         if self._should_emit_sch_b(scenario, results):
-            sch_b_template = _PDFS_ROOT / "federal" / str(year) / "f1040sb.pdf"
-            out_sch_b = output_dir / f"f1040sb_{year}.pdf"
             sch_b_values = form_sch_b.compute(scenario, upstream=upstream)
-            flat_values = _flatten_sch_b_rows(sch_b_values)
-            filler.fill(
-                template_path=sch_b_template,
-                output_path=out_sch_b,
-                field_mapping=PdfSchB.get_mapping(year),
-                values=flat_values,
-            )
-            emitted["sch_b"] = out_sch_b
+            specs.append(_FederalFormSpec(
+                name="sch_b", template=_fed("f1040sb.pdf"),
+                output_name=f"f1040sb_{year}.pdf", kind="flat",
+                mapping=PdfSchB.get_mapping(year),
+                values=_flatten_sch_b_rows(sch_b_values),
+            ))
 
         if self._should_emit_sch_d(scenario):
-            sch_d_template = _PDFS_ROOT / "federal" / str(year) / "f1040sd.pdf"
-            out_sch_d = output_dir / f"f1040sd_{year}.pdf"
-            sch_d_values = form_sch_d.compute(scenario, upstream=upstream)
-            filler.fill_with_repeaters(
-                template_path=sch_d_template,
-                output_path=out_sch_d,
+            specs.append(_FederalFormSpec(
+                name="sch_d", template=_fed("f1040sd.pdf"),
+                output_name=f"f1040sd_{year}.pdf", kind="repeater",
                 mapping=PdfSchD.get_mapping(year),
-                values=sch_d_values,
-            )
-            emitted["sch_d"] = out_sch_d
+                values=form_sch_d.compute(scenario, upstream=upstream),
+            ))
 
         if self._should_emit_8949_pdf(scenario, upstream):
-            f8949_template = _PDFS_ROOT / "federal" / str(year) / "f8949.pdf"
-            out_8949 = output_dir / f"f8949_{year}.pdf"
             # PdfF8949 keeps per-box repeater groups (box_a_rows, box_b_rows, …)
-            # rather than the single-repeater {template, rows} shape that
-            # fill_with_repeaters expects, because boxes A/B share page-1 PDF
-            # fields and D/E share page-2 fields — a single repeater can't
-            # disambiguate them. Each row dict already bakes its row index
-            # and PDF field path into its keys, so a flat merge onto one
-            # field_mapping resolves all per-box keys correctly for filler.fill.
+            # rather than the single-repeater {template, rows} shape, because
+            # boxes A/B share page-1 PDF fields and D/E share page-2 fields. Each
+            # row dict already bakes its row index and PDF field path into its
+            # keys, so a flat merge onto one field_mapping resolves all per-box
+            # keys correctly for a FLAT fill.
             f8949_full_mapping = PdfF8949.get_mapping(year)
             f8949_flat: dict[str, str] = dict(f8949_full_mapping["scalars"])
             for row_dicts in f8949_full_mapping["repeaters"].values():
                 for row_dict in row_dicts:
                     f8949_flat.update(row_dict)
-            filler.fill(
-                template_path=f8949_template,
-                output_path=out_8949,
-                field_mapping=f8949_flat,
-                values=upstream["f8949"],
-            )
-            emitted["f8949"] = out_8949
+            specs.append(_FederalFormSpec(
+                name="f8949", template=_fed("f8949.pdf"),
+                output_name=f"f8949_{year}.pdf", kind="flat",
+                mapping=f8949_flat, values=upstream["f8949"],
+            ))
 
         sch_e_values: dict = {}
         if self._should_emit_sch_e(scenario):
-            sch_e_template = _PDFS_ROOT / "federal" / str(year) / "f1040se.pdf"
-            out_sch_e = output_dir / f"f1040se_{year}.pdf"
             part_i = form_sch_e.compute(scenario, upstream=upstream)
             # Merge: Part I scalars win for shared keys (e.g. taxpayer_name).
-            merged = {
-                **part_i,
-                **part_ii_fields,
-            }
+            merged = {**part_i, **part_ii_fields}
             # Derive page-2 header fields for the mapping layer without
             # polluting compute outputs with PDF-template structure.
             merged["taxpayer_name_page2"] = merged.get("taxpayer_name")
             merged["taxpayer_ssn_page2"] = merged.get("taxpayer_ssn")
             sch_e_values = merged
-            filler.fill_with_repeaters(
-                template_path=sch_e_template,
-                output_path=out_sch_e,
-                mapping=PdfSchE.get_mapping(year),
-                values=sch_e_values,
-            )
-            emitted["sch_e"] = out_sch_e
+            specs.append(_FederalFormSpec(
+                name="sch_e", template=_fed("f1040se.pdf"),
+                output_name=f"f1040se_{year}.pdf", kind="repeater",
+                mapping=PdfSchE.get_mapping(year), values=sch_e_values,
+            ))
 
         if self._should_emit_sch_a(scenario, {"f1040": results}):
-            sch_a_template = _PDFS_ROOT / "federal" / str(year) / "f1040sa.pdf"
-            out_sch_a = output_dir / f"f1040sa_{year}.pdf"
-            sch_a_values = form_sch_a.compute(scenario, upstream=upstream)
-            filler.fill_with_repeaters(
-                template_path=sch_a_template,
-                output_path=out_sch_a,
+            specs.append(_FederalFormSpec(
+                name="sch_a", template=_fed("f1040sa.pdf"),
+                output_name=f"f1040sa_{year}.pdf", kind="repeater",
                 mapping=PdfSchA.get_mapping(year),
-                values=sch_a_values,
-            )
-            emitted["sch_a"] = out_sch_a
+                values=form_sch_a.compute(scenario, upstream=upstream),
+            ))
 
         if self._should_emit_sch_1(scenario, {"f1040": results}):
-            sch_1_template = _PDFS_ROOT / "federal" / str(year) / "f1040s1.pdf"
-            out_sch_1 = output_dir / f"f1040s1_{year}.pdf"
-            sch_1_values = form_sch_1.compute(
-                scenario, upstream={**upstream, "sch_e": sch_e_values},
-            )
-            filler.fill_with_repeaters(
-                template_path=sch_1_template,
-                output_path=out_sch_1,
+            specs.append(_FederalFormSpec(
+                name="sch_1", template=_fed("f1040s1.pdf"),
+                output_name=f"f1040s1_{year}.pdf", kind="repeater",
                 mapping=PdfSch1.get_mapping(year),
-                values=sch_1_values,
-            )
-            emitted["sch_1"] = out_sch_1
+                values=form_sch_1.compute(
+                    scenario, upstream={**upstream, "sch_e": sch_e_values},
+                ),
+            ))
 
         if self._should_emit_4562(scenario, {"f1040": results}):
-            f4562_template = _PDFS_ROOT / "federal" / str(year) / "f4562.pdf"
-            out_4562 = output_dir / f"f4562_{year}.pdf"
-            f4562_values = form_4562.compute(scenario, upstream=upstream)
-            filler.fill_with_repeaters(
-                template_path=f4562_template,
-                output_path=out_4562,
+            specs.append(_FederalFormSpec(
+                name="f4562", template=_fed("f4562.pdf"),
+                output_name=f"f4562_{year}.pdf", kind="repeater",
                 mapping=Pdf4562.get_mapping(year),
-                values=f4562_values,
-            )
-            emitted["f4562"] = out_4562
+                values=form_4562.compute(scenario, upstream=upstream),
+            ))
 
         if self._should_emit_8959(scenario, {"f1040": results}):
-            f8959_template = _PDFS_ROOT / "federal" / str(year) / "f8959.pdf"
-            out_8959 = output_dir / f"f8959_{year}.pdf"
-            f8959_values = form_8959.compute(scenario, upstream=upstream)
-            filler.fill(
-                template_path=f8959_template,
-                output_path=out_8959,
-                field_mapping=Pdf8959.get_mapping(year)["scalars"],
-                values=f8959_values,
-            )
-            emitted["8959"] = out_8959
+            specs.append(_FederalFormSpec(
+                name="8959", template=_fed("f8959.pdf"),
+                output_name=f"f8959_{year}.pdf", kind="flat",
+                mapping=Pdf8959.get_mapping(year)["scalars"],
+                values=form_8959.compute(scenario, upstream=upstream),
+            ))
 
         if self._should_emit_8995(scenario):
-            f8995_template = _PDFS_ROOT / "federal" / str(year) / "f8995.pdf"
-            out_8995 = output_dir / f"f8995_{year}.pdf"
-            f8995_values = form_f8995.compute(scenario, upstream=upstream)
-            filler.fill(
-                template_path=f8995_template,
-                output_path=out_8995,
-                field_mapping=PdfF8995.get_mapping(year)["scalars"],
-                values=f8995_values,
-            )
-            emitted["f8995"] = out_8995
+            specs.append(_FederalFormSpec(
+                name="f8995", template=_fed("f8995.pdf"),
+                output_name=f"f8995_{year}.pdf", kind="flat",
+                mapping=PdfF8995.get_mapping(year)["scalars"],
+                values=form_f8995.compute(scenario, upstream=upstream),
+            ))
 
         if self._should_emit_8582(scenario, upstream):
-            f8582_template = _PDFS_ROOT / "federal" / str(year) / "f8582.pdf"
-            out_8582 = output_dir / f"f8582_{year}.pdf"
             # Reuse sch_e_values if already computed above; otherwise compute
-            # Part I now so 8582 has rental loss context even when Sch E
-            # wasn't emitted (e.g. only passive K-1 activity, no rental property).
+            # Part I now so 8582 has rental loss context even when Sch E wasn't
+            # emitted (e.g. only passive K-1 activity, no rental property).
             if not sch_e_values:
                 sch_e_values = form_sch_e.compute(scenario, upstream=upstream)
-            f8582_values = form_f8582.compute(scenario, upstream={
-                **upstream,
-                "sch_e": sch_e_values,
-            })
+            specs.append(_FederalFormSpec(
+                name="f8582", template=_fed("f8582.pdf"),
+                output_name=f"f8582_{year}.pdf", kind="flat",
+                mapping=PdfF8582.get_mapping(year)["scalars"],
+                values=form_f8582.compute(scenario, upstream={
+                    **upstream, "sch_e": sch_e_values,
+                }),
+            ))
+
+        return specs
+
+    @staticmethod
+    def _render_federal_spec(
+        filler: PdfFiller, spec: _FederalFormSpec, output_dir: Path,
+    ) -> Path:
+        """Render one prepared spec to ``output_dir/<output_name>``."""
+        out = output_dir / spec.output_name
+        if spec.kind == "flat":
             filler.fill(
-                template_path=f8582_template,
-                output_path=out_8582,
-                field_mapping=PdfF8582.get_mapping(year)["scalars"],
-                values=f8582_values,
+                template_path=spec.template, output_path=out,
+                field_mapping=spec.mapping, values=spec.values,
             )
-            emitted["f8582"] = out_8582
+        else:
+            filler.fill_with_repeaters(
+                template_path=spec.template, output_path=out,
+                mapping=spec.mapping, values=spec.values,
+            )
+        return out
 
-        # 1120-S emit (only when scenario.s_corp_return is populated).
-        emitted.update(
-            self._emit_federal_corporate_pdfs_internal(
-                scenario, results, output_dir))
-
-        return emitted
+    @staticmethod
+    def _federal_spec_payload(spec: _FederalFormSpec) -> dict[str, str]:
+        """The exact ``{pdf_field: value}`` dict this form would render — the
+        changed-forms selector compares these across the as-filed and corrected
+        runs. Built via the same PdfFiller resolution the render uses, so the
+        payload cannot drift from what fills."""
+        if spec.kind == "flat":
+            return PdfFiller.resolve_fields(spec.mapping, spec.values)
+        return PdfFiller._expand_repeaters(spec.mapping, spec.values)
 
     def _emit_federal_corporate_pdfs_internal(
         self, scenario: Scenario, results: dict, output_dir: Path,
@@ -1138,71 +1244,11 @@ class ReturnOrchestrator:
         #    federal results dict without an interim bridge.
         federal_results = self.compute_federal(scenario)
 
-        # 5. CA computes — Sch CA → Sch D 540 → Form 540 main.
-        sch_ca_results = form_sch_ca.compute(
-            effective_ca540, federal_results,
+        # 5-7. CA computes (Sch CA → Sch D 540 → Form 540 main) + header merge.
+        ca_results = self._compute_ca_results(
+            scenario, effective_ca540, federal_results,
+            sch_d_540_adjustments=fods_div.sch_d_540,
         )
-        sch_d_540_results = form_sch_d_540.compute(
-            federal_results,
-            worksheet_adjustments=fods_div.sch_d_540,
-        )
-        # Schedule CA Part II — CA itemized deductions. Computed only when the
-        # federal return itemized (schedule_a_total > 0); a federally-standard
-        # return gets no Part II and f540.compute keeps the CA standard
-        # deduction (it selects max(std, ca_itemized)). v1 scope: CA itemizes
-        # iff the federal return itemized.
-        # CA Part II is computed only when the federal return actually APPLIED
-        # itemized deductions (not merely produced a nonzero raw Schedule A
-        # total) — see sch_ca.federal_itemization_applied.
-        ca_part_ii = {}
-        if form_sch_ca.federal_itemization_applied(federal_results):
-            # compute_federal surfaces only schedule_a_total + line 5e, so
-            # recompute the full federal Schedule A line breakdown (medical,
-            # property, mortgage, charity) for Part II to read. Uses the same
-            # effective-itemized scenario the federal Sch A used, so the
-            # breakdown is consistent with schedule_a_total. NOTE: this inherits
-            # forms.sch_a.compute's scope gates — for a CA resident only the
-            # 2025 SALT-phaseout gate can fire (MAGI above threshold), the same
-            # limitation the federal Sch A emit path already carries.
-            sch_a_full = form_sch_a.compute(
-                _scenario_with_effective_itemized(scenario),
-                {"f1040": federal_results},
-            )
-            ca_part_ii = form_sch_ca.compute_part_ii_itemized(sch_a_full)
-        f540_results = form_f540.compute(
-            year=scenario.config.year,
-            filing_status=scenario.config.filing_status,
-            federal_agi=federal_results["agi"],
-            ca_agi=sch_ca_results["sch_ca_ca_agi"],
-            ca540=effective_ca540,
-            num_dependents=len(scenario.config.dependents),
-            ca_itemized=ca_part_ii.get("ca_itemized_total"),
-            # v1 default (tracked follow-up):
-            # - renter_credit_eligible: False (no CA540Return field yet)
-        )
-        # Note: f540.compute raises NotImplementedError when federal_agi
-        # exceeds the year's CA AGI phaseout threshold; we let it propagate
-        # without wrapping. Load-time scope-out attestations are the gate;
-        # if a scenario reaches this method, it has already passed
-        # _validate_scenario_config.
-
-        # 7. Header merge — happens here; _emit_ca_pdfs_internal stays
-        #    PDF-only and trusts the dict as-is.
-        header_keys = {
-            "f540_taxpayer_name": scenario.config.full_name,
-            "f540_taxpayer_ssn": scenario.config.ssn,
-            "sch_ca_taxpayer_name": scenario.config.full_name,
-            "sch_ca_taxpayer_ssn": scenario.config.ssn,
-            "sch_d_540_taxpayer_name": scenario.config.full_name,
-            "sch_d_540_taxpayer_ssn": scenario.config.ssn,
-        }
-        ca_results = {
-            **sch_ca_results,
-            **ca_part_ii,
-            **sch_d_540_results,
-            **f540_results,
-            **header_keys,
-        }
 
         # 8. Emit PDFs.
         ca_pdfs = self._emit_ca_pdfs_internal(scenario, ca_results, output_dir)
@@ -1219,6 +1265,216 @@ class ReturnOrchestrator:
             )
 
         return ca_results, ca_pdfs
+
+    def _compute_ca_results(
+        self,
+        scenario: Scenario,
+        effective_ca540: CA540Return,
+        federal_results: dict,
+        sch_d_540_adjustments=(),
+    ) -> dict:
+        """Compute the merged CA-state results dict (Sch CA → Sch D 540 →
+        Form 540 main + identity header keys) from an already-resolved
+        ``effective_ca540`` and ``federal_results``.
+
+        Extracted from ``run_full_california_return`` (steps 5-7) so the
+        amendment packet can reuse the exact CA compute core without
+        re-implementing it. ``run_full_california_return`` sources
+        ``effective_ca540`` from a CA YAML block; ``run_amendment_packet``
+        sources it from ``scenario.ca540``. Both feed the SAME compute here so
+        the amended 540 can never drift from a normally-filed 540.
+
+        ``f540.compute`` raises NotImplementedError above the CA AGI phaseout
+        threshold; that propagates unwrapped.
+        """
+        sch_ca_results = form_sch_ca.compute(effective_ca540, federal_results)
+        sch_d_540_results = form_sch_d_540.compute(
+            federal_results, worksheet_adjustments=list(sch_d_540_adjustments),
+        )
+        # Schedule CA Part II — CA itemized deductions, computed only when the
+        # federal return actually APPLIED itemized deductions (see
+        # sch_ca.federal_itemization_applied). Inherits sch_a.compute's scope
+        # gates (only the 2025 SALT-phaseout gate can fire for a CA resident).
+        ca_part_ii: dict = {}
+        if form_sch_ca.federal_itemization_applied(federal_results):
+            sch_a_full = form_sch_a.compute(
+                _scenario_with_effective_itemized(scenario),
+                {"f1040": federal_results},
+            )
+            ca_part_ii = form_sch_ca.compute_part_ii_itemized(sch_a_full)
+        f540_results = form_f540.compute(
+            year=scenario.config.year,
+            filing_status=scenario.config.filing_status,
+            federal_agi=federal_results["agi"],
+            ca_agi=sch_ca_results["sch_ca_ca_agi"],
+            ca540=effective_ca540,
+            num_dependents=len(scenario.config.dependents),
+            ca_itemized=ca_part_ii.get("ca_itemized_total"),
+        )
+        header_keys = {
+            "f540_taxpayer_name": scenario.config.full_name,
+            "f540_taxpayer_ssn": scenario.config.ssn,
+            "sch_ca_taxpayer_name": scenario.config.full_name,
+            "sch_ca_taxpayer_ssn": scenario.config.ssn,
+            "sch_d_540_taxpayer_name": scenario.config.full_name,
+            "sch_d_540_taxpayer_ssn": scenario.config.ssn,
+        }
+        return {
+            **sch_ca_results,
+            **ca_part_ii,
+            **sch_d_540_results,
+            **f540_results,
+            **header_keys,
+        }
+
+    def run_amendment_packet(
+        self,
+        original_scenario: Scenario,
+        amended_scenario: Scenario,
+        case: AmendmentCase,
+        filed_path: Path,
+        ca_filed_path: Path,
+        output_dir: Path,
+    ) -> PacketManifest:
+        """Assemble + emit the complete amendment mailing packet, return its
+        manifest (spec §3/§4/§6). Public entry mirroring
+        ``run_full_california_scorp_return``'s style.
+
+        Emits, into ``output_dir``:
+          * ``f1040x_<year>.pdf`` — Form 1040-X (Column A from ``filed_path``,
+            Column C from the corrected run; assembler guards propagate).
+          * each SELECTED changed federal individual form (machine-derived by
+            comparing the as-filed run's per-form emit payloads to the corrected
+            run's) — and ONLY those. Full-emit federal years only; a federal
+            compute-only year (e.g. 2021) emits the 1040-X alone and the
+            manifest notes attachments are unavailable.
+          * when the amended scenario has a CA side: ``schedule_x_<year>.pdf``
+            (all amendable CA years) and the COMPLETE amended 540
+            (``f540_amended_<year>.pdf`` + Sch CA + Sch D-540) — the latter only
+            for full-emit CA years; a CA compute-only year emits Schedule X
+            alone and the manifest notes the 540 must be prepared separately.
+          * ``packet_manifest.txt`` — the rendered :class:`PacketManifest`.
+
+        The assemblers raise OutOfScopeAmendmentError / MissingFiledValueError /
+        consistency ValueErrors; those PROPAGATE unwrapped.
+        """
+        from tenforty import years, selector, amendment
+        from tenforty.forms import f1040x as form_f1040x
+        from tenforty.forms import schedule_x as form_schedule_x
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        year = amended_scenario.config.year
+        filler = PdfFiller()
+        mailed: list[MailedFile] = []
+        caveats: list[str] = [_ERRONEOUS_INCLUSION_CAVEAT]
+        dropped: tuple[str, ...] = ()
+
+        # --- Federal: corrected run feeds Column C; filed file is Column A. ---
+        eff_amended, corp_amended = self._build_effective_scenario(amended_scenario)
+        corrected_federal = {
+            **corp_amended, **self._compute_1040_pipeline(eff_amended)}
+
+        filed = amendment.load_filed_values(
+            filed_path, form_f1040x.REQUIRED_FILED_KEYS)
+        f1040x_values = form_f1040x.assemble(filed, corrected_federal, case)
+        revision = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
+        self._emit_flat(
+            filler,
+            _PDFS_ROOT / "federal" / "amendments" / "f1040x.pdf",
+            output_dir / f"f1040x_{year}.pdf",
+            PdfF1040X.get_mapping(revision), f1040x_values,
+        )
+        mailed.append(MailedFile(
+            f"f1040x_{year}.pdf", "Form 1040-X (amended federal return)",
+            "amendment form"))
+
+        # --- Federal changed-form attachments (full-emit federal years only) ---
+        if year in years.FEDERAL_YEARS:
+            eff_original, corp_original = self._build_effective_scenario(
+                original_scenario)
+            original_federal = {
+                **corp_original, **self._compute_1040_pipeline(eff_original)}
+            filed_specs = self._federal_individual_emit_specs(
+                eff_original, original_federal)
+            corrected_specs = {
+                s.name: s for s in self._federal_individual_emit_specs(
+                    eff_amended, corrected_federal)}
+            filed_payloads = {
+                s.name: self._federal_spec_payload(s) for s in filed_specs}
+            corrected_payloads = {
+                name: self._federal_spec_payload(s)
+                for name, s in corrected_specs.items()}
+            changed = selector.changed_forms(filed_payloads, corrected_payloads)
+            dropped = tuple(
+                selector.dropped_forms(filed_payloads, corrected_payloads))
+            for cf in changed:
+                spec = corrected_specs[cf.form]
+                self._render_federal_spec(filler, spec, output_dir)
+                mailed.append(MailedFile(
+                    spec.output_name,
+                    f"changed federal form ({cf.form})", cf.reason))
+            if not changed:
+                caveats.append(
+                    "Changed-forms selection is empty; no federal "
+                    "individual-form attachments mail.")
+        else:
+            caveats.append(_FEDERAL_COMPUTE_ONLY_NOTE)
+
+        # --- California side (only when the amended scenario has a CA side) ---
+        if amended_scenario.ca540 is not None:
+            corrected_ca = self._compute_ca_results(
+                amended_scenario, amended_scenario.ca540, corrected_federal)
+            ca_filed = amendment.load_filed_values(
+                ca_filed_path, form_schedule_x.REQUIRED_CA_FILED_KEYS)
+            schedule_x_values = form_schedule_x.assemble_ca(
+                ca_filed, corrected_ca, case)
+            self._emit_flat(
+                filler,
+                _PDFS_ROOT / "california" / "amendments" / f"schedule_x_{year}.pdf",
+                output_dir / f"schedule_x_{year}.pdf",
+                PdfScheduleX.get_mapping(year), schedule_x_values,
+            )
+            mailed.append(MailedFile(
+                f"schedule_x_{year}.pdf",
+                "California Schedule X (explanation of amended changes)",
+                "amendment form"))
+
+            if year in years.CALIFORNIA_YEARS:
+                ca_pdfs = self._emit_ca_pdfs_internal(
+                    amended_scenario, corrected_ca, output_dir)
+                amended_540 = output_dir / f"f540_amended_{year}.pdf"
+                ca_pdfs["f540"].replace(amended_540)
+                mailed.append(MailedFile(
+                    f"f540_amended_{year}.pdf",
+                    "Complete amended California Form 540",
+                    "complete amended return"))
+                mailed.append(MailedFile(
+                    f"sch_ca_{year}.pdf",
+                    "California Schedule CA (amended)",
+                    "complete amended return"))
+                mailed.append(MailedFile(
+                    f"sch_d_540_{year}.pdf",
+                    "California Schedule D-540 (amended)",
+                    "complete amended return"))
+            else:
+                caveats.append(_CA_COMPUTE_ONLY_NOTE)
+
+        manifest = PacketManifest(
+            year=year, mailed_files=tuple(mailed),
+            dropped=dropped, caveats=tuple(caveats))
+        (output_dir / "packet_manifest.txt").write_text(manifest.render())
+        return manifest
+
+    @staticmethod
+    def _emit_flat(
+        filler: PdfFiller, template: Path, output_path: Path,
+        field_mapping: dict, values: dict,
+    ) -> Path:
+        """Fill a flat-mapping amendment form (1040-X / Schedule X)."""
+        return filler.fill(
+            template_path=template, output_path=output_path,
+            field_mapping=field_mapping, values=values,
+        )
 
     def run_full_california_scorp_return(
         self, scenario: Scenario, output_dir: Path,
