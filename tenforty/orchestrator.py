@@ -324,6 +324,18 @@ _CA_COMPUTE_ONLY_NOTE: str = (
     "amended Form 540 must be prepared separately; only Schedule X emitted."
 )
 
+# §4a: a flagged CA S-corp run marks the corrected 100S + K-1(100S) as amended,
+# but the CA S-corp AMENDMENT itself files on Form 100X — which tenforty does
+# not emit. This LOUD note is dropped into the output dir so the preparer can
+# never mistake the emitted corrected return for the whole filing.
+_CA_SCORP_100X_NOTE: str = (
+    "CA S-CORP AMENDMENT — READ FIRST\n"
+    "================================\n\n"
+    "CA S-corp amendment files on Form 100X, which tenforty does not emit; "
+    "the amended-marked Form 100S + K-1(100S) emitted here are the complete "
+    "corrected return that accompanies a preparer-completed 100X.\n"
+)
+
 
 @dataclasses.dataclass(frozen=True)
 class MailedFile:
@@ -983,21 +995,33 @@ class ReturnOrchestrator:
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
+        amended = scenario.s_corp_return.amended_return
 
         # Main 1120-S + Sch B + Sch K.
         main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
         main_output = output_dir / f"f1120s_{year}.pdf"
+        # §4a: mark box H(4) "Amended return" only when flagged. ADDITIVE —
+        # merged onto the mapping/checkbox_states/values passed to fill; when
+        # not amended nothing is added, so the box stays /Off.
+        main_mapping = PdfF1120S.get_mapping(year)
+        main_checkbox = PdfF1120S.get_checkbox_states(year)
+        main_values: dict = results
+        if amended:
+            m_path, m_on = PdfF1120S.get_amended_mark(year)
+            main_mapping = {**main_mapping, "f1120s_amended_return": m_path}
+            main_checkbox = {**main_checkbox, "f1120s_amended_return": m_on}
+            main_values = {**results, "f1120s_amended_return": True}
         # Pass the full results dict — aggregation and derivation lambdas
         # reference keys that are NOT in _MAPPING_<year>, so filtering to
         # mapping keys alone would silently drop those inputs.
         filler.fill(
             template_path=main_template,
             output_path=main_output,
-            values=results,
-            field_mapping=PdfF1120S.get_mapping(year),
+            values=main_values,
+            field_mapping=main_mapping,
             aggregations=PdfF1120S.get_aggregations(year),
             derivations=PdfF1120S.get_derivations(year),
-            checkbox_states=PdfF1120S.get_checkbox_states(year),
+            checkbox_states=main_checkbox,
         )
         emitted["1120s"] = main_output
 
@@ -1013,6 +1037,16 @@ class ReturnOrchestrator:
         # programmatic consumers, flat with assembled name+address
         # strings for the form filler.
         k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
+        # §4a: "Amended K-1" checkbox on every K-1 when flagged. ADDITIVE —
+        # merged per shareholder onto the fill inputs.
+        k1_mapping = PdfF1120SK1.get_mapping(year)
+        k1_checkbox: dict[str, str] = {}
+        k1_amended_values: dict = {}
+        if amended:
+            k1_path, k1_on = PdfF1120SK1.get_amended_mark(year)
+            k1_mapping = {**k1_mapping, "k1_amended_return": k1_path}
+            k1_checkbox = {"k1_amended_return": k1_on}
+            k1_amended_values = {"k1_amended_return": True}
         for i, alloc in enumerate(
             results.get("f1120s_sch_k1_allocations", []),
             start=1,
@@ -1023,13 +1057,15 @@ class ReturnOrchestrator:
                 "ownership_percentage": alloc.ownership_percentage,
                 "box_1_ordinary_business_income":
                     alloc.box_1_ordinary_business_income,
+                **k1_amended_values,
             }
             k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
             filler.fill(
                 template_path=k1_template,
                 output_path=k1_output,
                 values=flat_values,
-                field_mapping=PdfF1120SK1.get_mapping(year),
+                field_mapping=k1_mapping,
+                checkbox_states=k1_checkbox or None,
             )
             emitted[f"1120s_k1_{i}"] = k1_output
 
@@ -1114,6 +1150,17 @@ class ReturnOrchestrator:
         emitted["f100s"] = f100s_output
 
         k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"
+        # §4a: line E "amended Schedule K-1" mark when flagged. PER-YEAR path +
+        # ON-token (checkbox /Yes 2021-23; radio 2024-25). ADDITIVE — merged
+        # onto the fill inputs; unset otherwise.
+        k1_mapping = PdfF100SK1.get_mapping(year)
+        k1_checkbox: dict[str, str] = {}
+        k1_amended_values: dict = {}
+        if r.amended_return:
+            a_path, a_on = PdfF100SK1.get_amended_mark(year)
+            k1_mapping = {**k1_mapping, "k1_amended_return": a_path}
+            k1_checkbox = {"k1_amended_return": a_on}
+            k1_amended_values = {"k1_amended_return": True}
         for i, alloc in enumerate(
                 ca_corporate_results.get("f100s_k1_allocations", []), start=1):
             sh = r.shareholders[alloc["shareholder_index"]]
@@ -1129,10 +1176,12 @@ class ReturnOrchestrator:
                 "k1_ca_ordinary_income_total": alloc["ca_ordinary_income"],
                 "k1_ca_ordinary_income_source": alloc["ca_ordinary_income"],
                 # k1_corp_ca_number: no model source in v1 -> left blank.
+                **k1_amended_values,
             }
             k1_output = output_dir / f"f100s_k1_{i}_{year}.pdf"
             filler.fill(template_path=k1_template, output_path=k1_output,
-                        field_mapping=PdfF100SK1.get_mapping(year), values=k1_values)
+                        field_mapping=k1_mapping, values=k1_values,
+                        checkbox_states=k1_checkbox or None)
             emitted[f"f100s_k1_{i}"] = k1_output
         return emitted
 
@@ -1486,6 +1535,17 @@ class ReturnOrchestrator:
         ca_corporate_results = self.compute_california_corporate(scenario)
         emitted = self._emit_ca_scorp_pdfs_internal(
             scenario, ca_corporate_results, output_dir)
+        # §4a: when the CA S-corp run is flagged amended, drop the loud Form
+        # 100X note (the amended 100S/K-1 is the corrected return, NOT the
+        # amendment vehicle). Only when a CA S-corp was actually emitted.
+        if (
+            scenario.s_corp_return is not None
+            and scenario.s_corp_return.ca is not None
+            and scenario.s_corp_return.amended_return
+        ):
+            output_dir.mkdir(parents=True, exist_ok=True)
+            (output_dir / "scorp_amendment_note.txt").write_text(
+                _CA_SCORP_100X_NOTE)
         return ca_corporate_results, emitted
 
     def run_full_federal_scorp_return(

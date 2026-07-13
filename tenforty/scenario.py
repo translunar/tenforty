@@ -180,13 +180,29 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
     return inputs
 
 
+_KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
+    "name", "ein", "address", "date_incorporated", "s_election_effective_date",
+    "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
+    "scope_outs", "payments", "ca", "amended_return",
+})
+
+
 def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
     """Build SCorpReturn from a YAML-parsed dict. Each section uses an
     explicit-field-names loader (not `**` dict-spread) so a typoed YAML
     key fails with a clear `KeyError: <field>` rather than the implicit
-    `TypeError: unexpected keyword argument` from dataclass construction."""
+    `TypeError: unexpected keyword argument` from dataclass construction.
+
+    An unknown sibling key fails closed with ValueError (mirroring the
+    top-level and ``s_corp_return.ca`` loaders) rather than being silently
+    dropped — a typoed ``amend_return`` must not slip an unmarked return past."""
     if data is None:
         return None
+    unknown = set(data) - _KNOWN_SCORP_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in s_corp_return: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_SCORP_KEYS)}")
     return SCorpReturn(
         name=data["name"],
         ein=data["ein"],
@@ -209,6 +225,7 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         scope_outs=_load_scope_outs(data.get("scope_outs", {})),
         payments=_load_payments(data.get("payments", {})),
         ca=_load_scorp_ca(data.get("ca")),
+        amended_return=bool(data.get("amended_return", False)),
     )
 
 

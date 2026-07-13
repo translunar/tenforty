@@ -403,6 +403,36 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
             raise ValueError(f"No Form 1120-S checkbox states for year {year}")
         return _CHECKBOX_STATES_BY_YEAR[year]
 
+    @classmethod
+    def get_amended_mark(cls, year: int) -> tuple[str, str]:
+        """(field_path, ON-state) for box H(4) "Amended return" (§4a).
+
+        ADDITIVE and independent of the value/aggregation/derivation/checkbox
+        registries above: nothing here changes an existing mapped field. The
+        orchestrator merges this single entry into the fill only when the
+        S-corp return is flagged amended, writing the ON-state; an unflagged
+        return sets nothing (the box stays /Off). Certified from each
+        template's own get_fields()/_States_ (probe-tables "Entity amended
+        checkboxes").
+        """
+        if year not in _AMENDED_MARK_BY_YEAR:
+            raise ValueError(f"No Form 1120-S amended mark for year {year}")
+        return _AMENDED_MARK_BY_YEAR[year]
+
+
+# §4a amended-return mark — box H(4) "Amended return".
+# Field PATH + ON-state read off each template's own get_fields()/_States_:
+# path topmostSubform[0].Page1[0].c1_6[0], /_States_ ['/1','/Off'], ON '/1',
+# IDENTICAL across all supported years 2021-2025 (bare topmostSubform
+# namespace, no year prefix). See amended-returns-probe-tables.md §(a).
+_AMENDED_MARK_1120S: tuple[str, str] = (
+    "topmostSubform[0].Page1[0].c1_6[0]", "/1")
+_AMENDED_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
+    2021: _AMENDED_MARK_1120S, 2022: _AMENDED_MARK_1120S,
+    2023: _AMENDED_MARK_1120S, 2024: _AMENDED_MARK_1120S,
+    2025: _AMENDED_MARK_1120S,
+}
+
 
 # PDF cells that receive a sum of multiple compute keys (2025).
 _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {
