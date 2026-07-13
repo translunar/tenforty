@@ -63,3 +63,21 @@ class YearManifestTests(unittest.TestCase):
     def test_describe_joins_sorted(self):
         self.assertEqual(year_manifest.describe((2025, 2021, 2024)),
                          "2021, 2024, 2025")
+
+
+class ScorpTiersTests(unittest.TestCase):
+    def test_scorp_federal_years_declared(self):
+        self.assertEqual(year_manifest.SCORP_FEDERAL_YEARS,
+                         (2021, 2022, 2023, 2024, 2025))
+
+    def test_ca_scorp_years_declared(self):
+        self.assertEqual(year_manifest.CA_SCORP_YEARS,
+                         (2021, 2022, 2023, 2024, 2025))
+
+    def test_scorp_forms_split_out_of_federal(self):
+        self.assertEqual(year_manifest.SCORP_FORMS, ("f1120s", "f1120s_k1"))
+        self.assertNotIn("f1120s", year_manifest.FEDERAL_FORMS)
+        self.assertNotIn("f1120s_k1", year_manifest.FEDERAL_FORMS)
+
+    def test_ca_scorp_forms_declared(self):
+        self.assertEqual(year_manifest.CA_SCORP_FORMS, ("f100s", "f100s_k1"))

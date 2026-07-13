@@ -19,11 +19,14 @@ from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import f1120s as form_f1120s
+from tenforty.forms import f100s as form_f100s
+from tenforty.forms import f100s_k1 as form_f100s_k1
 from tenforty.forms import sch_ca as form_sch_ca
 from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
+from tenforty.params import ca_scorp
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
@@ -40,6 +43,8 @@ from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
+from tenforty.mappings.pdf_f100s import PdfF100S
+from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
@@ -156,6 +161,24 @@ def _flatten_k1_party(
             f"{type(party).__name__}"
         )
     return flat
+
+
+def _format_rate_percent(rate: float) -> str:
+    """Franchise-tax rate as the Form 100S line-21 percentage box prints it:
+    0.015 -> "1.5"."""
+    return f"{rate * 100:g}"
+
+
+def _split_ownership_percent(fraction: float) -> tuple[str, str]:
+    """Schedule K-1 (100S) Item A renders the allocation % as two boxes,
+    "<whole>.<frac>%". Split an ownership fraction (0-1) into the integer part
+    and a two-digit fractional part: 1.0 -> ("100", "00"); 0.6 -> ("60", "00");
+    0.29 -> ("29", "00"). Uses integer arithmetic on hundredths-of-a-percent
+    (rather than float truncation) so the fractional box is structurally
+    always two digits in 00-99, never "100"."""
+    hundredths = round(fraction * 10000)  # total hundredths of a percent
+    whole, frac = divmod(hundredths, 100)
+    return str(whole), f"{frac:02d}"
 
 
 def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
@@ -580,6 +603,23 @@ class ReturnOrchestrator:
             return {}
         return form_f1120s.compute(scenario, upstream={})
 
+    def compute_california_corporate(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the California S-corp return (Form 100S + Schedule K-1 (100S)).
+
+        Returns {} unless BOTH ``scenario.s_corp_return`` and
+        ``s_corp_return.ca`` are set. Runs the federal 1120-S pipeline first
+        and feeds its results in as upstream, so the CA net-income base is
+        exactly the federal ordinary business income (spec §3 interlock); the
+        CA franchise tax never recomputes federal figures.
+        """
+        if scenario.s_corp_return is None or scenario.s_corp_return.ca is None:
+            return {}
+        federal = form_f1120s.compute(scenario, upstream={})
+        f100s_results = form_f100s.compute(scenario, {"f1120s": federal})
+        k1_results = form_f100s_k1.compute(
+            scenario, {"f1120s": federal, "f100s": f100s_results})
+        return {**f100s_results, **k1_results}
+
     def emit_pdfs(
         self,
         scenario: Scenario,
@@ -817,55 +857,75 @@ class ReturnOrchestrator:
             emitted["f8582"] = out_8582
 
         # 1120-S emit (only when scenario.s_corp_return is populated).
-        if scenario.s_corp_return is not None:
-            # Main 1120-S + Sch B + Sch K.
-            main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
-            main_output = output_dir / f"f1120s_{year}.pdf"
-            # Pass the full results dict — aggregation and derivation lambdas
-            # reference keys that are NOT in _MAPPING_<year>, so filtering to
-            # mapping keys alone would silently drop those inputs.
-            filler.fill(
-                template_path=main_template,
-                output_path=main_output,
-                values=results,
-                field_mapping=PdfF1120S.get_mapping(year),
-                aggregations=PdfF1120S.get_aggregations(year),
-                derivations=PdfF1120S.get_derivations(year),
-                checkbox_states=PdfF1120S.get_checkbox_states(year),
-            )
-            emitted["1120s"] = main_output
+        emitted.update(
+            self._emit_federal_corporate_pdfs_internal(
+                scenario, results, output_dir))
 
-            # Per-shareholder Sch K-1.
-            #
-            # The compute output's allocation is a typed `K1Allocation`
-            # dataclass with nested `entity` / `shareholder` sub-dataclasses
-            # and an `Address` for each. The K-1 PDF combines name+address
-            # into a single multi-line cell per party (Part I field B for
-            # the corporation, Part II field F1 for the shareholder); the
-            # mapping uses one flat compute key per party for that combined
-            # block. `_flatten_k1_party` is the boundary: typed for
-            # programmatic consumers, flat with assembled name+address
-            # strings for the form filler.
-            k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
-            for i, alloc in enumerate(
-                results.get("f1120s_sch_k1_allocations", []),
-                start=1,
-            ):
-                flat_values = {
-                    **_flatten_k1_party("entity", alloc.entity),
-                    **_flatten_k1_party("shareholder", alloc.shareholder),
-                    "ownership_percentage": alloc.ownership_percentage,
-                    "box_1_ordinary_business_income":
-                        alloc.box_1_ordinary_business_income,
-                }
-                k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
-                filler.fill(
-                    template_path=k1_template,
-                    output_path=k1_output,
-                    values=flat_values,
-                    field_mapping=PdfF1120SK1.get_mapping(year),
-                )
-                emitted[f"1120s_k1_{i}"] = k1_output
+        return emitted
+
+    def _emit_federal_corporate_pdfs_internal(
+        self, scenario: Scenario, results: dict, output_dir: Path,
+    ) -> dict[str, Path]:
+        """Emit the federal Form 1120-S + one Schedule K-1 (1120-S) per
+        shareholder from a corporate results dict. Returns {} when
+        scenario.s_corp_return is None. Split out of _emit_pdfs_internal so the
+        S-corp-only years (e.g. 2021, which has no 1040 spine) can emit the
+        corporate set WITHOUT running the individual 1040 pipeline."""
+        emitted: dict[str, Path] = {}
+        if scenario.s_corp_return is None:
+            return emitted
+        output_dir.mkdir(parents=True, exist_ok=True)
+        year = scenario.config.year
+        filler = PdfFiller()
+
+        # Main 1120-S + Sch B + Sch K.
+        main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
+        main_output = output_dir / f"f1120s_{year}.pdf"
+        # Pass the full results dict — aggregation and derivation lambdas
+        # reference keys that are NOT in _MAPPING_<year>, so filtering to
+        # mapping keys alone would silently drop those inputs.
+        filler.fill(
+            template_path=main_template,
+            output_path=main_output,
+            values=results,
+            field_mapping=PdfF1120S.get_mapping(year),
+            aggregations=PdfF1120S.get_aggregations(year),
+            derivations=PdfF1120S.get_derivations(year),
+            checkbox_states=PdfF1120S.get_checkbox_states(year),
+        )
+        emitted["1120s"] = main_output
+
+        # Per-shareholder Sch K-1.
+        #
+        # The compute output's allocation is a typed `K1Allocation`
+        # dataclass with nested `entity` / `shareholder` sub-dataclasses
+        # and an `Address` for each. The K-1 PDF combines name+address
+        # into a single multi-line cell per party (Part I field B for
+        # the corporation, Part II field F1 for the shareholder); the
+        # mapping uses one flat compute key per party for that combined
+        # block. `_flatten_k1_party` is the boundary: typed for
+        # programmatic consumers, flat with assembled name+address
+        # strings for the form filler.
+        k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
+        for i, alloc in enumerate(
+            results.get("f1120s_sch_k1_allocations", []),
+            start=1,
+        ):
+            flat_values = {
+                **_flatten_k1_party("entity", alloc.entity),
+                **_flatten_k1_party("shareholder", alloc.shareholder),
+                "ownership_percentage": alloc.ownership_percentage,
+                "box_1_ordinary_business_income":
+                    alloc.box_1_ordinary_business_income,
+            }
+            k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
+            filler.fill(
+                template_path=k1_template,
+                output_path=k1_output,
+                values=flat_values,
+                field_mapping=PdfF1120SK1.get_mapping(year),
+            )
+            emitted[f"1120s_k1_{i}"] = k1_output
 
         return emitted
 
@@ -907,6 +967,67 @@ class ReturnOrchestrator:
             )
             emitted[basename] = output_path
 
+        return emitted
+
+    def _emit_ca_scorp_pdfs_internal(
+        self,
+        scenario: Scenario,
+        ca_corporate_results: dict,
+        output_dir: Path,
+    ) -> dict[str, Path]:
+        """Emit CA Form 100S + one Schedule K-1 (100S) per shareholder.
+
+        Returns {} unless scenario.s_corp_return and its .ca sub-block are both
+        set. Mirrors the federal 1120-S emit block. Identity, the line-21 rate,
+        and the split ownership-% are INJECTED here from the scenario and the
+        attested CA S-corp params (they are not f100s.compute outputs).
+        """
+        r = scenario.s_corp_return
+        if r is None or r.ca is None:
+            return {}
+        output_dir.mkdir(parents=True, exist_ok=True)
+        year = scenario.config.year
+        filler = PdfFiller()
+        emitted: dict[str, Path] = {}
+
+        rate = _format_rate_percent(ca_scorp.load(year).franchise_tax_rate)
+        f100s_values = {
+            **ca_corporate_results,
+            "f100s_entity_name": r.name,
+            "f100s_entity_fein": r.ein,
+            "f100s_entity_street": r.address.street,
+            "f100s_entity_city": r.address.city,
+            "f100s_entity_zip": r.address.zip_code,
+            "f100s_tax_rate": rate,
+            # f100s_entity_ca_corp_number: no model source in v1 -> left blank.
+        }
+        f100s_template = _PDFS_ROOT / "california" / str(year) / "f100s.pdf"
+        f100s_output = output_dir / f"f100s_{year}.pdf"
+        filler.fill(template_path=f100s_template, output_path=f100s_output,
+                    field_mapping=PdfF100S.get_mapping(year), values=f100s_values)
+        emitted["f100s"] = f100s_output
+
+        k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"
+        for i, alloc in enumerate(
+                ca_corporate_results.get("f100s_k1_allocations", []), start=1):
+            sh = r.shareholders[alloc["shareholder_index"]]
+            whole, frac = _split_ownership_percent(alloc["ownership_fraction"])
+            k1_values = {
+                "k1_shareholder_name": sh.name,
+                "k1_shareholder_id": sh.ssn_or_ein,
+                "k1_corp_fein": r.ein,
+                "k1_corp_name": r.name,
+                "k1_ownership_pct_whole": whole,
+                "k1_ownership_pct_frac": frac,
+                "k1_federal_ordinary_income": alloc["federal_ordinary_income"],
+                "k1_ca_ordinary_income_total": alloc["ca_ordinary_income"],
+                "k1_ca_ordinary_income_source": alloc["ca_ordinary_income"],
+                # k1_corp_ca_number: no model source in v1 -> left blank.
+            }
+            k1_output = output_dir / f"f100s_k1_{i}_{year}.pdf"
+            filler.fill(template_path=k1_template, output_path=k1_output,
+                        field_mapping=PdfF100SK1.get_mapping(year), values=k1_values)
+            emitted[f"f100s_k1_{i}"] = k1_output
         return emitted
 
     def run_full_return(
@@ -1098,6 +1219,33 @@ class ReturnOrchestrator:
             )
 
         return ca_results, ca_pdfs
+
+    def run_full_california_scorp_return(
+        self, scenario: Scenario, output_dir: Path,
+    ) -> tuple[dict, dict[str, Path]]:
+        """Compute + emit the CA S-corp packet (Form 100S + K-1 (100S)).
+
+        Returns (ca_corporate_results, emitted_paths). Emits nothing when the
+        scenario is not a CA S-corp (no s_corp_return / no .ca)."""
+        ca_corporate_results = self.compute_california_corporate(scenario)
+        emitted = self._emit_ca_scorp_pdfs_internal(
+            scenario, ca_corporate_results, output_dir)
+        return ca_corporate_results, emitted
+
+    def run_full_federal_scorp_return(
+        self, scenario: Scenario, output_dir: Path,
+    ) -> tuple[dict, dict[str, Path]]:
+        """Compute + emit the federal S-corp packet (Form 1120-S + Schedule K-1
+        (1120-S)). Public entry for S-corp-only federal years (e.g. 2021) that
+        have no 1040 spine — emits the corporate set WITHOUT the individual
+        pipeline. Returns (corp_results, emitted_paths); ({}, {}) when not an
+        S-corp scenario."""
+        if scenario.s_corp_return is None:
+            return {}, {}
+        corp_results = self.compute_corporate(scenario)
+        emitted = self._emit_federal_corporate_pdfs_internal(
+            scenario, corp_results, output_dir)
+        return corp_results, emitted
 
     def _verify_ca_yaml_freshness(
         self,
