@@ -67,6 +67,21 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
+# Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
+# amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
+#   - f1040x is REVISION-keyed → ("f1040x", revision)  e.g. ("f1040x", "rev-2025-12")
+#   - schedule_x is YEAR-keyed → ("schedule_x", year)  e.g. ("schedule_x", 2024)
+# i.e. (str, str) for f1040x and (str, int) for schedule_x. (KNOWN_GAPS above is
+# a (juris, form, year) 3-tuple; none of these three shapes collide.)
+#
+# EMPTY: the amendment tier is now fully live with ZERO allowlisted cells. The
+# f1040x revision pack landed in Task 6a; the five per-year CA Schedule X
+# mappings (2021-2025, three field-namespace shapes, each probe-certified from
+# its own template's get_fields) landed in Task 6b. The completeness gate now
+# demands every amendment cell live — template + probe + mapping for the
+# f1040x revision and for every years.amendable_california_years() Schedule X.
+AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str] | tuple[str, int]] = frozenset()
+
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
     """Every string leaf in a mapping payload is a PDF field path — the

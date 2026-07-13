@@ -66,3 +66,34 @@ class PdfF100SK1(PdfFormMapping[dict[str, str]]):
         2023: _MAPPING_2021_2023,
         2024: _MAPPING_2024_2025, 2025: _MAPPING_2024_2025,
     }
+
+    @classmethod
+    def get_amended_mark(cls, year: int) -> tuple[str, str]:
+        """(field_path, ON-state) for the line E "amended Schedule K-1" mark
+        (§4a). ADDITIVE: independent of the ``_MAPPINGS`` value registry above.
+
+        PER-YEAR — this is why on-states are never copied across years. Both
+        the field PATH and the ON-state diverge (bare vs prefixed namespace,
+        checkbox vs radio), each read off that year's own get_fields()/_States_
+        (probe-tables §(d)):
+          - 2021-23: '1023 cb', ON '/Yes'  (simple checkbox ['/Yes','/Off'])
+          - 2024:    'Sch K-1 (100s) 1023 RB', ON '/(2) An amended Schedule K-1.'
+                     (radio ['/1. A final Schedule K-1',
+                             '/(2) An amended Schedule K-1.'])
+          - 2025:    'Sch K-1 (100s) 1023 RB', ON '/1'  (radio ['/0','/1'])
+        The orchestrator writes the ON token only when flagged amended; unset
+        otherwise (radio /V then reads back as NOT the amended token).
+        """
+        if year not in _AMENDED_MARK_BY_YEAR:
+            raise ValueError(
+                f"No Schedule K-1 (100S) amended mark for year {year}")
+        return _AMENDED_MARK_BY_YEAR[year]
+
+
+_AMENDED_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
+    2021: ("1023 cb", "/Yes"),
+    2022: ("1023 cb", "/Yes"),
+    2023: ("1023 cb", "/Yes"),
+    2024: ("Sch K-1 (100s) 1023 RB", "/(2) An amended Schedule K-1."),
+    2025: ("Sch K-1 (100s) 1023 RB", "/1"),
+}

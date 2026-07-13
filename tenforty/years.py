@@ -73,6 +73,45 @@ CA_SCORP_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 CA_SCORP_FORMS: tuple[str, ...] = ("f100s", "f100s_k1")
 
 
+# Amendment tier — a MIXED tier: the two amendment forms are keyed differently
+# because the two tax authorities publish them differently.
+#
+#   f1040x is REVISION-keyed. The IRS files an amended federal return on the
+#   CURRENT revision of Form 1040-X regardless of which tax year is being
+#   corrected: one printed template revision (Rev. December 2025) serves EVERY
+#   amendable federal year. So the gate demands the f1040x pack (template +
+#   probe + mapping) ONCE, against that single revision — not once per year.
+#   AMENDMENT_TEMPLATE_REVISIONS records the revision tag it is pinned to.
+#
+#   schedule_x is YEAR-keyed. The FTB publishes a per-year Schedule X (one
+#   printed form per tax year), so CA amendment support owes one pack — template
+#   + probe + mapping — for EACH year in amendable_california_years(), exactly
+#   like a normal California year-keyed form. schedule_x therefore does NOT
+#   appear in AMENDMENT_TEMPLATE_REVISIONS; its packs live at
+#   pdfs/california/amendments/schedule_x_<year>.pdf and its mapping resolves
+#   get_mapping(year).
+AMENDMENT_FORMS: tuple[str, ...] = ("f1040x", "schedule_x")
+
+# Revision tags for the REVISION-keyed amendment forms ONLY (currently just
+# f1040x; schedule_x is year-keyed and is intentionally absent here). The tag
+# matches r"^rev-".
+AMENDMENT_TEMPLATE_REVISIONS: dict[str, str] = {
+    "f1040x": "rev-2025-12",  # Form 1040-X (Rev. December 2025)
+}
+
+
+def amendable_federal_years() -> tuple[int, ...]:
+    """Federal years an amended return can be prepared for: the full-pack
+    years plus the compute-only years (both carry the compute surface a
+    reconciliation needs). Derived from the manifest so it can never drift."""
+    return tuple(sorted(FEDERAL_YEARS + FEDERAL_COMPUTE_ONLY_YEARS))
+
+
+def amendable_california_years() -> tuple[int, ...]:
+    """California analogue of amendable_federal_years()."""
+    return tuple(sorted(CALIFORNIA_YEARS + CALIFORNIA_COMPUTE_ONLY_YEARS))
+
+
 def describe(years: Iterable[int]) -> str:
     """Render a year set for error messages: '2021, 2024, 2025'."""
     return ", ".join(str(y) for y in sorted(years))
