@@ -12,6 +12,14 @@ ROUTING GUARD: Every battery scenario must route to the NATIVE spine, not
 fall back to the oracle. Each subTest asserts _scenario_in_spine_scope is
 True before comparing — a fallback comparison would be workbook-vs-workbook
 and would prove nothing about the native implementation.
+
+PARITY INVARIANT: a workbook year yields full penny-parity over its DECLARED
+surface; exclusions are explicit, reasoned, and gated. Where a vendor workbook
+structurally omits a form (e.g. the TY2021 workbook has no Form 8582 tab), that
+form's keys are declared in F1040.WORKBOOK_KEY_EXCLUSIONS — surfaced here as
+explicit skips-with-reason (never silently absent) and typo-guarded (every
+excluded key must exist in another workbook year's map). No silent
+half-support, in either direction.
 """
 
 import tempfile
@@ -20,6 +28,7 @@ from pathlib import Path
 
 import pytest
 
+from tenforty.mappings.f1040 import F1040, WORKBOOK_KEY_EXCLUSIONS
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures.spine_battery import battery_for
 from tests.helpers import REPO_ROOT, needs_libreoffice
@@ -100,6 +109,52 @@ class SpineParityTests(unittest.TestCase):
     def test_native_matches_every_workbook_pennywise(self):
         for year in year_manifest.WORKBOOK_YEARS:
             _run_parity_battery(self, battery_for(year), year=year)
+
+
+class WorkbookKeyExclusionTests(unittest.TestCase):
+    """The exclusion registry is READ here (fast, no soffice): excluded keys
+    are surfaced as explicit skips-with-reason and typo-guarded. This keeps the
+    parity invariant honest — a key leaves the compared surface only via a
+    reasoned, gated entry, never by silently vanishing from a year's map."""
+
+    def test_excluded_keys_are_surfaced_as_explicit_skips(self):
+        # Never silently absent: every exclusion is reported (as a skip with
+        # its reason) so a reader of the parity results sees exactly what is
+        # NOT compared and why.
+        if not WORKBOOK_KEY_EXCLUSIONS:
+            self.skipTest("no workbook key exclusions declared")
+        for (year, key), reason in sorted(WORKBOOK_KEY_EXCLUSIONS.items()):
+            with self.subTest(year=year, key=key):
+                self.skipTest(f"{year} {key} excluded from parity: {reason}")
+
+    def test_every_excluded_key_exists_in_another_workbook_year(self):
+        # Typo protection: an excluded key must be a REAL key — present in some
+        # OTHER workbook year's INPUTS or OUTPUTS map. A misspelled exclusion
+        # would otherwise silently exclude nothing (or mask a real key).
+        for (year, key), reason in sorted(WORKBOOK_KEY_EXCLUSIONS.items()):
+            with self.subTest(year=year, key=key):
+                found = any(
+                    key in F1040.INPUTS.get(other, {})
+                    or key in F1040.OUTPUTS.get(other, {})
+                    for other in year_manifest.WORKBOOK_YEARS
+                    if other != year
+                )
+                self.assertTrue(
+                    found,
+                    f"excluded key {key!r} (year {year}) appears in NO other "
+                    f"workbook year's map — likely a typo, or the last year "
+                    f"that carried it was removed. Reason on file: {reason}",
+                )
+
+    def test_excluded_keys_absent_from_their_own_year_maps(self):
+        # The other half of the invariant: an excluded key must actually be
+        # GONE from its own year's maps (the wiring removed it), so the engine
+        # never writes/reads it against the missing sheet.
+        for (year, key) in sorted(WORKBOOK_KEY_EXCLUSIONS):
+            with self.subTest(year=year, key=key):
+                self.assertNotIn(key, F1040.INPUTS.get(year, {}))
+                self.assertNotIn(key, F1040.OUTPUTS.get(year, {}))
+                self.assertNotIn(key, F1040.SHEET_MAP.get(year, {}))
 
 
 if __name__ == "__main__":

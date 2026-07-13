@@ -30,7 +30,8 @@ _CA_COLUMN_STATUS = (
 
 class FederalTableSweepTests(unittest.TestCase):
     def test_every_bin_matches_rate_schedule_at_midpoint(self):
-        for year in year_manifest.FEDERAL_YEARS:
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
             params = load_federal(year)
             rows = load_table("federal", year)
             self.assertGreater(len(rows), 1_000)
@@ -46,7 +47,8 @@ class FederalTableSweepTests(unittest.TestCase):
                 f"(first shown as (lower, upper, published, computed))")
 
     def test_lookup_returns_published_value(self):
-        for year in year_manifest.FEDERAL_YEARS:
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
             rows = load_table("federal", year)
             lower, upper, taxes = rows[len(rows) // 2]
             self.assertEqual(

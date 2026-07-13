@@ -81,7 +81,11 @@ def _assert_attested(test: unittest.TestCase, params, params_cls,
 
 class FederalAttestationTests(unittest.TestCase):
     def test_every_federal_year_attested(self):
-        for year in year_manifest.FEDERAL_YEARS:
+        # Compute-only years carry an attested params pack too (native spine
+        # compute needs cross-validated brackets), so they are attested while
+        # in the tier — unlike CA compute-only, which is attested on exit.
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
             _assert_attested(
                 self, load_federal(year), FederalParams,
                 f"tests.params_attestations.federal_y{year}")
