@@ -46,6 +46,14 @@ class FederalCompletenessTests(unittest.TestCase):
                     entry.mapping_cls.get_mapping(year)  # raises if absent
 
     def test_workbook_years_have_workbooks(self):
+        # Layer-6 penny-parity (vs a third-party XLSX workbook) is a FEDERAL
+        # 1040 acceptance layer only; it is deliberately NOT part of the
+        # S-corp family's pack. No third-party workbook exists for Form
+        # 1120-S or CA Form 100S (SCORP_FEDERAL_YEARS / CA_SCORP_YEARS), so
+        # WORKBOOK_YEARS excludes them by design. The named substitute
+        # acceptance oracle for the S-corp family is the hand-coded,
+        # air-gapped tests/oracles/f100s_reference.py, exercised by
+        # tests/test_f100s_oracle_battery.py (spec §7 layer 6).
         for year in year_manifest.WORKBOOK_YEARS:
             with self.subTest(year=year):
                 workbook = (REPO_ROOT / "spreadsheets" / "federal"

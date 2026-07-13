@@ -17,6 +17,7 @@ where those live.
 | Module | Covers | Status |
 |---|---|---|
 | `k1_reference.py` | Schedule K-1 (1120-S, 1065, 1041) → Sch E Part II, Sch B, Sch D, QBI (Form 8995), passive flag (Form 8582) | Implemented against team-lead's `ScheduleK1` schema (2026-04-15). |
+| `f100s_reference.py` | CA Form 100S franchise/income tax (rate, $800 minimum-tax floor, first-taxable-year rule, loss handling) and Schedule K-1 (100S) pro-rata share | **Substitute acceptance oracle** for the S-corp family, which has NO third-party workbook (spec §7 layer 6 — penny-parity-vs-workbook is not available). Hand-coded from FTB Form 100S booklets / R&TC under oracle isolation (no imports from `tenforty`), cross-checked by `tests/test_f100s_oracle_battery.py`. |
 
 Planned (future PRs, not part of this branch):
 
