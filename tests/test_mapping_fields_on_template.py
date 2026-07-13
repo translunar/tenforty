@@ -17,6 +17,8 @@ _PDFS = REPO_ROOT / "pdfs"
 def _years_for(jurisdiction: str, form: str) -> tuple[int, ...]:
     if form in year_manifest.SCORP_FORMS:
         return year_manifest.SCORP_FEDERAL_YEARS
+    if form in year_manifest.CA_SCORP_FORMS:
+        return year_manifest.CA_SCORP_YEARS
     return (year_manifest.FEDERAL_YEARS if jurisdiction == "federal"
             else year_manifest.CALIFORNIA_YEARS)
 
@@ -28,7 +30,8 @@ class CatalogShapeTests(unittest.TestCase):
         self.assertEqual(federal,
                          set(year_manifest.FEDERAL_FORMS)
                          | set(year_manifest.SCORP_FORMS))
-        self.assertEqual(california, set(year_manifest.CALIFORNIA_FORMS))
+        self.assertEqual(california,
+                         set(year_manifest.CALIFORNIA_FORMS) | {"f100s"})
 
 
 class FieldsExistOnTemplateTests(unittest.TestCase):
