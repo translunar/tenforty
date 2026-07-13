@@ -68,22 +68,19 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
-# amendment tier is MIXED-keyed, so this frozenset holds two key SHAPES:
+# amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
 #   - f1040x is REVISION-keyed → ("f1040x", revision)  e.g. ("f1040x", "rev-2025-12")
 #   - schedule_x is YEAR-keyed → ("schedule_x", year)  e.g. ("schedule_x", 2024)
 # i.e. (str, str) for f1040x and (str, int) for schedule_x. (KNOWN_GAPS above is
-# a (juris, form, year) 3-tuple; none of these three shapes collide.) The
-# revision tag matches years.AMENDMENT_TEMPLATE_REVISIONS and the schedule_x
-# years match years.amendable_california_years(), so the keys match at runtime.
-# Each entry is WORK OWED; all retire when the mapping packs land in Task 6.
-AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str] | tuple[str, int]] = frozenset({
-    # f1040x retired: revision-keyed mapping pack landed (Task 6a), gate LIVE.
-    ("schedule_x", 2021),        # template+probe landed; mapping lands Task 6
-    ("schedule_x", 2022),        # template+probe landed; mapping lands Task 6
-    ("schedule_x", 2023),        # template+probe landed; mapping lands Task 6
-    ("schedule_x", 2024),        # template+probe landed; mapping lands Task 6
-    ("schedule_x", 2025),        # template+probe landed; mapping lands Task 6
-})
+# a (juris, form, year) 3-tuple; none of these three shapes collide.)
+#
+# EMPTY: the amendment tier is now fully live with ZERO allowlisted cells. The
+# f1040x revision pack landed in Task 6a; the five per-year CA Schedule X
+# mappings (2021-2025, three field-namespace shapes, each probe-certified from
+# its own template's get_fields) landed in Task 6b. The completeness gate now
+# demands every amendment cell live — template + probe + mapping for the
+# f1040x revision and for every years.amendable_california_years() Schedule X.
+AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str] | tuple[str, int]] = frozenset()
 
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
