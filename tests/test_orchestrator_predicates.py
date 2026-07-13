@@ -300,5 +300,88 @@ class OrchestratorSchAYearAwarenessTests(unittest.TestCase):
         ))
 
 
+class SpineScopeRoutingTests(unittest.TestCase):
+    """`_scenario_in_spine_scope` must not mis-route a high-income filer OUT of
+    the validated native spine just because their income is K-1 / rental /
+    capital-gain rather than wages. The cheap EIC-ceiling estimate must include
+    ALL scenario income components, not wages + interest + dividends only — a
+    filer whose real AGI is far above the EIC ceiling is EIC-ineligible and
+    belongs on the spine. Regression for the routing bug found during the 2022
+    reconcile (real AGI 133k, wages-only estimate 15k → mis-routed to workbook)."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name),
+        )
+
+    def _low_wage(self) -> W2:
+        # $3k wages: positive earned income (so the EIC gate engages), but far
+        # below every year's EIC ceiling on its own.
+        return W2(
+            employer="X", wages=3_000.0, federal_tax_withheld=0.0,
+            ss_wages=3_000.0, ss_tax_withheld=186.0,
+            medicare_wages=3_000.0, medicare_tax_withheld=43.5,
+        )
+
+    def test_large_k1_low_wage_stays_native(self) -> None:
+        # K-1 60k + wages 3k → real AGI ~63k, FAR above the 2025 EIC ceiling
+        # (26,214 for 0 deps) → EIC-ineligible → native spine. The wages-only
+        # estimate (3k) mis-routed this to the workbook.
+        s = make_k1_scenario()  # single, 2025, passes the K-1 gates
+        s.w2s = [self._low_wage()]
+        s.schedule_k1s = [ScheduleK1(
+            entity_name="BigCo", entity_ein="00-0000000", entity_type="s_corp",
+            material_participation=True, ordinary_business_income=60_000.0,
+        )]
+        self.assertTrue(self.orch._scenario_in_spine_scope(s))
+
+    def test_large_rental_low_wage_stays_native(self) -> None:
+        # Rental net ~48k + wages 3k → real AGI ~51k, above the ceiling → native.
+        s = make_simple_scenario()
+        s.w2s = [self._low_wage()]
+        s.rental_properties = [RentalProperty(
+            address="1 Main St", property_type=1, fair_rental_days=365,
+            personal_use_days=0, rents_received=50_000.0, taxes=2_000.0,
+        )]
+        self.assertTrue(self.orch._scenario_in_spine_scope(s))
+
+    def test_large_capital_gain_low_wage_stays_native(self) -> None:
+        # LT capital gain 60k + wages 3k → real AGI ~63k, above the ceiling.
+        s = make_simple_scenario()
+        s.w2s = [self._low_wage()]
+        s.form1099_b = [Form1099B(
+            broker="B", description="lot", date_acquired="2020-01-01",
+            date_sold="2025-06-01", proceeds=80_000.0, cost_basis=20_000.0,
+            short_term=False,
+        )]
+        self.assertTrue(self.orch._scenario_in_spine_scope(s))
+
+    def test_genuinely_low_income_single_still_routes_out(self) -> None:
+        # UNCHANGED behavior guard: a genuinely low-income single filer (small
+        # wages, no other income → AGI below the ceiling) is *possibly* EIC-
+        # eligible and must still route OUT of the EIC-blind spine to the
+        # workbook. The fix must not pull these into the spine.
+        s = make_simple_scenario()
+        s.w2s = [self._low_wage()]
+        self.assertFalse(self.orch._scenario_in_spine_scope(s))
+
+    def test_capital_loss_does_not_pull_eligible_filer_into_spine(self) -> None:
+        # A low-wage filer with a capital LOSS must NOT be routed native by the
+        # loss: losses clamp to 0 in the estimate (they never raise it), so this
+        # possibly-eligible filer still routes to the workbook — same as the
+        # no-other-income case.
+        s = make_simple_scenario()
+        s.w2s = [self._low_wage()]
+        s.form1099_b = [Form1099B(
+            broker="B", description="lot", date_acquired="2024-01-01",
+            date_sold="2025-06-01", proceeds=1_000.0, cost_basis=6_000.0,
+            short_term=True,
+        )]
+        self.assertFalse(self.orch._scenario_in_spine_scope(s))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -53,6 +53,7 @@ from tenforty.models import (
     K1AllocationEntity,
     K1AllocationShareholder,
     K1FanoutData,
+    RentalProperty,
     Scenario,
     ScheduleK1,
 )
@@ -221,6 +222,34 @@ def _scenario_with_effective_itemized(scenario: Scenario) -> Scenario:
     return dataclasses.replace(scenario, itemized_deductions=effective_itemized)
 
 
+def _k1_positive_income(k1: ScheduleK1) -> float:
+    """Sum of a K-1's income boxes, each clamped at 0 — a loss in one box never
+    lowers the estimate. Used only by the cheap EIC-ceiling gate, where an
+    overestimate is safe (see _scenario_in_spine_scope)."""
+    return sum(max(0.0, v) for v in (
+        k1.ordinary_business_income,
+        k1.net_rental_real_estate,
+        k1.other_net_rental,
+        k1.interest_income,
+        k1.ordinary_dividends,
+        k1.royalties,
+        k1.net_short_term_capital_gain,
+        k1.net_long_term_capital_gain,
+        k1.other_income,
+    ))
+
+
+def _rental_net_income(r: RentalProperty) -> float:
+    """Net rental income (rents received − all deductible Schedule E expenses)."""
+    return r.rents_received - (
+        r.advertising + r.auto_and_travel + r.cleaning_and_maintenance
+        + r.commissions + r.insurance + r.legal_and_professional_fees
+        + r.management_fees + r.mortgage_interest + r.other_interest
+        + r.repairs + r.supplies + r.taxes + r.utilities
+        + r.depreciation + r.other_expenses
+    )
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -294,14 +323,36 @@ class ReturnOrchestrator:
             # No ceiling data → cannot cheaply rule EIC in or out; be safe.
             return True
 
-        # Cheap AGI estimate: earned income + interest + ordinary dividends.
-        # (Conservative for the ceiling comparison — additional income only
-        # raises AGI, which can only push the scenario further out of EIC range,
-        # so omitting Sch 1/Sch D here cannot let an eligible filer slip past.)
+        # Cheap AGI estimate for the EIC-ceiling gate — include ALL scenario
+        # income components, not wages + interest + ordinary dividends only. A
+        # filer whose income is K-1 / rental / capital-gain rather than wages is
+        # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
+        # native spine; the old wages-only estimate mis-routed such a filer to
+        # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
+        # Every component here is clamped at 0, so this estimate only ever RISES
+        # vs the old wages-only value: it can route MORE scenarios native, never
+        # fewer, and leaves a genuinely low-income filer (no other income)
+        # unchanged. Overestimating is safe for the gate — it rules EIC OUT
+        # (routes native) only when the estimate CLEARS the ceiling; a possibly-
+        # eligible low-income filer stays below it and still routes to the
+        # workbook, which performs the real EIC math. (Adjustments are ignored,
+        # which can only make the estimate higher than true AGI — same safe
+        # direction.)
         agi_estimate = (
             earned_income
             + sum(f.interest for f in effective_scenario.form1099_int)
-            + sum(f.ordinary_dividends for f in effective_scenario.form1099_div)
+            + sum(f.ordinary_dividends + f.capital_gain_distributions
+                  for f in effective_scenario.form1099_div)
+            + sum(g.unemployment_compensation + g.state_tax_refund
+                  + g.rtaa_payments + g.taxable_grants
+                  + g.agriculture_payments + g.market_gain
+                  for g in effective_scenario.form1099_g)
+            + sum(_k1_positive_income(k)
+                  for k in effective_scenario.schedule_k1s)
+            + sum(max(0.0, _rental_net_income(r))
+                  for r in effective_scenario.rental_properties)
+            + max(0.0, sum(b.proceeds - b.cost_basis
+                           for b in effective_scenario.form1099_b))
         )
         num_children = min(len(cfg.dependents), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
