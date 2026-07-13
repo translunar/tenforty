@@ -67,6 +67,17 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
+# Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
+# amendment pack is REVISION-keyed, not year-keyed, so these entries are
+# (form, revision) 2-tuples (KNOWN_GAPS is a (juris, form, year) 3-tuple; the
+# two shapes never mix). Same placeholder revision tags as
+# years.AMENDMENT_TEMPLATE_REVISIONS so the keys match at runtime. Each entry
+# is WORK OWED and is retired as its pack lands in Tasks 3-6.
+AMENDMENT_KNOWN_GAPS: frozenset[tuple[str, str]] = frozenset({
+    ("f1040x", "rev-2024-02"),
+    ("schedule_x", "rev-2024"),
+})  # pack lands in Tasks 3-6
+
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
     """Every string leaf in a mapping payload is a PDF field path — the
