@@ -52,11 +52,12 @@ class FederalParams:
 
 
 def load(year: int) -> FederalParams:
-    if year not in year_manifest.FEDERAL_YEARS:
+    if (year not in year_manifest.FEDERAL_YEARS
+            and year not in year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
         raise ValueError(
             f"No federal parameters for year {year} "
             f"(supported federal tax years: "
-            f"{year_manifest.describe(year_manifest.FEDERAL_YEARS)})"
+            f"{year_manifest.describe(year_manifest.FEDERAL_YEARS + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS)})"
         )
     module = importlib.import_module(f"tenforty.params.federal.y{year}")
     return module.PARAMS

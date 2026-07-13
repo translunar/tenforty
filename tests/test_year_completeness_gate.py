@@ -50,6 +50,24 @@ class FederalCompletenessTests(unittest.TestCase):
                 self.assertTrue(workbook.exists(), f"missing {workbook}")
 
 
+class FederalComputeOnlyCompletenessTests(unittest.TestCase):
+    """Compute-only federal years carry an INPUT pack (air-gapped attested
+    params + Layer-2 tax table) but NO PDF pack — no templates, no mappings,
+    no workbook required. The gate demands exactly what the tier promises:
+    the native compute inputs, not the emit surface. (Execution of the compute
+    itself is machine-checked by the spine-battery compute parameterization.)"""
+
+    def test_every_compute_only_year_has_its_input_pack(self):
+        for year in year_manifest.FEDERAL_COMPUTE_ONLY_YEARS:
+            with self.subTest(year=year, piece="params"):
+                self.assertEqual(load_federal(year).year, year)
+            with self.subTest(year=year, piece="attestation"):
+                importlib.import_module(
+                    f"tests.params_attestations.federal_y{year}")
+            with self.subTest(year=year, piece="tax_table"):
+                self.assertGreater(len(load_table("federal", year)), 1_000)
+
+
 class CaliforniaCompletenessTests(unittest.TestCase):
     def test_every_california_year_has_a_complete_pack(self):
         for year in year_manifest.CALIFORNIA_YEARS:
