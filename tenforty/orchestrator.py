@@ -19,6 +19,8 @@ from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import f1120s as form_f1120s
+from tenforty.forms import f100s as form_f100s
+from tenforty.forms import f100s_k1 as form_f100s_k1
 from tenforty.forms import sch_ca as form_sch_ca
 from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.forms import sch_d_540 as form_sch_d_540
@@ -528,6 +530,23 @@ class ReturnOrchestrator:
         if scenario.s_corp_return is None:
             return {}
         return form_f1120s.compute(scenario, upstream={})
+
+    def compute_california_corporate(self, scenario: Scenario) -> dict[str, object]:
+        """Compute the California S-corp return (Form 100S + Schedule K-1 (100S)).
+
+        Returns {} unless BOTH ``scenario.s_corp_return`` and
+        ``s_corp_return.ca`` are set. Runs the federal 1120-S pipeline first
+        and feeds its results in as upstream, so the CA net-income base is
+        exactly the federal ordinary business income (spec §3 interlock); the
+        CA franchise tax never recomputes federal figures.
+        """
+        if scenario.s_corp_return is None or scenario.s_corp_return.ca is None:
+            return {}
+        federal = form_f1120s.compute(scenario, upstream={})
+        f100s_results = form_f100s.compute(scenario, {"f1120s": federal})
+        k1_results = form_f100s_k1.compute(
+            scenario, {"f1120s": federal, "f100s": f100s_results})
+        return {**f100s_results, **k1_results}
 
     def emit_pdfs(
         self,
