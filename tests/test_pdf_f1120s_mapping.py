@@ -414,3 +414,53 @@ class PdfF1120SMappingTests(unittest.TestCase):
             m2022["f1120s_sch_k_tax_exempt_interest"],
             "topmostSubform[0].Page3[0].f3_42[0]",
         )
+
+    def test_2021_every_compute_key_is_accounted_for(self):
+        """Partition invariant for 2021: same logic as the 2022-2025 tests.
+        2021 inherits the 2022 mapping verbatim, so the same partition holds."""
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2021)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2021)
+        suppressed = pdf_f1120s.PdfF1120S.get_suppressed(2021)
+
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(
+            missing, set(),
+            f"{len(missing)} compute keys are unaccounted for: {sorted(missing)}",
+        )
+
+        in_mapping = set(mapping.keys())
+        double = (
+            (in_mapping & agg_contributors)
+            | (in_mapping & suppressed)
+            | (agg_contributors & suppressed)
+        )
+        self.assertEqual(
+            double, set(),
+            f"{len(double)} keys are double-accounted: {sorted(double)}",
+        )
+
+    def test_2021_every_pdf_target_is_a_real_pdf_field(self):
+        """Every field path referenced in the 2021 registries must exist
+        in pdfs/federal/2021/f1120s.pdf."""
+        project_root = Path(__file__).resolve().parent.parent
+        pdf_path = project_root / "pdfs" / "federal" / "2021" / "f1120s.pdf"
+        reader = PdfReader(pdf_path)
+        real_fields = set(reader.get_fields() or {})
+
+        mapping = pdf_f1120s.PdfF1120S.get_mapping(2021)
+        aggregations = pdf_f1120s.PdfF1120S.get_aggregations(2021)
+        derivations = pdf_f1120s.PdfF1120S.get_derivations(2021)
+
+        all_targets = (
+            set(mapping.values())
+            | set(aggregations.keys())
+            | set(derivations.keys())
+        )
+        bad = sorted(p for p in all_targets if p not in real_fields)
+        self.assertEqual(
+            bad, [],
+            f"{len(bad)} mapped/aggregated/derived field paths do not exist in the PDF: {bad}",
+        )

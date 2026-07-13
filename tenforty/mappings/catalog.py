@@ -59,16 +59,13 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # stays green while the holes are real. Every entry here is WORK OWED —
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
-    # 2021 federal S-corp emit pack lands in the S-corp emit plan (Plan B):
-    # templates + marker-probed mappings not yet fetched/authored. Compute
-    # for 2021 is provided by the S-corp compute plan; only emit is owed.
-    # These two federal-2021 cells are the ONLY remaining gaps — both CA
-    # S-corp forms (f100s and f100s_k1) are now fully packed across all
-    # CA_SCORP_YEARS, so california KNOWN_GAPS is empty.
-    ("federal", "f1120s", 2021),
-    ("federal", "f1120s_k1", 2021),
-})
+#
+# EMPTY: the S-corp emit pack is now complete — no cells owed. The final two
+# gaps (federal f1120s / f1120s_k1 for 2021) were retired when the 2021
+# federal emit slice landed (2021 inherits the marker-probe-verified 2022
+# mappings). Both CA S-corp forms were already fully packed across all
+# CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 
 def _collect_string_leaves(payload: object, out: set[str]) -> None:
