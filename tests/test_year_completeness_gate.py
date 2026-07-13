@@ -32,7 +32,9 @@ class FederalCompletenessTests(unittest.TestCase):
             with self.subTest(year=year, piece="battery"):
                 self.assertGreater(len(battery_for(year)), 0)
             for (juris, form), entry in sorted(CATALOG.items()):
-                if juris != "federal" or (juris, form, year) in KNOWN_GAPS:
+                if (juris != "federal"
+                        or form in year_manifest.SCORP_FORMS
+                        or (juris, form, year) in KNOWN_GAPS):
                     continue
                 with self.subTest(year=year, form=form, piece="template"):
                     template = (_PDFS / juris / str(year)
@@ -48,6 +50,23 @@ class FederalCompletenessTests(unittest.TestCase):
                 workbook = (REPO_ROOT / "spreadsheets" / "federal"
                             / str(year) / "1040.xlsx")
                 self.assertTrue(workbook.exists(), f"missing {workbook}")
+
+
+class ScorpCompletenessTests(unittest.TestCase):
+    def test_every_scorp_federal_year_has_a_complete_pack(self):
+        for (juris, form), entry in sorted(CATALOG.items()):
+            if juris != "federal" or form not in year_manifest.SCORP_FORMS:
+                continue
+            for year in year_manifest.SCORP_FEDERAL_YEARS:
+                if (juris, form, year) in KNOWN_GAPS:
+                    continue
+                with self.subTest(year=year, form=form, piece="template"):
+                    template = (_PDFS / juris / str(year)
+                                / f"{entry.template_stem}.pdf")
+                    self.assertTrue(template.exists(), f"missing {template}")
+                    self.assertGreater(template.stat().st_size, 50_000)
+                with self.subTest(year=year, form=form, piece="mapping"):
+                    entry.mapping_cls.get_mapping(year)
 
 
 class CaliforniaCompletenessTests(unittest.TestCase):

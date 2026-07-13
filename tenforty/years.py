@@ -36,9 +36,19 @@ WORKBOOK_YEARS: tuple[int, ...] = (2022, 2023, 2024, 2025)
 FEDERAL_FORMS: tuple[str, ...] = (
     "1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
     "4562", "4868", "8959", "f8582", "f8949", "f8995",
-    "f1120s", "f1120s_k1",
 )
 CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540")
+
+# S-corporation form family. Decoupled from FEDERAL_YEARS: the S-corp
+# return has its own year support (backfill reaches 2021 without touching
+# the individual-return tiers). See docs/specs/2026-07-12-s-corp-packet-design.md §4-5.
+SCORP_FEDERAL_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
+SCORP_FORMS: tuple[str, ...] = ("f1120s", "f1120s_k1")
+
+# California S-corp family: Form 100S compute (+ emit once the emit plan
+# lands its mappings; the completeness gate tracks the pack contents).
+CA_SCORP_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
+CA_SCORP_FORMS: tuple[str, ...] = ("f100s", "f100s_k1")
 
 
 def describe(years: Iterable[int]) -> str:
