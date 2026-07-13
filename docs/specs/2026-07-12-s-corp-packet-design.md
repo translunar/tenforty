@@ -86,8 +86,15 @@ unknown keys, consistent with the existing loader contract.
 
 ## 4. Federal 2021 S-corp slice
 
-2021 joins the manifest ONLY for S-corp forms. Explicitly NOT added: 1040
-spine, tax tables, workbook parity, or any individual-return form for 2021.
+2021 joins the manifest ONLY for S-corp forms. Explicitly NOT added by THIS
+workstream: 1040 spine, tax tables, workbook parity, or any individual-return
+form for 2021 — a separate compute-only backfill workstream covers the
+individual-return family for 2021 via a FEDERAL_COMPUTE_ONLY_YEARS tier.
+The two are disjoint by form set: that tier excludes S-corp forms (they stay
+coupled to FEDERAL_YEARS until SCORP_FEDERAL_YEARS from §5 lands), and this
+workstream owns ALL 2021 S-corp work — compute declaration, templates,
+mappings, emit. Neither blocks the other; the years.py edits are sequenced
+through the team lead.
 The year×form grid in `tenforty/years.py` already supports per-form-set year
 declarations; this is the first use of a partial-year slice and doubles as a
 design validation of the grid.
