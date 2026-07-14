@@ -24,6 +24,12 @@ class Form1099INT:
     payer: str
     interest: float
     federal_tax_withheld: float = 0.0
+    # NOT consumed by the spine — Form 1040 line 2a (tax-exempt interest) is
+    # unmodeled. For Premium Tax Credit MAGI, the sanctioned knob is
+    # Form1095A.tax_exempt_interest. A guard in orchestrator
+    # ._compute_native_schedules Step 7b refuses if this field is nonzero
+    # together with a Form 1095-A. Do not wire this field into PTC MAGI
+    # additively without revisiting that guard (double-count risk).
     tax_exempt_interest: float = 0.0
 
 
