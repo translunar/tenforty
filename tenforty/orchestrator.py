@@ -639,6 +639,23 @@ class ReturnOrchestrator:
         # (Rev. Proc. 2014-41 iterative reconciliation is unmodeled).
         f8962_results = None
         if effective_scenario.form_1095a is not None:
+            # PTC-MAGI single-source guard.
+            if any(
+                f.tax_exempt_interest for f in effective_scenario.form1099_int
+            ):
+                raise NotImplementedError(
+                    "A Form 1099-INT reports tax-exempt interest while a Form "
+                    "1095-A (Premium Tax Credit) is present. Put the "
+                    "tax-exempt-interest MAGI addition on "
+                    "form_1095a.tax_exempt_interest instead — that is the one "
+                    "sanctioned knob for tax-exempt interest in PTC MAGI. "
+                    "There is only one knob because additively combining both "
+                    "sources would double-count the same interest in PTC MAGI, "
+                    "which is exactly as wrong as dropping it. Form 1040 line "
+                    "2a (tax-exempt interest) is not modeled in the native "
+                    "spine; this is the marked seam to revisit if it ever "
+                    "lands."
+                )
             f8962_results = form_f8962.compute(
                 block=effective_scenario.form_1095a,
                 magi=_preamble.agi + effective_scenario.form_1095a.tax_exempt_interest,

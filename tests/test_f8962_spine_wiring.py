@@ -17,7 +17,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.models import Form1095A, Form1095AMonth, Scenario, TaxReturnConfig, W2
+from dataclasses import replace
+
+from tenforty.models import (
+    Form1095A,
+    Form1095AMonth,
+    Form1099INT,
+    Scenario,
+    TaxReturnConfig,
+    W2,
+)
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import scope_out_attestation_defaults
 
@@ -115,7 +124,9 @@ class F8962SpineWiringTests(unittest.TestCase):
         # orchestrator must refuse rather than route to the (8962-less) workbook.
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
         scenario = _scenario(10_000, 500, block)
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaisesRegex(
+            NotImplementedError, "out of native-1040-spine scope",
+        ):
             self.orch.compute_federal(scenario)
 
     def test_d_no_block_emits_zero_summaries_and_no_detail_keys(self):
@@ -131,6 +142,27 @@ class F8962SpineWiringTests(unittest.TestCase):
             "f8962_line_29_repayment",
         ):
             self.assertNotIn(key, results)
+
+    def test_e_1099_int_tax_exempt_interest_with_1095a_refuses(self):
+        # A Form 1099-INT reporting tax-exempt interest AND a Form 1095-A
+        # (PTC) present at once is the double-count/silent-drop hazard: the
+        # spine has exactly one sanctioned MAGI-add knob for tax-exempt
+        # interest (form_1095a.tax_exempt_interest), and line 2a is
+        # unmodeled, so a nonzero Form1099INT.tax_exempt_interest here must
+        # refuse rather than silently omit (or double-count) it in PTC MAGI.
+        block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
+        scenario = replace(
+            _scenario(30_000, 2_000, block),
+            form1099_int=[
+                Form1099INT(
+                    payer="Bank",
+                    interest=0,
+                    tax_exempt_interest=100,
+                ),
+            ],
+        )
+        with self.assertRaisesRegex(NotImplementedError, "tax-exempt"):
+            self.orch.compute_federal(scenario)
 
 
 if __name__ == "__main__":
