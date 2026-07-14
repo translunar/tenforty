@@ -21,6 +21,15 @@ class F8962ParamsTests(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertEqual(load(year).unemployment_rule, year == 2021)
 
+    def test_line5_400_boundary_inclusive_only_2021(self):
+        # 2021 Worksheet 2: "Is the result 400 or more? Yes -> enter 401"
+        # (inclusive). 2022-2025 Worksheet 2: "more than 400% of the
+        # federal poverty line -> enter 401" (strict).
+        self.assertIs(load(2021).line5_400_boundary_inclusive, True)
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertIs(load(year).line5_400_boundary_inclusive, False)
+
     def test_applicable_figure_domain_edges_declared(self):
         for year in (2021, 2022, 2023, 2024, 2025):
             p = load(year)

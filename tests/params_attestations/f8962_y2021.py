@@ -18,6 +18,8 @@ SOURCES: tuple[str, ...] = (
     "(https://www.irs.gov/pub/irs-prior/i8962--2021.pdf), Line 28 "
     "instructions (repayment limitation, single filing status) and the "
     "unemployment compensation special rule.",
+    "https://www.irs.gov/pub/irs-prior/i8962--2021.pdf, Worksheet 2 "
+    "(line 5 400%-FPL boundary determination).",
 )
 
 ATTESTED: dict[str, object] = {
@@ -34,6 +36,9 @@ ATTESTED: dict[str, object] = {
     # applicable figure, if the taxpayer (or spouse) received unemployment
     # compensation during 2021.
     "unemployment_rule": True,
+    # Worksheet 2, step 3: "Is the result 400 or more? • Yes. Enter 401
+    # here and on line 5 of Form 8962." — inclusive of exactly 400%.
+    "line5_400_boundary_inclusive": True,
     # Line 28 repayment limitation table, single filing status:
     # <200% FPL -> $325; <300% -> $800; <400% -> $1,350; >=400% -> no limit.
     "repayment_caps_single": ((200, 325), (300, 800), (400, 1350)),

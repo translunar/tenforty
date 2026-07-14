@@ -82,11 +82,19 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     line_3 = line_2a
     line_4 = params.fpl_single_48
 
-    # Worksheet 2: line 5 = 401 only when household income is STRICTLY
-    # more than 400% of the FPL (magi > 4 * line_4); at exactly 400% it
-    # is 400. This is a direct magi-vs-4x-fpl comparison, not a check on
-    # the floored percentage (raw 400.x floors to 400 yet is > 400%).
-    if line_3 > 4 * line_4:
+    # Worksheet 2's line-5 400%-FPL-boundary step is NOT worded the same
+    # every year (see F8962Params.line5_400_boundary_inclusive):
+    #   2021: "Is the result 400 or more? Yes -> enter 401" (INCLUSIVE —
+    #     the floored FPL% itself, not the raw magi, is compared to 400).
+    #   2022-2025: "...more than 400%... enter 401" (STRICT — a direct
+    #     magi-vs-4x-fpl comparison; raw 400.x floors to 400 yet is still
+    #     "more than 400%", so this must NOT be a check on the floored
+    #     percentage).
+    if params.line5_400_boundary_inclusive:
+        over_400 = _floor_pct(line_3, line_4) >= 400
+    else:
+        over_400 = line_3 > 4 * line_4
+    if over_400:
         line_5 = 401
     else:
         line_5 = _clamp(

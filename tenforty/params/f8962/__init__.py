@@ -32,6 +32,14 @@ class F8962Params:
     # than 133% of the FPL for the applicable figure, when unemployment
     # compensation was received during the year).
     unemployment_rule: bool
+    # Selects which line-5 400%-FPL-boundary rule applies (Worksheet 2's
+    # last step). Per-year worksheet phrasing differs at exactly 400%:
+    #   2021: "Is the result 400 or more? Yes. Enter 401..." — INCLUSIVE
+    #     (floored FPL% == 400 -> enter 401).
+    #   2022-2025: "...more than 400% of the federal poverty line. Enter
+    #     401..." — STRICT (only magi strictly > 4 * fpl_single_48 -> enter
+    #     401; magi == 4 * fpl_single_48 leaves line 5 at 400).
+    line5_400_boundary_inclusive: bool
 
 
 def load(year: int) -> F8962Params:
