@@ -19,10 +19,12 @@ Three-column grid (lines 1-15) vs single-column tail (16-23)
 ------------------------------------------------------------
 Lines 1-15 are the A/B/C grid: each assembler key ``f1040x_line<N>_a/_b/_c``
 maps to that line's A (Original amount) / B (Net change) / C (Correct amount)
-field. tenforty sources lines 1, 2, 3, 4a, 5, 11, 12, 15 (the guarded
-out-of-scope lines 4b/6/7/8/10/13/14 are never emitted, so never mapped; line
-9 is Reserved-for-future-use and never mapped). Lines 16-23 are single-column
-final-amount fields.
+field. tenforty sources lines 1, 2, 3, 4a, 5, 6, 7, 8, 10, 11, 12, 15 (line 7
+is sourced as 0/0 in practice per the ``forms/f1040x`` assembler docstring —
+a nonzero FILED value already refuses via the out-of-scope guard before this
+line is reached; the guarded out-of-scope lines 4b/13/14 are never emitted,
+so never mapped; line 9 is Reserved-for-future-use and never mapped). Lines
+16-23 are single-column final-amount fields.
 
 INTENTIONALLY UNMAPPED diagnostic aliases
 -----------------------------------------
@@ -64,6 +66,24 @@ _MAPPING: dict[str, str] = {
     "f1040x_line5_a":  _ID + "Line5[0].f1_33[0]",   # p1 L5 Taxable income — Col A
     "f1040x_line5_b":  _ID + "Line5[0].f1_34[0]",   # p1 L5 Taxable income — Col B
     "f1040x_line5_c":  _ID + "Line5[0].f1_35[0]",   # p1 L5 Taxable income — Col C
+    # Lines 6/7/8/10: the amended-returns probe table
+    # (docs/plans/amended-returns-probe-tables.md) lists these as BARE
+    # ``Table_TaxLiability[0]…`` suffixes; the mapping below uses the full
+    # ``_TL``-prefixed forms, independently re-verified against the
+    # template's own get_fields() (bare-vs-prefixed namespace — same table
+    # prefix constant that f1040x_line11_* already uses).
+    "f1040x_line6_a":  _TL + "Line6[0].f1_37[0]",   # p1 L6 Tax — Col A
+    "f1040x_line6_b":  _TL + "Line6[0].f1_38[0]",   # p1 L6 Tax — Col B
+    "f1040x_line6_c":  _TL + "Line6[0].f1_39[0]",   # p1 L6 Tax — Col C
+    "f1040x_line7_a":  _TL + "Line7[0].f1_40[0]",   # p1 L7 Nonrefundable credits — Col A
+    "f1040x_line7_b":  _TL + "Line7[0].f1_41[0]",   # p1 L7 Nonrefundable credits — Col B
+    "f1040x_line7_c":  _TL + "Line7[0].f1_42[0]",   # p1 L7 Nonrefundable credits — Col C
+    "f1040x_line8_a":  _TL + "Line8[0].f1_43[0]",   # p1 L8 Subtract line 7 from line 6 — Col A
+    "f1040x_line8_b":  _TL + "Line8[0].f1_44[0]",   # p1 L8 Subtract line 7 from line 6 — Col B
+    "f1040x_line8_c":  _TL + "Line8[0].f1_45[0]",   # p1 L8 Subtract line 7 from line 6 — Col C
+    "f1040x_line10_a": _TL + "Line10[0].f1_49[0]",  # p1 L10 Other taxes — Col A
+    "f1040x_line10_b": _TL + "Line10[0].f1_50[0]",  # p1 L10 Other taxes — Col B
+    "f1040x_line10_c": _TL + "Line10[0].f1_51[0]",  # p1 L10 Other taxes — Col C
     "f1040x_line11_a": _TL + "Line11[0].f1_52[0]",  # p1 L11 Total tax (add lines 8 and 10) — Col A
     "f1040x_line11_b": _TL + "Line11[0].f1_53[0]",  # p1 L11 Total tax (add lines 8 and 10) — Col B
     "f1040x_line11_c": _TL + "Line11[0].f1_54[0]",  # p1 L11 Total tax (add lines 8 and 10) — Col C
