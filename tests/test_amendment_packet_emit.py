@@ -25,7 +25,13 @@ from tenforty.forms import f1040x as form_f1040x
 from tenforty.forms import schedule_x as form_schedule_x
 from tenforty.mappings.pdf_f1040x import PdfF1040X
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
-from tenforty.models import AmendmentCase, CA540Return, Form1099INT
+from tenforty.models import (
+    AmendmentCase,
+    CA540Return,
+    Form1095A,
+    Form1095AMonth,
+    Form1099INT,
+)
 from tenforty.orchestrator import (
     _CA_COMPUTE_ONLY_NOTE,
     _FEDERAL_COMPUTE_ONLY_NOTE,
@@ -195,12 +201,35 @@ class AmendmentPacketEmitTests(unittest.TestCase):
     def test_null_self_amendment(self):
         """amended == original → only the amendment form (1040-X) mails, Column B
         is all zero, the changed-forms selection is empty, the refund/owed tail
-        is zero, and the manifest SAYS the selection is empty."""
-        original = self._balance_withholding(
-            build_canonical_wage_investment_rental(2024))  # federal-only, balanced
+        is zero, and the manifest SAYS the selection is empty.
+
+        A form_1095a block (Sch 2 Part I excess-APTC repayment) rides on BOTH
+        sides via its OWN filed key (f8962_repayment), not a guard key, and
+        the null invariant — including the new L6/L8/L10/L11 sourcing — still
+        holds when filed == corrected.
+        """
+        block = Form1095A(months=tuple(
+            Form1095AMonth(premium=500.0, slcsp=500.0, aptc=400.0)
+            for _ in range(12)))
+        base = dataclasses.replace(
+            build_canonical_wage_investment_rental(2024), form_1095a=block)
+        # Balance federal withholding to total_tax + f8962_repayment (not just
+        # total_tax) so the tail — which now nets Sch 2 Part I into L11 — is
+        # exactly zero for this self-amendment.
+        prelim = self.orch.compute_federal(base)
+        self.assertGreater(prelim["f8962_repayment"], 0)  # actually exercises Sch 2
+        target = prelim["total_tax"] + prelim["f8962_repayment"]
+        w2 = dataclasses.replace(base.w2s[0], federal_tax_withheld=float(target))
+        original = dataclasses.replace(base, w2s=[w2])
         amended = original  # exact self-amendment
 
         filed_path, orig_fed = self._write_federal_filed(original)
+        # Overlay the modeled Sch 2 Part I component under its own key — not
+        # folded into a guard key.
+        data = yaml.safe_load(filed_path.read_text())
+        data["f8962_repayment"] = orig_fed["f8962_repayment"]
+        filed_path.write_text(yaml.safe_dump(data))
+
         ca_filed_path = self.tmp / "unused_ca.yaml"
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
@@ -232,14 +261,89 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(
             int(float(_read_v(f1040x_pdf, xmap["f1040x_line22"]) or "0")), 0)
 
+        # Lines 6/7/8/10 aren't PDF-mapped yet (out of this task's scope), so
+        # verify their null-invariance directly on the assembled dict.
+        expected_x = form_f1040x.assemble(data, orig_fed, case)
+        for line in ("6", "7", "8", "10", "11"):
+            self.assertEqual(
+                expected_x[f"f1040x_line{line}_b"], 0,
+                msg=f"line {line}_b should be 0 in the null self-amendment")
+
+    def test_f8962_repayment_rides_own_key_e2e(self):
+        """A filed-values file carrying f8962_repayment as ITS OWN key (not
+        folded into other_taxes) assembles cleanly against a corrected
+        scenario whose form_1095a block yields a DIFFERENT repayment: no
+        OutOfScopeAmendmentError, f8962 is selected as a changed federal
+        form, and A+B=C holds on the modeled Sch 2 lines (6/8/10/11)."""
+        def _months(aptc):
+            return tuple(
+                Form1095AMonth(premium=500.0, slcsp=500.0, aptc=aptc)
+                for _ in range(12))
+
+        base = build_canonical_wage_investment_rental(2024)
+        original = dataclasses.replace(
+            base, form_1095a=Form1095A(months=_months(400.0)))
+        amended = dataclasses.replace(
+            base, form_1095a=Form1095A(months=_months(450.0)))
+
+        orig_fed = self.orch.compute_federal(original)
+        self.assertNotEqual(
+            orig_fed["f8962_repayment"],
+            self.orch.compute_federal(amended)["f8962_repayment"])
+
+        filed_path, _ = self._write_federal_filed(original)
+        data = yaml.safe_load(filed_path.read_text())
+        data["f8962_repayment"] = orig_fed["f8962_repayment"]
+        filed_path.write_text(yaml.safe_dump(data))
+
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2024, explanation="Corrected Form 1095-A APTC.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+
+        # No OutOfScopeAmendmentError: f8962_repayment rides its own key now,
+        # not the other_taxes guard.
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # f8962 selected as a changed federal form (repayment differs).
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertIn("f8962_2024.pdf", by_name)
+        self.assertEqual(by_name["f8962_2024.pdf"].reason, "changed")
+
+        # A+B=C on the modeled Sch 2 lines.
+        corrected_fed = self.orch.compute_federal(amended)
+        expected_x = form_f1040x.assemble(data, corrected_fed, case)
+        for line in ("6", "7", "8", "10", "11"):
+            a = expected_x[f"f1040x_line{line}_a"]
+            b = expected_x[f"f1040x_line{line}_b"]
+            c = expected_x[f"f1040x_line{line}_c"]
+            self.assertEqual(a + b, c, msg=f"line {line}: {a} + {b} != {c}")
+
+        # Line 11 IS PDF-mapped; the fill round-trips the sourced total.
+        xmap = PdfF1040X.get_mapping(_REVISION)
+        f1040x_pdf = out / "f1040x_2024.pdf"
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line11_c"]))),
+            round(expected_x["f1040x_line11_c"]))
+
     def test_ruling2_out_of_scope_guard_propagates(self):
         """A filed-values file carrying a nonzero out-of-scope guard key
-        (other_taxes) → the assembler's OutOfScopeAmendmentError propagates out
-        of run_amendment_packet unswallowed."""
+        (estimated_payments) → the assembler's OutOfScopeAmendmentError
+        propagates out of run_amendment_packet unswallowed.
+
+        Migrated off other_taxes: Sch 2 Part II's modeled component
+        (f8959_tax_total) now rides its own key, so other_taxes alone no
+        longer demonstrates "a component this task modeled." estimated_payments
+        (line 13) is wholly unrelated to the modeled Sch 2 components and
+        keeps the refusal path machine-checked on an unambiguous guard key.
+        """
         original = build_canonical_wage_investment_rental(2024)
         amended = _bump_interest(original, 3_000.0)
         filed_path, _ = self._write_federal_filed(
-            original, extra={"other_taxes": 500.0})
+            original, extra={"estimated_payments": 500.0})
         ca_filed_path = self.tmp / "unused_ca.yaml"
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
