@@ -68,6 +68,7 @@ _MONTH_CELLS = ("a", "b", "c", "d", "e", "f")
 
 
 def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> dict:
+    assert params.year == year, f"params.year {params.year} != requested year {year}"
     if block.received_unemployment_2021 and not params.unemployment_rule:
         raise ValueError(
             "Form1095A.received_unemployment_2021 is set but this year's "
