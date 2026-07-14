@@ -19,19 +19,33 @@ Three-column, SOURCED from spine keys:
   L2  deductions              <- total_deductions
   L4a QBI deduction           <- _qbi_deduction_1040
   L5  taxable income          <- taxable_income
-  L11 total tax               <- total_tax
+  L6  tax                     <- total_tax + f8962_repayment (Sch 2 Part I;
+                                  the excess-APTC repayment, Sch 2 line 2, per
+                                  "Include on line 6 the amount you reported on
+                                  Schedule 2 (Form 1040), line 3")
+  L7  nonrefundable credits   <- nonrefundable_credits (still guarded
+                                  out-of-scope below; sourced explicitly so
+                                  the printed L8 arithmetic holds)
+  L10 other taxes             <- f8959_tax_total (Sch 2 Part II total other
+                                  taxes; unmodeled Part II components, e.g.
+                                  NIIT/SE tax, remain guarded via other_taxes)
   L12 withholding             <- federal_withheld
   L15 total payments          <- total_payments
 Three-column, COMPUTED subtotal (on-form):
-  L3  = L1 - L2  (per column)
+  L3  = L1 - L2   (per column)
+  L8  = L6 - L7   (per column)
+  L11 = L8 + L10  (per column; L9 is reserved/never filled)
 Single-column, COMPUTED tail (see _tail):
-  L16..L23
+  L16..L23 — keyed off the COMPUTED L11 column-C value (L8c + L10c), not a
+  bare ``corrected["total_tax"]``, so the owed/refund tail stays consistent
+  with the emitted L11.
 SKIPPED — reserved:
   L9  "Reserved for future use" (shaded; fields exist but are never mapped).
 INTENTIONALLY UNMAPPED (guarded out-of-scope — see _OUT_OF_SCOPE_FILED_KEYS):
   L4b Schedule 1-A (tips/overtime/car-loan-interest/seniors, TY2025)
-  L6  tax          L7  nonrefundable credits   L8  subtract 7 from 6
-  L10 other taxes  L13 estimated payments      L14 EIC
+  L7  nonrefundable credits (sourced as 0/0 in practice — a nonzero FILED
+      value already refuses via the guard before this line is reached)
+  L13 estimated payments  L14 EIC
 tenforty does not source these; the guard raises OutOfScopeAmendmentError if
 the FILED return carried a nonzero value for one, rather than emitting a wrong
 blank Column A.
@@ -152,15 +166,40 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     _triple(out, "4a", filed["_qbi_deduction_1040"], corrected["_qbi_deduction_1040"])
     # L5 taxable income.
     _triple(out, "5", filed["taxable_income"], corrected["taxable_income"])
-    # L11 total tax.
-    _triple(out, "11", filed["total_tax"], corrected["total_tax"])
+    # L6 tax = 1040 line 16 tax + Schedule 2 Part I (excess-APTC repayment).
+    a6 = filed["total_tax"] + filed.get("f8962_repayment", 0.0)
+    c6 = corrected["total_tax"] + corrected.get("f8962_repayment", 0.0)
+    _triple(out, "6", a6, c6)
+    # L7 nonrefundable credits — still guarded out-of-scope (a nonzero FILED
+    # value already refused above via _guard_out_of_scope); sourced
+    # explicitly so the printed L8 arithmetic holds.
+    a7 = filed.get("nonrefundable_credits", 0.0)
+    c7 = corrected.get("nonrefundable_credits", 0.0)
+    _triple(out, "7", a7, c7)
+    # L8 = L6 - L7 (on-form subtotal, per column).
+    a8 = a6 - a7
+    c8 = c6 - c7
+    _triple(out, "8", a8, c8)
+    # L10 other taxes = Schedule 2 Part II total (f8959 Additional Medicare
+    # Tax is the modeled component; unmodeled Part II components remain
+    # guarded via the other_taxes filed key).
+    a10 = filed.get("f8959_tax_total", 0.0)
+    c10 = corrected.get("f8959_tax_total", 0.0)
+    _triple(out, "10", a10, c10)
+    # L11 = L8 + L9(reserved, never filled) + L10 (on-form subtotal).
+    a11 = a8 + a10
+    c11 = c8 + c10
+    _triple(out, "11", a11, c11)
     # L12 withholding.
     _triple(out, "12", filed["federal_withheld"], corrected["federal_withheld"])
     # L15 total payments.
     _triple(out, "15", filed["total_payments"], corrected["total_payments"])
 
     # ----- Single-column tail (lines 16-23) -------------------------------
-    out.update(_tail(corrected, case))
+    # Keyed off the COMPUTED L11 column-C value (c8 + c10), not a bare
+    # corrected["total_tax"], so the owed/refund tail stays consistent with
+    # the emitted L11.
+    out.update(_tail(corrected, case, c11))
 
     # ----- Narrative / year (Part II + page-1 write-in) -------------------
     out["f1040x_explanation"] = case.explanation
@@ -168,7 +207,7 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     return out
 
 
-def _tail(corrected: dict, case: AmendmentCase) -> dict:
+def _tail(corrected: dict, case: AmendmentCase, line11_c: float) -> dict:
     """Lines 16-23, transcribed from the 1040-X printed arithmetic.
 
     Source: docs/plans/amended-returns-probe-tables.md, "Single-column lines
@@ -187,9 +226,12 @@ def _tail(corrected: dict, case: AmendmentCase) -> dict:
     sourced (0.0). L18 (original overpayment) = original_refund_received +
     original_refund_applied — the full overpayment the filer either received
     or applied forward on the original return.
-    """
-    line11_c = corrected["total_tax"]
 
+    ``line11_c`` is the COMPUTED column-C L11 value from ``assemble`` (L8c +
+    L10c = corrected total_tax + f8962_repayment - nonrefundable_credits +
+    f8959_tax_total), passed in rather than recomputed here so the tail can
+    never drift from the emitted L11.
+    """
     line16 = 0.0  # amount paid with extension/original/after filing — unsourced
     line17 = irs_round(corrected["total_payments"] + line16)
     line18 = irs_round(case.original_refund_received + case.original_refund_applied)

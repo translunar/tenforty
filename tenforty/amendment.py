@@ -14,15 +14,31 @@ into one line:
     not model must NOT be folded into ``total_tax``; it goes under its own
     guard key below.
 
-  * Any UNMODELED filed component goes under its matching out-of-scope GUARD
-    KEY. tenforty does not source these five 1040-X lines, so each has a
+  * MODELED Schedule 2 components ride their OWN filed keys, NOT a guard key:
+
+        f8962_repayment   — Sch 2 Part I,  line 2 (excess-APTC repayment)
+                             -> 1040-X line 6  ("Tax")
+        f8959_tax_total   — Sch 2 Part II, line 11 (Additional Medicare Tax)
+                             -> 1040-X line 10 ("Other taxes")
+
+    Both are OPTIONAL filed-file keys (``.get(..., 0.0)`` in the assembler,
+    never REQUIRED_FILED_KEYS members) — omit them (or write 0) when the
+    filed return carried nothing on that component.
+
+  * Any STILL-UNMODELED filed component goes under its matching out-of-scope
+    GUARD KEY. tenforty does not source these 1040-X lines, so each has a
     reserved filed-file key (see ``forms.f1040x._OUT_OF_SCOPE_FILED_KEYS``):
 
         schedule_1a_deduction   — line 4b (Schedule 1-A tips/overtime/car-loan/seniors, TY2025)
         nonrefundable_credits   — line 7  (nonrefundable credits)
-        other_taxes             — line 10 (other taxes)
+        other_taxes             — line 10 (other taxes NOT already covered by
+                                   f8959_tax_total, e.g. NIIT, SE tax)
         estimated_payments      — line 13 (estimated tax payments)
         earned_income_credit    — line 14 (earned income credit)
+
+    ONLY still-unmodeled components belong under a guard key — a modeled
+    component (f8962_repayment, f8959_tax_total) must ride its own key above,
+    never be folded into ``other_taxes`` or another guard.
 
 WHY THIS IS LOAD-BEARING: an unmodeled component hidden in a COMMENT (or
 silently merged into ``total_tax``) neither fires the assembler's out-of-scope
