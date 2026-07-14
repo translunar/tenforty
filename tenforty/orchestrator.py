@@ -42,6 +42,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
+from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
@@ -299,6 +300,13 @@ class _FederalFormSpec:
     kind: str  # "flat" | "repeater"
     mapping: dict
     values: dict
+    # Optional flat-fill extras (default empty): a form whose emit needs
+    # XFA checkbox on-states (bool compute key -> "/N") and/or derived cells
+    # (PDF path -> lambda(values)) carries them here so both the render and
+    # the changed-forms-selector payload see the same fields. "repeater"
+    # specs ignore these.
+    checkbox_states: dict = dataclasses.field(default_factory=dict)
+    derivations: dict = dataclasses.field(default_factory=dict)
 
 
 # Standing caveat (spec §4): the changed-forms selector compares two
@@ -989,6 +997,21 @@ class ReturnOrchestrator:
                 values=form_8959.compute(scenario, upstream=upstream),
             ))
 
+        if self._should_emit_8962(scenario):
+            # values = the f1040 results dict: the spine splats the full
+            # f8962 detail-key family (f8962_line_*, f8962_month_*,
+            # f8962_ui_box_checked) into it when a 1095-A is computed, so no
+            # re-compute is needed. checkbox_states carries the 2021 UI-box
+            # on-token; derivations hardwire the always-on 4c poverty-table box.
+            specs.append(_FederalFormSpec(
+                name="8962", template=_fed("f8962.pdf"),
+                output_name=f"f8962_{year}.pdf", kind="flat",
+                mapping=PdfF8962.get_mapping(year)["scalars"],
+                values=results,
+                checkbox_states=PdfF8962.get_checkbox_states(year),
+                derivations=PdfF8962.get_derivations(year),
+            ))
+
         if self._should_emit_8995(scenario):
             specs.append(_FederalFormSpec(
                 name="f8995", template=_fed("f8995.pdf"),
@@ -1024,6 +1047,8 @@ class ReturnOrchestrator:
             filler.fill(
                 template_path=spec.template, output_path=out,
                 field_mapping=spec.mapping, values=spec.values,
+                checkbox_states=spec.checkbox_states or None,
+                derivations=spec.derivations or None,
             )
         else:
             filler.fill_with_repeaters(
@@ -1039,7 +1064,11 @@ class ReturnOrchestrator:
         runs. Built via the same PdfFiller resolution the render uses, so the
         payload cannot drift from what fills."""
         if spec.kind == "flat":
-            return PdfFiller.resolve_fields(spec.mapping, spec.values)
+            return PdfFiller.resolve_fields(
+                spec.mapping, spec.values,
+                checkbox_states=spec.checkbox_states or None,
+                derivations=spec.derivations or None,
+            )
         return PdfFiller._expand_repeaters(spec.mapping, spec.values)
 
     def _emit_federal_corporate_pdfs_internal(
@@ -1835,3 +1864,19 @@ class ReturnOrchestrator:
         threshold = thresholds[scenario.config.filing_status]
         medicare_wages = sum(w.medicare_wages for w in scenario.w2s)
         return medicare_wages > threshold
+
+    def _should_emit_8962(self, scenario: Scenario) -> bool:
+        """Emit Form 8962 (PTC) iff the scenario carries a Form 1095-A block
+        with at least one month reporting a nonzero premium, SLCSP, or APTC.
+
+        Mirrors forms.f8962.compute's own per-month emit predicate (a month
+        with all three zero produces no grid row) — so a 1095-A whose every
+        month is empty yields no filled cells and no form. The spine only
+        computes f8962 at all when form_1095a is present, so the detail keys
+        the spec reads are guaranteed available whenever this returns True."""
+        block = scenario.form_1095a
+        if block is None:
+            return False
+        return any(
+            m.premium or m.slcsp or m.aptc for m in block.months
+        )

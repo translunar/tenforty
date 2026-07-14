@@ -63,19 +63,13 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # entry without a comment saying what is missing.
 #
 # The S-corp emit pack and both CA S-corp forms are fully packed across all
-# their respective years. f8962 (Form 8962, Premium Tax Credit) joined
-# FEDERAL_FORMS with only a skeleton mapping (tenforty/mappings/pdf_f8962.py)
-# — the real probe-certified template+mapping pack lands Task 6/7. Until
-# then every f8962 cell is allowlisted here, including the 2021 compute-only
-# "loud extra" slice (see tests/test_year_completeness_gate.py's dedicated
-# f8962-2021 test).
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
-    ("federal", "f8962", 2021),  # f8962 pack (template+probe+mapping) lands Task 6/7
-    ("federal", "f8962", 2022),  # f8962 pack (template+probe+mapping) lands Task 6/7
-    ("federal", "f8962", 2023),  # f8962 pack (template+probe+mapping) lands Task 6/7
-    ("federal", "f8962", 2024),  # f8962 pack (template+probe+mapping) lands Task 6/7
-    ("federal", "f8962", 2025),  # f8962 pack (template+probe+mapping) lands Task 6/7
-})
+# their respective years. f8962 (Form 8962, Premium Tax Credit) is now fully
+# packed too — the probe-certified year-keyed mapping
+# (tenforty/mappings/pdf_f8962.py) landed in Task 7, so its five formerly
+# allowlisted cells (2021-2025, including the 2021 compute-only "loud extra"
+# slice) are retired: the completeness + fields-on-template gates now demand
+# and verify the real pack.
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
