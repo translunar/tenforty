@@ -17,6 +17,7 @@ from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import PdfF8949
+from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_a import PdfSchA
@@ -45,6 +46,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "8959"): FormEntry(Pdf8959, "f8959"),
     ("federal", "f8582"): FormEntry(PdfF8582, "f8582"),
     ("federal", "f8949"): FormEntry(PdfF8949, "f8949"),
+    ("federal", "f8962"): FormEntry(PdfF8962, "f8962"),
     ("federal", "f8995"): FormEntry(PdfF8995, "f8995"),
     ("federal", "f1120s"): FormEntry(PdfF1120S, "f1120s"),
     ("federal", "f1120s_k1"): FormEntry(PdfF1120SK1, "f1120s_k1"),
@@ -60,12 +62,20 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
 #
-# EMPTY: the S-corp emit pack is now complete — no cells owed. The final two
-# gaps (federal f1120s / f1120s_k1 for 2021) were retired when the 2021
-# federal emit slice landed (2021 inherits the marker-probe-verified 2022
-# mappings). Both CA S-corp forms were already fully packed across all
-# CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
+# The S-corp emit pack and both CA S-corp forms are fully packed across all
+# their respective years. f8962 (Form 8962, Premium Tax Credit) joined
+# FEDERAL_FORMS with only a skeleton mapping (tenforty/mappings/pdf_f8962.py)
+# — the real probe-certified template+mapping pack lands Task 6/7. Until
+# then every f8962 cell is allowlisted here, including the 2021 compute-only
+# "loud extra" slice (see tests/test_year_completeness_gate.py's dedicated
+# f8962-2021 test).
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
+    ("federal", "f8962", 2021),  # f8962 pack (template+probe+mapping) lands Task 6/7
+    ("federal", "f8962", 2022),  # f8962 pack (template+probe+mapping) lands Task 6/7
+    ("federal", "f8962", 2023),  # f8962 pack (template+probe+mapping) lands Task 6/7
+    ("federal", "f8962", 2024),  # f8962 pack (template+probe+mapping) lands Task 6/7
+    ("federal", "f8962", 2025),  # f8962 pack (template+probe+mapping) lands Task 6/7
+})
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
