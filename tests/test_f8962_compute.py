@@ -80,3 +80,22 @@ class F8962ComputeTests(unittest.TestCase):
         self.assertEqual(r["f8962_line_25"], 0)
         self.assertEqual(r["f8962_line_26_net_ptc"], 0)
         self.assertEqual(r["f8962_line_29_repayment"], 0)
+
+    def test_line5_strict_400_pct_boundary(self):
+        # Worksheet 2: line 5 = 401 only STRICTLY above 400% FPL (magi >
+        # 4 * fpl_single_48 = 40,000). At exactly 400% it's 400 (not 401);
+        # just below, it's the ordinary floored percentage (399).
+        b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
+
+        r_at_400 = compute(b, 40_000.0, 2024, _params())
+        self.assertEqual(r_at_400["f8962_line_5"], 400)
+
+        r_over_400 = compute(b, 40_001.0, 2024, _params())
+        self.assertEqual(r_over_400["f8962_line_5"], 401)
+
+        r_under_400 = compute(b, 39_999.0, 2024, _params())
+        self.assertEqual(r_under_400["f8962_line_5"], 399)
+
+        # The 401 vs 400 change is line-5-only: the applicable figure
+        # floor-keys to the same 400-bracket entry either way.
+        self.assertEqual(r_over_400["f8962_line_7"], r_at_400["f8962_line_7"])
