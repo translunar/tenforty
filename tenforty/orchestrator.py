@@ -16,8 +16,10 @@ from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
+from tenforty.forms import f8962 as form_f8962
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
+from tenforty.params import f8962 as params_f8962
 from tenforty.forms import f1120s as form_f1120s
 from tenforty.forms import f100s as form_f100s
 from tenforty.forms import f100s_k1 as form_f100s_k1
@@ -514,6 +516,20 @@ class ReturnOrchestrator:
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
         if not self._scenario_in_spine_scope(effective_scenario):
+            if effective_scenario.form_1095a is not None:
+                # A 1095-A scenario that is out of native-spine scope
+                # (EIC-possible / non-single filer) would route to the XLSX
+                # workbook — which has NO Form 8962. A silent workbook fallback
+                # would drop the Premium Tax Credit entirely. Refuse loudly
+                # until the native spine is extended to this filer class.
+                raise NotImplementedError(
+                    "Scenario carries a Form 1095-A (Premium Tax Credit) but is "
+                    "out of native-1040-spine scope (EIC-possible or non-single "
+                    "filer), so it would route to the XLSX workbook path, which "
+                    "does not compute Form 8962. Refusing rather than silently "
+                    "dropping the PTC. Extend the native spine to cover this "
+                    "filer class before enabling 8962 for it."
+                )
             return self._compute_1040_via_workbook(effective_scenario)
         params = load_params(effective_scenario.config.year)
         schedule_results = self._compute_native_schedules(effective_scenario)
@@ -607,6 +623,29 @@ class ReturnOrchestrator:
             "net_capital_gain": _preamble.net_capital_gain,
         }
 
+        # --- Step 7b: Form 8962 (Premium Tax Credit) ---
+        # Computed here because it consumes AGI (now known from the shared
+        # preamble) and its outputs feed the totals downstream (net PTC →
+        # total_payments, excess-APTC repayment → overpaid) — mirroring how
+        # f8959 is sequenced ahead of the totals in the spine call chain.
+        # MAGI SEAM: Form 8962 MAGI is AGI + tax-exempt interest, NOT the
+        # spine's "magi" key (which equals AGI and excludes tax-exempt
+        # interest). Only computed when a 1095-A is present; when absent, the
+        # "f8962" key is omitted so the detail keys stay absent (mirroring how
+        # f8959 detail is only present when computed).
+        # SE-HEALTH × PTC GUARD lives at the sch_1_line_17_se_health read in
+        # forms/f1040_spine.py: if that (currently hardcoded-0) channel is ever
+        # nonzero while a 1095-A is present, the spine raises NotImplementedError
+        # (Rev. Proc. 2014-41 iterative reconciliation is unmodeled).
+        f8962_results = None
+        if effective_scenario.form_1095a is not None:
+            f8962_results = form_f8962.compute(
+                block=effective_scenario.form_1095a,
+                magi=_preamble.agi + effective_scenario.form_1095a.tax_exempt_interest,
+                year=effective_scenario.config.year,
+                params=params_f8962.load(effective_scenario.config.year),
+            )
+
         # --- Step 8: F8995 (needs k1_fanout + f1040 stub) ---
         f8995_results = form_f8995.compute(
             effective_scenario,
@@ -638,7 +677,7 @@ class ReturnOrchestrator:
             else {}
         )
 
-        return {
+        results: dict[str, dict] = {
             "sch_1": sch_1_results,
             "sch_a": sch_a_results,
             "sch_d": sch_d_results,
@@ -650,6 +689,11 @@ class ReturnOrchestrator:
             # into the final result for oracle cross-check consumers.
             "f8949": upstream.get("f8949", {}),
         }
+        # Only present when a 1095-A was computed — the spine reads it via
+        # schedule_results.get("f8962", {}) and defaults every value to 0.
+        if f8962_results is not None:
+            results["f8962"] = f8962_results
+        return results
 
     def _compute_1040_via_workbook(
         self, effective_scenario: Scenario,
