@@ -26,6 +26,11 @@ PARAMS = F8962Params(
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=False,
+    # Worksheet 2, steps 3-4: "Multiply the amount on line 2 by 4.0. ...
+    # Is the amount on line 1 more than [line 3]? ... more than 400% of
+    # the federal poverty line. Enter 401 here and on line 5 of Form
+    # 8962." — strict: exactly 400% leaves line 5 at 400.
+    line5_400_boundary_inclusive=False,
     repayment_caps_single=((200, 325), (300, 825), (400, 1400)),
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,

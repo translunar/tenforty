@@ -5,7 +5,7 @@ from tenforty.models import Form1095A, Form1095AMonth
 from tenforty.params.f8962 import F8962Params
 
 
-def _params(unemployment_rule=False):
+def _params(unemployment_rule=False, line5_400_boundary_inclusive=False):
     return F8962Params(
         year=2021 if unemployment_rule else 2024,
         fpl_single_48=10_000,
@@ -15,6 +15,7 @@ def _params(unemployment_rule=False):
         applicable_figure_ceiling_pct=500,
         repayment_caps_single=((200, 350), (300, 900), (400, 1500)),
         unemployment_rule=unemployment_rule,
+        line5_400_boundary_inclusive=line5_400_boundary_inclusive,
     )
 
 
@@ -99,3 +100,23 @@ class F8962ComputeTests(unittest.TestCase):
         # The 401 vs 400 change is line-5-only: the applicable figure
         # floor-keys to the same 400-bracket entry either way.
         self.assertEqual(r_over_400["f8962_line_7"], r_at_400["f8962_line_7"])
+
+    def test_line5_inclusive_400_pct_boundary(self):
+        # 2021 Worksheet 2 phrasing ("Is the result 400 or more? Yes ->
+        # enter 401 here") is INCLUSIVE of exactly 400%, unlike the
+        # 2022-2025 STRICT phrasing ("more than 400% ... enter 401")
+        # exercised by test_line5_strict_400_pct_boundary above. With
+        # line5_400_boundary_inclusive=True, magi == 4 * fpl_single_48
+        # (exactly 400% FPL) must itself produce line 5 = 401.
+        b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
+        params = _params(line5_400_boundary_inclusive=True)
+
+        r_at_400 = compute(b, 40_000.0, params.year, params)
+        self.assertEqual(r_at_400["f8962_line_5"], 401)
+
+        r_under_400 = compute(b, 39_999.0, params.year, params)
+        self.assertEqual(r_under_400["f8962_line_5"], 399)
+
+        # The applicable-figure floor-key lookup lands on the same
+        # 400-bracket entry whether line 5 reads 400 or 401.
+        self.assertEqual(r_at_400["f8962_line_7"], 0.085)

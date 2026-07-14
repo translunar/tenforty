@@ -17,6 +17,8 @@ SOURCES: tuple[str, ...] = (
     "2022 Instructions for Form 8962 (Premium Tax Credit) "
     "(https://www.irs.gov/pub/irs-prior/i8962--2022.pdf), Line 28 "
     "instructions (repayment limitation, single filing status).",
+    "https://www.irs.gov/pub/irs-prior/i8962--2022.pdf, Worksheet 2 "
+    "(line 5 400%-FPL boundary determination).",
 )
 
 ATTESTED: dict[str, object] = {
@@ -31,6 +33,11 @@ ATTESTED: dict[str, object] = {
     # The unemployment-compensation special rule was a 2021-only ARPA
     # provision; it does not appear in the 2022 instructions.
     "unemployment_rule": False,
+    # Worksheet 2, steps 3-4: "Multiply the amount on line 2 by 4.0. ...
+    # Is the amount on line 1 more than [line 3]? ... more than 400% of
+    # the federal poverty line. Enter 401 here and on line 5 of Form
+    # 8962." — strict: exactly 400% leaves line 5 at 400.
+    "line5_400_boundary_inclusive": False,
     # Line 28 repayment limitation table, single filing status:
     # <200% FPL -> $325; <300% -> $825; <400% -> $1,400; >=400% -> no limit.
     "repayment_caps_single": ((200, 325), (300, 825), (400, 1400)),

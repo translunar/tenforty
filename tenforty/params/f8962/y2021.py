@@ -27,6 +27,9 @@ PARAMS = F8962Params(
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=True,
+    # Worksheet 2, step 3: "Is the result 400 or more? • Yes. Enter 401
+    # here and on line 5 of Form 8962." — inclusive of exactly 400%.
+    line5_400_boundary_inclusive=True,
     repayment_caps_single=((200, 325), (300, 800), (400, 1350)),
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,
