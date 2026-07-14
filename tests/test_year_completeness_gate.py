@@ -221,6 +221,27 @@ class AmendmentCompletenessTests(unittest.TestCase):
                 self.assertTrue(mod.get_mapping(year))
 
 
+class F8962ComputeOnlySliceTests(unittest.TestCase):
+    """f8962 (Form 8962, Premium Tax Credit) is a federal individual-return
+    form, so it also owes a pack for the FEDERAL_COMPUTE_ONLY_YEARS "loud
+    extra" slice (2021) — a year beyond FEDERAL_YEARS that _years_for() in
+    test_mapping_fields_on_template.py does NOT sweep, so this is the only
+    place the 2021 f8962 cell is ever checked. Modeled on the S-corp family's
+    per-cell KNOWN_GAPS pattern above. Guarded so it is green while gapped;
+    becomes a real assertion once Task 6/7 retires the 2021 gap cell."""
+
+    def test_f8962_2021_slice_pack(self):
+        if ("federal", "f8962", 2021) in KNOWN_GAPS:
+            self.skipTest("f8962 2021 slice allowlisted — pack lands Task 6/7")
+        entry = CATALOG[("federal", "f8962")]
+        with self.subTest(piece="template"):
+            template = _PDFS / "federal" / "2021" / f"{entry.template_stem}.pdf"
+            self.assertTrue(template.exists(), f"missing {template}")
+            self.assertGreater(template.stat().st_size, 50_000)
+        with self.subTest(piece="mapping"):
+            entry.mapping_cls.get_mapping(2021)  # raises if absent
+
+
 class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):
     def test_probe_year_raises_in_every_component(self):
         with self.assertRaises(ValueError):

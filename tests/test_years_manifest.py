@@ -65,6 +65,13 @@ class YearManifestTests(unittest.TestCase):
         self.assertEqual(year_manifest.describe((2025, 2021, 2024)),
                          "2021, 2024, 2025")
 
+    def test_f8962_in_federal_forms(self):
+        # Form 8962 (Premium Tax Credit) joined the individual-return family;
+        # it auto-joins FEDERAL_COMPUTE_ONLY_FORMS via the derivation since
+        # it is not an S-corp form.
+        self.assertIn("f8962", year_manifest.FEDERAL_FORMS)
+        self.assertIn("f8962", year_manifest.FEDERAL_COMPUTE_ONLY_FORMS)
+
 
 class ScorpTiersTests(unittest.TestCase):
     def test_scorp_federal_years_declared(self):
