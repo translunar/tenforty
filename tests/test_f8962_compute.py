@@ -70,6 +70,14 @@ class F8962ComputeTests(unittest.TestCase):
         self.assertEqual(r["f8962_line_29_repayment"], 0)
         self.assertTrue(r["f8962_ui_box_checked"])
 
+    def test_2021_ui_rule_flat_133_below_true_pct(self):
+        # MAGI 12,000 / fpl 10,000 → true pct 120% (below 133) — but the
+        # 2021 UI rule is FLAT ("enter 133 on line 5"), bypassing Worksheet
+        # 2 entirely. Line 5 must be 133, not the true 120%.
+        b = _block({i: (250.0, 300.0, 250.0) for i in range(5, 10)}, ui=True)
+        r = compute(b, 12_000.0, 2021, _params(unemployment_rule=True))
+        self.assertEqual(r["f8962_line_5"], 133)
+
     def test_ui_flag_without_params_rule_refuses(self):
         b = _block({8: (250.0, 300.0, 250.0)}, ui=True)
         with self.assertRaises(ValueError):
