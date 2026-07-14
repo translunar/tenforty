@@ -15,9 +15,12 @@ authority if instructions ever disagree with this module):
                 scope)
     line 4      FPL for household size 1, 48 contiguous states + DC
                 (``params.fpl_single_48``)
-    line 5      household income as a percentage of the FPL:
-                floor(line3 / line4 * 100), clamped to
-                [applicable_figure_floor_pct, applicable_figure_ceiling_pct].
+    line 5      household income as a percentage of the FPL: (line3 * 100)
+                // line4 using EXACT integer arithmetic (float division
+                underflows at exact-integer FPL percentages, e.g. 230%
+                dropping to 229) — the reported value, NOT clamped to
+                [applicable_figure_floor_pct, applicable_figure_ceiling_pct]
+                (those edges only govern the line-7 table lookup below).
                 When ``block.received_unemployment_2021`` and
                 ``params.unemployment_rule`` (the ARPA 2021 rule), line 5
                 is further replaced with min(line5, 133).
@@ -57,7 +60,6 @@ caller's responsibility to fold into the ``magi`` argument if ever
 needed — this is the marked seam.
 """
 
-import math
 from dataclasses import astuple
 
 from tenforty.models import Form1095A
@@ -90,18 +92,21 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     #     magi-vs-4x-fpl comparison; raw 400.x floors to 400 yet is still
     #     "more than 400%", so this must NOT be a check on the floored
     #     percentage).
+    # Exact integer arithmetic for "divide, multiply by 100, drop the
+    # decimal" — float division underflows at exact-integer FPL
+    # percentages (e.g. 31257/13590*100 == 229.99999999999997, which
+    # floors to 229 instead of the true 230). irs_round(line_3) matches
+    # the whole-dollar line_3 already reported above.
+    line5_raw = (irs_round(line_3) * 100) // params.fpl_single_48
     if params.line5_400_boundary_inclusive:
-        over_400 = _floor_pct(line_3, line_4) >= 400
+        over_400 = line5_raw >= 400
     else:
-        over_400 = line_3 > 4 * line_4
-    if over_400:
-        line_5 = 401
-    else:
-        line_5 = _clamp(
-            _floor_pct(line_3, line_4),
-            params.applicable_figure_floor_pct,
-            params.applicable_figure_ceiling_pct,
-        )
+        over_400 = line_3 > 4 * params.fpl_single_48
+    # Line 5 reports the TRUE household-income percentage — it is NOT
+    # clamped to the applicable-figure table's domain edges (those edges
+    # only govern the line-7 lookup below, via _applicable_figure's
+    # floor-keying).
+    line_5 = 401 if over_400 else line5_raw
     if block.received_unemployment_2021 and params.unemployment_rule:
         line_5 = min(line_5, 133)
 
@@ -153,14 +158,6 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     result["f8962_ui_box_checked"] = block.received_unemployment_2021
 
     return result
-
-
-def _floor_pct(numerator: float, denominator: float) -> int:
-    return math.floor(numerator / denominator * 100)
-
-
-def _clamp(value: int, floor: int, ceiling: int) -> int:
-    return max(floor, min(ceiling, value))
 
 
 def _applicable_figure(table: dict[int, float], line_5: int) -> float:

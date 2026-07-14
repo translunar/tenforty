@@ -120,3 +120,39 @@ class F8962ComputeTests(unittest.TestCase):
         # The applicable-figure floor-key lookup lands on the same
         # 400-bracket entry whether line 5 reads 400 or 401.
         self.assertEqual(r_at_400["f8962_line_7"], 0.085)
+
+    def test_line5_exact_integer_pct_no_float_underflow(self):
+        # magi=31,257 is EXACTLY 230% of fpl=13,590 (13,590 * 2.30 =
+        # 31,257.0). But float division underflows:
+        #   31257 / 13590 * 100 == 229.99999999999997 -> floor -> 229.
+        # The IRS worksheet step is "divide line 3 by line 4, multiply by
+        # 100, drop any numbers after the decimal point" on the EXACT
+        # ratio, which for an exact multiple must land on 230, not 229.
+        # Integer arithmetic (magi * 100) // fpl avoids the float error.
+        params = F8962Params(
+            year=2024,
+            fpl_single_48=13_590,
+            applicable_figures={100: 0.0, 133: 0.0, 150: 0.0, 200: 0.02,
+                                250: 0.04, 300: 0.06, 400: 0.085, 500: 0.085},
+            applicable_figure_floor_pct=100,
+            applicable_figure_ceiling_pct=500,
+            repayment_caps_single=((200, 350), (300, 900), (400, 1500)),
+            unemployment_rule=False,
+            line5_400_boundary_inclusive=False,
+        )
+        b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
+        r = compute(b, 31_257.0, 2024, params)
+        self.assertEqual(r["f8962_line_5"], 230)
+
+    def test_line5_below_floor_pct_not_clamped_up(self):
+        # magi=9,000 with fpl_single_48=10,000 -> exactly 90% FPL, below
+        # this params set's applicable_figure_floor_pct=100. Line 5 must
+        # report the TRUE percentage (90), not the applicable-figure
+        # table's floor (previously the clamp raised it to 100).
+        b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
+        r = compute(b, 9_000.0, 2024, _params())
+        self.assertEqual(r["f8962_line_5"], 90)
+        # The applicable-figure lookup still floor-keys into the table's
+        # lowest entry (100 -> 0.0) either way, so PTC dollars for this
+        # case are unaffected by the line-5 reporting fix.
+        self.assertEqual(r["f8962_line_7"], 0.0)
