@@ -425,6 +425,24 @@ class ItemizedDeductions:
     charitable_contributions: float = 0.0
 
 
+_MONTH_KEYS = ("jan", "feb", "mar", "apr", "may", "jun",
+               "jul", "aug", "sep", "oct", "nov", "dec")
+
+
+@dataclass(frozen=True)
+class Form1095AMonth:
+    premium: float = 0.0
+    slcsp: float = 0.0
+    aptc: float = 0.0
+
+
+@dataclass(frozen=True)
+class Form1095A:
+    months: tuple[Form1095AMonth, ...]          # exactly 12, jan..dec order
+    received_unemployment_2021: bool = False
+    tax_exempt_interest: float = 0.0
+
+
 @dataclass
 class DepreciableAsset:
     """An asset subject to MACRS depreciation (Form 4562 Part III row).
@@ -760,5 +778,6 @@ class Scenario:
     rental_properties: list[RentalProperty] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
+    form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None
