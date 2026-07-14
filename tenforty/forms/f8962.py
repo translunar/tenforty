@@ -82,11 +82,18 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     line_3 = line_2a
     line_4 = params.fpl_single_48
 
-    line_5 = _clamp(
-        _floor_pct(line_3, line_4),
-        params.applicable_figure_floor_pct,
-        params.applicable_figure_ceiling_pct,
-    )
+    # Worksheet 2: line 5 = 401 only when household income is STRICTLY
+    # more than 400% of the FPL (magi > 4 * line_4); at exactly 400% it
+    # is 400. This is a direct magi-vs-4x-fpl comparison, not a check on
+    # the floored percentage (raw 400.x floors to 400 yet is > 400%).
+    if line_3 > 4 * line_4:
+        line_5 = 401
+    else:
+        line_5 = _clamp(
+            _floor_pct(line_3, line_4),
+            params.applicable_figure_floor_pct,
+            params.applicable_figure_ceiling_pct,
+        )
     if block.received_unemployment_2021 and params.unemployment_rule:
         line_5 = min(line_5, 133)
 
