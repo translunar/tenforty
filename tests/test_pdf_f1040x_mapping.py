@@ -48,16 +48,25 @@ def _synthetic_assembler_output() -> dict:
     """A real forms/f1040x.assemble output built from arbitrary synthetic
     filed/corrected figures (not tax data). Chosen so the tail lands in the
     REFUND branch (corrected total_tax < net payments) and the distinctive
-    read-back values are mutually distinct."""
+    read-back values are mutually distinct.
+
+    ``f8962_repayment`` and ``f8959_tax_total`` (lines 6 / 10 sourced
+    components) are set on BOTH filed and corrected so lines 6/8/10/11 carry
+    distinctive, nonzero, column-dependent values. ``nonrefundable_credits``
+    (line 7) is set on ``corrected`` ONLY — a nonzero value on ``filed``
+    would trip the out-of-scope guard, so Column A of line 7 is legitimately
+    0 in this scenario."""
     filed = {
         "agi": 1000.0, "total_deductions": 200.0, "_qbi_deduction_1040": 50.0,
         "taxable_income": 750.0, "total_tax": 80.0, "federal_withheld": 100.0,
         "total_payments": 100.0,
+        "f8962_repayment": 15.0, "f8959_tax_total": 7.0,
     }
     corrected = {
         "agi": 1200.0, "total_deductions": 200.0, "_qbi_deduction_1040": 60.0,
         "taxable_income": 940.0, "total_tax": 30.0, "federal_withheld": 100.0,
         "total_payments": 100.0,
+        "f8962_repayment": 25.0, "nonrefundable_credits": 8.0, "f8959_tax_total": 12.0,
     }
     return f1040x.assemble(filed, corrected, _synthetic_case())
 
@@ -107,9 +116,31 @@ class FilledEmitReadBackTests(unittest.TestCase):
 
         # A Column-B delta: line 5_b = corrected 940 - filed 750 = 190.
         self.assertEqual(read("f1040x_line5_b"), "190")
-        # Refund tail: line 21 = net-payments(80) - corrected total_tax(30) = 50,
-        # line 22 refunds all of it.
-        self.assertEqual(read("f1040x_line22"), "50")
+        # Tax-computation section (lines 6/7/8/10/11), distinctive per column:
+        #   L6  = total_tax + f8962_repayment:            A=95   B=-40  C=55
+        #   L7  = nonrefundable_credits (filed guarded 0): A=0    B=8    C=8
+        #   L8  = L6 - L7 (on-form subtotal):              A=95   B=-48  C=47
+        #   L10 = f8959_tax_total:                         A=7    B=5    C=12
+        #   L11 = L8 + L10 (on-form subtotal):             A=102  B=-43  C=59
+        self.assertEqual(read("f1040x_line6_a"), "95")
+        self.assertEqual(read("f1040x_line6_b"), "-40")
+        self.assertEqual(read("f1040x_line6_c"), "55")
+        self.assertEqual(read("f1040x_line10_c"), "12")
+        # Printed-arithmetic check on the RENDERED integers (not the Python
+        # floats): L8 == L6 - L7 and L11 == L8 + L10, per column, confirming
+        # the mapped fields land on the correct on-form cells.
+        for col in ("a", "b", "c"):
+            with self.subTest(col=col):
+                l6 = int(read(f"f1040x_line6_{col}"))
+                l7 = int(read(f"f1040x_line7_{col}"))
+                l8 = int(read(f"f1040x_line8_{col}"))
+                l10 = int(read(f"f1040x_line10_{col}"))
+                l11 = int(read(f"f1040x_line11_{col}"))
+                self.assertEqual(l8, l6 - l7)
+                self.assertEqual(l11, l8 + l10)
+        # Refund tail: line11 col C = 59, line19 (net original payments) = 80,
+        # so line 21 = 80 - 59 = 21, and line 22 refunds all of it.
+        self.assertEqual(read("f1040x_line22"), "21")
         # Part II explanation text.
         self.assertEqual(read("f1040x_explanation"),
                          "SYNTHETIC-AMENDMENT-EXPLANATION-9F3")
