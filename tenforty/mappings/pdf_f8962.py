@@ -98,6 +98,18 @@ _DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
     _POVERTY_TABLE_4C_PATH: lambda _values: "/3",
 }
 
+# Checkbox on-states, year-keyed. Only 2021 (ARPA) maps the unemployment Box
+# A bool key, with its own /2 on-token; every other year has no bool-mapped
+# checkbox (the 4c poverty-table box is a constant handled by
+# get_derivations, not a bool), so its dict is empty.
+_CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: {"f8962_ui_box_checked": "/2"},
+    2022: {},
+    2023: {},
+    2024: {},
+    2025: {},
+}
+
 
 class PdfF8962(PdfFormMapping[dict]):
     """PDF field mapping for IRS Form 8962 (Premium Tax Credit)."""
@@ -115,15 +127,15 @@ class PdfF8962(PdfFormMapping[dict]):
     def get_checkbox_states(cls, year: int) -> dict[str, str]:
         """Compute key -> PDF "on" appearance state for bool checkbox fields.
 
-        Only the 2021 ARPA unemployment Box A is routed this way (ON ``/2``);
-        every other year has no bool-mapped checkbox (the 4c poverty-table
-        box is a constant handled by ``get_derivations``, not a bool)."""
+        States are year-keyed data in ``_CHECKBOX_STATES_BY_YEAR`` (no
+        year-literal dispatch). Only the 2021 ARPA unemployment Box A is
+        routed this way (ON ``/2``); every other year has no bool-mapped
+        checkbox (the 4c poverty-table box is a constant handled by
+        ``get_derivations``, not a bool)."""
         if year not in cls._MAPPINGS:
             raise ValueError(
                 f"No {cls._FORM_NAME} checkbox states for year {year}")
-        if year == 2021:
-            return {"f8962_ui_box_checked": "/2"}
-        return {}
+        return _CHECKBOX_STATES_BY_YEAR[year]
 
     @classmethod
     def get_derivations(
