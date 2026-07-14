@@ -15,15 +15,36 @@ authority if instructions ever disagree with this module):
                 scope)
     line 4      FPL for household size 1, 48 contiguous states + DC
                 (``params.fpl_single_48``)
-    line 5      household income as a percentage of the FPL: (line3 * 100)
-                // line4 using EXACT integer arithmetic (float division
-                underflows at exact-integer FPL percentages, e.g. 230%
-                dropping to 229) — the reported value, NOT clamped to
-                [applicable_figure_floor_pct, applicable_figure_ceiling_pct]
-                (those edges only govern the line-7 table lookup below).
-                When ``block.received_unemployment_2021`` and
-                ``params.unemployment_rule`` (the ARPA 2021 rule), line 5
-                is further replaced with min(line5, 133).
+    line 5      household income as a percentage of the FPL, per this
+                exact four-part rule:
+                  (1) if ``block.received_unemployment_2021`` and
+                      ``params.unemployment_rule`` (the 2021 ARPA
+                      unemployment rule): line 5 = 133 FLAT
+                      (i8962--2021 line-5 instruction: a filer who
+                      received/was-approved-for unemployment compensation
+                      is told to "enter 133 on line 5" — UI filers skip
+                      Worksheet 2's percentage computation entirely).
+                      This bypasses (2) and (3) below completely.
+                  (2) otherwise: line 5 = exact integer truncation
+                      (irs_round(line3) * 100) // line4 (Worksheet 2:
+                      "multiply by 100 and drop any decimals" — integer
+                      arithmetic, never float; float division underflows
+                      at exact-integer FPL percentages, e.g. 230%
+                      dropping to 229).
+                  (3) then the per-year 400%-FPL boundary is applied to
+                      that result, replacing it with 401 when over:
+                      2021 is INCLUSIVE (``line5_raw >= 400``;
+                      i8962--2021: "Is the result 400 or more? ... Enter
+                      401"); 2022-2025 is STRICT (``line3 > 4 * fpl``;
+                      i8962--YYYY: "multiply line 2 by 4.0 ... more than
+                      400% ... Enter 401"). Which comparison applies is
+                      carried by ``params.line5_400_boundary_inclusive``.
+                  (4) the reported line 5 is NOT clamped to
+                      [applicable_figure_floor_pct,
+                      applicable_figure_ceiling_pct] — those edges govern
+                      ONLY the line-7 table lookup below (via
+                      ``_applicable_figure``'s floor-keying), never the
+                      reported line-5 value itself.
     line 7      applicable figure — a floor-key step lookup into
                 ``params.applicable_figures`` at line 5 (NOT a bare dict
                 lookup: the published table is only defined at discrete
@@ -84,31 +105,39 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     line_3 = line_2a
     line_4 = params.fpl_single_48
 
-    # Worksheet 2's line-5 400%-FPL-boundary step is NOT worded the same
-    # every year (see F8962Params.line5_400_boundary_inclusive):
-    #   2021: "Is the result 400 or more? Yes -> enter 401" (INCLUSIVE —
-    #     the floored FPL% itself, not the raw magi, is compared to 400).
-    #   2022-2025: "...more than 400%... enter 401" (STRICT — a direct
-    #     magi-vs-4x-fpl comparison; raw 400.x floors to 400 yet is still
-    #     "more than 400%", so this must NOT be a check on the floored
-    #     percentage).
-    # Exact integer arithmetic for "divide, multiply by 100, drop the
-    # decimal" — float division underflows at exact-integer FPL
-    # percentages (e.g. 31257/13590*100 == 229.99999999999997, which
-    # floors to 229 instead of the true 230). irs_round(line_3) matches
-    # the whole-dollar line_3 already reported above.
-    line5_raw = (irs_round(line_3) * 100) // params.fpl_single_48
-    if params.line5_400_boundary_inclusive:
-        over_400 = line5_raw >= 400
-    else:
-        over_400 = line_3 > 4 * params.fpl_single_48
-    # Line 5 reports the TRUE household-income percentage — it is NOT
-    # clamped to the applicable-figure table's domain edges (those edges
-    # only govern the line-7 lookup below, via _applicable_figure's
-    # floor-keying).
-    line_5 = 401 if over_400 else line5_raw
     if block.received_unemployment_2021 and params.unemployment_rule:
-        line_5 = min(line_5, 133)
+        # 2021 ARPA rule (i8962--2021 line-5 instruction): a filer who
+        # received/was-approved-for unemployment compensation is told to
+        # "enter 133 on line 5" — flat, full stop. Worksheet 2's
+        # percentage computation (and the 400% boundary step within it)
+        # is skipped entirely for these filers, not applied and then
+        # clamped down to 133.
+        line_5 = 133
+    else:
+        # Worksheet 2's line-5 400%-FPL-boundary step is NOT worded the
+        # same every year (see F8962Params.line5_400_boundary_inclusive):
+        #   2021: "Is the result 400 or more? Yes -> enter 401" (INCLUSIVE
+        #     — the floored FPL% itself, not the raw magi, is compared to
+        #     400).
+        #   2022-2025: "...more than 400%... enter 401" (STRICT — a direct
+        #     magi-vs-4x-fpl comparison; raw 400.x floors to 400 yet is
+        #     still "more than 400%", so this must NOT be a check on the
+        #     floored percentage).
+        # Exact integer arithmetic for "divide, multiply by 100, drop the
+        # decimal" — float division underflows at exact-integer FPL
+        # percentages (e.g. 31257/13590*100 == 229.99999999999997, which
+        # floors to 229 instead of the true 230). irs_round(line_3) matches
+        # the whole-dollar line_3 already reported above.
+        line5_raw = (irs_round(line_3) * 100) // params.fpl_single_48
+        if params.line5_400_boundary_inclusive:
+            over_400 = line5_raw >= 400
+        else:
+            over_400 = line_3 > 4 * params.fpl_single_48
+        # Line 5 reports the TRUE household-income percentage — it is NOT
+        # clamped to the applicable-figure table's domain edges (those
+        # edges only govern the line-7 lookup below, via
+        # _applicable_figure's floor-keying).
+        line_5 = 401 if over_400 else line5_raw
 
     line_7 = _applicable_figure(params.applicable_figures, line_5)
 
