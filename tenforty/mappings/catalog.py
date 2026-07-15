@@ -76,7 +76,12 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # already landed (Task 7), so it is NOT gapped here; the remaining twelve forms
 # owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
-    ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    # f1040 2021 retired: fresh air-gapped probe + render-verify (controller +
+    # team-lead-verified 57/57 keys, income block nests in Lines1-11_ReadOrder[0],
+    # single line-1 wages box f1_28 per team-lead ruling; 8 wage sub-line keys
+    # deliberately unmapped — compute-dead AND the 2021 form lacks 1a-1z) landed
+    # in tenforty/mappings/pdf_1040.py; completeness + fields-on-template + emit
+    # gates now cover 2021 — the LAST 2021 individual form, gate fully green.
     # sch_1 2021 retired: fresh air-gapped probe (controller-verified 16/16 keys,
     # form1[0] namespace, line-10 total → f1_31 vs 2022's f1_36 which is absent on
     # 2021 — the 8a-8z sub-lines that shifted it were added after 2021) landed in

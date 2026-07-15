@@ -85,5 +85,68 @@ class TestPdf1040EstimatedTaxPaymentsMapping(unittest.TestCase):
                     self.assertTrue(value is None or value == "")
 
 
+class TestPdf1040_2021EmitRoundTrip(unittest.TestCase):
+    """Fill the real 2021 f1040 template via PdfFiller with distinctive values,
+    then read the cells back directly with pypdf — no soffice.
+
+    Locks the render-verified 2021 placements, most importantly the wage-line
+    regression: `wages` must land in the SINGLE 2021 line-1 box
+    (Lines1-11_ReadOrder f1_28), NOT a 1a-1z sub-line (2021 has none). Uses
+    plain tokens + integers — no SSN/EIN-shaped sentinels — so the
+    personal-data denylist stays clean. If any value fails to land at its
+    mapped path the test fails loudly; it must never be weakened.
+    """
+
+    def _fill_and_read(self, values: dict) -> dict[str, str]:
+        template = REPO_ROOT / "pdfs" / "federal" / "2021" / "f1040.pdf"
+        mapping = Pdf1040.get_mapping(2021)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f1040_2021.pdf"
+            PdfFiller().fill(template, out, mapping, values=values)
+            return {
+                name: (fld.get("/V") or "")
+                for name, fld in (pypdf.PdfReader(str(out)).get_fields() or {}).items()
+            }
+
+    def test_representative_subset_round_trips(self):
+        mapping = Pdf1040.get_mapping(2021)
+        values = {
+            "first_name": "Distinct1040First",
+            "last_name": "Distinct1040Last",
+            "ssn": "SSN-SENTINEL-2021",
+            "wages": 111_028,
+            "taxable_interest": 222_030,
+            "ordinary_dividends": 333_032,
+            "agi": 444_043,
+            "taxable_income": 555_049,
+            "total_tax": 666_002,
+            "total_payments": 777_024,
+            "refund": 888_026,
+            "combat_pay_election": 999_017,
+        }
+        read = self._fill_and_read(values)
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(mapping[key]), str(expected))
+
+    def test_wages_land_in_single_line1_box_f1_28(self):
+        # The wage-line regression: 2021 has a single line-1 wages box; `wages`
+        # must land in Lines1-11_ReadOrder f1_28 specifically.
+        read = self._fill_and_read({"wages": 123_456})
+        self.assertEqual(
+            read.get("topmostSubform[0].Page1[0].Lines1-11_ReadOrder[0].f1_28[0]"),
+            "123456",
+            "wages must land in the single 2021 line-1 box f1_28",
+        )
+
+    def test_combat_pay_election_lands_in_f2_17(self):
+        read = self._fill_and_read({"combat_pay_election": 42_017})
+        self.assertEqual(
+            read.get("topmostSubform[0].Page2[0].f2_17[0]"),
+            "42017",
+            "combat_pay_election must land in f2_17 (line 27b)",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
