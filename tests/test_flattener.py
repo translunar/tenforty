@@ -2,6 +2,8 @@ import unittest
 
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.models import (
+    Form1095A,
+    Form1095AMonth,
     Form1098,
     Form1099B,
     Form1099DIV,
@@ -321,3 +323,90 @@ class TestFlatten1099B(unittest.TestCase):
             ),
         ])
         flatten_scenario(s)  # must not raise NotImplementedError
+
+
+class TestFlattenForm1095A(unittest.TestCase):
+    """The flattener emits the WP-Task-2 workbook input keys for Form 8962
+    (f8962_month_<n>_premium/slcsp/aptc, f8962_ui_checkbox)."""
+
+    def _scenario(self, year: int, form_1095a, **config_overrides) -> Scenario:
+        kw = scope_out_attestation_defaults()
+        kw.update(config_overrides)
+        return Scenario(
+            config=TaxReturnConfig(
+                year=year, filing_status="single",
+                birthdate="1985-04-20", state="CA",
+                **kw,
+            ),
+            form_1095a=form_1095a,
+        )
+
+    def _months(self, covered: dict[int, tuple[float, float, float]]):
+        """Build 12 Form1095AMonth entries; months not in `covered` are
+        all-zero (the uncovered-month workbook input)."""
+        return tuple(
+            Form1095AMonth(*covered[n]) if n in covered else Form1095AMonth()
+            for n in range(1, 13)
+        )
+
+    def test_full_year_coverage_emits_all_12_months(self):
+        months = self._months({n: (600.0, 550.0, 300.0) for n in range(1, 13)})
+        flat = flatten_scenario(
+            self._scenario(2025, Form1095A(months=months))
+        )
+        for n in range(1, 13):
+            self.assertEqual(flat[f"f8962_month_{n}_premium"], 600.0)
+            self.assertEqual(flat[f"f8962_month_{n}_slcsp"], 550.0)
+            self.assertEqual(flat[f"f8962_month_{n}_aptc"], 300.0)
+
+    def test_uncovered_months_carry_zero(self):
+        # Coverage Aug (8) - Dec (12) only; Jan-Jul all-zero.
+        covered = {n: (600.0, 550.0, 550.0) for n in range(8, 13)}
+        months = self._months(covered)
+        flat = flatten_scenario(
+            self._scenario(2025, Form1095A(months=months))
+        )
+        for n in range(1, 8):
+            self.assertEqual(flat[f"f8962_month_{n}_premium"], 0.0)
+            self.assertEqual(flat[f"f8962_month_{n}_slcsp"], 0.0)
+            self.assertEqual(flat[f"f8962_month_{n}_aptc"], 0.0)
+        for n in range(8, 13):
+            self.assertEqual(flat[f"f8962_month_{n}_premium"], 600.0)
+
+    def test_no_form_1095a_emits_no_f8962_keys(self):
+        flat = flatten_scenario(self._scenario(2025, None))
+        for n in range(1, 13):
+            self.assertNotIn(f"f8962_month_{n}_premium", flat)
+            self.assertNotIn(f"f8962_month_{n}_slcsp", flat)
+            self.assertNotIn(f"f8962_month_{n}_aptc", flat)
+        self.assertNotIn("f8962_ui_checkbox", flat)
+
+    def test_2021_ui_checkbox_emitted_when_flagged(self):
+        months = self._months({n: (600.0, 550.0, 0.0) for n in range(1, 13)})
+        flat = flatten_scenario(
+            self._scenario(
+                2021, Form1095A(months=months, received_unemployment_2021=True),
+            )
+        )
+        self.assertEqual(flat["f8962_ui_checkbox"], "X")
+
+    def test_2021_no_ui_checkbox_when_flag_false(self):
+        months = self._months({n: (600.0, 550.0, 0.0) for n in range(1, 13)})
+        flat = flatten_scenario(
+            self._scenario(
+                2021, Form1095A(months=months, received_unemployment_2021=False),
+            )
+        )
+        self.assertNotIn("f8962_ui_checkbox", flat)
+
+    def test_non_2021_year_never_emits_ui_checkbox(self):
+        # received_unemployment_2021 only has statutory meaning in 2021; the
+        # flattener must not emit the marker for any other year even if the
+        # flag happens to be set on the block.
+        months = self._months({n: (600.0, 550.0, 0.0) for n in range(1, 13)})
+        flat = flatten_scenario(
+            self._scenario(
+                2025, Form1095A(months=months, received_unemployment_2021=True),
+            )
+        )
+        self.assertNotIn("f8962_ui_checkbox", flat)
