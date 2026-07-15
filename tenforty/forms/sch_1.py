@@ -38,11 +38,27 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         itemized = float(scenario.config.prior_year_itemized_deduction_amount or 0)
         standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
         recovery_cap = max(0.0, itemized - standard)
-        salt_cap = float(
-            params.prior_year_salt_cap[scenario.config.filing_status.value]
+        cap = float(params.prior_year_salt_cap[scenario.config.filing_status.value])
+        # prior_year_salt_paid is required at load whenever prior_year_itemized
+        # is True, so it is present here; `or 0.0` is belt-and-suspenders.
+        salt_paid = float(scenario.config.prior_year_salt_paid or 0.0)
+        # Tax-benefit limitation (IRS Pub. 525 worksheet, SALT-cap portion): a
+        # state refund is taxable only to the extent it RAISED the prior-year
+        # capped SALT deduction — i.e. the difference between the SALT deducted
+        # with the refund included and without it, each capped. BOTH clamps
+        # matter: the outer max(0,...) and the INNER max(salt_paid - refund, 0)
+        # (without the inner clamp, a refund larger than salt_paid inflates the
+        # benefit above what was ever deducted). See the refund>salt_paid test.
+        # OUT OF SCOPE: the full Pub 525 worksheet also limits the benefit by
+        # the sales-tax-alternative (income tax deducted vs. the sales tax that
+        # could have been claimed instead); that needs another input and is a
+        # known, unimplemented limitation of this compute.
+        benefit = max(
+            0.0,
+            min(salt_paid, cap) - min(max(salt_paid - refund_total, 0.0), cap),
         )
         taxable_refunds_line_1 = irs_round(
-            min(refund_total, recovery_cap, salt_cap)
+            min(refund_total, recovery_cap, benefit)
         )
     alimony_line_2a = 0
     business_income_line_3 = 0

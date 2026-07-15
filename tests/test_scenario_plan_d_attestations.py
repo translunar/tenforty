@@ -111,6 +111,7 @@ class PlanDUnconditionalAttestationLoadTimeTests(unittest.TestCase):
         overrides = {name: True for name in _UNCONDITIONAL_FIELDS}
         overrides["prior_year_itemized_deduction_amount"] = 40_000.0
         overrides["prior_year_standard_deduction_amount"] = 14_600.0
+        overrides["prior_year_salt_paid"] = 12_000.0
         doc = {"config": _base_config(**overrides)}
         with tempfile.TemporaryDirectory() as tmp:
             p = _write_yaml(doc, Path(tmp))
@@ -165,6 +166,7 @@ class PlanDConditionalFieldTests(unittest.TestCase):
             prior_year_itemized=True,
             prior_year_itemized_deduction_amount=40_000.0,
             prior_year_standard_deduction_amount=14_600.0,
+            prior_year_salt_paid=12_000.0,
         )
         doc = {"config": cfg}
         with tempfile.TemporaryDirectory() as tmp:
@@ -176,6 +178,7 @@ class PlanDConditionalFieldTests(unittest.TestCase):
             self.assertEqual(
                 s.config.prior_year_standard_deduction_amount, 14_600.0
             )
+            self.assertEqual(s.config.prior_year_salt_paid, 12_000.0)
 
 
 class ScheduleK1LoadTimeValidationTests(unittest.TestCase):
