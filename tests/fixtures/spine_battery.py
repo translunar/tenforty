@@ -3,8 +3,9 @@
 Each builder takes the tax year and returns a single-filer Scenario whose
 income is high enough to clear the EIC scope-gate, so _compute_1040_pipeline
 routes to the native spine rather than the workbook. battery_for(year)
-yields the same eight boundary scenarios for any supported year — adding a
-year adds zero code here.
+yields the same eleven boundary scenarios for any supported year (plus a
+2021-only twelfth, the ARPA unemployment-compensation special rule) —
+adding a year adds zero code here.
 
 All identities and amounts are fully synthetic — no real personal data.
 """
@@ -12,6 +13,8 @@ import functools
 from collections.abc import Callable
 
 from tenforty.models import (
+    Form1095A,
+    Form1095AMonth,
     Form1098,
     Form1099DIV,
     Form1099INT,
@@ -22,6 +25,7 @@ from tenforty.models import (
     W2,
 )
 from tenforty.params.federal import load as load_params
+from tenforty.params import f8962 as f8962_params
 from tests.helpers import scope_out_attestation_defaults
 
 
@@ -323,6 +327,104 @@ def build_itemizer_with_w2_state_tax(year: int) -> Scenario:
     )
 
 
+def _ptc_months(
+    by_month: dict[int, tuple[float, float, float]],
+) -> tuple[Form1095AMonth, ...]:
+    """Build the 12-entry Form1095AMonth block. `by_month` maps 1-indexed
+    month numbers to (premium, slcsp, aptc); months not given are
+    all-zero — the correct workbook input for an uncovered month."""
+    return tuple(
+        Form1095AMonth(*by_month[n]) if n in by_month else Form1095AMonth()
+        for n in range(1, 13)
+    )
+
+
+def build_ptc_net_credit(year: int) -> Scenario:
+    """PTC entitlement exceeds APTC received → net credit (Form 8962 line
+    26 > 0). Wages = 2.50x the year's FPL (household size 1), landing
+    household income in the 200-300% FPL band. Full-year coverage,
+    premium/SLCSP/APTC steady at $600/$550/$300 a month — the $300 APTC
+    under-collects relative to the entitled credit at that FPL%, so line
+    26 (net PTC) is positive and line 29 (repayment) is 0.
+    """
+    fpl = f8962_params.load(year).fpl_single_48
+    wages = round(2.50 * fpl)
+    months = _ptc_months({n: (600.0, 550.0, 300.0) for n in range(1, 13)})
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer PTC1", wages=float(wages),
+                federal_tax_withheld=round(wages * 0.12)),
+        ],
+        form_1095a=Form1095A(months=months),
+    )
+
+
+def build_ptc_capped_repayment(year: int) -> Scenario:
+    """Excess APTC repayment hits the 200-300% FPL band's statutory cap
+    (Form 8962 line 28/29), rather than repaying the full excess. Same
+    wages/FPL-band as ptc_net_credit (2.50x FPL, single filer), but
+    APTC is bumped to $550/mo (matching SLCSP) so the taxpayer received
+    more subsidy than they were entitled to — the repayment limitation
+    caps the amount owed back instead of it being dollar-for-dollar.
+    """
+    fpl = f8962_params.load(year).fpl_single_48
+    wages = round(2.50 * fpl)
+    months = _ptc_months({n: (600.0, 550.0, 550.0) for n in range(1, 13)})
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer PTC2", wages=float(wages),
+                federal_tax_withheld=round(wages * 0.12)),
+        ],
+        form_1095a=Form1095A(months=months),
+    )
+
+
+def build_ptc_partial_year_401(year: int) -> Scenario:
+    """Household income lands over the 400%-FPL boundary (Form 8962 line 5
+    == 401 in every supported year) AND coverage is partial-year (Aug-Dec
+    only; Jan-Jul carry all-zero premium/SLCSP/APTC — the correct
+    workbook input for uncovered months). Wages = 4.50x the year's FPL.
+    Exercises both the 400%-boundary line-5 rule and the partial-year
+    monthly-row shape in the same scenario.
+    """
+    fpl = f8962_params.load(year).fpl_single_48
+    wages = round(4.50 * fpl)
+    months = _ptc_months({n: (600.0, 550.0, 550.0) for n in range(8, 13)})
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer PTC3", wages=float(wages),
+                federal_tax_withheld=round(wages * 0.15)),
+        ],
+        form_1095a=Form1095A(months=months),
+    )
+
+
+def build_ptc_2021_ui_flat133(year: int) -> Scenario:
+    """2021-only ARPA unemployment-compensation special rule: a filer who
+    received unemployment compensation during 2021 has Form 8962 line 5
+    set flat to 133, bypassing the normal FPL% computation. Wages = 3.00x
+    the year's FPL (which would otherwise land well inside the normal
+    200-300% band) with full-year coverage and $0 APTC, so the scenario
+    clearly demonstrates the flat-133 override rather than coincidentally
+    landing there anyway.
+    """
+    assert year == 2021, "the 2021 UI flat-133 rule only applies in 2021"
+    fpl = f8962_params.load(year).fpl_single_48
+    wages = round(3.00 * fpl)
+    months = _ptc_months({n: (600.0, 550.0, 0.0) for n in range(1, 13)})
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer PTC4", wages=float(wages),
+                federal_tax_withheld=round(wages * 0.10)),
+        ],
+        form_1095a=Form1095A(months=months, received_unemployment_2021=True),
+    )
+
+
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
@@ -332,9 +434,24 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("owes_tax", build_owes_tax),
     ("tax_table_band", build_tax_table_band),
     ("itemizer_with_w2_state_tax", build_itemizer_with_w2_state_tax),
+    ("ptc_net_credit", build_ptc_net_credit),
+    ("ptc_capped_repayment", build_ptc_capped_repayment),
+    ("ptc_partial_year_401", build_ptc_partial_year_401),
+]
+
+# 2021-only: the ARPA unemployment-compensation special rule (Form 8962
+# line 5 flat-133 override) is meaningless outside 2021, so it is NOT in
+# _BUILDERS — battery_for() splices it in only when year == 2021.
+_YEAR_2021_ONLY_BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
+    ("ptc_2021_ui_flat133", build_ptc_2021_ui_flat133),
 ]
 
 
 def battery_for(year: int) -> list[tuple[str, Callable[[], Scenario]]]:
-    """The parity battery for a year: (name, zero-arg builder) pairs."""
-    return [(name, functools.partial(build, year)) for name, build in _BUILDERS]
+    """The parity battery for a year: (name, zero-arg builder) pairs.
+
+    Every year gets the shared _BUILDERS set; 2021 additionally gets the
+    2021-only ARPA unemployment-compensation scenario.
+    """
+    builders = _BUILDERS + (_YEAR_2021_ONLY_BUILDERS if year == 2021 else [])
+    return [(name, functools.partial(build, year)) for name, build in builders]

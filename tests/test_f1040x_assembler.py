@@ -180,6 +180,67 @@ class F1040XAssemblerTests(unittest.TestCase):
         out = assemble(filed, corrected, case)
         self.assertEqual(out["f1040x_line18_overpayment_on_original"], 999)
 
+    def test_no_sch2_regression_pin_line11_equals_total_tax(self):
+        """BINDING regression pin: with neither f8962_repayment nor
+        f8959_tax_total (nor nonrefundable_credits) present in either column,
+        L11 must be BYTE-IDENTICAL to the old direct-total_tax sourcing."""
+        filed = self._filed()
+        corrected = self._filed(agi=1200.0, total_tax=150.0)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line11_a"], filed["total_tax"])
+        self.assertEqual(out["f1040x_line11_c"], corrected["total_tax"])
+        self.assertEqual(
+            out["f1040x_line11_b"], corrected["total_tax"] - filed["total_tax"]
+        )
+
+    def test_sch2_components_source_lines_6_8_10_11(self):
+        filed = self._filed(f8962_repayment=40.0, f8959_tax_total=10.0)
+        corrected = self._filed(
+            total_tax=150.0, f8962_repayment=60.0, f8959_tax_total=20.0
+        )
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        for line in ("6", "7", "8", "10", "11"):
+            a = out[f"f1040x_line{line}_a"]
+            b = out[f"f1040x_line{line}_b"]
+            c = out[f"f1040x_line{line}_c"]
+            self.assertEqual(a + b, c, msg=f"line {line}: {a} + {b} != {c}")
+
+        self.assertEqual(out["f1040x_line6_a"], filed["total_tax"] + 40.0)
+        self.assertEqual(out["f1040x_line6_c"], corrected["total_tax"] + 60.0)
+        self.assertEqual(out["f1040x_line10_a"], 10.0)
+        self.assertEqual(out["f1040x_line10_c"], 20.0)
+        self.assertEqual(
+            out["f1040x_line8_a"], out["f1040x_line6_a"] - out["f1040x_line7_a"]
+        )
+        self.assertEqual(
+            out["f1040x_line8_c"], out["f1040x_line6_c"] - out["f1040x_line7_c"]
+        )
+        self.assertEqual(
+            out["f1040x_line11_a"], out["f1040x_line8_a"] + out["f1040x_line10_a"]
+        )
+        self.assertEqual(
+            out["f1040x_line11_c"], out["f1040x_line8_c"] + out["f1040x_line10_c"]
+        )
+
+    def test_tail_uses_computed_line11c_not_bare_total_tax(self):
+        """The refund/owed tail must key off the COMPUTED L11c (L8+L10), not a
+        bare corrected["total_tax"] — otherwise a corrected f8962_repayment
+        would silently vanish from the amount-owed/refund figures."""
+        filed = self._filed()  # total_tax 100, total_payments 250
+        corrected = self._filed(f8962_repayment=60.0)  # total_tax still 100
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        # L11c = total_tax(100) + f8962_repayment(60) - 0(L7) + 0(L10) = 160
+        self.assertEqual(out["f1040x_line11_c"], 160)
+        # L17=250, L18=150, L19=100, L11c=160 > 100 -> owe 60
+        self.assertEqual(out["f1040x_line20_amount_owed"], 60)
+        self.assertEqual(out["f1040x_line22_refund"], 0)
+
     def test_required_filed_keys_are_the_column_a_sources(self):
         self.assertEqual(
             set(REQUIRED_FILED_KEYS),

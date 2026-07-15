@@ -14,6 +14,8 @@ from tenforty.models import (
     DivergenceSource,
     EntityType,
     FilingStatus,
+    Form1095A,
+    Form1095AMonth,
     Form1098,
     Form1099B,
     Form1099DIV,
@@ -34,6 +36,7 @@ from tenforty.models import (
     TaxReturnConfig,
     VoluntaryContribution,
     W2,
+    _MONTH_KEYS,
 )
 
 _FORM_REGISTRY: dict[str, tuple[type, str]] = {
@@ -53,9 +56,15 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
 # dropped `itemized_deductions:` block is how a filed-return reconciliation
 # first surfaced this gap — a typo must not vanish without a sound).
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
-    {"config", "s_corp_return", "ca540", "itemized_deductions"}
+    {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a"}
     | set(_FORM_REGISTRY)
 )
+
+# Keys recognized inside the form_1095a block and inside each month row.
+_KNOWN_FORM_1095A_KEYS: frozenset[str] = frozenset(
+    {"months", "received_unemployment_2021", "tax_exempt_interest"})
+_KNOWN_FORM_1095A_MONTH_KEYS: frozenset[str] = frozenset(
+    {"premium", "slcsp", "aptc"})
 
 
 def _coerce_date(value) -> datetime.date:
@@ -275,6 +284,71 @@ def _load_ca540(data: dict | None) -> CA540Return | None:
     )
 
 
+def _load_form_1095a_month(key: str, data: dict) -> Form1095AMonth:
+    unknown = set(data) - _KNOWN_FORM_1095A_MONTH_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in form_1095a.months.{key}: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_FORM_1095A_MONTH_KEYS)}")
+    return Form1095AMonth(
+        premium=float(data.get("premium", 0.0)),
+        slcsp=float(data.get("slcsp", 0.0)),
+        aptc=float(data.get("aptc", 0.0)),
+    )
+
+
+def _load_form_1095a(data: dict | None, config: TaxReturnConfig) -> Form1095A | None:
+    """Build Form1095A from a YAML-parsed dict. Fail-closed like the other
+    nested-mapping blocks (`s_corp_return`, `ca540`): unknown sibling keys,
+    a `months` map missing any of the twelve jan..dec keys or carrying an
+    extra key, and unknown keys inside a month row all raise ValueError
+    rather than being silently dropped or defaulted.
+
+    `received_unemployment_2021` is only meaningful for TY2021 (the
+    American Rescue Plan's one-year suspension of excess-APTC repayment
+    for filers who received unemployment compensation); asserting it True
+    for any other year is a scenario-authoring error, not a valid input."""
+    if data is None:
+        return None
+    unknown = set(data) - _KNOWN_FORM_1095A_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in form_1095a: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_FORM_1095A_KEYS)}")
+
+    months_raw = data.get("months")
+    if not isinstance(months_raw, dict):
+        raise ValueError(
+            f"form_1095a.months must be a mapping with keys "
+            f"{list(_MONTH_KEYS)}, got {type(months_raw).__name__}")
+    missing = [m for m in _MONTH_KEYS if m not in months_raw]
+    if missing:
+        raise ValueError(
+            f"form_1095a.months is missing month(s): {missing}. "
+            f"Required keys: {list(_MONTH_KEYS)}")
+    extra = set(months_raw) - set(_MONTH_KEYS)
+    if extra:
+        raise ValueError(
+            f"Unknown key(s) in form_1095a.months: {sorted(extra)}. "
+            f"Known keys: {list(_MONTH_KEYS)}")
+
+    months = tuple(
+        _load_form_1095a_month(m, months_raw[m]) for m in _MONTH_KEYS)
+
+    received_unemployment_2021 = bool(data.get("received_unemployment_2021", False))
+    if received_unemployment_2021 and config.year != 2021:
+        raise ValueError(
+            f"form_1095a.received_unemployment_2021 is only valid for tax "
+            f"year 2021 (the American Rescue Plan's one-year suspension of "
+            f"excess-APTC repayment); scenario config.year is {config.year}.")
+
+    return Form1095A(
+        months=months,
+        received_unemployment_2021=received_unemployment_2021,
+        tax_exempt_interest=float(data.get("tax_exempt_interest", 0.0)),
+    )
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
@@ -352,9 +426,11 @@ def load_scenario(path: Path) -> Scenario:
     itemized_raw = data.get("itemized_deductions")
     itemized_deductions = (
         ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)
+    form_1095a = _load_form_1095a(data.get("form_1095a"), config)
     scenario = Scenario(
         config=config, s_corp_return=s_corp_return, ca540=ca540,
-        itemized_deductions=itemized_deductions, **form_data)
+        itemized_deductions=itemized_deductions, form_1095a=form_1095a,
+        **form_data)
     _validate_schedule_k1s(scenario)
     return scenario
 

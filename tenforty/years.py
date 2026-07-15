@@ -45,7 +45,7 @@ WORKBOOK_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 # Names match the mappings/pdf_<name>.py module basenames.
 FEDERAL_FORMS: tuple[str, ...] = (
     "1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
-    "4562", "4868", "8959", "f8582", "f8949", "f8995",
+    "4562", "4868", "8959", "f8582", "f8949", "f8995", "f8962",
 )
 
 # Compute-only federal form set: the individual-return family, EXCLUDING the

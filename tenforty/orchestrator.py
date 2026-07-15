@@ -16,8 +16,10 @@ from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
+from tenforty.forms import f8962 as form_f8962
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
+from tenforty.params import f8962 as params_f8962
 from tenforty.forms import f1120s as form_f1120s
 from tenforty.forms import f100s as form_f100s
 from tenforty.forms import f100s_k1 as form_f100s_k1
@@ -40,6 +42,7 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_f8582 import PdfF8582
+from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
@@ -297,6 +300,13 @@ class _FederalFormSpec:
     kind: str  # "flat" | "repeater"
     mapping: dict
     values: dict
+    # Optional flat-fill extras (default empty): a form whose emit needs
+    # XFA checkbox on-states (bool compute key -> "/N") and/or derived cells
+    # (PDF path -> lambda(values)) carries them here so both the render and
+    # the changed-forms-selector payload see the same fields. "repeater"
+    # specs ignore these.
+    checkbox_states: dict = dataclasses.field(default_factory=dict)
+    derivations: dict = dataclasses.field(default_factory=dict)
 
 
 # Standing caveat (spec §4): the changed-forms selector compares two
@@ -514,6 +524,20 @@ class ReturnOrchestrator:
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
         if not self._scenario_in_spine_scope(effective_scenario):
+            if effective_scenario.form_1095a is not None:
+                # A 1095-A scenario that is out of native-spine scope
+                # (EIC-possible / non-single filer) would route to the XLSX
+                # workbook — which has NO Form 8962. A silent workbook fallback
+                # would drop the Premium Tax Credit entirely. Refuse loudly
+                # until the native spine is extended to this filer class.
+                raise NotImplementedError(
+                    "Scenario carries a Form 1095-A (Premium Tax Credit) but is "
+                    "out of native-1040-spine scope (EIC-possible or non-single "
+                    "filer), so it would route to the XLSX workbook path, which "
+                    "does not compute Form 8962. Refusing rather than silently "
+                    "dropping the PTC. Extend the native spine to cover this "
+                    "filer class before enabling 8962 for it."
+                )
             return self._compute_1040_via_workbook(effective_scenario)
         params = load_params(effective_scenario.config.year)
         schedule_results = self._compute_native_schedules(effective_scenario)
@@ -607,6 +631,46 @@ class ReturnOrchestrator:
             "net_capital_gain": _preamble.net_capital_gain,
         }
 
+        # --- Step 7b: Form 8962 (Premium Tax Credit) ---
+        # Computed here because it consumes AGI (now known from the shared
+        # preamble) and its outputs feed the totals downstream (net PTC →
+        # total_payments, excess-APTC repayment → overpaid) — mirroring how
+        # f8959 is sequenced ahead of the totals in the spine call chain.
+        # MAGI SEAM: Form 8962 MAGI is AGI + tax-exempt interest, NOT the
+        # spine's "magi" key (which equals AGI and excludes tax-exempt
+        # interest). Only computed when a 1095-A is present; when absent, the
+        # "f8962" key is omitted so the detail keys stay absent (mirroring how
+        # f8959 detail is only present when computed).
+        # SE-HEALTH × PTC GUARD lives at the sch_1_line_17_se_health read in
+        # forms/f1040_spine.py: if that (currently hardcoded-0) channel is ever
+        # nonzero while a 1095-A is present, the spine raises NotImplementedError
+        # (Rev. Proc. 2014-41 iterative reconciliation is unmodeled).
+        f8962_results = None
+        if effective_scenario.form_1095a is not None:
+            # PTC-MAGI single-source guard.
+            if any(
+                f.tax_exempt_interest for f in effective_scenario.form1099_int
+            ):
+                raise NotImplementedError(
+                    "A Form 1099-INT reports tax-exempt interest while a Form "
+                    "1095-A (Premium Tax Credit) is present. Put the "
+                    "tax-exempt-interest MAGI addition on "
+                    "form_1095a.tax_exempt_interest instead — that is the one "
+                    "sanctioned knob for tax-exempt interest in PTC MAGI. "
+                    "There is only one knob because additively combining both "
+                    "sources would double-count the same interest in PTC MAGI, "
+                    "which is exactly as wrong as dropping it. Form 1040 line "
+                    "2a (tax-exempt interest) is not modeled in the native "
+                    "spine; this is the marked seam to revisit if it ever "
+                    "lands."
+                )
+            f8962_results = form_f8962.compute(
+                block=effective_scenario.form_1095a,
+                magi=_preamble.agi + effective_scenario.form_1095a.tax_exempt_interest,
+                year=effective_scenario.config.year,
+                params=params_f8962.load(effective_scenario.config.year),
+            )
+
         # --- Step 8: F8995 (needs k1_fanout + f1040 stub) ---
         f8995_results = form_f8995.compute(
             effective_scenario,
@@ -638,7 +702,7 @@ class ReturnOrchestrator:
             else {}
         )
 
-        return {
+        results: dict[str, dict] = {
             "sch_1": sch_1_results,
             "sch_a": sch_a_results,
             "sch_d": sch_d_results,
@@ -650,6 +714,11 @@ class ReturnOrchestrator:
             # into the final result for oracle cross-check consumers.
             "f8949": upstream.get("f8949", {}),
         }
+        # Only present when a 1095-A was computed — the spine reads it via
+        # schedule_results.get("f8962", {}) and defaults every value to 0.
+        if f8962_results is not None:
+            results["f8962"] = f8962_results
+        return results
 
     def _compute_1040_via_workbook(
         self, effective_scenario: Scenario,
@@ -693,6 +762,17 @@ class ReturnOrchestrator:
             raw["federal_withheld_1099"] = (
                 (raw.get("federal_withheld_1099") or 0) + g_withheld
             )
+
+        # PTC money outputs: blank means zero. The workbook leaves PTC_Net
+        # (net PTC) blank when net PTC is 0, and PTC_Excess blank when there
+        # is no excess-APTC repayment; the engine reads a blank cell as None.
+        # The native spine emits 0 in those cases, so normalize these two keys
+        # None -> 0 for parity. Scoped DELIBERATELY to the PTC money keys only:
+        # any OTHER output going blank should surface loudly as None rather
+        # than be silently zeroed.
+        for _ptc_key in ("f8962_net_ptc", "f8962_repayment"):
+            if raw.get(_ptc_key) is None:
+                raw[_ptc_key] = 0
 
         return form_1040.compute(raw_1040=raw, upstream={})
 
@@ -928,6 +1008,21 @@ class ReturnOrchestrator:
                 values=form_8959.compute(scenario, upstream=upstream),
             ))
 
+        if self._should_emit_8962(scenario):
+            # values = the f1040 results dict: the spine splats the full
+            # f8962 detail-key family (f8962_line_*, f8962_month_*,
+            # f8962_ui_box_checked) into it when a 1095-A is computed, so no
+            # re-compute is needed. checkbox_states carries the 2021 UI-box
+            # on-token; derivations hardwire the always-on 4c poverty-table box.
+            specs.append(_FederalFormSpec(
+                name="8962", template=_fed("f8962.pdf"),
+                output_name=f"f8962_{year}.pdf", kind="flat",
+                mapping=PdfF8962.get_mapping(year)["scalars"],
+                values=results,
+                checkbox_states=PdfF8962.get_checkbox_states(year),
+                derivations=PdfF8962.get_derivations(year),
+            ))
+
         if self._should_emit_8995(scenario):
             specs.append(_FederalFormSpec(
                 name="f8995", template=_fed("f8995.pdf"),
@@ -963,6 +1058,8 @@ class ReturnOrchestrator:
             filler.fill(
                 template_path=spec.template, output_path=out,
                 field_mapping=spec.mapping, values=spec.values,
+                checkbox_states=spec.checkbox_states or None,
+                derivations=spec.derivations or None,
             )
         else:
             filler.fill_with_repeaters(
@@ -978,7 +1075,11 @@ class ReturnOrchestrator:
         runs. Built via the same PdfFiller resolution the render uses, so the
         payload cannot drift from what fills."""
         if spec.kind == "flat":
-            return PdfFiller.resolve_fields(spec.mapping, spec.values)
+            return PdfFiller.resolve_fields(
+                spec.mapping, spec.values,
+                checkbox_states=spec.checkbox_states or None,
+                derivations=spec.derivations or None,
+            )
         return PdfFiller._expand_repeaters(spec.mapping, spec.values)
 
     def _emit_federal_corporate_pdfs_internal(
@@ -1774,3 +1875,19 @@ class ReturnOrchestrator:
         threshold = thresholds[scenario.config.filing_status]
         medicare_wages = sum(w.medicare_wages for w in scenario.w2s)
         return medicare_wages > threshold
+
+    def _should_emit_8962(self, scenario: Scenario) -> bool:
+        """Emit Form 8962 (PTC) iff the scenario carries a Form 1095-A block
+        with at least one month reporting a nonzero premium, SLCSP, or APTC.
+
+        Mirrors forms.f8962.compute's own per-month emit predicate (a month
+        with all three zero produces no grid row) — so a 1095-A whose every
+        month is empty yields no filled cells and no form. The spine only
+        computes f8962 at all when form_1095a is present, so the detail keys
+        the spec reads are guaranteed available whenever this returns True."""
+        block = scenario.form_1095a
+        if block is None:
+            return False
+        return any(
+            m.premium or m.slcsp or m.aptc for m in block.months
+        )

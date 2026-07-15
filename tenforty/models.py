@@ -24,6 +24,12 @@ class Form1099INT:
     payer: str
     interest: float
     federal_tax_withheld: float = 0.0
+    # NOT consumed by the spine — Form 1040 line 2a (tax-exempt interest) is
+    # unmodeled. For Premium Tax Credit MAGI, the sanctioned knob is
+    # Form1095A.tax_exempt_interest. A guard in orchestrator
+    # ._compute_native_schedules Step 7b refuses if this field is nonzero
+    # together with a Form 1095-A. Do not wire this field into PTC MAGI
+    # additively without revisiting that guard (double-count risk).
     tax_exempt_interest: float = 0.0
 
 
@@ -425,6 +431,24 @@ class ItemizedDeductions:
     charitable_contributions: float = 0.0
 
 
+_MONTH_KEYS = ("jan", "feb", "mar", "apr", "may", "jun",
+               "jul", "aug", "sep", "oct", "nov", "dec")
+
+
+@dataclass(frozen=True)
+class Form1095AMonth:
+    premium: float = 0.0
+    slcsp: float = 0.0
+    aptc: float = 0.0
+
+
+@dataclass(frozen=True)
+class Form1095A:
+    months: tuple[Form1095AMonth, ...]          # exactly 12, jan..dec order
+    received_unemployment_2021: bool = False
+    tax_exempt_interest: float = 0.0
+
+
 @dataclass
 class DepreciableAsset:
     """An asset subject to MACRS depreciation (Form 4562 Part III row).
@@ -760,5 +784,6 @@ class Scenario:
     rental_properties: list[RentalProperty] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
+    form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None

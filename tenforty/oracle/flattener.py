@@ -23,6 +23,7 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
     _flatten_rental_properties(scenario, flat)
     _flatten_k1s(scenario, flat)
     _flatten_1099_b(scenario, flat)
+    _flatten_form_1095a(scenario, flat)
 
     return flat
 
@@ -252,6 +253,29 @@ def _flatten_1099_b(scenario: Scenario, flat: dict[str, object]) -> None:
             flat[f"{prefix}_is_28_rate"] = "X"
         if lot.is_section_1250:
             flat[f"{prefix}_is_section_1250"] = "X"
+
+
+def _flatten_form_1095a(scenario: Scenario, flat: dict[str, object]) -> None:
+    """Emit the Form 8962 workbook input keys from scenario.form_1095a.
+
+    Always emits all 12 months (uncovered months carry 0.0 — that's the
+    correct workbook input, not an omission). The 2021 unemployment-
+    compensation checkbox (AI14) is emitted only in 2021 and only when the
+    block flags it — the workbook formula checks `AI14<>""`, so any
+    non-empty marker is sufficient and the key must otherwise be absent so
+    AI14 stays blank.
+    """
+    block = scenario.form_1095a
+    if block is None:
+        return
+
+    for n, month in enumerate(block.months, start=1):
+        flat[f"f8962_month_{n}_premium"] = month.premium
+        flat[f"f8962_month_{n}_slcsp"] = month.slcsp
+        flat[f"f8962_month_{n}_aptc"] = month.aptc
+
+    if scenario.config.year == 2021 and block.received_unemployment_2021:
+        flat["f8962_ui_checkbox"] = "X"
 
 
 def _flatten_1099g(scenario: Scenario, flat: dict[str, object]) -> None:

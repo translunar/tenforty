@@ -90,6 +90,40 @@ def _f8949_all_sheet_map(slots: tuple = _F8949_BOX_SLOTS_2025) -> dict[str, str]
     return out
 
 
+# Form 8962 (Premium Tax Credit) monthly-grid rows: Part II "Monthly
+# Calculation" (lines 12-23, Jan..Dec). Columns are IDENTICAL across all 5
+# years — (a) enrollment premium = G, (b) SLCSP = L, (f) APTC = AF — verified
+# ALL-blank/writable on the '8962' sheet for every year. Only the ROW range
+# drifts (docs/plans/f8962-probe-tables.md, 'Workbook 8962-tab layout' recon).
+_F8962_ROWS_2021 = tuple(range(52, 64))
+_F8962_ROWS_2022_2024 = tuple(range(48, 60))
+_F8962_ROWS_2025 = tuple(range(50, 62))
+
+_F8962_MONTH_COLS = {
+    "premium": "G",
+    "slcsp": "L",
+    "aptc": "AF",
+}
+
+
+def _f8962_inputs(rows: tuple) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for i, row in enumerate(rows):
+        n = i + 1
+        for field, col in _F8962_MONTH_COLS.items():
+            out[f"f8962_month_{n}_{field}"] = f"{col}{row}"
+    return out
+
+
+def _f8962_sheet_map(rows: tuple) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for i in range(len(rows)):
+        n = i + 1
+        for field in _F8962_MONTH_COLS:
+            out[f"f8962_month_{n}_{field}"] = "8962"
+    return out
+
+
 class F1040(FormMapping):
     """Mapping for the entire federal 1040 workbook (all sheets).
 
@@ -234,6 +268,10 @@ class F1040(FormMapping):
             "f8582_line_11_oracle": "8582",
             # Schedule 1 line 26: direct cell ref AC98 on Sch. 1.
             "sch_1_line_26": "Sch. 1",
+            # Form 8962 (Premium Tax Credit) monthly-grid inputs: bare cell
+            # refs on the '8962' sheet (columns fixed, rows drift by year —
+            # see _F8962_ROWS_* above).
+            **_f8962_sheet_map(_F8962_ROWS_2022_2024),
             # Form 8582 Part IV input cells: no named ranges in 2024; all are
             # direct cell refs on the '8582' sheet.
             "sche_8582_net_income": "8582",
@@ -393,6 +431,10 @@ class F1040(FormMapping):
             # holds ROUND(AC19,0); line 10's SUM references the same
             # rounded expression inline.
             "sch_1_line_4_other_gains": "Sch. 1",
+            # Form 8962 (Premium Tax Credit) monthly-grid inputs: bare cell
+            # refs on the '8962' sheet (columns fixed, rows drift by year —
+            # see _F8962_ROWS_* above).
+            **_f8962_sheet_map(_F8962_ROWS_2025),
             **_f8949_all_sheet_map(),
         },
     }
@@ -551,6 +593,10 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "I11",
             "g_ag_6": "I12",
             "g_market_gain_6": "I15",
+            # Form 8962 (Premium Tax Credit) monthly-grid inputs (Part II,
+            # lines 12-23, Jan..Dec). Columns fixed across all years —
+            # (a) premium=G, (b) SLCSP=L, (f) APTC=AF; 2022-2024 rows 48-59.
+            **_f8962_inputs(_F8962_ROWS_2022_2024),
             **_f8949_all_inputs(_F8949_BOX_SLOTS_2024),
         },
         2025: {
@@ -716,6 +762,10 @@ class F1040(FormMapping):
             "g_taxable_grants_6": "I11",
             "g_ag_6": "I12",
             "g_market_gain_6": "I15",
+            # Form 8962 (Premium Tax Credit) monthly-grid inputs (Part II,
+            # lines 12-23, Jan..Dec). Columns fixed across all years —
+            # (a) premium=G, (b) SLCSP=L, (f) APTC=AF; 2025 rows 50-61.
+            **_f8962_inputs(_F8962_ROWS_2025),
             **_f8949_all_inputs(),
         },
     }
@@ -726,7 +776,27 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
+            # `total_tax` INTENTIONALLY stays the `Tax` named range, which is
+            # SUM(Tax_SubTotal, Schedule2_Tax) — i.e. Schedule-2-INCLUSIVE. The
+            # production workbook-FALLBACK path (out-of-native-spine filers:
+            # MFJ/EIC) feeds this into Form 4868's balance-due, which must be
+            # computed against FULL liability including Schedule 2; line-16-only
+            # would understate a fallback filer's balance due. Two extra
+            # reasons NOT to point this at `Tax_SubTotal`: (1) `Tax`'s SUM
+            # numeric-coerces a blank `Tax_SubTotal` (the AL96 formula can
+            # evaluate to "") to 0, so `Tax` is always numeric where a raw
+            # `Tax_SubTotal` read can surface None; (2) the native spine and
+            # this fallback serve different consumers with different-but-correct
+            # semantics and must not be unified. The line-16-only quantity the
+            # parity test needs is exposed SEPARATELY as `total_tax_line16`
+            # below — see test_f1040_spine_oracle.py's parity loop.
             "total_tax": "Tax",
+            # Line-16 tax ONLY (pre-Schedule-2), for the native-vs-workbook
+            # PARITY comparison — the native spine's `total_tax` is line-16-only
+            # by design (Sch 2 joins `overpaid`, not `total_tax`), and 1040-X
+            # line 6 composes from this line-16 base. NOT consumed in production;
+            # only test_f1040_spine_oracle.py reads it.
+            "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             "additional_medicare_withheld": "F8959_WH",
             "f8959_tax_total": "F8959_Tax",
@@ -790,13 +860,28 @@ class F1040(FormMapping):
             "f8949_box_e_total_basis":      "F8949BLTE",
             "f8949_box_e_total_adjustment": "F8949BLTG",
             "f8949_box_e_total_gain":       "F8949BLTH",
+            # Form 8962 (Premium Tax Credit): net PTC (line 26) and
+            # excess-APTC repayment (line 29). Both are workbook-global
+            # named ranges resolving to '8962' cells directly — year-stable
+            # (the underlying cell address drifts per year but the named
+            # range resolves automatically), so no SHEET_MAP entry needed.
+            "f8962_net_ptc": "PTC_Net",
+            "f8962_repayment": "PTC_Excess",
         },
         2025: {
             "wages": "Wages",
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
+            # `total_tax` stays `Tax` (Schedule-2-INCLUSIVE) — see the 2024
+            # block for the full rationale (fallback 4868 balance-due needs full
+            # liability; `Tax`'s SUM masks a blank `Tax_SubTotal`; paths serve
+            # different consumers). The line-16-only quantity for the parity
+            # test is exposed separately as `total_tax_line16`.
             "total_tax": "Tax",
+            # Line-16 tax ONLY (pre-Schedule-2), parity-comparison read only —
+            # see the 2024 block.
+            "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             # Form 8959 Part III: Additional Medicare Tax withheld by employers
             # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).
@@ -887,6 +972,11 @@ class F1040(FormMapping):
             "f8949_box_e_total_basis":      "F8949BLTE",
             "f8949_box_e_total_adjustment": "F8949BLTG",
             "f8949_box_e_total_gain":       "F8949BLTH",
+            # Form 8962 (Premium Tax Credit): net PTC (line 26) and
+            # excess-APTC repayment (line 29). Named ranges — year-stable,
+            # no SHEET_MAP entry needed (see 2024 note above).
+            "f8962_net_ptc": "PTC_Net",
+            "f8962_repayment": "PTC_Excess",
         },
     }
 
@@ -1116,13 +1206,23 @@ def _wire_2021() -> None:
         "w2_state_wages_1": "C21",     # 'W-2s' box-16 row -1 (2022 C22)
         "w2_state_withheld_1": "C22",  # 'W-2s' box-17 row -1 (2022 C23)
         **_SCHE_2021,
+        # Form 8962 monthly grid: 2021 rows are 52-63 (2022-2024 use
+        # 48-59) — see _F8962_ROWS_2021 above.
+        **_f8962_inputs(_F8962_ROWS_2021),
+        # 2021-only UI-rule input: Part-A unemployment-compensation checkbox.
+        # Any non-empty marker triggers the flat-133 household-income-pct
+        # rule (8962 line 5 formula: IF(AI14<>"",133,...)). Absent in
+        # 2022-2025 (the rule was a one-year ARPA provision).
+        "f8962_ui_checkbox": "AI14",
     }, source="inputs")
     outputs = F1040.inherit(2022, {}, source="outputs")  # Sch.A M30 unchanged
     F1040.INPUTS[2021] = {k: v for k, v in inputs.items() if k not in excluded}
     F1040.OUTPUTS[2021] = {k: v for k, v in outputs.items()
                            if k not in excluded}
-    F1040.SHEET_MAP[2021] = {k: v for k, v in F1040.SHEET_MAP[2022].items()
-                             if k not in excluded}
+    F1040.SHEET_MAP[2021] = {
+        **{k: v for k, v in F1040.SHEET_MAP[2022].items() if k not in excluded},
+        "f8962_ui_checkbox": "8962",
+    }
 
 
 _wire_2021()
