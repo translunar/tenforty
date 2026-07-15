@@ -69,7 +69,26 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # allowlisted cells (2021-2025, including the 2021 compute-only "loud extra"
 # slice) are retired: the completeness + fields-on-template gates now demand
 # and verify the real pack.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
+#
+# 2021 individual-return emit packs: 2021 moved from FEDERAL_COMPUTE_ONLY_YEARS
+# into FEDERAL_YEARS (federal-2021-emit Task 1), so the completeness gate now
+# demands a template + mapping for every 2021 individual form. f8962's 2021 pack
+# already landed (Task 7), so it is NOT gapped here; the remaining twelve forms
+# owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
+    ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "sch_1", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "sch_a", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "sch_b", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "sch_d", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "sch_e", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "4562", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "4868", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "8959", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "f8582", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "f8949", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    ("federal", "f8995", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+})
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
