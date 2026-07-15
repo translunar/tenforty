@@ -763,6 +763,17 @@ class ReturnOrchestrator:
                 (raw.get("federal_withheld_1099") or 0) + g_withheld
             )
 
+        # PTC money outputs: blank means zero. The workbook leaves PTC_Net
+        # (net PTC) blank when net PTC is 0, and PTC_Excess blank when there
+        # is no excess-APTC repayment; the engine reads a blank cell as None.
+        # The native spine emits 0 in those cases, so normalize these two keys
+        # None -> 0 for parity. Scoped DELIBERATELY to the PTC money keys only:
+        # any OTHER output going blank should surface loudly as None rather
+        # than be silently zeroed.
+        for _ptc_key in ("f8962_net_ptc", "f8962_repayment"):
+            if raw.get(_ptc_key) is None:
+                raw[_ptc_key] = 0
+
         return form_1040.compute(raw_1040=raw, upstream={})
 
     def compute_federal(self, scenario: Scenario) -> dict[str, object]:
