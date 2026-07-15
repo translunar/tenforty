@@ -36,9 +36,10 @@ CALIFORNIA_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021, 2022)
 # spreadsheets/federal/<year>/1040.xlsx. Optional per year: the workbook
 # is an acceptance oracle and the out-of-spine-scope fallback, not a
 # requirement for support. A COMPUTE-ONLY federal year may still carry a
-# workbook as a BONUS oracle (e.g. 2021, wired as a bounded partial — its
-# vendor workbook omits the Form 8582 tab, so that key group is declared in
-# F1040.WORKBOOK_KEY_EXCLUSIONS and surfaced as explicit parity skips).
+# workbook as a BONUS oracle. A supported year's vendor workbook may also be a
+# bounded partial — e.g. 2021's omits the Form 8582 tab, so that key group is
+# declared in F1040.WORKBOOK_KEY_EXCLUSIONS and surfaced as explicit parity
+# skips.
 WORKBOOK_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 
 # Form sets per jurisdiction — the second dimension of the support grid.
