@@ -59,7 +59,14 @@ class TestF1040Outputs2025(unittest.TestCase):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["agi"], "Adj_Gross_Inc")
         self.assertEqual(outputs["taxable_income"], "Taxable_Inc")
+        # `total_tax` INTENTIONALLY points at `Tax` (Schedule-2-INCLUSIVE) — the
+        # production workbook-fallback consumer (Form 4868 balance-due) needs
+        # full liability. The line-16-only quantity for native-vs-workbook
+        # parity is a SEPARATE key, `total_tax_line16` → `Tax_SubTotal`. The two
+        # are deliberately distinct; do not "unify" them. See
+        # tenforty/mappings/f1040.py OUTPUTS and test_f1040_spine_oracle.py.
         self.assertEqual(outputs["total_tax"], "Tax")
+        self.assertEqual(outputs["total_tax_line16"], "Tax_SubTotal")
         self.assertEqual(outputs["federal_withheld"], "W2_FedTaxWH")
         self.assertEqual(outputs["overpaid"], "Overpaid")
 

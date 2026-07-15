@@ -776,7 +776,27 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
+            # `total_tax` INTENTIONALLY stays the `Tax` named range, which is
+            # SUM(Tax_SubTotal, Schedule2_Tax) — i.e. Schedule-2-INCLUSIVE. The
+            # production workbook-FALLBACK path (out-of-native-spine filers:
+            # MFJ/EIC) feeds this into Form 4868's balance-due, which must be
+            # computed against FULL liability including Schedule 2; line-16-only
+            # would understate a fallback filer's balance due. Two extra
+            # reasons NOT to point this at `Tax_SubTotal`: (1) `Tax`'s SUM
+            # numeric-coerces a blank `Tax_SubTotal` (the AL96 formula can
+            # evaluate to "") to 0, so `Tax` is always numeric where a raw
+            # `Tax_SubTotal` read can surface None; (2) the native spine and
+            # this fallback serve different consumers with different-but-correct
+            # semantics and must not be unified. The line-16-only quantity the
+            # parity test needs is exposed SEPARATELY as `total_tax_line16`
+            # below — see test_f1040_spine_oracle.py's parity loop.
             "total_tax": "Tax",
+            # Line-16 tax ONLY (pre-Schedule-2), for the native-vs-workbook
+            # PARITY comparison — the native spine's `total_tax` is line-16-only
+            # by design (Sch 2 joins `overpaid`, not `total_tax`), and 1040-X
+            # line 6 composes from this line-16 base. NOT consumed in production;
+            # only test_f1040_spine_oracle.py reads it.
+            "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             "additional_medicare_withheld": "F8959_WH",
             "f8959_tax_total": "F8959_Tax",
@@ -853,7 +873,15 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
+            # `total_tax` stays `Tax` (Schedule-2-INCLUSIVE) — see the 2024
+            # block for the full rationale (fallback 4868 balance-due needs full
+            # liability; `Tax`'s SUM masks a blank `Tax_SubTotal`; paths serve
+            # different consumers). The line-16-only quantity for the parity
+            # test is exposed separately as `total_tax_line16`.
             "total_tax": "Tax",
+            # Line-16 tax ONLY (pre-Schedule-2), parity-comparison read only —
+            # see the 2024 block.
+            "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             # Form 8959 Part III: Additional Medicare Tax withheld by employers
             # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).
