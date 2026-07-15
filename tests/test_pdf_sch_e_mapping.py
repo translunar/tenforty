@@ -1,16 +1,21 @@
 """Static structure tests for the Schedule E PDF field mapping."""
 
+import tempfile
 import unittest
 from pathlib import Path
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_e import PdfSchE
+from tests.helpers import REPO_ROOT
 
 SCH_E_TEMPLATE = (
     Path(__file__).resolve().parents[1]
     / "pdfs" / "federal" / "2025" / "f1040se.pdf"
 )
+
+_TEMPLATE_2021 = REPO_ROOT / "pdfs" / "federal" / "2021" / "f1040se.pdf"
 
 _REQUIRED_SCALARS = (
     "taxpayer_name", "taxpayer_ssn",
@@ -169,6 +174,74 @@ class TestPdfSchERowsSnapshot(unittest.TestCase):
         }
         for k, expected_value in expected.items():
             self.assertEqual(scalars.get(k), expected_value, f"field {k}")
+
+
+@unittest.skipUnless(_TEMPLATE_2021.exists(), "2021 Schedule E template not present")
+class PdfSchE2021EmitRoundTripTests(unittest.TestCase):
+    """Fill the real 2021 Schedule E template via PdfFiller with distinctive
+    values, then read the cells back directly with pypdf — no soffice.
+
+    Locks in the render-verified 2021 placements: row-A name in col (a)
+    (f2_3) and EIN in col (d) (f2_5); the four LIVE line-29 totals
+    (income-on-29a, loss-on-29b); and a Part I property row amount. If any
+    value fails to land at its mapped path the test fails loudly — it must
+    never be weakened to match the merged-2022-2025 mapping (which carries a
+    separately-tracked line-28 ein/entity-type mismapping bug).
+    """
+
+    def _fill_and_read(self, values: dict) -> dict[str, str]:
+        scalars = PdfSchE.get_mapping(2021)["scalars"]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f1040se_2021.pdf"
+            PdfFiller().fill(
+                template_path=_TEMPLATE_2021,
+                output_path=out,
+                field_mapping=scalars,
+                values=values,
+            )
+            return {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+
+    def test_representative_subset_round_trips(self):
+        scalars = PdfSchE.get_mapping(2021)["scalars"]
+        values = {
+            # Part II row-A name (col a → f2_3) + EIN (col d → f2_5)
+            "sch_e_part_ii_row_a_name": "Distinct SchE K1 Entity",
+            # Non-EIN-shaped sentinel so the personal-data denylist stays clean;
+            # the col-(d) cell is a free-text field, so any token round-trips.
+            "sch_e_part_ii_row_a_ein": "EIN-SENTINEL-COL-D",
+            # The four LIVE line-29 totals (income-on-29a, loss-on-29b)
+            "sch_e_line_29a_total_passive_income": 29_101,
+            "sch_e_line_29a_total_nonpassive_income": 29_102,
+            "sch_e_line_29b_total_passive_loss": 29_201,
+            "sch_e_line_29b_total_nonpassive_loss": 29_202,
+            # A Part I property-A row field
+            "sch_e_property_a_rents": 33_333,
+        }
+        read = self._fill_and_read(values)
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(scalars[key]), str(expected))
+
+    def test_row_a_name_and_ein_land_in_cols_a_and_d(self):
+        # Distinct sentinels so a col-a/col-d swap is unambiguous.
+        values = {
+            "sch_e_part_ii_row_a_name": "NAME-COL-A",
+            "sch_e_part_ii_row_a_ein": "EIN-COL-D",
+        }
+        read = self._fill_and_read(values)
+        self.assertEqual(
+            read.get("topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_3[0]"),
+            "NAME-COL-A",
+            "row-A name must land in f2_3 (Line 28 col (a))",
+        )
+        self.assertEqual(
+            read.get("topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_5[0]"),
+            "EIN-COL-D",
+            "row-A EIN must land in f2_5 (Line 28 col (d))",
+        )
 
 
 if __name__ == "__main__":
