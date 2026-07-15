@@ -4,6 +4,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pypdf import PdfReader
+
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.models import RentalProperty, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
@@ -29,6 +32,44 @@ class PdfF8582MappingTests(unittest.TestCase):
     def test_raises_for_unknown_year(self):
         with self.assertRaises(ValueError):
             PdfF8582.get_mapping(1999)
+
+    def test_2021_inherits_2022_payload(self):
+        # 2021 field tree is diff_pdf_fields-IDENTICAL to 2022.
+        self.assertIs(PdfF8582.get_mapping(2021), PdfF8582.get_mapping(2022))
+
+
+@unittest.skipUnless(
+    (REPO_ROOT / "pdfs/federal/2021/f8582.pdf").exists(),
+    "2021 Form 8582 template not present",
+)
+class PdfF85822021EmitRoundTripTests(unittest.TestCase):
+    """Fill the real 2021 Form 8582 template with distinctive values and read
+    the cells back directly with pypdf — no soffice."""
+
+    def test_distinctive_values_round_trip(self):
+        scalars = PdfF8582.get_mapping(2021)["scalars"]
+        values = {
+            "taxpayer_name": "Distinct 8582 Filer",
+            "taxpayer_ssn": "333-00-2021",
+            "f8582_line_1a_activities_with_income": 15_000,
+            "f8582_line_1b_activities_with_loss": 26_000,
+            "f8582_line_11_allowed_loss": 37_000,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f8582_2021.pdf"
+            PdfFiller().fill(
+                template_path=REPO_ROOT / "pdfs/federal/2021/f8582.pdf",
+                output_path=out,
+                field_mapping=scalars,
+                values=values,
+            )
+            read = {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(scalars[key]), str(expected))
 
 
 @needs_libreoffice

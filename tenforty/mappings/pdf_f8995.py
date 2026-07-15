@@ -114,3 +114,8 @@ PdfF8995._MAPPINGS[2022] = {
     },
     "repeaters": {},
 }
+
+# 2021 field tree is IDENTICAL to 2022 (diff_pdf_fields, controller-verified); the
+# fields-on-template gate re-verifies every path against the 2021 template and the
+# emit round-trip test verifies values land.
+PdfF8995._MAPPINGS[2021] = PdfF8995._MAPPINGS[2022]

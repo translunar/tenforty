@@ -78,16 +78,13 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_1", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "sch_a", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_b", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_d", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_e", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "4562", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "4868", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "8959", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "f8582", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "f8949", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "f8995", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    # Retired by federal-2021-emit Task 3 (INHERIT batch): sch_a, 4868, 8959,
+    # f8582, f8949, f8995 — 2021 field tree diff_pdf_fields-IDENTICAL to 2022,
+    # mapping inherits the 2022 payload; fields-on-template + emit gates now cover 2021.
 })
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
