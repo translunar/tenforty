@@ -19,12 +19,12 @@ Three-column grid (lines 1-15) vs single-column tail (16-23)
 ------------------------------------------------------------
 Lines 1-15 are the A/B/C grid: each assembler key ``f1040x_line<N>_a/_b/_c``
 maps to that line's A (Original amount) / B (Net change) / C (Correct amount)
-field. tenforty sources lines 1, 2, 3, 4a, 5, 6, 7, 8, 10, 11, 12, 15 (line 7
-is sourced as 0/0 in practice per the ``forms/f1040x`` assembler docstring —
-a nonzero FILED value already refuses via the out-of-scope guard before this
-line is reached; the guarded out-of-scope lines 4b/13/14 are never emitted,
-so never mapped; line 9 is Reserved-for-future-use and never mapped). Lines
-16-23 are single-column final-amount fields.
+field. tenforty sources lines 1, 2, 3, 4a, 5, 6, 7, 8, 10, 11, 12, 13, 15
+(line 7 is sourced as 0/0 in practice per the ``forms/f1040x`` assembler
+docstring — a nonzero FILED value already refuses via the out-of-scope guard
+before this line is reached; the guarded out-of-scope lines 4b/14 are never
+emitted, so never mapped; line 9 is Reserved-for-future-use and never
+mapped). Lines 16-23 are single-column final-amount fields.
 
 INTENTIONALLY UNMAPPED diagnostic aliases
 -----------------------------------------
@@ -90,6 +90,9 @@ _MAPPING: dict[str, str] = {
     "f1040x_line12_a": _PM + "Line12[0].f1_55[0]",  # p1 L12 Federal income tax withheld — Col A
     "f1040x_line12_b": _PM + "Line12[0].f1_56[0]",  # p1 L12 Federal income tax withheld — Col B
     "f1040x_line12_c": _PM + "Line12[0].f1_57[0]",  # p1 L12 Federal income tax withheld — Col C
+    "f1040x_line13_a": _PM + "Line13[0].f1_58[0]",  # p1 L13 Estimated tax payments — Col A
+    "f1040x_line13_b": _PM + "Line13[0].f1_59[0]",  # p1 L13 Estimated tax payments — Col B
+    "f1040x_line13_c": _PM + "Line13[0].f1_60[0]",  # p1 L13 Estimated tax payments — Col C
     "f1040x_line15_a": _PM + "Line15[0].f1_65[0]",  # p1 L15 Total refundable credits — Col A
     "f1040x_line15_b": _PM + "Line15[0].f1_66[0]",  # p1 L15 Total refundable credits — Col B
     "f1040x_line15_c": _PM + "Line15[0].f1_67[0]",  # p1 L15 Total refundable credits — Col C

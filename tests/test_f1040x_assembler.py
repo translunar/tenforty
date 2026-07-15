@@ -66,7 +66,10 @@ class F1040XAssemblerTests(unittest.TestCase):
             self.assertEqual(a + b, c, msg=f"{stem}: {a} + {b} != {c}")
 
     def test_self_amendment_is_null(self):
-        filed = self._filed()
+        # Nonzero estimated_tax_payments, SAME on both filed and corrected —
+        # the null-self-amendment property (byte-identical filed/corrected ->
+        # every _b == 0) must survive the line-13 sourcing.
+        filed = self._filed(estimated_tax_payments=800.0)
         corrected = dict(filed)
         # Filer already received the original 150 overpayment as a refund.
         case = self._case(original_refund_received=150.0)
@@ -76,6 +79,7 @@ class F1040XAssemblerTests(unittest.TestCase):
             if key.endswith("_b"):
                 self.assertEqual(value, 0, msg=f"{key} should be 0 in null case")
 
+        self.assertEqual(out["f1040x_line13_b"], 0)
         self.assertEqual(out["f1040x_line20_amount_owed"], 0)
         self.assertEqual(out["f1040x_line22_refund"], 0)
 
@@ -240,6 +244,33 @@ class F1040XAssemblerTests(unittest.TestCase):
         # L17=250, L18=150, L19=100, L11c=160 > 100 -> owe 60
         self.assertEqual(out["f1040x_line20_amount_owed"], 60)
         self.assertEqual(out["f1040x_line22_refund"], 0)
+
+    def test_line13_estimated_tax_payments_sourced(self):
+        """Line 13 is now SOURCED as an A/B/C triple keyed off
+        ``estimated_tax_payments`` on BOTH filed and corrected (same key,
+        both columns) — independently-derived numbers, no tautologies."""
+        filed = self._filed(estimated_tax_payments=2000.0)
+        corrected = self._filed(estimated_tax_payments=5000.0)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line13_a"], 2000.0)
+        self.assertEqual(out["f1040x_line13_c"], 5000.0)
+        self.assertEqual(out["f1040x_line13_b"], 3000.0)
+
+    def test_line13_absent_defaults_to_zero(self):
+        """OPTIONAL key: absent from both filed and corrected -> 0.0/0.0/0.0
+        (the ``.get(..., 0.0)`` default), not a MissingFiledValueError."""
+        filed = self._filed()
+        corrected = self._filed(agi=1200.0, total_tax=150.0)
+        self.assertNotIn("estimated_tax_payments", filed)
+        self.assertNotIn("estimated_tax_payments", corrected)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line13_a"], 0.0)
+        self.assertEqual(out["f1040x_line13_b"], 0.0)
+        self.assertEqual(out["f1040x_line13_c"], 0.0)
 
     def test_required_filed_keys_are_the_column_a_sources(self):
         self.assertEqual(
