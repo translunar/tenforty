@@ -116,6 +116,11 @@ PARAMS = FederalParams(
     # 2021 Instructions for Schedule A, Line 1 medical worksheet: deductible
     # medical/dental expenses are those exceeding 7.5% of AGI (IRC §213(a)).
     medical_agi_floor_pct=0.075,
+    # CARES Act §2204 / CAA 2021 §212 (as extended): 2021 above-the-line
+    # cash-charitable deduction for filers who do NOT itemize (Form 1040
+    # line 12b). $300 single-filer cap (the $600 MFJ figure is out of
+    # scope). One-year-only provision, not extended past 2021.
+    nonitemizer_charitable_cap=300,
     # SALT cap that applied in the prior year (2020) for the state-refund
     # tax-benefit lookback. 2020 was also the pre-OBBBA flat cap
     # ($10,000; $5,000 MFS), IRC §164(b)(6).

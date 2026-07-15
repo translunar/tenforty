@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 from tenforty.attestations import validate_load_time
+from tenforty.params.federal import load as load_federal_params
 from tenforty.models import (
     AccountingMethod,
     Address,
@@ -400,6 +401,23 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             "carried through verbatim (never computed or clamped), so a "
             "negative value cannot be silently corrected to 0 — it is "
             "refused instead."
+        )
+
+    if cfg.charitable_cash_nonitemizer < 0:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` must be "
+            ">= 0. The filer's stated 2021 above-the-line non-itemizer "
+            "cash-charitable contribution is carried through verbatim "
+            "(never computed or clamped), so a negative value cannot be "
+            "silently corrected to 0 — it is refused instead."
+        )
+
+    params = load_federal_params(cfg.year)
+    if cfg.charitable_cash_nonitemizer and params.nonitemizer_charitable_cap is None:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` is a 2021-only "
+            "provision (the CARES/CAA above-the-line charitable deduction for "
+            f"non-itemizers); it must be 0 for tax year {cfg.year}."
         )
 
 
