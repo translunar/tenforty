@@ -441,6 +441,24 @@ def build_ptc_2021_ui_flat133(year: int) -> Scenario:
     )
 
 
+def build_charitable_nonitemizer_2021(year: int) -> Scenario:
+    """2021-only line 12b: the CARES/CAA above-the-line cash-charitable
+    deduction for NON-ITEMIZERS. Single filer, standard deduction (no
+    itemized_deductions), a round $250 contribution (under the $300
+    single-filer cap) — the only load-survivable combination (single +
+    standard-deduction + amount <= cap; non-single, itemizing, and
+    over-cap are all refused at load).
+    """
+    assert year == 2021, "line-12b non-itemizer charitable is 2021-only"
+    return Scenario(
+        config=_battery_config(year, charitable_cash_nonitemizer=250.0),
+        w2s=[
+            _w2(year, employer="Synthetic Employer A", wages=60_000.0,
+                federal_tax_withheld=6_000.0),
+        ],
+    )
+
+
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
@@ -461,6 +479,7 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
 # _BUILDERS — battery_for() splices it in only when year == 2021.
 _YEAR_2021_ONLY_BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("ptc_2021_ui_flat133", build_ptc_2021_ui_flat133),
+    ("charitable_nonitemizer_2021", build_charitable_nonitemizer_2021),
 ]
 
 

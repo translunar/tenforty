@@ -1226,6 +1226,10 @@ def _wire_2021() -> None:
         # rule (8962 line 5 formula: IF(AI14<>"",133,...)). Absent in
         # 2022-2025 (the rule was a one-year ARPA provision).
         "f8962_ui_checkbox": "AI14",
+        # 2021-only line 12b (CARES/CAA non-itemizer charitable). The `Charitable`
+        # named range exists ONLY in the 2021 workbook (provision expired), so this
+        # input is 2021-scoped here and deliberately NOT inherited into later years.
+        "charitable_nonitemizer": "Charitable",
     }, source="inputs")
     outputs = F1040.inherit(2022, {}, source="outputs")  # Sch.A M30 unchanged
     F1040.INPUTS[2021] = {k: v for k, v in inputs.items() if k not in excluded}

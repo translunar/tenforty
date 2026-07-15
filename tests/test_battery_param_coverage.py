@@ -6,6 +6,7 @@ conversation instead of silently shipping untested."""
 import dataclasses
 import unittest
 
+from tenforty import years as year_manifest
 from tenforty.params.federal import FederalParams
 from tests.fixtures.spine_battery import battery_for
 
@@ -21,6 +22,7 @@ EXERCISED: dict[str, tuple[str, ...]] = {
     "salt_cap_starting": ("itemizer_with_w2_state_tax",),   # cap binds in 2024
     "salt_cap_floor": ("itemizer_with_w2_state_tax",),
     "salt_phaseout_threshold": ("itemizer_with_w2_state_tax",),  # consulted every itemizer
+    "nonitemizer_charitable_cap": ("charitable_nonitemizer_2021",),
 }
 
 # field -> reason it is consciously NOT exercised. Shrinking this map is
@@ -34,11 +36,6 @@ WAIVED: dict[str, str] = {
                            "short-circuiting the Sch 1 tax-benefit rule",
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
-    "nonitemizer_charitable_cap": "load-time-only field so far (params + "
-                          "scenario channel + negative/one-year-provision "
-                          "guards); the compute-time field>cap and "
-                          "itemizer-status checks that would consume it "
-                          "ship in a later task",
 }
 
 
@@ -54,7 +51,14 @@ class BatteryParamCoverageTests(unittest.TestCase):
                          "coverage maps name nonexistent fields")
 
     def test_exercising_scenarios_exist(self):
-        names = {n for n, _ in battery_for(2025)}
+        # Year-scoped scenarios (e.g. a 2021-only provision's battery) legitimately
+        # satisfy coverage for year-scoped params, so the universe is the UNION of
+        # scenario names across ALL battery years — not one year. Years come from the
+        # canonical manifest so new years extend the universe automatically. Do NOT
+        # collapse this back to a single year.
+        names: set[str] = set()
+        for year in year_manifest.FEDERAL_YEARS + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS:
+            names |= {n for n, _ in battery_for(year)}
         for field, scenarios in EXERCISED.items():
             for scenario in scenarios:
                 with self.subTest(field=field, scenario=scenario):
