@@ -78,7 +78,6 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_1", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "sch_d", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_e", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "4562", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     # Retired by federal-2021-emit Task 3 (INHERIT batch): sch_a, 4868, 8959,
@@ -87,6 +86,9 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # sch_b 2021 retired: fresh-probe mapping (controller-verified 66/66 keys)
     # landed in tenforty/mappings/pdf_sch_b.py; fields-on-template + emit gates
     # now cover 2021.
+    # sch_d 2021 retired: fresh-probe mapping (controller-verified 38/38 keys,
+    # lines 18/19 content-corrected vs the merged-2022-2025 swap bug) landed in
+    # tenforty/mappings/pdf_sch_d.py; fields-on-template + emit gates now cover 2021.
 })
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
