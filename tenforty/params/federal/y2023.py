@@ -78,6 +78,9 @@ PARAMS = FederalParams(
         _S: 10_000, _MFJ: 10_000, _HOH: 10_000, _QW: 10_000, _MFS: 5_000,
     },
     medical_agi_floor_pct=0.075,  # IRC §213(a), permanent 7.5% floor
+    # CARES/CAA above-the-line non-itemizer charitable deduction (Form 1040
+    # line 12b) was a 2021-only provision, not extended to 2023.
+    nonitemizer_charitable_cap=None,
     # Prior-year SALT cap: a 2023 return looks back to 2022 (also flat
     # $10k/$5k pre-OBBBA, IRC §164(b)(6) unchanged since TCJA).
     prior_year_salt_cap={

@@ -34,6 +34,11 @@ WAIVED: dict[str, str] = {
                            "short-circuiting the Sch 1 tax-benefit rule",
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
+    "nonitemizer_charitable_cap": "load-time-only field so far (params + "
+                          "scenario channel + negative/one-year-provision "
+                          "guards); the compute-time field>cap and "
+                          "itemizer-status checks that would consume it "
+                          "ship in a later task",
 }
 
 

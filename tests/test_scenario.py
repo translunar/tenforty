@@ -112,3 +112,62 @@ class TestEstimatedTaxPayments(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._load_with_config(config_body)
 
+
+class TestNonitemizerCharitableCash(unittest.TestCase):
+    """2021-only CARES/CAA above-the-line cash-charitable deduction for
+    non-itemizers (Form 1040 line 12b): the filer's stated amount is
+    carried through verbatim (or refused if negative, or refused entirely
+    outside the one year the provision existed) — never computed, capped,
+    or clamped at load time (field>cap and itemizer gating are compute-time
+    concerns handled in a later task)."""
+
+    def _make_config_body(self, **overrides) -> dict:
+        body = {
+            "year": 2025,
+            "filing_status": "single",
+            "birthdate": "1985-04-20",
+            "state": "CA",
+            "has_foreign_accounts": False,
+            "prior_year_itemized": False,
+            **scope_out_attestation_defaults(),
+        }
+        body.update(overrides)
+        return body
+
+    def _load_with_config(self, config_body: dict) -> Scenario:
+        body = {"config": config_body}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        return load_scenario(path)
+
+    def test_2021_nonitemizer_charitable_cash_accepted_verbatim(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=250.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 250.0)
+
+    def test_nonitemizer_charitable_cash_defaults_to_zero_when_omitted(self) -> None:
+        config_body = self._make_config_body(year=2021)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 0.0)
+
+    def test_negative_nonitemizer_charitable_cash_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=-1.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+
+    def test_nonzero_nonitemizer_charitable_cash_refused_outside_2021(self) -> None:
+        config_body = self._make_config_body(
+            year=2022, charitable_cash_nonitemizer=250.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+
+    def test_zero_nonitemizer_charitable_cash_ok_outside_2021(self) -> None:
+        config_body = self._make_config_body(
+            year=2022, charitable_cash_nonitemizer=0.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 0.0)
+
