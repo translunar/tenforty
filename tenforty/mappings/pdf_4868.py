@@ -118,3 +118,8 @@ Pdf4868._MAPPINGS[2023] = Pdf4868._MAPPINGS[2024]
 # confirmation-number blank, now intentionally unmapped for every year (see the
 # 2024 block). So 2022 reuses the 2023 payload.
 Pdf4868._MAPPINGS[2022] = Pdf4868._MAPPINGS[2023]
+
+# 2021 field tree is IDENTICAL to 2022 (diff_pdf_fields, controller-verified); the
+# fields-on-template gate re-verifies every path against the 2021 template and the
+# emit round-trip test verifies values land.
+Pdf4868._MAPPINGS[2021] = Pdf4868._MAPPINGS[2022]

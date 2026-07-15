@@ -35,3 +35,8 @@ class Pdf8959(PdfFormMapping[dict]):
 # 2022's Form 8959 keeps 2023's identical field-NAME inventory and mapped paths;
 # the only mapped nudge is the header SSN (+1pt x, cosmetic). 2022 reuses 2023.
 Pdf8959._MAPPINGS[2022] = Pdf8959._MAPPINGS[2023]
+
+# 2021 field tree is IDENTICAL to 2022 (diff_pdf_fields, controller-verified); the
+# fields-on-template gate re-verifies every path against the 2021 template and the
+# emit round-trip test verifies values land.
+Pdf8959._MAPPINGS[2021] = Pdf8959._MAPPINGS[2022]

@@ -1,13 +1,18 @@
 """Tests for the IRS Form 4868 PDF field mapping."""
 
+import tempfile
 import unittest
 from pathlib import Path
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_4868 import Pdf4868
 
 F4868_PDF = Path("/Users/juno/Projects/tenforty/pdfs/federal/2025/f4868.pdf")
+F4868_2021 = (
+    Path(__file__).resolve().parents[1] / "pdfs" / "federal" / "2021" / "f4868.pdf"
+)
 
 needs_4868_pdf = unittest.skipUnless(
     F4868_PDF.exists(),
@@ -107,3 +112,40 @@ class TestPdf4868Basic(unittest.TestCase):
     def test_missing_year_raises_with_year_in_message(self):
         with self.assertRaisesRegex(ValueError, "1999"):
             Pdf4868.get_mapping(1999)
+
+    def test_2021_inherits_2022_payload(self):
+        # 2021 field tree is diff_pdf_fields-IDENTICAL to 2022.
+        self.assertIs(Pdf4868.get_mapping(2021), Pdf4868.get_mapping(2022))
+
+
+@unittest.skipUnless(F4868_2021.exists(), "2021 Form 4868 template not present")
+class TestPdf48682021EmitRoundTrip(unittest.TestCase):
+    """Fill the real 2021 Form 4868 template with distinctive values and read
+    the cells back directly with pypdf — no soffice. The 4868 mapping is a flat
+    result-key -> field-path dict (no scalars/repeaters partition)."""
+
+    def test_distinctive_values_round_trip(self):
+        mapping = Pdf4868.get_mapping(2021)
+        values = {
+            "full_name": "Distinct 4868 Filer",
+            "ssn": "555-00-2021",
+            "estimated_total_tax": 40_000,
+            "total_payments": 30_000,
+            "balance_due": 10_000,
+            "amount_paying_with_extension": 9_876,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f4868_2021.pdf"
+            PdfFiller().fill(
+                template_path=F4868_2021,
+                output_path=out,
+                field_mapping=mapping,
+                values=values,
+            )
+            read = {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(mapping[key]), str(expected))
