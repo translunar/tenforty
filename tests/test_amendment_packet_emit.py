@@ -14,6 +14,7 @@ amendment. It is done nowhere else.
 import dataclasses
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import yaml
@@ -378,13 +379,49 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         manifest_txt = (out / "packet_manifest.txt").read_text()
         self.assertIn("sch_b: no longer applies", manifest_txt)
 
-    def test_federal_compute_only_year_note(self):
-        """Federal compute-only year (2021): the 1040-X emits but no
-        individual-form attachments exist — the manifest carries the distinct
-        federal compute-only note, and none renders on a full-emit year."""
-        self.assertIn(2021, years.FEDERAL_COMPUTE_ONLY_YEARS)
+    def test_federal_2021_is_now_full_emit_no_compute_only_note(self):
+        """2021 moved FEDERAL_COMPUTE_ONLY_YEARS -> FEDERAL_YEARS
+        (federal-2021-emit Task 1), emptying the federal compute-only tier. The
+        note is DERIVED from the manifest (it fires only in the ``else`` of
+        ``year in years.FEDERAL_YEARS``), so 2021 no longer earns it.
+
+        This is asserted at the MANIFEST level rather than by an end-to-end 2021
+        full-emit run because the 2021 individual-form emit packs are still owed
+        (KNOWN_GAPS, built in Tasks 2-3): a real 2021 amendment currently raises
+        ``No Form 1040 PDF mapping for year 2021`` when the full-emit branch
+        builds its per-form specs. The note-ABSENT-on-a-real-full-emit-run
+        behavior is already covered by ``test_happy_path_full_emit_year`` (2024).
+        """
+        # The federal compute-only tier is now empty; 2021 is a full-emit year.
+        self.assertEqual(years.FEDERAL_COMPUTE_ONLY_YEARS, ())
+        self.assertNotIn(2021, years.FEDERAL_COMPUTE_ONLY_YEARS)
+        self.assertIn(2021, years.FEDERAL_YEARS)
+        # Because the note fires only for years NOT in FEDERAL_YEARS, no
+        # amendable federal year is a compute-only year, so none earns the note.
+        self.assertEqual(
+            [y for y in years.amendable_federal_years()
+             if y not in years.FEDERAL_YEARS],
+            [])
+
+    def test_federal_compute_only_note_machinery_via_synthetic_manifest(self):
+        """The federal compute-only-note MACHINERY stays tested even though no
+        real federal compute-only year remains — a future backfill can re-enter
+        the tier, and its note must still emit. A SYNTHETIC manifest fixture
+        reconstructs the pre-move state for 2021: removed from FEDERAL_YEARS
+        (so the orchestrator takes the compute-only ``else`` branch) AND added
+        to FEDERAL_COMPUTE_ONLY_YEARS (so the params loader — which gates on
+        FEDERAL_YEARS + FEDERAL_COMPUTE_ONLY_YEARS — still resolves 2021's real
+        params, tax table, and 1040-X mapping). Both the orchestrator and the
+        params loader read these as live attributes of the ``years`` module, so
+        patching the module attributes reaches every consumer.
+
+        Precondition: the tier really is empty (else this fixture would be
+        masking a still-populated tier rather than synthesizing one)."""
+        self.assertEqual(years.FEDERAL_COMPUTE_ONLY_YEARS, ())
+
         original = build_canonical_wage_investment_rental(2021)  # federal-only
         amended = _bump_interest(original, 3_000.0)
+        # Build the filed-values file under the REAL manifest (2021 computes).
         filed_path, _ = self._write_federal_filed(original)
         ca_filed_path = self.tmp / "unused_ca.yaml"
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
@@ -392,8 +429,17 @@ class AmendmentPacketEmitTests(unittest.TestCase):
             year=2021, explanation="x",
             original_refund_received=0.0, original_refund_applied=0.0)
         out = self.tmp / "packet"
-        manifest = self.orch.run_amendment_packet(
-            original, amended, case, filed_path, ca_filed_path, out)
+
+        synthetic_federal = tuple(
+            y for y in years.FEDERAL_YEARS if y != 2021)
+        synthetic_compute_only = tuple(sorted(
+            set(years.FEDERAL_COMPUTE_ONLY_YEARS) | {2021}))
+        with unittest.mock.patch.object(
+                years, "FEDERAL_YEARS", synthetic_federal), \
+             unittest.mock.patch.object(
+                years, "FEDERAL_COMPUTE_ONLY_YEARS", synthetic_compute_only):
+            manifest = self.orch.run_amendment_packet(
+                original, amended, case, filed_path, ca_filed_path, out)
 
         self.assertIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
         self.assertTrue((out / "f1040x_2021.pdf").exists())
