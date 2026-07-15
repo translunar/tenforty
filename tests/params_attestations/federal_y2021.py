@@ -21,6 +21,11 @@ SOURCES: tuple[str, ...] = (
     "2021 Instructions for Form 8959, https://www.irs.gov/pub/irs-prior/i8959--2021.pdf",
     # ARPA-expanded 2021 EITC completed-phaseout (max AGI) limits.
     "IRS Pub. 596 (2021), https://www.irs.gov/pub/irs-prior/p596--2021.pdf",
+    # 2021 non-itemizer charitable cash-contribution deduction (Line 12b cap).
+    "2021 Instructions for Form 1040 (and 1040-SR), "
+    "https://www.irs.gov/pub/irs-prior/i1040gi--2021.pdf: 'Line 12b' "
+    "(page 32) — charitable deduction for cash contributions if you don't "
+    "itemize: 'Don't enter more than $300 ($600 if married filing jointly).'",
 )
 
 ATTESTED: dict[str, object] = {
@@ -33,6 +38,10 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 18800,   # Heads of Households (§ 1(j)(2)(B)): $18,800
         "qualifying_widow": 25100,    # Surviving Spouse takes MFJ row (§ 1(j)(2)(A)): $25,100
     },
+    # 2021 Instr. Form 1040, Line 12b (page 32): a taxpayer who does NOT
+    # itemize may deduct cash charitable contributions, "Don't enter more than
+    # $300 ($600 if married filing jointly)." SINGLE-filer cap = $300.
+    "nonitemizer_charitable_cap": 300,
     # Rev. Proc. 2020-45 § 3.01, TABLE 3 — Unmarried Individuals (§ 1(j)(2)(C)),
     # the 2021 SINGLE rate schedule; (upper_bound, rate) ascending.
     "ordinary_brackets": (
