@@ -142,6 +142,18 @@ class TestFlattenScenario(unittest.TestCase):
         self.assertNotIn("ordinary_dividends_1", flat)
         self.assertNotIn("sche_rents_a", flat)
 
+    def test_estimated_tax_payments_emitted_when_nonzero(self):
+        scenario = _simple_scenario()
+        scenario.config.estimated_tax_payments = 8000
+        flat = flatten_scenario(scenario)
+        self.assertEqual(flat["estimated_tax_payments"], 8000)
+
+    def test_estimated_tax_payments_absent_when_zero(self):
+        # Default (0) must yield NO key at all, so existing scenarios stay
+        # byte-identical in the flat dict (protects the parity battery).
+        flat = flatten_scenario(_simple_scenario())
+        self.assertNotIn("estimated_tax_payments", flat)
+
 
 class TestFlattenRentalProperty(unittest.TestCase):
     def _make_rental_scenario(self) -> Scenario:
