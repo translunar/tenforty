@@ -58,7 +58,40 @@ PARITY_KEYS = (
     "net_capital_gain",
     "schedule_a_total",
     "sch_a_line_5e_salt_capped",
+    # Form 8962 (Premium Tax Credit): net PTC (line 26) and excess-APTC
+    # repayment (line 29). WP-Task 2 added these to F1040.OUTPUTS as
+    # PTC_Net/PTC_Excess (named ranges, all workbook years); the native
+    # spine already emits f8962_net_ptc/f8962_repayment. For non-PTC
+    # battery scenarios (no Form 1095-A), both sides read 0: no 1095-A
+    # means the flattener emits no 8962 keys, which leaves the workbook's
+    # PTC cells blank. The engine reads a blank cell as None (not 0), so the
+    # workbook-oracle path normalizes these two PTC money keys None -> 0
+    # (see _compute_1040_via_workbook) — matching the native spine's
+    # zero-PTC default. NOTE: `total_payments`/
+    # `overpaid` above already exercise the PTC FLOW into the 1040 totals
+    # (net PTC adds to payments, excess-APTC repayment adds to tax owed);
+    # these two keys additionally check the PTC computation ITSELF, on the
+    # native spine's own Form 8962 output, not just its downstream effect.
+    "f8962_net_ptc",
+    "f8962_repayment",
 )
+
+
+# Native-key -> oracle-key overrides for the parity comparison. Default is
+# same-key. EXPLICIT exception: the native spine's `total_tax` is line-16-only
+# (Schedule 2 joins `overpaid`, not `total_tax`; 1040-X line 6 composes from
+# this line-16 base), but the workbook's production `total_tax` OUTPUT points at
+# the `Tax` named range, which is SUM(Tax_SubTotal, Schedule2_Tax) — i.e.
+# Schedule-2-INCLUSIVE, because its production consumer (the out-of-spine
+# workbook-fallback path → Form 4868 balance-due) needs FULL liability. The two
+# paths serve different consumers with different-but-correct semantics and are
+# deliberately NOT unified. So parity on the line-16 quantity compares native
+# `total_tax` against the workbook's separate line-16-only OUTPUT
+# `total_tax_line16` (← the `Tax_SubTotal` named range). See
+# tenforty/mappings/f1040.py's OUTPUTS entries for the mapping-side rationale.
+_PARITY_ORACLE_KEY = {
+    "total_tax": "total_tax_line16",
+}
 
 
 def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> None:
@@ -91,10 +124,12 @@ def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> 
                 oracle = orch._compute_1040_via_workbook(eff)
 
             for key in PARITY_KEYS:
+                oracle_key = _PARITY_ORACLE_KEY.get(key, key)
                 test_case.assertEqual(
                     native[key],
-                    oracle[key],
-                    f"{name}: {key} native={native[key]!r} oracle={oracle[key]!r}",
+                    oracle[oracle_key],
+                    f"{name}: {key} native={native[key]!r} "
+                    f"oracle[{oracle_key}]={oracle[oracle_key]!r}",
                 )
 
 

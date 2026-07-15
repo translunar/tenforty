@@ -13,6 +13,8 @@ from tenforty.params import ca_scorp
 from tenforty.params import california as ca_params
 from tenforty.params.ca_scorp import CAScorpParams
 from tenforty.params.california import CaliforniaParams
+from tenforty.params.f8962 import F8962Params
+from tenforty.params.f8962 import load as load_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.params.federal import load as load_federal
 
@@ -108,3 +110,11 @@ class CAScorpAttestationTests(unittest.TestCase):
             _assert_attested(
                 self, ca_scorp.load(year), CAScorpParams,
                 f"tests.params_attestations.ca_scorp_y{year}")
+
+
+class F8962AttestationTests(unittest.TestCase):
+    def test_every_f8962_year_attested(self):
+        for year in year_manifest.amendable_federal_years():
+            _assert_attested(
+                self, load_f8962(year), F8962Params,
+                f"tests.params_attestations.f8962_y{year}")

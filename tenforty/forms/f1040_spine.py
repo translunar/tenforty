@@ -200,6 +200,11 @@ def compute_spine(
     f8959 = schedule_results.get("f8959", {})
     f8995 = schedule_results.get("f8995", {})
     f8582 = schedule_results.get("f8582", {})
+    # Form 8962 (PTC). Present only when the scenario carries a 1095-A; every
+    # value defaults to 0 so no-block scenarios are numerically unperturbed.
+    f8962 = schedule_results.get("f8962", {})
+    f8962_net_ptc = f8962.get("f8962_line_26_net_ptc", 0)
+    f8962_repayment = f8962.get("f8962_line_29_repayment", 0)
 
     # -----------------------------------------------------------------------
     # Page 1 — Income + Adjustments → AGI (shared preamble)
@@ -282,10 +287,12 @@ def compute_spine(
 
     # 1040 line 16 — Tax (income tax from the QDCGT/rate-schedule worksheet).
     # Matches the oracle workbook's "Tax" named range and the PDF field at
-    # line 16. Does NOT include Schedule 2 additions (Form 8959 / Additional
-    # Medicare Tax). The oracle's total_tax key also omits Schedule 2, keeping
+    # line 16. Does NOT include Schedule 2 additions — neither Form 8959
+    # (Additional Medicare Tax) NOR Form 8962 excess-APTC repayment (Sch 2
+    # line 2). The oracle's total_tax key also omits Schedule 2, keeping
     # parity semantics aligned: both oracle and native expose line-16 income
-    # tax only under the "total_tax" key.
+    # tax only under the "total_tax" key. The Schedule 2 additions instead
+    # join the FULL-liability subtraction inside `overpaid` (see below).
     total_tax = income_tax
 
     # -----------------------------------------------------------------------
@@ -318,19 +325,26 @@ def compute_spine(
     )
 
     # 1040 line 33 — Total payments.
-    # v1 scope: withholding only. The native spine does NOT compute the Earned
-    # Income Credit (line 27a) — EIC-eligible scenarios fall back to the XLSX
-    # oracle in _compute_1040_pipeline (see _scenario_in_spine_scope), so the
-    # spine never reaches a filer who claims EIC. Estimated tax not yet wired.
-    total_payments = federal_withheld
+    # v1 scope: withholding + net Premium Tax Credit. Net PTC (Form 8962 line
+    # 26) is a refundable credit; the printed 1040 routes it through Schedule 3
+    # line 9 → total other payments (line 31), which rolls into total payments,
+    # so it ADDS here. f8962_net_ptc is 0 when no 1095-A is present.
+    # The native spine still does NOT compute the Earned Income Credit (line
+    # 27a) — EIC-eligible scenarios fall back to the XLSX oracle in
+    # _compute_1040_pipeline (see _scenario_in_spine_scope), so the spine never
+    # reaches a filer who claims EIC. Estimated tax not yet wired.
+    total_payments = federal_withheld + f8962_net_ptc
 
     # 1040 line 35a — Amount overpaid.
-    # Overpaid is computed against the FULL tax liability including Schedule 2
-    # (f8959 Additional Medicare Tax). The oracle workbook's Overpaid named
-    # range also uses the full tax figure internally (it subtracts all tax lines
-    # from total_payments), even though the oracle's total_tax key exposes only
-    # line 16. The native spine must mirror this: use income_tax + f8959 here,
-    # not the line-16-only total_tax.
+    # Overpaid is computed against the FULL tax liability including Schedule 2:
+    # both f8959 Additional Medicare Tax AND Form 8962 excess-APTC repayment
+    # (Sch 2 line 2). f8962_repayment joins the subtraction exactly like
+    # f8959_tax_total — it raises the liability that total_payments is measured
+    # against, and is 0 when no 1095-A is present. The oracle workbook's
+    # Overpaid named range also uses the full tax figure internally (it
+    # subtracts all tax lines from total_payments), even though the oracle's
+    # total_tax key exposes only line 16. The native spine mirrors this: use
+    # income_tax + f8959 + f8962 repayment here, not the line-16-only total_tax.
     # Note: NIIT (Form 8960) is computed by NEITHER the native spine nor the
     # workbook oracle — the oracle workbook exports no Form 8960 named range, so
     # both sides are symmetrically pre-NIIT. Consequently high-income scenarios
@@ -340,7 +354,9 @@ def compute_spine(
     # A future task that implements NIIT on the native side must expect those
     # battery scenarios to start diverging until the oracle side is also updated
     # to compute (or export) NIIT.
-    overpaid = max(0, irs_round(total_payments - income_tax - f8959_tax_total))
+    overpaid = max(0, irs_round(
+        total_payments - income_tax - f8959_tax_total - f8962_repayment
+    ))
 
     # -----------------------------------------------------------------------
     # Schedule 1 per-line breakdown keys (pass-through from sch_1 results)
@@ -356,6 +372,25 @@ def compute_spine(
     sch_1_line_13_hsa = sch_1.get("sch_1_line_13_hsa", 0)
     sch_1_line_15_se_tax = sch_1.get("sch_1_line_15_se_tax", 0)
     sch_1_line_17_se_health = sch_1.get("sch_1_line_17_se_health", 0)
+    # SE-HEALTH × PTC GUARD.
+    # The self-employed health-insurance deduction (Schedule 1 line 17) is
+    # currently hardcoded 0 at its source — see forms/sch_1.py, the
+    # `self_employed_health_line_17 = 0` assignment. If it ever becomes
+    # nonzero WHILE a Form 1095-A is present, the Premium Tax Credit and the
+    # SE-health deduction are mutually dependent (each feeds the other's
+    # MAGI / limitation) and must be reconciled by the Rev. Proc. 2014-41
+    # iterative (or simplified) method, which is UNMODELED here. Fail closed
+    # rather than emit a silently wrong deduction/credit.
+    # Pointer (other direction): the Form 8962 wiring that this guards lives in
+    # orchestrator._compute_native_schedules Step 7b, and the f8962_net_ptc /
+    # f8962_repayment payment seams are above in this function.
+    if sch_1_line_17_se_health and scenario.form_1095a is not None:
+        raise NotImplementedError(
+            "Self-employed health-insurance deduction (Schedule 1 line 17) is "
+            "nonzero together with a Form 1095-A. The Premium Tax Credit and "
+            "the SE-health deduction are circularly dependent (Rev. Proc. "
+            "2014-41); that iterative reconciliation is not implemented."
+        )
     sch_1_line_20_ira = sch_1.get("sch_1_line_20_ira", 0)
     sch_1_line_21_student_loan_interest = sch_1.get(
         "sch_1_line_21_student_loan_interest", 0
@@ -460,6 +495,15 @@ def compute_spine(
         # Form 8959
         "f8959_tax_total": f8959_tax_total,
         "f8959_required": f8959_required,
+        # Form 8962 (PTC) — summary keys ALWAYS emitted (0 when no 1095-A),
+        # mirroring how f8959_tax_total/f8959_required are always present.
+        "f8962_net_ptc": f8962_net_ptc,
+        "f8962_repayment": f8962_repayment,
+        # Full f8962 detail key family (f8962_line_*, f8962_month_*), passed
+        # through for the emit/mapping layer. Present ONLY when a 1095-A was
+        # computed; the splat adds nothing when f8962 == {} so the detail keys
+        # stay absent from no-block payloads.
+        **f8962,
         # Form 8995 oracle
         "f8995_line_15_oracle": f8995_line_15_oracle,
         # Form 8582 oracle

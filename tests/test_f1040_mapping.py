@@ -59,7 +59,14 @@ class TestF1040Outputs2025(unittest.TestCase):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["agi"], "Adj_Gross_Inc")
         self.assertEqual(outputs["taxable_income"], "Taxable_Inc")
+        # `total_tax` INTENTIONALLY points at `Tax` (Schedule-2-INCLUSIVE) — the
+        # production workbook-fallback consumer (Form 4868 balance-due) needs
+        # full liability. The line-16-only quantity for native-vs-workbook
+        # parity is a SEPARATE key, `total_tax_line16` → `Tax_SubTotal`. The two
+        # are deliberately distinct; do not "unify" them. See
+        # tenforty/mappings/f1040.py OUTPUTS and test_f1040_spine_oracle.py.
         self.assertEqual(outputs["total_tax"], "Tax")
+        self.assertEqual(outputs["total_tax_line16"], "Tax_SubTotal")
         self.assertEqual(outputs["federal_withheld"], "W2_FedTaxWH")
         self.assertEqual(outputs["overpaid"], "Overpaid")
 
@@ -187,3 +194,86 @@ class TestF1040Form8949Mapping(unittest.TestCase):
         self.assertEqual(outputs["f8949_box_b_total_proceeds"],   "F8949BSTD")
         self.assertEqual(outputs["f8949_box_d_total_proceeds"],   "F8949ALTD")
         self.assertEqual(outputs["f8949_box_e_total_gain"],       "F8949BLTH")
+
+
+class TestF1040Form8962Mapping(unittest.TestCase):
+    """Form 8962 (Premium Tax Credit) monthly-grid input mapping.
+
+    Recon (docs/plans/f8962-probe-tables.md, 'Workbook 8962-tab layout'):
+    monthly-grid INPUT columns are fixed across all 5 years — (a) enrollment
+    premium = G, (b) SLCSP = L, (f) APTC = AF — on the '8962' sheet. Only the
+    ROW range drifts by year. All 5 years verified blank/writable; a
+    write-then-readback (openpyxl, no save/recalc) proves it per test run
+    rather than trusting the recon doc alone.
+    """
+
+    YEAR_ROWS: dict[int, range] = {
+        2021: range(52, 64),
+        2022: range(48, 60),
+        2023: range(48, 60),
+        2024: range(48, 60),
+        2025: range(50, 62),
+    }
+    MONTH_COLS = (("premium", "G"), ("slcsp", "L"), ("aptc", "AF"))
+
+    def test_monthly_grid_cells_are_blank_and_writable(self):
+        for year, rows in self.YEAR_ROWS.items():
+            with self.subTest(year=year):
+                inputs = F1040.get_inputs(year)
+                sheet_map = F1040.SHEET_MAP[year]
+                workbook_path = SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                wb = openpyxl.load_workbook(workbook_path, read_only=False)
+                sheet = wb["8962"]
+                for n, row in zip(range(1, 13), rows):
+                    for field, col in self.MONTH_COLS:
+                        key = f"f8962_month_{n}_{field}"
+                        self.assertIn(key, inputs, f"{year} missing input key {key}")
+                        self.assertEqual(inputs[key], f"{col}{row}")
+                        self.assertIn(key, sheet_map, f"{year} missing SHEET_MAP entry for {key}")
+                        self.assertEqual(sheet_map[key], "8962")
+                        cell = sheet[inputs[key]]
+                        self.assertNotIsInstance(
+                            cell, MergedCell,
+                            f"{year} input '{key}' maps to 8962!{inputs[key]}, "
+                            f"which is a merged cell.",
+                        )
+                        self.assertIsNone(
+                            cell.value,
+                            f"{year} input '{key}' cell 8962!{inputs[key]} is not blank "
+                            f"(found {cell.value!r}) — not writable as expected.",
+                        )
+                        marker = f"__TEST_{key}__"
+                        cell.value = marker
+                        self.assertEqual(sheet[inputs[key]].value, marker)
+                wb.close()
+
+    def test_2021_ui_checkbox(self):
+        inputs = F1040.get_inputs(2021)
+        sheet_map = F1040.SHEET_MAP[2021]
+        self.assertEqual(inputs["f8962_ui_checkbox"], "AI14")
+        self.assertEqual(sheet_map["f8962_ui_checkbox"], "8962")
+        workbook_path = SPREADSHEETS_DIR / "federal" / "2021" / "1040.xlsx"
+        wb = openpyxl.load_workbook(workbook_path, read_only=False)
+        cell = wb["8962"]["AI14"]
+        self.assertNotIsInstance(cell, MergedCell)
+        self.assertIsNone(cell.value, f"2021 f8962_ui_checkbox cell AI14 is not blank (found {cell.value!r}).")
+        cell.value = "X"
+        self.assertEqual(wb["8962"]["AI14"].value, "X")
+        wb.close()
+
+    def test_ui_checkbox_only_wired_for_2021(self):
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertNotIn("f8962_ui_checkbox", F1040.get_inputs(year))
+
+    def test_ptc_output_named_ranges(self):
+        for year in self.YEAR_ROWS:
+            with self.subTest(year=year):
+                outputs = F1040.get_outputs(year)
+                self.assertEqual(outputs["f8962_net_ptc"], "PTC_Net")
+                self.assertEqual(outputs["f8962_repayment"], "PTC_Excess")
+                workbook_path = SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                wb = openpyxl.load_workbook(workbook_path, read_only=False)
+                self.assertIn("PTC_Net", wb.defined_names, f"{year} missing PTC_Net named range")
+                self.assertIn("PTC_Excess", wb.defined_names, f"{year} missing PTC_Excess named range")
+                wb.close()

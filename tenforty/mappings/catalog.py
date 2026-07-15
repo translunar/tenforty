@@ -17,6 +17,7 @@ from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import PdfF8949
+from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_a import PdfSchA
@@ -45,6 +46,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "8959"): FormEntry(Pdf8959, "f8959"),
     ("federal", "f8582"): FormEntry(PdfF8582, "f8582"),
     ("federal", "f8949"): FormEntry(PdfF8949, "f8949"),
+    ("federal", "f8962"): FormEntry(PdfF8962, "f8962"),
     ("federal", "f8995"): FormEntry(PdfF8995, "f8995"),
     ("federal", "f1120s"): FormEntry(PdfF1120S, "f1120s"),
     ("federal", "f1120s_k1"): FormEntry(PdfF1120SK1, "f1120s_k1"),
@@ -60,11 +62,13 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # the proof-year plan (Phase A) empties the federal entries. Never add an
 # entry without a comment saying what is missing.
 #
-# EMPTY: the S-corp emit pack is now complete — no cells owed. The final two
-# gaps (federal f1120s / f1120s_k1 for 2021) were retired when the 2021
-# federal emit slice landed (2021 inherits the marker-probe-verified 2022
-# mappings). Both CA S-corp forms were already fully packed across all
-# CA_SCORP_YEARS. The completeness gate now demands every catalog cell live.
+# The S-corp emit pack and both CA S-corp forms are fully packed across all
+# their respective years. f8962 (Form 8962, Premium Tax Credit) is now fully
+# packed too — the probe-certified year-keyed mapping
+# (tenforty/mappings/pdf_f8962.py) landed in Task 7, so its five formerly
+# allowlisted cells (2021-2025, including the 2021 compute-only "loud extra"
+# slice) are retired: the completeness + fields-on-template gates now demand
+# and verify the real pack.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
