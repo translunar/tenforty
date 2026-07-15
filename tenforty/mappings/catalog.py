@@ -77,7 +77,10 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "sch_1", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    # sch_1 2021 retired: fresh air-gapped probe (controller-verified 16/16 keys,
+    # form1[0] namespace, line-10 total → f1_31 vs 2022's f1_36 which is absent on
+    # 2021 — the 8a-8z sub-lines that shifted it were added after 2021) landed in
+    # tenforty/mappings/pdf_sch_1.py; fields-on-template + emit gates now cover 2021.
     # 4562 2021 retired: fresh-probe mapping (controller-verified 42/42 keys,
     # compute-letter 19i/19j → residential/nonresidential rows Line19h_1/Line19i_1,
     # no 50-year 19h row on the 2021 form) landed in tenforty/mappings/pdf_4562.py;
