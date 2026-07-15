@@ -58,6 +58,20 @@ PARITY_KEYS = (
     "net_capital_gain",
     "schedule_a_total",
     "sch_a_line_5e_salt_capped",
+    # Form 8962 (Premium Tax Credit): net PTC (line 26) and excess-APTC
+    # repayment (line 29). WP-Task 2 added these to F1040.OUTPUTS as
+    # PTC_Net/PTC_Excess (named ranges, all workbook years); the native
+    # spine already emits f8962_net_ptc/f8962_repayment. For non-PTC
+    # battery scenarios (no Form 1095-A), both sides read 0: no 1095-A
+    # means the flattener emits no 8962 keys, which leaves the workbook's
+    # PTC cells blank, which the PTC_Net/PTC_Excess ranges read as 0 —
+    # matching the native spine's zero-PTC default. NOTE: `total_payments`/
+    # `overpaid` above already exercise the PTC FLOW into the 1040 totals
+    # (net PTC adds to payments, excess-APTC repayment adds to tax owed);
+    # these two keys additionally check the PTC computation ITSELF, on the
+    # native spine's own Form 8962 output, not just its downstream effect.
+    "f8962_net_ptc",
+    "f8962_repayment",
 )
 
 

@@ -157,6 +157,29 @@ class PTCBatteryRegimeSelfCheckTests(unittest.TestCase):
                 build = dict(battery_for(year))["ptc_partial_year_401"]
                 results = self.orch.compute_federal(build())
                 self.assertEqual(results["f8962_line_5"], 401)
+                # STRUCTURAL pin: at >=400% FPL, no repayment-limitation cap
+                # applies, so line 28 (the cap itself) must be blank/None —
+                # not merely unused. Catches a bug that wrongly POPULATES the
+                # cap line at 401% even if line 29 happens to come out
+                # unaffected by it.
+                self.assertIsNone(results["f8962_line_28"])
+                # Pinning line 5 == 401 only proves the "no cap applies"
+                # BRANCH is taken (>=400% FPL means the repayment-limitation
+                # cap does not apply) — it does not prove that branch is
+                # MATERIALLY exercised. A bug that wrongly applied the
+                # 200-300%-band cap at 401% would still pass the assertion
+                # above if the repayment happened to fall under that cap by
+                # coincidence. So also require the actual repayment to
+                # EXCEED the highest statutory cap for the year: only then
+                # is it structurally impossible for a capped computation to
+                # have produced this result, so a cap wrongly applied at
+                # 401% would necessarily show up here as a failure. Together
+                # with the line-28-is-None pin above, this proves the "no
+                # cap" branch both structurally (cap line blank) and
+                # materially (repayment exceeds what any cap would allow).
+                params = f8962_params.load(year)
+                top_cap = max(cap for _bound, cap in params.repayment_caps_single)
+                self.assertGreater(results["f8962_line_29_repayment"], top_cap)
 
     def test_ptc_2021_ui_flat133_regime(self):
         build = dict(battery_for(2021))["ptc_2021_ui_flat133"]
