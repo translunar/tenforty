@@ -225,3 +225,53 @@ class TestNonitemizerCharitableCash(unittest.TestCase):
             msg=f"Expected message to mention itemizer/itemized, got: {ctx.exception}",
         )
 
+
+class TestPriorYearSaltPaid(unittest.TestCase):
+    """Prior-year SALT-actually-paid input: required loudly whenever
+    prior_year_itemized is true (drives the Sch 1 line-1 true benefit
+    limitation), and refused if negative."""
+
+    def _make_config_body(self, **overrides) -> dict:
+        body = {
+            "year": 2025,
+            "filing_status": "single",
+            "birthdate": "1985-04-20",
+            "state": "CA",
+            "has_foreign_accounts": False,
+            **scope_out_attestation_defaults(),
+            # Explicit True AFTER the scope_out_attestation_defaults() spread:
+            # `prior_year_itemized` is itself a registered attestation (defaults
+            # False there), so it must be set after the spread or it gets
+            # silently overridden back to False.
+            "prior_year_itemized": True,
+            "prior_year_itemized_deduction_amount": 30_000.0,
+            "prior_year_standard_deduction_amount": 14_600.0,
+        }
+        body.update(overrides)
+        return body
+
+    def _load_with_config(self, config_body: dict) -> Scenario:
+        body = {"config": config_body}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        return load_scenario(path)
+
+    def test_prior_year_itemized_without_salt_paid_raises(self) -> None:
+        config_body = self._make_config_body()
+        with self.assertRaisesRegex(
+            ValueError, r"\bprior_year_salt_paid\b",
+        ):
+            self._load_with_config(config_body)
+
+    def test_prior_year_itemized_with_salt_paid_loads(self) -> None:
+        config_body = self._make_config_body(prior_year_salt_paid=12_000.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.prior_year_salt_paid, 12_000.0)
+
+    def test_negative_prior_year_salt_paid_refused(self) -> None:
+        config_body = self._make_config_body(prior_year_salt_paid=-1.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+

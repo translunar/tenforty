@@ -393,6 +393,18 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
                 "is required when `prior_year_itemized` is true. It is used "
                 "to compute the recovery limit."
             )
+        if cfg.prior_year_salt_paid is None:
+            raise ValueError(
+                "Scenario config field `prior_year_salt_paid` is required when "
+                "`prior_year_itemized` is true. It is the prior year's state & "
+                "local taxes actually PAID (prior-year Schedule A line 5d, BEFORE "
+                "the line-5e $10k cap) and drives the Sch 1 line-1 tax-benefit "
+                "limitation (a refund is taxable only to the extent it lowered the "
+                "capped SALT deduction)."
+            )
+
+    if cfg.prior_year_salt_paid is not None and cfg.prior_year_salt_paid < 0:
+        raise ValueError("Scenario config field `prior_year_salt_paid` must be >= 0.")
 
     if cfg.estimated_tax_payments < 0:
         raise ValueError(

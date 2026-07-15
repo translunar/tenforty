@@ -41,6 +41,15 @@ config:
   prior_year_itemized: true
   prior_year_itemized_deduction_amount: 30000.00
   prior_year_standard_deduction_amount: 14600.00
+  # Prior-year SALT actually paid (Sch A line 5d, pre-cap) was $11,000, but
+  # the 2025-return lookback SALT cap (looks back to 2024, single) is $10,000.
+  # recovery_cap = 30000 - 14600 = 15400
+  # benefit = min(11000,10000) - min(max(11000-1500,0),10000)
+  #         = 10000 - min(9500,10000) = 10000 - 9500 = 500
+  # taxable = min(refund 1500, recovery_cap 15400, benefit 500) = 500
+  # Partially taxable (500 of the 1500 refund) — exercises the true
+  # benefit-limitation formula, not just the flat-ceiling approximation.
+  prior_year_salt_paid: 11000.00
 
 w2s:
   - employer: "Tech Corp"
