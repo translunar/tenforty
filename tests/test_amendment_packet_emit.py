@@ -380,28 +380,72 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertIn("sch_b: no longer applies", manifest_txt)
 
     def test_federal_2021_is_now_full_emit_no_compute_only_note(self):
-        """2021 moved FEDERAL_COMPUTE_ONLY_YEARS -> FEDERAL_YEARS
-        (federal-2021-emit Task 1), emptying the federal compute-only tier. The
-        note is DERIVED from the manifest (it fires only in the ``else`` of
-        ``year in years.FEDERAL_YEARS``), so 2021 no longer earns it.
+        """2021 is a REAL full-emit federal year now: its individual-form emit
+        packs exist (federal-2021-emit Tasks 2-3), so a real 2021 amendment
+        selects and EMITS its changed federal attachments — no synthetic
+        manifest patch. The federal compute-only NOTE, which fires only in the
+        ``else`` of ``year in years.FEDERAL_YEARS``, is therefore ABSENT.
 
-        This is asserted at the MANIFEST level rather than by an end-to-end 2021
-        full-emit run because the 2021 individual-form emit packs are still owed
-        (KNOWN_GAPS, built in Tasks 2-3): a real 2021 amendment currently raises
-        ``No Form 1040 PDF mapping for year 2021`` when the full-emit branch
-        builds its per-form specs. The note-ABSENT-on-a-real-full-emit-run
-        behavior is already covered by ``test_happy_path_full_emit_year`` (2024).
+        Mirrors ``test_happy_path_full_emit_year`` (2024) for a federal-only
+        2021 case: the changed federal form attaches, an UNCHANGED form does
+        NOT, the note is absent at the same manifest level Task 1 pinned
+        (``assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)``) — now
+        backed by a real full-emit run — and a distinctive 1040-X value reads
+        back from the REAL PDF.
         """
-        # The federal compute-only tier is now empty; 2021 is a full-emit year.
-        self.assertEqual(years.FEDERAL_COMPUTE_ONLY_YEARS, ())
-        self.assertNotIn(2021, years.FEDERAL_COMPUTE_ONLY_YEARS)
+        # Precondition: 2021 really is a full-emit federal year (Task 1 move).
         self.assertIn(2021, years.FEDERAL_YEARS)
-        # Because the note fires only for years NOT in FEDERAL_YEARS, no
-        # amendable federal year is a compute-only year, so none earns the note.
+
+        original = build_canonical_wage_investment_rental(2021)  # federal-only
+        amended = _bump_interest(original, 3_000.0)  # original interest 2_000
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2021, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # (a) amendment form + manifest present.
+        for name in ("f1040x_2021.pdf", "packet_manifest.txt"):
+            self.assertTrue((out / name).exists(), f"missing {name}")
+
+        # (b) the changed federal form EMITS; UNCHANGED ones do NOT.
+        self.assertTrue((out / "f1040sb_2021.pdf").exists())   # sch_b changed
+        self.assertFalse((out / "f1040sd_2021.pdf").exists())  # sch_d unchanged
+        self.assertFalse((out / "f1040se_2021.pdf").exists())  # sch_e unchanged
+
+        # (c) manifest lists each mailed file with a reason.
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertEqual(by_name["f1040x_2021.pdf"].reason, "amendment form")
+        self.assertEqual(by_name["f1040sb_2021.pdf"].reason, "changed")
+        manifest_txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("f1040sb_2021.pdf", manifest_txt)
+
+        # (d) BOTH directions: the changed attachment emitted (above) AND the
+        # federal compute-only note is ABSENT — at the manifest level Task 1
+        # pinned, now backed by a real full-emit run. (No CA side either.)
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+        # The standing spec §4 caveat is always present.
+        self.assertTrue(any("preparer must confirm" in c for c in manifest.caveats))
+
+        # (e) read back a REAL 1040-X value: Column-B AGI delta == the +$1,000
+        # interest bump.
+        corrected_fed = self.orch.compute_federal(amended)
+        expected_x = form_f1040x.assemble(
+            {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS},
+            corrected_fed, case)
+        xmap = PdfF1040X.get_mapping(_REVISION)
+        f1040x_pdf = out / "f1040x_2021.pdf"
         self.assertEqual(
-            [y for y in years.amendable_federal_years()
-             if y not in years.FEDERAL_YEARS],
-            [])
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line1_b"]))), 1_000)
+        self.assertEqual(
+            int(float(_read_v(f1040x_pdf, xmap["f1040x_line1_b"]))),
+            round(expected_x["f1040x_line1_b"]))
 
     def test_federal_compute_only_note_machinery_via_synthetic_manifest(self):
         """The federal compute-only-note MACHINERY stays tested even though no
