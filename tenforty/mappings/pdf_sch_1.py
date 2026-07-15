@@ -104,3 +104,28 @@ class PdfSch1(PdfFormMapping[dict]):
 # marker-probed on pdfs/federal/2022/f1040s1.probe.pdf, f1_36 renders on line 10
 # and every mapped field on its 2023 line. So 2022 reuses the 2023 payload.
 PdfSch1._MAPPINGS[2022] = PdfSch1._MAPPINGS[2023]
+
+# 2021 fresh air-gapped probe (form1[0] namespace). Matches 2022 except line-10
+# total → f1_31 (2022's f1_36 is absent on 2021; the 8a-8z sub-lines that shifted
+# it were added after 2021). Controller-verified all paths on the 2021 template.
+PdfSch1._MAPPINGS[2021] = {
+    "scalars": {
+        "taxpayer_name": "form1[0].Page1[0].f1_01[0]",
+        "taxpayer_ssn": "form1[0].Page1[0].f1_02[0]",
+        "sch_1_line_1_taxable_refunds": "form1[0].Page1[0].f1_03[0]",
+        "sch_1_line_3_business_income": "form1[0].Page1[0].f1_06[0]",
+        "sch_1_line_4_other_gains": "form1[0].Page1[0].f1_07[0]",
+        "sch_1_line_5_rental_re_royalty": "form1[0].Page1[0].f1_08[0]",
+        "sch_1_line_6_farm_income": "form1[0].Page1[0].f1_09[0]",
+        "sch_1_line_7_unemployment": "form1[0].Page1[0].f1_10[0]",
+        "sch_1_line_10_total_additional_income": "form1[0].Page1[0].f1_31[0]",
+        "sch_1_line_11_educator": "form1[0].Page2[0].f2_01[0]",
+        "sch_1_line_13_hsa": "form1[0].Page2[0].f2_03[0]",
+        "sch_1_line_15_se_tax": "form1[0].Page2[0].f2_05[0]",
+        "sch_1_line_17_se_health": "form1[0].Page2[0].f2_07[0]",
+        "sch_1_line_20_ira": "form1[0].Page2[0].f2_12[0]",
+        "sch_1_line_21_student_loan_interest": "form1[0].Page2[0].f2_13[0]",
+        "sch_1_line_26_total_adjustments": "form1[0].Page2[0].f2_31[0]",
+    },
+    "repeaters": {},
+}
