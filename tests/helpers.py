@@ -4,6 +4,8 @@ import subprocess
 import unittest
 from pathlib import Path
 
+import pytest
+
 from tenforty.attestations import _CA_ATTESTATIONS
 from tenforty.models import Scenario, TaxReturnConfig, W2
 from tenforty.attestations import _ATTESTATIONS
@@ -31,9 +33,20 @@ def libreoffice_available() -> bool:
         return False
 
 
-needs_libreoffice = unittest.skipUnless(
-    libreoffice_available(), "LibreOffice not installed",
-)
+def needs_libreoffice(obj):
+    """Mark a test class or method as requiring LibreOffice (the oracle tier).
+
+    SINGLE source of the LibreOffice dependency. It stamps two things at one
+    site so they can NEVER drift apart:
+      1. pytest.mark.oracle  — so `-m "not oracle"` deselects it and the fast
+         (native) suite never launches soffice on LO-equipped machines.
+      2. unittest.skipUnless(libreoffice_available()) — skips when LO is absent.
+    A LibreOffice-dependent test therefore cannot exist without being oracle-tier.
+    Enforced by tests/test_oracle_marker_guard.py.
+    """
+    obj = pytest.mark.oracle(obj)
+    obj = unittest.skipUnless(libreoffice_available(), "LibreOffice not installed")(obj)
+    return obj
 
 needs_pdf = unittest.skipUnless(
     F1040_PDF.exists(), "f1040 PDF not available at /tmp/f1040_2025.pdf",
