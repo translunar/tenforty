@@ -393,6 +393,15 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
                 "to compute the recovery limit."
             )
 
+    if cfg.estimated_tax_payments < 0:
+        raise ValueError(
+            "Scenario config field `estimated_tax_payments` must be >= 0. "
+            "The filer's stated total federal estimated tax payments are "
+            "carried through verbatim (never computed or clamped), so a "
+            "negative value cannot be silently corrected to 0 — it is "
+            "refused instead."
+        )
+
 
 def load_scenario(path: Path) -> Scenario:
     """Load a tax scenario from a YAML file."""

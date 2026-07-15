@@ -331,19 +331,20 @@ class AmendmentPacketEmitTests(unittest.TestCase):
 
     def test_ruling2_out_of_scope_guard_propagates(self):
         """A filed-values file carrying a nonzero out-of-scope guard key
-        (estimated_payments) → the assembler's OutOfScopeAmendmentError
+        (schedule_1a_deduction) → the assembler's OutOfScopeAmendmentError
         propagates out of run_amendment_packet unswallowed.
 
-        Migrated off other_taxes: Sch 2 Part II's modeled component
-        (f8959_tax_total) now rides its own key, so other_taxes alone no
-        longer demonstrates "a component this task modeled." estimated_payments
-        (line 13) is wholly unrelated to the modeled Sch 2 components and
-        keeps the refusal path machine-checked on an unambiguous guard key.
+        Migrated off estimated_payments: the federal spine now emits
+        ``estimated_tax_payments`` (line 26), so 1040-X line 13 is SOURCED,
+        not guarded — a nonzero estimated_payments no longer refuses. The
+        propagation demo moved to schedule_1a_deduction (line 4b, Schedule
+        1-A tips/overtime/car-loan-interest/seniors), which remains
+        unmodeled and stays in ``_OUT_OF_SCOPE_FILED_KEYS``.
         """
         original = build_canonical_wage_investment_rental(2024)
         amended = _bump_interest(original, 3_000.0)
         filed_path, _ = self._write_federal_filed(
-            original, extra={"estimated_payments": 500.0})
+            original, extra={"schedule_1a_deduction": 500.0})
         ca_filed_path = self.tmp / "unused_ca.yaml"
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(

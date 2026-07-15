@@ -459,6 +459,12 @@ class F1040(FormMapping):
             # state wages (box 16) = row 22, state income tax (box 17) = row 23.
             "w2_state_wages_1": "C22",
             "w2_state_withheld_1": "C23",
+            # Estimated tax payments (Form 1040 line 26): named range present
+            # in every year's workbook, pointing at that year's own line-26
+            # cell (verified: 2021 AC71, 2022 AC80, 2023 AD86, 2024 AD89,
+            # 2025 AL110). Resolves per-workbook automatically — no
+            # SHEET_MAP entry needed.
+            "estimated_tax_payments": "EstimatedTaxPayments",
             "interest_1": "D6",
             "ordinary_dividends_1": "D6",
             "qualified_dividends_1": "D7",
@@ -616,6 +622,12 @@ class F1040(FormMapping):
             "w2_medicare_withheld_1": "C8",
             "w2_state_wages_1": "C28",
             "w2_state_withheld_1": "C29",
+            # Estimated tax payments (Form 1040 line 26): named range present
+            # in every year's workbook, pointing at that year's own line-26
+            # cell (verified: 2021 AC71, 2022 AC80, 2023 AD86, 2024 AD89,
+            # 2025 AL110). Resolves per-workbook automatically — no
+            # SHEET_MAP entry needed.
+            "estimated_tax_payments": "EstimatedTaxPayments",
             "interest_1": "D6",
             "ordinary_dividends_1": "D6",
             "qualified_dividends_1": "D7",

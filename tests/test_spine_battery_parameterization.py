@@ -25,6 +25,7 @@ _EXPECTED_NAMES = [
     "ptc_net_credit",
     "ptc_capped_repayment",
     "ptc_partial_year_401",
+    "wage_with_estimated_payments",
 ]
 
 # 2021 additionally carries ptc_2021_ui_flat133 (the 2021-only ARPA

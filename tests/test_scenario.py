@@ -1,5 +1,8 @@
+import tempfile
 import unittest
 from pathlib import Path
+
+import yaml
 
 from tenforty.models import Scenario, W2, Form1099INT, TaxReturnConfig
 from tenforty.scenario import load_scenario
@@ -66,4 +69,46 @@ class TestFixtureAttestationMigration(unittest.TestCase):
         ):
             self.assertIn(key, d)
         self.assertNotIn("acknowledges_form_8949_unsupported", d)
+
+
+class TestEstimatedTaxPayments(unittest.TestCase):
+    """Federal estimated-tax-payments verbatim input channel: the filer's
+    stated total is carried through as-is (or refused if negative) — never
+    computed, capped, or clamped."""
+
+    def _make_config_body(self, **overrides) -> dict:
+        body = {
+            "year": 2025,
+            "filing_status": "single",
+            "birthdate": "1985-04-20",
+            "state": "CA",
+            "has_foreign_accounts": False,
+            "prior_year_itemized": False,
+            **scope_out_attestation_defaults(),
+        }
+        body.update(overrides)
+        return body
+
+    def _load_with_config(self, config_body: dict) -> Scenario:
+        body = {"config": config_body}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        return load_scenario(path)
+
+    def test_estimated_tax_payments_accepted_verbatim(self) -> None:
+        config_body = self._make_config_body(estimated_tax_payments=4500.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.estimated_tax_payments, 4500.0)
+
+    def test_estimated_tax_payments_defaults_to_zero_when_omitted(self) -> None:
+        config_body = self._make_config_body()
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.estimated_tax_payments, 0.0)
+
+    def test_negative_estimated_tax_payments_refused(self) -> None:
+        config_body = self._make_config_body(estimated_tax_payments=-1.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
 

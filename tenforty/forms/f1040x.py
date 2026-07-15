@@ -30,6 +30,10 @@ Three-column, SOURCED from spine keys:
                                   taxes; unmodeled Part II components, e.g.
                                   NIIT/SE tax, remain guarded via other_taxes)
   L12 withholding             <- federal_withheld
+  L13 estimated tax payments  <- estimated_tax_payments (OPTIONAL, .get(...,
+                                  0.0) on both columns — the federal spine's
+                                  line-26 verbatim channel; old filed files
+                                  that predate the spine wiring omit the key)
   L15 total payments          <- total_payments
 Three-column, COMPUTED subtotal (on-form):
   L3  = L1 - L2   (per column)
@@ -45,7 +49,7 @@ INTENTIONALLY UNMAPPED (guarded out-of-scope — see _OUT_OF_SCOPE_FILED_KEYS):
   L4b Schedule 1-A (tips/overtime/car-loan-interest/seniors, TY2025)
   L7  nonrefundable credits (sourced as 0/0 in practice — a nonzero FILED
       value already refuses via the guard before this line is reached)
-  L13 estimated payments  L14 EIC
+  L14 EIC
 tenforty does not source these; the guard raises OutOfScopeAmendmentError if
 the FILED return carried a nonzero value for one, rather than emitting a wrong
 blank Column A.
@@ -74,7 +78,6 @@ _OUT_OF_SCOPE_FILED_KEYS: dict[str, str] = {
     "schedule_1a_deduction": "line 4b (Schedule 1-A tips/overtime/car-loan/seniors)",
     "nonrefundable_credits": "line 7 (nonrefundable credits)",
     "other_taxes": "line 10 (other taxes)",
-    "estimated_payments": "line 13 (estimated tax payments)",
     "earned_income_credit": "line 14 (earned income credit)",
 }
 
@@ -192,6 +195,15 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     _triple(out, "11", a11, c11)
     # L12 withholding.
     _triple(out, "12", filed["federal_withheld"], corrected["federal_withheld"])
+    # L13 estimated tax payments. OPTIONAL — .get(..., 0.0) on both columns,
+    # mirroring the f8962_repayment pattern above: old filed files predate
+    # this key (they predate the spine wiring the estimated-payments channel).
+    _triple(
+        out,
+        "13",
+        filed.get("estimated_tax_payments", 0.0),
+        corrected.get("estimated_tax_payments", 0.0),
+    )
     # L15 total payments.
     _triple(out, "15", filed["total_payments"], corrected["total_payments"])
 
@@ -221,11 +233,13 @@ def _tail(corrected: dict, case: AmendmentCase, line11_c: float) -> dict:
       L22 Amount of L21 refunded to you
       L23 Amount of L21 applied to next-year estimated tax
 
-    v1 sourcing: total_payments == federal_withheld (no estimated-payments
-    channel), so L17 = corrected total_payments + L16; L16 and L23 are not
-    sourced (0.0). L18 (original overpayment) = original_refund_received +
-    original_refund_applied — the full overpayment the filer either received
-    or applied forward on the original return.
+    total_payments now includes the estimated-payments channel (federal
+    withholding + estimated tax payments + net PTC, per the spine wiring),
+    and flows through here unchanged: L17 = corrected total_payments + L16.
+    L16 and L23 are not sourced (0.0). L18 (original overpayment) =
+    original_refund_received + original_refund_applied — the full
+    overpayment the filer either received or applied forward on the
+    original return.
 
     ``line11_c`` is the COMPUTED column-C L11 value from ``assemble`` (L8c +
     L10c = corrected total_tax + f8962_repayment - nonrefundable_credits +

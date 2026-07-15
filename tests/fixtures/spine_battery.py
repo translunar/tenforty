@@ -327,6 +327,22 @@ def build_itemizer_with_w2_state_tax(year: int) -> Scenario:
     )
 
 
+def build_wage_with_estimated_payments(year: int) -> Scenario:
+    """Existing wage shape + a nonzero verbatim estimated tax payment (line
+    26). Exercises the estimated-payments channel end-to-end through
+    total_payments: native spine reads config.estimated_tax_payments
+    directly, the workbook reads the EstimatedTaxPayments named range via
+    the flattener's conditional emission.
+    """
+    return Scenario(
+        config=_battery_config(year, estimated_tax_payments=8_000.0),
+        w2s=[
+            _w2(year, employer="Synthetic Employer A", wages=90_000.0,
+                federal_tax_withheld=9_000.0),
+        ],
+    )
+
+
 def _ptc_months(
     by_month: dict[int, tuple[float, float, float]],
 ) -> tuple[Form1095AMonth, ...]:
@@ -437,6 +453,7 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("ptc_net_credit", build_ptc_net_credit),
     ("ptc_capped_repayment", build_ptc_capped_repayment),
     ("ptc_partial_year_401", build_ptc_partial_year_401),
+    ("wage_with_estimated_payments", build_wage_with_estimated_payments),
 ]
 
 # 2021-only: the ARPA unemployment-compensation special rule (Form 8962
