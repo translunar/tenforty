@@ -150,7 +150,7 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # Line 25d: Total (add 25a through 25c)
             "federal_withheld": "topmostSubform[0].Page2[0].f2_14[0]",
             # Line 26: Estimated tax payments (2022 est. + 2021 applied)
-            "estimated_payments": "topmostSubform[0].Page2[0].f2_15[0]",
+            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_15[0]",
             # Line 27: Earned income credit (EIC)
             "eic": "topmostSubform[0].Page2[0].f2_16[0]",
             # Line 28: Additional child tax credit from Schedule 8812
@@ -317,7 +317,7 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # Line 25d: Total (add 25a through 25c)
             "federal_withheld": "topmostSubform[0].Page2[0].f2_14[0]",
             # Line 26: Estimated tax payments (2023 est. + 2022 applied)
-            "estimated_payments": "topmostSubform[0].Page2[0].f2_15[0]",
+            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_15[0]",
             # Line 27: Earned income credit (EIC)
             "eic": "topmostSubform[0].Page2[0].f2_16[0]",
             # Line 28: Additional child tax credit from Schedule 8812
@@ -470,7 +470,7 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # Line 25d: Total (add 25a through 25c)
             "federal_withheld": "topmostSubform[0].Page2[0].f2_19[0]",
             # Line 26: Estimated tax payments
-            "estimated_payments": "topmostSubform[0].Page2[0].f2_20[0]",
+            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_20[0]",
             # Line 27a: Earned income credit (EIC)
             "eic": "topmostSubform[0].Page2[0].f2_21[0]",
             # Line 28: Additional child tax credit from Schedule 8812
@@ -616,7 +616,7 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # Line 25d: Total (add 25a through 25c)
             "federal_withheld": "topmostSubform[0].Page2[0].f2_20[0]",
             # Line 26: Estimated tax payments
-            "estimated_payments": "topmostSubform[0].Page2[0].f2_21[0]",
+            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_21[0]",
             # f2_22 is the EIC-spouse-SSN field
             # Line 27a: Earned income credit (EIC)
             "eic": "topmostSubform[0].Page2[0].f2_23[0]",
