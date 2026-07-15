@@ -277,3 +277,27 @@ class TestF1040Form8962Mapping(unittest.TestCase):
                 self.assertIn("PTC_Net", wb.defined_names, f"{year} missing PTC_Net named range")
                 self.assertIn("PTC_Excess", wb.defined_names, f"{year} missing PTC_Excess named range")
                 wb.close()
+
+
+class TestF1040EstimatedTaxPayments(unittest.TestCase):
+    """Estimated tax payments (Form 1040 line 26) input: a named range,
+    EstimatedTaxPayments, present in every year's workbook pointing at that
+    year's own line-26 cell. Named ranges resolve per-workbook automatically,
+    so no SHEET_MAP entry is needed."""
+
+    def test_named_range_mapping_every_year(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                inputs = F1040.get_inputs(year)
+                self.assertEqual(inputs["estimated_tax_payments"], "EstimatedTaxPayments")
+
+    def test_named_range_resolves_in_every_workbook(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                workbook_path = SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                wb = openpyxl.load_workbook(workbook_path, read_only=False)
+                self.assertIn(
+                    "EstimatedTaxPayments", wb.defined_names,
+                    f"{year} missing EstimatedTaxPayments named range",
+                )
+                wb.close()
