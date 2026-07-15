@@ -145,10 +145,66 @@ def _all_row_fields_2024() -> dict[str, str]:
     return out
 
 
+# 2021 Section B: fresh air-gapped probe, controller-reconciled. Compute keys
+# line_19i (residential 27.5yr) / line_19j (nonresidential 39yr) map to the 2021
+# form's residential/nonresidential rows (containers Line19h_1 / Line19i_1) — the
+# compute's internal 19h=50yr letter is absent on the 2021 form. No 50-year (19h)
+# key. The 42 entries below are transcribed verbatim from the authoritative,
+# controller-verified probe leaves (4562-2021-FINAL-leaves.json); do NOT re-derive.
+_SCALARS_2021: dict[str, str] = {
+    "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
+    "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_3[0]",
+    "f4562_line_22_total_depreciation": "topmostSubform[0].Page1[0].f1_108[0]",
+    "f4562_line_19a_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].R4[0]",
+    "f4562_line_19a_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_26[0]",
+    "f4562_line_19a_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_27[0]",
+    "f4562_line_19a_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_28[0]",
+    "f4562_line_19a_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_30[0]",
+    "f4562_line_19b_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].R5[0]",
+    "f4562_line_19b_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_31[0]",
+    "f4562_line_19b_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_32[0]",
+    "f4562_line_19b_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_33[0]",
+    "f4562_line_19b_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_35[0]",
+    "f4562_line_19c_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].R6[0]",
+    "f4562_line_19c_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_36[0]",
+    "f4562_line_19c_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_37[0]",
+    "f4562_line_19c_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_38[0]",
+    "f4562_line_19c_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_40[0]",
+    "f4562_line_19d_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].R7[0]",
+    "f4562_line_19d_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_41[0]",
+    "f4562_line_19d_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_42[0]",
+    "f4562_line_19d_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_43[0]",
+    "f4562_line_19d_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_45[0]",
+    "f4562_line_19e_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].R8[0]",
+    "f4562_line_19e_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_46[0]",
+    "f4562_line_19e_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_47[0]",
+    "f4562_line_19e_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_48[0]",
+    "f4562_line_19e_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_50[0]",
+    "f4562_line_19f_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].R9[0]",
+    "f4562_line_19f_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_51[0]",
+    "f4562_line_19f_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_52[0]",
+    "f4562_line_19f_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_53[0]",
+    "f4562_line_19f_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_55[0]",
+    "f4562_line_19g_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].R10[0]",
+    "f4562_line_19g_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].f1_56[0]",
+    "f4562_line_19g_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].f1_60[0]",
+    "f4562_line_19i_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19h_1[0].f1_61[0]",
+    "f4562_line_19i_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19h_1[0].f1_62[0]",
+    "f4562_line_19i_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19h_1[0].f1_66[0]",
+    "f4562_line_19j_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19i_1[0].f1_73[0]",
+    "f4562_line_19j_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19i_1[0].f1_74[0]",
+    "f4562_line_19j_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19i_1[0].f1_78[0]",
+}
+
+
 class Pdf4562(PdfFormMapping[dict]):
     _FORM_NAME = "Form 4562"
 
     _MAPPINGS: dict[int, dict] = {
+        2021: {
+            "scalars": _SCALARS_2021,
+            "repeaters": {},
+        },
         2024: {
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",

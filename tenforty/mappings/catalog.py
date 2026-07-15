@@ -79,7 +79,10 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     ("federal", "1040", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_1", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
     ("federal", "sch_e", 2021),  # 2021 emit pack owed — federal-2021-emit Tasks 2-3
-    ("federal", "4562", 2021),   # 2021 emit pack owed — federal-2021-emit Tasks 2-3
+    # 4562 2021 retired: fresh-probe mapping (controller-verified 42/42 keys,
+    # compute-letter 19i/19j → residential/nonresidential rows Line19h_1/Line19i_1,
+    # no 50-year 19h row on the 2021 form) landed in tenforty/mappings/pdf_4562.py;
+    # fields-on-template + emit gates now cover 2021.
     # Retired by federal-2021-emit Task 3 (INHERIT batch): sch_a, 4868, 8959,
     # f8582, f8949, f8995 — 2021 field tree diff_pdf_fields-IDENTICAL to 2022,
     # mapping inherits the 2022 payload; fields-on-template + emit gates now cover 2021.
