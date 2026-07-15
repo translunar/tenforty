@@ -401,6 +401,11 @@ class TaxReturnConfig:
     # Required only when prior_year_itemized is True. Used to compute the
     # recovery limit (itemized_amount - standard_amount).
     prior_year_standard_deduction_amount: float | None = None
+    # Filer's stated total federal estimated tax payments (Form 1040 line
+    # 26). Verbatim passthrough: carried through exactly as supplied, never
+    # computed, capped, or clamped. A negative value is refused at load
+    # time, not silently set to 0.
+    estimated_tax_payments: float = 0.0
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):
