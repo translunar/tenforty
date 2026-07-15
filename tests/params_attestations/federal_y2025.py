@@ -66,12 +66,31 @@ SOURCES: tuple[str, ...] = (
     "QSS QBI (§199A) threshold adjudicated by Juno against Rev. Proc. 2023-34 "
     "§3.27 verbatim, 2026-07-11: QSS falls under 'All Other Returns' "
     "($197,300), not the MFJ row — a Layer-1 attestation catch of a params bug.",
+    "IRS 2025 Instructions for Form 1040 (and 1040-SR) "
+    "(irs.gov/pub/irs-pdf/i1040gi.pdf): Line 12 is 'Standard deduction or "
+    "itemized deductions' with NO non-itemizer charitable cash deduction "
+    "line — for nonitemizer_charitable_cap = None. (OBBBA's new permanent "
+    "IRC §170(p) non-itemizer charitable deduction takes effect for tax "
+    "years beginning after 2025, i.e. TY2026, not TY2025.)",
 )
 
-# No fields are deliberately not-applicable for 2025: OBBBA gives 2025 a real
-# SALT phaseout (threshold, rate, floor all attested). ss_wage_base was a
-# couldn't-source None; it is now human-verified by Juno and carries a value.
-NOT_APPLICABLE: dict[str, str] = {}
+# The only deliberately not-applicable field for 2025 is
+# nonitemizer_charitable_cap: the temporary 2020-2021 line-12b deduction had
+# expired and OBBBA's replacement (§170(p)) does not begin until TY2026, so
+# no such cap exists for 2025. OBBBA gives 2025 a real SALT phaseout
+# (threshold, rate, floor all attested); ss_wage_base is human-verified.
+NOT_APPLICABLE: dict[str, str] = {
+    "nonitemizer_charitable_cap": (
+        "No non-itemizer charitable cash deduction exists for TY2025. The "
+        "temporary CARES/TCDTRA provision (Form 1040 line 12b, up to $300 "
+        "single / $600 MFJ) applied only to tax years 2020-2021 and expired. "
+        "OBBBA created a new permanent above-the-line charitable deduction for "
+        "non-itemizers (IRC §170(p)), but it is effective for taxable years "
+        "beginning after December 31, 2025 (TY2026), NOT TY2025. The 2025 "
+        "Instructions for Form 1040 show Line 12 as 'Standard deduction or "
+        "itemized deductions' with no such cap. Attested None."
+    ),
+}
 
 ATTESTED: dict[str, object] = {
     "year": 2025,
@@ -85,6 +104,11 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 23625,
         "qualifying_widow": 31500,  # QSS = MFJ standard deduction
     },
+
+    # Non-itemizer charitable cash-contribution deduction: NOT APPLICABLE for
+    # TY2025 (see NOT_APPLICABLE). The 2020-2021 line-12b provision expired and
+    # OBBBA's replacement (IRC §170(p)) does not begin until TY2026.
+    "nonitemizer_charitable_cap": None,
 
     # Rev. Proc. 2024-40 TY2025 Tax Rate Tables (via IR-2024-273). SCHEMA
     # STORES ONE SCHEDULE (not status-keyed) — transcribed SINGLE-filer 2025.

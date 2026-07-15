@@ -22,6 +22,7 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 19400,  # "Heads of Households"
         "qualifying_widow": 25900,   # QSS shares the MFJ / "Surviving Spouses" row per §3.15(1)
     },
+    "nonitemizer_charitable_cap": None,  # Provision expired after 2021 (see NOT_APPLICABLE)
     "ordinary_brackets": (
         # Rev. Proc. 2021-45 §3.01 TABLE 3 - Section 1(j)(2)(C) - Unmarried Individuals
         # (other than Surviving Spouses and Heads of Households) — the single schedule
@@ -110,6 +111,14 @@ NOT_APPLICABLE: dict[str, str] = {
         "reduce with income, so there is no phaseout rate. The phaseout regime "
         "begins with OBBBA in 2025."
     ),
+    "nonitemizer_charitable_cap": (
+        "No non-itemizer charitable cash deduction exists for TY2022. The "
+        "temporary CARES Act / TCDTRA provision (Form 1040 line 12b, up to $300 "
+        "single / $600 MFJ) applied only to tax years 2020 and 2021 and expired "
+        "thereafter. In the 2022 Instructions for Form 1040 there is no line 12b "
+        "and no such deduction — Line 12 is simply 'Itemized Deductions or "
+        "Standard Deduction.' Attested as None (provision not in effect)."
+    ),
 }
 
 SOURCES: tuple[str, ...] = (
@@ -126,4 +135,7 @@ SOURCES: tuple[str, ...] = (
     "2022 Instructions for Schedule A (Form 1040), https://www.irs.gov/pub/irs-prior/i1040sca--2022.pdf: "
     "Line 1 medical/dental 7.5%-of-AGI floor (medical_agi_floor_pct; §213(a)); "
     "Line 5 state-and-local-tax $10,000/$5,000 flat cap (salt_cap_starting, salt_cap_floor, prior_year_salt_cap; IRC §164(b)(6)).",
+    "2022 Instructions for Form 1040 (and 1040-SR), https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf: "
+    "Line 12 is 'Itemized Deductions or Standard Deduction' with no line 12b and no non-itemizer "
+    "charitable cash deduction (nonitemizer_charitable_cap None — the 2020-2021-only provision expired).",
 )

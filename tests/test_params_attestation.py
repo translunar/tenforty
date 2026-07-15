@@ -27,6 +27,9 @@ from tenforty.params.federal import load as load_federal
 NO_OP_SENTINELS: dict[str, object] = {
     "salt_phaseout_threshold": None,
     "salt_phaseout_rate": 0.0,
+    # int|None field: in a year without a non-itemizer charitable deduction the
+    # params hold None (no cap), so the documented no-op sentinel is None.
+    "nonitemizer_charitable_cap": None,
 }
 
 
