@@ -33,12 +33,18 @@ into one line:
         nonrefundable_credits   — line 7  (nonrefundable credits)
         other_taxes             — line 10 (other taxes NOT already covered by
                                    f8959_tax_total, e.g. NIIT, SE tax)
-        estimated_payments      — line 13 (estimated tax payments)
         earned_income_credit    — line 14 (earned income credit)
 
     ONLY still-unmodeled components belong under a guard key — a modeled
     component (f8962_repayment, f8959_tax_total) must ride its own key above,
     never be folded into ``other_taxes`` or another guard.
+
+  * ``estimated_tax_payments`` is now SOURCED, not guarded: the federal spine
+    emits it verbatim (1040 line 26), so a filer who paid estimated tax
+    supplies this key in the filed-values file for 1040-X line 13 (estimated
+    tax payments). OPTIONAL — ``.get(..., 0.0)`` in the assembler, never a
+    REQUIRED_FILED_KEYS member; absent means the filed return paid no
+    estimated tax.
 
 WHY THIS IS LOAD-BEARING: an unmodeled component hidden in a COMMENT (or
 silently merged into ``total_tax``) neither fires the assembler's out-of-scope

@@ -86,6 +86,15 @@ class PayloadCoverageTests(unittest.TestCase):
             with self.subTest(alias=alias):
                 self.assertNotIn(alias, mapping)
 
+    def test_line13_estimated_tax_payments_maps_to_probe_certified_cells(self):
+        """Line 13 (estimated tax payments) is now SOURCED — its 3 cells must
+        map to the probe-certified Line13 f1_58/59/60 paths under Table_Payments."""
+        mapping = get_mapping(_REVISION)
+        pm = "topmostSubform[0].Page1[0].Table_Payments[0]."
+        self.assertEqual(mapping["f1040x_line13_a"], pm + "Line13[0].f1_58[0]")
+        self.assertEqual(mapping["f1040x_line13_b"], pm + "Line13[0].f1_59[0]")
+        self.assertEqual(mapping["f1040x_line13_c"], pm + "Line13[0].f1_60[0]")
+
     def test_class_and_module_accessor_agree(self):
         self.assertIs(get_mapping(_REVISION), PdfF1040X.get_mapping(_REVISION))
 

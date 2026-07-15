@@ -69,6 +69,13 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
         if salt_status_key:
             flat[salt_status_key] = "X"
 
+    # Estimated tax payments (Form 1040 line 26). Conditional (nonzero-only)
+    # emission mirrors the W-2 state-withheld style above: existing scenarios
+    # (estimated=0, the dataclass default) produce a BYTE-IDENTICAL flat dict
+    # — no new key — protecting the existing parity battery.
+    if config.estimated_tax_payments:
+        flat["estimated_tax_payments"] = config.estimated_tax_payments
+
 
 def _flatten_w2s(scenario: Scenario, flat: dict[str, object]) -> None:
     for i, w2 in enumerate(scenario.w2s, start=1):

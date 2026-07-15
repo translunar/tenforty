@@ -319,21 +319,31 @@ def compute_spine(
         f8959.get("f8959_line_24", 0) if f8959_tax_total else 0
     )
 
-    # 1040 line 26 — Total federal income tax withheld.
+    # 1040 line 25d — Total federal income tax withheld.
     federal_withheld = irs_round(
         fed_withheld_w2 + fed_withheld_1099 + addl_medicare_withheld
     )
 
+    # 1040 line 26 — Estimated tax payments and amount applied from the prior
+    # year's return. Verbatim passthrough of the filer's stated total: carried
+    # exactly as supplied, never computed or clamped (a negative is refused at
+    # scenario load — see scenario._validate_scenario_config).
+    estimated_payments = irs_round(scenario.config.estimated_tax_payments)
+
     # 1040 line 33 — Total payments.
-    # v1 scope: withholding + net Premium Tax Credit. Net PTC (Form 8962 line
-    # 26) is a refundable credit; the printed 1040 routes it through Schedule 3
-    # line 9 → total other payments (line 31), which rolls into total payments,
-    # so it ADDS here. f8962_net_ptc is 0 when no 1095-A is present.
+    # v1 scope: withholding + estimated payments + net Premium Tax Credit.
+    # Withholding (line 25d) is fed_withheld_w2 + fed_withheld_1099 +
+    # addl_medicare_withheld, summed above. Estimated tax payments (line 26)
+    # is the verbatim passthrough computed just above. Net PTC (Form 8962
+    # line 26) is a refundable credit; the printed 1040 routes it through
+    # Schedule 3 line 9 → total other payments (line 31), which rolls into
+    # total payments, so it ADDS here. f8962_net_ptc is 0 when no 1095-A is
+    # present.
     # The native spine still does NOT compute the Earned Income Credit (line
     # 27a) — EIC-eligible scenarios fall back to the XLSX oracle in
     # _compute_1040_pipeline (see _scenario_in_spine_scope), so the spine never
-    # reaches a filer who claims EIC. Estimated tax not yet wired.
-    total_payments = federal_withheld + f8962_net_ptc
+    # reaches a filer who claims EIC.
+    total_payments = federal_withheld + estimated_payments + f8962_net_ptc
 
     # 1040 line 35a — Amount overpaid.
     # Overpaid is computed against the FULL tax liability including Schedule 2:
@@ -465,6 +475,7 @@ def compute_spine(
         "federal_withheld_1099": fed_withheld_1099, # line 25b
         "federal_withheld_other": addl_medicare_withheld,  # line 25c
         "federal_withheld": federal_withheld,       # line 25d total
+        "estimated_tax_payments": estimated_payments,  # line 26
         "additional_medicare_withheld": addl_medicare_withheld,
         "total_payments": total_payments,
         "overpaid": overpaid,
