@@ -5,9 +5,17 @@ Checks:
 2. DENYLIST — no tracked file may contain known real-world identifiers.
 3. HEURISTICS — flag suspicious patterns in YAML fixtures.
 
-Exit code 0 = clean, 1 = violations found.
+Exit code 0 = clean, 1 = violations found (or config is missing/malformed —
+this scanner fails CLOSED, not open).
+
+Worktree provisioning: scripts/personal_data_config.yaml is gitignored (it
+holds real employer names and other personal identifiers, so it must never
+be tracked). Every fresh worktree is missing it and the scan will fail
+closed until it's provisioned. Copy it from the main checkout:
+    cp ~/Projects/tenforty/scripts/personal_data_config.yaml scripts/personal_data_config.yaml
 """
 
+import os
 import re
 import subprocess
 import sys
@@ -16,6 +24,7 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).parent.parent
+DEFAULT_CONFIG_PATH = REPO_ROOT / "scripts" / "personal_data_config.yaml"
 
 # --- ALLOWLIST: known synthetic employer/payer names ---
 # Every employer or payer name in YAML fixtures must be one of these.
@@ -47,22 +56,52 @@ _BUILTIN_DENYLIST = [
 ]
 
 
-def _load_denylist_config() -> list[str]:
-    """Load user-specific denylist patterns from gitignored config file."""
-    config_path = REPO_ROOT / "scripts" / "personal_data_config.yaml"
-    if not config_path.exists():
-        print(f"  WARNING: {config_path.relative_to(REPO_ROOT)} not found.")
-        print("  Create it with your real employer names, etc. It is gitignored.")
-        return []
+def _resolve_config_path() -> Path:
+    """Resolve the denylist config path, honoring the test-only env override."""
+    return Path(os.environ.get("TENFORTY_PII_CONFIG", str(DEFAULT_CONFIG_PATH)))
 
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
+
+def _provisioning_hint(config_path: Path) -> str:
+    """One-line, self-explaining fix-it command for a missing/bad config."""
+    return (
+        "To provision in a worktree, copy it from the main checkout:  "
+        f"cp ~/Projects/tenforty/scripts/personal_data_config.yaml {config_path}"
+    )
+
+
+class ConfigError(Exception):
+    """Raised when the denylist config is missing, empty, or malformed."""
+
+
+def _load_denylist_config(config_path: Path) -> list[str]:
+    """Load user-specific denylist patterns from the gitignored config file.
+
+    Fails CLOSED: any problem loading or parsing the config raises
+    ConfigError rather than silently returning an empty list.
+    """
+    if not config_path.exists():
+        raise ConfigError(f"Personal-data config not found: {config_path}")
+
+    try:
+        with open(config_path) as f:
+            raw = f.read()
+    except OSError as exc:
+        raise ConfigError(f"Personal-data config unreadable: {config_path} ({exc})") from exc
+
+    try:
+        config = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"Personal-data config is malformed YAML: {config_path} ({exc})") from exc
+
+    if config is None:
+        raise ConfigError(f"Personal-data config is empty: {config_path}")
+
+    if not isinstance(config, dict):
+        raise ConfigError(
+            f"Personal-data config did not parse to a mapping: {config_path}"
+        )
 
     return config.get("denylist_patterns", [])
-
-
-_RAW_DENYLIST_PATTERNS = _BUILTIN_DENYLIST + _load_denylist_config()
-DENYLIST_PATTERNS = [re.compile(p) for p in _RAW_DENYLIST_PATTERNS]
 
 # --- HEURISTICS for YAML fixtures ---
 # Dollar amounts in test fixtures should be round numbers (multiples of 50).
@@ -82,7 +121,9 @@ def get_tracked_files() -> list[Path]:
     return [REPO_ROOT / f for f in result.stdout.strip().split("\n") if f]
 
 
-def check_denylist(files_content: dict[Path, str]) -> list[str]:
+def check_denylist(
+    files_content: dict[Path, str], denylist_patterns: list[re.Pattern]
+) -> list[str]:
     """Check that no tracked file contains denylist patterns."""
     violations = []
     extensions = {".py", ".yaml", ".yml", ".toml", ".md", ".txt", ".json", ".csv"}
@@ -91,7 +132,7 @@ def check_denylist(files_content: dict[Path, str]) -> list[str]:
         if path.suffix not in extensions:
             continue
 
-        for pattern in DENYLIST_PATTERNS:
+        for pattern in denylist_patterns:
             matches = pattern.findall(content)
             if matches:
                 for match in matches:
@@ -151,7 +192,7 @@ def check_non_round_amounts(files_content: dict[Path, str]) -> list[str]:
     return violations
 
 
-def check_git_history() -> list[str]:
+def check_git_history(denylist_patterns: list[re.Pattern]) -> list[str]:
     """Check that no commit message references personal identifiers."""
     violations = []
     result = subprocess.run(
@@ -164,7 +205,7 @@ def check_git_history() -> list[str]:
     for line in result.stdout.strip().split("\n"):
         if not line:
             continue
-        for pattern in DENYLIST_PATTERNS:
+        for pattern in denylist_patterns:
             if pattern.search(line):
                 violations.append(f"GIT HISTORY: commit message matches '{pattern.pattern}': {line}")
 
@@ -172,6 +213,17 @@ def check_git_history() -> list[str]:
 
 
 def main() -> int:
+    config_path = _resolve_config_path()
+    try:
+        raw_patterns = _BUILTIN_DENYLIST + _load_denylist_config(config_path)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        print(f"  Config path: {config_path}", file=sys.stderr)
+        print(f"  {_provisioning_hint(config_path)}", file=sys.stderr)
+        return 1
+
+    denylist_patterns = [re.compile(p) for p in raw_patterns]
+
     files = get_tracked_files()
     all_violations: list[str] = []
 
@@ -185,7 +237,7 @@ def main() -> int:
         except (FileNotFoundError, UnicodeDecodeError):
             continue
 
-    denylist = check_denylist(files_content)
+    denylist = check_denylist(files_content, denylist_patterns)
     all_violations.extend(denylist)
     print(f"  Denylist check: {len(denylist)} violations")
 
@@ -197,7 +249,7 @@ def main() -> int:
     all_violations.extend(heuristic)
     print(f"  Heuristic check: {len(heuristic)} violations")
 
-    history = check_git_history()
+    history = check_git_history(denylist_patterns)
     all_violations.extend(history)
     print(f"  Git history check: {len(history)} violations")
 
