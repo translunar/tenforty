@@ -222,13 +222,16 @@ class AmendmentCompletenessTests(unittest.TestCase):
 
 
 class F8962ComputeOnlySliceTests(unittest.TestCase):
-    """f8962 (Form 8962, Premium Tax Credit) is a federal individual-return
-    form, so it also owes a pack for the FEDERAL_COMPUTE_ONLY_YEARS "loud
-    extra" slice (2021) — a year beyond FEDERAL_YEARS that _years_for() in
-    test_mapping_fields_on_template.py does NOT sweep, so this is the only
-    place the 2021 f8962 cell is ever checked. Modeled on the S-corp family's
-    per-cell KNOWN_GAPS pattern above. Guarded so it is green while gapped;
-    becomes a real assertion once Task 6/7 retires the 2021 gap cell."""
+    """f8962 (Form 8962, Premium Tax Credit) — 2021 slice.
+
+    Now that 2021 is a full FEDERAL_YEARS member (federal-2021-emit Task 1),
+    the general federal completeness gate (FederalCompletenessTests, which
+    sweeps FEDERAL_YEARS x federal non-SCORP CATALOG forms) already asserts the
+    f8962 2021 template + mapping. This class is therefore a REDUNDANT
+    defense-in-depth guard retained as a named, focused anchor for the f8962
+    2021 emit slice; the f8962 2021 pack exists, so the assertion is live. The
+    KNOWN_GAPS skip branch is retained defensively (a no-op while the tier is
+    empty) so it re-activates cleanly if f8962 2021 were ever re-gapped."""
 
     def test_f8962_2021_slice_pack(self):
         if ("federal", "f8962", 2021) in KNOWN_GAPS:
