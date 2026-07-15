@@ -249,6 +249,27 @@ def compute_spine(
         total_deductions = std_deduction
         standard_deduction_applied = True
 
+    # 2021 line 12b — above-the-line cash-charitable deduction for NON-ITEMIZERS
+    # (CARES §2204 / CAA 2021 §212). Verbatim passthrough, refuse-don't-cap.
+    # Non-single and over-cap are refused at LOAD (scenario.py); these spine
+    # guards are single-filer defense-in-depth.
+    charitable_nonitemizer = 0
+    field = scenario.config.charitable_cash_nonitemizer
+    if field:
+        cap = params.nonitemizer_charitable_cap
+        if not standard_deduction_applied:
+            raise ValueError(
+                "charitable_cash_nonitemizer is the 2021 line-12b deduction for "
+                "NON-ITEMIZERS only; this return itemizes, so it cannot be claimed."
+            )
+        if cap is None or field > cap:
+            raise ValueError(
+                f"charitable_cash_nonitemizer ({field}) exceeds the 2021 "
+                f"single-filer non-itemizer cap of ${cap}."
+            )
+        charitable_nonitemizer = irs_round(field)
+        total_deductions += charitable_nonitemizer
+
     # 1040 line 13 — QBI deduction from Form 8995 line 15.
     # Real producer key: "f8995_line_15_qbi_deduction" from forms.f8995.compute.
     qbi_deduction = f8995.get("f8995_line_15_qbi_deduction", 0)
@@ -452,6 +473,7 @@ def compute_spine(
         "schedule_a_total": schedule_a_total,
         "sch_a_line_5e_salt_capped": sch_a_line_5e_salt_capped,
         "total_deductions": total_deductions,
+        "charitable_nonitemizer": charitable_nonitemizer,  # 2021 line 12b
         # Form 1040 line 12 — the deduction actually applied (std or itemized).
         # `standard_deduction` above is 0 when itemizing, so the line-12 PDF
         # cell reads this instead (see pdf_1040 f2_02). Equals total_deductions.

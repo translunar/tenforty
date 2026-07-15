@@ -118,8 +118,11 @@ PARAMS = FederalParams(
     medical_agi_floor_pct=0.075,
     # CARES Act §2204 / CAA 2021 §212 (as extended): 2021 above-the-line
     # cash-charitable deduction for filers who do NOT itemize (Form 1040
-    # line 12b). $300 single-filer cap (the $600 MFJ figure is out of
-    # scope). One-year-only provision, not extended past 2021.
+    # line 12b). Certifies the single-filer $300 cap only (attested).
+    # Non-single 12b exists in the IRS workbook but is uncertified in
+    # tenforty and refuses at load; per-status support requires attestation
+    # + verified workbook over-cap semantics. MFJ $600 unmodeled.
+    # One-year-only provision, not extended past 2021.
     nonitemizer_charitable_cap=300,
     # SALT cap that applied in the prior year (2020) for the state-refund
     # tax-benefit lookback. 2020 was also the pre-OBBBA flat cap

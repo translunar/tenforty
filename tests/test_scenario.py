@@ -171,3 +171,57 @@ class TestNonitemizerCharitableCash(unittest.TestCase):
         scenario = self._load_with_config(config_body)
         self.assertEqual(scenario.config.charitable_cash_nonitemizer, 0.0)
 
+    def test_mfj_nonitemizer_charitable_cash_refused_as_out_of_scope(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, filing_status="married_jointly",
+            charitable_cash_nonitemizer=400.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception).lower()
+        self.assertIn("single", message)
+        self.assertTrue(
+            "out-of-scope" in message or "certified" in message,
+            msg=f"Expected message to name the out-of-scope/certified "
+                f"condition, got: {ctx.exception}",
+        )
+
+    def test_head_of_household_under_cap_still_refused_as_out_of_scope(self) -> None:
+        # Distinguisher: a non-single amount UNDER the single $300 cap must
+        # STILL refuse — this is the non-single scope-out, not the cap check.
+        config_body = self._make_config_body(
+            year=2021, filing_status="head_of_household",
+            charitable_cash_nonitemizer=200.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception).lower()
+        self.assertIn("single", message)
+        self.assertTrue(
+            "out-of-scope" in message or "certified" in message,
+            msg=f"Expected message to name the out-of-scope/certified "
+                f"condition, got: {ctx.exception}",
+        )
+
+    def test_single_over_cap_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=350.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception)
+        self.assertIn("300", message)
+
+    def test_single_itemizer_with_nonzero_charitable_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=250.0)
+        body = {"config": config_body, "itemized_deductions": {}}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        with self.assertRaises(ValueError) as ctx:
+            load_scenario(path)
+        message = str(ctx.exception).lower()
+        self.assertTrue(
+            "itemiz" in message,
+            msg=f"Expected message to mention itemizer/itemized, got: {ctx.exception}",
+        )
+
