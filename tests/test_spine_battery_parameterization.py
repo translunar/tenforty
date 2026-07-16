@@ -17,6 +17,7 @@ _EXPECTED_NAMES = [
     "canonical_wage_investment_rental",
     "qdcgt_15_to_20_boundary",
     "qbi_threshold_boundary",
+    "qbi_k1_deduction",
     "addl_medicare_boundary",
     "zero_tax_refund",
     "owes_tax",
@@ -89,6 +90,27 @@ class BatteryParameterizationTests(unittest.TestCase):
                     self.assertIn("total_tax", results)
                     self.assertIn("taxable_income", results)
                     self.assertIsInstance(results["total_tax"], (int, float))
+
+    def test_qbi_k1_deduction_yields_positive_qbi_every_year(self):
+        # Structural regime pin: the QBI-active scenario must materially
+        # exercise a Section 199A deduction every year, so a drifting
+        # threshold/param table cannot silently zero it. NO golden dollar
+        # value here — the exact figure is proven native-vs-oracle by the
+        # parity gate (test_f1040_spine_oracle.py). Also confirms the two
+        # line-13/14 keys the parity gate now compares are populated on the
+        # native side.
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()) / "work",
+        )
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
+            with self.subTest(year=year):
+                build = dict(battery_for(year))["qbi_k1_deduction"]
+                results = orch.compute_federal(build())
+                self.assertGreater(results["qbi_deduction"], 0)
+                self.assertIn("deductions_plus_qbi", results)
+                self.assertIsInstance(results["deductions_plus_qbi"], (int, float))
 
 
 _PTC_YEARS = year_manifest.FEDERAL_YEARS + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS

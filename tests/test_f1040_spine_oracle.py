@@ -52,6 +52,14 @@ PARITY_KEYS = (
     "total_deductions",
     "taxable_income",
     "taxable_income_before_qbi_deduction",
+    # Form 1040 lines 13 and 14, made path-uniform by construction this branch
+    # (qbi_deduction: native spine emit + oracle f1040.compute normalize;
+    # deductions_plus_qbi = line 14 = 12c + QBI, both paths). Parity locks that
+    # uniformity so lines 13/14 agree native-vs-workbook — materially exercised
+    # by the qbi_k1_deduction battery scenario (QBI>0); for QBI=0 scenarios both
+    # reduce to total_deductions (already compared above).
+    "qbi_deduction",
+    "deductions_plus_qbi",
     "total_tax",
     "total_payments",
     "overpaid",
