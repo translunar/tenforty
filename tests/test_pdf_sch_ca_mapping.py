@@ -10,10 +10,12 @@ to a real field in `pdfs/california/2025/sch_ca.pdf`.
 """
 
 from pathlib import Path
+import tempfile
 import unittest
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings import pdf_sch_ca
 
 
@@ -80,7 +82,7 @@ class PdfSchCaMappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2026):
+        for year in (2020, 2019, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_ca.PdfSchCa.get_mapping(year)
@@ -366,3 +368,234 @@ class PdfSchCaMappingTests(unittest.TestCase):
         targets = set(mapping.values()) | set(derivations) | set(aggregations)
         bad = sorted(t for t in targets if t not in real)
         self.assertEqual(bad, [], f"field paths not in 2023 PDF: {bad}")
+
+    # ------------------------------------------------------------------
+    # 2022 tests — INHERITED from 2023 by field-tree identity
+    # (diff_pdf_fields-IDENTICAL, controller-verified).
+    # ------------------------------------------------------------------
+
+    def test_2022_registries_empty_where_expected(self):
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2022), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2022), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2022), {})
+
+    def test_2022_partition_invariant(self):
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2022)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2022)
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2022)
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(missing, set(), f"unaccounted: {sorted(missing)}")
+        in_mapping = set(mapping.keys()) & _EXPECTED_COMPUTE_KEYS
+        double = ((in_mapping & agg_contributors) | (in_mapping & suppressed)
+                  | (agg_contributors & suppressed))
+        self.assertEqual(double, set(), f"double-accounted: {sorted(double)}")
+
+    def test_2022_inherits_2023_mapping(self):
+        # 2022 is IDENTICAL to 2023 by field-tree diff; the mapping payload
+        # is inherited verbatim.
+        self.assertEqual(
+            pdf_sch_ca.PdfSchCa.get_mapping(2022),
+            pdf_sch_ca.PdfSchCa.get_mapping(2023),
+        )
+
+    def test_2022_every_pdf_target_is_a_real_pdf_field(self):
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2022" / "sch_ca.pdf")
+        real = set(reader.get_fields() or {})
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2022)
+        derivations = pdf_sch_ca.PdfSchCa.get_derivations(2022)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2022)
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2022 PDF: {bad}")
+
+
+    # ------------------------------------------------------------------
+    # 2021 tests — FRESH air-gapped direct-map probe (controller-reconciled
+    # 57/57 against the 2021 template). Bare-numeric FTB namespace like 2023,
+    # but 2021 renumbers its widgets end-to-end so it does NOT inherit 2023
+    # (e.g. name/ssn 1001/1002 vs 2023's 1000/1001; line 1z Col A 1003 vs
+    # 2023's 1027). Zero-derivation (allowlisted). Column structure identical
+    # to 2022/2023.
+    # ------------------------------------------------------------------
+
+    def test_2021_registries_empty_where_expected(self):
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2021), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2021), {})
+        self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2021), {})
+
+    def test_2021_partition_invariant(self):
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2021)
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2021)
+        agg_contributors = {k for keys in aggregations.values() for k in keys}
+        accounted = set(mapping.keys()) | agg_contributors | suppressed
+        missing = _EXPECTED_COMPUTE_KEYS - accounted
+        self.assertEqual(missing, set(), f"unaccounted: {sorted(missing)}")
+        in_mapping = set(mapping.keys()) & _EXPECTED_COMPUTE_KEYS
+        double = ((in_mapping & agg_contributors) | (in_mapping & suppressed)
+                  | (agg_contributors & suppressed))
+        self.assertEqual(double, set(), f"double-accounted: {sorted(double)}")
+
+    def test_2021_is_fresh_map_not_2023_inherit(self):
+        # 2021 renumbers its widgets end-to-end; it must NOT be the 2023
+        # payload. Guards against an accidental inherit.
+        m2021 = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+        m2023 = pdf_sch_ca.PdfSchCa.get_mapping(2023)
+        self.assertNotEqual(m2021, m2023)
+        self.assertEqual(m2021["sch_ca_taxpayer_name"], "1001")
+        self.assertEqual(m2021["sch_ca_line_part_i_a_1z_col_a"], "1003")
+
+    def test_2021_bare_number_scheme_no_prefix(self):
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+        for key, field in mapping.items():
+            with self.subTest(key=key):
+                self.assertNotIn("540ca_form", field)
+                self.assertTrue(field.isdigit(), f"{field!r} not a bare number")
+
+    def test_2021_ca_agi_is_suppressed_transit_only(self):
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2021)
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+        self.assertIn("sch_ca_ca_agi", suppressed)
+        self.assertNotIn("sch_ca_ca_agi", mapping)
+
+    def test_2021_column_omissions_suppressed(self):
+        suppressed = pdf_sch_ca.PdfSchCa.get_suppressed(2021)
+        for key in (
+            "sch_ca_line_part_i_a_6_additions",   # SS
+            "sch_ca_line_part_i_b_1_additions",   # state refund
+            "sch_ca_line_part_i_b_7_additions",   # UI
+            "sch_ca_line_part_i_c_11_additions",  # educator
+            "sch_ca_line_part_i_c_13_additions",  # HSA
+            "sch_ca_line_part_i_c_15_additions",  # SE tax
+            "sch_ca_line_part_i_c_17_additions",  # SE health
+        ):
+            with self.subTest(key=key):
+                self.assertIn(key, suppressed)
+        self.assertIn("sch_ca_line_part_i_c_21_subtractions", suppressed)
+
+    def test_2021_every_pdf_target_is_a_real_pdf_field(self):
+        root = Path(__file__).resolve().parent.parent
+        reader = PdfReader(root / "pdfs" / "california" / "2021" / "sch_ca.pdf")
+        real = set(reader.get_fields() or {})
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+        derivations = pdf_sch_ca.PdfSchCa.get_derivations(2021)
+        aggregations = pdf_sch_ca.PdfSchCa.get_aggregations(2021)
+        targets = set(mapping.values()) | set(derivations) | set(aggregations)
+        bad = sorted(t for t in targets if t not in real)
+        self.assertEqual(bad, [], f"field paths not in 2021 PDF: {bad}")
+
+
+class PdfSchCaFilledEmit2021Tests(unittest.TestCase):
+    """Filled-emit round-trip for the FRESH 2021 direct-map pack. Fill the
+    real 2021 template with DISTINCTIVE values for every mapped compute key,
+    read the filled PDF back with pypdf, and assert each value landed at its
+    mapped (bare-number 2021-scheme) field path — proving the fresh probe
+    addresses real 2021 widgets, not just that the paths exist."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_2021_fill_then_read_back(self):
+        project_root = Path(__file__).resolve().parent.parent
+        template = project_root / "pdfs" / "california" / "2021" / "sch_ca.pdf"
+        out = self.tmp / "sch_ca_2021_filled.pdf"
+
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2021)
+
+        # Distinctive value per mapped key. Header keys get non-numeric
+        # sentinels (no SSN/EIN shape); every numeric line-cell gets a
+        # unique amount so a mis-routed value would collide detectably.
+        string_values = {
+            "sch_ca_taxpayer_name": "Wilhelmina Frostpocket",
+            "sch_ca_taxpayer_ssn": "PROBE-ID-2021-RT",
+        }
+        values: dict[str, object] = {}
+        numeric_keys = [k for k in mapping if k not in string_values]
+        for idx, key in enumerate(sorted(numeric_keys)):
+            values[key] = 200_003 + idx * 7  # distinct per cell
+        values.update(string_values)
+
+        PdfFiller().fill(
+            template_path=template,
+            output_path=out,
+            field_mapping=mapping,
+            values=values,
+        )
+
+        fields = PdfReader(out).get_fields() or {}
+
+        def _v(path: str) -> str:
+            fld = fields.get(path)
+            self.assertIsNotNone(fld, f"field {path!r} missing from filled PDF")
+            v = fld.get("/V")
+            return "" if v is None else str(v)
+
+        for key, path in mapping.items():
+            with self.subTest(key=key):
+                expected = values[key]
+                self.assertEqual(
+                    _v(path), str(expected),
+                    f"{key} did not land at its mapped path {path!r}",
+                )
+
+
+class PdfSchCaFilledEmit2022Tests(unittest.TestCase):
+    """Filled-emit round-trip for the 2022 pack, INHERITED from 2023 by
+    field-tree identity. Fill the real 2022 template with DISTINCTIVE values
+    for every mapped compute key, read the filled PDF back with pypdf, and
+    assert each value landed at its mapped (bare-number 2023-scheme) field
+    path — proving the inherited map addresses real 2022 widgets, not just
+    that the paths exist."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_2022_fill_then_read_back(self):
+        project_root = Path(__file__).resolve().parent.parent
+        template = project_root / "pdfs" / "california" / "2022" / "sch_ca.pdf"
+        out = self.tmp / "sch_ca_2022_filled.pdf"
+
+        mapping = pdf_sch_ca.PdfSchCa.get_mapping(2022)
+
+        # Distinctive value per mapped key. Header keys get non-numeric
+        # sentinels (no SSN/EIN shape); every numeric line-cell gets a
+        # unique amount so a mis-routed value would collide detectably.
+        string_values = {
+            "sch_ca_taxpayer_name": "Wilhelmina Frostpocket",
+            "sch_ca_taxpayer_ssn": "PROBE-ID-2022-RT",
+        }
+        values: dict[str, object] = {}
+        numeric_keys = [k for k in mapping if k not in string_values]
+        for idx, key in enumerate(sorted(numeric_keys)):
+            values[key] = 100_003 + idx * 7  # distinct per cell
+        values.update(string_values)
+
+        PdfFiller().fill(
+            template_path=template,
+            output_path=out,
+            field_mapping=mapping,
+            values=values,
+        )
+
+        fields = PdfReader(out).get_fields() or {}
+
+        def _v(path: str) -> str:
+            fld = fields.get(path)
+            self.assertIsNotNone(fld, f"field {path!r} missing from filled PDF")
+            v = fld.get("/V")
+            return "" if v is None else str(v)
+
+        for key, path in mapping.items():
+            with self.subTest(key=key):
+                expected = values[key]
+                self.assertEqual(
+                    _v(path), str(expected),
+                    f"{key} did not land at its mapped path {path!r}",
+                )

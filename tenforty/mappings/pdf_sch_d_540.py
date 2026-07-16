@@ -317,21 +317,83 @@ _SUPPRESSED_2023: frozenset[str] = frozenset(
 _CHECKBOX_STATES_2023: dict[str, str] = {}
 
 
+# ---------------------------------------------------------------------------
+# TY2021 registries
+# Field-naming scheme: "Text Field N" — a FOURTH distinct FTB naming scheme,
+# disjoint from 2023's bare zero-padded numbers and 2024/2025's prefixed
+# schemes. 2021 fresh air-gapped probe, controller-reconciled against the
+# 2021 template (CA "Text Field N" namespace differs from 2023). Five
+# compute-backed direct cells (header name/SSN, line 8 net gain, line 12a/12b
+# Sch CA deltas) plus two derivations (lines 10/11 federal/CA net) are wired.
+# Suppression is not populated for 2021.
+# ---------------------------------------------------------------------------
+_MAPPING_2021: dict[str, str] = {
+    "sch_d_540_taxpayer_name":      "Text Field 2",
+    "sch_d_540_taxpayer_ssn":       "Text Field 3",
+    "sch_d_540_net_capital_gain":   "Text Field 121",  # Line 8
+    "sch_d_540_total_subtractions": "Text Field 125",  # Line 12a (col B, Subtractions)
+    "sch_d_540_total_additions":    "Text Field 126",  # Line 12b (col C, Additions)
+}
+_AGGREGATIONS_2021: dict[str, tuple[str, ...]] = {}
+# Form-internal computed cells ported from 2023 (rc=1, layout differs but
+# lines 10/11 are present on the 2021 form). Target boxes re-placed from the
+# 2021 template's own /TU tooltips and visually confirmed on the probe render
+# (page 2): Field 123 sits on printed Line 10, Field 124 on printed Line 11.
+_DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Line 10 — /TU "Enter the gain or (loss) from federal Form 1040 or
+    # 1040-SR, line 7." The FEDERAL net capital gain/loss (pre-CA-divergence).
+    # Formula carried from 2023, verified against the 2021 printed form.
+    "Text Field 123": lambda c: c["sch_d_540_federal_net"],
+    # Line 11 — /TU "Enter the California gain from line 8 or (loss) from
+    # line 9." The CALIFORNIA net capital gain/loss. Formula carried from
+    # 2023, verified against the 2021 printed form.
+    "Text Field 124": lambda c: c["sch_d_540_net_capital_gain"],
+}
+# Detail rows 1a..1v + within-form sums/carryover + line-9 loss limit — no direct
+# compute backing, same semantics as 2023/2024/2025. In the 2021 "Text Field N"
+# namespace these are "Text Field 4".."Text Field 120" (detail/sum cells) plus
+# "Text Field 122" (line-9 loss limit); the five compute-backed cells (2, 3, 121,
+# 125, 126) and two derivation cells (123, 124) are the only owned widgets.
+_SUPPRESSED_2021: frozenset[str] = frozenset(
+    {f"Text Field {n}" for n in range(4, 121)} | {"Text Field 122"}
+)
+_CHECKBOX_STATES_2021: dict[str, str] = {}
+
+
+# ---------------------------------------------------------------------------
+# TY2022 registries — INHERITED from 2023 by field-tree identity.
+# 2022 field tree is IDENTICAL to 2023 (diff_pdf_fields, controller-verified);
+# fields-on-template gate re-verifies every path against the 2022 template,
+# emit round-trip verifies values land.
+# ---------------------------------------------------------------------------
+_MAPPING_2022 = _MAPPING_2023
+_AGGREGATIONS_2022 = _AGGREGATIONS_2023
+_DERIVATIONS_2022 = _DERIVATIONS_2023
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_CHECKBOX_STATES_2022 = _CHECKBOX_STATES_2023
+
+
 PdfSchD540._MAPPINGS = {
+    2021: _MAPPING_2021, 2022: _MAPPING_2022,
     2023: _MAPPING_2023, 2024: _MAPPING_2024, 2025: _MAPPING_2025,
 }
 
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
+    2021: _AGGREGATIONS_2021, 2022: _AGGREGATIONS_2022,
     2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
+    2021: _DERIVATIONS_2021, 2022: _DERIVATIONS_2022,
     2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2021: _SUPPRESSED_2021,
+    2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: _CHECKBOX_STATES_2021, 2022: _CHECKBOX_STATES_2022,
     2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }

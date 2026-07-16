@@ -75,6 +75,12 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # demands a template + mapping for every 2021 individual form. f8962's 2021 pack
 # already landed (Task 7), so it is NOT gapped here; the remaining twelve forms
 # owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
+#
+# sch_d_540 2021 retired: fresh air-gapped probe (controller-verified, "Text
+# Field N" namespace — a fourth distinct FTB naming scheme, disjoint from
+# 2023's bare numbers and 2024/2025's prefixed schemes) landed in
+# tenforty/mappings/pdf_sch_d_540.py; fields-on-template + emit gates now
+# cover 2021.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # f1040 2021 retired: fresh air-gapped probe + render-verify (controller +
     # team-lead-verified 57/57 keys, income block nests in Lines1-11_ReadOrder[0],
@@ -103,6 +109,44 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # corrected name/ein cols a/d; 12 deliberately-unmapped — 8 entity-type P/S
     # → compute-side follow-up, 4 line-29 dead cross keys) landed in
     # tenforty/mappings/pdf_sch_e.py; fields-on-template + emit gates now cover 2021.
+    #
+    # CA 2021/2022 individual-return emit packs: 2021 and 2022 moved from
+    # CALIFORNIA_COMPUTE_ONLY_YEARS into CALIFORNIA_YEARS (ca-2021-2022-emit
+    # Task 1), so the completeness gate now demands a template + mapping for
+    # every 2021/2022 California form. The f540/sch_ca/sch_d_540 templates
+    # already exist, but their probe-certified year mappings are owed —
+    # built in ca-2021-2022-emit Tasks 2-3. Six cells:
+    # f540 2021 retired: direct-map-only fresh air-gapped probe (controller-
+    # reconciled 25/25 cells against the 2021 template; CA namespace differs
+    # from 2023) landed in tenforty/mappings/pdf_f540.py; fields-on-template +
+    # emit gates now cover 2021.
+    # sch_ca 2021 retired: direct-map-only fresh air-gapped probe (controller-
+    # reconciled 57/57 cells against the 2021 template; bare-numeric CA
+    # namespace that does NOT align field-for-field with 2022/2023, hence a
+    # fresh map not an inherit) landed in tenforty/mappings/pdf_sch_ca.py.
+    # Zero-derivation (allowlisted in ZERO_DERIVATION_FORMS); completeness +
+    # fields-on-template + emit gates now cover sch_ca/2021.
+    # f540 2022 retired: direct-map probe (25/25 controller-reconciled, CA
+    # bare-numeric namespace matching 2023 except sign-block email/phone 5019/5020)
+    # + 22-cell get_derivations surface ported from 2023 (line 64 total-tax
+    # composition, NO 2021-style line-65/APAS insertion) landed in
+    # tenforty/mappings/pdf_f540.py; completeness + derivations-surface +
+    # fields-on-template gates now cover f540/2022.
+    # sch_ca + sch_d_540 2022 retired (INHERIT batch): 2022 field tree
+    # diff_pdf_fields-IDENTICAL to 2023, mapping inherits the 2023 payload;
+    # fields-on-template + emit gates now cover 2022.
+})
+
+# Forms that legitimately carry NO get_derivations in ANY year — Schedule CA's
+# adjustments are all direct-mapped; a form here is exempt from the
+# derivations-surface completeness check (test_derivations_surface_complete).
+# The check otherwise requires that a form carrying derivations in ANY supported
+# non-gapped year carries them in EVERY such year; a genuinely derivation-free
+# form has no anchor year and would pass trivially, but is listed explicitly so
+# the intent is reviewed — and the gate re-guards each entry, reddening if a
+# listed form ever grows a derivation.
+ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset({
+    ("california", "sch_ca"),
 })
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
