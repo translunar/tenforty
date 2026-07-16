@@ -499,6 +499,12 @@ class PdfSchD540MappingTests2021(unittest.TestCase):
     name/SSN, line 8 net gain, line 12a/12b Sch CA deltas) plus two
     derivations (lines 10/11 federal/CA net)."""
 
+    @classmethod
+    def setUpClass(cls):
+        pdf_path = (Path(__file__).resolve().parent.parent
+                    / "pdfs" / "california" / "2021" / "sch_d_540.pdf")
+        cls.real_fields = frozenset(PdfReader(pdf_path).get_fields() or {})
+
     def test_2021_mapped_cells(self):
         m = pdf_sch_d_540.PdfSchD540.get_mapping(2021)
         self.assertEqual(m["sch_d_540_taxpayer_name"], "Text Field 2")
@@ -543,6 +549,23 @@ class PdfSchD540MappingTests2021(unittest.TestCase):
                 path, fields,
                 f"derivation target {path!r} is not a real field on the 2021 template",
             )
+
+    def test_2021_partition_covers_every_widget_exactly_once(self):
+        P = pdf_sch_d_540.PdfSchD540
+        mapping_t = set(P.get_mapping(2021).values())
+        agg_t = set(P.get_aggregations(2021).keys())
+        deriv_t = set(P.get_derivations(2021).keys())
+        supp = set(P.get_suppressed(2021))
+        # pairwise disjoint
+        parts = [mapping_t, agg_t, deriv_t, supp]
+        for i in range(len(parts)):
+            for j in range(i + 1, len(parts)):
+                self.assertEqual(parts[i] & parts[j], set(),
+                                 "a 2021 widget is owned by two registries")
+        accounted = mapping_t | agg_t | deriv_t | supp
+        self.assertEqual(
+            accounted, self.real_fields,
+            "2021 partition does not exactly cover the live probe field set")
 
 
 class PdfSchD540FilledEmit2021Tests(unittest.TestCase):
