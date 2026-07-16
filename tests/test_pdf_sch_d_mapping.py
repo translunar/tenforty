@@ -83,8 +83,8 @@ class TestPdfSchDFullLineGrid(unittest.TestCase):
             ("14", "loss_carryover"),
         ]:
             self.assertIn(f"sch_d_line_{line}_{kind}", m["scalars"])
-        self.assertIn("sch_d_line_18_unrecap_1250", m["scalars"])
-        self.assertIn("sch_d_line_19_28_rate_gain", m["scalars"])
+        self.assertIn("sch_d_unrecap_1250", m["scalars"])
+        self.assertIn("sch_d_28_rate_gain", m["scalars"])
 
 
 @unittest.skipUnless(_TEMPLATE_2021.exists(), "2021 Schedule D template not present")
@@ -95,8 +95,8 @@ class PdfSchD2021EmitRoundTripTests(unittest.TestCase):
     The lines-18/19 placement test is the regression that would have caught
     the historically-swapped-key-name bug: the compute stores the
     unrecaptured-§1250 dollars under the key
-    ``sch_d_line_18_unrecap_1250`` and the 28%-rate dollars under
-    ``sch_d_line_19_28_rate_gain``, but on the form itself line 18's box is
+    ``sch_d_unrecap_1250`` and the 28%-rate dollars under
+    ``sch_d_28_rate_gain``, but on the form itself line 18's box is
     ``f2_02`` and line 19's box is ``f2_03``. So the unrecap-1250 amount must
     land in ``f2_03`` (form line 19) and the 28%-rate amount must land in
     ``f2_02`` (form line 18). The merged 2022-2025 mappings route these
@@ -123,8 +123,8 @@ class PdfSchD2021EmitRoundTripTests(unittest.TestCase):
     def test_lines_18_19_placement_is_content_correct(self):
         # Distinct sentinels so a swap is unambiguous either way.
         values = {
-            "sch_d_line_18_unrecap_1250": 1250,
-            "sch_d_line_19_28_rate_gain": 2800,
+            "sch_d_unrecap_1250": 1250,
+            "sch_d_28_rate_gain": 2800,
         }
         read = self._fill_and_read(values)
         self.assertEqual(
@@ -218,10 +218,10 @@ class PdfSchDMergedYearsPlacementTests(unittest.TestCase):
         # higher-ordinal member of its pair?
         ref_scalars = PdfSchD.get_mapping(2021)["scalars"]
         ref_unrecap_ordinal = _page2_box_ordinal(
-            ref_scalars["sch_d_line_18_unrecap_1250"]
+            ref_scalars["sch_d_unrecap_1250"]
         )
         ref_rate_28_ordinal = _page2_box_ordinal(
-            ref_scalars["sch_d_line_19_28_rate_gain"]
+            ref_scalars["sch_d_28_rate_gain"]
         )
         self.assertNotEqual(ref_unrecap_ordinal, ref_rate_28_ordinal)
         unrecap_is_lower_ordinal = ref_unrecap_ordinal < ref_rate_28_ordinal
@@ -237,8 +237,8 @@ class PdfSchDMergedYearsPlacementTests(unittest.TestCase):
                 # though which key currently targets which box is not.
                 pair = sorted(
                     (
-                        scalars["sch_d_line_18_unrecap_1250"],
-                        scalars["sch_d_line_19_28_rate_gain"],
+                        scalars["sch_d_unrecap_1250"],
+                        scalars["sch_d_28_rate_gain"],
                     ),
                     key=_page2_box_ordinal,
                 )
@@ -249,8 +249,8 @@ class PdfSchDMergedYearsPlacementTests(unittest.TestCase):
                     rate_28_box, unrecap_box = lower_ordinal_box, higher_ordinal_box
 
                 values = {
-                    "sch_d_line_18_unrecap_1250": 1111,
-                    "sch_d_line_19_28_rate_gain": 2222,
+                    "sch_d_unrecap_1250": 1111,
+                    "sch_d_28_rate_gain": 2222,
                 }
                 read = self._fill_and_read(year, values)
                 self.assertEqual(
