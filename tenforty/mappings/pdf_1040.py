@@ -96,10 +96,20 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # === Page 1: Deduction & taxable income (Lines 12-15) ===
             # Line 12a: deduction actually applied — nests in StandardDeductionBubble.
             "applied_deduction": "topmostSubform[0].Page1[0].StandardDeductionBubble[0].f1_44[0]",
+            # Line 12b: above-the-line cash-charitable deduction for
+            # non-itemizers (CARES §2204 / CAA 2021 §212). f1_45 nests in
+            # StandardDeductionBubble alongside 12a (f1_44).
+            "charitable_nonitemizer": "topmostSubform[0].Page1[0].StandardDeductionBubble[0].f1_45[0]",
+            # Line 12c: 12a + 12b. Equals the spine's `total_deductions`
+            # (12a std/itemized + 12b charitable, by construction) — NOT the
+            # same as line 14, except when line 13 (QBI) is 0.
+            "total_deductions": "topmostSubform[0].Page1[0].StandardDeductionBubble[0].f1_46[0]",
             # Line 13: Qualified business income deduction (single line, 2021)
             "qbi_deduction": "topmostSubform[0].Page1[0].f1_47[0]",
-            # Line 14: Add lines 12c and 13
-            "total_deductions": "topmostSubform[0].Page1[0].f1_48[0]",
+            # Line 14: Add lines 12c and 13 = deduction (12c) + QBI (13).
+            # `total_deductions` above is 12c ONLY (excludes QBI) — use the
+            # spine's dedicated `deductions_plus_qbi` key here instead.
+            "deductions_plus_qbi": "topmostSubform[0].Page1[0].f1_48[0]",
             # Line 15: Taxable income (line 11 minus line 14)
             "taxable_income": "topmostSubform[0].Page1[0].f1_49[0]",
 
@@ -254,8 +264,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "applied_deduction": "topmostSubform[0].Page1[0].StandardDeductionBubble[0].f1_53[0]",
             # Line 13: Qualified business income deduction (single line, 2022)
             "qbi_deduction": "topmostSubform[0].Page1[0].f1_54[0]",
-            # Line 14: Add lines 12 and 13
-            "total_deductions": "topmostSubform[0].Page1[0].f1_55[0]",
+            # Line 14: Add lines 12 and 13 = deduction (line 12) + QBI (13).
+            # `total_deductions` is line 12 ONLY (excludes QBI) — 2022-2025
+            # print it via line 12 (`applied_deduction`, mapped above); line
+            # 14 uses the spine's dedicated `deductions_plus_qbi` key here.
+            "deductions_plus_qbi": "topmostSubform[0].Page1[0].f1_55[0]",
             # Line 15: Taxable income (line 11 minus line 14)
             "taxable_income": "topmostSubform[0].Page1[0].f1_56[0]",
 
@@ -413,8 +426,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "applied_deduction": "topmostSubform[0].Page1[0].f1_56[0]",
             # Line 13: Qualified business income deduction (single line, 2023)
             "qbi_deduction": "topmostSubform[0].Page1[0].f1_57[0]",
-            # Line 14: Add lines 12 and 13
-            "total_deductions": "topmostSubform[0].Page1[0].f1_58[0]",
+            # Line 14: Add lines 12 and 13 = deduction (line 12) + QBI (13).
+            # `total_deductions` is line 12 ONLY (excludes QBI) — 2022-2025
+            # print it via line 12 (`applied_deduction`, mapped above); line
+            # 14 uses the spine's dedicated `deductions_plus_qbi` key here.
+            "deductions_plus_qbi": "topmostSubform[0].Page1[0].f1_58[0]",
             # Line 15: Taxable income (line 11 minus line 14)
             "taxable_income": "topmostSubform[0].Page1[0].f1_59[0]",
 
@@ -566,8 +582,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "qbi_deduction": "topmostSubform[0].Page2[0].f2_03[0]",
             # Line 13b: Additional deductions from Schedule 1-A
             "additional_deductions": "topmostSubform[0].Page2[0].f2_04[0]",
-            # Line 14: Add lines 12, 13a, and 13b
-            "total_deductions": "topmostSubform[0].Page2[0].f2_05[0]",
+            # Line 14: Add lines 12, 13a, and 13b = deduction (12) + QBI
+            # (13a) + Sch 1-A additional deductions (13b). `total_deductions`
+            # is line 12 ONLY (excludes QBI) — 2022-2025 print it via line 12
+            # (`applied_deduction`, mapped above); line 14 uses the spine's
+            # dedicated `deductions_plus_qbi` key here.
+            "deductions_plus_qbi": "topmostSubform[0].Page2[0].f2_05[0]",
             # Line 15: Taxable income (line 11b minus line 14)
             "taxable_income": "topmostSubform[0].Page2[0].f2_06[0]",
             # Line 16: Tax
@@ -708,8 +728,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "qbi_deduction": "topmostSubform[0].Page2[0].f2_03[0]",
             # Line 13b: Additional deductions from Schedule 1-A
             "additional_deductions": "topmostSubform[0].Page2[0].f2_04[0]",
-            # Line 14: Add lines 12, 13a, and 13b
-            "total_deductions": "topmostSubform[0].Page2[0].f2_05[0]",
+            # Line 14: Add lines 12, 13a, and 13b = deduction (12) + QBI
+            # (13a) + Sch 1-A additional deductions (13b). `total_deductions`
+            # is line 12 ONLY (excludes QBI) — 2022-2025 print it via line 12
+            # (`applied_deduction`, mapped above); line 14 uses the spine's
+            # dedicated `deductions_plus_qbi` key here.
+            "deductions_plus_qbi": "topmostSubform[0].Page2[0].f2_05[0]",
             # Line 15: Taxable income (line 11b minus line 14)
             "taxable_income": "topmostSubform[0].Page2[0].f2_06[0]",
             # Line 16: Tax (f2_07 is the 8814/4972 checkbox value on this line)

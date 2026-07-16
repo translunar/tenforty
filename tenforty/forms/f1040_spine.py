@@ -486,6 +486,9 @@ def compute_spine(
         # Taxable income
         "taxable_income_before_qbi_deduction": taxable_income_before_qbi,
         "_qbi_deduction_1040": qbi_deduction,
+        # 1040 line 14 = line 12(c) deduction + line 13 QBI. `total_deductions`
+        # is line 12(c) ONLY (excludes QBI), so line 14 needs its own key.
+        "deductions_plus_qbi": total_deductions + qbi_deduction,
         "taxable_income": taxable_income,
         # Tax
         "total_tax": total_tax,

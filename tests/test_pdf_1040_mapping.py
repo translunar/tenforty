@@ -14,9 +14,10 @@ import pypdf
 
 from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
 from tenforty.filing.pdf import PdfFiller
-from tenforty.forms.f1040_spine import compute_spine
+from tenforty.forms import f8995
+from tenforty.forms.f1040_spine import compute_income_preamble, compute_spine
 from tenforty.mappings.pdf_1040 import Pdf1040
-from tenforty.models import Scenario, TaxReturnConfig, W2
+from tenforty.models import K1FanoutData, Scenario, TaxReturnConfig, W2
 from tenforty.params.federal import load as load_federal_params
 
 YEAR_CELLS = {
@@ -214,6 +215,245 @@ class TestPdf1040Line1zPlacement(unittest.TestCase):
                     f"{year}: line 1z (total_w2_income) is blank or wrong — "
                     "must equal line 1a for a wages-only scenario",
                 )
+
+
+class TestPdf1040Line14DeductionsPlusQbi(unittest.TestCase):
+    """1040 line 14 ("Add lines 12(c) and 13") must equal line 12(c) + line
+    13 (QBI), not just line 12(c).
+
+    Regression test for bug #4: pdf_1040.py mapped the spine's
+    `total_deductions` (line 12(c) ONLY — the spine computes taxable_income
+    as agi - total_deductions - qbi_deduction, so total_deductions excludes
+    QBI by construction) to the line-14 box in all 5 year blocks. Any
+    scenario with QBI > 0 therefore printed line 14 == line 12, silently
+    dropping the QBI deduction and breaking the line-14/line-15 footing.
+
+    Uses a real K-1 QBI aggregate run through the actual forms.f8995.compute
+    (not a hand-typed qbi_deduction), mirroring the orchestrator's own
+    f8995 pre-pass (see orchestrator.py Step 7/8), so the expected QBI
+    value is independently produced by the engine, not asserted by fiat.
+    """
+
+    WAGES = 100_000
+    QBI_AMOUNT = 50_000  # K-1 qualified-business-income aggregate
+
+    @staticmethod
+    def _line12_key(year: int) -> str:
+        # 2021: line 12(c) = 12a (std/itemized) + 12b (charitable) is the
+        # spine's `total_deductions`. 2022-2025: the single line 12 is the
+        # deduction actually applied -> `applied_deduction`. Both scenarios
+        # in this test have charitable_nonitemizer == 0, so the two keys
+        # carry the same number regardless of which one the year uses.
+        return "total_deductions" if year == 2021 else "applied_deduction"
+
+    def _compute_with_qbi(self, year: int) -> tuple[dict, float]:
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=year,
+                filing_status="single",
+                birthdate="1990-06-15",
+                state="CA",
+                **scope_out_attestation_defaults(),
+            ),
+            w2s=[
+                W2(
+                    employer="Acme Corp",
+                    wages=self.WAGES,
+                    federal_tax_withheld=0,
+                    ss_wages=self.WAGES,
+                    ss_tax_withheld=0,
+                    medicare_wages=self.WAGES,
+                    medicare_tax_withheld=0,
+                ),
+            ],
+        )
+        params = load_federal_params(year)
+
+        # Mirror the orchestrator's f8995 pre-pass: the shared income
+        # preamble supplies the pre-QBI taxable-income stand-in (Sch A is
+        # not modeled here, so the standard deduction is used), then the
+        # REAL f8995.compute runs against a K-1 fanout carrying nonzero QBI
+        # -- the resulting qbi_deduction is engine-computed, not hand-typed.
+        preamble = compute_income_preamble(scenario, params, {})
+        fanout = K1FanoutData(
+            sch_b_interest_additions=(),
+            sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(),
+            sch_d_long_term_additions=(),
+            qbi_aggregate=self.QBI_AMOUNT,
+            qualified_dividends_aggregate=0.0,
+            passive_activities=(),
+        )
+        f8995_results = f8995.compute(
+            scenario,
+            upstream={
+                "k1_fanout": fanout,
+                "f1040": {
+                    "taxable_income_before_qbi_deduction":
+                        preamble.taxable_income_before_qbi_std,
+                    "net_capital_gain": preamble.net_capital_gain,
+                },
+            },
+        )
+        qbi_deduction = f8995_results["f8995_line_15_qbi_deduction"]
+        self.assertGreater(
+            qbi_deduction, 0,
+            "QBI scenario setup must produce a nonzero QBI deduction for "
+            "this test to actually exercise the bug-#4 code path",
+        )
+
+        results = compute_spine(
+            scenario, params,
+            {"sch_a": {"sch_a_line_17_total": 0}, "f8995": f8995_results},
+        )
+        return results, qbi_deduction
+
+    def _fill_and_read(self, year: int, results: dict) -> dict[str, str | None]:
+        mapping = Pdf1040.get_mapping(year)
+        template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040.pdf"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "out.pdf"
+            PdfFiller().fill(template, out, mapping, values=results)
+            reader = pypdf.PdfReader(out)
+            fields = reader.get_fields()
+            return {
+                "line11": fields[mapping["agi"]].get("/V"),
+                "line12": fields[mapping[self._line12_key(year)]].get("/V"),
+                "line13": fields[mapping["qbi_deduction"]].get("/V"),
+                "line14": fields[mapping["deductions_plus_qbi"]].get("/V"),
+                "line15": fields[mapping["taxable_income"]].get("/V"),
+            }
+
+    def test_line14_equals_12c_plus_13_and_footing_holds(self):
+        for year in (2021, 2025):
+            with self.subTest(year=year):
+                results, qbi_deduction = self._compute_with_qbi(year)
+                boxes = self._fill_and_read(year, results)
+
+                line11 = int(boxes["line11"])
+                line12 = int(boxes["line12"])
+                line14 = int(boxes["line14"])
+                line15 = int(boxes["line15"])
+
+                # PRE-EXISTING, SEPARATE BUG (out of scope for this task):
+                # line 13's PDF box (pdf_1040.py's "qbi_deduction" key) is
+                # NEVER populated by either compute path. The native spine
+                # emits the QBI amount under "_qbi_deduction_1040"
+                # (forms/f1040_spine.py), and the oracle shim
+                # (forms/f1040.py) pops that same key for an internal
+                # derivation (taxable_income_before_qbi_deduction) without
+                # ever re-emitting a plain "qbi_deduction" key. So line 13
+                # has always rendered blank on every emitted 1040 with
+                # QBI > 0, in BOTH pipelines -- a distinct, more severe bug
+                # than bug #4 (line 13 is not just wrong, it's blank).
+                # Reported separately; NOT fixed here (only
+                # "deductions_plus_qbi" is an authorized spine change for
+                # this task). Locking in the current behavior below so a
+                # future fix to that key is forced to update this test.
+                self.assertIsNone(
+                    boxes["line13"],
+                    "line 13 (qbi_deduction) box unexpectedly has a value -- "
+                    "if the qbi_deduction/_qbi_deduction_1040 key-name bug "
+                    "has been fixed, read line 13 back from the PDF instead "
+                    "of using the independently-computed qbi_deduction below.",
+                )
+
+                # Independently derived from the read-back boxes -- this is
+                # the bug-#4 assertion class: line 14 = 12(c) + 13. Uses the
+                # real forms.f8995.compute-derived qbi_deduction (line 13's
+                # true value) rather than the PDF box, since that box is
+                # unpopulated by the separate bug noted above.
+                self.assertGreater(qbi_deduction, 0)
+                line13 = int(qbi_deduction)
+                self.assertEqual(
+                    line14, line12 + line13,
+                    f"{year}: line 14 must equal line 12 + line 13 "
+                    f"({line12} + {line13} != {line14}) -- pre-fix this "
+                    "failed because line 14 was wired to `total_deductions` "
+                    "(line 12(c) only, no QBI)",
+                )
+                # Internal consistency: line 15 = line 11 - line 14.
+                self.assertEqual(
+                    line15, line11 - line14,
+                    f"{year}: line 15 must equal line 11 - line 14 "
+                    f"({line11} - {line14} != {line15})",
+                )
+
+
+class TestPdf1040_2021Line12bCharitablePlacement(unittest.TestCase):
+    """2021 line 12b (above-the-line cash-charitable deduction for
+    non-itemizers, f1_45) and line 12c (12a + 12b, f1_46) placement.
+
+    Regression test for the "noted, not mapped" line 12b and the wholly
+    unmapped line 12c. QBI == 0 throughout, so line 14 == line 12c.
+    """
+
+    WAGES = 60_000
+
+    def _compute(self, charitable: float) -> dict:
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=2021,
+                filing_status="single",
+                birthdate="1990-06-15",
+                state="CA",
+                charitable_cash_nonitemizer=charitable,
+                **scope_out_attestation_defaults(),
+            ),
+            w2s=[
+                W2(
+                    employer="Acme Corp",
+                    wages=self.WAGES,
+                    federal_tax_withheld=0,
+                    ss_wages=self.WAGES,
+                    ss_tax_withheld=0,
+                    medicare_wages=self.WAGES,
+                    medicare_tax_withheld=0,
+                ),
+            ],
+        )
+        params = load_federal_params(2021)
+        return compute_spine(
+            scenario, params, {"sch_a": {"sch_a_line_17_total": 0}},
+        )
+
+    def _fill_and_read(self, results: dict) -> dict[str, str | None]:
+        mapping = Pdf1040.get_mapping(2021)
+        template = REPO_ROOT / "pdfs" / "federal" / "2021" / "f1040.pdf"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "out.pdf"
+            PdfFiller().fill(template, out, mapping, values=results)
+            reader = pypdf.PdfReader(out)
+            fields = reader.get_fields()
+            return {
+                "12b": fields[mapping["charitable_nonitemizer"]].get("/V"),
+                "12c": fields[mapping["total_deductions"]].get("/V"),
+                "14": fields[mapping["deductions_plus_qbi"]].get("/V"),
+            }
+
+    def test_charitable_250_lands_in_12b_and_12c(self):
+        std_2021_single = load_federal_params(2021).standard_deduction["single"]
+        results = self._compute(charitable=250)
+        boxes = self._fill_and_read(results)
+
+        self.assertEqual(boxes["12b"], "250")
+        self.assertEqual(boxes["12c"], str(std_2021_single + 250))
+        # QBI == 0 here -> line 14 == line 12c exactly.
+        self.assertEqual(boxes["14"], str(std_2021_single + 250))
+
+    def test_zero_charitable_12b_renders_present_zero(self):
+        # `charitable_nonitemizer` is unconditionally emitted by the spine
+        # (0 when the scenario doesn't use the 2021 line-12b channel) --
+        # it is never omitted or set to None for the zero case. Per the
+        # PdfFiller convention already codified in this file (see
+        # TestPdf1040EstimatedTaxPaymentsMapping.test_readback_zero_case_
+        # renders_zero above: "a present 0 renders '0'... 'absent -> blank'
+        # means ONLY the case where the results dict LACKS the key
+        # entirely"), a present-but-zero charitable_nonitemizer renders "0",
+        # not blank. This locks that real, observed behavior.
+        results = self._compute(charitable=0)
+        boxes = self._fill_and_read(results)
+        self.assertEqual(boxes["12b"], "0")
 
 
 if __name__ == "__main__":
