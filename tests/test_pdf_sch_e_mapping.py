@@ -35,8 +35,7 @@ _REQUIRED_PART_II_SCALARS = (
     # Per-row fields for all four K-1 rows
     "sch_e_part_ii_row_a_name",
     "sch_e_part_ii_row_a_ein",
-    "sch_e_part_ii_row_a_entity_type_s_corp",
-    "sch_e_part_ii_row_a_entity_type_partnership",
+    "sch_e_part_ii_row_a_entity_code",
     "sch_e_part_ii_row_a_passive_income",
     "sch_e_part_ii_row_a_passive_loss",
     "sch_e_part_ii_row_a_nonpassive_income",
@@ -152,12 +151,10 @@ class TestPdfSchERowsSnapshot(unittest.TestCase):
             # Row A
             "sch_e_part_ii_row_a_name":
                 "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].f2_3[0]",
-            "sch_e_part_ii_row_a_ein":
+            "sch_e_part_ii_row_a_entity_code":
                 "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].f2_4[0]",
-            "sch_e_part_ii_row_a_entity_type_partnership":
-                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].c2_2[0]",
-            "sch_e_part_ii_row_a_entity_type_s_corp":
-                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].c2_3[0]",
+            "sch_e_part_ii_row_a_ein":
+                "topmostSubform[0].Page2[0].Table_Line28a-f[0].RowA[0].f2_5[0]",
             "sch_e_part_ii_row_a_passive_loss":
                 "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_15[0]",
             "sch_e_part_ii_row_a_passive_income":
@@ -242,6 +239,150 @@ class PdfSchE2021EmitRoundTripTests(unittest.TestCase):
             "EIN-COL-D",
             "row-A EIN must land in f2_5 (Line 28 col (d))",
         )
+
+
+def _resolve_row_a_field_paths(template_path: Path) -> dict[str, str]:
+    """Independently resolve the col-(b)/(c)/(d)/(e) PDF field paths for
+    Schedule E Line 28 row A directly from the TEMPLATE's own AcroForm
+    geometry (x-position) — NOT from the PdfSchE mapping under test. This
+    is what lets the placement test below actually catch a mapping bug
+    instead of asserting against itself (a tautology).
+
+    IRS Schedule E Line 28 column order (confirmed via `pdftotext -layout`
+    against pdfs/federal/2025/f1040se.pdf, page 2): (a) Name, (b) Enter P
+    for partnership; S for S corporation, (c) Check if foreign partnership,
+    (d) Employer identification number, (e) Check if basis computation is
+    required, (f) Check if any amount is not at risk. On every year's
+    template (2021-2025) the row's widgets sort left-to-right into exactly
+    that column order, independent of the underlying field-name numbering
+    (which differs by year / zero-padding), so a left-to-right sort of the
+    row's own text/checkbox widgets recovers column identity without
+    trusting any tenforty mapping.
+    """
+    reader = PdfReader(str(template_path))
+    page = reader.pages[1]  # Page 2 (0-indexed) on every year 2021-2025
+    texts: list[tuple[float, str]] = []
+    checks: list[tuple[float, str]] = []
+    for annot in page.get("/Annots") or []:
+        obj = annot.get_object()
+        chain = []
+        cur = obj
+        while cur is not None:
+            t = cur.get("/T")
+            if t:
+                chain.append(str(t))
+            parent = cur.get("/Parent")
+            cur = parent.get_object() if parent is not None else None
+        fq = ".".join(reversed(chain))
+        # "Table_Line28a" matches both the 2021 "...28a-e[0]" and the
+        # 2022-2025 "...28a-f[0]" containers, while excluding the separate
+        # "Table_Line28g-k[0]" (passive/nonpassive columns) sub-table, which
+        # also has a "RowA[0]".
+        if "Table_Line28a" not in fq or "RowA[0]" not in fq:
+            continue
+        rect = obj.get("/Rect")
+        if rect is None:
+            continue
+        x0 = float(rect[0])
+        ft = obj.get("/FT")
+        if ft == "/Tx":
+            texts.append((x0, fq))
+        elif ft == "/Btn":
+            checks.append((x0, fq))
+    texts.sort(key=lambda p: p[0])
+    checks.sort(key=lambda p: p[0])
+    assert len(texts) == 3, f"expected 3 text fields for row A, got {texts}"
+    assert len(checks) == 3, f"expected 3 checkboxes for row A, got {checks}"
+    return {
+        "name": texts[0][1],              # col (a)
+        "entity_code": texts[1][1],       # col (b) — "Enter P/S"
+        "ein": texts[2][1],               # col (d)
+        "foreign_checkbox": checks[0][1],  # col (c) — not modeled
+        "basis_checkbox": checks[1][1],    # col (e) — not modeled
+        "at_risk_checkbox": checks[2][1],  # col (f) — not modeled
+    }
+
+
+class PdfSchELine28PlacementTests(unittest.TestCase):
+    """Fill each year's real Schedule E template via PdfFiller with a K-1
+    row (entity_code="S", a synthetic EIN sentinel), read the cells back
+    with pypdf, and confirm they land in the correct real column — resolved
+    independently per-year from the template itself (see
+    _resolve_row_a_field_paths), not from the mapping under test.
+
+    Guards the merged-2022-2025 bug (EIN routed to col (b), the two
+    unmodeled checkboxes wrongly filled from the entity-type booleans) and
+    its 2021 counterpart (col (b) left entirely unmapped) across every
+    supported year."""
+
+    # Non-EIN-shaped sentinel so the personal-data denylist stays clean (see
+    # the same idiom in PdfSchE2021EmitRoundTripTests above); the col-(d)
+    # cell is a free-text field, so any token round-trips.
+    _SENTINEL_EIN = "EIN-SENTINEL-COL-D"
+
+    _YEARS = (2021, 2022, 2023, 2024, 2025)
+
+    def _check_year(self, year: int) -> None:
+        template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+        if not template.exists():
+            self.skipTest(f"Sch E {year} template not available at {template}")
+        paths = _resolve_row_a_field_paths(template)
+        scalars = PdfSchE.get_mapping(year)["scalars"]
+        values = {
+            "sch_e_part_ii_row_a_name": "Placement Test Entity",
+            "sch_e_part_ii_row_a_entity_code": "S",
+            "sch_e_part_ii_row_a_ein": self._SENTINEL_EIN,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / f"f1040se_{year}_placement.pdf"
+            PdfFiller().fill(
+                template_path=template,
+                output_path=out,
+                field_mapping=scalars,
+                values=values,
+            )
+            read = {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+
+        self.assertEqual(
+            read.get(paths["entity_code"]), "S",
+            f"{year}: 'S' must land in col (b) 'Enter P/S' field "
+            f"{paths['entity_code']!r}, got {read.get(paths['entity_code'])!r}",
+        )
+        self.assertEqual(
+            read.get(paths["ein"]), self._SENTINEL_EIN,
+            f"{year}: EIN sentinel must land in col (d) EIN field "
+            f"{paths['ein']!r}, got {read.get(paths['ein'])!r}",
+        )
+        self.assertIn(
+            read.get(paths["foreign_checkbox"]), (None, "", "/Off"),
+            f"{year}: col (c) foreign-partnership checkbox "
+            f"{paths['foreign_checkbox']!r} must stay unfilled (not modeled), "
+            f"got {read.get(paths['foreign_checkbox'])!r}",
+        )
+        self.assertIn(
+            read.get(paths["basis_checkbox"]), (None, "", "/Off"),
+            f"{year}: col (e) basis-required checkbox "
+            f"{paths['basis_checkbox']!r} must stay unfilled (not modeled), "
+            f"got {read.get(paths['basis_checkbox'])!r}",
+        )
+
+    def test_2021(self):
+        self._check_year(2021)
+
+    def test_2022(self):
+        self._check_year(2022)
+
+    def test_2023(self):
+        self._check_year(2023)
+
+    def test_2024(self):
+        self._check_year(2024)
+
+    def test_2025(self):
+        self._check_year(2025)
 
 
 if __name__ == "__main__":
