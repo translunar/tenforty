@@ -9,10 +9,12 @@ field path resolves to a real field in `pdfs/california/2025/f540.pdf`.
 """
 
 from pathlib import Path
+import tempfile
 import unittest
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings import pdf_f540
 from tenforty.mappings.pdf_f540 import _FILING_STATUS_RB_STATES
 from tenforty.models import FilingStatus
@@ -52,7 +54,8 @@ class PdfF540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_f540.PdfF540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2026):
+        # 2021 now resolves (direct-map-only emit pack); 2022 remains a gap.
+        for year in (2022, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_f540.PdfF540.get_mapping(year)
@@ -223,3 +226,83 @@ class PdfF540MappingTests2023(unittest.TestCase):
         self.assertEqual(mapping["f540_estimated_tax_penalty"], "5006")    # line 113
         self.assertIn("4027", derivations)  # line 111 (owe)
         self.assertIn("5008", derivations)  # line 115 (refund)
+
+
+class PdfF540FilledEmit2021Tests(unittest.TestCase):
+    """Filled-emit round-trip for the TY2021 Form 540 DIRECT-MAP-ONLY pack.
+
+    2021 is a FOURTH FTB field-naming scheme: mixed bare-numeric AcroForm
+    names ('2009'/'2017'/'3008') plus a few 'Text Field N' widgets (residence
+    county = 'Text Field 439'). Sequence numbers do NOT line up with 2023 —
+    2021's exemption credit is box 2017 (2023's box 2031) and its renter
+    credit is box 2031 (2023's exemption credit). This fills the REAL 2021
+    template via PdfFiller().fill(...) with distinctive values and reads each
+    back at its mapped path via pypdf — the load-bearing check is that
+    f540_exemption_credit lands in box 2017 (line 32 "Exemption credits"
+    placement regression), NOT a 2023-style box.
+
+    The pack wires no derivations (no verified 2021 form-internal / sign-split
+    / filing-status cell paths), so only the direct-mapped cells are asserted.
+    """
+
+    @staticmethod
+    def _read_v(pdf_path, field_path):
+        """Read one AcroForm field's /V, normalizing thousands-comma / $."""
+        fields = PdfReader(str(pdf_path)).get_fields() or {}
+        got = fields[field_path].get("/V") or ""
+        return str(got).replace(",", "").replace("$", "").strip()
+
+    def test_2021_filled_emit_round_trip(self):
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2021" / "f540.pdf"
+
+        mapping = pdf_f540.PdfF540.get_mapping(2021)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2021)
+        derivations = pdf_f540.PdfF540.get_derivations(2021)
+        checkbox_states = pdf_f540.PdfF540.get_checkbox_states(2021)
+
+        # Distinctive, non-round values (no SSN/EIN-shaped sentinels).
+        values = {
+            "f540_taxpayer_first_name": "Marisol",
+            "f540_taxpayer_last_name": "Vandermeer",
+            "f540_ca_agi": 84321,
+            "f540_taxable_income": 71234,
+            "f540_ca_tax": 3456,
+            "f540_exemption_credit": 129,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 2750,
+            "f540_use_tax": 41,
+            "f540_voluntary_contributions": 27,
+            "f540_estimated_tax_penalty": 18,
+        }
+
+        # Expected {mapped PDF field path: rendered read-back string}.
+        expected = {
+            mapping["f540_taxpayer_first_name"]: "Marisol",
+            mapping["f540_taxpayer_last_name"]: "Vandermeer",
+            mapping["f540_ca_agi"]: "84321",
+            mapping["f540_taxable_income"]: "71234",
+            mapping["f540_ca_tax"]: "3456",
+            # Line-32 placement regression: exemption credit MUST land in 2017.
+            mapping["f540_exemption_credit"]: "129",
+            mapping["f540_renter_credit"]: "60",
+            mapping["f540_estimated_payments"]: "2750",   # payment line
+            mapping["f540_use_tax"]: "41",
+            mapping["f540_voluntary_contributions"]: "27",
+            mapping["f540_estimated_tax_penalty"]: "18",
+        }
+
+        # Pin the load-bearing placement explicitly (2021 namespace, not 2023).
+        self.assertEqual(mapping["f540_exemption_credit"], "2017")
+
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "f540_2021_filled.pdf"
+            PdfFiller().fill(
+                template, out, mapping, values,
+                aggregations=aggregations,
+                derivations=derivations,
+                checkbox_states=checkbox_states,
+            )
+            for field_path, want in expected.items():
+                with self.subTest(field=field_path):
+                    self.assertEqual(self._read_v(out, field_path), want)

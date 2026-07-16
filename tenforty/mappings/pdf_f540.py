@@ -610,19 +610,104 @@ _SUPPRESSED_2023: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2023: dict[str, str] = {}
 
 
-PdfF540._MAPPINGS = {2023: _MAPPING_2023, 2024: _MAPPING_2024, 2025: _MAPPING_2025}
+# ── 2021 registries ─────────────────────────────────────────────────────────
+#
+# FOURTH FTB field-naming scheme: MIXED AcroForm names — mostly bare numeric
+# ("2009"/"2017"/"3008") plus a few "Text Field N" widgets (residence county =
+# "Text Field 439"). That is the CA 2021 namespace; the sequence numbers do NOT
+# line up with 2023's (e.g. 2021's exemption credit is box 2017 and its renter
+# credit is box 2031, whereas box 2031 is the exemption credit on 2023).
+#
+# This is a DIRECT-MAP-ONLY pack: the air-gapped fresh probe verified the 25
+# direct result_key → cell placements below. No form-internal arithmetic cells
+# (lines 33/47/48/64), no sign-split refund/owe cells, and no filing-status
+# widgets are wired for 2021 — those cell paths were not re-derived here (the
+# 2021 namespace differs from 2023 and re-deriving is out of scope). Hence
+# _DERIVATIONS_2021 is empty and the four compute keys that would otherwise feed
+# derivations are owned in _SUPPRESSED_2021.
+
+_MAPPING_2021: dict[str, str] = {
+    # 2021 fresh air-gapped probe, controller-reconciled against the 2021 template (CA namespace differs from 2023).
+    # Page 1 — Taxpayer / spouse / address ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_first_name":      "1003",
+    "f540_taxpayer_middle_initial":  "1004",
+    "f540_taxpayer_last_name":       "1005",
+    "f540_taxpayer_suffix":          "1006",
+    "f540_taxpayer_ssn":             "1007",
+    "f540_spouse_first_name":        "1008",
+    "f540_spouse_last_name":         "1010",
+    "f540_spouse_ssn":               "1012",
+    "f540_address_street":           "1015",
+    "f540_address_city":             "1018",
+    "f540_address_state":            "1019",
+    "f540_address_zip":              "1020",
+    "f540_residence_county":         "Text Field 439",
+    # Page 2 — Taxable income + tax
+    "f540_ca_agi":                   "2009",
+    "f540_deduction":                "2010",
+    "f540_taxable_income":           "2011",
+    "f540_ca_tax":                   "2016",
+    # Line 32 "Exemption credits" (the APPLIED credit). The compute emits the applied exemption credit and REFUSES above the AGI phaseout threshold (phaseout not implemented), so below that threshold line 11 == line 32 by construction. Line 11 "Exemption amount" (box 2003) is intentionally UNMAPPED — no compute key feeds it; populating both boxes from one key is a ledgered cross-year CA follow-up (federal-1z-family form-completeness hygiene), not this pack.
+    "f540_exemption_credit":         "2017",
+    # Page 3 — Credits + payments + use tax
+    "f540_renter_credit":            "2031",
+    "f540_estimated_payments":       "3008",
+    "f540_use_tax":                  "3014",
+    # Page 4 — Voluntary contributions
+    "f540_voluntary_contributions":  "4024",
+    # Page 5 — Estimated tax penalty
+    "f540_estimated_tax_penalty":    "5007",
+    # Page 6 — Sign block ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_email":           "5019",
+    "f540_taxpayer_phone":           "5020",
+}
+
+
+_AGGREGATIONS_2021: dict[str, tuple[str, ...]] = {}
+
+
+# Direct-map-only pack: no verified form-internal / sign-split / filing-status
+# cell paths for the 2021 namespace, so no derivations are wired.
+_DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {}
+
+
+# Compute keys with no direct PDF cell on the 2021 direct-map-only pack. In
+# 2023-2025 these are consumed by derivations; the 2021 pack wires no
+# derivations, so they are simply unmapped (owned here for the partition
+# invariant).
+_SUPPRESSED_2021: frozenset[str] = frozenset({
+    "f540_total_liability",
+    "f540_filing_status",
+    "f540_ptet_credit",
+    "f540_total_credits",
+})
+
+
+_CHECKBOX_STATES_2021: dict[str, str] = {}
+
+
+PdfF540._MAPPINGS = {
+    2021: _MAPPING_2021,
+    2023: _MAPPING_2023,
+    2024: _MAPPING_2024,
+    2025: _MAPPING_2025,
+}
 
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
+    2021: _AGGREGATIONS_2021,
     2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
+    2021: _DERIVATIONS_2021,
     2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2021: _SUPPRESSED_2021,
     2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: _CHECKBOX_STATES_2021,
     2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }
