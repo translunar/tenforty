@@ -37,7 +37,11 @@ from tenforty.orchestrator import (
     _FEDERAL_COMPUTE_ONLY_NOTE,
     ReturnOrchestrator,
 )
-from tests.fixtures.spine_battery import build_canonical_wage_investment_rental
+from tenforty.params.federal import load as load_federal_params
+from tests.fixtures.spine_battery import (
+    build_canonical_wage_investment_rental,
+    build_charitable_nonitemizer_2021,
+)
 from tests.helpers import CA_SCOPE_OUT_FIELDS
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -425,6 +429,85 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
         self.assertTrue((out / "schedule_x_2022.pdf").exists())
         self.assertFalse((out / "f540_amended_2022.pdf").exists())
+
+    def test_2021_filed_12b_reproduced_in_column_c(self):
+        """2021 line-12b non-itemizer charitable ($250) survives amendment:
+        a null self-amendment of ``build_charitable_nonitemizer_2021(2021)``
+        carries the 12b through BOTH Column A (as filed) and Column C
+        (corrected) via the EXISTING grid — NO 1040-X line change is needed.
+        The spine folds ``charitable_nonitemizer`` into ``total_deductions``
+        (1040-X line 2), which reduces ``taxable_income`` (1040-X line 5).
+
+        2021 is FEDERAL_COMPUTE_ONLY (no PDF attachments render), so this
+        test drives ``form_f1040x.assemble`` directly rather than the full
+        ``run_amendment_packet`` — the assembler-level assertion is exactly
+        what "Column C reproduces the filed 12b" requires; the surrounding
+        compute-only packet plumbing is already covered by
+        ``test_federal_compute_only_year_note`` above.
+
+        Why this scenario SURVIVES the load guards (tenforty/scenario.py):
+        it is SINGLE filing status + STANDARD deduction (no itemized_
+        deductions block) + $250 <= the 2021 single-filer $300 cap — the
+        ONLY combination that passes all three 12b guards: the non-single
+        scope-out (`filing_status is not FilingStatus.SINGLE` -> refuse),
+        the over-cap guard (`charitable_cash_nonitemizer > cap` -> refuse),
+        and the conservative itemizer guard in `_validate_charitable_itemizer`
+        (nonzero 12b + a supplied `itemized_deductions` block -> refuse). Any
+        other combination (married, itemized, or > $300) is refused at LOAD,
+        before an amendment could even be attempted.
+
+        Hand-derived expected values (team-lead pin — NOT read back from the
+        assembler's own output):
+          Scenario: single filer, one W-2, wages = $60,000, no other income
+          or adjustments -> AGI = $60,000 (wages is the only total-income
+          component and there are no above-the-line adjustments in this
+          scenario, so AGI = total_income = wages verbatim).
+          standard deduction 2021 single = load_federal_params(2021)
+              .standard_deduction["single"] = $12,550.
+          12b (charitable_nonitemizer) = $250 (under the $300 single cap).
+          => line-2 total_deductions (Column C) = 12,550 + 250 = $12,800.
+          => line-5 taxable income (Column C) = 60,000 - 12,800 = $47,200
+             (no QBI deduction: the scenario carries no business income, so
+             the Form 8995 component of the taxable-income line is 0).
+        Because this is a null self-amendment (corrected == filed), the SAME
+        hand-derived figures also reproduce on Column A (line2_a/line5_a) and
+        Column B nets to zero — asserted below as well.
+        """
+        original = build_charitable_nonitemizer_2021(2021)
+        amended = original  # null self-amendment: 12b rides through unchanged
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        filed = yaml.safe_load(filed_path.read_text())
+        corrected_fed = self.orch.compute_federal(amended)
+
+        case = AmendmentCase(
+            year=2021,
+            explanation="No changes; confirms 2021 line-12b non-itemizer "
+                        "charitable deduction carries through the amendment.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = form_f1040x.assemble(filed, corrected_fed, case)
+
+        agi = 60_000.0
+        standard_deduction_2021_single = float(
+            load_federal_params(2021).standard_deduction["single"])
+        self.assertEqual(standard_deduction_2021_single, 12_550.0)
+        charitable_12b = 250.0
+        expected_total_deductions = standard_deduction_2021_single + charitable_12b
+        expected_taxable_income = agi - expected_total_deductions
+
+        # Column C (corrected) reproduces the hand-derived figures.
+        self.assertEqual(out["f1040x_line2_c"], expected_total_deductions)
+        self.assertEqual(out["f1040x_line5_c"], expected_taxable_income)
+
+        # Column A (as filed) carries the SAME 12b-inclusive figures — the
+        # filed return already claimed 12b, so Column A must show it too.
+        self.assertEqual(out["f1040x_line2_a"], expected_total_deductions)
+        self.assertEqual(out["f1040x_line5_a"], expected_taxable_income)
+
+        # Column B (net change) is zero — a null self-amendment changes
+        # nothing, including the 12b figure.
+        self.assertEqual(out["f1040x_line2_b"], 0)
+        self.assertEqual(out["f1040x_line5_b"], 0)
 
 
 if __name__ == "__main__":

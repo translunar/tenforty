@@ -91,6 +91,9 @@ PARAMS = FederalParams(
     # deduct only the part of your medical and dental expenses that exceeds 7.5%
     # of the amount of your adjusted gross income." IRC §213(a), permanent 7.5%.
     medical_agi_floor_pct=0.075,
+    # CARES/CAA above-the-line non-itemizer charitable deduction (Form 1040
+    # line 12b) was a 2021-only provision, not extended to 2022.
+    nonitemizer_charitable_cap=None,
     # Prior-year SALT cap: a 2022 return looks back to 2021 (also flat $10k/$5k
     # pre-OBBBA, IRC §164(b)(6) unchanged since TCJA for 2018-2025).
     prior_year_salt_cap={

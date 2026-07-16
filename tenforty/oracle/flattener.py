@@ -76,6 +76,12 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
     if config.estimated_tax_payments:
         flat["estimated_tax_payments"] = config.estimated_tax_payments
 
+    # 2021 line 12b — emit under the spine's result-key name so workbook parity
+    # compares key-to-key. Nonzero-only (existing scenarios stay byte-identical);
+    # non-2021 nonzero is impossible — refused at load.
+    if config.charitable_cash_nonitemizer:
+        flat["charitable_nonitemizer"] = config.charitable_cash_nonitemizer
+
 
 def _flatten_w2s(scenario: Scenario, flat: dict[str, object]) -> None:
     for i, w2 in enumerate(scenario.w2s, start=1):
