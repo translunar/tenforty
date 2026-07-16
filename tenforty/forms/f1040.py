@@ -75,6 +75,19 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
         if translated.get(key) is None:
             translated[key] = 0
 
+    # f8959_tax_total (Additional Medicare Tax, Sch 2 Part II line 11): the
+    # workbook leaves cell F8959_Tax blank precisely when Additional Medicare
+    # Tax does not apply, and the engine reads a blank cell as None; the native
+    # spine always emits a number (f1040_spine.py; f8959_line_18 defaults to 0).
+    # Normalize None -> 0 for parity so Sch 2 consumers (form_f1040x line 10)
+    # get a number, not None. This mirrors the PTC money-key normalization in
+    # orchestrator._compute_1040_via_workbook (f8962_net_ptc / f8962_repayment,
+    # ~orchestrator.py:773); it lives HERE instead of that workbook shim because
+    # f1040.compute is a native-testable pure dict transform. Scoped to this ONE
+    # key — blank provably means zero here — NOT a general blank-coercion.
+    if translated.get("f8959_tax_total") is None:
+        translated["f8959_tax_total"] = 0
+
     if "agi" in translated:
         translated["agi_page2"] = translated["agi"]
 
@@ -89,7 +102,8 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # Derive taxable income before the QBI deduction (Form 8995 line 11).
     # There is no single named range for this value in the workbook; it is
     # computed here as taxable_income + the 1040-line-13 QBI deduction.
-    # The helper key _qbi_deduction_1040 is consumed and removed.
+    # The helper key _qbi_deduction_1040 is consumed, normalized, and
+    # re-emitted for key uniformity (below).
     qbi_deduction = translated.pop("_qbi_deduction_1040", None) or 0
     translated["taxable_income_before_qbi_deduction"] = (
         (translated.get("taxable_income") or 0) + qbi_deduction
@@ -102,6 +116,14 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     translated["deductions_plus_qbi"] = translated.get("total_deductions") or 0
     translated["total_deductions"] = translated["deductions_plus_qbi"] - qbi_deduction
     translated["qbi_deduction"] = qbi_deduction
+    # Re-emit _qbi_deduction_1040 (the oracle-facing name) with the NORMALIZED
+    # value so this path matches the native spine, which always emits it
+    # (f1040_spine.py). form_f1040x consumes it for 1040-X line 4a on BOTH
+    # paths; using .get()-instead-of-pop would instead leave the RAW workbook
+    # value — None when QBID_1040 is blank — diverging from the native 0.0
+    # (the same path-split Bug #6 fixed under a different key). Re-emit keeps
+    # the two paths uniform.
+    translated["_qbi_deduction_1040"] = qbi_deduction
 
     # Form 1040 line 12 — the deduction actually applied (std or itemized).
     # The workbook exposes the standard amount (standard_deduction) and the

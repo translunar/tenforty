@@ -770,6 +770,9 @@ class ReturnOrchestrator:
         # None -> 0 for parity. Scoped DELIBERATELY to the PTC money keys only:
         # any OTHER output going blank should surface loudly as None rather
         # than be silently zeroed.
+        # (Sibling scoped normalization: f8959_tax_total is normalized in
+        # forms/f1040.compute — a new scoped normalization should find both
+        # sites and choose its location deliberately.)
         for _ptc_key in ("f8962_net_ptc", "f8962_repayment"):
             if raw.get(_ptc_key) is None:
                 raw[_ptc_key] = 0
