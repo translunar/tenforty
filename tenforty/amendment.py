@@ -46,6 +46,18 @@ into one line:
     REQUIRED_FILED_KEYS member; absent means the filed return paid no
     estimated tax.
 
+  * CA SIDE (Schedule X, ``forms.schedule_x.assemble_ca``): CA withholding
+    (Form 540 line 71) is carried INSIDE ``f540_total_liability`` — the CA
+    filed-values file's ONE required key (see
+    ``forms.schedule_x.REQUIRED_CA_FILED_KEYS``) — not under a separate key.
+    Supply the true as-filed CA net (tax minus credits minus payments minus
+    withholding, already netted, matching what ``f540.compute`` would have
+    produced for the originally-filed return); there is no ``f540_withholding``
+    key consumed by the amendment assembler (that out-of-scope guard entry
+    was retired 2026-07-16 once the CA-withholding channel made withholding
+    reconcilable through ``f540_total_liability`` — see
+    ``forms.schedule_x`` module docstring, "CA WITHHOLDING IS IN-SCOPE").
+
 WHY THIS IS LOAD-BEARING: an unmodeled component hidden in a COMMENT (or
 silently merged into ``total_tax``) neither fires the assembler's out-of-scope
 guard NOR reaches Column A/C — so it would silently vanish from the amendment
