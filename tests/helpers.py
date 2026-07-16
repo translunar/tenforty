@@ -1,5 +1,6 @@
 """Shared test configuration and helpers."""
 
+import os
 import subprocess
 import unittest
 from pathlib import Path
@@ -51,6 +52,19 @@ def needs_libreoffice(obj):
 needs_pdf = unittest.skipUnless(
     F1040_PDF.exists(), "f1040 PDF not available at /tmp/f1040_2025.pdf",
 )
+
+
+def set_oracle_sanction(item) -> None:
+    """Set/clear the runtime soffice sanction env from an item's oracle marker.
+
+    Deterministic every test: oracle-marked -> set, unmarked -> cleared. Because it
+    clears on unmarked items, an oracle test followed by an unmarked test (test-order
+    randomization) leaves the sanction CLEARED — no stale leak.
+    """
+    if item.get_closest_marker("oracle") is not None:
+        os.environ["TENFORTY_ORACLE_SANCTIONED"] = "1"
+    else:
+        os.environ.pop("TENFORTY_ORACLE_SANCTIONED", None)
 
 
 # Test fixtures affirm three attestations as True because they match the

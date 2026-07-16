@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -21,6 +22,24 @@ def _resolve_named_range(defn: object) -> tuple[str, str]:
     sheet_name = sheet_name.strip("'")
     cell_addr = cell_addr.replace("$", "")
     return sheet_name, cell_addr
+
+
+def _assert_oracle_sanctioned() -> None:
+    """Fail loudly if soffice/LibreOffice is reached from a non-oracle-marked test.
+
+    Inert in production: PYTEST_CURRENT_TEST is unset outside pytest, so this never
+    fires and soffice runs normally. Under pytest, an oracle-marked test has its
+    sanction set by the conftest hookwrapper (see tests/conftest.py); an unmarked
+    test that routes here has no sanction -> RuntimeError. Guards the LAUNCH, so it
+    catches ANY route to soffice, orchestrator or otherwise.
+    """
+    current = os.environ.get("PYTEST_CURRENT_TEST")
+    if current and os.environ.get("TENFORTY_ORACLE_SANCTIONED") != "1":
+        raise RuntimeError(
+            f"soffice/LibreOffice was reached from a non-oracle-marked test "
+            f"({current}); decorate that test @needs_libreoffice (oracle-tier). "
+            f"See the tiering-leak remediation."
+        )
 
 
 class SpreadsheetEngine:
@@ -80,6 +99,7 @@ class SpreadsheetEngine:
         wb.save(workbook_path)
 
     def _recalculate(self, workbook_path: Path, work_dir: Path) -> Path:
+        _assert_oracle_sanctioned()
         output_dir = work_dir / "recalculated"
         output_dir.mkdir(exist_ok=True)
         expected_output = output_dir / workbook_path.name
