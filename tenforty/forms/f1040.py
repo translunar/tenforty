@@ -95,6 +95,14 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
         (translated.get("taxable_income") or 0) + qbi_deduction
     )
 
+    # Line 14 = "Add lines 12(c) and 13". The WORKBOOK's total_deductions is
+    # already 14-inclusive (= 12c + QBI), unlike the native spine's (12c only).
+    # Normalize to the native 12c-exclusive semantics so line 14, line 12c
+    # (2021), and 1040-X line 2 are all correct on the oracle path.
+    translated["deductions_plus_qbi"] = translated.get("total_deductions") or 0
+    translated["total_deductions"] = translated["deductions_plus_qbi"] - qbi_deduction
+    translated["qbi_deduction"] = qbi_deduction
+
     # Form 1040 line 12 — the deduction actually applied (std or itemized).
     # The workbook exposes the standard amount (standard_deduction) and the
     # itemized total (schedule_a_total) separately; the larger is what the
