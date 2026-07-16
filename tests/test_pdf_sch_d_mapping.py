@@ -1,5 +1,6 @@
 """Static structure tests for the Schedule D PDF field mapping."""
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -154,6 +155,114 @@ class PdfSchD2021EmitRoundTripTests(unittest.TestCase):
         for key, expected in values.items():
             with self.subTest(field=key):
                 self.assertEqual(read.get(scalars[key]), str(expected))
+
+
+def _page2_box_ordinal(field_path: str) -> int:
+    """Extract the trailing page-2 field index from a Sch D box path, e.g.
+    3 from ``...Page2[0].f2_03[0]`` (2024) or from ``...Page2[0].f2_3[0]``
+    (2025). Used to identify box *position* independent of field-name
+    padding scheme, and independent of which result key currently points
+    at it (so it works even while the swap bug is present)."""
+    m = re.search(r"f2_(\d+)\[0\]$", field_path)
+    if not m:
+        raise ValueError(f"cannot extract page-2 field ordinal from {field_path!r}")
+    return int(m.group(1))
+
+
+class PdfSchDMergedYearsPlacementTests(unittest.TestCase):
+    """Fill each merged-year (2022-2025) Schedule D template via PdfFiller
+    with distinctive sentinels, then read the cells back with pypdf.
+
+    Box identity (which physical box is the line-18/28%-rate box vs. the
+    line-19/unrecap box) is derived WITHOUT relying on the very key->box
+    mapping under test (which is exactly what's swapped for 2022-2025).
+    Instead:
+
+    1. The *set* of two candidate box paths for a year is taken from that
+       year's own mapping (the swap only cross-wires which key points to
+       which box in the pair — it does not change the pair itself).
+    2. Which member of the pair is the line-18 box vs. the line-19 box is
+       decided by ordinal position (lower page-2 field index = line 18,
+       appears first on the page; higher = line 19), using the SAME
+       ordinal parity established by the 2021 reference block (verified
+       there to be non-swapped) — never a hardcoded "f2_02"/"f2_03"
+       literal, since 2025 uses non-padded field names (f2_2/f2_3).
+    """
+
+    _TEMPLATES = {
+        2022: REPO_ROOT / "pdfs" / "federal" / "2022" / "f1040sd.pdf",
+        2023: REPO_ROOT / "pdfs" / "federal" / "2023" / "f1040sd.pdf",
+        2024: REPO_ROOT / "pdfs" / "federal" / "2024" / "f1040sd.pdf",
+        2025: REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040sd.pdf",
+    }
+
+    def _fill_and_read(self, year: int, values: dict) -> dict[str, str]:
+        scalars = PdfSchD.get_mapping(year)["scalars"]
+        template = self._TEMPLATES[year]
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / f"f1040sd_{year}.pdf"
+            PdfFiller().fill(
+                template_path=template,
+                output_path=out,
+                field_mapping=scalars,
+                values=values,
+            )
+            return {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+
+    def test_lines_18_19_placement_is_content_correct(self):
+        # Establish the ordinal parity from the 2021 reference block (the
+        # known-correct routing): is the unrecap box the lower- or
+        # higher-ordinal member of its pair?
+        ref_scalars = PdfSchD.get_mapping(2021)["scalars"]
+        ref_unrecap_ordinal = _page2_box_ordinal(
+            ref_scalars["sch_d_line_18_unrecap_1250"]
+        )
+        ref_rate_28_ordinal = _page2_box_ordinal(
+            ref_scalars["sch_d_line_19_28_rate_gain"]
+        )
+        self.assertNotEqual(ref_unrecap_ordinal, ref_rate_28_ordinal)
+        unrecap_is_lower_ordinal = ref_unrecap_ordinal < ref_rate_28_ordinal
+
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                if not self._TEMPLATES[year].exists():
+                    self.skipTest(
+                        f"Sch D template not available for {year}"
+                    )
+                scalars = PdfSchD.get_mapping(year)["scalars"]
+                # The *pair* of candidate boxes is swap-invariant even
+                # though which key currently targets which box is not.
+                pair = sorted(
+                    (
+                        scalars["sch_d_line_18_unrecap_1250"],
+                        scalars["sch_d_line_19_28_rate_gain"],
+                    ),
+                    key=_page2_box_ordinal,
+                )
+                lower_ordinal_box, higher_ordinal_box = pair
+                if unrecap_is_lower_ordinal:
+                    unrecap_box, rate_28_box = lower_ordinal_box, higher_ordinal_box
+                else:
+                    rate_28_box, unrecap_box = lower_ordinal_box, higher_ordinal_box
+
+                values = {
+                    "sch_d_line_18_unrecap_1250": 1111,
+                    "sch_d_line_19_28_rate_gain": 2222,
+                }
+                read = self._fill_and_read(year, values)
+                self.assertEqual(
+                    read.get(unrecap_box), "1111",
+                    f"{year}: unrecap-§1250 sentinel (1111) must land in "
+                    f"{unrecap_box!r} (the form's line-19/unrecap box)",
+                )
+                self.assertEqual(
+                    read.get(rate_28_box), "2222",
+                    f"{year}: 28%-rate sentinel (2222) must land in "
+                    f"{rate_28_box!r} (the form's line-18/28%-rate box)",
+                )
 
 
 if __name__ == "__main__":
