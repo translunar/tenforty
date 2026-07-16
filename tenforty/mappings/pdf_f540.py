@@ -808,8 +808,192 @@ _SUPPRESSED_2021: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2021: dict[str, str] = {}
 
 
+# ── 2022 registries ─────────────────────────────────────────────────────────
+#
+# Same bare-numeric FTB field-naming scheme as 2023 ('2023'/'3004'/'1036 CB').
+# The 2022 field tree is near-identical to 2023: the direct-map cells match 2023
+# box-for-box EXCEPT the sign-block email/phone (2022 boxes 5019/5020 vs 2023's
+# 6002/6003 — re-placed from the 2022 template's OWN /TU tooltips). The 25 direct
+# placements below come from the controller-reconciled air-gapped 2022 probe.
+#
+# The get_derivations surface (_DERIVATIONS_2022) is ADDITIVELY ported from
+# _DERIVATIONS_2023: 22 form-internal computed cells (15 line-total / refund-owe
+# text cells + 2 line-31 tax-source checkboxes + 5 filing-status checkboxes).
+# Each target box was RE-PLACED from the 2022 template's OWN /TU tooltips + probe
+# render, and each composition RE-VERIFIED against the 2022 printed form. Result:
+# every 2022 derivation box carries the SAME sequence number as 2023 and every
+# formula matches the 2023 composition. IMPORTANTLY, 2022 does NOT have the
+# 2021-only structural divergence: box 3010's /TU reads "Line 64. Add line 48,
+# line 61, line 62, and line 63. This is your total tax." — so 2022 total tax is
+# line 64 == `_line_64` (NO Excess-APAS line-64 insertion / line-65 shift, and
+# NO `_total_tax_2021` helper). Lines 97 (3027) and 100 (4005) reference line 64,
+# matching 2023. All seven checkbox ON-states are /Yes per each box's own
+# /_States_ (['/Yes', '/Off']). The four compute keys consumed by these
+# derivations are owned in _SUPPRESSED_2022 for the partition invariant.
+
+_MAPPING_2022: dict[str, str] = {
+    # 2022 controller-reconciled air-gapped probe (CA bare-numeric namespace,
+    # matches 2023 except sign-block email/phone).
+    # Page 1 — Taxpayer / spouse / address ([PLANNED]: orchestrator-supplied)
+    "f540_taxpayer_first_name":      "1003",
+    "f540_taxpayer_middle_initial":  "1004",
+    "f540_taxpayer_last_name":       "1005",
+    "f540_taxpayer_suffix":          "1006",
+    "f540_taxpayer_ssn":             "1007",
+    "f540_spouse_first_name":        "1008",
+    "f540_spouse_last_name":         "1010",
+    "f540_spouse_ssn":               "1012",
+    "f540_address_street":           "1015",
+    "f540_address_city":             "1018",
+    "f540_address_state":            "1019",
+    "f540_address_zip":              "1020",
+    "f540_residence_county":         "1028",
+    # Page 2 — Taxable income + tax
+    "f540_ca_agi":                   "2023",  # line 17
+    "f540_deduction":                "2024",  # line 18
+    "f540_taxable_income":           "2025",  # line 19
+    "f540_ca_tax":                   "2030",  # line 31
+    # Line 32 "Exemption credits" (box 2031, the APPLIED credit): compute emits
+    # the applied exemption credit and refuses above the AGI phaseout threshold,
+    # so below it line 11 == line 32 by construction. Line 11 "Exemption amount"
+    # (box 2017) is intentionally UNMAPPED — no compute key feeds it; populating
+    # both boxes from one key is a ledgered cross-year CA follow-up, not this pack.
+    "f540_exemption_credit":         "2031",  # line 32 (applied credit)
+    # Page 3 — Credits + payments + use tax
+    "f540_renter_credit":            "3004",  # line 46
+    "f540_estimated_payments":       "3012",  # line 72
+    "f540_use_tax":                  "3019",  # line 91
+    # Page 4 — Voluntary contributions (line 110 total)
+    "f540_voluntary_contributions":  "4026",  # line 110
+    # Page 5 — Estimated tax penalty
+    "f540_estimated_tax_penalty":    "5006",  # line 113
+    # Page 5 — Sign block ([PLANNED]: orchestrator-supplied). 2022 boxes 5019/5020
+    # (2023: 6002/6003), re-placed from the 2022 /TU tooltips.
+    "f540_taxpayer_email":           "5019",
+    "f540_taxpayer_phone":           "5020",
+}
+
+
+_AGGREGATIONS_2022: dict[str, tuple[str, ...]] = {}
+
+
+# 2022 filing status: FIVE line-1..5 checkboxes (as on 2023 — SAME box numbers).
+# Source of truth for the derivations below and the coverage test. ON-state /Yes
+# per each box's OWN /_States_ (['/Yes', '/Off']).
+_FILING_STATUS_CB_2022: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE:             "1036 CB",  # Line 1. Single
+    FilingStatus.MARRIED_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
+    FilingStatus.MARRIED_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
+    FilingStatus.HEAD_OF_HOUSEHOLD:  "1040 CB",  # Line 4. Head of household
+    FilingStatus.QUALIFYING_WIDOW:   "1041 CB",  # Line 5. Qualifying surviving spouse / RDP
+}
+
+
+# get_derivations surface for 2022 — 22 form-internal computed cells ADDITIVELY
+# ported from _DERIVATIONS_2023. Target boxes re-placed from the 2022 template's
+# own /TU tooltips + probe render; each composition re-verified against the 2022
+# printed form. The 2022 boxes carry the SAME sequence numbers as 2023 and the
+# formulas match the 2023 composition (line 64 total tax — see block comment;
+# NO 2021-style APAS line-64 insertion, so `_line_64` is used directly).
+_DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Line 31 tax-source checkboxes (A = tax table, B = rate schedule). Boxes
+    # 2026/2027 CB. /TU: "Line 31. Tax. Checkbox A/B...". ON-state /Yes per each
+    # box's OWN /_States_ (['/Yes', '/Off']).
+    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
+    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    # Line 33 (box 2032) /TU "Subtract line 32 from line 31. If less than zero,
+    # enter 0." = max(0, line 31 − line 32).
+    "2032": lambda c: _line_33(c),
+    # Line 35 (box 2036) /TU "Add line 33 and line 34." Line 34 OUT_OF_V1_SCOPE
+    # (defaults 0) → line 35 == line 33.
+    "2036": lambda c: _line_33(c),
+    # Line 47 (box 3005) /TU "Add line 40 through line 46. These are your total
+    # credits." = renter + ptet + [PLANNED] line40/43-45.
+    "3005": lambda c: _line_47(c),
+    # Line 48 (box 3006) /TU "Subtract line 47 from line 35. If less than zero,
+    # enter 0." = max(0, line 35 − line 47).
+    "3006": lambda c: _line_48(c),
+    # Line 64 (box 3010) /TU "Add line 48, line 61, line 62, and line 63. This is
+    # your total tax." 2022 total tax IS line 64 (like 2023, NOT the 2021 line 65)
+    # — use `_line_64` directly; no APAS addend.
+    "3010": lambda c: _line_64(c),
+    # Line 78 (box 3018) /TU "Add line 71 through line 77. These are your total
+    # payments." Only line 72 (est_payments) nonzero in v1.
+    "3018": lambda c: (
+        c.get("f540_line71_ca_withholding", 0)
+        + c["f540_estimated_payments"]
+        + c.get("f540_line73_592b_593_withholding", 0)
+        + c.get("f540_line74_program_40_motion_picture", 0)
+        + c.get("f540_line75_eitc", 0)
+        + c.get("f540_line76_yctc", 0)
+        + c.get("f540_line77_fytc", 0)
+    ),
+    # Line 93 (box 3023) /TU "If line 78 is more than line 91, subtract line 91
+    # from line 78." = max(0, line 78 − line 91).
+    "3023": lambda c: _line_93(c),
+    # Line 94 (box 3024) /TU "If line 91 is more than line 78, subtract line 78
+    # from line 91." = max(0, line 91 − line 78).
+    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    # Line 95 (box 3025) /TU "If line 93 is more than line 92, subtract line 92
+    # from line 93." = max(0, line 93 − line 92).
+    "3025": lambda c: _line_95(c),
+    # Line 96 (box 3026) /TU "If line 92 is more than line 93, subtract line 93
+    # from line 92." = max(0, line 92 − line 93).
+    "3026": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
+    # Line 97 (box 3027) /TU "Overpaid tax. If line 95 is more than line 64,
+    # subtract line 64 from line 95." = max(0, line 95 − line 64). References
+    # line 64 (2022 total tax), matching 2023.
+    "3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    # Line 99 (box 4004) /TU "Overpaid tax available this year. Subtract line 98
+    # from line 97." = line 97 − line 98. Line 98 OUT_OF_V1_SCOPE (defaults 0).
+    "4004": lambda c: (
+        max(0, _line_95(c) - _line_64(c))
+        - c.get("f540_line98_applied_to_2023_estimated", 0)
+    ),
+    # Line 100 (box 4005) /TU "Tax due. If line 95 is less than line 64, subtract
+    # line 95 from line 64." = max(0, line 64 − line 95). References line 64.
+    "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    # Line 111 (box 4027, "Amount You Owe") — sign-split owe branch of
+    # f540_total_liability; value when positive, else None (skipped).
+    "4027": lambda c: (
+        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
+    ),
+    # Line 115 (box 5008, "Refund or no amount due") — sign-split refund branch of
+    # f540_total_liability; abs value when negative, else None.
+    "5008": lambda c: (
+        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
+    ),
+}
+
+# Filing-status checkboxes, generated from _FILING_STATUS_CB_2022 so the coverage
+# test can assert every FilingStatus has a cell. Default-arg binding (`_s=status`)
+# captures each status in its own lambda closure. ON-state /Yes per each box's own
+# /_States_. (2022 boxes 1036/1037/1038/1040/1041 CB — same as 2023.)
+for _status, _cb in _FILING_STATUS_CB_2022.items():
+    _DERIVATIONS_2022[_cb] = (
+        lambda c, _s=_status: "/Yes" if c["f540_filing_status"] == _s else "/Off"
+    )
+del _status, _cb
+
+
+# Compute keys with no direct PDF cell on the 2022 pack — consumed by the ported
+# derivations above (sign-split refund/owe, filing-status checkboxes, line-47 vs
+# compute() total-credits divergence, PTET). Owned here for the partition
+# invariant, exactly as on 2021/2023-2025.
+_SUPPRESSED_2022: frozenset[str] = frozenset({
+    "f540_total_liability",
+    "f540_filing_status",
+    "f540_ptet_credit",
+    "f540_total_credits",
+})
+
+
+_CHECKBOX_STATES_2022: dict[str, str] = {}
+
+
 PdfF540._MAPPINGS = {
     2021: _MAPPING_2021,
+    2022: _MAPPING_2022,
     2023: _MAPPING_2023,
     2024: _MAPPING_2024,
     2025: _MAPPING_2025,
@@ -818,18 +1002,18 @@ PdfF540._MAPPINGS = {
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
-    2021: _AGGREGATIONS_2021,
+    2021: _AGGREGATIONS_2021, 2022: _AGGREGATIONS_2022,
     2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
-    2021: _DERIVATIONS_2021,
+    2021: _DERIVATIONS_2021, 2022: _DERIVATIONS_2022,
     2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
-    2021: _SUPPRESSED_2021,
+    2021: _SUPPRESSED_2021, 2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: _CHECKBOX_STATES_2021,
+    2021: _CHECKBOX_STATES_2021, 2022: _CHECKBOX_STATES_2022,
     2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }
