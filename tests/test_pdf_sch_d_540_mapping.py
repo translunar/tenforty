@@ -25,10 +25,12 @@ lines 8–12 on page 2 (2001..2006). Probed 2026-06-19.
 """
 
 from pathlib import Path
+import tempfile
 import unittest
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings import pdf_sch_d_540
 
 
@@ -95,7 +97,7 @@ class PdfSchD540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2026):  # 2023 is now a supported PDF-mapping year
+        for year in (2022, 2026):  # 2021/2023 are now supported PDF-mapping years
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_d_540.PdfSchD540.get_mapping(year)
@@ -482,3 +484,80 @@ class PdfSchD540MappingTests2023(unittest.TestCase):
 
     def test_2023_no_checkbox_states(self):
         self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2023), {})
+
+
+# ---------------------------------------------------------------------------
+# TY2021 support
+# ---------------------------------------------------------------------------
+
+
+class PdfSchD540MappingTests2021(unittest.TestCase):
+    """TY2021 Sch D (540) mapping — a FOURTH FTB field-naming scheme
+    ("Text Field N"), disjoint from 2023's bare zero-padded numbers and
+    2024/2025's prefixed schemes. Fresh air-gapped probe, controller-
+    reconciled against the 2021 template; five keys wired (header name/SSN,
+    line 8 net gain, line 12a/12b Sch CA deltas)."""
+
+    def test_2021_mapped_cells(self):
+        m = pdf_sch_d_540.PdfSchD540.get_mapping(2021)
+        self.assertEqual(m["sch_d_540_taxpayer_name"], "Text Field 2")
+        self.assertEqual(m["sch_d_540_taxpayer_ssn"], "Text Field 3")
+        self.assertEqual(m["sch_d_540_net_capital_gain"], "Text Field 121")     # line 8
+        self.assertEqual(m["sch_d_540_total_subtractions"], "Text Field 125")  # line 12a
+        self.assertEqual(m["sch_d_540_total_additions"], "Text Field 126")     # line 12b
+
+    def test_2021_no_aggregations_derivations_or_checkbox_states(self):
+        P = pdf_sch_d_540.PdfSchD540
+        self.assertEqual(P.get_aggregations(2021), {})
+        self.assertEqual(P.get_derivations(2021), {})
+        self.assertEqual(P.get_checkbox_states(2021), {})
+
+
+class PdfSchD540FilledEmit2021Tests(unittest.TestCase):
+    """Filled-emit round-trip for the 2021 pack: fill the real 2021 template
+    with distinctive values for all five mapped keys, read the filled PDF
+    back with pypdf, and assert each value landed at its mapped field path.
+    Explicitly checks that total_subtractions (line 12a, col B) and
+    total_additions (line 12b, col C) land at their DISTINCT fields — the
+    regression a subtractions/additions swap would trip."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_2021_fill_then_read_back(self):
+        project_root = Path(__file__).resolve().parent.parent
+        template = project_root / "pdfs" / "california" / "2021" / "sch_d_540.pdf"
+        out = self.tmp / "sch_d_540_2021_filled.pdf"
+
+        values = {
+            "sch_d_540_taxpayer_name": "Zephyrine Quillfeather",
+            "sch_d_540_taxpayer_ssn": "PROBE-ID-ROUNDTRIP",
+            "sch_d_540_net_capital_gain": 48_213,
+            "sch_d_540_total_subtractions": 9_271,
+            "sch_d_540_total_additions": 6_154,
+        }
+
+        PdfFiller().fill(
+            template_path=template,
+            output_path=out,
+            field_mapping=pdf_sch_d_540.PdfSchD540.get_mapping(2021),
+            values=values,
+        )
+
+        fields = PdfReader(out).get_fields() or {}
+
+        def _v(path: str) -> str:
+            fld = fields.get(path)
+            self.assertIsNotNone(fld, f"field {path!r} missing from filled PDF")
+            v = fld.get("/V")
+            return "" if v is None else str(v)
+
+        self.assertEqual(_v("Text Field 2"), "Zephyrine Quillfeather")
+        self.assertEqual(_v("Text Field 3"), "PROBE-ID-ROUNDTRIP")
+        self.assertEqual(_v("Text Field 121"), "48213")
+        # The col-B/col-C placement — a subtractions/additions swap would
+        # trip these two assertions against each other.
+        self.assertEqual(_v("Text Field 125"), "9271")
+        self.assertEqual(_v("Text Field 126"), "6154")
