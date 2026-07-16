@@ -506,17 +506,37 @@ _CHECKBOX_STATES_2023: dict[str, str] = {}
 
 PdfSchCa._MAPPINGS[2023] = _MAPPING_2023
 
+
+# ---------------------------------------------------------------------------
+# 2022 registries — INHERITED from 2023 by field-tree identity.
+# 2022 field tree is IDENTICAL to 2023 (diff_pdf_fields, controller-verified);
+# fields-on-template gate re-verifies every path against the 2022 template,
+# emit round-trip verifies values land.
+# ---------------------------------------------------------------------------
+_MAPPING_2022 = _MAPPING_2023
+_AGGREGATIONS_2022 = _AGGREGATIONS_2023
+_DERIVATIONS_2022 = _DERIVATIONS_2023
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_CHECKBOX_STATES_2022 = _CHECKBOX_STATES_2023
+
+
+PdfSchCa._MAPPINGS[2022] = _MAPPING_2022
+
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
+    2022: _AGGREGATIONS_2022,
     2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
 }
 _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], object]]] = {
+    2022: _DERIVATIONS_2022,
     2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2022: _CHECKBOX_STATES_2022,
     2023: _CHECKBOX_STATES_2023, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
 }

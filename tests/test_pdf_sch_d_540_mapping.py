@@ -97,7 +97,7 @@ class PdfSchD540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_sch_d_540.PdfSchD540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2022, 2026):  # 2021/2023 are now supported PDF-mapping years
+        for year in (2020, 2026):  # 2021/2022/2023 are now supported PDF-mapping years
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_sch_d_540.PdfSchD540.get_mapping(year)
@@ -561,3 +561,58 @@ class PdfSchD540FilledEmit2021Tests(unittest.TestCase):
         # trip these two assertions against each other.
         self.assertEqual(_v("Text Field 125"), "9271")
         self.assertEqual(_v("Text Field 126"), "6154")
+
+
+class PdfSchD540FilledEmit2022Tests(unittest.TestCase):
+    """Filled-emit round-trip for the 2022 pack, INHERITED from 2023 by
+    field-tree identity (diff_pdf_fields-IDENTICAL, controller-verified).
+    Fill the real 2022 template with distinctive values for all five mapped
+    keys, read the filled PDF back with pypdf, and assert each value landed
+    at its mapped (bare-number 2023-scheme) field path. Explicitly checks
+    that total_subtractions (line 12a, col B) and total_additions (line 12b,
+    col C) land at their DISTINCT fields — the swap a subtractions/additions
+    regression would trip."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_2022_fill_then_read_back(self):
+        project_root = Path(__file__).resolve().parent.parent
+        template = project_root / "pdfs" / "california" / "2022" / "sch_d_540.pdf"
+        out = self.tmp / "sch_d_540_2022_filled.pdf"
+
+        values = {
+            "sch_d_540_taxpayer_name": "Bartholomew Nettershaw",
+            "sch_d_540_taxpayer_ssn": "PROBE-ID-2022-RT",
+            "sch_d_540_net_capital_gain": 71_804,
+            "sch_d_540_total_subtractions": 3_142,
+            "sch_d_540_total_additions": 8_925,
+        }
+
+        PdfFiller().fill(
+            template_path=template,
+            output_path=out,
+            field_mapping=pdf_sch_d_540.PdfSchD540.get_mapping(2022),
+            values=values,
+        )
+
+        fields = PdfReader(out).get_fields() or {}
+
+        def _v(path: str) -> str:
+            fld = fields.get(path)
+            self.assertIsNotNone(fld, f"field {path!r} missing from filled PDF")
+            v = fld.get("/V")
+            return "" if v is None else str(v)
+
+        mapping = pdf_sch_d_540.PdfSchD540.get_mapping(2022)
+        self.assertEqual(_v(mapping["sch_d_540_taxpayer_name"]),
+                         "Bartholomew Nettershaw")
+        self.assertEqual(_v(mapping["sch_d_540_taxpayer_ssn"]),
+                         "PROBE-ID-2022-RT")
+        self.assertEqual(_v(mapping["sch_d_540_net_capital_gain"]), "71804")
+        # The col-B/col-C placement — a subtractions/additions swap would
+        # trip these two assertions against each other.
+        self.assertEqual(_v(mapping["sch_d_540_total_subtractions"]), "3142")
+        self.assertEqual(_v(mapping["sch_d_540_total_additions"]), "8925")

@@ -119,8 +119,9 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     ("california", "f540", 2021),       # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "sch_ca", 2021),     # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "f540", 2022),       # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
-    ("california", "sch_ca", 2022),     # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
-    ("california", "sch_d_540", 2022),  # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
+    # sch_ca + sch_d_540 2022 retired (INHERIT batch): 2022 field tree
+    # diff_pdf_fields-IDENTICAL to 2023, mapping inherits the 2023 payload;
+    # fields-on-template + emit gates now cover 2022.
 })
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
