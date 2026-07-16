@@ -11,11 +11,17 @@ That way compute never leaks PDF-template structure.
 
 Field names enumerated from ``pdfs/federal/2025/f1040se.pdf``.
 
-Page 2 field discovery notes (2025 form):
-  - Table_Line28a-f:  per-row name (f2_3/6/9/12), EIN (f2_4/7/10/13), and a
-    third text field (f2_5/8/11/14) that appears to be col (f) passive income
-    in the a-f sub-table.  The entity-type checkboxes sit alongside: P=c2_2,
-    S=c2_3 for row A (and so on for B/C/D).
+Page 2 field discovery notes (2025 form; confirmed via `pdftotext -layout`
+against pdfs/federal/2025/f1040se.pdf and cross-checked by widget x-position
+against pdfs/federal/2021/f1040se.pdf — both share the same left-to-right
+column order):
+  - Table_Line28a-f: per-row (a) name f2_(3,6,9,12) [TEXT], (b) "Enter P for
+    partnership; S for S corporation" f2_(4,7,10,13) [TEXT], (c) foreign-
+    partnership checkbox c2_(2,5,8,11) [CHECKBOX, unmapped], (d) EIN
+    f2_(5,8,11,14) [TEXT], (e) basis-computation-required checkbox
+    c2_(3,6,9,12) [CHECKBOX, unmapped], (f) not-at-risk checkbox
+    c2_(4,7,10,13) [CHECKBOX, unmapped]. Only (a)/(b)/(d) are modeled by
+    compute; (c)/(e)/(f) have no corresponding compute inputs.
   - Table_Line28g-k:  five numeric columns per row at x≈65,187,288,389,490.
     Column order: (e) passive loss allowed, (f) passive income,
     (g) nonpassive loss, (h) §179 (skipped in v1), (i) nonpassive income.
@@ -37,12 +43,23 @@ _ROWS = ("A", "B", "C", "D")
 
 
 def _row_mapping(row_letter: str) -> dict[str, str]:
-    """Return the 8 PDF field entries for one Part II Line 28 row (A–D).
+    """Return the PDF field entries for one Part II Line 28 row (A–D).
 
-    Field-number strides within the form:
-      AF sub-table (name, EIN, checkboxes) — +3 per row:
-        name f2_(3,6,9,12), EIN f2_(4,7,10,13),
-        partnership checkbox c2_(2,5,8,11), S-corp checkbox c2_(3,6,9,12)
+    Real IRS Line 28 column layout (confirmed via `pdftotext -layout`
+    against pdfs/federal/2025/f1040se.pdf, Page 2): (a) Name, (b) Enter P
+    for partnership; S for S corporation [TEXT], (c) Check if foreign
+    partnership [CHECKBOX], (d) Employer identification number [TEXT],
+    (e) Check if basis computation is required [CHECKBOX], (f) Check if
+    any amount is not at risk [CHECKBOX]. Field-number strides within the
+    form (verified per-row against each field's x-position, left to
+    right — text and checkbox leaves interleave a/b/c/d/e/f in that exact
+    order on every row):
+      AF sub-table — +3 per row:
+        name (a) f2_(3,6,9,12), entity_code (b) f2_(4,7,10,13),
+        foreign-partnership checkbox (c) c2_(2,5,8,11) [UNMAPPED],
+        ein (d) f2_(5,8,11,14),
+        basis-required checkbox (e) c2_(3,6,9,12) [UNMAPPED],
+        not-at-risk checkbox (f) c2_(4,7,10,13) [UNMAPPED, always was]
       GK sub-table (income/loss columns) — +5 per row:
         passive_loss f2_(15,20,25,30), passive_income f2_(16,21,26,31),
         nonpassive_loss f2_(17,22,27,32),
@@ -55,9 +72,12 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
     gk = f"{_T28GK}.Row{row_letter}[0]"
     return {
         f"sch_e_part_ii_row_{row}_name":                     f"{af}.f2_{3 + 3 * i}[0]",
-        f"sch_e_part_ii_row_{row}_ein":                      f"{af}.f2_{4 + 3 * i}[0]",
-        f"sch_e_part_ii_row_{row}_entity_type_partnership":  f"{af}.c2_{2 + 3 * i}[0]",
-        f"sch_e_part_ii_row_{row}_entity_type_s_corp":       f"{af}.c2_{3 + 3 * i}[0]",
+        f"sch_e_part_ii_row_{row}_entity_code":               f"{af}.f2_{4 + 3 * i}[0]",
+        # DELIBERATELY UNMAPPED: col (c) c2_{2 + 3 * i} (foreign-partnership
+        # checkbox) and col (e) c2_{3 + 3 * i} (basis-required checkbox) are
+        # not modeled by compute (col (f) c2_{4 + 3 * i}, not-at-risk, was
+        # already unmapped before this fix and stays so).
+        f"sch_e_part_ii_row_{row}_ein":                      f"{af}.f2_{5 + 3 * i}[0]",
         f"sch_e_part_ii_row_{row}_passive_loss":             f"{gk}.f2_{15 + 5 * i}[0]",
         f"sch_e_part_ii_row_{row}_passive_income":           f"{gk}.f2_{16 + 5 * i}[0]",
         f"sch_e_part_ii_row_{row}_nonpassive_loss":          f"{gk}.f2_{17 + 5 * i}[0]",
@@ -219,13 +239,14 @@ _FIELDS_2022: dict = _to_2022(_FIELDS)
 # were confirmed to exist on the 2021 template with no collisions; name→f2_3
 # (col a) and ein→f2_5 (col d) are content-verified.
 #
-# DELIBERATELY UNMAPPED (2021) — entity-type (8 keys
-# sch_e_part_ii_row_{a,b,c,d}_entity_type_partnership/_s_corp): line-28 col (b)
-# is a single "Enter P/S" TEXT field, but the compute emits two booleans
-# (partnership/s_corp) per row. Correct global fix is compute-side (derived
-# entity_code="P"|"S") — deferred to the sch_e-line-28 follow-up plan, which
-# also fixes the merged-2022-2025 mismapping bug (ein/entity_type routed to
-# wrong cells). name + ein ARE mapped here (cols a/d), verified.
+# FIXED HERE (2021) — entity_code (4 keys sch_e_part_ii_row_{a,b,c,d}_
+# entity_code): line-28 col (b) is a single "Enter P/S" TEXT field; compute
+# now derives one entity_code ("P"|"S") per row instead of the old two-
+# boolean emit, so it maps directly onto col (b) f2_(4,7,10,13) — the same
+# sch_e-line-28 follow-up plan that fixes the merged-2022-2025 mismapping
+# bug (ein/entity_type routed to wrong cells). Col (c)/(e)/(f) checkboxes
+# (foreign partnership / basis required / not at risk) remain unmapped —
+# not modeled by compute. name + ein ARE mapped here (cols a/d), verified.
 #
 # DELIBERATELY UNMAPPED (2021) — line-29 cross keys (4:
 # sch_e_line_29a_total_passive_loss, sch_e_line_29a_total_nonpassive_loss,
@@ -285,6 +306,8 @@ _FIELDS_2021: dict = {
         "taxpayer_ssn_page2": "topmostSubform[0].Page2[0].f2_2[0]",
         "sch_e_part_ii_row_a_name":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_3[0]",
+        "sch_e_part_ii_row_a_entity_code":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_4[0]",
         "sch_e_part_ii_row_a_ein":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_5[0]",
         "sch_e_part_ii_row_a_passive_loss":
@@ -297,6 +320,8 @@ _FIELDS_2021: dict = {
             "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_19[0]",
         "sch_e_part_ii_row_b_name":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowB[0].f2_6[0]",
+        "sch_e_part_ii_row_b_entity_code":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowB[0].f2_7[0]",
         "sch_e_part_ii_row_b_ein":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowB[0].f2_8[0]",
         "sch_e_part_ii_row_b_passive_loss":
@@ -309,6 +334,8 @@ _FIELDS_2021: dict = {
             "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowB[0].f2_24[0]",
         "sch_e_part_ii_row_c_name":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowC[0].f2_9[0]",
+        "sch_e_part_ii_row_c_entity_code":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowC[0].f2_10[0]",
         "sch_e_part_ii_row_c_ein":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowC[0].f2_11[0]",
         "sch_e_part_ii_row_c_passive_loss":
@@ -321,6 +348,8 @@ _FIELDS_2021: dict = {
             "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowC[0].f2_29[0]",
         "sch_e_part_ii_row_d_name":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowD[0].f2_12[0]",
+        "sch_e_part_ii_row_d_entity_code":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowD[0].f2_13[0]",
         "sch_e_part_ii_row_d_ein":
             "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowD[0].f2_14[0]",
         "sch_e_part_ii_row_d_passive_loss":
