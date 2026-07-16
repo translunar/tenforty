@@ -457,6 +457,11 @@ def compute_spine(
     return {
         # Page 1 income lines — oracle/OUTPUTS[2025] key names
         "wages": wages,
+        # Line 1z — Total of lines 1a-1h. Equals `wages` because W-2 box-1
+        # (line 1a) is the only modeled line-1 component; lines 1b-1h have no
+        # scenario inputs and refuse-by-absence (their mapping entries are
+        # retired). Feeds line 9.
+        "total_w2_income": wages,
         "interest_income": taxable_interest,
         "dividend_income": ordinary_divs,
         "total_income": total_income,
