@@ -203,6 +203,138 @@ class AmendmentPacketEmitTests(unittest.TestCase):
             int(float(_read_v(out / "schedule_x_2024.pdf", smap["schedule_x_line7"]))),
             round(expected_sx["schedule_x_line7"]))
 
+    def test_happy_path_full_emit_ca_2021(self):
+        """2021 full-emit CA side, amended by one income component (mirrors
+        ``test_happy_path_full_emit_year`` for year 2021).
+
+        2021 is now a full-emit CALIFORNIA_YEARS member (its f540/sch_ca/
+        sch_d_540 emit packs landed), so the complete amended 540 REALLY emits
+        — the CA compute-only note is ABSENT, not stubbed. Asserts the changed
+        federal form AND ONLY it attaches, both amendment forms + the complete
+        amended 540 emit, the manifest reasons, and the Schedule X balance
+        reads back from the REAL PDF."""
+        original = _with_ca(build_canonical_wage_investment_rental(2021))
+        amended = _bump_interest(original, 3_000.0)  # original interest 2_000
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2021, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # (a) amendment forms + complete amended 540 present.
+        for name in ("f1040x_2021.pdf", "f540_amended_2021.pdf",
+                     "schedule_x_2021.pdf", "packet_manifest.txt"):
+            self.assertTrue((out / name).exists(), f"missing {name}")
+
+        # (b) changed federal forms attach; the UNCHANGED ones do NOT.
+        self.assertTrue((out / "f1040sb_2021.pdf").exists())   # sch_b changed
+        self.assertFalse((out / "f1040sd_2021.pdf").exists())  # sch_d unchanged
+        self.assertFalse((out / "f1040se_2021.pdf").exists())  # sch_e unchanged
+        self.assertFalse((out / "f1040s1_2021.pdf").exists())  # sch_1 unchanged
+
+        # (c) manifest lists each mailed file, with a reason.
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertEqual(by_name["f1040x_2021.pdf"].reason, "amendment form")
+        self.assertEqual(by_name["f1040sb_2021.pdf"].reason, "changed")
+        self.assertEqual(
+            by_name["f540_amended_2021.pdf"].reason, "complete amended return")
+        self.assertEqual(by_name["schedule_x_2021.pdf"].reason, "amendment form")
+        # No compute-only notes: the CA attachment is really emitted, not
+        # stubbed — the MISSING-attachment note is ABSENT.
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+        # The standing spec §4 caveat is always present.
+        self.assertTrue(any("preparer must confirm" in c for c in manifest.caveats))
+        manifest_txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("f1040sb_2021.pdf", manifest_txt)
+        self.assertIn("f540_amended_2021.pdf", manifest_txt)
+
+        # (d) read back a REAL value: the Schedule X balance line (L7 amount
+        # you owe) round-trips against the assembler's figure.
+        corrected_fed = self.orch.compute_federal(amended)
+        corrected_ca = self.orch._compute_ca_results(
+            amended, amended.ca540, corrected_fed)
+        expected_sx = form_schedule_x.assemble_ca(
+            {"f540_total_liability": orig_ca["f540_total_liability"]},
+            corrected_ca, case)
+        smap = PdfScheduleX.get_mapping(2021)
+        self.assertEqual(
+            int(float(_read_v(out / "schedule_x_2021.pdf", smap["schedule_x_line7"]))),
+            round(expected_sx["schedule_x_line7"]))
+
+    def test_happy_path_full_emit_ca_2022(self):
+        """2022 full-emit CA side, amended by one income component (mirrors
+        ``test_happy_path_full_emit_year`` for year 2022).
+
+        2022 is now a full-emit CALIFORNIA_YEARS member (its f540/sch_ca/
+        sch_d_540 emit packs landed), so the complete amended 540 REALLY emits
+        — the CA compute-only note is ABSENT, not stubbed. Asserts the changed
+        federal form AND ONLY it attaches, both amendment forms + the complete
+        amended 540 emit, the manifest reasons, and the Schedule X balance
+        reads back from the REAL PDF."""
+        original = _with_ca(build_canonical_wage_investment_rental(2022))
+        amended = _bump_interest(original, 3_000.0)  # original interest 2_000
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2022, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # (a) amendment forms + complete amended 540 present.
+        for name in ("f1040x_2022.pdf", "f540_amended_2022.pdf",
+                     "schedule_x_2022.pdf", "packet_manifest.txt"):
+            self.assertTrue((out / name).exists(), f"missing {name}")
+
+        # (b) changed federal forms attach; the UNCHANGED ones do NOT.
+        self.assertTrue((out / "f1040sb_2022.pdf").exists())   # sch_b changed
+        self.assertFalse((out / "f1040sd_2022.pdf").exists())  # sch_d unchanged
+        self.assertFalse((out / "f1040se_2022.pdf").exists())  # sch_e unchanged
+        self.assertFalse((out / "f1040s1_2022.pdf").exists())  # sch_1 unchanged
+
+        # (c) manifest lists each mailed file, with a reason.
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertEqual(by_name["f1040x_2022.pdf"].reason, "amendment form")
+        self.assertEqual(by_name["f1040sb_2022.pdf"].reason, "changed")
+        self.assertEqual(
+            by_name["f540_amended_2022.pdf"].reason, "complete amended return")
+        self.assertEqual(by_name["schedule_x_2022.pdf"].reason, "amendment form")
+        # No compute-only notes: the CA attachment is really emitted, not
+        # stubbed — the MISSING-attachment note is ABSENT.
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+        # The standing spec §4 caveat is always present.
+        self.assertTrue(any("preparer must confirm" in c for c in manifest.caveats))
+        manifest_txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("f1040sb_2022.pdf", manifest_txt)
+        self.assertIn("f540_amended_2022.pdf", manifest_txt)
+
+        # (d) read back a REAL value: the Schedule X balance line (L7 amount
+        # you owe) round-trips against the assembler's figure.
+        corrected_fed = self.orch.compute_federal(amended)
+        corrected_ca = self.orch._compute_ca_results(
+            amended, amended.ca540, corrected_fed)
+        expected_sx = form_schedule_x.assemble_ca(
+            {"f540_total_liability": orig_ca["f540_total_liability"]},
+            corrected_ca, case)
+        smap = PdfScheduleX.get_mapping(2022)
+        self.assertEqual(
+            int(float(_read_v(out / "schedule_x_2022.pdf", smap["schedule_x_line7"]))),
+            round(expected_sx["schedule_x_line7"]))
+
     def test_null_self_amendment(self):
         """amended == original → only the amendment form (1040-X) mails, Column B
         is all zero, the changed-forms selection is empty, the refund/owed tail
