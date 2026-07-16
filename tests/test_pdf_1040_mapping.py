@@ -12,9 +12,12 @@ from pathlib import Path
 
 import pypdf
 
-from tests.helpers import REPO_ROOT
+from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
 from tenforty.filing.pdf import PdfFiller
+from tenforty.forms.f1040_spine import compute_spine
 from tenforty.mappings.pdf_1040 import Pdf1040
+from tenforty.models import Scenario, TaxReturnConfig, W2
+from tenforty.params.federal import load as load_federal_params
 
 YEAR_CELLS = {
     2022: "topmostSubform[0].Page2[0].f2_15[0]",
@@ -146,6 +149,71 @@ class TestPdf1040_2021EmitRoundTrip(unittest.TestCase):
             "42017",
             "combat_pay_election must land in f2_17 (line 27b)",
         )
+
+
+class TestPdf1040Line1zPlacement(unittest.TestCase):
+    """Line 1z ("Total (add lines 1a through 1h)") must not be blank.
+
+    Regression test for the compute-dead `total_w2_income` result key: the
+    merged-year (2022-2025) pdf_1040 mapping maps `total_w2_income` to the
+    line-1z box, but pre-fix no `tenforty/forms/` module emitted it, so 1z
+    printed blank while 1a (wages) printed filled. Since W-2 box-1 is the
+    only modeled line-1 component, line 1z must equal line 1a for a
+    wages-only scenario. Runs the real native compute_spine (no soffice) so
+    the assertion is not a tautology against hand-supplied mapping values.
+    """
+
+    WAGES = 54_000
+
+    def _compute_and_read(self, year: int) -> dict[str, str | None]:
+        scenario = Scenario(
+            config=TaxReturnConfig(
+                year=year,
+                filing_status="single",
+                birthdate="1990-06-15",
+                state="CA",
+                **scope_out_attestation_defaults(),
+            ),
+            w2s=[
+                W2(
+                    employer="Acme Corp",
+                    wages=self.WAGES,
+                    federal_tax_withheld=0,
+                    ss_wages=self.WAGES,
+                    ss_tax_withheld=0,
+                    medicare_wages=self.WAGES,
+                    medicare_tax_withheld=0,
+                ),
+            ],
+        )
+        params = load_federal_params(year)
+        results = compute_spine(scenario, params, {"sch_a": {"sch_a_line_17_total": 0}})
+
+        mapping = Pdf1040.get_mapping(year)
+        template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040.pdf"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            out = Path(tmpdir) / "out.pdf"
+            PdfFiller().fill(template, out, mapping, values=results)
+            reader = pypdf.PdfReader(out)
+            fields = reader.get_fields()
+            return {
+                "1a": fields[mapping["wages"]].get("/V"),
+                "1z": fields[mapping["total_w2_income"]].get("/V"),
+            }
+
+    def test_line_1z_equals_line_1a_for_wages_only_scenario(self):
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                read = self._compute_and_read(year)
+                self.assertEqual(
+                    read["1a"], str(self.WAGES),
+                    f"{year}: line 1a (wages) did not land at its mapped cell",
+                )
+                self.assertEqual(
+                    read["1z"], str(self.WAGES),
+                    f"{year}: line 1z (total_w2_income) is blank or wrong — "
+                    "must equal line 1a for a wages-only scenario",
+                )
 
 
 if __name__ == "__main__":
