@@ -28,6 +28,17 @@ constraints the two implementations converge on exactly three moving parts:
 CA tax, the exemption credit, and the withholding. This is a targeted parity
 guard, NOT a general CA cross-check framework.
 
+## Coverage division
+
+This test drives ``f540.compute`` DIRECTLY and therefore BYPASSES the
+orchestrator's ``scenario.w2s``-where-``state == "CA"`` summation/filter that
+WIRE-2 added. It guards the BALANCE-CHAIN half (line 71 → line 78 total
+payments → refund/owe) against the independent oracle; it cannot catch a
+regression in the W-2 summation/filter. That half is guarded by the structural
+pin in ``test_ca_withholding_channel`` (which drives the orchestrator CA path).
+Two named halves of one chain, no gap — the same explicitness whose absence let
+the original omission survive.
+
 ## Rounding
 
 The oracle intentionally does not round (its docstring: "rounding is
