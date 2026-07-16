@@ -23,7 +23,7 @@ from tenforty.models import (
 )
 from tenforty.orchestrator import ReturnOrchestrator
 
-from tests.helpers import scope_out_attestation_defaults
+from tests.helpers import needs_libreoffice, scope_out_attestation_defaults
 
 REPO_ROOT = Path(__file__).parent.parent
 F1040_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040.pdf"
@@ -78,6 +78,8 @@ def _build_synthetic_scenario() -> Scenario:
     )
 
 
+# Drives the orchestrator's workbook/oracle path (compute_federal on an out-of-native-spine scenario) → requires LibreOffice; oracle-tier.
+@needs_libreoffice
 @unittest.skipUnless(F1040_TEMPLATE.exists(), "f1040.pdf template not found")
 class TestPdf1040FillGroundTruth(unittest.TestCase):
     """Pin field-name -> value routing against the 2025 form revision."""
@@ -241,6 +243,8 @@ def _build_oracle_routed_qbi_scenario() -> Scenario:
     )
 
 
+# Drives the orchestrator's workbook/oracle path (compute_federal on an out-of-native-spine scenario) → requires LibreOffice; oracle-tier.
+@needs_libreoffice
 @unittest.skipUnless(F1040_TEMPLATE.exists(), "f1040.pdf template not found")
 class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
     """Bug #6 regression: the ORACLE path (`_compute_1040_via_workbook` ->
