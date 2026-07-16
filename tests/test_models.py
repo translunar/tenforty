@@ -12,6 +12,7 @@ from datetime import date
 from tenforty.forms import sch_d as sch_d_module
 from tests.helpers import scope_out_attestation_defaults
 from tenforty.models import (
+    CA540Return,
     DepreciableAsset,
     FilingStatus,
     Form1098,
@@ -56,6 +57,43 @@ class TestW2(unittest.TestCase):
         self.assertEqual(w2.state_wages, 0.0)
         self.assertEqual(w2.state_tax_withheld, 0.0)
         self.assertEqual(w2.local_tax_withheld, 0.0)
+
+    def _make_w2(self, **overrides):
+        fields = dict(
+            employer="Acme Corp",
+            wages=50000.00,
+            federal_tax_withheld=5000.00,
+            ss_wages=50000.00,
+            ss_tax_withheld=3100.00,
+            medicare_wages=50000.00,
+            medicare_tax_withheld=725.00,
+        )
+        fields.update(overrides)
+        return W2(**fields)
+
+    def test_state_defaults_to_none(self):
+        w2 = self._make_w2()
+        self.assertIsNone(w2.state)
+
+    def test_state_none_explicit_ok(self):
+        w2 = self._make_w2(state=None)
+        self.assertIsNone(w2.state)
+
+    def test_state_two_letter_uppercase_ok(self):
+        w2 = self._make_w2(state="CA")
+        self.assertEqual(w2.state, "CA")
+
+    def test_state_lowercase_raises(self):
+        with self.assertRaises(ValueError):
+            self._make_w2(state="ca")
+
+    def test_state_three_chars_raises(self):
+        with self.assertRaises(ValueError):
+            self._make_w2(state="CAL")
+
+    def test_state_non_alpha_raises(self):
+        with self.assertRaises(ValueError):
+            self._make_w2(state="C1")
 
 
 class TestForm1099INT(unittest.TestCase):
@@ -257,6 +295,77 @@ class TestScenario(unittest.TestCase):
         self.assertEqual(len(scenario.w2s), 1)
         self.assertEqual(scenario.config.year, 2025)
         self.assertEqual(scenario.form1099_int, [])
+
+    def _ca_config(self):
+        return TaxReturnConfig(
+            year=2025,
+            filing_status="single",
+            birthdate="1990-06-15",
+            state="CA",
+        )
+
+    def test_ca_return_refuses_unattributed_withholding(self):
+        # CA-withholding channel, schema layer: a California Form 540 return
+        # must attribute each withholding W-2 to a state so f540 can claim
+        # only CA withholding on line 71; a stateless W-2 with withholding
+        # is ambiguous and must be refused rather than silently assumed.
+        w2 = W2(
+            employer="Ambiguous Employer LLC",
+            wages=100000.00,
+            federal_tax_withheld=15000.00,
+            ss_wages=100000.00,
+            ss_tax_withheld=6200.00,
+            medicare_wages=100000.00,
+            medicare_tax_withheld=1450.00,
+            state_tax_withheld=5000.00,
+        )
+        with self.assertRaises(ValueError) as ctx:
+            Scenario(config=self._ca_config(), w2s=[w2], ca540=CA540Return())
+        self.assertIn("Ambiguous Employer LLC", str(ctx.exception))
+
+    def test_ca_return_with_state_attributed_withholding_ok(self):
+        w2 = W2(
+            employer="Acme",
+            wages=100000.00,
+            federal_tax_withheld=15000.00,
+            ss_wages=100000.00,
+            ss_tax_withheld=6200.00,
+            medicare_wages=100000.00,
+            medicare_tax_withheld=1450.00,
+            state_tax_withheld=5000.00,
+            state="CA",
+        )
+        scenario = Scenario(config=self._ca_config(), w2s=[w2], ca540=CA540Return())
+        self.assertEqual(scenario.w2s[0].state, "CA")
+
+    def test_ca_return_with_no_withholding_ok_even_if_stateless(self):
+        w2 = W2(
+            employer="Acme",
+            wages=100000.00,
+            federal_tax_withheld=15000.00,
+            ss_wages=100000.00,
+            ss_tax_withheld=6200.00,
+            medicare_wages=100000.00,
+            medicare_tax_withheld=1450.00,
+            state_tax_withheld=0.0,
+        )
+        scenario = Scenario(config=self._ca_config(), w2s=[w2], ca540=CA540Return())
+        self.assertIsNone(scenario.w2s[0].state)
+
+    def test_non_ca_return_allows_stateless_withholding(self):
+        w2 = W2(
+            employer="Acme",
+            wages=100000.00,
+            federal_tax_withheld=15000.00,
+            ss_wages=100000.00,
+            ss_tax_withheld=6200.00,
+            medicare_wages=100000.00,
+            medicare_tax_withheld=1450.00,
+            state_tax_withheld=5000.00,
+        )
+        scenario = Scenario(config=self._ca_config(), w2s=[w2])
+        self.assertIsNone(scenario.ca540)
+        self.assertIsNone(scenario.w2s[0].state)
 
 
 class TestForm1099B(unittest.TestCase):
