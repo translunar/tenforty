@@ -120,7 +120,12 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # reconciled 25/25 cells against the 2021 template; CA namespace differs
     # from 2023) landed in tenforty/mappings/pdf_f540.py; fields-on-template +
     # emit gates now cover 2021.
-    ("california", "sch_ca", 2021),     # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
+    # sch_ca 2021 retired: direct-map-only fresh air-gapped probe (controller-
+    # reconciled 57/57 cells against the 2021 template; bare-numeric CA
+    # namespace that does NOT align field-for-field with 2022/2023, hence a
+    # fresh map not an inherit) landed in tenforty/mappings/pdf_sch_ca.py.
+    # Zero-derivation (allowlisted in ZERO_DERIVATION_FORMS); completeness +
+    # fields-on-template + emit gates now cover sch_ca/2021.
     # f540 2022 retired: direct-map probe (25/25 controller-reconciled, CA
     # bare-numeric namespace matching 2023 except sign-block email/phone 5019/5020)
     # + 22-cell get_derivations surface ported from 2023 (line 64 total-tax
