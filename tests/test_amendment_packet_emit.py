@@ -48,7 +48,11 @@ from tests.fixtures.spine_battery import (
     build_canonical_wage_investment_rental,
     build_charitable_nonitemizer_2021,
 )
-from tests.helpers import CA_SCOPE_OUT_FIELDS, scope_out_attestation_defaults
+from tests.helpers import (
+    CA_SCOPE_OUT_FIELDS,
+    needs_libreoffice,
+    scope_out_attestation_defaults,
+)
 
 REPO_ROOT = Path(__file__).parent.parent
 _REVISION = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
@@ -652,6 +656,8 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(out["f1040x_line2_b"], 0)
         self.assertEqual(out["f1040x_line5_b"], 0)
 
+    # Oracle-routed (out-of-spine) amendment → workbook path → requires LibreOffice; oracle-tier.
+    @needs_libreoffice
     def test_oracle_routed_qbi_amendment_line2_is_12c_exclusive(self):
         """Bug #6 regression: an oracle-routed amendment with QBI > 0 must
         show 1040-X line 2 (total_deductions) as the 12c-EXCLUSIVE figure on
