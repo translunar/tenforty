@@ -75,6 +75,12 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # demands a template + mapping for every 2021 individual form. f8962's 2021 pack
 # already landed (Task 7), so it is NOT gapped here; the remaining twelve forms
 # owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
+#
+# sch_d_540 2021 retired: fresh air-gapped probe (controller-verified, "Text
+# Field N" namespace — a fourth distinct FTB naming scheme, disjoint from
+# 2023's bare numbers and 2024/2025's prefixed schemes) landed in
+# tenforty/mappings/pdf_sch_d_540.py; fields-on-template + emit gates now
+# cover 2021.
 KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # f1040 2021 retired: fresh air-gapped probe + render-verify (controller +
     # team-lead-verified 57/57 keys, income block nests in Lines1-11_ReadOrder[0],
@@ -112,7 +118,6 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # built in ca-2021-2022-emit Tasks 2-3. Six cells:
     ("california", "f540", 2021),       # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "sch_ca", 2021),     # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
-    ("california", "sch_d_540", 2021),  # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "f540", 2022),       # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "sch_ca", 2022),     # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "sch_d_540", 2022),  # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
