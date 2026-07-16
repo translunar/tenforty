@@ -11,6 +11,7 @@ per-task variants should compose on top of `_make_ca_v1_smoke_scenario`
 rather than duplicating the attestation block.
 """
 
+import dataclasses
 import tempfile
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from tenforty.models import (
     FilingStatus,
     Scenario,
     TaxReturnConfig,
+    W2,
 )
 from tests.helpers import CA_SCOPE_OUT_FIELDS, scope_out_attestation_defaults
 
@@ -55,6 +57,39 @@ def _make_ca_v1_smoke_scenario() -> Scenario:
         ),
         ca540=CA540Return(),
     )
+
+
+def _make_ca_withholding_scenario(state_tax_withheld: float = 4_000.0) -> Scenario:
+    """The permanent with-withholding CA scenario.
+
+    This is the canonical CA-resident scenario that carries a real CA W-2
+    box-17 withholding amount. It is the fixture the CA-withholding
+    cross-check (``test_ca_540_withholding_cross_check``) and future CA work
+    exercise on every run, so the line-71 → balance path is never again
+    left uncovered (production f540 OMITTED CA withholding entirely until
+    2026-07-16 precisely because no with-withholding scenario was pinned).
+
+    Composes on ``_make_ca_v1_smoke_scenario`` (single CA resident, 2025,
+    ``ca540=CA540Return()``, all load-time CA attestations declared) rather
+    than mutating it — the smoke scenario is reused by other tests and must
+    stay withholding-free. One CA W-2 is added: ``state="CA"`` with realistic
+    wages and a round ``state_tax_withheld`` (default $4,000) so the
+    orchestrator sums it into Form 540 line 71.
+    """
+    base = _make_ca_v1_smoke_scenario()
+    ca_w2 = W2(
+        employer="California Employer LLC",
+        wages=80_000.0,
+        federal_tax_withheld=9_000.0,
+        ss_wages=80_000.0,
+        ss_tax_withheld=4_960.0,
+        medicare_wages=80_000.0,
+        medicare_tax_withheld=1_160.0,
+        state_wages=80_000.0,
+        state_tax_withheld=state_tax_withheld,
+        state="CA",
+    )
+    return dataclasses.replace(base, w2s=[ca_w2])
 
 
 def _write_ca_yaml(ca_yaml_dict: dict, tmp_dir: Path | None = None) -> Path:
