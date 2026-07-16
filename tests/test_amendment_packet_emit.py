@@ -682,20 +682,21 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         would have been $16,200 (original) / $17,200 (amended) instead —
         wrong on line 2, and wrong differently on each side.
 
-        NOTE — a separate, pre-existing gap surfaced while building this
-        test: `tenforty/forms/f1040.py::compute` pops `_qbi_deduction_1040`
-        into a local var and never re-emits the key under its original name,
-        so `compute_federal()` results for ANY oracle-routed scenario are
-        missing `_qbi_deduction_1040` (regardless of QBI value) — one of
-        `form_f1040x.REQUIRED_FILED_KEYS` (feeds 1040-X line 4a). This is
-        independent of the total_deductions/deductions_plus_qbi asymmetry
-        Bug #6 fixes (that's line 2, not line 4a) and is out of this task's
-        3-file scope (would need touching `f1040x.py` or the `f1040.py`
-        pop/re-emit contract). Flagged to team-lead as a follow-up. Worked
-        around HERE ONLY: `_qbi_deduction_1040` is populated on the
-        filed/corrected dicts from the already-present `qbi_deduction` key
-        (same figure, oracle-facing name popped away) so the REAL
-        `form_f1040x.assemble()` can run end-to-end for this line-2 check.
+        NOTE — two separate, pre-existing gaps surfaced while building this
+        test have since been FIXED IN PRODUCTION, so this test now consumes
+        the real oracle-routed result directly (no in-test workarounds):
+        (#7) `tenforty/forms/f1040.py::compute` used to pop
+        `_qbi_deduction_1040` into a local var and never re-emit the key
+        under its original name, so `compute_federal()` results for ANY
+        oracle-routed scenario were missing `_qbi_deduction_1040` —
+        one of `form_f1040x.REQUIRED_FILED_KEYS` (feeds 1040-X line 4a).
+        `f1040.compute` now re-emits it, normalized, alongside `qbi_deduction`.
+        (#8) The oracle path used to leave `f8959_tax_total` (Additional
+        Medicare Tax, Sch 2 Part II) as `None` rather than 0 when it doesn't
+        apply, present-as-None rather than absent, which defeats
+        `assemble()`'s `.get(key, 0.0)` default and TypeErrors on
+        `None - 0.0`. `f1040.compute` now normalizes `f8959_tax_total`
+        None -> 0.
         """
         original = _build_eic_eligible_qbi_scenario(10_000.0)
         amended = _build_eic_eligible_qbi_scenario(15_000.0)
@@ -717,23 +718,8 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertGreater(corrected_fed["qbi_deduction"], 0)
         self.assertNotEqual(orig_fed["qbi_deduction"], corrected_fed["qbi_deduction"])
 
-        filed = {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS
-                 if k != "_qbi_deduction_1040"}
-        filed["_qbi_deduction_1040"] = orig_fed["qbi_deduction"]
+        filed = {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS}
         corrected = dict(corrected_fed)
-        corrected["_qbi_deduction_1040"] = corrected_fed["qbi_deduction"]
-        # Separate, pre-existing None-vs-absent gap (also unrelated to Bug
-        # #6): the oracle path leaves `f8959_tax_total` (Additional Medicare
-        # Tax, Sch 2 Part II) as `None` rather than 0 when it doesn't apply
-        # (this scenario's wages are far below the AMT threshold) — unlike
-        # the f8962 PTC keys, which `_compute_1040_via_workbook` explicitly
-        # None->0 normalizes. `assemble()`'s own `.get(key, 0.0)` only
-        # substitutes the default when the key is ABSENT, not when it's
-        # present-as-None, so it TypeErrors on `None - 0.0` otherwise.
-        # Normalized here, in the test's copies only, not in production code.
-        for d in (filed, corrected):
-            if d.get("f8959_tax_total") is None:
-                d["f8959_tax_total"] = 0.0
 
         case = AmendmentCase(
             year=2025, explanation="Corrected K-1 qualified business income.",
