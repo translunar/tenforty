@@ -17,6 +17,26 @@ class W2:
     state_wages: float = 0.0
     state_tax_withheld: float = 0.0
     local_tax_withheld: float = 0.0
+    # CA-withholding channel, schema layer: which state this W-2's box-17
+    # `state_tax_withheld` was withheld to. None means "not attributed" --
+    # fine for a non-CA return, but a California Form 540 return refuses
+    # (see Scenario.__post_init__) if a withholding W-2 is left unattributed,
+    # since only CA-attributed withholding may be claimed on 540 line 71.
+    # Deliberately NOT normalized/coerced (no lowercasing) -- loud refusal on
+    # garbage input rather than silent correction.
+    state: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.state is not None and (
+            len(self.state) != 2
+            or not self.state.isascii()
+            or not self.state.isalpha()
+            or not self.state.isupper()
+        ):
+            raise ValueError(
+                f"W2.state must be None or a 2-letter uppercase state code "
+                f"(e.g. 'CA'), got {self.state!r}."
+            )
 
 
 @dataclass
@@ -804,3 +824,27 @@ class Scenario:
     form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None
+
+    def __post_init__(self) -> None:
+        # CA-withholding channel, schema layer (state-attribution ruling):
+        # a California Form 540 return is load-decidable via `ca540 is not
+        # None`. Such a return must attribute every withholding W-2 to a
+        # state (W2.state) so a future f540 compute can claim ONLY CA
+        # withholding on line 71 -- an unattributed withholding W-2 is
+        # ambiguous (is it CA withholding or another state's?) and is
+        # refused here rather than silently assumed to be CA. This runs in
+        # __post_init__ (not a load_scenario-only validator) so it catches
+        # both YAML-loaded scenarios AND programmatic Scenario(...)
+        # construction (e.g. in tests) alike.
+        if self.ca540 is not None:
+            for w in self.w2s:
+                if w.state is None and w.state_tax_withheld > 0:
+                    raise ValueError(
+                        f"W-2 from {w.employer!r} has state tax withheld "
+                        f"(${w.state_tax_withheld:.2f}) but no state "
+                        f"attribution; a California Form 540 return must "
+                        f"attribute each withholding W-2 to a state so only "
+                        f"CA withholding is claimed on line 71 -- add "
+                        f'state="CA" (or the actual 2-letter state code) to '
+                        f"that W-2."
+                    )

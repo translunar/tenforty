@@ -1455,6 +1455,32 @@ class ReturnOrchestrator:
                 {"f1040": federal_results},
             )
             ca_part_ii = form_sch_ca.compute_part_ii_itemized(sch_a_full)
+        # Attribution guard for CA 540 line 71. There are TWO CA-return entry
+        # points and this covers the one __post_init__ CANNOT:
+        #   1. scenario.ca540 is not None (combined-YAML / programmatic) —
+        #      Scenario.__post_init__ already refuses an unattributed
+        #      withholding W-2 at construction time.
+        #   2. run_full_california_return's separate-CA-YAML path — the
+        #      scenario is loaded from a federal-only YAML, so scenario.ca540
+        #      is None and __post_init__'s guard never fires; yet
+        #      _compute_ca_results still sources line 71 from scenario.w2s
+        #      where state=="CA". For THIS path this guard is the SOLE
+        #      attribution enforcement — not redundant. Same refusal
+        #      semantics as the __post_init__ guard so both paths agree.
+        for w in scenario.w2s:
+            if w.state is None and w.state_tax_withheld > 0:
+                raise ValueError(
+                    f"W-2 from {w.employer!r} has state tax withheld "
+                    f"(${w.state_tax_withheld:.2f}) but no state "
+                    f"attribution; a California Form 540 return must "
+                    f"attribute each withholding W-2 to a state so only "
+                    f"CA withholding is claimed on line 71 -- add "
+                    f'state="CA" (or the actual 2-letter state code) to '
+                    f"that W-2."
+                )
+        ca_withholding = sum(
+            w.state_tax_withheld for w in scenario.w2s if w.state == "CA"
+        )
         f540_results = form_f540.compute(
             year=scenario.config.year,
             filing_status=scenario.config.filing_status,
@@ -1463,6 +1489,7 @@ class ReturnOrchestrator:
             ca540=effective_ca540,
             num_dependents=len(scenario.config.dependents),
             ca_itemized=ca_part_ii.get("ca_itemized_total"),
+            ca_withholding=int(ca_withholding),
         )
         header_keys = {
             "f540_taxpayer_name": scenario.config.full_name,

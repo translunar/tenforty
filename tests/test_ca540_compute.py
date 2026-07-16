@@ -440,6 +440,20 @@ class SignConventionTests(unittest.TestCase):
             baseline["f540_total_liability"] - 100,
         )
 
+    def test_ca_withholding_decreases_liability(self):
+        # CA W-2 box-17 withholding (line 71) — omitted entirely until
+        # 2026-07-16 (see loud comment at the balance term in f540.compute).
+        baseline = compute(**self.BASELINE_KWARGS, ca540=CA540Return())
+        with_wh = compute(
+            **self.BASELINE_KWARGS,
+            ca540=CA540Return(),
+            ca_withholding=3_000,
+        )
+        self.assertEqual(
+            with_wh["f540_total_liability"],
+            baseline["f540_total_liability"] - 3_000,
+        )
+
 
 class VoluntaryContributionAggregationTests(unittest.TestCase):
     """CA540Return().voluntary_contributions defaults to []; explicit [] also
@@ -477,6 +491,59 @@ class VoluntaryContributionAggregationTests(unittest.TestCase):
             ),
         )
         self.assertEqual(result["f540_voluntary_contributions"], 100)
+
+
+class CaWithholdingTests(unittest.TestCase):
+    """CA W-2 box-17 withholding (Form 540 line 71).
+
+    Regression coverage for the omission found 2026-07-16: forms/f540.py's
+    final-liability balance had no withholding term at all, and
+    ``f540_line71_ca_withholding`` was producer-less (the pdf mapping
+    already read that exact key). See the loud comment at the balance
+    term in f540.compute for the finding writeup.
+    """
+
+    BASELINE_KWARGS = dict(
+        year=2025,
+        filing_status=FilingStatus.SINGLE,
+        federal_agi=50_000,
+        ca_agi=50_000,
+        ca540=CA540Return(),
+    )
+
+    def test_ca_withholding_appears_in_result(self):
+        result = compute(**self.BASELINE_KWARGS, ca_withholding=3_000)
+        self.assertEqual(result["f540_line71_ca_withholding"], 3_000)
+
+    def test_zero_withholding_matches_pre_change_baseline(self):
+        # Exact pre-change output for these inputs (the individual pieces
+        # are separately pinned in ComputePipelineWalkTests.
+        # test_ty2025_single_50k_no_credits); asserted here as a full-dict
+        # equality so the new key/term can't silently perturb anything else.
+        expected_pre_change = {
+            "f540_ca_agi": 50_000,
+            "f540_deduction": 5_706,
+            "f540_taxable_income": 44_294,
+            "f540_ca_tax": 1_193,
+            "f540_exemption_credit": 153,
+            "f540_renter_credit": 0,
+            "f540_ptet_credit": 0,
+            "f540_total_credits": 153,
+            "f540_voluntary_contributions": 0,
+            "f540_use_tax": 0,
+            "f540_estimated_tax_penalty": 0,
+            "f540_estimated_payments": 0,
+            "f540_total_liability": 1_040,
+            "f540_filing_status": FilingStatus.SINGLE,
+        }
+        omitted = compute(**self.BASELINE_KWARGS)
+        explicit_zero = compute(**self.BASELINE_KWARGS, ca_withholding=0)
+        self.assertEqual(omitted, explicit_zero)
+        expected_with_new_key = {
+            **expected_pre_change,
+            "f540_line71_ca_withholding": 0,
+        }
+        self.assertEqual(omitted, expected_with_new_key)
 
 
 class California2024ConstantsTests(unittest.TestCase):

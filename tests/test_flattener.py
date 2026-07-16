@@ -74,6 +74,20 @@ class TestFlattenScenario(unittest.TestCase):
         self.assertEqual(flat["w2_state_wages_1"], 100000)
         self.assertEqual(flat["w2_state_withheld_1"], 5000)
 
+    def test_w2_state_attribution_field_is_inert_to_flattener(self):
+        # The CA-withholding channel's W2.state field is consumed by
+        # scenario-level validation and (in a later task) f540 CA-only
+        # withholding sourcing -- NOT by the oracle flattener, which is a
+        # workbook-input path unaware of state attribution. Setting `state`
+        # must not change or add any flattened key: w2_state_withheld_{i}
+        # stays exactly `state_tax_withheld`, and no new "state" key appears.
+        scenario = _simple_scenario()
+        scenario.w2s[0].state = "CA"
+        flat = flatten_scenario(scenario)
+        self.assertEqual(flat["w2_state_withheld_1"], 5000)
+        self.assertNotIn("w2_state_1", flat)
+        self.assertNotIn("w2_state_attribution_1", flat)
+
     def test_1099_int_fields(self):
         flat = flatten_scenario(_simple_scenario())
         self.assertEqual(flat["interest_1"], 250)

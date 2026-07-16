@@ -57,3 +57,4 @@ w2s:
     medicare_tax_withheld: 1150.00
     state_wages: 80000.00
     state_tax_withheld: 3200.00
+    state: CA

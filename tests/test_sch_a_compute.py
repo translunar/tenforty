@@ -64,6 +64,24 @@ class SchASaltTests(unittest.TestCase):
             form_sch_a.compute(scenario, upstream=upstream)
 
 
+class SchASaltStateBlindTests(unittest.TestCase):
+    def test_out_of_state_w2_withholding_still_counts_as_salt(self):
+        # SALT is federal-law state-BLIND: sch_a sums W-2 box-17 state
+        # withholding across ALL W-2s regardless of which state it was
+        # withheld to (see tenforty/forms/sch_a.py's w2_state_income_tax
+        # sum). The CA-withholding channel's new W2.state attribution field
+        # is for f540/CA-540 line-71 sourcing only and must NOT filter this
+        # federal SALT sum -- an out-of-state W-2 still contributes its full
+        # withholding here.
+        scenario = _scenario()
+        scenario.w2s[0].state = "OR"
+        scenario.w2s[0].state_tax_withheld = 5_000
+        upstream = {"f1040": {"agi": 100_000, "magi": 100_000}}
+        r = form_sch_a.compute(scenario, upstream=upstream)
+        self.assertEqual(r["sch_a_line_5d_salt_sum"], 5_000)
+        self.assertEqual(r["sch_a_line_5e_salt_capped"], 5_000)
+
+
 class SchATotalsTests(unittest.TestCase):
     def test_line_17_equals_sum_of_components(self):
         scenario = _scenario(
