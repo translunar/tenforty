@@ -46,9 +46,16 @@ production's job ... the comparison harness rounds ... before comparing").
 Production applies FTB whole-dollar rounding to the tax (line 31), so the
 oracle's unrounded signed net differs from production by at most the sub-dollar
 tax remainder. We therefore apply ``irs_round`` to the oracle's signed net
-before comparing — the documented harness contract, not a fudge. Because every
-term other than the tax is already integral, ``irs_round`` of the signed net
-equals production's balance exactly.
+before comparing. Three facts together justify that this bridges a
+REPRESENTATION gap rather than masking a discrepancy:
+  1. It honors the oracle's OWN documented contract ("rounding is production's
+     job ... the harness rounds before comparing") — not an ad-hoc fudge.
+  2. The X=0 control reconciles at the dollar ($9,705 both sides), so the two
+     implementations already AGREE with no withholding — the round is aligning
+     representations of the same number, not papering over a real gap.
+  3. A mutation that drops production's line-71 term ($4,000) still FAILS this
+     test THROUGH the round — so the round cannot hide a genuine breakage; it
+     only absorbs the ≤$0.50 tax-rounding remainder.
 """
 
 import dataclasses
