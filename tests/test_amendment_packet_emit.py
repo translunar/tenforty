@@ -29,9 +29,14 @@ from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.models import (
     AmendmentCase,
     CA540Return,
+    FilingStatus,
     Form1095A,
     Form1095AMonth,
     Form1099INT,
+    Scenario,
+    ScheduleK1,
+    TaxReturnConfig,
+    W2,
 )
 from tenforty.orchestrator import (
     _CA_COMPUTE_ONLY_NOTE,
@@ -43,7 +48,11 @@ from tests.fixtures.spine_battery import (
     build_canonical_wage_investment_rental,
     build_charitable_nonitemizer_2021,
 )
-from tests.helpers import CA_SCOPE_OUT_FIELDS
+from tests.helpers import (
+    CA_SCOPE_OUT_FIELDS,
+    needs_libreoffice,
+    scope_out_attestation_defaults,
+)
 
 REPO_ROOT = Path(__file__).parent.parent
 _REVISION = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
@@ -68,6 +77,54 @@ def _wages_and_interest_only(scenario):
     interest threshold (the canonical's $5k dividends would keep Sch B alive)."""
     return dataclasses.replace(
         scenario, form1099_div=[], form1099_b=[], rental_properties=[])
+
+
+def _build_eic_eligible_qbi_scenario(k1_qbi_amount: float) -> Scenario:
+    """Single filer, low enough wages to be EIC-eligible (out of native-spine
+    scope -> routes to `_compute_1040_via_workbook`, the oracle path Bug #6
+    fixes), plus an S-corp K-1 so Form 8995 yields a nonzero QBI deduction.
+
+    Wages $8,000 + K-1 ordinary business income (== `k1_qbi_amount`) keeps
+    the EIC cheap-ceiling-gate estimate under the 2025 single/0-dependent
+    ceiling ($26,214) for both the $10,000 and $15,000 K-1 amounts this test
+    uses, so both the "original" and "amended" twins stay oracle-routed.
+    """
+    defaults = scope_out_attestation_defaults()
+    for name in (
+        "acknowledges_qbi_below_threshold",
+        "acknowledges_unlimited_at_risk",
+        "basis_tracked_externally",
+        "acknowledges_no_partnership_se_earnings",
+        "acknowledges_no_section_1231_gain",
+        "acknowledges_no_more_than_four_k1s",
+        "acknowledges_no_k1_credits",
+        "acknowledges_no_section_179",
+        "acknowledges_no_estate_trust_k1",
+    ):
+        defaults[name] = True
+    defaults["prior_year_itemized"] = False
+    cfg = TaxReturnConfig(
+        year=2025,
+        filing_status=FilingStatus.SINGLE,
+        birthdate="1980-01-01",
+        state="TX",
+        first_name="Bob", last_name="Example", ssn="000-00-0002",
+        **defaults,
+    )
+    return Scenario(
+        config=cfg,
+        w2s=[W2(
+            employer="Synthetic Employer", wages=8_000.0,
+            federal_tax_withheld=500.0, ss_wages=8_000.0,
+            ss_tax_withheld=496.0, medicare_wages=8_000.0,
+            medicare_tax_withheld=116.0,
+        )],
+        schedule_k1s=[ScheduleK1(
+            entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            ordinary_business_income=k1_qbi_amount, qbi_amount=k1_qbi_amount,
+        )],
+    )
 
 
 def _read_v(pdf_path, field_path):
@@ -772,6 +829,86 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         # nothing, including the 12b figure.
         self.assertEqual(out["f1040x_line2_b"], 0)
         self.assertEqual(out["f1040x_line5_b"], 0)
+
+    # Oracle-routed (out-of-spine) amendment → workbook path → requires LibreOffice; oracle-tier.
+    @needs_libreoffice
+    def test_oracle_routed_qbi_amendment_line2_is_12c_exclusive(self):
+        """Bug #6 regression: an oracle-routed amendment with QBI > 0 must
+        show 1040-X line 2 (total_deductions) as the 12c-EXCLUSIVE figure on
+        BOTH Column A (as filed) and Column C (corrected) — not the
+        14-inclusive (12c + QBI) figure the oracle path emitted pre-fix
+        (which would have double-counted QBI once line 4a/13 was added back
+        on top, per the assembler's L3 = L1 - L2 and L5 = AGI - L2 - QBI-
+        adjacent arithmetic driven off `total_deductions`).
+
+        Scenario (`_build_eic_eligible_qbi_scenario`): single filer, wages
+        $8,000 (well under the 2025 EIC-ceiling gate's threshold even after
+        adding K-1 income), so `_scenario_in_spine_scope` is False and
+        `_compute_1040_pipeline` routes to `_compute_1040_via_workbook` — the
+        oracle path this bug fixes. Verified directly below, not assumed.
+        Original K-1: ordinary_business_income = qbi_amount = $10,000 -> AGI
+        $18,000, QBI deduction $450 (binding limit: 20% of the $2,250
+        taxable-income-before-QBI, not 20% of the $10,000 QBI itself).
+        Amended K-1: bumped to $15,000 -> AGI $23,000, QBI deduction $1,450.
+        The standard deduction ($15,750, single) is unchanged by the K-1
+        bump, so 12c-exclusive total_deductions is $15,750 on BOTH sides;
+        pre-fix, the oracle path's (buggy, 14-inclusive) total_deductions
+        would have been $16,200 (original) / $17,200 (amended) instead —
+        wrong on line 2, and wrong differently on each side.
+
+        NOTE — two separate, pre-existing gaps surfaced while building this
+        test have since been FIXED IN PRODUCTION, so this test now consumes
+        the real oracle-routed result directly (no in-test workarounds):
+        (#7) `tenforty/forms/f1040.py::compute` used to pop
+        `_qbi_deduction_1040` into a local var and never re-emit the key
+        under its original name, so `compute_federal()` results for ANY
+        oracle-routed scenario were missing `_qbi_deduction_1040` —
+        one of `form_f1040x.REQUIRED_FILED_KEYS` (feeds 1040-X line 4a).
+        `f1040.compute` now re-emits it, normalized, alongside `qbi_deduction`.
+        (#8) The oracle path used to leave `f8959_tax_total` (Additional
+        Medicare Tax, Sch 2 Part II) as `None` rather than 0 when it doesn't
+        apply, present-as-None rather than absent, which defeats
+        `assemble()`'s `.get(key, 0.0)` default and TypeErrors on
+        `None - 0.0`. `f1040.compute` now normalizes `f8959_tax_total`
+        None -> 0.
+        """
+        original = _build_eic_eligible_qbi_scenario(10_000.0)
+        amended = _build_eic_eligible_qbi_scenario(15_000.0)
+
+        eff_original, _ = self.orch._build_effective_scenario(original)
+        eff_amended, _ = self.orch._build_effective_scenario(amended)
+        self.assertFalse(
+            self.orch._scenario_in_spine_scope(eff_original),
+            "original scenario unexpectedly routed to the native spine, not "
+            "the oracle/workbook path this test targets")
+        self.assertFalse(
+            self.orch._scenario_in_spine_scope(eff_amended),
+            "amended scenario unexpectedly routed to the native spine, not "
+            "the oracle/workbook path this test targets")
+
+        orig_fed = self.orch.compute_federal(original)
+        corrected_fed = self.orch.compute_federal(amended)
+        self.assertGreater(orig_fed["qbi_deduction"], 0)
+        self.assertGreater(corrected_fed["qbi_deduction"], 0)
+        self.assertNotEqual(orig_fed["qbi_deduction"], corrected_fed["qbi_deduction"])
+
+        filed = {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS}
+        corrected = dict(corrected_fed)
+
+        case = AmendmentCase(
+            year=2025, explanation="Corrected K-1 qualified business income.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = form_f1040x.assemble(filed, corrected, case)
+
+        applied_deduction = 15_750.0  # 2025 single standard deduction
+        self.assertEqual(orig_fed["applied_deduction"], applied_deduction)
+        self.assertEqual(corrected_fed["applied_deduction"], applied_deduction)
+
+        # Line 2, Column A and C: 12c-exclusive, identical on both sides (the
+        # standard deduction doesn't move when only the K-1 QBI changes).
+        self.assertEqual(out["f1040x_line2_a"], applied_deduction)
+        self.assertEqual(out["f1040x_line2_c"], applied_deduction)
+        self.assertEqual(out["f1040x_line2_b"], 0)
 
 
 if __name__ == "__main__":

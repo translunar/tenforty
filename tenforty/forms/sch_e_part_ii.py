@@ -186,7 +186,12 @@ def _row_fields(k1: ScheduleK1, letter: str) -> dict:
     return {
         f"sch_e_part_ii_row_{letter}_name": k1.entity_name,
         f"sch_e_part_ii_row_{letter}_ein": k1.entity_ein,
-        f"sch_e_part_ii_row_{letter}_entity_type_{k1.entity_type.value}": "X",
+        # Line 28 col (b) is a single "Enter P for partnership; S for S
+        # corporation" TEXT field, not two booleans — derive the one code
+        # the form actually has room for. (estate_trust never reaches here;
+        # it's rejected unconditionally in _enforce_scope_gates.)
+        f"sch_e_part_ii_row_{letter}_entity_code":
+            "P" if k1.entity_type == EntityType.PARTNERSHIP else "S",
         f"sch_e_part_ii_row_{letter}_passive_income": passive_income,
         f"sch_e_part_ii_row_{letter}_passive_loss": passive_loss,
         f"sch_e_part_ii_row_{letter}_nonpassive_income": nonpassive_income,

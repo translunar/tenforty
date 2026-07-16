@@ -457,6 +457,11 @@ def compute_spine(
     return {
         # Page 1 income lines — oracle/OUTPUTS[2025] key names
         "wages": wages,
+        # Line 1z — Total of lines 1a-1h. Equals `wages` because W-2 box-1
+        # (line 1a) is the only modeled line-1 component; lines 1b-1h have no
+        # scenario inputs and refuse-by-absence (their mapping entries are
+        # retired). Feeds line 9.
+        "total_w2_income": wages,
         "interest_income": taxable_interest,
         "dividend_income": ordinary_divs,
         "total_income": total_income,
@@ -481,6 +486,12 @@ def compute_spine(
         # Taxable income
         "taxable_income_before_qbi_deduction": taxable_income_before_qbi,
         "_qbi_deduction_1040": qbi_deduction,
+        # line 13 QBI box (pdf_1040 keys on the plain name); _qbi_deduction_1040
+        # stays for the oracle-translation shim.
+        "qbi_deduction": qbi_deduction,
+        # 1040 line 14 = line 12(c) deduction + line 13 QBI. `total_deductions`
+        # is line 12(c) ONLY (excludes QBI), so line 14 needs its own key.
+        "deductions_plus_qbi": total_deductions + qbi_deduction,
         "taxable_income": taxable_income,
         # Tax
         "total_tax": total_tax,

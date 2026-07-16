@@ -21,6 +21,7 @@ from tenforty.models import (
     Form1099B,
     RentalProperty,
     Scenario,
+    ScheduleK1,
     TaxReturnConfig,
     W2,
 )
@@ -187,6 +188,45 @@ def build_qbi_threshold_boundary(year: int) -> Scenario:
                 depreciation=5_000.0,
             ),
         ],
+    )
+
+
+def build_qbi_k1_deduction(year: int) -> Scenario:
+    """QBI deduction ACTIVE: single filer whose S-corp K-1 qualified business
+    income produces a nonzero Section 199A (Form 8995) deduction.
+
+    Distinct from qbi_threshold_boundary (which has NO K-1 and just attests
+    below-threshold): here wages $80k + $20k K-1 QBI put AGI ~$100k — well
+    clear of the EIC ceiling so the return stays on the native spine
+    (see _scenario_in_spine_scope), yet taxable income (~$86k) is far below
+    the lowest single-filer QBI threshold ($164,900, 2021), so the deduction
+    is a clean 20% with no phase-in / W-2-wage-limitation complexity in any
+    supported year. The parity gate proves the exact figure native-vs-oracle;
+    this fixture only guarantees QBI is materially present.
+    """
+    return Scenario(
+        config=_battery_config(
+            year,
+            acknowledges_qbi_below_threshold=True,
+            acknowledges_unlimited_at_risk=True,
+            basis_tracked_externally=True,
+            acknowledges_no_partnership_se_earnings=True,
+            acknowledges_no_section_1231_gain=True,
+            acknowledges_no_more_than_four_k1s=True,
+            acknowledges_no_k1_credits=True,
+            acknowledges_no_section_179=True,
+            acknowledges_no_estate_trust_k1=True,
+            prior_year_itemized=False,
+        ),
+        w2s=[
+            _w2(year, employer="Synthetic Employer QBI", wages=80_000.0,
+                federal_tax_withheld=12_000.0),
+        ],
+        schedule_k1s=[ScheduleK1(
+            entity_name="Synthetic S-Corp QBI Inc", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            ordinary_business_income=20_000.0, qbi_amount=20_000.0,
+        )],
     )
 
 
@@ -463,6 +503,7 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
     ("qbi_threshold_boundary", build_qbi_threshold_boundary),
+    ("qbi_k1_deduction", build_qbi_k1_deduction),
     ("addl_medicare_boundary", build_addl_medicare_boundary),
     ("zero_tax_refund", build_zero_tax_refund),
     ("owes_tax", build_owes_tax),
