@@ -9,10 +9,12 @@ field path resolves to a real field in `pdfs/california/2025/f540.pdf`.
 """
 
 from pathlib import Path
+import tempfile
 import unittest
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings import pdf_f540
 from tenforty.mappings.pdf_f540 import _FILING_STATUS_RB_STATES
 from tenforty.models import FilingStatus
@@ -52,7 +54,8 @@ class PdfF540MappingTests(unittest.TestCase):
         self.assertEqual(pdf_f540.PdfF540.get_checkbox_states(2025), {})
 
     def test_2025_unsupported_year_raises(self):
-        for year in (2021, 2022, 2026):
+        # 2021 and 2022 now resolve (emit packs landed); 2020/2026 remain gaps.
+        for year in (2020, 2026):
             with self.subTest(year=year):
                 with self.assertRaises(ValueError):
                     pdf_f540.PdfF540.get_mapping(year)
@@ -223,3 +226,331 @@ class PdfF540MappingTests2023(unittest.TestCase):
         self.assertEqual(mapping["f540_estimated_tax_penalty"], "5006")    # line 113
         self.assertIn("4027", derivations)  # line 111 (owe)
         self.assertIn("5008", derivations)  # line 115 (refund)
+
+
+class PdfF540FilledEmit2021Tests(unittest.TestCase):
+    """Filled-emit round-trip for the TY2021 Form 540 DIRECT-MAP-ONLY pack.
+
+    2021 is a FOURTH FTB field-naming scheme: mixed bare-numeric AcroForm
+    names ('2009'/'2017'/'3008') plus a few 'Text Field N' widgets (residence
+    county = 'Text Field 439'). Sequence numbers do NOT line up with 2023 —
+    2021's exemption credit is box 2017 (2023's box 2031) and its renter
+    credit is box 2031 (2023's exemption credit). This fills the REAL 2021
+    template via PdfFiller().fill(...) with distinctive values and reads each
+    back at its mapped path via pypdf — the load-bearing check is that
+    f540_exemption_credit lands in box 2017 (line 32 "Exemption credits"
+    placement regression), NOT a 2023-style box.
+
+    The direct-mapped cells asserted here are a subset; the 22 ported
+    derivations (line totals / tax-source + filing-status checkboxes /
+    sign-split refund-owe) are covered by PdfF540Derivations2021Tests below.
+    """
+
+    @staticmethod
+    def _read_v(pdf_path, field_path):
+        """Read one AcroForm field's /V, normalizing thousands-comma / $."""
+        fields = PdfReader(str(pdf_path)).get_fields() or {}
+        got = fields[field_path].get("/V") or ""
+        return str(got).replace(",", "").replace("$", "").strip()
+
+    def test_2021_filled_emit_round_trip(self):
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2021" / "f540.pdf"
+
+        mapping = pdf_f540.PdfF540.get_mapping(2021)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2021)
+        derivations = pdf_f540.PdfF540.get_derivations(2021)
+        checkbox_states = pdf_f540.PdfF540.get_checkbox_states(2021)
+
+        # Distinctive, non-round values (no SSN/EIN-shaped sentinels).
+        values = {
+            "f540_taxpayer_first_name": "Marisol",
+            "f540_taxpayer_last_name": "Vandermeer",
+            "f540_ca_agi": 84321,
+            "f540_taxable_income": 71234,
+            "f540_ca_tax": 3456,
+            "f540_exemption_credit": 129,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 2750,
+            "f540_use_tax": 41,
+            "f540_voluntary_contributions": 27,
+            "f540_estimated_tax_penalty": 18,
+        }
+
+        # Expected {mapped PDF field path: rendered read-back string}.
+        expected = {
+            mapping["f540_taxpayer_first_name"]: "Marisol",
+            mapping["f540_taxpayer_last_name"]: "Vandermeer",
+            mapping["f540_ca_agi"]: "84321",
+            mapping["f540_taxable_income"]: "71234",
+            mapping["f540_ca_tax"]: "3456",
+            # Line-32 placement regression: exemption credit MUST land in 2017.
+            mapping["f540_exemption_credit"]: "129",
+            mapping["f540_renter_credit"]: "60",
+            mapping["f540_estimated_payments"]: "2750",   # payment line
+            mapping["f540_use_tax"]: "41",
+            mapping["f540_voluntary_contributions"]: "27",
+            mapping["f540_estimated_tax_penalty"]: "18",
+        }
+
+        # Pin the load-bearing placement explicitly (2021 namespace, not 2023).
+        self.assertEqual(mapping["f540_exemption_credit"], "2017")
+
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "f540_2021_filled.pdf"
+            PdfFiller().fill(
+                template, out, mapping, values,
+                aggregations=aggregations,
+                derivations=derivations,
+                checkbox_states=checkbox_states,
+            )
+            for field_path, want in expected.items():
+                with self.subTest(field=field_path):
+                    self.assertEqual(self._read_v(out, field_path), want)
+
+
+class PdfF540Derivations2021Tests(unittest.TestCase):
+    """The 22-cell get_derivations surface ported additively from 2023 to the
+    2021 pack — 15 line-total / refund-owe text cells + 2 line-31 tax-source
+    checkboxes + 5 filing-status checkboxes. Every target box was re-placed
+    from the 2021 template's own /TU tooltips (the 2021 namespace differs from
+    2023); this test guards that each derivation target is a real 2021 field,
+    that the checkbox targets carry a /Yes ON-state in their own /_States_, and
+    that the arithmetic/enum lambdas resolve as expected."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.derivations = pdf_f540.PdfF540.get_derivations(2021)
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2021" / "f540.pdf"
+        cls.fields = PdfReader(str(template)).get_fields() or {}
+
+    def test_2021_derivations_count_is_22(self):
+        self.assertEqual(len(self.derivations), 22)
+
+    def test_2021_every_derivation_target_is_a_real_2021_field(self):
+        for path in self.derivations:
+            with self.subTest(path=path):
+                self.assertIn(
+                    path, self.fields,
+                    f"derivation target {path!r} is not a real field on the "
+                    f"2021 f540 template",
+                )
+
+    def test_2021_checkbox_targets_have_yes_on_state(self):
+        # Line-31 tax-source + five filing-status checkboxes: the ON value we
+        # emit ("/Yes") must be a member of each box's own /_States_.
+        checkbox_targets = [p for p in self.derivations if p.endswith(" CB")]
+        self.assertEqual(len(checkbox_targets), 7)
+        for path in checkbox_targets:
+            with self.subTest(path=path):
+                states = self.fields[path].get("/_States_")
+                self.assertIsNotNone(states, f"{path} has no /_States_")
+                self.assertIn("/Yes", states)
+
+    def test_2021_filing_status_checkboxes_cover_all_statuses(self):
+        # Every FilingStatus must resolve to a distinct 2021 checkbox target.
+        cells = set(pdf_f540._FILING_STATUS_CB_2021.values())
+        self.assertEqual(len(cells), len(FilingStatus))
+        for status, cell in pdf_f540._FILING_STATUS_CB_2021.items():
+            with self.subTest(status=status):
+                self.assertIn(cell, self.derivations)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": status}), "/Yes")
+                # A different status leaves the box off.
+                other = next(s for s in FilingStatus if s != status)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": other}), "/Off")
+
+    def test_2021_tax_source_checkboxes_split_on_taxable_income(self):
+        # Box 2012 (tax table) on at/below 100k; box 2013 (rate schedule) above.
+        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_000}), "/Yes")
+        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_001}), "/Off")
+        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_001}), "/Yes")
+        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_000}), "/Off")
+
+    def test_2021_line_totals_resolve_from_compute_keys(self):
+        # A representative flow: refund case (payments exceed tax).
+        c = {
+            "f540_ca_tax": 3000,
+            "f540_exemption_credit": 129,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 5000,
+            "f540_use_tax": 40,
+        }
+        d = self.derivations
+        self.assertEqual(d["2018"](c), 2871)          # line 33 = 3000 - 129
+        self.assertEqual(d["2022"](c), 2871)          # line 35 = line 33
+        self.assertEqual(d["2032"](c), 60)            # line 47 = renter credit
+        self.assertEqual(d["2033"](c), 2811)          # line 48 = 2871 - 60
+        self.assertEqual(d["3006"](c), 2811)          # line 65 total tax = line 48
+        self.assertEqual(d["3013"](c), 5000)          # line 78 total payments
+        self.assertEqual(d["3016"](c), 4960)          # line 93 = 5000 - 40
+        self.assertEqual(d["3017"](c), 4960)          # line 95 = line 93
+        self.assertEqual(d["3018"](c), 2149)          # line 97 = 4960 - 2811
+        self.assertEqual(d["3021"](c), 0)             # line 100 tax due = 0
+
+    def test_2021_sign_split_refund_and_owe(self):
+        d = self.derivations
+        self.assertEqual(d["5003"]({"f540_total_liability": 1234}), 1234)   # owe
+        self.assertIsNone(d["5003"]({"f540_total_liability": -1234}))       # no owe
+        self.assertEqual(d["5009"]({"f540_total_liability": -1234}), 1234)  # refund
+        self.assertIsNone(d["5009"]({"f540_total_liability": 1234}))        # no refund
+
+
+class PdfF540FilledEmit2022Tests(unittest.TestCase):
+    """Filled-emit round-trip for the TY2022 Form 540 emit pack.
+
+    2022 uses the same bare-numeric FTB namespace as 2023 ('2023'/'3004'). The
+    direct-map cells match 2023 box-for-box EXCEPT the sign-block email/phone
+    (2022 boxes 5019/5020 vs 2023's 6002/6003). This fills the REAL 2022 template
+    via PdfFiller().fill(...) with distinctive values and reads each back at its
+    mapped path — the load-bearing check is that f540_exemption_credit lands in
+    box 2031 (line 32 "Exemption credits" placement, the applied credit), with
+    line 11 "Exemption amount" (box 2017) left unmapped.
+    """
+
+    @staticmethod
+    def _read_v(pdf_path, field_path):
+        fields = PdfReader(str(pdf_path)).get_fields() or {}
+        got = fields[field_path].get("/V") or ""
+        return str(got).replace(",", "").replace("$", "").strip()
+
+    def test_2022_filled_emit_round_trip(self):
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2022" / "f540.pdf"
+
+        mapping = pdf_f540.PdfF540.get_mapping(2022)
+        aggregations = pdf_f540.PdfF540.get_aggregations(2022)
+        derivations = pdf_f540.PdfF540.get_derivations(2022)
+        checkbox_states = pdf_f540.PdfF540.get_checkbox_states(2022)
+
+        values = {
+            "f540_taxpayer_first_name": "Ingrid",
+            "f540_taxpayer_last_name": "Halvorsen",
+            "f540_ca_agi": 91274,
+            "f540_taxable_income": 78219,
+            "f540_ca_tax": 3891,
+            "f540_exemption_credit": 140,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 3125,
+            "f540_use_tax": 37,
+            "f540_voluntary_contributions": 19,
+            "f540_estimated_tax_penalty": 23,
+        }
+
+        expected = {
+            mapping["f540_taxpayer_first_name"]: "Ingrid",
+            mapping["f540_taxpayer_last_name"]: "Halvorsen",
+            mapping["f540_ca_agi"]: "91274",
+            mapping["f540_taxable_income"]: "78219",
+            mapping["f540_ca_tax"]: "3891",
+            # Line-32 placement: exemption credit MUST land in 2031 (applied credit).
+            mapping["f540_exemption_credit"]: "140",
+            mapping["f540_renter_credit"]: "60",
+            mapping["f540_estimated_payments"]: "3125",
+            mapping["f540_use_tax"]: "37",
+            mapping["f540_voluntary_contributions"]: "19",
+            mapping["f540_estimated_tax_penalty"]: "23",
+        }
+
+        # Pin the load-bearing placements explicitly.
+        self.assertEqual(mapping["f540_exemption_credit"], "2031")  # line 32
+        self.assertEqual(mapping["f540_taxpayer_email"], "5019")    # 2022 box, not 2023's 6002
+        self.assertEqual(mapping["f540_taxpayer_phone"], "5020")
+
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "f540_2022_filled.pdf"
+            PdfFiller().fill(
+                template, out, mapping, values,
+                aggregations=aggregations,
+                derivations=derivations,
+                checkbox_states=checkbox_states,
+            )
+            for field_path, want in expected.items():
+                with self.subTest(field=field_path):
+                    self.assertEqual(self._read_v(out, field_path), want)
+
+
+class PdfF540Derivations2022Tests(unittest.TestCase):
+    """The 22-cell get_derivations surface ported additively from 2023 to the
+    2022 pack — 15 line-total / refund-owe text cells + 2 line-31 tax-source
+    checkboxes + 5 filing-status checkboxes. Every target box was re-placed from
+    the 2022 template's own /TU tooltips and each composition re-verified against
+    the 2022 printed form. Guards that each derivation target is a real 2022
+    field, that the checkbox targets carry a /Yes ON-state in their own
+    /_States_, and that the arithmetic/enum lambdas resolve as expected — with
+    the load-bearing check that 2022 total tax is line 64 (box 3010 = _line_64),
+    NOT the 2021 line-65/APAS composition."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.derivations = pdf_f540.PdfF540.get_derivations(2022)
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2022" / "f540.pdf"
+        cls.fields = PdfReader(str(template)).get_fields() or {}
+
+    def test_2022_derivations_count_is_22(self):
+        self.assertEqual(len(self.derivations), 22)
+
+    def test_2022_every_derivation_target_is_a_real_2022_field(self):
+        for path in self.derivations:
+            with self.subTest(path=path):
+                self.assertIn(
+                    path, self.fields,
+                    f"derivation target {path!r} is not a real field on the "
+                    f"2022 f540 template",
+                )
+
+    def test_2022_checkbox_targets_have_yes_on_state(self):
+        checkbox_targets = [p for p in self.derivations if p.endswith(" CB")]
+        self.assertEqual(len(checkbox_targets), 7)
+        for path in checkbox_targets:
+            with self.subTest(path=path):
+                states = self.fields[path].get("/_States_")
+                self.assertIsNotNone(states, f"{path} has no /_States_")
+                self.assertIn("/Yes", states)
+
+    def test_2022_filing_status_checkboxes_cover_all_statuses(self):
+        cells = set(pdf_f540._FILING_STATUS_CB_2022.values())
+        self.assertEqual(len(cells), len(FilingStatus))
+        for status, cell in pdf_f540._FILING_STATUS_CB_2022.items():
+            with self.subTest(status=status):
+                self.assertIn(cell, self.derivations)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": status}), "/Yes")
+                other = next(s for s in FilingStatus if s != status)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": other}), "/Off")
+
+    def test_2022_tax_source_checkboxes_split_on_taxable_income(self):
+        # Box 2026 (tax table) on at/below 100k; box 2027 (rate schedule) above.
+        self.assertEqual(self.derivations["2026 CB"]({"f540_taxable_income": 100_000}), "/Yes")
+        self.assertEqual(self.derivations["2026 CB"]({"f540_taxable_income": 100_001}), "/Off")
+        self.assertEqual(self.derivations["2027 CB"]({"f540_taxable_income": 100_001}), "/Yes")
+        self.assertEqual(self.derivations["2027 CB"]({"f540_taxable_income": 100_000}), "/Off")
+
+    def test_2022_line_totals_resolve_from_compute_keys(self):
+        # Refund case (payments exceed tax). Verifies the 2023-style line-64
+        # total-tax composition on the 2022 boxes.
+        c = {
+            "f540_ca_tax": 3000,
+            "f540_exemption_credit": 140,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 5000,
+            "f540_use_tax": 40,
+        }
+        d = self.derivations
+        self.assertEqual(d["2032"](c), 2860)          # line 33 = 3000 - 140
+        self.assertEqual(d["2036"](c), 2860)          # line 35 = line 33
+        self.assertEqual(d["3005"](c), 60)            # line 47 = renter credit
+        self.assertEqual(d["3006"](c), 2800)          # line 48 = 2860 - 60
+        self.assertEqual(d["3010"](c), 2800)          # line 64 total tax = line 48
+        self.assertEqual(d["3018"](c), 5000)          # line 78 total payments
+        self.assertEqual(d["3023"](c), 4960)          # line 93 = 5000 - 40
+        self.assertEqual(d["3025"](c), 4960)          # line 95 = line 93
+        self.assertEqual(d["3027"](c), 2160)          # line 97 = 4960 - 2800
+        self.assertEqual(d["4005"](c), 0)             # line 100 tax due = 0
+
+    def test_2022_sign_split_refund_and_owe(self):
+        d = self.derivations
+        self.assertEqual(d["4027"]({"f540_total_liability": 1234}), 1234)   # owe
+        self.assertIsNone(d["4027"]({"f540_total_liability": -1234}))       # no owe
+        self.assertEqual(d["5008"]({"f540_total_liability": -1234}), 1234)  # refund
+        self.assertIsNone(d["5008"]({"f540_total_liability": 1234}))        # no refund
