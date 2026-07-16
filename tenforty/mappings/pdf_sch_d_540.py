@@ -322,11 +322,10 @@ _CHECKBOX_STATES_2023: dict[str, str] = {}
 # Field-naming scheme: "Text Field N" — a FOURTH distinct FTB naming scheme,
 # disjoint from 2023's bare zero-padded numbers and 2024/2025's prefixed
 # schemes. 2021 fresh air-gapped probe, controller-reconciled against the
-# 2021 template (CA "Text Field N" namespace differs from 2023). Only the
-# five compute-backed cells (header name/SSN, line 8 net gain, line 12a/12b
-# Sch CA deltas) are wired; aggregations/derivations/checkbox-states are
-# empty (no federal-passthrough lines 10/11 cells were part of the
-# controller-verified map) and suppression is not populated for 2021.
+# 2021 template (CA "Text Field N" namespace differs from 2023). Five
+# compute-backed direct cells (header name/SSN, line 8 net gain, line 12a/12b
+# Sch CA deltas) plus two derivations (lines 10/11 federal/CA net) are wired.
+# Suppression is not populated for 2021.
 # ---------------------------------------------------------------------------
 _MAPPING_2021: dict[str, str] = {
     "sch_d_540_taxpayer_name":      "Text Field 2",
@@ -336,7 +335,20 @@ _MAPPING_2021: dict[str, str] = {
     "sch_d_540_total_additions":    "Text Field 126",  # Line 12b (col C, Additions)
 }
 _AGGREGATIONS_2021: dict[str, tuple[str, ...]] = {}
-_DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {}
+# Form-internal computed cells ported from 2023 (rc=1, layout differs but
+# lines 10/11 are present on the 2021 form). Target boxes re-placed from the
+# 2021 template's own /TU tooltips and visually confirmed on the probe render
+# (page 2): Field 123 sits on printed Line 10, Field 124 on printed Line 11.
+_DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
+    # Line 10 — /TU "Enter the gain or (loss) from federal Form 1040 or
+    # 1040-SR, line 7." The FEDERAL net capital gain/loss (pre-CA-divergence).
+    # Formula carried from 2023, verified against the 2021 printed form.
+    "Text Field 123": lambda c: c["sch_d_540_federal_net"],
+    # Line 11 — /TU "Enter the California gain from line 8 or (loss) from
+    # line 9." The CALIFORNIA net capital gain/loss. Formula carried from
+    # 2023, verified against the 2021 printed form.
+    "Text Field 124": lambda c: c["sch_d_540_net_capital_gain"],
+}
 _CHECKBOX_STATES_2021: dict[str, str] = {}
 
 
