@@ -162,9 +162,9 @@ class PdfSchD(PdfFormMapping[dict]):
                 # 28%-rate amount on FORM line 18 (f2_02). Merged 2022-2025
                 # route these backwards (known swap bug; separate fix queued).
                 # Do not "align" 2021 to the merged years.
-                "sch_d_line_18_unrecap_1250":
+                "sch_d_unrecap_1250":
                     "topmostSubform[0].Page2[0].f2_03[0]",
-                "sch_d_line_19_28_rate_gain":
+                "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_02[0]",
             },
             "repeaters": {},
@@ -288,9 +288,9 @@ class PdfSchD(PdfFormMapping[dict]):
                 # The unrecap-§1250 amount belongs on FORM line 19 (f2_03)
                 # and the 28%-rate amount on FORM line 18 (f2_02), matching
                 # the 2021 reference block.
-                "sch_d_line_18_unrecap_1250":
+                "sch_d_unrecap_1250":
                     "topmostSubform[0].Page2[0].f2_03[0]",
-                "sch_d_line_19_28_rate_gain":
+                "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_02[0]",
             },
             "repeaters": {},
@@ -424,9 +424,9 @@ class PdfSchD(PdfFormMapping[dict]):
                 # The unrecap-§1250 amount belongs on FORM line 19 (f2_3)
                 # and the 28%-rate amount on FORM line 18 (f2_2), matching
                 # the 2021 reference block.
-                "sch_d_line_18_unrecap_1250":
+                "sch_d_unrecap_1250":
                     "topmostSubform[0].Page2[0].f2_3[0]",
-                "sch_d_line_19_28_rate_gain":
+                "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_2[0]",
             },
             "repeaters": {},

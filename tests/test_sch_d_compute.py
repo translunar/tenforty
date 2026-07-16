@@ -128,7 +128,7 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
         )
         f8949_result = f8949.compute(scen, upstream={})
         out = sch_d.compute(scen, upstream={"f8949": f8949_result})
-        self.assertEqual(out["sch_d_line_19_28_rate_gain"], 4000)
+        self.assertEqual(out["sch_d_28_rate_gain"], 4000)
 
     def test_section_1250_feeds_line_18(self) -> None:
         scen = _scenario(
@@ -146,7 +146,7 @@ class TestSchDAggregateVsForm8949Split(unittest.TestCase):
         )
         f8949_result = f8949.compute(scen, upstream={})
         out = sch_d.compute(scen, upstream={"f8949": f8949_result})
-        self.assertEqual(out["sch_d_line_18_unrecap_1250"], 3000)
+        self.assertEqual(out["sch_d_unrecap_1250"], 3000)
 
     def test_k1_cap_gain_adds_to_sch_d(self) -> None:
         scen = _scenario([])
