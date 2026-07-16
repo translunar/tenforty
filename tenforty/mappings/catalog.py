@@ -116,7 +116,10 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # every 2021/2022 California form. The f540/sch_ca/sch_d_540 templates
     # already exist, but their probe-certified year mappings are owed —
     # built in ca-2021-2022-emit Tasks 2-3. Six cells:
-    ("california", "f540", 2021),       # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
+    # f540 2021 retired: direct-map-only fresh air-gapped probe (controller-
+    # reconciled 25/25 cells against the 2021 template; CA namespace differs
+    # from 2023) landed in tenforty/mappings/pdf_f540.py; fields-on-template +
+    # emit gates now cover 2021.
     ("california", "sch_ca", 2021),     # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
     ("california", "f540", 2022),       # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
     # sch_ca + sch_d_540 2022 retired (INHERIT batch): 2022 field tree
