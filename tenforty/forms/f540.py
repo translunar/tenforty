@@ -118,6 +118,7 @@ def compute(
     num_dependents: int = 0,
     ca_itemized: int | None = None,
     renter_credit_eligible: bool = False,
+    ca_withholding: int = 0,
 ) -> dict[str, int | FilingStatus]:
     """California Form 540 final-liability compute.
 
@@ -134,7 +135,12 @@ def compute(
     ``ca_itemized`` stays a separate kwarg because it's a scenario-time
     decision (Sch CA-derived), not stored on CA540Return.
     ``renter_credit_eligible`` likewise stays a kwarg pending its
-    promotion to a CA540Return field (v1 follow-up).
+    promotion to a CA540Return field (v1 follow-up). ``ca_withholding``
+    is Form 540 line 71 — the sum of CA-attributed W-2 box-17 withholding
+    (see the orchestrator call-site, which sums ``scenario.w2s`` by
+    ``w.state == "CA"``); it stays a separate kwarg for the same reason
+    ``num_dependents`` does — it derives from the federal scenario's W-2s,
+    not from CA540Return. Carried verbatim; never computed or capped here.
 
     Returns flat dict keyed by ``f540_<semantic>``; all values are int
     (post-``irs_round`` where the input is float).
@@ -186,6 +192,14 @@ def compute(
         + use_tax
         + estimated_tax_penalty
         - estimated_payments
+        # CA 540 line 71 — W-2 box-17 CA withholding. This term was OMITTED
+        # entirely until 2026-07-16 (f540 balance had no withholding line;
+        # f540_line71_ca_withholding was producer-less), making
+        # total_liability wrong by the full withholding for every CA W-2
+        # return. Carried verbatim from the scenario (summed upstream by
+        # state=="CA"), never computed or capped. Reference oracle models it
+        # identically (ca_540_reference line 71 → line 78 → balance).
+        - ca_withholding
     )
 
     return {
@@ -201,6 +215,7 @@ def compute(
         "f540_use_tax": irs_round(use_tax),
         "f540_estimated_tax_penalty": irs_round(estimated_tax_penalty),
         "f540_estimated_payments": irs_round(estimated_payments),
+        "f540_line71_ca_withholding": irs_round(ca_withholding),
         "f540_total_liability": irs_round(final),
         "f540_filing_status": filing_status,
     }
