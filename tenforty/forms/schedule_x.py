@@ -60,6 +60,17 @@ OUT-OF-SCOPE GUARD: if the FILED CA return carried a nonzero amount on a
 Form 540 line tenforty's f540 does not compute, the corrected run cannot
 faithfully reproduce the reconciliation — refuse (OutOfScopeAmendmentError)
 rather than silently drop it. See ``_OUT_OF_SCOPE_CA_FILED_KEYS``.
+
+CA WITHHOLDING IS IN-SCOPE (as of 2026-07-16): Form 540 line 71 (CA W-2
+withholding) used to be scoped out here (f540 modeled estimated payments
+only, no withholding channel) — that guard was CORRECT when written. The
+CA-withholding channel (WIRE-1..4) then wired W-2 CA withholding into
+``f540.compute`` as ``f540_line71_ca_withholding``, netted straight into
+``f540_total_liability``. Withholding now rides INSIDE the required
+``f540_total_liability`` key like every other line this assembler already
+reconciles, so the guard is RETIRED, not flipped — nothing about the
+reconciliation math changed; the model underneath it simply grew a channel
+the guard used to be protecting against.
 """
 
 from tenforty.amendment import MissingFiledValueError, OutOfScopeAmendmentError
@@ -77,6 +88,17 @@ REQUIRED_CA_FILED_KEYS: tuple[str, ...] = ("f540_total_liability",)
 # reproduce that piece of the reconciliation, so refuse rather than emit a
 # wrong balance. Key NAMES are the filed-schema labels for these out-of-model
 # lines (not tax figures). Each is an existing tenforty CA scope-out.
+#
+# RETIRED (2026-07-16): "f540_withholding" ("CA income tax withheld (Form 540
+# line 71) — f540 models estimated payments only, with no withholding
+# channel") used to live here. It was CORRECT when written — f540 genuinely
+# had no withholding channel then. The CA-withholding channel (WIRE-1..4)
+# added one: W-2 CA withholding now nets into f540_total_liability via
+# f540_line71_ca_withholding. That key is REQUIRED_CA_FILED_KEYS's only
+# member, so withholding already reconciles through it — refusing on a
+# separate f540_withholding filed key would now wrongly block every CA
+# amendment whose filed return had withholding. Do not re-add this entry
+# from memory; see the module docstring "CA WITHHOLDING IS IN-SCOPE".
 _OUT_OF_SCOPE_CA_FILED_KEYS: dict[str, str] = {
     "f540_other_state_tax_credit":
         "other state tax credit (Schedule S) — scoped out "
@@ -84,9 +106,6 @@ _OUT_OF_SCOPE_CA_FILED_KEYS: dict[str, str] = {
     "f540_amt":
         "CA alternative minimum tax (Schedule P) — scoped out "
         "(acknowledges_no_ca_amt_preferences)",
-    "f540_withholding":
-        "CA income tax withheld (Form 540 line 71) — f540 models estimated "
-        "payments only, with no withholding channel",
 }
 
 
