@@ -62,6 +62,14 @@ class OracleSanctionTripwireTests(unittest.TestCase):
             set_oracle_sanction(_StubItem(oracle=False))
             self.assertNotIn("TENFORTY_ORACLE_SANCTIONED", os.environ)
 
+    def test_guard_exempts_mocked_subprocess(self) -> None:
+        with patch.dict(
+            os.environ, {"PYTEST_CURRENT_TEST": "pkg::test_x"}, clear=False,
+        ):
+            os.environ.pop("TENFORTY_ORACLE_SANCTIONED", None)
+            with patch("tenforty.oracle.engine.subprocess.run"):
+                self.assertIsNone(_assert_oracle_sanctioned())
+
 
 if __name__ == "__main__":
     unittest.main()
