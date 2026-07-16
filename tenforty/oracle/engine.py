@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import tempfile
 import threading
+import unittest.mock
 from pathlib import Path
 
 import openpyxl
@@ -34,12 +35,25 @@ def _assert_oracle_sanctioned() -> None:
     catches ANY route to soffice, orchestrator or otherwise.
     """
     current = os.environ.get("PYTEST_CURRENT_TEST")
-    if current and os.environ.get("TENFORTY_ORACLE_SANCTIONED") != "1":
-        raise RuntimeError(
-            f"soffice/LibreOffice was reached from a non-oracle-marked test "
-            f"({current}); decorate that test @needs_libreoffice (oracle-tier). "
-            f"See the tiering-leak remediation."
-        )
+    if not current:
+        return  # production: PYTEST_CURRENT_TEST unset -> soffice runs normally
+    if os.environ.get("TENFORTY_ORACLE_SANCTIONED") == "1":
+        return  # oracle-marked test: sanctioned by the conftest hookwrapper
+    if isinstance(subprocess.run, unittest.mock.NonCallableMock):
+        # subprocess.run has been replaced by a mock (e.g. tests/test_oracle_engine.py,
+        # which A3's AST entry-point guard already allowlists for the same reason): no
+        # REAL soffice can launch, so there is nothing to guard. NOTE: a Mock whose
+        # side_effect delegates to the real subprocess.run could evade this exemption;
+        # that is OUT of the threat model -- the tripwire targets ACCIDENTAL leaks, not
+        # deliberate circumvention (the whole-branch review and A3's AST guard cover
+        # that). Do NOT tighten this into something that re-breaks the engine's
+        # mock-based unit tests.
+        return
+    raise RuntimeError(
+        f"soffice/LibreOffice was reached from a non-oracle-marked test "
+        f"({current}); decorate that test @needs_libreoffice (oracle-tier). "
+        f"See the tiering-leak remediation."
+    )
 
 
 class SpreadsheetEngine:
