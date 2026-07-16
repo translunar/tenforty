@@ -495,12 +495,45 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertFalse((out / "f1040_2021.pdf").exists())
         self.assertFalse((out / "f1040sb_2021.pdf").exists())
 
-    def test_ca_compute_only_year_note(self):
-        """CA compute-only year (2022): Schedule X emits, but the complete
-        amended 540 cannot — the manifest carries its OWN distinct CA note,
-        separate from the federal one, and the 540 is absent."""
-        self.assertIn(2022, years.CALIFORNIA_COMPUTE_ONLY_YEARS)
-        self.assertIn(2022, years.FEDERAL_YEARS)  # federal side is full-emit
+    def test_ca_2021_2022_now_full_emit_ca_no_compute_only_note(self):
+        """2021 and 2022 are now full-emit CALIFORNIA_YEARS members
+        (ca-2021-2022-emit Task 1 manifest move), so the orchestrator's CA
+        branch gate — ``if year in years.CALIFORNIA_YEARS`` — takes the
+        full-emit path and the ``else`` that appends ``_CA_COMPUTE_ONLY_NOTE``
+        is unreachable for them. This is asserted at the MANIFEST level, not by
+        driving a real full-emit CA amendment: the 2021/2022 CA emit packs
+        (probe-certified f540/sch_ca/sch_d_540 mappings) are owed by later
+        tasks (Tasks 2-3), so a real full-emit CA run would raise until they
+        land — exactly the situation the federal side was in when its Task 1
+        pinned the analogous federal note-absence at the manifest level (see
+        ``test_federal_2021_is_now_full_emit_no_compute_only_note``, which only
+        flipped to a real run once the federal packs existed). The predicate
+        below is the exact one the orchestrator branches on, so it is a live
+        check, not a tautology."""
+        for year in (2021, 2022):
+            with self.subTest(year=year):
+                self.assertIn(year, years.CALIFORNIA_YEARS)
+                self.assertNotIn(year, years.CALIFORNIA_COMPUTE_ONLY_YEARS)
+
+    def test_ca_compute_only_note_machinery_via_synthetic_manifest(self):
+        """The CA compute-only-note MACHINERY stays tested even though no real
+        CA compute-only year remains after the Task 1 move — a future backfill
+        can re-enter the tier, and its note must still emit. A SYNTHETIC
+        manifest fixture reconstructs the pre-move state for 2022: removed from
+        CALIFORNIA_YEARS (so the orchestrator takes the compute-only ``else``
+        branch that appends ``_CA_COMPUTE_ONLY_NOTE``) AND added to
+        CALIFORNIA_COMPUTE_ONLY_YEARS (so the CA params loader — which gates on
+        CALIFORNIA_YEARS + CALIFORNIA_COMPUTE_ONLY_YEARS — still resolves 2022's
+        real params). Both the orchestrator and the params loader read these as
+        live attributes of the ``years`` module, so patching the module
+        attributes reaches every consumer. Schedule X still emits (its per-year
+        pack exists for every amendable CA year); the complete amended 540 does
+        NOT (the compute-only branch never calls ``_emit_ca_pdfs_internal``).
+
+        Precondition: the tier really is empty (else this fixture would be
+        masking a still-populated tier rather than synthesizing one)."""
+        self.assertEqual(years.CALIFORNIA_COMPUTE_ONLY_YEARS, ())
+
         original = _with_ca(build_canonical_wage_investment_rental(2022))
         amended = _bump_interest(original, 3_000.0)
 
@@ -512,8 +545,17 @@ class AmendmentPacketEmitTests(unittest.TestCase):
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0)
         out = self.tmp / "packet"
-        manifest = self.orch.run_amendment_packet(
-            original, amended, case, filed_path, ca_filed_path, out)
+
+        synthetic_california = tuple(
+            y for y in years.CALIFORNIA_YEARS if y != 2022)
+        synthetic_compute_only = tuple(sorted(
+            set(years.CALIFORNIA_COMPUTE_ONLY_YEARS) | {2022}))
+        with unittest.mock.patch.object(
+                years, "CALIFORNIA_YEARS", synthetic_california), \
+             unittest.mock.patch.object(
+                years, "CALIFORNIA_COMPUTE_ONLY_YEARS", synthetic_compute_only):
+            manifest = self.orch.run_amendment_packet(
+                original, amended, case, filed_path, ca_filed_path, out)
 
         self.assertIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
         self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
