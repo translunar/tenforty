@@ -3,6 +3,8 @@ import os
 
 import pytest
 
+from tests.helpers import set_oracle_sanction
+
 
 # Oracle-collection env gate. Two same-week incidents had implementers reach the
 # soffice/LibreOffice oracle path via a bare `pytest tests/`. Oracle-marked tests
@@ -25,3 +27,13 @@ def pytest_collection_modifyitems(config, items):
             'merge-gate runner. Set TENFORTY_ORACLE_OK=1 to run them, or deselect '
             'them with -m "not oracle".'
         )
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_setup(item):
+    # Set/clear the soffice sanction BEFORE the internal pytest_runtest_setup fires
+    # (that internal hook triggers fixture setup incl. unittest setUpClass, which may
+    # launch soffice). hookwrapper pre-yield runs before all non-wrapper hookimpls, so
+    # the sanction is in place before any class-level launch can reach the guard.
+    set_oracle_sanction(item)
+    yield

@@ -88,7 +88,7 @@ class RowLayoutTests(unittest.TestCase):
         out, _ = sch_e_part_ii.compute(s, upstream={})
         self.assertEqual(out["sch_e_part_ii_row_a_name"], "Fake S-Corp Inc")
         self.assertEqual(out["sch_e_part_ii_row_a_ein"], "00-0000000")
-        self.assertEqual(out["sch_e_part_ii_row_a_entity_type_s_corp"], "X")
+        self.assertEqual(out["sch_e_part_ii_row_a_entity_code"], "S")
         self.assertEqual(out["sch_e_part_ii_row_a_nonpassive_income"], 50_000)
         self.assertEqual(out["sch_e_part_ii_row_a_passive_income"], 0)
 
@@ -101,8 +101,46 @@ class RowLayoutTests(unittest.TestCase):
             ordinary_business_income=10_000.0,
         )]
         out, _ = sch_e_part_ii.compute(s, upstream={})
+        self.assertEqual(out["sch_e_part_ii_row_a_entity_code"], "P")
         self.assertEqual(out["sch_e_part_ii_row_a_passive_income"], 10_000)
         self.assertEqual(out["sch_e_part_ii_row_a_nonpassive_income"], 0)
+
+
+class EntityCodeTests(unittest.TestCase):
+    """Line 28 col (b) is a single 'Enter P/S' TEXT field, so compute must
+    emit one derived entity_code ("P"|"S") per row instead of the two
+    legacy boolean keys (sch_e_part_ii_row_{letter}_entity_type_partnership/
+    _s_corp), which do not correspond to any real PDF cell (col (c) and (e)
+    are separate, unmodeled checkboxes)."""
+
+    def test_scorp_k1_emits_entity_code_s(self):
+        s = make_k1_scenario()
+        s.schedule_k1s = [_scorp_k1()]
+        out, _ = sch_e_part_ii.compute(s, upstream={})
+        self.assertEqual(out["sch_e_part_ii_row_a_entity_code"], "S")
+
+    def test_partnership_k1_emits_entity_code_p(self):
+        s = make_k1_scenario()
+        s.schedule_k1s = [_scorp_k1(
+            entity_type="partnership", entity_name="Example LLC",
+        )]
+        out, _ = sch_e_part_ii.compute(s, upstream={})
+        self.assertEqual(out["sch_e_part_ii_row_a_entity_code"], "P")
+
+    def test_legacy_boolean_entity_type_keys_are_gone(self):
+        s = make_k1_scenario()
+        s.schedule_k1s = [
+            _scorp_k1(),
+            _scorp_k1(entity_type="partnership", entity_name="Example LLC"),
+        ]
+        out, _ = sch_e_part_ii.compute(s, upstream={})
+        for letter in ("a", "b"):
+            self.assertNotIn(
+                f"sch_e_part_ii_row_{letter}_entity_type_s_corp", out,
+            )
+            self.assertNotIn(
+                f"sch_e_part_ii_row_{letter}_entity_type_partnership", out,
+            )
 
 
 class FanoutTests(unittest.TestCase):

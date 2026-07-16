@@ -78,8 +78,8 @@ def compute(scenario: Scenario, upstream: UpstreamState) -> dict:
         "sch_d_line_15_net_long": line_15,
 
         "sch_d_line_16_total": line_16,
-        "sch_d_line_18_unrecap_1250": f8949.get("f8949_total_unrecap_1250", 0),
-        "sch_d_line_19_28_rate_gain": f8949.get("f8949_total_28_rate_gain", 0),
+        "sch_d_unrecap_1250": f8949.get("f8949_total_unrecap_1250", 0),
+        "sch_d_28_rate_gain": f8949.get("f8949_total_28_rate_gain", 0),
     }
 
 
