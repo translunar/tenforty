@@ -178,18 +178,6 @@ class CA540WithholdingCrossCheckTest(unittest.TestCase):
             - oracle["f540_line_115_refund"]
         )
 
-        # Diagnostic arithmetic (printed for review; not asserted on).
-        print(
-            f"[cross-check X={withholding}] "
-            f"prod total_liability={prod['f540_total_liability']} "
-            f"prod line71={prod['f540_line71_ca_withholding']} | "
-            f"oracle line_71={oracle['f540_line_71_withholding']} "
-            f"line_114={oracle['f540_line_114_total_amount_due']:.2f} "
-            f"line_115={oracle['f540_line_115_refund']:.2f} "
-            f"signed_net={oracle_signed_net:.2f} "
-            f"irs_round(signed_net)={irs_round(oracle_signed_net)}"
-        )
-
         # (1) The withholding is line 71 on both sides (keys differ by design).
         self.assertEqual(
             prod["f540_line71_ca_withholding"],
