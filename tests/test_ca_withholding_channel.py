@@ -11,8 +11,15 @@ Drives the orchestrator CA compute core (``_compute_ca_results``, the
 
 Both assertions are structural (an identity and a delta) — no golden dollar
 value — so the pin survives any future re-tune of the CA tax/exemption
-parameters. The absolute reconciliation of the balance against an independent
-reference lives in ``test_ca_540_withholding_cross_check``.
+parameters.
+
+COVERAGE DIVISION: this pin GUARDS THE ORCHESTRATOR SUMMATION/FILTER half —
+the ``scenario.w2s``-where-``state == "CA"`` sum that WIRE-2 added. The
+cross-check (``test_ca_540_withholding_cross_check``) drives ``f540.compute``
+directly and BYPASSES that summation, so it CANNOT catch a regression in the
+filter; conversely it guards the balance-chain half (line 71 → line 78 →
+refund/owe) against an independent oracle, which this pin does not. Two named
+halves of one chain, no gap between them.
 """
 
 import tempfile
