@@ -301,3 +301,30 @@ class TestF1040EstimatedTaxPayments(unittest.TestCase):
                     f"{year} missing EstimatedTaxPayments named range",
                 )
                 wb.close()
+
+
+class TestF1040CharitableNonitemizer2021(unittest.TestCase):
+    """2021 line 12b (CARES/CAA above-the-line cash-charitable deduction for
+    non-itemizers): a named range, Charitable, present ONLY in the 2021
+    workbook (the provision expired — 2022-2025 workbooks lack the range),
+    so this input mapping is 2021-scoped and deliberately NOT inherited into
+    later years."""
+
+    def test_2021_mapping(self):
+        inputs = F1040.get_inputs(2021)
+        self.assertEqual(inputs["charitable_nonitemizer"], "Charitable")
+
+    def test_named_range_resolves_in_2021_workbook(self):
+        workbook_path = SPREADSHEETS_DIR / "federal" / "2021" / "1040.xlsx"
+        wb = openpyxl.load_workbook(workbook_path, read_only=False)
+        self.assertIn(
+            "Charitable", wb.defined_names,
+            "2021 missing Charitable named range",
+        )
+        wb.close()
+
+    def test_not_mapped_in_later_years(self):
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                inputs = F1040.get_inputs(year)
+                self.assertNotIn("charitable_nonitemizer", inputs)

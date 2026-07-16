@@ -46,6 +46,13 @@ import math
 # it needs no not-applicable declaration.
 NOT_APPLICABLE: dict[str, str] = {
     "salt_phaseout_threshold": "No SALT phaseout under the 2023 flat cap (IRC §164(b)(6)); the phaseout regime begins with OBBBA in 2025.",
+    "nonitemizer_charitable_cap": (
+        "No non-itemizer charitable cash deduction exists for TY2023. The "
+        "temporary above-the-standard-deduction provision (Form 1040 line 12b, "
+        "up to $300 single / $600 MFJ) applied only to 2020-2021 and expired. "
+        "The 2023 Instructions for Form 1040 have no line 12b — Line 12 is "
+        "'Itemized Deductions or Standard Deduction'. Attested None."
+    ),
 }
 
 ATTESTED: dict[str, object] = {
@@ -64,6 +71,10 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 20800,
         "qualifying_widow": 27700,
     },
+
+    # Non-itemizer charitable cash-contribution deduction: NOT APPLICABLE for
+    # TY2023 (see NOT_APPLICABLE). The 2020-2021-only line 12b provision expired.
+    "nonitemizer_charitable_cap": None,
 
     # IRS Rev. Proc. 2022-38 §3.01, TABLE 3 - Section 1(j)(2)(C), "Unmarried
     # Individuals (other than Surviving Spouses and Heads of Households)"
@@ -249,4 +260,9 @@ SOURCES: tuple[str, ...] = (
     "Schedule A (Form 1040), "
     "https://www.irs.gov/pub/irs-prior/i1040sca--2022.pdf -- 'Line 5' "
     "section ($10,000/$5,000 cap), for prior_year_salt_cap.",
+    "2023 Instructions for Form 1040 (and 1040-SR), "
+    "https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf -- Line 12 is "
+    "'Itemized Deductions or Standard Deduction' with no line 12b non-itemizer "
+    "charitable cash deduction (nonitemizer_charitable_cap None; the 2020-2021 "
+    "provision expired).",
 )

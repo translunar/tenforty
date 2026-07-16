@@ -401,11 +401,23 @@ class TaxReturnConfig:
     # Required only when prior_year_itemized is True. Used to compute the
     # recovery limit (itemized_amount - standard_amount).
     prior_year_standard_deduction_amount: float | None = None
+    # Prior-year state & local taxes actually PAID (pre-$10k-cap) — prior-year
+    # Schedule A line 5d BEFORE the line-5e cap. Required only when
+    # prior_year_itemized is True. Enables the true SALT-cap benefit limitation
+    # on the Sch 1 line-1 recovery (vs the old flat-ceiling approximation).
+    prior_year_salt_paid: float | None = None
     # Filer's stated total federal estimated tax payments (Form 1040 line
     # 26). Verbatim passthrough: carried through exactly as supplied, never
     # computed, capped, or clamped. A negative value is refused at load
     # time, not silently set to 0.
     estimated_tax_payments: float = 0.0
+    # Filer's stated 2021 Form 1040 line 12b above-the-line cash-charitable
+    # contribution for non-itemizers (CARES Act §2204 / CAA 2021 §212).
+    # Verbatim passthrough: carried through exactly as supplied, or refused
+    # at load time (negative, or nonzero outside the one year the provision
+    # existed) — never silently capped or clamped. The field>cap and
+    # itemizer-status guards are compute-time concerns handled elsewhere.
+    charitable_cash_nonitemizer: float = 0.0
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):

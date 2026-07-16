@@ -112,3 +112,166 @@ class TestEstimatedTaxPayments(unittest.TestCase):
         with self.assertRaises(ValueError):
             self._load_with_config(config_body)
 
+
+class TestNonitemizerCharitableCash(unittest.TestCase):
+    """2021-only CARES/CAA above-the-line cash-charitable deduction for
+    non-itemizers (Form 1040 line 12b): the filer's stated amount is
+    carried through verbatim (or refused if negative, or refused entirely
+    outside the one year the provision existed) — never computed, capped,
+    or clamped at load time (field>cap and itemizer gating are compute-time
+    concerns handled in a later task)."""
+
+    def _make_config_body(self, **overrides) -> dict:
+        body = {
+            "year": 2025,
+            "filing_status": "single",
+            "birthdate": "1985-04-20",
+            "state": "CA",
+            "has_foreign_accounts": False,
+            "prior_year_itemized": False,
+            **scope_out_attestation_defaults(),
+        }
+        body.update(overrides)
+        return body
+
+    def _load_with_config(self, config_body: dict) -> Scenario:
+        body = {"config": config_body}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        return load_scenario(path)
+
+    def test_2021_nonitemizer_charitable_cash_accepted_verbatim(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=250.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 250.0)
+
+    def test_nonitemizer_charitable_cash_defaults_to_zero_when_omitted(self) -> None:
+        config_body = self._make_config_body(year=2021)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 0.0)
+
+    def test_negative_nonitemizer_charitable_cash_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=-1.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+
+    def test_nonzero_nonitemizer_charitable_cash_refused_outside_2021(self) -> None:
+        config_body = self._make_config_body(
+            year=2022, charitable_cash_nonitemizer=250.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+
+    def test_zero_nonitemizer_charitable_cash_ok_outside_2021(self) -> None:
+        config_body = self._make_config_body(
+            year=2022, charitable_cash_nonitemizer=0.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.charitable_cash_nonitemizer, 0.0)
+
+    def test_mfj_nonitemizer_charitable_cash_refused_as_out_of_scope(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, filing_status="married_jointly",
+            charitable_cash_nonitemizer=400.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception).lower()
+        self.assertIn("single", message)
+        self.assertTrue(
+            "out-of-scope" in message or "certified" in message,
+            msg=f"Expected message to name the out-of-scope/certified "
+                f"condition, got: {ctx.exception}",
+        )
+
+    def test_head_of_household_under_cap_still_refused_as_out_of_scope(self) -> None:
+        # Distinguisher: a non-single amount UNDER the single $300 cap must
+        # STILL refuse — this is the non-single scope-out, not the cap check.
+        config_body = self._make_config_body(
+            year=2021, filing_status="head_of_household",
+            charitable_cash_nonitemizer=200.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception).lower()
+        self.assertIn("single", message)
+        self.assertTrue(
+            "out-of-scope" in message or "certified" in message,
+            msg=f"Expected message to name the out-of-scope/certified "
+                f"condition, got: {ctx.exception}",
+        )
+
+    def test_single_over_cap_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=350.0)
+        with self.assertRaises(ValueError) as ctx:
+            self._load_with_config(config_body)
+        message = str(ctx.exception)
+        self.assertIn("300", message)
+
+    def test_single_itemizer_with_nonzero_charitable_refused(self) -> None:
+        config_body = self._make_config_body(
+            year=2021, charitable_cash_nonitemizer=250.0)
+        body = {"config": config_body, "itemized_deductions": {}}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        with self.assertRaises(ValueError) as ctx:
+            load_scenario(path)
+        message = str(ctx.exception).lower()
+        self.assertTrue(
+            "itemiz" in message,
+            msg=f"Expected message to mention itemizer/itemized, got: {ctx.exception}",
+        )
+
+
+class TestPriorYearSaltPaid(unittest.TestCase):
+    """Prior-year SALT-actually-paid input: required loudly whenever
+    prior_year_itemized is true (drives the Sch 1 line-1 true benefit
+    limitation), and refused if negative."""
+
+    def _make_config_body(self, **overrides) -> dict:
+        body = {
+            "year": 2025,
+            "filing_status": "single",
+            "birthdate": "1985-04-20",
+            "state": "CA",
+            "has_foreign_accounts": False,
+            **scope_out_attestation_defaults(),
+            # Explicit True AFTER the scope_out_attestation_defaults() spread:
+            # `prior_year_itemized` is itself a registered attestation (defaults
+            # False there), so it must be set after the spread or it gets
+            # silently overridden back to False.
+            "prior_year_itemized": True,
+            "prior_year_itemized_deduction_amount": 30_000.0,
+            "prior_year_standard_deduction_amount": 14_600.0,
+        }
+        body.update(overrides)
+        return body
+
+    def _load_with_config(self, config_body: dict) -> Scenario:
+        body = {"config": config_body}
+        with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+            yaml.safe_dump(body, f)
+            path = Path(f.name)
+        self.addCleanup(path.unlink)
+        return load_scenario(path)
+
+    def test_prior_year_itemized_without_salt_paid_raises(self) -> None:
+        config_body = self._make_config_body()
+        with self.assertRaisesRegex(
+            ValueError, r"\bprior_year_salt_paid\b",
+        ):
+            self._load_with_config(config_body)
+
+    def test_prior_year_itemized_with_salt_paid_loads(self) -> None:
+        config_body = self._make_config_body(prior_year_salt_paid=12_000.0)
+        scenario = self._load_with_config(config_body)
+        self.assertEqual(scenario.config.prior_year_salt_paid, 12_000.0)
+
+    def test_negative_prior_year_salt_paid_refused(self) -> None:
+        config_body = self._make_config_body(prior_year_salt_paid=-1.0)
+        with self.assertRaises(ValueError):
+            self._load_with_config(config_body)
+

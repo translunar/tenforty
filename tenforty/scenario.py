@@ -4,6 +4,7 @@ from pathlib import Path
 import yaml
 
 from tenforty.attestations import validate_load_time
+from tenforty.params.federal import load as load_federal_params
 from tenforty.models import (
     AccountingMethod,
     Address,
@@ -392,6 +393,18 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
                 "is required when `prior_year_itemized` is true. It is used "
                 "to compute the recovery limit."
             )
+        if cfg.prior_year_salt_paid is None:
+            raise ValueError(
+                "Scenario config field `prior_year_salt_paid` is required when "
+                "`prior_year_itemized` is true. It is the prior year's state & "
+                "local taxes actually PAID (prior-year Schedule A line 5d, BEFORE "
+                "the line-5e $10k cap) and drives the Sch 1 line-1 tax-benefit "
+                "limitation (a refund is taxable only to the extent it lowered the "
+                "capped SALT deduction)."
+            )
+
+    if cfg.prior_year_salt_paid is not None and cfg.prior_year_salt_paid < 0:
+        raise ValueError("Scenario config field `prior_year_salt_paid` must be >= 0.")
 
     if cfg.estimated_tax_payments < 0:
         raise ValueError(
@@ -400,6 +413,42 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             "carried through verbatim (never computed or clamped), so a "
             "negative value cannot be silently corrected to 0 — it is "
             "refused instead."
+        )
+
+    if cfg.charitable_cash_nonitemizer < 0:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` must be "
+            ">= 0. The filer's stated 2021 above-the-line non-itemizer "
+            "cash-charitable contribution is carried through verbatim "
+            "(never computed or clamped), so a negative value cannot be "
+            "silently corrected to 0 — it is refused instead."
+        )
+
+    params = load_federal_params(cfg.year)
+    if cfg.charitable_cash_nonitemizer and params.nonitemizer_charitable_cap is None:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` is a 2021-only "
+            "provision (the CARES/CAA above-the-line charitable deduction for "
+            f"non-itemizers); it must be 0 for tax year {cfg.year}."
+        )
+
+    if cfg.charitable_cash_nonitemizer and cfg.filing_status is not FilingStatus.SINGLE:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` (2021 line 12b) "
+            "is certified in tenforty for SINGLE filers only. Non-single 12b "
+            "exists in the IRS workbook but is NOT certified in tenforty (no "
+            f"attested per-status cap), so filing_status={cfg.filing_status.value} "
+            "with a nonzero amount is refused as an out-of-scope condition."
+        )
+
+    cap = params.nonitemizer_charitable_cap
+    if cfg.charitable_cash_nonitemizer and cap is not None \
+            and cfg.charitable_cash_nonitemizer > cap:
+        raise ValueError(
+            f"Scenario config field `charitable_cash_nonitemizer` "
+            f"({cfg.charitable_cash_nonitemizer}) exceeds the 2021 single-filer "
+            f"non-itemizer cap of ${cap}. The amount is carried verbatim or "
+            f"refused, never silently capped."
         )
 
 
@@ -441,7 +490,27 @@ def load_scenario(path: Path) -> Scenario:
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         **form_data)
     _validate_schedule_k1s(scenario)
+    _validate_charitable_itemizer(scenario)
     return scenario
+
+
+def _validate_charitable_itemizer(scenario) -> None:
+    """12b is for NON-ITEMIZERS. Itemization is decided at compute time
+    (Sch A total vs standard), so at load we can only see whether itemized
+    inputs were SUPPLIED. Conservative refusal: a nonzero 12b amount together
+    with a supplied itemized_deductions block is contradictory (a non-itemizer
+    would not file Schedule A), and the workbook's DeductPlusCharity =
+    SUM(Deductions, Charitable) would silently add 12b on top of itemized
+    deductions. Refuse rather than risk a silently-wrong return. (Documented
+    conservatism: a filer who supplies Sch A but would take the standard
+    deduction must drop the Sch A inputs to claim 12b.)"""
+    if scenario.config.charitable_cash_nonitemizer and scenario.itemized_deductions is not None:
+        raise ValueError(
+            "Scenario config field `charitable_cash_nonitemizer` (2021 line 12b) "
+            "is for non-itemizers only, but this scenario supplies an "
+            "`itemized_deductions` block. Refusing: 12b cannot be combined with "
+            "itemized deductions (drop the itemized_deductions block to claim 12b)."
+        )
 
 
 def _validate_schedule_k1s(scenario: Scenario) -> None:

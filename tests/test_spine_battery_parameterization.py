@@ -29,11 +29,12 @@ _EXPECTED_NAMES = [
 ]
 
 # 2021 additionally carries ptc_2021_ui_flat133 (the 2021-only ARPA
-# unemployment-compensation special rule); 2022-2025 do not — that
-# scenario is meaningless outside 2021 and battery_for() must not emit it
-# for any other year.
+# unemployment-compensation special rule) and charitable_nonitemizer_2021
+# (the 2021-only CARES/CAA line-12b non-itemizer charitable deduction);
+# 2022-2025 do not — both scenarios are meaningless outside 2021 and
+# battery_for() must not emit them for any other year.
 _EXPECTED_NAMES_BY_YEAR = {
-    2021: _EXPECTED_NAMES + ["ptc_2021_ui_flat133"],
+    2021: _EXPECTED_NAMES + ["ptc_2021_ui_flat133", "charitable_nonitemizer_2021"],
     2022: _EXPECTED_NAMES,
     2023: _EXPECTED_NAMES,
     2024: _EXPECTED_NAMES,

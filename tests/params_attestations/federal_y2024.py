@@ -35,6 +35,11 @@ SOURCES: tuple[str, ...] = (
     "IRS 2024 Instructions for Schedule A (Form 1040) "
     "(irs.gov/pub/irs-prior/i1040sca--2024.pdf): TY2024 SALT deduction cap "
     "$10,000 ($5,000 MFS).",
+    "IRS 2024 Instructions for Form 1040 (and 1040-SR) "
+    "(irs.gov/pub/irs-prior/i1040gi--2024.pdf): Line 12 is 'Itemized "
+    "Deductions or Standard Deduction' with no line 12b non-itemizer "
+    "charitable cash deduction — the 2020-2021-only provision expired "
+    "(for nonitemizer_charitable_cap = None).",
     "IRS 2023 Instructions for Schedule A (Form 1040) "
     "(irs.gov/pub/irs-prior/i1040sca--2023.pdf): TY2023 SALT deduction cap "
     "$10,000 ($5,000 MFS) — for prior_year_salt_cap lookback.",
@@ -55,6 +60,14 @@ SOURCES: tuple[str, ...] = (
 NOT_APPLICABLE: dict[str, str] = {
     "salt_phaseout_threshold": "No SALT phaseout under the 2024 flat cap (IRC §164(b)(6)); the phaseout regime begins with OBBBA in 2025.",
     "salt_phaseout_rate": "No phaseout rate under the 2024 flat cap — no income-based reduction exists to rate-limit.",
+    "nonitemizer_charitable_cap": (
+        "No non-itemizer charitable cash deduction exists for TY2024. The "
+        "temporary above-the-standard-deduction provision (Form 1040 line 12b, "
+        "up to $300 single / $600 MFJ) applied only to tax years 2020 and 2021 "
+        "and expired thereafter. The 2024 Instructions for Form 1040 have no "
+        "line 12b — Line 12 is 'Itemized Deductions or Standard Deduction'. "
+        "Attested None (provision not in effect)."
+    ),
 }
 
 ATTESTED: dict[str, object] = {
@@ -68,6 +81,10 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 21900,
         "qualifying_widow": 29200,  # QSS = MFJ standard deduction
     },
+
+    # Non-itemizer charitable cash-contribution deduction: NOT APPLICABLE for
+    # TY2024 (see NOT_APPLICABLE). The 2020-2021-only line 12b provision expired.
+    "nonitemizer_charitable_cap": None,
 
     # Rev. Proc. 2023-34, Tax Rate Tables (§2.01). SCHEMA STORES ONE SCHEDULE
     # (not status-keyed) — transcribed the SINGLE-filer 2024 schedule.

@@ -49,6 +49,12 @@ class FederalParams:
     # A deliberately conservative gate: it only ever fires for single filers,
     # where a higher ceiling errs safe.
     eic_income_ceiling: dict[int, int]
+    # 2021-only CARES/CAA above-the-line cash-charitable deduction cap for
+    # NON-ITEMIZERS (Form 1040 line 12b), single-filer cap only (the $600 MFJ
+    # figure and all other non-single figures are out of scope). None in
+    # every year the provision does not exist (it was not extended past
+    # 2021). No default — each year's module must set this explicitly.
+    nonitemizer_charitable_cap: int | None
 
 
 def load(year: int) -> FederalParams:
