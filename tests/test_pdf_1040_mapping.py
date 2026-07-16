@@ -228,6 +228,13 @@ class TestPdf1040Line14DeductionsPlusQbi(unittest.TestCase):
     scenario with QBI > 0 therefore printed line 14 == line 12, silently
     dropping the QBI deduction and breaking the line-14/line-15 footing.
 
+    Also a regression test for bug #5: line 13 (pdf_1040.py's `qbi_deduction`
+    key) was never populated because the spine only emitted the QBI amount
+    under the underscore-prefixed `_qbi_deduction_1040` (consumed internally
+    by the oracle-translation shim in forms/f1040.py). Line 13 now must
+    read back the real QBI deduction, and the line-14 footing check reads
+    all three boxes (12, 13, 14) from the actual filled PDF.
+
     Uses a real K-1 QBI aggregate run through the actual forms.f8995.compute
     (not a hand-typed qbi_deduction), mirroring the orchestrator's own
     f8995 pre-pass (see orchestrator.py Step 7/8), so the expected QBI
@@ -335,36 +342,35 @@ class TestPdf1040Line14DeductionsPlusQbi(unittest.TestCase):
                 line14 = int(boxes["line14"])
                 line15 = int(boxes["line15"])
 
-                # PRE-EXISTING, SEPARATE BUG (out of scope for this task):
-                # line 13's PDF box (pdf_1040.py's "qbi_deduction" key) is
-                # NEVER populated by either compute path. The native spine
-                # emits the QBI amount under "_qbi_deduction_1040"
-                # (forms/f1040_spine.py), and the oracle shim
-                # (forms/f1040.py) pops that same key for an internal
-                # derivation (taxable_income_before_qbi_deduction) without
-                # ever re-emitting a plain "qbi_deduction" key. So line 13
-                # has always rendered blank on every emitted 1040 with
-                # QBI > 0, in BOTH pipelines -- a distinct, more severe bug
-                # than bug #4 (line 13 is not just wrong, it's blank).
-                # Reported separately; NOT fixed here (only
-                # "deductions_plus_qbi" is an authorized spine change for
-                # this task). Locking in the current behavior below so a
-                # future fix to that key is forced to update this test.
-                self.assertIsNone(
+                # Bug #5 fix: line 13's PDF box (pdf_1040.py's "qbi_deduction"
+                # key) must now read back a real value. The native spine emits
+                # the QBI amount under both "_qbi_deduction_1040" (kept for the
+                # oracle-translation shim in forms/f1040.py) and the plain
+                # "qbi_deduction" key that pdf_1040.py's mapping actually keys
+                # on. Assert against the independently-computed qbi_deduction
+                # (from the real forms.f8995.compute call above, not a
+                # hand-typed literal) so this guards against the box merely
+                # being non-blank with the wrong number.
+                self.assertGreater(qbi_deduction, 0)
+                self.assertIsNotNone(
                     boxes["line13"],
-                    "line 13 (qbi_deduction) box unexpectedly has a value -- "
-                    "if the qbi_deduction/_qbi_deduction_1040 key-name bug "
-                    "has been fixed, read line 13 back from the PDF instead "
-                    "of using the independently-computed qbi_deduction below.",
+                    "line 13 (qbi_deduction) box is blank -- Bug #5: the "
+                    "spine must emit a plain `qbi_deduction` key alongside "
+                    "`_qbi_deduction_1040` for pdf_1040.py's line-13 mapping "
+                    "to find.",
+                )
+                line13 = int(boxes["line13"])
+                self.assertEqual(
+                    line13, int(qbi_deduction),
+                    f"{year}: line 13 box must equal the engine-computed QBI "
+                    f"deduction ({qbi_deduction}) -- got {line13}",
                 )
 
-                # Independently derived from the read-back boxes -- this is
-                # the bug-#4 assertion class: line 14 = 12(c) + 13. Uses the
-                # real forms.f8995.compute-derived qbi_deduction (line 13's
-                # true value) rather than the PDF box, since that box is
-                # unpopulated by the separate bug noted above.
-                self.assertGreater(qbi_deduction, 0)
-                line13 = int(qbi_deduction)
+                # Footing check, reading ALL THREE boxes back from the actual
+                # filled PDF (not internal variables): line 14 = 12(c) + 13,
+                # and line 15 = line 11 - line 14. This is the bug-#4
+                # assertion class, now exercised with a genuinely populated
+                # (not blank/zero-by-omission) line 13.
                 self.assertEqual(
                     line14, line12 + line13,
                     f"{year}: line 14 must equal line 12 + line 13 "
