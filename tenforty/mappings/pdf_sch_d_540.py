@@ -349,6 +349,14 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
     # 2023, verified against the 2021 printed form.
     "Text Field 124": lambda c: c["sch_d_540_net_capital_gain"],
 }
+# Detail rows 1a..1v + within-form sums/carryover + line-9 loss limit — no direct
+# compute backing, same semantics as 2023/2024/2025. In the 2021 "Text Field N"
+# namespace these are "Text Field 4".."Text Field 120" (detail/sum cells) plus
+# "Text Field 122" (line-9 loss limit); the five compute-backed cells (2, 3, 121,
+# 125, 126) and two derivation cells (123, 124) are the only owned widgets.
+_SUPPRESSED_2021: frozenset[str] = frozenset(
+    {f"Text Field {n}" for n in range(4, 121)} | {"Text Field 122"}
+)
 _CHECKBOX_STATES_2021: dict[str, str] = {}
 
 
@@ -381,6 +389,7 @@ _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], objec
     2023: _DERIVATIONS_2023, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
+    2021: _SUPPRESSED_2021,
     2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }

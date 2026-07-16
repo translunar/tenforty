@@ -718,8 +718,8 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
     # (defaults 0) → line 35 == line 33. (2023: 2036.)
     "2022": lambda c: _line_33(c),
     # Line 47 (box 2032) /TU "Add line 40 through line 46. These are your total
-    # credits." = renter + [PLANNED] line40/43-45. Composition verified: same
-    # line-40..46 span as 2023. (2023: 3005.)
+    # credits." = renter + ptet + [PLANNED] line40/43-45. Composition verified:
+    # same line-40..46 span as 2023. (2023: 3005.)
     "2032": lambda c: _line_47(c),
     # Line 48 (box 2033) /TU "Subtract line 47 from line 35. If less than zero,
     # enter 0." = max(0, line 35 − line 47). (2023: 3006.)
