@@ -127,6 +127,18 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # fields-on-template + emit gates now cover 2022.
 })
 
+# Forms that legitimately carry NO get_derivations in ANY year — Schedule CA's
+# adjustments are all direct-mapped; a form here is exempt from the
+# derivations-surface completeness check (test_derivations_surface_complete).
+# The check otherwise requires that a form carrying derivations in ANY supported
+# non-gapped year carries them in EVERY such year; a genuinely derivation-free
+# form has no anchor year and would pass trivially, but is listed explicitly so
+# the intent is reviewed — and the gate re-guards each entry, reddening if a
+# listed form ever grows a derivation.
+ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset({
+    ("california", "sch_ca"),
+})
+
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
 #   - f1040x is REVISION-keyed → ("f1040x", revision)  e.g. ("f1040x", "rev-2025-12")

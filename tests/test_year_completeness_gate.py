@@ -8,7 +8,12 @@ import unittest
 
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
-from tenforty.mappings.catalog import AMENDMENT_KNOWN_GAPS, CATALOG, KNOWN_GAPS
+from tenforty.mappings.catalog import (
+    AMENDMENT_KNOWN_GAPS,
+    CATALOG,
+    KNOWN_GAPS,
+    ZERO_DERIVATION_FORMS,
+)
 from tenforty.params import california as ca_params
 from tenforty.params import ca_scorp
 from tenforty.params.federal import load as load_federal
@@ -243,6 +248,78 @@ class F8962ComputeOnlySliceTests(unittest.TestCase):
             self.assertGreater(template.stat().st_size, 50_000)
         with self.subTest(piece="mapping"):
             entry.mapping_cls.get_mapping(2021)  # raises if absent
+
+
+class DerivationsSurfaceCompletenessTests(unittest.TestCase):
+    """The completeness gates above verify only the DIRECT get_mapping surface.
+    A form's get_derivations surface — form-internal computed cells (line
+    totals, filing-status checkboxes, refund/owe) keyed by target box — is a
+    SECOND mapping dimension a promoted year can silently drop: ship get_mapping
+    with an empty (or absent) get_derivations and every current gate stays green
+    while the emit loses those cells. This gate closes that hole: if a form
+    carries NONEMPTY derivations in ANY supported non-gapped year, it MUST carry
+    them in EVERY such year. Scope mirrors the sibling completeness gates —
+    federal non-SCORP over FEDERAL_YEARS, California over CALIFORNIA_YEARS — and
+    honors KNOWN_GAPS identically so a still-gapped pack is not falsely reddened.
+    Forms that legitimately carry no derivations in any year are exempted via
+    ZERO_DERIVATION_FORMS and independently re-guarded below."""
+
+    _SCOPES = (
+        ("federal", year_manifest.FEDERAL_YEARS, True),
+        ("california", year_manifest.CALIFORNIA_YEARS, False),
+    )
+
+    @staticmethod
+    def _supported_years(juris, form, years):
+        return [y for y in years if (juris, form, y) not in KNOWN_GAPS]
+
+    def test_derivations_surface_complete(self):
+        for juris_scope, years, skip_scorp in self._SCOPES:
+            for (juris, form), entry in sorted(CATALOG.items()):
+                if juris != juris_scope:
+                    continue
+                if skip_scorp and form in year_manifest.SCORP_FORMS:
+                    continue
+                if (juris, form) in ZERO_DERIVATION_FORMS:
+                    continue
+                cls = entry.mapping_cls
+                if not hasattr(cls, "get_derivations"):
+                    # No derivations surface at all — no anchor year, nothing to
+                    # drop. (A form that later grows one is caught the first year
+                    # it carries derivations while a sibling year does not.)
+                    continue
+                supported = self._supported_years(juris, form, years)
+                nonempty = {y: bool(cls.get_derivations(y)) for y in supported}
+                if not any(nonempty.values()):
+                    continue  # form carries no derivations in any year — exempt
+                for year in supported:
+                    with self.subTest(juris=juris, form=form, year=year):
+                        self.assertTrue(
+                            nonempty[year],
+                            f"{form} {year}: derivations surface empty but "
+                            f"{form} carries derivations in other years — emit "
+                            f"would drop form-internal cells")
+
+    def test_zero_derivation_allowlist_is_genuinely_empty(self):
+        # Typo/staleness guard, mirroring the KNOWN_GAPS entry guards: every
+        # ZERO_DERIVATION_FORMS entry must genuinely have zero derivations in
+        # every supported non-gapped year. If a listed form grows a derivation,
+        # this reddens — forcing it out of the allowlist and into the real check.
+        for juris, form in sorted(ZERO_DERIVATION_FORMS):
+            entry = CATALOG[(juris, form)]
+            years = (year_manifest.CALIFORNIA_YEARS if juris == "california"
+                     else year_manifest.FEDERAL_YEARS)
+            cls = entry.mapping_cls
+            for year in years:
+                if (juris, form, year) in KNOWN_GAPS:
+                    continue
+                with self.subTest(juris=juris, form=form, year=year):
+                    derivations = (cls.get_derivations(year)
+                                   if hasattr(cls, "get_derivations") else {})
+                    self.assertEqual(
+                        len(dict(derivations)), 0,
+                        f"{form} {year}: listed in ZERO_DERIVATION_FORMS but "
+                        f"carries derivations — remove it from the allowlist")
 
 
 class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):
