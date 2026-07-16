@@ -241,8 +241,9 @@ class PdfF540FilledEmit2021Tests(unittest.TestCase):
     f540_exemption_credit lands in box 2017 (line 32 "Exemption credits"
     placement regression), NOT a 2023-style box.
 
-    The pack wires no derivations (no verified 2021 form-internal / sign-split
-    / filing-status cell paths), so only the direct-mapped cells are asserted.
+    The direct-mapped cells asserted here are a subset; the 22 ported
+    derivations (line totals / tax-source + filing-status checkboxes /
+    sign-split refund-owe) are covered by PdfF540Derivations2021Tests below.
     """
 
     @staticmethod
@@ -306,3 +307,90 @@ class PdfF540FilledEmit2021Tests(unittest.TestCase):
             for field_path, want in expected.items():
                 with self.subTest(field=field_path):
                     self.assertEqual(self._read_v(out, field_path), want)
+
+
+class PdfF540Derivations2021Tests(unittest.TestCase):
+    """The 22-cell get_derivations surface ported additively from 2023 to the
+    2021 pack — 15 line-total / refund-owe text cells + 2 line-31 tax-source
+    checkboxes + 5 filing-status checkboxes. Every target box was re-placed
+    from the 2021 template's own /TU tooltips (the 2021 namespace differs from
+    2023); this test guards that each derivation target is a real 2021 field,
+    that the checkbox targets carry a /Yes ON-state in their own /_States_, and
+    that the arithmetic/enum lambdas resolve as expected."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.derivations = pdf_f540.PdfF540.get_derivations(2021)
+        root = Path(__file__).resolve().parent.parent
+        template = root / "pdfs" / "california" / "2021" / "f540.pdf"
+        cls.fields = PdfReader(str(template)).get_fields() or {}
+
+    def test_2021_derivations_count_is_22(self):
+        self.assertEqual(len(self.derivations), 22)
+
+    def test_2021_every_derivation_target_is_a_real_2021_field(self):
+        for path in self.derivations:
+            with self.subTest(path=path):
+                self.assertIn(
+                    path, self.fields,
+                    f"derivation target {path!r} is not a real field on the "
+                    f"2021 f540 template",
+                )
+
+    def test_2021_checkbox_targets_have_yes_on_state(self):
+        # Line-31 tax-source + five filing-status checkboxes: the ON value we
+        # emit ("/Yes") must be a member of each box's own /_States_.
+        checkbox_targets = [p for p in self.derivations if p.endswith(" CB")]
+        self.assertEqual(len(checkbox_targets), 7)
+        for path in checkbox_targets:
+            with self.subTest(path=path):
+                states = self.fields[path].get("/_States_")
+                self.assertIsNotNone(states, f"{path} has no /_States_")
+                self.assertIn("/Yes", states)
+
+    def test_2021_filing_status_checkboxes_cover_all_statuses(self):
+        # Every FilingStatus must resolve to a distinct 2021 checkbox target.
+        cells = set(pdf_f540._FILING_STATUS_CB_2021.values())
+        self.assertEqual(len(cells), len(FilingStatus))
+        for status, cell in pdf_f540._FILING_STATUS_CB_2021.items():
+            with self.subTest(status=status):
+                self.assertIn(cell, self.derivations)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": status}), "/Yes")
+                # A different status leaves the box off.
+                other = next(s for s in FilingStatus if s != status)
+                self.assertEqual(self.derivations[cell]({"f540_filing_status": other}), "/Off")
+
+    def test_2021_tax_source_checkboxes_split_on_taxable_income(self):
+        # Box 2012 (tax table) on at/below 100k; box 2013 (rate schedule) above.
+        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_000}), "/Yes")
+        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_001}), "/Off")
+        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_001}), "/Yes")
+        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_000}), "/Off")
+
+    def test_2021_line_totals_resolve_from_compute_keys(self):
+        # A representative flow: refund case (payments exceed tax).
+        c = {
+            "f540_ca_tax": 3000,
+            "f540_exemption_credit": 129,
+            "f540_renter_credit": 60,
+            "f540_estimated_payments": 5000,
+            "f540_use_tax": 40,
+        }
+        d = self.derivations
+        self.assertEqual(d["2018"](c), 2871)          # line 33 = 3000 - 129
+        self.assertEqual(d["2022"](c), 2871)          # line 35 = line 33
+        self.assertEqual(d["2032"](c), 60)            # line 47 = renter credit
+        self.assertEqual(d["2033"](c), 2811)          # line 48 = 2871 - 60
+        self.assertEqual(d["3006"](c), 2811)          # line 65 total tax = line 48
+        self.assertEqual(d["3013"](c), 5000)          # line 78 total payments
+        self.assertEqual(d["3016"](c), 4960)          # line 93 = 5000 - 40
+        self.assertEqual(d["3017"](c), 4960)          # line 95 = line 93
+        self.assertEqual(d["3018"](c), 2149)          # line 97 = 4960 - 2811
+        self.assertEqual(d["3021"](c), 0)             # line 100 tax due = 0
+
+    def test_2021_sign_split_refund_and_owe(self):
+        d = self.derivations
+        self.assertEqual(d["5003"]({"f540_total_liability": 1234}), 1234)   # owe
+        self.assertIsNone(d["5003"]({"f540_total_liability": -1234}))       # no owe
+        self.assertEqual(d["5009"]({"f540_total_liability": -1234}), 1234)  # refund
+        self.assertIsNone(d["5009"]({"f540_total_liability": 1234}))        # no refund
