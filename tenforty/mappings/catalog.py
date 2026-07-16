@@ -69,7 +69,41 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
 # allowlisted cells (2021-2025, including the 2021 compute-only "loud extra"
 # slice) are retired: the completeness + fields-on-template gates now demand
 # and verify the real pack.
-KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset()
+#
+# 2021 individual-return emit packs: 2021 moved from FEDERAL_COMPUTE_ONLY_YEARS
+# into FEDERAL_YEARS (federal-2021-emit Task 1), so the completeness gate now
+# demands a template + mapping for every 2021 individual form. f8962's 2021 pack
+# already landed (Task 7), so it is NOT gapped here; the remaining twelve forms
+# owe their 2021 emit packs, built in federal-2021-emit Tasks 2-3.
+KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
+    # f1040 2021 retired: fresh air-gapped probe + render-verify (controller +
+    # team-lead-verified 57/57 keys, income block nests in Lines1-11_ReadOrder[0],
+    # single line-1 wages box f1_28 per team-lead ruling; 8 wage sub-line keys
+    # deliberately unmapped — compute-dead AND the 2021 form lacks 1a-1z) landed
+    # in tenforty/mappings/pdf_1040.py; completeness + fields-on-template + emit
+    # gates now cover 2021 — the LAST 2021 individual form, gate fully green.
+    # sch_1 2021 retired: fresh air-gapped probe (controller-verified 16/16 keys,
+    # form1[0] namespace, line-10 total → f1_31 vs 2022's f1_36 which is absent on
+    # 2021 — the 8a-8z sub-lines that shifted it were added after 2021) landed in
+    # tenforty/mappings/pdf_sch_1.py; fields-on-template + emit gates now cover 2021.
+    # 4562 2021 retired: fresh-probe mapping (controller-verified 42/42 keys,
+    # compute-letter 19i/19j → residential/nonresidential rows Line19h_1/Line19i_1,
+    # no 50-year 19h row on the 2021 form) landed in tenforty/mappings/pdf_4562.py;
+    # fields-on-template + emit gates now cover 2021.
+    # Retired by federal-2021-emit Task 3 (INHERIT batch): sch_a, 4868, 8959,
+    # f8582, f8949, f8995 — 2021 field tree diff_pdf_fields-IDENTICAL to 2022,
+    # mapping inherits the 2022 payload; fields-on-template + emit gates now cover 2021.
+    # sch_b 2021 retired: fresh-probe mapping (controller-verified 66/66 keys)
+    # landed in tenforty/mappings/pdf_sch_b.py; fields-on-template + emit gates
+    # now cover 2021.
+    # sch_d 2021 retired: fresh-probe mapping (controller-verified 38/38 keys,
+    # lines 18/19 content-corrected vs the merged-2022-2025 swap bug) landed in
+    # tenforty/mappings/pdf_sch_d.py; fields-on-template + emit gates now cover 2021.
+    # sch_e 2021 retired: fresh-probe render-verified mapping (60 mapped incl.
+    # corrected name/ein cols a/d; 12 deliberately-unmapped — 8 entity-type P/S
+    # → compute-side follow-up, 4 line-29 dead cross keys) landed in
+    # tenforty/mappings/pdf_sch_e.py; fields-on-template + emit gates now cover 2021.
+})
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
