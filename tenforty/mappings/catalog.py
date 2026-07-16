@@ -103,6 +103,19 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # corrected name/ein cols a/d; 12 deliberately-unmapped — 8 entity-type P/S
     # → compute-side follow-up, 4 line-29 dead cross keys) landed in
     # tenforty/mappings/pdf_sch_e.py; fields-on-template + emit gates now cover 2021.
+    #
+    # CA 2021/2022 individual-return emit packs: 2021 and 2022 moved from
+    # CALIFORNIA_COMPUTE_ONLY_YEARS into CALIFORNIA_YEARS (ca-2021-2022-emit
+    # Task 1), so the completeness gate now demands a template + mapping for
+    # every 2021/2022 California form. The f540/sch_ca/sch_d_540 templates
+    # already exist, but their probe-certified year mappings are owed —
+    # built in ca-2021-2022-emit Tasks 2-3. Six cells:
+    ("california", "f540", 2021),       # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
+    ("california", "sch_ca", 2021),     # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
+    ("california", "sch_d_540", 2021),  # CA 2021 emit pack owed — ca-2021-2022-emit Task 2/3
+    ("california", "f540", 2022),       # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
+    ("california", "sch_ca", 2022),     # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
+    ("california", "sch_d_540", 2022),  # CA 2022 emit pack owed — ca-2021-2022-emit Task 2/3
 })
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
