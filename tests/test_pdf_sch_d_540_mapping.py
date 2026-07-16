@@ -495,8 +495,9 @@ class PdfSchD540MappingTests2021(unittest.TestCase):
     """TY2021 Sch D (540) mapping — a FOURTH FTB field-naming scheme
     ("Text Field N"), disjoint from 2023's bare zero-padded numbers and
     2024/2025's prefixed schemes. Fresh air-gapped probe, controller-
-    reconciled against the 2021 template; five keys wired (header name/SSN,
-    line 8 net gain, line 12a/12b Sch CA deltas)."""
+    reconciled against the 2021 template; five direct keys wired (header
+    name/SSN, line 8 net gain, line 12a/12b Sch CA deltas) plus two
+    derivations (lines 10/11 federal/CA net)."""
 
     def test_2021_mapped_cells(self):
         m = pdf_sch_d_540.PdfSchD540.get_mapping(2021)
@@ -506,11 +507,42 @@ class PdfSchD540MappingTests2021(unittest.TestCase):
         self.assertEqual(m["sch_d_540_total_subtractions"], "Text Field 125")  # line 12a
         self.assertEqual(m["sch_d_540_total_additions"], "Text Field 126")     # line 12b
 
-    def test_2021_no_aggregations_derivations_or_checkbox_states(self):
+    def test_2021_no_aggregations_or_checkbox_states(self):
         P = pdf_sch_d_540.PdfSchD540
         self.assertEqual(P.get_aggregations(2021), {})
-        self.assertEqual(P.get_derivations(2021), {})
         self.assertEqual(P.get_checkbox_states(2021), {})
+
+    def test_2021_get_derivations_includes_federal_ca_net_lines(self):
+        """Lines 10 (federal net) and 11 (CA net) ported from 2023. Target
+        boxes verified against the 2021 template's own /TU tooltips and probe
+        render; formulas carried from 2023."""
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2021)
+        self.assertEqual(len(derivations), 2)
+        # Line 10 — federal Form 1040/1040-SR line 7 (federal net).
+        self.assertIn("Text Field 123", derivations)
+        # Line 11 — California gain from line 8 / loss from line 9 (CA net).
+        self.assertIn("Text Field 124", derivations)
+
+    def test_2021_derivation_lambdas_resolve_expected_compute_keys(self):
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2021)
+        compute = {
+            "sch_d_540_federal_net": 12_345,
+            "sch_d_540_net_capital_gain": 67_890,
+        }
+        # Line 10 pulls the federal net; line 11 pulls the CA net.
+        self.assertEqual(derivations["Text Field 123"](compute), 12_345)
+        self.assertEqual(derivations["Text Field 124"](compute), 67_890)
+
+    def test_2021_derivation_targets_are_real_template_fields(self):
+        project_root = Path(__file__).resolve().parent.parent
+        template = project_root / "pdfs" / "california" / "2021" / "sch_d_540.pdf"
+        fields = PdfReader(template).get_fields() or {}
+        derivations = pdf_sch_d_540.PdfSchD540.get_derivations(2021)
+        for path in derivations:
+            self.assertIn(
+                path, fields,
+                f"derivation target {path!r} is not a real field on the 2021 template",
+            )
 
 
 class PdfSchD540FilledEmit2021Tests(unittest.TestCase):
