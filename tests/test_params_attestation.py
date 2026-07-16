@@ -100,8 +100,11 @@ class FederalAttestationTests(unittest.TestCase):
 
 class CaliforniaAttestationTests(unittest.TestCase):
     def test_every_full_california_year_attested(self):
-        # Compute-only years are attested when they leave that tier.
-        for year in year_manifest.CALIFORNIA_YEARS:
+        # Compute-only CA years carry an attested params pack too (native 540
+        # compute needs cross-validated rate schedules), so they are attested
+        # while in the tier, mirroring the federal compute-only registration.
+        for year in (year_manifest.CALIFORNIA_YEARS
+                     + year_manifest.CALIFORNIA_COMPUTE_ONLY_YEARS):
             _assert_attested(
                 self, ca_params.load(year), CaliforniaParams,
                 f"tests.params_attestations.california_y{year}")
