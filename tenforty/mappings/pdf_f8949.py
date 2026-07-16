@@ -189,3 +189,9 @@ class PdfF8949(PdfFormMapping[dict]):
 # same names, pages, and /Rects), so 2022 reuses 2023's row geometry and payload.
 _GEOM[2022] = _GEOM[2023]
 PdfF8949._MAPPINGS[2022] = PdfF8949._MAPPINGS[2023]
+
+# 2021 field tree is IDENTICAL to 2022 (diff_pdf_fields, controller-verified); the
+# fields-on-template gate re-verifies every path against the 2021 template and the
+# emit round-trip test verifies values land.
+_GEOM[2021] = _GEOM[2022]
+PdfF8949._MAPPINGS[2021] = PdfF8949._MAPPINGS[2022]

@@ -14,14 +14,14 @@ module gates on it, so any import here risks a cycle.
 from collections.abc import Iterable
 
 # Full federal pipeline: native spine compute + PDF emit.
-FEDERAL_YEARS: tuple[int, ...] = (2022, 2023, 2024, 2025)
+FEDERAL_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 
 # Federal spine math only — native 1040 compute, validated against the Layer-2
 # tax-table oracle and air-gapped attested params, but NO PDF mappings, emit
 # path, or workbook requirement. Mirrors CALIFORNIA_COMPUTE_ONLY_YEARS: a year
 # leaves this tier by completing its PDF pack and moving to FEDERAL_YEARS.
 # Backfilled to enable filed-return reconciliation for a prior year.
-FEDERAL_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021,)
+FEDERAL_COMPUTE_ONLY_YEARS: tuple[int, ...] = ()
 
 # Full California pipeline: 540 compute + PDF emit + divergence catalog.
 CALIFORNIA_YEARS: tuple[int, ...] = (2023, 2024, 2025)
@@ -36,9 +36,10 @@ CALIFORNIA_COMPUTE_ONLY_YEARS: tuple[int, ...] = (2021, 2022)
 # spreadsheets/federal/<year>/1040.xlsx. Optional per year: the workbook
 # is an acceptance oracle and the out-of-spine-scope fallback, not a
 # requirement for support. A COMPUTE-ONLY federal year may still carry a
-# workbook as a BONUS oracle (e.g. 2021, wired as a bounded partial — its
-# vendor workbook omits the Form 8582 tab, so that key group is declared in
-# F1040.WORKBOOK_KEY_EXCLUSIONS and surfaced as explicit parity skips).
+# workbook as a BONUS oracle. A supported year's vendor workbook may also be a
+# bounded partial — e.g. 2021's omits the Form 8582 tab, so that key group is
+# declared in F1040.WORKBOOK_KEY_EXCLUSIONS and surfaced as explicit parity
+# skips.
 WORKBOOK_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 
 # Form sets per jurisdiction — the second dimension of the support grid.

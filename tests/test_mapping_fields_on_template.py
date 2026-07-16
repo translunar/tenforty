@@ -76,7 +76,19 @@ class CheckboxStatesAreMappedTests(unittest.TestCase):
                 with self.subTest(jurisdiction=jurisdiction, form=form,
                                   year=year):
                     checkbox_keys = set(cls.get_checkbox_states(year))
-                    mapped_keys = set(cls.get_mapping(year))
+                    # get_mapping may be FLAT ({field_key: path}) or NESTED
+                    # ({"scalars": {field_key: path}, "repeaters": {...}}, e.g.
+                    # f8962). The checkbox-state keys are semantic field keys —
+                    # the LEAVES — so extract leaf keys for either shape rather
+                    # than the top-level keys (which for a nested mapping are
+                    # "scalars"/"repeaters", not field keys).
+                    raw_mapping = cls.get_mapping(year)
+                    mapped_keys: set = set()
+                    for _k, _v in raw_mapping.items():
+                        if isinstance(_v, dict):
+                            mapped_keys |= set(_v.keys())
+                        else:
+                            mapped_keys.add(_k)
                     self.assertLessEqual(
                         checkbox_keys, mapped_keys,
                         f"{form} {year}: checkbox-state fields not in the "

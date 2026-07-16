@@ -1,10 +1,12 @@
 """Static structure tests for the Form 8959 PDF field mapping."""
 
+import tempfile
 import unittest
 from pathlib import Path
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_8959 import Pdf8959
 
 F8959_TEMPLATE = (
@@ -45,6 +47,47 @@ class Pdf8959StructureTests(unittest.TestCase):
     def test_unknown_year_raises(self):
         with self.assertRaisesRegex(ValueError, "8959"):
             Pdf8959.get_mapping(1999)
+
+    def test_2021_inherits_2022_payload(self):
+        # 2021 field tree is diff_pdf_fields-IDENTICAL to 2022.
+        self.assertIs(Pdf8959.get_mapping(2021), Pdf8959.get_mapping(2022))
+
+
+_TEMPLATE_2021 = (
+    Path(__file__).resolve().parents[1] / "pdfs" / "federal" / "2021" / "f8959.pdf"
+)
+
+
+@unittest.skipUnless(_TEMPLATE_2021.exists(), "2021 Form 8959 template not present")
+class Pdf89592021EmitRoundTripTests(unittest.TestCase):
+    """Fill the real 2021 Form 8959 template with distinctive values and read
+    the cells back directly with pypdf — no soffice."""
+
+    def test_distinctive_values_round_trip(self):
+        scalars = Pdf8959.get_mapping(2021)["scalars"]
+        values = {
+            "taxpayer_name": "Distinct 8959 Filer",
+            "taxpayer_ssn": "222-00-2021",
+            "f8959_line_1": 71_000,
+            "f8959_line_7": 81_000,
+            "f8959_line_18": 91_000,
+            "f8959_line_24": 12_345,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f8959_2021.pdf"
+            PdfFiller().fill(
+                template_path=_TEMPLATE_2021,
+                output_path=out,
+                field_mapping=scalars,
+                values=values,
+            )
+            read = {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(scalars[key]), str(expected))
 
 
 if __name__ == "__main__":

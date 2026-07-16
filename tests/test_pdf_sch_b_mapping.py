@@ -6,11 +6,13 @@ per-row slot is its own key) rather than the {scalars, repeaters}
 shape used for forms with indexable row names.
 """
 
+import tempfile
 import unittest
 from pathlib import Path
 
 from pypdf import PdfReader
 
+from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_b import (
     DIVIDEND_MAX_ROWS,
     INTEREST_MAX_ROWS,
@@ -20,6 +22,11 @@ from tenforty.mappings.pdf_sch_b import (
 SCH_B_TEMPLATE = (
     Path(__file__).resolve().parents[1]
     / "pdfs" / "federal" / "2025" / "f1040sb.pdf"
+)
+
+SCH_B_TEMPLATE_2021 = (
+    Path(__file__).resolve().parents[1]
+    / "pdfs" / "federal" / "2021" / "f1040sb.pdf"
 )
 
 
@@ -75,6 +82,63 @@ class PdfSchBStructureTests(unittest.TestCase):
     def test_unknown_year_raises(self):
         with self.assertRaisesRegex(ValueError, "Schedule B"):
             PdfSchB.get_mapping(1999)
+
+
+@unittest.skipUnless(
+    SCH_B_TEMPLATE_2021.exists(), "2021 Schedule B template not present"
+)
+class TestPdfSchB2021EmitRoundTrip(unittest.TestCase):
+    """Fill the real 2021 Schedule B template — header, both totals rows, and
+    a representative interest/dividend row subset — with distinctive values,
+    then read the cells back directly with pypdf. No soffice."""
+
+    def test_distinctive_values_round_trip(self) -> None:
+        mapping = PdfSchB.get_mapping(2021)
+        field_mapping = {
+            "taxpayer_name": mapping["taxpayer_name"],
+            "taxpayer_ssn": mapping["taxpayer_ssn"],
+            "total_interest": mapping["total_interest"],
+            "taxable_interest": mapping["taxable_interest"],
+            "total_ordinary_dividends": mapping["total_ordinary_dividends"],
+            "interest_payer_1": mapping["interest_payer_1"],
+            "interest_amount_1": mapping["interest_amount_1"],
+            "interest_payer_14": mapping["interest_payer_14"],
+            "interest_amount_14": mapping["interest_amount_14"],
+            "dividend_payer_1": mapping["dividend_payer_1"],
+            "dividend_amount_1": mapping["dividend_amount_1"],
+            "dividend_payer_16": mapping["dividend_payer_16"],
+            "dividend_amount_16": mapping["dividend_amount_16"],
+        }
+        values = {
+            "taxpayer_name": "Distinct SchB Filer",
+            "taxpayer_ssn": "666-00-2021",
+            "total_interest": 12_345,
+            "taxable_interest": 12_300,
+            "total_ordinary_dividends": 54_321,
+            "interest_payer_1": "Distinct Bank Row 1",
+            "interest_amount_1": 1_001,
+            "interest_payer_14": "Distinct Bank Row 14",
+            "interest_amount_14": 1_414,
+            "dividend_payer_1": "Distinct Fund Row 1",
+            "dividend_amount_1": 2_001,
+            "dividend_payer_16": "Distinct Fund Row 16",
+            "dividend_amount_16": 2_016,
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "sch_b_2021.pdf"
+            PdfFiller().fill(
+                template_path=SCH_B_TEMPLATE_2021,
+                output_path=out,
+                field_mapping=field_mapping,
+                values=values,
+            )
+            read = {
+                name: (fld.get("/V") or "")
+                for name, fld in (PdfReader(str(out)).get_fields() or {}).items()
+            }
+        for key, expected in values.items():
+            with self.subTest(field=key):
+                self.assertEqual(read.get(field_mapping[key]), str(expected))
 
 
 if __name__ == "__main__":

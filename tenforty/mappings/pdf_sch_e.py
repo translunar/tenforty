@@ -208,6 +208,148 @@ def _to_2022(fields: dict) -> dict:
 _FIELDS_2022: dict = _to_2022(_FIELDS)
 
 
+# ── 2021 ──────────────────────────────────────────────────────────────────
+# The 2021 Schedule E template does NOT share the 2022-2025 field tree, so it
+# is a literal transcription of the controller + team-lead render-VERIFIED map
+# (.superpowers/sdd/probe/sch_e-2021-NESTED-FINAL.json), NOT derived from the
+# _build_fields()/_row_mapping() generator. Key structural differences from the
+# merged years: Part I uses Line1[0].Table1a/Table1b nesting; Part II Line 28 is
+# Table_Line28a-e (not 28a-f); row-A EIN is f2_5 (col d), not f2_4; and the
+# Line 29/30/31/32/37/41 leaves have entirely different numbering. All 60 paths
+# were confirmed to exist on the 2021 template with no collisions; name→f2_3
+# (col a) and ein→f2_5 (col d) are content-verified.
+#
+# DELIBERATELY UNMAPPED (2021) — entity-type (8 keys
+# sch_e_part_ii_row_{a,b,c,d}_entity_type_partnership/_s_corp): line-28 col (b)
+# is a single "Enter P/S" TEXT field, but the compute emits two booleans
+# (partnership/s_corp) per row. Correct global fix is compute-side (derived
+# entity_code="P"|"S") — deferred to the sch_e-line-28 follow-up plan, which
+# also fixes the merged-2022-2025 mismapping bug (ein/entity_type routed to
+# wrong cells). name + ein ARE mapped here (cols a/d), verified.
+#
+# DELIBERATELY UNMAPPED (2021) — line-29 cross keys (4:
+# sch_e_line_29a_total_passive_loss, sch_e_line_29a_total_nonpassive_loss,
+# sch_e_line_29b_total_passive_income, sch_e_line_29b_total_nonpassive_income):
+# never emitted by compute (sch_e_part_ii.py emits income-on-29a, loss-on-29b
+# only) AND the 2021 form's corresponding cells are IRS-shaded non-entry boxes.
+_FIELDS_2021: dict = {
+    "scalars": {
+        "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
+        "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_2[0]",
+        "sch_e_property_a_address":
+            "topmostSubform[0].Page1[0].Line1[0].Table1a[0].RowA[0].f1_3[0]",
+        "sch_e_property_a_type_code":
+            "topmostSubform[0].Page1[0].Line1[0].Table1b[0].RowA[0].f1_6[0]",
+        "sch_e_property_a_fair_rental_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowA[0].f1_9[0]",
+        "sch_e_property_a_personal_use_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowA[0].f1_10[0]",
+        "sch_e_property_a_rents":
+            "topmostSubform[0].Page1[0].Table_Income[0].Income[0].Line3[0].f1_16[0]",
+        "sch_e_property_a_advertising":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line5[0].f1_22[0]",
+        "sch_e_property_a_auto_and_travel":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line6[0].f1_25[0]",
+        "sch_e_property_a_cleaning_and_maintenance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line7[0].f1_28[0]",
+        "sch_e_property_a_commissions":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line8[0].f1_31[0]",
+        "sch_e_property_a_insurance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line9[0].f1_34[0]",
+        "sch_e_property_a_legal_and_professional_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line10[0].f1_37[0]",
+        "sch_e_property_a_management_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line11[0].f1_40[0]",
+        "sch_e_property_a_mortgage_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line12[0].f1_43[0]",
+        "sch_e_property_a_other_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line13[0].f1_46[0]",
+        "sch_e_property_a_repairs":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line14[0].f1_49[0]",
+        "sch_e_property_a_supplies":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line15[0].f1_52[0]",
+        "sch_e_property_a_taxes":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line16[0].f1_55[0]",
+        "sch_e_property_a_utilities":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line17[0].f1_58[0]",
+        "sch_e_property_a_depreciation":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_61[0]",
+        "sch_e_property_a_other_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line19[0].f1_65[0]",
+        "sch_e_property_a_total_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_68[0]",
+        "sch_e_property_a_income_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
+        "sch_e_line_26_total": "topmostSubform[0].Page1[0].f1_84[0]",
+        "taxpayer_name_page2": "topmostSubform[0].Page2[0].f2_1[0]",
+        "taxpayer_ssn_page2": "topmostSubform[0].Page2[0].f2_2[0]",
+        "sch_e_part_ii_row_a_name":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_3[0]",
+        "sch_e_part_ii_row_a_ein":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowA[0].f2_5[0]",
+        "sch_e_part_ii_row_a_passive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_15[0]",
+        "sch_e_part_ii_row_a_passive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_16[0]",
+        "sch_e_part_ii_row_a_nonpassive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_17[0]",
+        "sch_e_part_ii_row_a_nonpassive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowA[0].f2_19[0]",
+        "sch_e_part_ii_row_b_name":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowB[0].f2_6[0]",
+        "sch_e_part_ii_row_b_ein":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowB[0].f2_8[0]",
+        "sch_e_part_ii_row_b_passive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowB[0].f2_20[0]",
+        "sch_e_part_ii_row_b_passive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowB[0].f2_21[0]",
+        "sch_e_part_ii_row_b_nonpassive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowB[0].f2_22[0]",
+        "sch_e_part_ii_row_b_nonpassive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowB[0].f2_24[0]",
+        "sch_e_part_ii_row_c_name":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowC[0].f2_9[0]",
+        "sch_e_part_ii_row_c_ein":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowC[0].f2_11[0]",
+        "sch_e_part_ii_row_c_passive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowC[0].f2_25[0]",
+        "sch_e_part_ii_row_c_passive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowC[0].f2_26[0]",
+        "sch_e_part_ii_row_c_nonpassive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowC[0].f2_27[0]",
+        "sch_e_part_ii_row_c_nonpassive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowC[0].f2_29[0]",
+        "sch_e_part_ii_row_d_name":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowD[0].f2_12[0]",
+        "sch_e_part_ii_row_d_ein":
+            "topmostSubform[0].Page2[0].Table_Line28a-e[0].RowD[0].f2_14[0]",
+        "sch_e_part_ii_row_d_passive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowD[0].f2_30[0]",
+        "sch_e_part_ii_row_d_passive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowD[0].f2_31[0]",
+        "sch_e_part_ii_row_d_nonpassive_loss":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowD[0].f2_32[0]",
+        "sch_e_part_ii_row_d_nonpassive_income":
+            "topmostSubform[0].Page2[0].Table_Line28g-k[0].RowD[0].f2_34[0]",
+        "sch_e_line_29a_total_passive_income":
+            "topmostSubform[0].Page2[0].f2_35[0]",
+        "sch_e_line_29a_total_nonpassive_income":
+            "topmostSubform[0].Page2[0].f2_36[0]",
+        "sch_e_line_29b_total_passive_loss":
+            "topmostSubform[0].Page2[0].f2_37[0]",
+        "sch_e_line_29b_total_nonpassive_loss":
+            "topmostSubform[0].Page2[0].f2_38[0]",
+        "sch_e_line_30_total_income": "topmostSubform[0].Page2[0].f2_40[0]",
+        "sch_e_line_31_total_loss": "topmostSubform[0].Page2[0].f2_41[0]",
+        "sch_e_line_32_total_partnership_scorp":
+            "topmostSubform[0].Page2[0].f2_42[0]",
+        "sch_e_line_37_total_estate_trust": "topmostSubform[0].Page2[0].f2_61[0]",
+        "sch_e_line_41_total_pte": "topmostSubform[0].Page2[0].f2_69[0]",
+    },
+    "repeaters": {},
+}
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
@@ -215,5 +357,6 @@ class PdfSchE(PdfFormMapping[dict]):
     # AcroForm field-path sets), so one payload serves all three years. 2022
     # zero-pads single-digit text-field leaves (see _to_2022).
     _MAPPINGS: dict[int, dict] = {
+        2021: _FIELDS_2021,
         2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
 
