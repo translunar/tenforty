@@ -158,6 +158,60 @@ def build_qdcgt_15_to_20_boundary(year: int) -> Scenario:
     )
 
 
+def build_net_short_term_gain_with_ltcg_and_qualdiv(year: int) -> Scenario:
+    """Net SHORT-term capital gain alongside net LONG-term gain and
+    qualified dividends -- the shape that exposed bug #10 (found
+    2026-07-18): the QDCGT worksheet's preferential base must be capped at
+    Sch D line 15 (net LTCG), NOT line 16 (net ST + LT), so a net ST gain
+    stays ORDINARY income rather than getting the 0/15/20% preferential
+    rate. No prior battery scenario mixed a net ST gain with LTCG/qualified
+    dividends in the same return, so the workbook-vs-native parity gate
+    never exercised this branch -- this scenario closes that hole.
+
+    Wages $130k (clears the EIC gate) + a short-term lot (gain $6,000) +
+    a long-term lot (gain $15,000) + $5,000 qualified dividends (of $6,000
+    ordinary). Both Sch D line 7 (net ST) and line 15 (net LT) are
+    individually positive and material at once -- the exact shape the
+    QDCGT worksheet must split correctly.
+    """
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer I", wages=130_000.0,
+                federal_tax_withheld=22_000.0),
+        ],
+        form1099_div=[
+            Form1099DIV(
+                payer="Synthetic Brokerage",
+                ordinary_dividends=6_000.0,
+                qualified_dividends=5_000.0,
+            ),
+        ],
+        form1099_b=[
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Short-Term Lot",
+                date_acquired=f"{year}-02-01",
+                date_sold=f"{year}-08-01",
+                proceeds=21_000.0,
+                cost_basis=15_000.0,
+                short_term=True,
+                basis_reported_to_irs=True,
+            ),
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Long-Term Lot",
+                date_acquired=f"{year - 2}-04-01",
+                date_sold=f"{year}-09-01",
+                proceeds=55_000.0,
+                cost_basis=40_000.0,
+                short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ],
+    )
+
+
 def build_qbi_threshold_boundary(year: int) -> Scenario:
     """QBI threshold boundary: income near the year's single-filer QBI
     phase-out threshold.
@@ -502,6 +556,8 @@ def build_charitable_nonitemizer_2021(year: int) -> Scenario:
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
+    ("net_short_term_gain_with_ltcg_and_qualdiv",
+     build_net_short_term_gain_with_ltcg_and_qualdiv),
     ("qbi_threshold_boundary", build_qbi_threshold_boundary),
     ("qbi_k1_deduction", build_qbi_k1_deduction),
     ("addl_medicare_boundary", build_addl_medicare_boundary),
