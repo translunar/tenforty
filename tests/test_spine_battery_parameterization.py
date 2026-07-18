@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 
 from tenforty import years as year_manifest
+from tenforty.forms import f8949 as form_f8949
+from tenforty.forms import sch_d as form_sch_d
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import f8962 as f8962_params
 from tests.fixtures.spine_battery import battery_for
@@ -16,6 +18,7 @@ REPO_ROOT = Path(__file__).parent.parent
 _EXPECTED_NAMES = [
     "canonical_wage_investment_rental",
     "qdcgt_15_to_20_boundary",
+    "net_short_term_gain_with_ltcg_and_qualdiv",
     "qbi_threshold_boundary",
     "qbi_k1_deduction",
     "addl_medicare_boundary",
@@ -90,6 +93,54 @@ class BatteryParameterizationTests(unittest.TestCase):
                     self.assertIn("total_tax", results)
                     self.assertIn("taxable_income", results)
                     self.assertIsInstance(results["total_tax"], (int, float))
+
+    def test_net_short_term_gain_with_ltcg_scenario_carries_a_net_st_gain(self):
+        # Structural pin closing the parity-coverage hole that hid bug #10
+        # (found 2026-07-18): no prior battery scenario mixed a net
+        # SHORT-term capital gain with LTCG/qualified dividends, so the
+        # workbook-vs-native parity gate never exercised the QDCGT
+        # worksheet's line-15-vs-line-16 split. This does NOT assert a
+        # golden dollar amount (that's the parity gate's job); it only
+        # proves the scenario materially carries the shape it exists to
+        # exercise: a net ST GAIN (line 7 > 0) alongside a net LTCG
+        # (line 15 > 0) -- computed via the real f8949 -> sch_d pipeline,
+        # not read off the fixture's own literals, so a routing bug that
+        # accidentally zeroed one leg would show up here.
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()) / "work",
+        )
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
+            with self.subTest(year=year):
+                build = dict(battery_for(year))[
+                    "net_short_term_gain_with_ltcg_and_qualdiv"]
+                scenario = build()
+
+                # The scenario computes end-to-end through the native spine.
+                results = orch.compute_federal(scenario)
+                self.assertIn("total_tax", results)
+                self.assertIn("taxable_income", results)
+
+                # Independently derive Sch D lines 7/15/16 from the
+                # scenario's own 1099-B lots (the same pipeline the
+                # orchestrator runs internally) to confirm both a net ST
+                # GAIN and a net LTCG are simultaneously present.
+                f8949_result = form_f8949.compute(scenario, upstream={})
+                sch_d_result = form_sch_d.compute(
+                    scenario, upstream={"f8949": f8949_result})
+                self.assertGreater(sch_d_result["sch_d_line_7_net_short"], 0)
+                self.assertGreater(sch_d_result["sch_d_line_15_net_long"], 0)
+                self.assertEqual(
+                    sch_d_result["sch_d_line_16_total"],
+                    sch_d_result["sch_d_line_7_net_short"]
+                    + sch_d_result["sch_d_line_15_net_long"],
+                )
+                # Qualified dividends are the other leg of the QDCGT
+                # preferential base; confirm they're present too.
+                self.assertGreater(
+                    sum(f.qualified_dividends
+                        for f in scenario.form1099_div), 0)
 
     def test_qbi_k1_deduction_yields_positive_qbi_every_year(self):
         # Structural regime pin: the QBI-active scenario must materially

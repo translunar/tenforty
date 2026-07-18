@@ -23,7 +23,8 @@ sub-dict (the orchestrator is responsible for providing these keys):
         "sch_a_line_5e_salt_capped"
 
     schedule_results["sch_d"]  — Schedule D cap-gain/loss
-        "sch_d_line_16_total"  — net capital gain/loss (line 16)
+        "sch_d_line_15_net_long"  — net long-term capital gain (line 15)
+        "sch_d_line_16_total"     — net capital gain/loss (line 16)
 
     schedule_results["sch_e"]  — Schedule E Part I / Part II totals
         "sch_e_line_26_total"       — Part I rental net total (line 26)
@@ -72,7 +73,13 @@ class IncomePreamble:
         total_income:        1040 line 9.
         agi:                 1040 line 11.
         magi:                Modified AGI (= AGI in v1 single-filer scope).
-        net_capital_gain:    QDCGT net capital gain = max(0, Sch D line 16).
+        net_capital_gain:    QDCGT net capital gain =
+            max(0, min(Sch D line 15, line 16)). The IRS QDCGT worksheet
+            caps the preferential base at line 15 (net LONG-TERM gain) —
+            a net SHORT-TERM gain (which inflates line 16 = line 7 + line
+            15 above line 15) must stay ORDINARY income, not preferential.
+            (Bug #10, found 2026-07-18: this previously used line 16 alone,
+            over-including a net ST gain and undertaxing such returns.)
             Equals the workbook's NetCapitalGain named range. Qualified
             dividends are NOT included here — they are added separately
             inside qdcgt_tax (as the ``qualified_dividends`` argument) and
@@ -128,6 +135,7 @@ def compute_income_preamble(
     qualified_divs = irs_round(
         sum(f.qualified_dividends for f in scenario.form1099_div)
     )
+    schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
     sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
     sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
@@ -140,12 +148,24 @@ def compute_income_preamble(
     # or other MAGI-specific add-backs apply in the supported scenario set).
     magi = agi
 
-    # Net capital gain for the QDCGT worksheet: max(0, Sch D line 16) only.
+    # Net capital gain for the QDCGT worksheet: max(0, min(line 15, line 16)).
+    # Sch D line 16 = line 7 (net SHORT-term) + line 15 (net LONG-term). The
+    # IRS QDCGT worksheet's preferential base is capped at line 15 — a net
+    # ST gain stays ORDINARY income, it does not get the preferential rate.
+    # min(line 15, line 16) enforces that cap: when there's a net ST GAIN,
+    # line 16 > line 15, so min() picks line 15 (excludes the ST gain, as
+    # required). When there's a net ST LOSS, line 16 < line 15 (the loss
+    # drags the total below the LT figure), so min() picks line 16 — which
+    # is *also* correct, because a net ST loss legitimately reduces the
+    # amount taxed preferentially. Either way min() lands on the right
+    # figure; a bare max(0, line 16) (the pre-fix code) got the ST-loss case
+    # right by coincidence but over-included a net ST gain, undertaxing such
+    # returns (Bug #10, found 2026-07-18).
     # Qualified dividends are NOT added here; they are a separate input to
     # qdcgt_tax and f8995. Adding them here would double-count them because
     # qdcgt_tax's own formula is: preferential = qualified_dividends + net_capital_gain.
     # This matches the workbook's NetCapitalGain named range.
-    net_capital_gain = irs_round(max(0, schd_line16))
+    net_capital_gain = irs_round(max(0, min(schd_line15, schd_line16)))
 
     # Pre-QBI taxable income using the standard deduction as a conservative
     # stand-in for Schedule A (not yet computed in the f8995/f8582 pre-pass).
@@ -285,7 +305,8 @@ def compute_spine(
     # Page 2 — Tax and Credits
     # -----------------------------------------------------------------------
 
-    # Net capital gain for QDCGT worksheet (qualified dividends + max(0, LTCG))
+    # Net capital gain for QDCGT worksheet (max(0, min(Sch D line 15, line
+    # 16)) — a net short-term gain stays ordinary, see compute_income_preamble)
     # comes from the shared preamble.
     net_capital_gain = preamble.net_capital_gain
 
