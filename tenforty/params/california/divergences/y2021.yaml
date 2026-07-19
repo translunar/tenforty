@@ -217,9 +217,9 @@
   sch_ca_line: "Part I §A 1h"
   section_title: "Wages"
   description: "Clergy housing rental allowance: no CA FRV cap"
-  direction: "Both"
+  direction: "Sub"
   common: false
-  pub1001_page: 7
+  pub1001_page: 6
   ircrtc: "IRC §107"
 
 - id: "state-employed-clergy-50-gross-salary-housing-exclusion"
@@ -665,9 +665,10 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Film/TV current expensing (pre-1/1/2026): CA doesn't conform"
-  direction: "Add"
+  direction: "Both"
   common: false
-  pub1001_page: 13
+  pub1001_page: null
+  source_citation: "2022-edition FTB Pub 1001 p12; absent from 2021 edition (Pub non-exhaustive)"
   ircrtc: "IRC §181"
 
 - id: "svog-related-expenses-deductible-federally-ca-disallows"
@@ -755,18 +756,18 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Expired CA Employer Childcare Center credit carryover (1994-2012; FTB 3540)"
-  direction: "Sub"
+  direction: "Both"
   common: false
-  pub1001_page: 14
+  pub1001_page: 13
   ircrtc: "—"
 
 - id: "expired-ca-employer-childcare-plan-credit-carryover-1994"
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Expired CA Employer Childcare Plan credit carryover (1994-2012; FTB 3540)"
-  direction: "Sub"
+  direction: "Both"
   common: false
-  pub1001_page: 14
+  pub1001_page: 13
   ircrtc: "—"
 
 # DROPPED for TY2023: §43 not yet repealed for CA (repeal effective 1/1/2024).
@@ -2053,9 +2054,9 @@
   sch_ca_line: "Sch D 540"
   section_title: "Capital Gains/Losses"
   description: "Assisted-housing sale: federal no deferral; CA permits deferral if reinvested within 2 yrs"
-  direction: "Both"
+  direction: "Sub"
   common: false
-  pub1001_page: 10
+  pub1001_page: 9
   ircrtc: "R&TC 18041.5"
 
 - id: "ric-undistributed-cap-gains-form-2439-federal-includes"
@@ -2089,7 +2090,7 @@
   sch_ca_line: "Sch D 540"
   section_title: "Capital Gains/Losses"
   description: "QSBS gain >5yr: federal defers/excludes (§1045/1202); CA doesn't conform — full gain"
-  direction: "Both"
+  direction: "Add"
   common: false
   pub1001_page: 10
   ircrtc: "IRC §1045/1202"

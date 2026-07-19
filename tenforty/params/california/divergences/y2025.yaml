@@ -870,8 +870,8 @@
 - id: "trust-accumulation-distribution-ca-resident-non"
   sch_ca_line: "Part I §B 5"
   section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
-  description: "Trust accumulation distribution: CA-resident non-contingent beneficiary — full taxable if no CA tax paid"
-  direction: "Add"
+  description: "Trust accumulation distribution: CA-resident non-contingent beneficiary — full taxable if no CA tax paid (routed via Sch J (1041) adjustment / FTB 5870A computation; no Sch CA column)"
+  direction: "Both"
   common: false
   pub1001_page: 16
   ircrtc: "IRC §665-668, R&TC 17745"
