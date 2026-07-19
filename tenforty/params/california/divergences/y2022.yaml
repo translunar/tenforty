@@ -63,13 +63,15 @@
 #       post-window TY2022 income is excludable even though the provision is
 #       absent from the 2022 booklet/line-8z (the booklet predates the
 #       window opening mid-year). Comment on the row below notes the window.
-#     - Wildfire-settlement retroactive-window rows (Kincade §17139.2, Zogg
-#       §17139.3, Fire Victims Trust §17138.5, Thomas/Woolsey §17138.6): KEPT
-#       for TY2022 (verified-defensible) but re-cited to the STATUTE'S OWN
-#       retroactive effective window rather than a Pub 1001/booklet page,
-#       since none of these four provisions appear in the 2022 booklet or
-#       2022 Pub 1001 — their basis is the statute window, not a year-source
-#       enumeration. See each row's pub1001_page/ircrtc below.
+#     - Wildfire-settlement rows (Kincade §17139.2, Zogg §17139.3, Fire Victims
+#       Trust §17138.5, Thomas/Woolsey §17138.6): KEPT for TY2022 and, per the
+#       2022 full re-enum (adjudication 2026-07-19), re-cited to REAL Pub 1001
+#       pages — the currently-posted 2022 Pub 1001 (REV 07-25) DOES list all
+#       four at pp.17-18 (Kincade/Zogg p17, FVT/Thomas-Woolsey p18). An earlier
+#       reading believed them absent from the 2022 edition; that was revision
+#       drift (source-of-record = the posted edition). The ircrtc still carries
+#       each statute's own retroactive window as the operative-basis note. See
+#       each row's pub1001_page/ircrtc below.
 #   UNCHANGED vs 2023 base (in effect for TY2022, unlike TY2021):
 #     - R&E capitalization IRC §174 (§B 3): federal 5-yr mandate first applies
 #       TY2022 — divergence present, row kept.
@@ -1221,11 +1223,12 @@
 # booklet and 2022 Sch CA line-8z enumeration. Originally ported forward as
 # an active row in error; row removed.
 
-# KEPT for TY2022: Kincade Fire (2019) PG&E settlement exclusion. Absent
-# from the 2022 booklet/Pub 1001, but defensible via the STATUTE'S OWN
-# retroactive window — R&TC 17139.2 applies to taxable years beginning on or
-# after 1/1/2020 and before 1/1/2028 (amended-return reach), which covers
-# TY2022. Citation below is the statute window, not a booklet/Pub 1001 page.
+# KEPT for TY2022: Kincade Fire (2019) PG&E settlement exclusion. Per the 2022
+# full re-enum (adjudication 2026-07-19), cited to the REAL page — the
+# currently-posted 2022 Pub 1001 (REV 07-25) lists it at p.17 (revision drift;
+# source-of-record = the posted edition). The ircrtc still carries the statute's
+# own retroactive window (R&TC 17139.2 — TY on/after 1/1/2020 and before
+# 1/1/2028, amended-return reach) as the operative-basis note.
 - id: "kincade-fire-2019-pg-and-e-settlement-ca-excludes-no"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"
@@ -1236,9 +1239,9 @@
   ircrtc: "R&TC 17139.2 — TY beginning on/after 1/1/2020 and before 1/1/2028 (amended-return reach)"
 
 # KEPT for TY2022: Zogg Fire (2020) PG&E settlement exclusion. Same statute
-# structure as Kincade above — R&TC 17139.3 applies to taxable years
-# beginning on or after 1/1/2020 and before 1/1/2028 (amended-return reach).
-# Absent from the 2022 booklet/Pub 1001; defensible via the statute window.
+# structure as Kincade above (R&TC 17139.3 — same on/after-1/1/2020, before-
+# 1/1/2028 window). Cited to the REAL page p.17 — the currently-posted 2022
+# Pub 1001 (REV 07-25) lists it (revision drift; source-of-record = posted ed.).
 - id: "zogg-fire-2020-pg-and-e-settlement-ca-excludes-no-federal"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"
@@ -1291,10 +1294,10 @@
   pub1001_page: 18
   ircrtc: "R&TC 17138.2"
 
-# KEPT for TY2022: Fire Victims Trust settlement exclusion. Absent from the
-# 2022 booklet/Pub 1001, but defensible via the STATUTE'S OWN retroactive
-# window — R&TC 17138.5 applies to taxable years beginning before 1/1/2028.
-# Citation below is the statute window, not a booklet/Pub 1001 page.
+# KEPT for TY2022: Fire Victims Trust settlement exclusion. Cited to the REAL
+# page p.18 — the currently-posted 2022 Pub 1001 (REV 07-25) lists it (revision
+# drift; source-of-record = the posted edition). The ircrtc still carries the
+# statute's own window (R&TC 17138.5 — TY beginning before 1/1/2028).
 - id: "fire-victims-trust-payments-ca-excludes-no-federal"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"
@@ -1304,11 +1307,10 @@
   pub1001_page: 18
   ircrtc: "R&TC 17138.5 — TY beginning before 1/1/2028"
 
-# KEPT for TY2022: Thomas Fire / Woolsey Fire settlement exclusion. Absent
-# from the 2022 booklet/Pub 1001, but defensible via the STATUTE'S OWN
-# retroactive window — R&TC 17138.6 applies to taxable years beginning
-# before 1/1/2027. Citation below is the statute window, not a booklet/Pub
-# 1001 page.
+# KEPT for TY2022: Thomas Fire / Woolsey Fire settlement exclusion. Cited to the
+# REAL page p.18 — the currently-posted 2022 Pub 1001 (REV 07-25) lists it
+# (revision drift; source-of-record = the posted edition). The ircrtc still
+# carries the statute's own window (R&TC 17138.6 — TY beginning before 1/1/2027).
 - id: "thomas-fire-2017-and-woolsey-fire-2018-sce-settlement-ca"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"

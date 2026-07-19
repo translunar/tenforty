@@ -369,11 +369,13 @@ class SchemaGateTests(unittest.TestCase):
             "row that simply lacks a page."
         )
         sentinel_counts = {}
+        sentinel_ids = {}
         for year in YEARS:
             for entry in load_catalog(year):
                 page = entry.pub1001_page
                 if isinstance(page, str):
                     sentinel_counts[year] = sentinel_counts.get(year, 0) + 1
+                    sentinel_ids.setdefault(year, set()).add(entry.id)
                     with self.subTest(year=year, id=entry.id):
                         self.assertEqual(page, PUB1001_STRING_SENTINEL, guidance)
                 elif page is None:
@@ -408,6 +410,17 @@ class SchemaGateTests(unittest.TestCase):
         # CONTENT-AUDIT, are a distinct case handled above and are deliberately
         # NOT the sentinel.)
         self.assertEqual(sentinel_counts, {2021: 2}, guidance)
+        # Identity pin (not just count): the two 2021 string sentinels are
+        # EXACTLY Kincade + Zogg. A future swap that kept the count at 2 with a
+        # different pair would pass the count check above but trip this.
+        self.assertEqual(
+            sentinel_ids.get(2021, set()),
+            {
+                "kincade-fire-2019-pg-and-e-settlement-ca-excludes-no",
+                "zogg-fire-2020-pg-and-e-settlement-ca-excludes-no-federal",
+            },
+            guidance,
+        )
 
     def test_direction_is_catalog_direction(self):
         for year in YEARS:
