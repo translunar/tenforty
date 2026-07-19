@@ -493,13 +493,21 @@ class SchemaGateTests(unittest.TestCase):
         #   The DTRA wildfire-relief row is KEPT (unsourced-recite), direction
         #     unchanged at Add -> no direction delta.
         #   Sum: Add +1, Both +3, Sub +1 (Sub: +2 adds +1 cross-source -2 drops).
+        #
+        # Re-pinned again by the CONTENT-AUDIT CLOSE-OUT (adjudication 2026-07-19):
+        # 300/344/403 -> 300/344/399. Net delta = Sub -4, Add/Both unchanged.
+        #   The merchant-seamen nonresident-wages row (a Schedule CA (540NR)
+        #   nonresident-only item, 46 USC 11108; scope-class, year-independent) was
+        #   dropped from the four remaining years that still carried it (2021 "Part
+        #   I line 1"; 2022/2024/2025 "§A 1a") — already gone from 2023 since its
+        #   2023 full re-enum. All four dropped rows were direction Sub => Sub -4.
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
         self.assertEqual(counts[CatalogDirection.ADD], 300)
         self.assertEqual(counts[CatalogDirection.BOTH], 344)
-        self.assertEqual(counts[CatalogDirection.SUB], 403)
+        self.assertEqual(counts[CatalogDirection.SUB], 399)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):

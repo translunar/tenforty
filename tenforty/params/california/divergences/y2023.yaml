@@ -1,4 +1,10 @@
 # tenforty/params/california/divergences/y2023.yaml
+# ── CONTENT-AUDIT (adjudication 2026-07-19) ────────────────────────────────────
+# TY2023 catalog verified against the FTB Pub 1001 2023 edition on 2026-07-19.
+# Method: full air-gapped Pub 1001 2023-ed re-enumeration + 2023 Sch CA (540)
+# instructions cross-source + diff; source-of-record = currently-posted edition
+# (REV as stamped).
+# CONTENT-AUDIT CLOSED. (Sits on top of the SOURCE-OF-RECORD PROVENANCE below.)
 # ── SOURCE-OF-RECORD PROVENANCE (all-five-years header update, 2026-07-19) ──────
 # pub1001_page citations are printing-sensitive: FTB re-issues Pub 1001 within a
 # tax year (REV markers), so a page number is only reproducible against a named

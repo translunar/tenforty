@@ -1,4 +1,9 @@
 # tenforty/params/california/divergences/y2025.yaml
+# ── CONTENT-AUDIT (adjudication 2026-07-19) ────────────────────────────────────
+# TY2025 catalog verified against the FTB Pub 1001 2025 edition on 2026-07-19.
+# Method: air-gapped FTB Pub 1001 2025-ed re-enumeration + 2025 Sch CA (540)
+# instructions cross-source + full reconciliation (all findings adjudicated).
+# CONTENT-AUDIT CLOSED. (Sits on top of the SOURCE-OF-RECORD PROVENANCE below.)
 # ── SOURCE-OF-RECORD PROVENANCE (all-five-years header update, 2026-07-19) ──────
 # pub1001_page citations are printing-sensitive: FTB re-issues Pub 1001 within a
 # tax year (REV markers), so a page number is only reproducible against a named
@@ -29,6 +34,16 @@
 #   - Row 99 (Part I §B 7 generic UI): auto-derived; dropped.
 #   - Row 100 (Part I §B 7 PFL): auto-derived via named field; dropped.
 # Multi-line enumeration rows are split into one catalog row per Sch CA line.
+#
+# CONTENT-AUDIT CLOSE-OUT DROP (adjudication 2026-07-19) — merchant-seamen / rail
+# / motor / air carrier nonresident wages (id merchant-seamen-rail-motor-air-
+# carrier-nonresident-wages): DROPPED. Scope-class ruling — the exclusion is
+# inherently a Schedule CA (540NR) nonresident item (46 USC 11108 caps state
+# taxation of interstate transportation employees' wages); tenforty computes the
+# resident 540 only, so relabeling would push a 540NR line into the 540 line set.
+# Year-independent (not per-year source drift): dropped from ALL FIVE catalog
+# years in the close-out. Previously carried here at "Part I §A 1a". Recorded so
+# future 540NR work re-adds it from this note.
 
 # ── Part I §A 1a ──────────────────────────────────────────────────────────────
 
@@ -68,14 +83,9 @@
   pub1001_page: 6
   ircrtc: "—"
 
-- id: "merchant-seamen-rail-motor-air-carrier-nonresident-wages"
-  sch_ca_line: "Part I §A 1a"
-  section_title: "Wages"
-  description: "Merchant seamen / rail / motor / air carrier nonresident wages excluded"
-  direction: "Sub"
-  common: false
-  pub1001_page: 6
-  ircrtc: "—"
+# DROPPED (CONTENT-AUDIT close-out 2026-07-19): merchant-seamen / rail / motor /
+# air carrier nonresident wages — a Schedule CA (540NR) nonresident-only item
+# (46 USC 11108); tenforty computes the resident 540 only. See the header note.
 
 # ── Part I §A 1d ──────────────────────────────────────────────────────────────
 
