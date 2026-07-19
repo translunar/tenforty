@@ -122,7 +122,7 @@
 #
 # Multi-line enumeration rows are split into one catalog row per Sch CA line.
 
-# ── Part I §A 1a ──────────────────────────────────────────────────────────────
+# ── Part I line 1 — Wages (2021 ed. prints a single un-lettered line 1; the catalog §A 1a sub-letter is a 2022+ anachronism, swept here) ──
 
 - id: "ic-reclassified-as-employee-income-prop-22-ab5"
   sch_ca_line: "Part I line 1"
@@ -169,7 +169,7 @@
   pub1001_page: 7
   ircrtc: "—"
 
-# ── Part I §A 1d ──────────────────────────────────────────────────────────────
+# ── Part I line 1 (2021 ed.; catalog §A 1d — 2022+ sub-letter) ──
 
 - id: "ihss-supplementary-payments-in-w-2-wages-excluded-by-ca"
   sch_ca_line: "Part I line 1"
@@ -180,14 +180,15 @@
   pub1001_page: 7
   ircrtc: "R&TC 17131.6"
 
-# ── Part I §A 1e ──────────────────────────────────────────────────────────────
+# ── Part I line 1 (2021 ed.; catalog §A 1e — 2021-only ARPA dependent-care add) ──
 # ADDED for TY2021 (ARPA nonconformity): ARPA temporarily raised the
 # employer-provided dependent-care assistance gross-income exclusion from
 # $5,000 to $10,500 ($5,250 MFS). CA conforms only to $5,000 and adds back the
 # excess. 2021 Sch CA (540) instr., Additional Info: "enter the difference on
 # line 1, column C" (booklet p.44); 2021 booklet p.4. 2021-only (ARPA increase
-# lapsed after TY2021). Pub 1001 page carried from the adjacent §A 1h wages-
-# fringe rows (p.7); unverified-in-repo for this specific item.
+# lapsed after TY2021). Pub 1001 page re-based to the 2021 edition (p.5) by the
+# 2021 full re-enum; the §A line-1 anachronism sweep also re-lined this row from
+# the 2022+ sub-letter §A 1e to the single un-lettered "Part I line 1".
 
 - id: "employer-dependent-care-assistance-arpa-raised-federal"
   sch_ca_line: "Part I line 1"
@@ -198,7 +199,7 @@
   pub1001_page: 5
   ircrtc: "IRC §129 (ARPA)"
 
-# ── Part I §A 1h ──────────────────────────────────────────────────────────────
+# ── Part I line 1 (2021 ed.; catalog §A 1h — 2022+ sub-letter) ──
 
 - id: "qualified-transportation-fringe-no-ca-monthly-cap-broader"
   sch_ca_line: "Part I line 1"
@@ -263,7 +264,7 @@
   pub1001_page: 6
   ircrtc: "—"
 
-# ── Part I §A 1i ──────────────────────────────────────────────────────────────
+# ── Part I line 1 (2021 ed.; catalog §A 1i — 2022+ sub-letter) ──
 
 - id: "sinai-combat-pay-excluded-under-tcja-ca-doesn-t-conform"
   sch_ca_line: "Part I line 1"
@@ -858,11 +859,11 @@
   pub1001_page: 15
   ircrtc: "IRC §1400I"
 
-# ── Part I §B 4 ───────────────────────────────────────────────────────────────
+# ── Part I line 26 (2021 ed.; §179A clean-fuel vehicle — catalog §B 4, swept here) ──
 
-# Row 77: Line 26 / §179A — treating as §B 4 (Other Gains/Losses) since it
-# concerns a vehicle deduction that flows through gains/loss treatment.
-# The Sch CA line given is "Line 26" which maps to §B 4 in Sch CA 540 context.
+# §179A clean-fuel-vehicle deduction. The 2021 full re-enum (adjudication
+# 2026-07-19) RULED this to "Part I line 26, column B" per the 2021 Pub 1001
+# (P077, p13), overriding the prior catalog §B 4 (Other Gains/Losses) placement.
 - id: "179a-first-year-deduction-on-clean-fuel-vehicles-ca-doesn"
   sch_ca_line: "Part I line 26"
   section_title: "Other Gains/Losses"
@@ -1122,7 +1123,7 @@
   pub1001_page: 5
   ircrtc: "IRC §911"
 
-# ── Part I §B 8e ──────────────────────────────────────────────────────────────
+# ── Part I §B 8z / 8e (2021 ed.: Archer MSA→HSA rollover routes to 8z; menstrual-care MSA stays 8e) ──
 
 - id: "archer-msa-hsa-rollover-non-taxable-federally-ca-treats"
   sch_ca_line: "Part I §B 8z"
@@ -1143,7 +1144,7 @@
   source_citation: "2022-edition FTB Pub 1001 p.17; absent from 2021 edition (Pub non-exhaustive)"
   ircrtc: "—"
 
-# ── Part I §B 8f ──────────────────────────────────────────────────────────────
+# ── Part I §B 8e (2021 ed.; catalog 8f is a 2022+ anachronism, swept here) ──
 
 - id: "non-qualified-hsa-distribution-ca-adjustment-for-portion"
   sch_ca_line: "Part I §B 8e"
@@ -1154,7 +1155,7 @@
   pub1001_page: 9
   ircrtc: "—"
 
-# ── Part I §B 8k ──────────────────────────────────────────────────────────────
+# ── Part I §B 8z (2021 ed.; catalog 8k, swept here) ──
 
 - id: "deferral-election-for-qualified-equity-grants-83-i-tcja"
   sch_ca_line: "Part I §B 8z"
@@ -1165,7 +1166,7 @@
   pub1001_page: 18
   ircrtc: "IRC §83(i) (TCJA)"
 
-# ── Part I §B 8n ──────────────────────────────────────────────────────────────
+# ── Part I §B 8m (2021 ed.; §951(a) Subpart F — catalog 8n, swept here) ──
 
 - id: "subpart-f-inclusion-required-federally-ca-doesn-t-conform"
   sch_ca_line: "Part I §B 8m"
@@ -1176,7 +1177,7 @@
   pub1001_page: 17
   ircrtc: "IRC §951(a)"
 
-# ── Part I §B 8o ──────────────────────────────────────────────────────────────
+# ── Part I §B 8n (2021 ed.; §951A GILTI — catalog 8o, swept here) ──
 
 - id: "gilti-inclusion-required-federally-ca-doesn-t-conform"
   sch_ca_line: "Part I §B 8n"
@@ -1187,7 +1188,7 @@
   pub1001_page: 17
   ircrtc: "IRC §951A"
 
-# ── Part I §B 8p ──────────────────────────────────────────────────────────────
+# ── Part I §B 8o (2021 ed.; §461(l) excess business loss — catalog 8p, swept here) ──
 
 - id: "excess-business-loss-limit-ca-conforms-generally-doesn-t"
   sch_ca_line: "Part I §B 8o"
@@ -1319,10 +1320,13 @@
 # (R&TC 17138.2) first applies to taxable years beginning on or after
 # 1/1/2022 (2022 booklet p.4). Not in effect for TY2021. (RE-ADDED TY2022.)
 
-# KEPT for TY2021: Fire Victims Trust settlement exclusion. Absent from the
-# 2021 booklet/Pub 1001, but defensible via the STATUTE'S OWN retroactive
-# window — R&TC 17138.5 applies to taxable years beginning before 1/1/2028.
-# Citation below is the statute window, not a booklet/Pub 1001 page.
+# KEPT for TY2021: Fire Victims Trust settlement exclusion. The 2021 full
+# re-enum (adjudication 2026-07-19) found the CURRENTLY-POSTED 2021 Pub 1001
+# (REV 07-25) DOES list this exclusion at p17 — revision drift, not an authoring
+# error; source-of-record = the posted edition — so it is now cited to that real
+# page (pub1001_page: 17), dropping the former statute-window sentinel. The
+# R&TC 17138.5 ircrtc (TY beginning before 1/1/2028) is retained as the
+# legitimate statute basis.
 - id: "fire-victims-trust-payments-ca-excludes-no-federal"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"
@@ -1332,11 +1336,13 @@
   pub1001_page: 17
   ircrtc: "R&TC 17138.5 — TY beginning before 1/1/2028"
 
-# KEPT for TY2021: Thomas Fire / Woolsey Fire settlement exclusion. Absent
-# from the 2021 booklet/Pub 1001, but defensible via the STATUTE'S OWN
-# retroactive window — R&TC 17138.6 applies to taxable years beginning
-# before 1/1/2027. Citation below is the statute window, not a booklet/Pub
-# 1001 page.
+# KEPT for TY2021: Thomas Fire / Woolsey Fire settlement exclusion. The 2021
+# full re-enum (adjudication 2026-07-19) found the CURRENTLY-POSTED 2021 Pub
+# 1001 (REV 07-25) DOES list this exclusion at p17 — revision drift, not an
+# authoring error; source-of-record = the posted edition — so it is now cited to
+# that real page (pub1001_page: 17), dropping the former statute-window
+# sentinel. The R&TC 17138.6 ircrtc (TY beginning before 1/1/2027) is retained
+# as the legitimate statute basis.
 - id: "thomas-fire-2017-and-woolsey-fire-2018-sce-settlement-ca"
   sch_ca_line: "Part I §B 8z"
   section_title: "Other Income"
@@ -2020,7 +2026,11 @@
   pub1001_page: 24
   ircrtc: "—"
 
-# ── Sch D 540 ─────────────────────────────────────────────────────────────────
+# ── Sch D 540 / Schedule D-1 ──────────────────────────────────────────────────
+# The 2021 full re-enum (adjudication 2026-07-19) re-labeled three rows in this
+# section to "Schedule D-1" (Other Gains/Losses) per the 2021 Pub 1001:
+# 1031-exchange, federal-basis-differs, and cars-act-rebates. The remaining rows
+# stay on Sch D 540.
 
 - id: "1031-exchange-federal-limited-to-real-property-ca"
   sch_ca_line: "Schedule D-1"
