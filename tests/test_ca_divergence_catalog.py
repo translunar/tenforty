@@ -134,6 +134,13 @@ _COMMON_SCH_CA_LINES = frozenset(
 # - "Part I line 26": §179A clean-fuel-vehicle deduction (2022 Pub 1001 line 26).
 # - "Schedule D-1": form-label sweep — the three basis/1031/CARS "Sch D 540" rows
 #   route to Schedule D-1 (Other Gains/Losses) in the 2022 edition.
+# 2023 full re-enum (adjudication 2026-07-19) — cleanest year (mirrors 2022; no
+# §A line-1 anachronism, no §B-8 shift):
+# - "Part I §B 4" is VACATED for 2023: §179A clean-fuel (its only 2023 user) moves
+#   to "Part I line 26", so 2023 no longer carries §B 4.
+# - "Part I line 26": §179A clean-fuel-vehicle deduction (2023 Pub 1001 line 26).
+# - "Schedule D-1": form-label sweep — the three basis/1031/CARS "Sch D 540" rows
+#   route to Schedule D-1 (Other Gains/Losses) in the 2023 edition.
 _YEAR_SPECIFIC_SCH_CA_LINES = {
     2021: frozenset(
         {
@@ -153,7 +160,13 @@ _YEAR_SPECIFIC_SCH_CA_LINES = {
             "Schedule D-1",
         }
     ),
-    2023: frozenset({"Part I §B 4", "Part I §C 24c"}),
+    2023: frozenset(
+        {
+            "Part I §C 24c",
+            "Part I line 26",
+            "Schedule D-1",
+        }
+    ),
     2024: frozenset({"Part I §B 4", "Part I §C 24c"}),
     2025: frozenset({"Part I line 26", "Part II 29"}),
 }
@@ -204,6 +217,19 @@ UNSOURCED_IN_CURRENT_EDITION = {
             "conservation-easement-carryover-federal-15-yr-ca-5-yr",
         }
     ),
+    # 2023 (full re-enum, adjudication 2026-07-19): three operative rows absent
+    # from the 2023 Pub edition, KEPT and re-cited unsourced-in-2023-edition:
+    # the two conservation-easement sub-rules (re-cited to the 2024 page) + the
+    # DTRA wildfire-relief row (re-cited to the 2025 edition p.18 that carries
+    # it — the Disaster Tax Relief Act was named 2023 but ENACTED 12/12/2024,
+    # retroactive to TY2023, so the 2023 Pub could not describe it).
+    2023: frozenset(
+        {
+            "conservation-easement-federal-50-agi-ca-30-agi",
+            "conservation-easement-carryover-federal-15-yr-ca-5-yr",
+            "qualified-wildfire-relief-payments-excluded-federally",
+        }
+    ),
     2025: frozenset(
         {
             "business-interest-cap-30-ati-federal-tcja-ca-doesn-t",
@@ -225,6 +251,7 @@ UNSOURCED_IN_CURRENT_EDITION = {
 _UNSOURCED_MARKER = {
     2021: "absent from 2021 edition",
     2022: "absent from 2022 edition",
+    2023: "absent from 2023 edition",
     2025: "absent from 2025 edition",
 }
 
@@ -450,30 +477,29 @@ class SchemaGateTests(unittest.TestCase):
                     self.assertEqual(entry.triggers, ())
 
     def test_direction_totals_match_known_distribution(self):
-        # Pins the real data across five years. Re-pinned by the 2022 full
+        # Pins the real data across five years. Re-pinned by the 2023 full
         # re-enumeration reconciliation (adjudication 2026-07-19): from
-        # 298/332/405 to 299/341/402. Net delta = Add +1, Both +9, Sub -3
-        # (row count +7: -1 drop + 8 adds, all in 2022), reconciled as:
-        #   Bucket C direction changes (2022 only):
-        #     moving §A1h   Sub->Add: +1 Add, -1 Sub
-        #     moving §C14   Sub->Add: +1 Add, -1 Sub
-        #     capital-loss-carrybacks Add->Both: -1 Add, +1 Both
-        #     misc-itemized II19/20/21 Sub->Both x3: +3 Both, -3 Sub
-        #     -> Bucket C subtotal: Add +1, Both +4, Sub -5
-        #   Drop (2022): §414(v) CAA-2023 catch-up (was Sub): Sub -1
-        #   Bucket-A adds x3: Sub +2, Both +1
-        #     (student-loan-closure/generic-wildfire = Sub; enhanced-oil = Both)
-        #   Cross-source net-new adds x5: Both +4, Sub +1
-        #     (Coverdell-diff/parents-election/3805p-early/3805p-coverdell = Both;
-        #      forest-landowner = Sub; directions mirror the 2021 ruled analogues)
-        #   Sum: Add +1, Both +9, Sub -3.
+        # 299/341/402 to 300/344/403. Net delta = Add +1, Both +3, Sub +1
+        # (row count +5: -2 drops + 7 adds, all in 2023), reconciled as:
+        #   Bucket C direction changes: NONE (2023 has no direction changes).
+        #   Drops (2023, both were Sub): merchant-seamen nonresident wages (540NR
+        #     scope) + §414(v) CAA-2023 catch-up (TY2024+ anachronism): Sub -2.
+        #   Bucket-A adds x4: Sub +2, Both +1, Add +1
+        #     (student-loan-closure/generic-wildfire = Sub; enhanced-oil = Both;
+        #      conservation-easement 2.5x SECURE-2.0 = Add)
+        #   Cross-source net-new adds x3: Both +2, Sub +1
+        #     (Coverdell-diff/parents-election = Both; forest-landowner = Sub;
+        #      directions mirror the 2021/2022 ruled analogues)
+        #   The DTRA wildfire-relief row is KEPT (unsourced-recite), direction
+        #     unchanged at Add -> no direction delta.
+        #   Sum: Add +1, Both +3, Sub +1 (Sub: +2 adds +1 cross-source -2 drops).
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
-        self.assertEqual(counts[CatalogDirection.ADD], 299)
-        self.assertEqual(counts[CatalogDirection.BOTH], 341)
-        self.assertEqual(counts[CatalogDirection.SUB], 402)
+        self.assertEqual(counts[CatalogDirection.ADD], 300)
+        self.assertEqual(counts[CatalogDirection.BOTH], 344)
+        self.assertEqual(counts[CatalogDirection.SUB], 403)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):
