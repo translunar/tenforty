@@ -40,12 +40,16 @@
 #     - SALT cap (Part II 5e): wording TY2024 -> TY2023 (federal flat $10k/$5k
 #       pre-OBBBA cap identical in 2023; substance unchanged).
 #
-# Drop rules applied vs. the 190-row enumeration (inherited from 2024):
-#   - Row 41 (Part I §B 1 state tax refund): sole §B 1 item; entire line omitted.
-#   - Row 24 (Part I §A 5b Tier 1+2 RRB): auto-derived via named field; dropped.
-#   - Row 32 (Part I §A 6 Social Security broadly): auto-derived; dropped.
-#   - Row 99 (Part I §B 7 generic UI): auto-derived; dropped.
-#   - Row 100 (Part I §B 7 PFL): auto-derived via named field; dropped.
+# AUTO ROWS (Part AUTO migration, 2026-07-19). The five auto-derived exclusions
+# below — formerly DROPPED from the enumeration because the kernel synthesized
+# them from hardcoded tuples — are now REAL catalog `auto:` rows (appended at the
+# end of this file). `derive_auto_divergences` sources them via `load_catalog`
+# and stamps DivergenceSource.CATALOG_AUTO:
+#   - Row 41 (Part I §B 1 state tax refund)  -> auto federal_key
+#   - Row 24 (Part I §A 5b Tier 1+2 RRB)     -> auto ca540_field
+#   - Row 32 (Part I §A 6 Social Security)   -> auto federal_key
+#   - Row 99 (Part I §B 7 generic UI)        -> auto federal_key
+#   - Row 100 (Part I §B 7 PFL)              -> auto ca540_field
 # Multi-line enumeration rows are split into one catalog row per Sch CA line.
 #
 # 2023 FULL RE-ENUM DROP (adjudication 2026-07-19) — merchant-seamen nonresident
@@ -2078,3 +2082,65 @@
   pub1001_page: null
   source_citation: "2023 Sch CA (540) instructions (540 booklet), p.63"
   ircrtc: "—"
+
+# ── AUTO ROWS (Part AUTO) ────────────────────────────────────────
+# Auto-derived divergences migrated from the kernel's hardcoded tuples
+# (forms/sch_ca.py). derive_auto_divergences sources these via load_catalog and
+# stamps DivergenceSource.CATALOG_AUTO. federal_key rows fire when the named
+# federal-results value is > 0; ca540_field rows fire when the named CA540Return
+# field is > 0. Descriptions are FROZEN (identical, byte-for-byte, across years).
+
+- id: "unemployment-compensation-ca-excludes-rtc-17083"
+  sch_ca_line: "Part I §B 7"
+  section_title: "Unemployment compensation"
+  description: "Unemployment compensation excluded by CA per R&TC 17083"
+  direction: "Sub"
+  common: true
+  pub1001_page: 17
+  ircrtc: "R&TC 17083"
+  auto:
+    federal_key: "sch_1_line_7_unemployment"
+
+- id: "social-security-benefits-ca-excludes-rtc-17087"
+  sch_ca_line: "Part I §A 6"
+  section_title: "Social Security"
+  description: "Social Security benefits excluded by CA per R&TC 17087"
+  direction: "Sub"
+  common: true
+  pub1001_page: 9
+  ircrtc: "R&TC 17087"
+  auto:
+    federal_key: "social_security_taxable"
+
+- id: "state-income-tax-refund-not-taxed-ca-rtc-17131"
+  sch_ca_line: "Part I §B 1"
+  section_title: "Taxable refunds"
+  description: "State income tax refund not taxed by CA per R&TC 17131"
+  direction: "Sub"
+  common: true
+  pub1001_page: 11
+  ircrtc: "R&TC 17131"
+  auto:
+    federal_key: "sch_1_line_1_taxable_refunds"
+
+- id: "railroad-retirement-tier-1-2-ca-excludes-rtc-17087"
+  sch_ca_line: "Part I §A 5b"
+  section_title: "Railroad retirement"
+  description: "Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087"
+  direction: "Sub"
+  common: true
+  pub1001_page: 9
+  ircrtc: "R&TC 17087"
+  auto:
+    ca540_field: "rrb_tier_1_2_amount"
+
+- id: "paid-family-leave-benefits-ca-excludes-ftb-pub-1001"
+  sch_ca_line: "Part I §B 7"
+  section_title: "Paid family leave"
+  description: "Paid Family Leave benefits excluded by CA per FTB Pub 1001"
+  direction: "Sub"
+  common: true
+  pub1001_page: 17
+  ircrtc: "—"
+  auto:
+    ca540_field: "pfl_amount"

@@ -84,9 +84,11 @@
 #     - Turf-replacement (§B 8z, R&TC 17138.2) and discharged community-college
 #       fees (§B 8z, R&TC 17131.21): both first apply TY2022 — rows kept.
 #
-# Drops inherited from the 2023 base (auto-derived / enumeration) still apply:
-#   Part I §B 7 generic UI + PFL (auto-derived named field — see the UI no-op
-#   below); state tax refund §B 1; RRB §A 5b; SS §A 6.
+# AUTO ROWS (Part AUTO migration, 2026-07-19): the five auto-derived exclusions
+# (Part I §B 7 generic UI + PFL — see the UI no-op below; state tax refund §B 1;
+# RRB §A 5b; SS §A 6) are now REAL catalog `auto:` rows appended at the end of
+# this file, sourced by derive_auto_divergences via load_catalog (formerly
+# synthesized from hardcoded kernel tuples).
 #
 # ── TY2022 documented no-ops (federal/CA items with NO Schedule CA adjustment
 #    — recorded EXPLICITLY, not left silently absent) ──
@@ -2159,3 +2161,65 @@
   pub1001_page: null
   source_citation: "2022 Sch CA (540) instructions (540 booklet), p.48"
   ircrtc: "—"
+
+# ── AUTO ROWS (Part AUTO) ────────────────────────────────────────
+# Auto-derived divergences migrated from the kernel's hardcoded tuples
+# (forms/sch_ca.py). derive_auto_divergences sources these via load_catalog and
+# stamps DivergenceSource.CATALOG_AUTO. federal_key rows fire when the named
+# federal-results value is > 0; ca540_field rows fire when the named CA540Return
+# field is > 0. Descriptions are FROZEN (identical, byte-for-byte, across years).
+
+- id: "unemployment-compensation-ca-excludes-rtc-17083"
+  sch_ca_line: "Part I §B 7"
+  section_title: "Unemployment compensation"
+  description: "Unemployment compensation excluded by CA per R&TC 17083"
+  direction: "Sub"
+  common: true
+  pub1001_page: 16
+  ircrtc: "R&TC 17083"
+  auto:
+    federal_key: "sch_1_line_7_unemployment"
+
+- id: "social-security-benefits-ca-excludes-rtc-17087"
+  sch_ca_line: "Part I §A 6"
+  section_title: "Social Security"
+  description: "Social Security benefits excluded by CA per R&TC 17087"
+  direction: "Sub"
+  common: true
+  pub1001_page: 9
+  ircrtc: "R&TC 17087"
+  auto:
+    federal_key: "social_security_taxable"
+
+- id: "state-income-tax-refund-not-taxed-ca-rtc-17131"
+  sch_ca_line: "Part I §B 1"
+  section_title: "Taxable refunds"
+  description: "State income tax refund not taxed by CA per R&TC 17131"
+  direction: "Sub"
+  common: true
+  pub1001_page: 10
+  ircrtc: "R&TC 17131"
+  auto:
+    federal_key: "sch_1_line_1_taxable_refunds"
+
+- id: "railroad-retirement-tier-1-2-ca-excludes-rtc-17087"
+  sch_ca_line: "Part I §A 5b"
+  section_title: "Railroad retirement"
+  description: "Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087"
+  direction: "Sub"
+  common: true
+  pub1001_page: 8
+  ircrtc: "R&TC 17087"
+  auto:
+    ca540_field: "rrb_tier_1_2_amount"
+
+- id: "paid-family-leave-benefits-ca-excludes-ftb-pub-1001"
+  sch_ca_line: "Part I §B 7"
+  section_title: "Paid family leave"
+  description: "Paid Family Leave benefits excluded by CA per FTB Pub 1001"
+  direction: "Sub"
+  common: true
+  pub1001_page: 16
+  ircrtc: "—"
+  auto:
+    ca540_field: "pfl_amount"
