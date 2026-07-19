@@ -311,9 +311,12 @@ class SchemaGateTests(unittest.TestCase):
     def test_direction_totals_match_known_distribution(self):
         # Pins the real data across five years. Re-pinned by the 2025
         # CONTENT-AUDIT (adjudication 2026-07-19): from 296/314/402 to
-        # 299/320/404. Net TY2025 delta = +3 Add, +6 Both, +2 Sub (8 direction
-        # flips are net-zero reassignments; 3 drops = -3 Sub; 14 adds = +3 Add,
-        # +5 Both, +6 Sub).
+        # 299/320/404. Net TY2025 delta = +3 Add, +6 Both, +2 Sub, reconciled as:
+        #   14 adds:           +3 Add, +5 Both, +6 Sub
+        #   3 drops:                            -3 Sub
+        #   8 Bucket-C flips:  +1 Add,  0 Both, -1 Sub  (not net-zero)
+        #   §174A rewrite (Add->Both): -1 Add, +1 Both
+        # Sum: +3 Add, +6 Both, +2 Sub.
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
