@@ -1440,7 +1440,8 @@ class ReturnOrchestrator:
         ``f540.compute`` raises NotImplementedError above the CA AGI phaseout
         threshold; that propagates unwrapped.
         """
-        sch_ca_results = form_sch_ca.compute(effective_ca540, federal_results)
+        sch_ca_results = form_sch_ca.compute(
+            effective_ca540, federal_results, scenario.config.year)
         sch_d_540_results = form_sch_d_540.compute(
             federal_results, worksheet_adjustments=list(sch_d_540_adjustments),
         )

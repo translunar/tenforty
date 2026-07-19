@@ -16,6 +16,7 @@ Produces compute output keys:
 """
 
 from collections import defaultdict
+from tenforty.ca_divergences import CatalogDirection, load_catalog
 from tenforty.models import CASchCAAdjustment, DivergenceDirection, DivergenceSource
 from tenforty.rounding import irs_round
 
@@ -69,10 +70,10 @@ def _normalize_line(sch_ca_line: str) -> str:
             .strip("_"))
 
 
-def compute(ca540, federal_results: dict) -> dict:
+def compute(ca540, federal_results: dict, year: int) -> dict:
     if ca540 is None:
         return {}
-    auto = derive_auto_divergences(federal_results, ca540=ca540)
+    auto = derive_auto_divergences(federal_results, year, ca540=ca540)
     all_divergences = list(ca540.divergences) + auto
     subtractions = defaultdict(float)
     additions = defaultdict(float)
@@ -103,57 +104,6 @@ def compute(ca540, federal_results: dict) -> dict:
     out["sch_ca_federal_agi"] = irs_round(federal_agi)
     out["sch_ca_ca_agi"] = irs_round(federal_agi - total_sub + total_add)
     return out
-
-
-# Auto-derived divergence catalog — federal-results-keyed entries.
-# Each tuple: (federal_key, sch_ca_line, description, federal_source,
-# pub1001_ref). All entries fire as SUBTRACTION when the federal value
-# is positive; no user input needed.
-_FEDERAL_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        "sch_1_line_7_unemployment",
-        "Part I §B 7",
-        "Unemployment compensation excluded by CA per R&TC 17083",
-        "Sch 1 line 7",
-        "p.17",
-    ),
-    (
-        "social_security_taxable",
-        "Part I §A 6",
-        "Social Security benefits excluded by CA per R&TC 17087",
-        "1040 line 6b (taxable portion)",
-        "p.10",
-    ),
-    (
-        "sch_1_line_1_taxable_refunds",
-        "Part I §B 1",
-        "State income tax refund not taxed by CA per R&TC 17131",
-        "Sch 1 line 1",
-        "p.11",
-    ),
-)
-
-# Auto-derived divergence catalog — CA540Return-attribute-keyed entries.
-# Each tuple: (ca540_attr, sch_ca_line, description, federal_source,
-# pub1001_ref). Federal compute does not separately surface these
-# values, so the taxpayer supplies them on CA540Return; entries fire as
-# SUBTRACTION when the attribute is provided AND positive.
-_CA540_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        "rrb_tier_1_2_amount",
-        "Part I §A 5b",
-        "Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087",
-        "CA540Return.rrb_tier_1_2_amount",
-        "p.10",
-    ),
-    (
-        "pfl_amount",
-        "Part I §B 7",
-        "Paid Family Leave benefits excluded by CA per FTB Pub 1001",
-        "CA540Return.pfl_amount",
-        "p.17",
-    ),
-)
 
 
 def federal_itemization_applied(federal_results: dict) -> bool:
@@ -218,50 +168,51 @@ def compute_part_ii_itemized(sch_a_results: dict) -> dict:
     }
 
 
-def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAdjustment]:
-    """Generate mechanical divergences from federal results and named
-    CA540Return fields.
+def derive_auto_divergences(
+    federal_results: dict, year: int, ca540=None
+) -> list[CASchCAAdjustment]:
+    """Generate mechanical divergences from the packaged CA divergence catalog.
 
-    Federal-only catalog entries (UI, SS, state-tax refund) read from
-    `federal_results` keys produced by f1040.compute / sch_1.compute and
-    fire whenever the federal value is positive — no user input needed.
+    Sources the catalog's ``auto:`` rows for ``year`` (via ``load_catalog``) and
+    fires each whose keyed value is positive:
 
-    Named-field entries (RRB, PFL) read from CA540Return fields the
-    taxpayer supplies because federal compute does not separately
-    surface them: RRB is lumped into `pensions_taxable` (1040 line 5b)
-    and PFL is reported on 1099-G alongside UI without separation.
-    These fire only when `ca540` is provided AND the corresponding
-    field is set to a positive amount.
+    - ``federal_key`` rows (UI, SS, state-tax refund) read
+      ``federal_results[federal_key]`` — keys produced by f1040.compute /
+      sch_1.compute — and fire with no user input.
+    - ``ca540_field`` rows (RRB, PFL) read ``getattr(ca540, ca540_field)``:
+      federal compute does not separately surface these (RRB is lumped into
+      ``pensions_taxable`` / 1040 line 5b; PFL is reported on 1099-G alongside
+      UI without separation), so the taxpayer supplies them on ``CA540Return``.
+      These fire only when ``ca540`` is provided AND the field is positive.
+
+    Emitted divergences carry ``source=CATALOG_AUTO`` and ``catalog_id=<row
+    id>``; amount / line / direction / description are the migrated catalog
+    values (behavior-preserving vs the retired hardcoded tuples).
     """
     divergences: list[CASchCAAdjustment] = []
 
-    for fed_key, sch_ca_line, description, federal_source, pub1001_ref \
-            in _FEDERAL_AUTO_DIVERGENCES:
-        amount = federal_results.get(fed_key, 0.0)
+    for entry in load_catalog(year):
+        if entry.auto is None:
+            continue
+        direction = (
+            DivergenceDirection.SUBTRACTION
+            if entry.direction is CatalogDirection.SUB
+            else DivergenceDirection.ADDITION
+        )
+        if entry.auto.federal_key is not None:
+            amount = federal_results.get(entry.auto.federal_key, 0.0)
+        elif ca540 is not None:
+            amount = getattr(ca540, entry.auto.ca540_field) or 0.0
+        else:
+            continue
         if amount > 0:
             divergences.append(CASchCAAdjustment(
-                source=DivergenceSource.AUTO_DERIVED,
-                sch_ca_line=sch_ca_line,
-                direction=DivergenceDirection.SUBTRACTION,
+                source=DivergenceSource.CATALOG_AUTO,
+                sch_ca_line=entry.sch_ca_line,
+                direction=direction,
                 amount=amount,
-                description=description,
-                federal_source=federal_source,
-                pub1001_ref=pub1001_ref,
+                description=entry.description,
+                catalog_id=entry.id,
             ))
-
-    if ca540 is not None:
-        for ca540_attr, sch_ca_line, description, federal_source, pub1001_ref \
-                in _CA540_AUTO_DIVERGENCES:
-            amount = getattr(ca540, ca540_attr) or 0.0
-            if amount > 0:
-                divergences.append(CASchCAAdjustment(
-                    source=DivergenceSource.AUTO_DERIVED,
-                    sch_ca_line=sch_ca_line,
-                    direction=DivergenceDirection.SUBTRACTION,
-                    amount=amount,
-                    description=description,
-                    federal_source=federal_source,
-                    pub1001_ref=pub1001_ref,
-                ))
 
     return divergences

@@ -18,6 +18,7 @@ class SchCaKernelTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[]),
             federal_results={"agi": 100_000.0, "wages": 100_000.0},
+            year=2025,
         )
         # No subtractions, no additions; CA AGI matches federal
         self.assertEqual(result["sch_ca_total_subtractions"], 0.0)
@@ -36,6 +37,7 @@ class SchCaKernelTests(unittest.TestCase):
                 ),
             ]),
             federal_results={"agi": 100_000.0},
+            year=2025,
         )
         # Subtraction reduces CA AGI
         self.assertEqual(result["sch_ca_line_part_i_c_13_subtractions"], 4300.0)
@@ -61,6 +63,7 @@ class SchCaKernelTests(unittest.TestCase):
                 ),
             ]),
             federal_results={"agi": 50_000.0},
+            year=2025,
         )
         self.assertEqual(result["sch_ca_line_part_i_b_8z_subtractions"], 1700.0)
 
@@ -76,6 +79,7 @@ class SchCaKernelTests(unittest.TestCase):
                 ),
             ]),
             federal_results={"agi": 80_000.0},
+            year=2025,
         )
         self.assertEqual(result["sch_ca_ca_agi"], 80_000.0 + 350.0)
         self.assertEqual(result["sch_ca_line_part_i_a_2_additions"], 350.0)
@@ -98,12 +102,12 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
             "sch_1_line_7_unemployment": 4500.0,
         }
         ca540 = CA540Return(divergences=worksheet_divergences)
-        result = sch_ca_compute(ca540=ca540, federal_results=federal_results)
+        result = sch_ca_compute(ca540=ca540, federal_results=federal_results, year=2025)
         self.assertEqual(result["sch_ca_total_subtractions"], 4300.0 + 4500.0)
         self.assertEqual(result["sch_ca_ca_agi"], 100_000.0 - (4300.0 + 4500.0))
 
     def test_kernel_returns_empty_when_ca540_is_none(self):
-        result = sch_ca_compute(ca540=None, federal_results={"agi": 50_000.0})
+        result = sch_ca_compute(ca540=None, federal_results={"agi": 50_000.0}, year=2025)
         self.assertEqual(result, {})
 
     def test_kernel_pulls_auto_derive_with_empty_worksheet(self):
@@ -112,7 +116,7 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
             "agi": 75_000.0,
             "sch_1_line_7_unemployment": 2_000.0,
         }
-        result = sch_ca_compute(ca540=ca540, federal_results=federal_results)
+        result = sch_ca_compute(ca540=ca540, federal_results=federal_results, year=2025)
         self.assertEqual(result["sch_ca_total_subtractions"], 2_000.0)
         self.assertEqual(result["sch_ca_ca_agi"], 75_000.0 - 2_000.0)
 
@@ -133,6 +137,7 @@ class SchCaColAPassthroughTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[]),
             federal_results={"agi": 60_000.0},
+            year=2025,
         )
         self.assertEqual(result["sch_ca_federal_agi"], 60_000.0)
 
@@ -150,6 +155,7 @@ class SchCaColAPassthroughTests(unittest.TestCase):
                 "social_security_taxable": 18_000.0,
                 "capital_gain_loss": 4_500.0,
             },
+            year=2025,
         )
         self.assertEqual(result["sch_ca_line_part_i_a_1z_col_a"], 120_000.0)
         self.assertEqual(result["sch_ca_line_part_i_a_2_col_a"], 1_500.0)
@@ -173,6 +179,7 @@ class SchCaColAPassthroughTests(unittest.TestCase):
                 "sch_1_line_7_unemployment": 2_500.0,
                 "sch_1_line_8z_other_income": 600.0,
             },
+            year=2025,
         )
         self.assertEqual(result["sch_ca_line_part_i_b_1_col_a"], 800.0)
         self.assertEqual(result["sch_ca_line_part_i_b_3_col_a"], 25_000.0)
@@ -195,6 +202,7 @@ class SchCaColAPassthroughTests(unittest.TestCase):
                 "sch_1_line_20_ira": 7_000.0,
                 "sch_1_line_21_student_loan_interest": 2_500.0,
             },
+            year=2025,
         )
         self.assertEqual(result["sch_ca_line_part_i_c_11_col_a"], 250.0)
         self.assertEqual(result["sch_ca_line_part_i_c_13_col_a"], 4_300.0)
@@ -210,6 +218,7 @@ class SchCaColAPassthroughTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[]),
             federal_results={"agi": 50_000.0},
+            year=2025,
         )
         col_a_keys = [k for k in result if k.endswith("_col_a")]
         self.assertEqual(
@@ -290,6 +299,7 @@ class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[]),
             federal_results=federal_results,
+            year=2025,
         )
         self.assertIn("sch_ca_line_part_i_b_1_subtractions", result,
             "Auto-derived state-refund subtraction must route to Part I §B 1")
@@ -310,6 +320,7 @@ class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[]),
             federal_results=federal_results,
+            year=2025,
         )
         self.assertIn("sch_ca_line_part_i_b_7_subtractions", result,
             "Auto-derived unemployment subtraction must route to Part I §B 7")
@@ -326,6 +337,7 @@ class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(rrb_tier_1_2_amount=4_200.0),
             federal_results=federal_results,
+            year=2025,
         )
         self.assertEqual(result.get("sch_ca_line_part_i_a_5b_subtractions"), 4_200.0)
         self.assertGreaterEqual(result["sch_ca_total_subtractions"], 4_200.0)
@@ -335,6 +347,7 @@ class SchCaKernelE2EFederalIntegrationTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(pfl_amount=1_500.0),
             federal_results=federal_results,
+            year=2025,
         )
         self.assertEqual(result.get("sch_ca_line_part_i_b_7_subtractions"), 1_500.0)
         self.assertGreaterEqual(result["sch_ca_total_subtractions"], 1_500.0)
