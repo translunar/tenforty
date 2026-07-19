@@ -669,7 +669,17 @@ class SCorpReturn:
 
 
 class DivergenceSource(str, Enum):
+    # DORMANT — retained for the deserialization path (scenario.py
+    # `_load_ca_divergence` reads source strings via
+    # `DivergenceSource(data["source"])`; old ca-resolved snapshots may carry
+    # 'auto_derived'); retire in Part RETIRE with that importer. No live
+    # stamping site emits AUTO_DERIVED anymore — the auto-derive kernel now
+    # stamps CATALOG_AUTO (see forms/sch_ca.py) — but the historical value must
+    # still round-trip through the deserializer, so the member stays.
     AUTO_DERIVED = "auto_derived"
+    # Stamped by derive_auto_divergences on divergences sourced from the
+    # packaged CA divergence catalog's `auto:` rows (Part AUTO).
+    CATALOG_AUTO = "catalog_auto"
     WORKSHEET = "worksheet"
 
 
@@ -695,6 +705,7 @@ class CASchCAAdjustment:
     description: str  # human-readable; FTB Pub 1001 phrasing preferred
     federal_source: str | None = None  # e.g., "Sch 1 line 7" — only for AUTO_DERIVED
     pub1001_ref: str | None = None  # e.g., "p.17" — citation for audit
+    catalog_id: str | None = None  # CA divergence catalog row id — only for CATALOG_AUTO
 
 
 @dataclass

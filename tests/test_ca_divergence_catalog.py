@@ -5,17 +5,23 @@ the packaged per-year YAML catalogs (``tenforty/params/california/divergences/
 y<year>.yaml``) must load, validate, and remain id-stable across adjacent years.
 """
 
+import dataclasses
 import os
 import re
 import tempfile
 import unittest
 
+from tenforty import models
 from tenforty.ca_divergences import (
     CatalogDirection,
     CatalogEntry,
     CatalogError,
     load_catalog,
 )
+from tenforty.forms import sch_1 as form_sch_1
+from tenforty.mappings.pdf_1040 import Pdf1040
+from tenforty.scenario import load_scenario
+from tests.helpers import FIXTURES_DIR
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
@@ -56,11 +62,19 @@ _COMMON_SCH_CA_LINES = frozenset(
         "Part I §A 3",
         "Part I §A 4",
         "Part I §A 5b",
+        # §A 6 / §B 1 / §B 7 entered the common set with the Part AUTO migration:
+        # the five auto-derived exclusions (SS §A 6, state refund §B 1, UI + PFL
+        # §B 7) — formerly synthesized from hardcoded kernel tuples — are now real
+        # `auto:` catalog rows present in ALL five years (§A 5b RRB was already
+        # common). See the "AUTO ROWS (Part AUTO)" block at each catalog's tail.
+        "Part I §A 6",
         "Part I §A 7",
+        "Part I §B 1",
         "Part I §B 2a",
         "Part I §B 3",
         "Part I §B 5",
         "Part I §B 6",
+        "Part I §B 7",  # Part AUTO: UI + PFL auto rows (see §A 6 note above)
         "Part I §B 8a",
         "Part I §B 8b",
         "Part I §B 8c",
@@ -501,13 +515,23 @@ class SchemaGateTests(unittest.TestCase):
         #   dropped from the four remaining years that still carried it (2021 "Part
         #   I line 1"; 2022/2024/2025 "§A 1a") — already gone from 2023 since its
         #   2023 full re-enum. All four dropped rows were direction Sub => Sub -4.
+        #
+        # Re-pinned by the Part AUTO migration (2026-07-19): 300/344/399 ->
+        # 300/344/424. The five auto-derived exclusions (UI, SS, state refund,
+        # RRB, PFL) — formerly synthesized from the kernel's hardcoded tuples and
+        # thus absent from the catalog census — became REAL catalog `auto:` rows,
+        # 5 per year x 5 years = 25 new rows, ALL direction Sub (auto rows are
+        # subtractions). Net delta: Sub +25 (Add/Both unchanged). Catalog
+        # bookkeeping for a deliberate, behavior-preserving row addition, NOT a
+        # divergence-content change: the emitted divergences (amount/line/
+        # direction) are byte-for-byte identical to the pre-migration tuples.
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
         self.assertEqual(counts[CatalogDirection.ADD], 300)
         self.assertEqual(counts[CatalogDirection.BOTH], 344)
-        self.assertEqual(counts[CatalogDirection.SUB], 399)
+        self.assertEqual(counts[CatalogDirection.SUB], 424)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):
@@ -660,6 +684,101 @@ class FailClosedTests(unittest.TestCase):
                 load_catalog(2025)
         finally:
             mod._read_catalog_text = original
+
+
+# ── Part AUTO: auto-row presence + resolvability gate ─────────────────────────
+# The five auto-derived exclusions migrated from the kernel's hardcoded tuples
+# (forms/sch_ca.py) into real catalog `auto:` rows. Pinned here: exact per-year
+# membership (shape/id/line/direction/key) + the NEW resolvability gate — every
+# auto row's `federal_key` resolves to a real federal-pipeline output key, and
+# every `ca540_field` names a real CA540Return dataclass field. A typo in either
+# rots loudly instead of silently firing (or not firing) at compute time.
+
+# (id, sch_ca_line, direction, auto-kind, auto-target). Identical across all five
+# years (descriptions/lines are FROZEN); pub1001_page is the only per-year field
+# and is NOT pinned here (it does not affect compute; it is a citation).
+EXPECTED_AUTO_ROWS = {
+    "unemployment-compensation-ca-excludes-rtc-17083":
+        ("Part I §B 7", CatalogDirection.SUB, "federal_key", "sch_1_line_7_unemployment"),
+    "social-security-benefits-ca-excludes-rtc-17087":
+        ("Part I §A 6", CatalogDirection.SUB, "federal_key", "social_security_taxable"),
+    "state-income-tax-refund-not-taxed-ca-rtc-17131":
+        ("Part I §B 1", CatalogDirection.SUB, "federal_key", "sch_1_line_1_taxable_refunds"),
+    "railroad-retirement-tier-1-2-ca-excludes-rtc-17087":
+        ("Part I §A 5b", CatalogDirection.SUB, "ca540_field", "rrb_tier_1_2_amount"),
+    "paid-family-leave-benefits-ca-excludes-ftb-pub-1001":
+        ("Part I §B 7", CatalogDirection.SUB, "ca540_field", "pfl_amount"),
+}
+
+
+def _computed_federal_reference_keys(year):
+    """Keys the federal pipeline is known to emit, for `federal_key` resolvability.
+
+    Soffice-free by construction:
+    - Schedule-1-sourced keys (unemployment, state refund) come from a REAL
+      native compute (`sch_1.compute`) over reference fixtures — the same
+      federal-pipeline stage that feeds the Sch CA kernel at runtime.
+    - Taxable Social Security (1040 line 6b, `social_security_taxable`) has no
+      native producer in v1 (it is emitted only by the LibreOffice workbook
+      engine, and there is no SS input fixture), so it is validated against the
+      DECLARED 1040 output surface — the keys the Form 1040 PDF mapping consumes,
+      which by construction are federal-pipeline output keys. This keeps the gate
+      a real typo-catcher without launching soffice.
+    """
+    keys = set()
+    for fixture in ("unemployment_withholding.yaml", "state_refund_benefit_rule.yaml"):
+        scenario = load_scenario(FIXTURES_DIR / fixture)
+        keys |= set(form_sch_1.compute(scenario, upstream={}))
+    keys |= set(Pdf1040.get_mapping(year))
+    return keys
+
+
+class AutoRowMigrationTests(unittest.TestCase):
+    """Pin the migrated `auto:` rows (5 per year) and their resolvability."""
+
+    def test_each_year_has_exactly_the_expected_auto_rows(self):
+        for year in YEARS:
+            auto = {e.id: e for e in load_catalog(year) if e.auto is not None}
+            with self.subTest(year=year):
+                self.assertEqual(
+                    set(auto), set(EXPECTED_AUTO_ROWS),
+                    f"TY{year} auto-row id set drifted from the migrated 5",
+                )
+            for row_id, (line, direction, kind, target) in EXPECTED_AUTO_ROWS.items():
+                with self.subTest(year=year, id=row_id):
+                    entry = auto[row_id]
+                    self.assertEqual(entry.sch_ca_line, line)
+                    self.assertEqual(entry.direction, direction)
+                    if kind == "federal_key":
+                        self.assertEqual(entry.auto.federal_key, target)
+                        self.assertIsNone(entry.auto.ca540_field)
+                    else:
+                        self.assertEqual(entry.auto.ca540_field, target)
+                        self.assertIsNone(entry.auto.federal_key)
+
+    def test_federal_key_resolves_to_a_computed_federal_output_key(self):
+        for year in YEARS:
+            reference = _computed_federal_reference_keys(year)
+            for entry in load_catalog(year):
+                if entry.auto is not None and entry.auto.federal_key is not None:
+                    with self.subTest(year=year, id=entry.id):
+                        self.assertIn(
+                            entry.auto.federal_key, reference,
+                            f"auto federal_key {entry.auto.federal_key!r} is not a "
+                            f"federal-pipeline output key (typo / renamed producer?)",
+                        )
+
+    def test_ca540_field_resolves_to_a_real_ca540return_field(self):
+        ca540_fields = {f.name for f in dataclasses.fields(models.CA540Return)}
+        for year in YEARS:
+            for entry in load_catalog(year):
+                if entry.auto is not None and entry.auto.ca540_field is not None:
+                    with self.subTest(year=year, id=entry.id):
+                        self.assertIn(
+                            entry.auto.ca540_field, ca540_fields,
+                            f"auto ca540_field {entry.auto.ca540_field!r} is not a "
+                            f"CA540Return field (typo / renamed field?)",
+                        )
 
 
 if __name__ == "__main__":
