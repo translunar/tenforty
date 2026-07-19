@@ -50,6 +50,9 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Part I §B 2a",
         "Part I §B 3",
         "Part I §B 4",
+        # Bucket-D line move (adjudication 2026-07-19): §179A clean-fuel-vehicle
+        # deduction prints at Part I, line 26, column B in FTB Pub 1001 (2025 ed.).
+        "Part I line 26",
         "Part I §B 5",
         "Part I §B 6",
         "Part I §B 8a",
@@ -91,6 +94,9 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Part II 20",
         "Part II 21",
         "Part II 27",
+        # 2025 CONTENT-AUDIT: CA itemized-deduction phaseout (Sch CA Part II
+        # line 29, Itemized Deductions Worksheet), instructions-sourced.
+        "Part II 29",
         "Part II 4",
         "Part II 5a",
         "Part II 5e",
@@ -100,6 +106,64 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Sch D 540",
     }
 )
+
+# The nine still-operative TY2025 rows found in NEITHER 2025 source (FTB Pub 1001
+# 2025 edition NOR the 2025 Schedule CA (540) instructions). Ruled by the
+# CONTENT-AUDIT (adjudication 2026-07-19): keep the rows (Pub 1001 is
+# self-described non-exhaustive, so absence is not proof of conformity), re-cite
+# each to its 2024-edition Pub page with an explicit "absent from 2025 edition"
+# note, and pin the SET here as a frozenset literal so every future year-port
+# re-examines them. §1031 is additionally Sch-D-540-routed (instructions-absence
+# is expected there; only Pub-edition presence is meaningful future evidence).
+UNSOURCED_IN_CURRENT_EDITION_2025 = frozenset(
+    {
+        "business-interest-cap-30-ati-federal-tcja-ca-doesn-t",
+        "sexual-harassment-nda-legal-fees-disallowed-federally-ca",
+        "msa-distributions-for-menstrual-care-ca-doesn-t-conform",
+        "deferral-election-for-qualified-equity-grants-83-i-tcja",
+        "tcja-eliminated-3k-members-of-congress-living-expense",
+        "repealed-federal-age-70-traditional-ira-cap-secure-ca",
+        "indexed-1-000-catch-up-and-expanded-age-50-caa-2023-ca",
+        "college-athletic-seating-rights-disallowed-federally-tcja",
+        "1031-exchange-federal-limited-to-real-property-ca",
+    }
+)
+
+# The marker phrase every `unsourced-in-current-edition` recitation carries in
+# its source_citation (and that NO other row carries).
+_UNSOURCED_MARKER = "absent from 2025 edition"
+
+
+class UnsourcedInCurrentEditionTests(unittest.TestCase):
+    """Pin the 2025 `unsourced-in-current-edition` keep-set (real gate).
+
+    These rows are absent from both 2025 sources but kept and re-cited; the pin
+    both fixes the exact membership and asserts the recitation shape, so a future
+    port that silently drops, re-pages, or mis-cites one of them fails here.
+    """
+
+    def test_pinned_set_present_and_recited(self):
+        entries = {e.id: e for e in load_catalog(2025)}
+        for uid in UNSOURCED_IN_CURRENT_EDITION_2025:
+            with self.subTest(id=uid):
+                self.assertIn(uid, entries)
+                entry = entries[uid]
+                # Absent from the 2025 Pub edition -> no 2025 page.
+                self.assertIsNone(entry.pub1001_page)
+                # Re-cited to the 2024-edition page with the absence note.
+                self.assertIsInstance(entry.source_citation, str)
+                self.assertIn(_UNSOURCED_MARKER, entry.source_citation)
+
+    def test_marker_phrase_pins_exactly_the_set(self):
+        # The recitation marker appears on EXACTLY these nine ids — no more, no
+        # fewer. Guards against a new keep being added without updating the pin,
+        # or an instructions-sourced row accidentally borrowing the phrasing.
+        recited = {
+            e.id
+            for e in load_catalog(2025)
+            if e.source_citation and _UNSOURCED_MARKER in e.source_citation
+        }
+        self.assertEqual(recited, UNSOURCED_IN_CURRENT_EDITION_2025)
 
 
 class CatalogLoadTests(unittest.TestCase):
@@ -155,11 +219,17 @@ class SchemaGateTests(unittest.TestCase):
                     ):
                         self.assertIsInstance(field, str)
                         self.assertTrue(field.strip())
-                    # pub1001_page is an int page number OR a documented
-                    # non-empty string sentinel (see PUB1001_STRING_SENTINEL).
-                    self.assertIsInstance(entry.pub1001_page, (int, str))
+                    # pub1001_page is an int page number, a documented non-empty
+                    # string sentinel (see PUB1001_STRING_SENTINEL), OR null for
+                    # instructions-sourced / unsourced-in-current-edition rows
+                    # (2025 CONTENT-AUDIT). A null page MUST carry a non-empty
+                    # source_citation — the loader's at-least-one-source gate.
+                    self.assertIsInstance(entry.pub1001_page, (int, str, type(None)))
                     if isinstance(entry.pub1001_page, str):
                         self.assertTrue(entry.pub1001_page.strip())
+                    elif entry.pub1001_page is None:
+                        self.assertIsInstance(entry.source_citation, str)
+                        self.assertTrue(entry.source_citation.strip())
                     else:
                         self.assertNotIsInstance(entry.pub1001_page, bool)
                     self.assertIsInstance(entry.common, bool)
@@ -184,17 +254,31 @@ class SchemaGateTests(unittest.TestCase):
         sentinel_counts = {}
         for year in YEARS:
             for entry in load_catalog(year):
-                if isinstance(entry.pub1001_page, str):
+                page = entry.pub1001_page
+                if isinstance(page, str):
                     sentinel_counts[year] = sentinel_counts.get(year, 0) + 1
                     with self.subTest(year=year, id=entry.id):
-                        self.assertEqual(
-                            entry.pub1001_page, PUB1001_STRING_SENTINEL, guidance
+                        self.assertEqual(page, PUB1001_STRING_SENTINEL, guidance)
+                elif page is None:
+                    # Instructions-sourced rows and the `unsourced-in-current-
+                    # edition` keeps (2025 CONTENT-AUDIT) carry a null page and
+                    # MUST supply a non-empty source_citation — the real
+                    # at-least-one-source gate the loader enforces. A null page
+                    # is NOT the statute-window sentinel; it does not count here.
+                    with self.subTest(year=year, id=entry.id):
+                        self.assertTrue(
+                            isinstance(entry.source_citation, str)
+                            and bool(entry.source_citation.strip()),
+                            "a null pub1001_page requires a non-empty "
+                            "source_citation",
                         )
                 else:
                     with self.subTest(year=year, id=entry.id):
-                        self.assertIsInstance(entry.pub1001_page, int, guidance)
-        # Pin that ONLY those 8 rows use the sentinel: exactly 4 in 2021 and 4
-        # in 2022, and no sentinel rows in any other year.
+                        self.assertIsInstance(page, int, guidance)
+        # Pin that ONLY those 8 rows use the STRING sentinel: exactly 4 in 2021
+        # and 4 in 2022, and no sentinel rows in any other year. (Null pages,
+        # introduced by the 2025 CONTENT-AUDIT, are a distinct case handled
+        # above and are deliberately NOT the statute-window sentinel.)
         self.assertEqual(sentinel_counts, {2021: 4, 2022: 4}, guidance)
 
     def test_direction_is_catalog_direction(self):
@@ -225,14 +309,18 @@ class SchemaGateTests(unittest.TestCase):
                     self.assertEqual(entry.triggers, ())
 
     def test_direction_totals_match_known_distribution(self):
-        # Pins the real data: 296 Add / 314 Both / 402 Sub across five years.
+        # Pins the real data across five years. Re-pinned by the 2025
+        # CONTENT-AUDIT (adjudication 2026-07-19): from 296/314/402 to
+        # 299/320/404. Net TY2025 delta = +3 Add, +6 Both, +2 Sub (8 direction
+        # flips are net-zero reassignments; 3 drops = -3 Sub; 14 adds = +3 Add,
+        # +5 Both, +6 Sub).
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
-        self.assertEqual(counts[CatalogDirection.ADD], 296)
-        self.assertEqual(counts[CatalogDirection.BOTH], 314)
-        self.assertEqual(counts[CatalogDirection.SUB], 402)
+        self.assertEqual(counts[CatalogDirection.ADD], 299)
+        self.assertEqual(counts[CatalogDirection.BOTH], 320)
+        self.assertEqual(counts[CatalogDirection.SUB], 404)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):
