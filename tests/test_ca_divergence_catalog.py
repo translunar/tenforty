@@ -181,11 +181,11 @@ class SchemaGateTests(unittest.TestCase):
             "header); do NOT casually reuse the statute-window sentinel for a "
             "row that simply lacks a page."
         )
-        string_years = set()
+        sentinel_counts = {}
         for year in YEARS:
             for entry in load_catalog(year):
                 if isinstance(entry.pub1001_page, str):
-                    string_years.add(year)
+                    sentinel_counts[year] = sentinel_counts.get(year, 0) + 1
                     with self.subTest(year=year, id=entry.id):
                         self.assertEqual(
                             entry.pub1001_page, PUB1001_STRING_SENTINEL, guidance
@@ -193,7 +193,9 @@ class SchemaGateTests(unittest.TestCase):
                 else:
                     with self.subTest(year=year, id=entry.id):
                         self.assertIsInstance(entry.pub1001_page, int, guidance)
-        self.assertEqual(string_years, {2021, 2022}, guidance)
+        # Pin that ONLY those 8 rows use the sentinel: exactly 4 in 2021 and 4
+        # in 2022, and no sentinel rows in any other year.
+        self.assertEqual(sentinel_counts, {2021: 4, 2022: 4}, guidance)
 
     def test_direction_is_catalog_direction(self):
         for year in YEARS:
