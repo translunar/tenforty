@@ -127,6 +127,15 @@ this spec intentionally contains NO numeric values for them):
   its unit tests. Known consumers as of this writing: sch_a (SALT cap),
   f1040_tax (brackets, QDCGT), spine (std deduction), f8995 (QBI threshold),
   f8959 (threshold), f8962 (see below), f540 family, mappings.
+- **Per-status params accessor (simplification, added 2026-07-19):** the
+  audit's raw `params.table[status.value]` dict lookups (~8 call sites)
+  consolidate behind a single fail-closed accessor — a per-status
+  projection (e.g. `params.for_status(status)` returning a view whose
+  attribute access raises a named UnsupportedStatusError, not KeyError, on
+  a missing column). Forms take the projection, not (params, status)
+  pairs. This gives §4's completeness gate one chokepoint to test instead
+  of eight call sites, and makes every future status/year addition a
+  params-and-battery exercise with no form-code changes.
 - **f8962 family size:** verify the applicable-figure/FPL derivation counts
   the spouse (tax family = filer + spouse when MFJ + dependents). If family
   size is currently hardcoded to 1 or derived only from dependents, fix as
