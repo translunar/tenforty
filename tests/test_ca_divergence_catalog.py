@@ -22,6 +22,9 @@ YEARS = (2021, 2022, 2023, 2024, 2025)
 # kebab-case: lowercase alnum segments joined by single hyphens.
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
+# Ids are user-facing and capped for accessibility (spec §2.2).
+MAX_ID_LEN = 60
+
 # The single documented string sentinel used for `pub1001_page` on the four
 # wildfire-settlement rows in TY2021/TY2022 whose basis is a statute's
 # retroactive window rather than a Pub 1001 page. Every OTHER row carries an int.
@@ -124,6 +127,15 @@ class SchemaGateTests(unittest.TestCase):
             for entry in entries:
                 with self.subTest(year=year, id=entry.id, check="kebab"):
                     self.assertRegex(entry.id, KEBAB_RE)
+                # Ids are user-facing (typed in scenario YAML, named in refusal
+                # messages, offered by did-you-mean) so they are capped at
+                # MAX_ID_LEN chars for accessibility (spec §2.2).
+                with self.subTest(year=year, id=entry.id, check="length"):
+                    self.assertLessEqual(
+                        len(entry.id),
+                        MAX_ID_LEN,
+                        f"id {entry.id!r} is {len(entry.id)} chars > {MAX_ID_LEN}",
+                    )
 
     def test_sch_ca_line_in_known_set(self):
         for year in YEARS:
@@ -156,17 +168,32 @@ class SchemaGateTests(unittest.TestCase):
         # Pins reality: exactly the wildfire-settlement rows in 2021 & 2022 use
         # the documented string sentinel; every other row is an int. A stray
         # non-int page value (a typo) fails here.
+        #
+        # If a NEW row legitimately has no Pub 1001 page (its basis is a statute
+        # window, not a page), extend this pin DELIBERATELY: add its year to the
+        # expected set below and confirm its provenance header documents why it
+        # is page-less. Do NOT casually reuse the "n/a (statute window, ...)"
+        # sentinel for a row that merely happens to lack a page number — the
+        # sentinel asserts a specific, documented reason, not "unknown".
+        guidance = (
+            "pub1001_page pin broke. Extend this pin deliberately for a NEW "
+            "page-less row (add its year, document why in the provenance "
+            "header); do NOT casually reuse the statute-window sentinel for a "
+            "row that simply lacks a page."
+        )
         string_years = set()
         for year in YEARS:
             for entry in load_catalog(year):
                 if isinstance(entry.pub1001_page, str):
                     string_years.add(year)
                     with self.subTest(year=year, id=entry.id):
-                        self.assertEqual(entry.pub1001_page, PUB1001_STRING_SENTINEL)
+                        self.assertEqual(
+                            entry.pub1001_page, PUB1001_STRING_SENTINEL, guidance
+                        )
                 else:
                     with self.subTest(year=year, id=entry.id):
-                        self.assertIsInstance(entry.pub1001_page, int)
-        self.assertEqual(string_years, {2021, 2022})
+                        self.assertIsInstance(entry.pub1001_page, int, guidance)
+        self.assertEqual(string_years, {2021, 2022}, guidance)
 
     def test_direction_is_catalog_direction(self):
         for year in YEARS:
