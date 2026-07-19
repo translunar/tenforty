@@ -107,31 +107,52 @@ KNOWN_SCH_CA_LINES = frozenset(
     }
 )
 
-# The nine still-operative TY2025 rows found in NEITHER 2025 source (FTB Pub 1001
-# 2025 edition NOR the 2025 Schedule CA (540) instructions). Ruled by the
-# CONTENT-AUDIT (adjudication 2026-07-19): keep the rows (Pub 1001 is
-# self-described non-exhaustive, so absence is not proof of conformity), re-cite
-# each to its 2024-edition Pub page with an explicit "absent from 2025 edition"
-# note, and pin the SET here as a frozenset literal so every future year-port
-# re-examines them. §1031 is additionally Sch-D-540-routed (instructions-absence
-# is expected there; only Pub-edition presence is meaningful future evidence).
-UNSOURCED_IN_CURRENT_EDITION_2025 = frozenset(
-    {
-        "business-interest-cap-30-ati-federal-tcja-ca-doesn-t",
-        "sexual-harassment-nda-legal-fees-disallowed-federally-ca",
-        "msa-distributions-for-menstrual-care-ca-doesn-t-conform",
-        "deferral-election-for-qualified-equity-grants-83-i-tcja",
-        "tcja-eliminated-3k-members-of-congress-living-expense",
-        "repealed-federal-age-70-traditional-ira-cap-secure-ca",
-        "indexed-1-000-catch-up-and-expanded-age-50-caa-2023-ca",
-        "college-athletic-seating-rights-disallowed-federally-tcja",
-        "1031-exchange-federal-limited-to-real-property-ca",
-    }
-)
+# The `unsourced-in-current-edition` keep-sets, PER YEAR. Each year pins the
+# operative rows found in NEITHER of that year's own sources: they are KEPT (Pub
+# 1001 is self-described non-exhaustive, so absence is not proof of conformity),
+# given a null pub1001_page, and re-cited with a source_citation carrying that
+# year's OWN "absent from <year> edition" marker. Pinned here as frozenset
+# literals so every future year-port re-examines them.
+#
+# 2025 (CONTENT-AUDIT, adjudication 2026-07-19): the nine TY2025 rows absent from
+# both the 2025 Pub 1001 edition AND the 2025 Schedule CA (540) instructions;
+# each re-cited to its 2024-edition Pub page. §1031 is additionally
+# Sch-D-540-routed (instructions-absence is expected there; only Pub-edition
+# presence is meaningful future evidence).
+#
+# 2021 (Stage-1 back-year batch, adjudication 2026-07-19): the film/TV §181
+# current-expensing row is carried in the 2021 catalog, but the 2021 Pub edition
+# does not describe §181; ruled a KEEP recited as unsourced-in-2021-edition
+# (direction basis = the 2022-edition read), null page + "absent from 2021
+# edition" marker.
+UNSOURCED_IN_CURRENT_EDITION = {
+    2021: frozenset(
+        {
+            "film-tv-current-expensing-pre-1-1-2026-ca-doesn-t-conform",
+        }
+    ),
+    2025: frozenset(
+        {
+            "business-interest-cap-30-ati-federal-tcja-ca-doesn-t",
+            "sexual-harassment-nda-legal-fees-disallowed-federally-ca",
+            "msa-distributions-for-menstrual-care-ca-doesn-t-conform",
+            "deferral-election-for-qualified-equity-grants-83-i-tcja",
+            "tcja-eliminated-3k-members-of-congress-living-expense",
+            "repealed-federal-age-70-traditional-ira-cap-secure-ca",
+            "indexed-1-000-catch-up-and-expanded-age-50-caa-2023-ca",
+            "college-athletic-seating-rights-disallowed-federally-tcja",
+            "1031-exchange-federal-limited-to-real-property-ca",
+        }
+    ),
+}
 
-# The marker phrase every `unsourced-in-current-edition` recitation carries in
-# its source_citation (and that NO other row carries).
-_UNSOURCED_MARKER = "absent from 2025 edition"
+# The marker phrase each year's recitation carries in its source_citation (and
+# that NO other row in that year carries). Each year names its OWN edition, so
+# the pin stays a real gate against a mis-yeared recitation.
+_UNSOURCED_MARKER = {
+    2021: "absent from 2021 edition",
+    2025: "absent from 2025 edition",
+}
 
 
 class UnsourcedInCurrentEditionTests(unittest.TestCase):
@@ -143,27 +164,33 @@ class UnsourcedInCurrentEditionTests(unittest.TestCase):
     """
 
     def test_pinned_set_present_and_recited(self):
-        entries = {e.id: e for e in load_catalog(2025)}
-        for uid in UNSOURCED_IN_CURRENT_EDITION_2025:
-            with self.subTest(id=uid):
-                self.assertIn(uid, entries)
-                entry = entries[uid]
-                # Absent from the 2025 Pub edition -> no 2025 page.
-                self.assertIsNone(entry.pub1001_page)
-                # Re-cited to the 2024-edition page with the absence note.
-                self.assertIsInstance(entry.source_citation, str)
-                self.assertIn(_UNSOURCED_MARKER, entry.source_citation)
+        for year, ids in UNSOURCED_IN_CURRENT_EDITION.items():
+            entries = {e.id: e for e in load_catalog(year)}
+            marker = _UNSOURCED_MARKER[year]
+            for uid in ids:
+                with self.subTest(year=year, id=uid):
+                    self.assertIn(uid, entries)
+                    entry = entries[uid]
+                    # Absent from that year's Pub edition -> no page.
+                    self.assertIsNone(entry.pub1001_page)
+                    # Re-cited with the absence note for that year's own edition.
+                    self.assertIsInstance(entry.source_citation, str)
+                    self.assertIn(marker, entry.source_citation)
 
     def test_marker_phrase_pins_exactly_the_set(self):
-        # The recitation marker appears on EXACTLY these nine ids — no more, no
-        # fewer. Guards against a new keep being added without updating the pin,
-        # or an instructions-sourced row accidentally borrowing the phrasing.
-        recited = {
-            e.id
-            for e in load_catalog(2025)
-            if e.source_citation and _UNSOURCED_MARKER in e.source_citation
-        }
-        self.assertEqual(recited, UNSOURCED_IN_CURRENT_EDITION_2025)
+        # Each year's recitation marker appears on EXACTLY that year's pinned ids
+        # — no more, no fewer. Guards against a new keep being added without
+        # updating the pin, an instructions-sourced row borrowing the phrasing,
+        # or a recitation citing the wrong year's edition.
+        for year, ids in UNSOURCED_IN_CURRENT_EDITION.items():
+            marker = _UNSOURCED_MARKER[year]
+            recited = {
+                e.id
+                for e in load_catalog(year)
+                if e.source_citation and marker in e.source_citation
+            }
+            with self.subTest(year=year):
+                self.assertEqual(recited, ids)
 
 
 class CatalogLoadTests(unittest.TestCase):
@@ -309,21 +336,27 @@ class SchemaGateTests(unittest.TestCase):
                     self.assertEqual(entry.triggers, ())
 
     def test_direction_totals_match_known_distribution(self):
-        # Pins the real data across five years. Re-pinned by the 2025
-        # CONTENT-AUDIT (adjudication 2026-07-19): from 296/314/402 to
-        # 299/320/404. Net TY2025 delta = +3 Add, +6 Both, +2 Sub, reconciled as:
-        #   14 adds:           +3 Add, +5 Both, +6 Sub
-        #   3 drops:                            -3 Sub
-        #   8 Bucket-C flips:  +1 Add,  0 Both, -1 Sub  (not net-zero)
-        #   §174A rewrite (Add->Both): -1 Add, +1 Both
-        # Sum: +3 Add, +6 Both, +2 Sub.
+        # Pins the real data across five years. Re-pinned by the Stage-1
+        # back-year propagation batch (adjudication 2026-07-19): from
+        # 299/320/404 to 295/325/403. Net delta = Add -4, Both +5, Sub -1
+        # (all reassignments; row count unchanged, no adds/drops), reconciled as:
+        #   clergy-housing   Both->Sub x4 (2021-2024): -4 Both, +4 Sub
+        #   assisted-housing Both->Sub x4 (2021-2024): -4 Both, +4 Sub
+        #   QSBS             Both->Add x4 (2021-2024): +4 Add, -4 Both
+        #   IDC              Sub->Both  x1 (2024):     +1 Both, -1 Sub
+        #   film-181         Add->Both  x4 (2022-2024 + the 2021 keep): -4 Add, +4 Both
+        #   childcare-center Sub->Both  x4 (2021-2024): +4 Both, -4 Sub
+        #   childcare-plan   Sub->Both  x4 (2021-2024): +4 Both, -4 Sub
+        #   R&E §174         Add->Both  x3 (2022-2024): -3 Add, +3 Both
+        #   trust (2025)     Add->Both  x1:             -1 Add, +1 Both
+        # Sum: Add -4, Both +5, Sub -1.
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
-        self.assertEqual(counts[CatalogDirection.ADD], 299)
-        self.assertEqual(counts[CatalogDirection.BOTH], 320)
-        self.assertEqual(counts[CatalogDirection.SUB], 404)
+        self.assertEqual(counts[CatalogDirection.ADD], 295)
+        self.assertEqual(counts[CatalogDirection.BOTH], 325)
+        self.assertEqual(counts[CatalogDirection.SUB], 403)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):

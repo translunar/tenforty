@@ -107,7 +107,7 @@
   sch_ca_line: "Part I §A 1h"
   section_title: "Wages"
   description: "Clergy housing rental allowance: no CA FRV cap"
-  direction: "Both"
+  direction: "Sub"
   common: false
   pub1001_page: 7
   ircrtc: "IRC §107"
@@ -339,7 +339,7 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "R&E capitalization (post-2021): 5-yr federal; CA allows current deduction"
-  direction: "Add"
+  direction: "Both"
   common: true
   pub1001_page: 11
   ircrtc: "IRC §174"
@@ -438,7 +438,7 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "IDC for oil/gas wells: CA disallows post-1/1/2024"
-  direction: "Sub"
+  direction: "Both"
   common: false
   pub1001_page: 11
   ircrtc: "IRC §263(c), R&TC 17260, 17681"
@@ -573,7 +573,7 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Film/TV current expensing (pre-1/1/2026): CA doesn't conform"
-  direction: "Add"
+  direction: "Both"
   common: false
   pub1001_page: 13
   ircrtc: "IRC §181"
@@ -663,7 +663,7 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Expired CA Employer Childcare Center credit carryover (1994-2012; FTB 3540)"
-  direction: "Sub"
+  direction: "Both"
   common: false
   pub1001_page: 14
   ircrtc: "—"
@@ -672,7 +672,7 @@
   sch_ca_line: "Part I §B 3"
   section_title: "Business Income or Loss"
   description: "Expired CA Employer Childcare Plan credit carryover (1994-2012; FTB 3540)"
-  direction: "Sub"
+  direction: "Both"
   common: false
   pub1001_page: 14
   ircrtc: "—"
@@ -1958,7 +1958,7 @@
   sch_ca_line: "Sch D 540"
   section_title: "Capital Gains/Losses"
   description: "Assisted-housing sale: federal no deferral; CA permits deferral if reinvested within 2 yrs"
-  direction: "Both"
+  direction: "Sub"
   common: false
   pub1001_page: 10
   ircrtc: "R&TC 18041.5"
@@ -1994,7 +1994,7 @@
   sch_ca_line: "Sch D 540"
   section_title: "Capital Gains/Losses"
   description: "QSBS gain >5yr: federal defers/excludes (§1045/1202); CA doesn't conform — full gain"
-  direction: "Both"
+  direction: "Add"
   common: false
   pub1001_page: 10
   ircrtc: "IRC §1045/1202"
