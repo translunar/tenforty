@@ -235,6 +235,95 @@ class SchemaGateTests(unittest.TestCase):
         self.assertEqual(counts[CatalogDirection.SUB], 402)
 
 
+class SourceCitationSchemaTests(unittest.TestCase):
+    """`source_citation` field + the at-least-one-source fail-closed gate.
+
+    Real catalog rows do not exercise these paths yet (every packaged row still
+    carries an int/sentinel `pub1001_page` and no `source_citation`), so these
+    tests drive the loader through a monkeypatched raw YAML document.
+    """
+
+    _FAKE_YEAR = 4242
+
+    def _load_rows(self, body: str):
+        import tenforty.ca_divergences as mod
+
+        original = mod._read_catalog_text
+        try:
+            mod._read_catalog_text = lambda year: body
+            return load_catalog(self._FAKE_YEAR)
+        finally:
+            mod._read_catalog_text = original
+
+    def test_null_page_with_citation_loads(self):
+        body = (
+            "- id: cited-row\n"
+            '  sch_ca_line: "Part I §A 1a"\n'
+            '  section_title: "Instructions-sourced divergence"\n'
+            '  description: "Documented only in the Sch CA (540) instructions"\n'
+            "  direction: Add\n"
+            "  common: false\n"
+            "  pub1001_page: null\n"
+            '  ircrtc: "R&TC 17131"\n'
+            '  source_citation: "2025 Sch CA (540) instructions, line 8z"\n'
+        )
+        entries = self._load_rows(body)
+        self.assertEqual(len(entries), 1)
+        self.assertIsNone(entries[0].pub1001_page)
+        self.assertEqual(
+            entries[0].source_citation,
+            "2025 Sch CA (540) instructions, line 8z",
+        )
+
+    def test_page_without_citation_loads_backcompat(self):
+        body = (
+            "- id: paged-row\n"
+            '  sch_ca_line: "Part I §A 1a"\n'
+            '  section_title: "Pub 1001 sourced divergence"\n'
+            '  description: "Today\'s rows: a page and no citation"\n'
+            "  direction: Sub\n"
+            "  common: true\n"
+            "  pub1001_page: 7\n"
+            '  ircrtc: "R&TC 17131"\n'
+        )
+        entries = self._load_rows(body)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].pub1001_page, 7)
+        self.assertIsNone(entries[0].source_citation)
+
+    def test_no_source_raises(self):
+        body = (
+            "- id: sourceless-row\n"
+            '  sch_ca_line: "Part I §A 1a"\n'
+            '  section_title: "No source at all"\n'
+            '  description: "Neither a page nor a citation"\n'
+            "  direction: Both\n"
+            "  common: false\n"
+            "  pub1001_page: null\n"
+            '  ircrtc: "R&TC 17131"\n'
+        )
+        with self.assertRaises(CatalogError) as ctx:
+            self._load_rows(body)
+        message = str(ctx.exception)
+        self.assertIn("no source", message)
+        self.assertIn("sourceless-row", message)
+
+    def test_empty_citation_with_null_page_raises(self):
+        body = (
+            "- id: empty-citation-row\n"
+            '  sch_ca_line: "Part I §A 1a"\n'
+            '  section_title: "Empty citation is not a source"\n'
+            '  description: "Blank source_citation must not satisfy the gate"\n'
+            "  direction: Add\n"
+            "  common: false\n"
+            "  pub1001_page: null\n"
+            '  ircrtc: "R&TC 17131"\n'
+            '  source_citation: "   "\n'
+        )
+        with self.assertRaises(CatalogError):
+            self._load_rows(body)
+
+
 class ImportlibResourcesTests(unittest.TestCase):
     """The loader must resolve packaged data, not cwd-relative files."""
 
