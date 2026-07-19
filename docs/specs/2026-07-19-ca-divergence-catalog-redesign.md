@@ -89,8 +89,12 @@ reviewed:              # triggered entries the filer examined and zeroed
   - prop22-wage-reclass
 ```
 
-The loader validates every `id` against the year's catalog — unknown id is
-a hard error with nearest-match suggestion. `CASchCAAdjustment` keeps its
+The loader validates every `id` — in `divergences` AND in `reviewed` —
+against the year's catalog at load time, before any compute: unknown id is
+a hard error with a nearest-match suggestion. (A typo'd `reviewed` id
+would still fail safe by direction — the gate would refuse rather than
+silently clear — but the user deserves "you misspelled X" at load, not a
+confusing "you must address X" refusal later.) `CASchCAAdjustment` keeps its
 role as the internal materialized form; the loader builds it from
 (id, amount) + catalog metadata, so direction/line/description/citation
 can never disagree with the catalog. `DivergenceSource` gains `CATALOG_AUTO`
@@ -173,7 +177,7 @@ detect-and-explain for one release rather than silent ignore).
 - **Refusal-path tests:** per gated trigger — fires, message carries
   citation, `reviewed` clears it, amount clears it.
 - **Loader tests:** unknown id (with suggestion), duplicate id, id from
-  the wrong year.
+  the wrong year — each exercised in both `divergences` and `reviewed`.
 
 ## 5. Sequencing
 
