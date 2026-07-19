@@ -110,16 +110,35 @@ _COMMON_SCH_CA_LINES = frozenset(
 )
 
 # The year-scoped extras: labels NOT common to all five years, pinned per year.
-# - "Part I §A 1e": present only in the 2021 edition's rows.
-# - "Part I §B 4": carried in 2021-2024, dropped by the 2025 edition.
+# - "Part I §B 4": carried in 2022-2024, dropped by the 2025 edition. VACATED in
+#   2021 by the full re-enum (adjudication 2026-07-19): §179A clean-fuel moved to
+#   "Part I line 26" (its only user), so 2021 no longer carries §B 4.
 # - "Part I §C 24c": carried in 2021-2024, dropped by the 2025 edition.
-# - "Part I line 26": Bucket-D line move (adjudication 2026-07-19) — §179A
-#   clean-fuel-vehicle deduction prints at Part I, line 26, column B in the
-#   FTB Pub 1001 2025 edition.
+# - "Part I line 26": Bucket-D line move — §179A clean-fuel-vehicle deduction
+#   prints at Part I, line 26, column B (2025 edition; and the 2021 re-enum).
 # - "Part II 29": 2025 CONTENT-AUDIT — CA itemized-deduction phaseout (Sch CA
 #   Part II line 29, Itemized Deductions Worksheet), instructions-sourced.
+# 2021 full re-enum (adjudication 2026-07-19) introduces these 2021-only labels:
+# - "Part I line 1": §A line-1 sub-letter anachronism swept to the single
+#   un-lettered 2021 "line 1" (15 rows). "Part I §A 1e" is vacated by the same
+#   sweep (its only user moved to line 1), so it is dropped from the 2021 set.
+# - "Part I §B 8m": §B-8 numbering shift — 2021 edition numbers §951(a) at 8m.
+# - "Part I §B 9b4": Bucket-A add — student-loan for-profit-closure discharge.
+# - "Part II 8d": Bucket-A add — mortgage insurance premiums.
+# - "Schedule D-1": form-label sweep — 2021 edition routes the three basis/1031/
+#   CARS "Sch D 540" rows to Schedule D-1 (Other Gains/Losses).
 _YEAR_SPECIFIC_SCH_CA_LINES = {
-    2021: frozenset({"Part I §A 1e", "Part I §B 4", "Part I §C 24c"}),
+    2021: frozenset(
+        {
+            "Part I §C 24c",
+            "Part I line 1",
+            "Part I line 26",
+            "Part I §B 8m",
+            "Part I §B 9b4",
+            "Part II 8d",
+            "Schedule D-1",
+        }
+    ),
     2022: frozenset({"Part I §B 4", "Part I §C 24c"}),
     2023: frozenset({"Part I §B 4", "Part I §C 24c"}),
     2024: frozenset({"Part I §B 4", "Part I §C 24c"}),
@@ -155,6 +174,9 @@ UNSOURCED_IN_CURRENT_EDITION = {
     2021: frozenset(
         {
             "film-tv-current-expensing-pre-1-1-2026-ca-doesn-t-conform",
+            "msa-distributions-for-menstrual-care-ca-doesn-t-conform",
+            "conservation-easement-federal-50-agi-ca-30-agi",
+            "conservation-easement-carryover-federal-15-yr-ca-5-yr",
         }
     ),
     2025: frozenset(
@@ -344,11 +366,16 @@ class SchemaGateTests(unittest.TestCase):
                 else:
                     with self.subTest(year=year, id=entry.id):
                         self.assertIsInstance(page, int, guidance)
-        # Pin that ONLY those 8 rows use the STRING sentinel: exactly 4 in 2021
-        # and 4 in 2022, and no sentinel rows in any other year. (Null pages,
-        # introduced by the 2025 CONTENT-AUDIT, are a distinct case handled
-        # above and are deliberately NOT the statute-window sentinel.)
-        self.assertEqual(sentinel_counts, {2021: 4, 2022: 4}, guidance)
+        # Pin that ONLY these rows use the STRING sentinel: exactly 2 in 2021
+        # (Kincade + Zogg) and 4 in 2022, and no sentinel rows in any other year.
+        # The 2021 full re-enum (adjudication 2026-07-19) found Fire Victims Trust
+        # and Thomas/Woolsey ARE listed in the currently-posted 2021 Pub 1001 (REV
+        # 07-25, p17) — source-of-record drift — so those two rows drop the
+        # sentinel for the real page 17; only Kincade + Zogg (individually
+        # unlisted; statute-window basis) keep it. 2022's four resolve in that
+        # year's queue. (Null pages, introduced by the 2025 CONTENT-AUDIT, are a
+        # distinct case handled above and are deliberately NOT the sentinel.)
+        self.assertEqual(sentinel_counts, {2021: 2, 2022: 4}, guidance)
 
     def test_direction_is_catalog_direction(self):
         for year in YEARS:
@@ -378,27 +405,31 @@ class SchemaGateTests(unittest.TestCase):
                     self.assertEqual(entry.triggers, ())
 
     def test_direction_totals_match_known_distribution(self):
-        # Pins the real data across five years. Re-pinned by the Stage-1
-        # back-year propagation batch (adjudication 2026-07-19): from
-        # 299/320/404 to 295/325/403. Net delta = Add -4, Both +5, Sub -1
-        # (all reassignments; row count unchanged, no adds/drops), reconciled as:
-        #   clergy-housing   Both->Sub x4 (2021-2024): -4 Both, +4 Sub
-        #   assisted-housing Both->Sub x4 (2021-2024): -4 Both, +4 Sub
-        #   QSBS             Both->Add x4 (2021-2024): +4 Add, -4 Both
-        #   IDC              Sub->Both  x1 (2024):     +1 Both, -1 Sub
-        #   film-181         Add->Both  x4 (2022-2024 + the 2021 keep): -4 Add, +4 Both
-        #   childcare-center Sub->Both  x4 (2021-2024): +4 Both, -4 Sub
-        #   childcare-plan   Sub->Both  x4 (2021-2024): +4 Both, -4 Sub
-        #   R&E §174         Add->Both  x3 (2022-2024): -3 Add, +3 Both
-        #   trust (2025)     Add->Both  x1:             -1 Add, +1 Both
-        # Sum: Add -4, Both +5, Sub -1.
+        # Pins the real data across five years. Re-pinned by the 2021 full
+        # re-enumeration reconciliation (adjudication 2026-07-19): from
+        # 295/325/403 to 298/332/405. Net delta = Add +3, Both +7, Sub +2
+        # (row count +12: -1 drop + 13 adds), reconciled as:
+        #   Bucket C direction changes (2021 only):
+        #     moving §A1h   Sub->Add: +1 Add, -1 Sub
+        #     moving §C14   Sub->Add: +1 Add, -1 Sub
+        #     hsa-deduction Both->Sub: -1 Both, +1 Sub
+        #     excess-biz-loss Both->Add: +1 Add, -1 Both
+        #     misc-itemized II19/20/21 Sub->Both x3: +3 Both, -3 Sub
+        #     -> Bucket C subtotal: Add +3, Both +1, Sub -4
+        #   Drop (2021): §414(v) CAA-2023 catch-up (was Sub): Sub -1
+        #   Bucket-A adds x7 (incl. generic wildfire): Sub +6, Both +1
+        #     (965/Indian/ERC/student-loan/mortgage-ins/generic = Sub; enhanced-oil = Both)
+        #   Cross-source net-new adds x6: Both +5, Sub +1
+        #     (parents-election/Coverdell-diff/§408/3805p-early/3805p-coverdell = Both;
+        #      forest-landowner = Sub; directions mirror the 2025 ruled analogues)
+        #   Sum: Add +3, Both +7, Sub +2.
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
-        self.assertEqual(counts[CatalogDirection.ADD], 295)
-        self.assertEqual(counts[CatalogDirection.BOTH], 325)
-        self.assertEqual(counts[CatalogDirection.SUB], 403)
+        self.assertEqual(counts[CatalogDirection.ADD], 298)
+        self.assertEqual(counts[CatalogDirection.BOTH], 332)
+        self.assertEqual(counts[CatalogDirection.SUB], 405)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):
