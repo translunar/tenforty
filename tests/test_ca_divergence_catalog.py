@@ -30,16 +30,26 @@ MAX_ID_LEN = 60
 # retroactive window rather than a Pub 1001 page. Every OTHER row carries an int.
 PUB1001_STRING_SENTINEL = "n/a (statute window, not Pub 1001)"
 
-# The KNOWN Schedule CA (540) line-label set. Enumerated by hand from the five
-# pre-packaging catalogs (the DISTINCT ``sch_ca_line`` values present across
-# TY2021-2025) and frozen here as a literal. A future typo — any label not in
-# this set — fails ``test_sch_ca_line_in_known_set``. Do NOT compute this set
-# from the files under validation; it is intentionally hard-coded.
-KNOWN_SCH_CA_LINES = frozenset(
+# The KNOWN Schedule CA (540) line-label set, PER YEAR. Enumerated by hand from
+# the five pre-packaging catalogs (the DISTINCT ``sch_ca_line`` values present
+# across TY2021-2025) and frozen here as literals. A future typo — any label not
+# in that year's set — fails ``test_sch_ca_line_in_known_set``. Do NOT compute
+# these sets from the files under validation; they are intentionally hard-coded.
+#
+# The gate is per-year because Schedule CA (540) line labels are YEAR-SCOPED: the
+# form edition, its §B-8 sub-letters, and which lines a given credit/adjustment
+# prints on drift across editions, so a label correct for one year can be wrong
+# for another. ``_COMMON_SCH_CA_LINES`` holds the labels present in ALL five
+# years; ``_YEAR_SPECIFIC_SCH_CA_LINES`` pins the per-year extras (labels NOT
+# common to every year), and ``known_lines_for(year)`` unions the two. The
+# reverse gate ``test_year_specific_lines_are_actually_used`` confirms each
+# year-specific label is really used by a row that year (so stale extras rot
+# loudly) — reading the catalog to confirm USAGE is allowed; computing the
+# ALLOWED set from the catalog is not.
+_COMMON_SCH_CA_LINES = frozenset(
     {
         "Part I §A 1a",
         "Part I §A 1d",
-        "Part I §A 1e",
         "Part I §A 1h",
         "Part I §A 1i",
         "Part I §A 2",
@@ -49,10 +59,6 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Part I §A 7",
         "Part I §B 2a",
         "Part I §B 3",
-        "Part I §B 4",
-        # Bucket-D line move (adjudication 2026-07-19): §179A clean-fuel-vehicle
-        # deduction prints at Part I, line 26, column B in FTB Pub 1001 (2025 ed.).
-        "Part I line 26",
         "Part I §B 5",
         "Part I §B 6",
         "Part I §B 8a",
@@ -79,7 +85,6 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Part I §C 20",
         "Part I §C 21",
         "Part I §C 24b",
-        "Part I §C 24c",
         "Part I §C 24d",
         "Part I §C 24f",
         "Part I §C 24g",
@@ -94,9 +99,6 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Part II 20",
         "Part II 21",
         "Part II 27",
-        # 2025 CONTENT-AUDIT: CA itemized-deduction phaseout (Sch CA Part II
-        # line 29, Itemized Deductions Worksheet), instructions-sourced.
-        "Part II 29",
         "Part II 4",
         "Part II 5a",
         "Part II 5e",
@@ -106,6 +108,30 @@ KNOWN_SCH_CA_LINES = frozenset(
         "Sch D 540",
     }
 )
+
+# The year-scoped extras: labels NOT common to all five years, pinned per year.
+# - "Part I §A 1e": present only in the 2021 edition's rows.
+# - "Part I §B 4": carried in 2021-2024, dropped by the 2025 edition.
+# - "Part I §C 24c": carried in 2021-2024, dropped by the 2025 edition.
+# - "Part I line 26": Bucket-D line move (adjudication 2026-07-19) — §179A
+#   clean-fuel-vehicle deduction prints at Part I, line 26, column B in the
+#   FTB Pub 1001 2025 edition.
+# - "Part II 29": 2025 CONTENT-AUDIT — CA itemized-deduction phaseout (Sch CA
+#   Part II line 29, Itemized Deductions Worksheet), instructions-sourced.
+_YEAR_SPECIFIC_SCH_CA_LINES = {
+    2021: frozenset({"Part I §A 1e", "Part I §B 4", "Part I §C 24c"}),
+    2022: frozenset({"Part I §B 4", "Part I §C 24c"}),
+    2023: frozenset({"Part I §B 4", "Part I §C 24c"}),
+    2024: frozenset({"Part I §B 4", "Part I §C 24c"}),
+    2025: frozenset({"Part I line 26", "Part II 29"}),
+}
+
+
+def known_lines_for(year):
+    """The allowed ``sch_ca_line`` labels for ``year``: the common set unioned
+    with that year's year-specific extras. Hard-coded literals only — never
+    derived from the catalog under validation."""
+    return _COMMON_SCH_CA_LINES | _YEAR_SPECIFIC_SCH_CA_LINES[year]
 
 # The `unsourced-in-current-edition` keep-sets, PER YEAR. Each year pins the
 # operative rows found in NEITHER of that year's own sources: they are KEPT (Pub
@@ -230,9 +256,25 @@ class SchemaGateTests(unittest.TestCase):
 
     def test_sch_ca_line_in_known_set(self):
         for year in YEARS:
+            allowed = known_lines_for(year)
             for entry in load_catalog(year):
                 with self.subTest(year=year, id=entry.id):
-                    self.assertIn(entry.sch_ca_line, KNOWN_SCH_CA_LINES)
+                    self.assertIn(entry.sch_ca_line, allowed)
+
+    def test_year_specific_lines_are_actually_used(self):
+        # Reverse gate: every year-specific extra MUST appear on at least one row
+        # in that year's catalog, so a stale/typo'd per-year label rots loudly
+        # instead of silently widening the gate. (Reading the catalog to confirm
+        # USAGE is allowed; computing the ALLOWED set from the catalog is not.)
+        for year in YEARS:
+            used = {entry.sch_ca_line for entry in load_catalog(year)}
+            for label in _YEAR_SPECIFIC_SCH_CA_LINES[year]:
+                with self.subTest(year=year, label=label):
+                    self.assertIn(
+                        label,
+                        used,
+                        f"year-specific label {label!r} is unused in TY{year}",
+                    )
 
     def test_required_string_fields_non_empty(self):
         for year in YEARS:
