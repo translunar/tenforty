@@ -64,8 +64,12 @@ class CatalogEntry:
     # window, not a Pub 1001 page — see those files' provenance headers. The
     # brief's "preserve field values byte-for-byte / do not invent" mandate
     # forbids fabricating a page number, so the type admits that sentinel.
-    pub1001_page: int | str
+    pub1001_page: int | str | None
     ircrtc: str
+    # Some divergences are documented only in the Schedule CA (540) instructions,
+    # not in FTB Pub 1001. Such rows carry `source_citation` (a non-empty string)
+    # and a null `pub1001_page`; every row must carry at least one of the two.
+    source_citation: str | None = None
     auto: AutoRule | None = None
     triggers: tuple[str, ...] = ()
     gate: bool = False
@@ -86,6 +90,7 @@ _KNOWN_ROW_KEYS = frozenset(
         "direction",
         "common",
         "pub1001_page",
+        "source_citation",
         "ircrtc",
         "auto",
         "triggers",
@@ -156,13 +161,40 @@ def _build_entry(year: int, index: int, raw: object) -> CatalogEntry:
             f"`{key}` must be a non-empty string",
         )
 
+    # Source discipline. A row's basis is either a Pub 1001 page (int, or a
+    # documented non-empty string sentinel) or a Schedule CA (540) instructions
+    # citation (`source_citation`, a non-empty string). TYPE-check whichever is
+    # present, then fail-closed if the row carries NEITHER usable source.
     pub1001_page = raw.get("pub1001_page")
+    page_is_usable = (
+        isinstance(pub1001_page, int) and not isinstance(pub1001_page, bool)
+    ) or (isinstance(pub1001_page, str) and bool(pub1001_page.strip()))
+    if pub1001_page is not None:
+        _require(
+            page_is_usable,
+            year,
+            where,
+            "`pub1001_page` must be an int (or a documented non-empty string "
+            "sentinel) when present",
+        )
+
+    source_citation = raw.get("source_citation")
+    if source_citation is not None:
+        _require(
+            isinstance(source_citation, str) and bool(source_citation.strip()),
+            year,
+            where,
+            "`source_citation` must be a non-empty string when present",
+        )
+    citation_is_usable = isinstance(source_citation, str) and bool(
+        source_citation.strip()
+    )
+
     _require(
-        (isinstance(pub1001_page, int) and not isinstance(pub1001_page, bool))
-        or (isinstance(pub1001_page, str) and bool(pub1001_page.strip())),
+        page_is_usable or citation_is_usable,
         year,
         where,
-        "`pub1001_page` must be an int (or a documented non-empty string sentinel)",
+        "row has no source: set pub1001_page or source_citation",
     )
 
     common = raw.get("common")
@@ -231,6 +263,7 @@ def _build_entry(year: int, index: int, raw: object) -> CatalogEntry:
         direction=direction,
         common=common,
         pub1001_page=pub1001_page,
+        source_citation=source_citation,
         ircrtc=raw["ircrtc"],
         auto=auto,
         triggers=triggers,
