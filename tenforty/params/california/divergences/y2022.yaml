@@ -1614,13 +1614,15 @@
 
 # ── Part I §C 24c ─────────────────────────────────────────────────────────────
 
+# 2025 CONTENT-AUDIT: CA non-conformity verified vs this year's FTB Pub 1001 (Col B, line 24c); the §74
+# conformity FLIPPED to conform in the 2025 edition (row dropped there) — verified, not drift.
 - id: "olympic-paralympic-medals-and-usoc-prize-1m-agi-cap"
   sch_ca_line: "Part I §C 24c"
   section_title: "Olympic Medals"
   description: "Olympic/Paralympic medals and USOC prize ($1M AGI cap) excluded federally; CA doesn't conform"
   direction: "Sub"
   common: false
-  pub1001_page: 22
+  pub1001_page: 20
   ircrtc: "IRC §74(d)"
 
 # ── Part I §C 24d ─────────────────────────────────────────────────────────────
