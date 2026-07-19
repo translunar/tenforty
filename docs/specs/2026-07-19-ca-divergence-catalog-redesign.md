@@ -89,6 +89,16 @@ reviewed:              # triggered entries the filer examined and zeroed
   - prop22-wage-reclass
 ```
 
+Catalog `direction` is three-valued (`Add`/`Sub`/`Both` — `Both` marks
+lines that can diverge either way depending on facts; ~30% of rows). The
+catalog layer carries its own three-value enum; the materialized-adjustment
+enum stays two-valued. Input rules: amounts are always positive; for an
+`Add`/`Sub` row the catalog supplies the direction and the user may not
+override it; for a `Both` row the user entry MUST carry an explicit
+`direction: add|sub` — a missing or contradicting direction is a load-time
+error. `auto` rows may not be `Both` (an auto rule needs a concrete
+direction), enforced by the catalog schema gate.
+
 The loader validates every `id` — in `divergences` AND in `reviewed` —
 against the year's catalog at load time, before any compute: unknown id is
 a hard error with a nearest-match suggestion. (A typo'd `reviewed` id
