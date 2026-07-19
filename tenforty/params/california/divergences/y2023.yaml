@@ -1,4 +1,14 @@
 # tenforty/params/california/divergences/y2023.yaml
+# ── SOURCE-OF-RECORD PROVENANCE (all-five-years header update, 2026-07-19) ──────
+# pub1001_page citations are printing-sensitive: FTB re-issues Pub 1001 within a
+# tax year (REV markers), so a page number is only reproducible against a named
+# posting. Principle: cite the CURRENTLY-POSTED edition. Source of record for the
+# TY2023 catalog (the currently-posted 2023 Pub 1001):
+#   file      : pdfs/california/2023/pub1001.pdf
+#   REV marker: REV 07-25
+#   retrieved : 2026-07-19
+#   sha256    : 6ae63914a7f1401f7056afdfb23886bcd4d38693ce061b8c5ccf091edb67bfb7
+# (Data rows unchanged by the 2021 batch.)
 # Runtime-loaded, packaged from the pre-packaging spreadsheets source: a stable
 # `id` was added as the first key of each row (row order and all other field
 # values carried verbatim). The provenance below is preserved from that source.

@@ -1,4 +1,14 @@
 # tenforty/params/california/divergences/y2025.yaml
+# ── SOURCE-OF-RECORD PROVENANCE (all-five-years header update, 2026-07-19) ──────
+# pub1001_page citations are printing-sensitive: FTB re-issues Pub 1001 within a
+# tax year (REV markers), so a page number is only reproducible against a named
+# posting. Principle: cite the CURRENTLY-POSTED edition. Source of record for the
+# TY2025 catalog (the currently-posted 2025 Pub 1001):
+#   file      : pdfs/california/2025/pub1001.pdf
+#   REV marker: none (original printing; no REV marker)
+#   retrieved : 2026-07-19
+#   sha256    : be15bcaba347f4deb120e85ead4af2dd23500da25fc3056993bf79dd36a47d1d
+# (Data rows unchanged by the 2021 batch.)
 # Runtime-loaded Schedule CA (540) federal-vs-CA divergence catalog for TY2025.
 # Originally hand-authored from FTB Publication 1001 (2024 edition) and
 # forward-adjusted for known 2025 law (e.g. the OBBBA SALT-cap row at Part II
