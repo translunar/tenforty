@@ -1,0 +1,2102 @@
+# tenforty/params/california/divergences/y2021.yaml
+# Runtime-loaded, packaged from the pre-packaging spreadsheets source: a stable
+# `id` was added as the first key of each row (row order and all other field
+# values carried verbatim). The provenance below is preserved from that source.
+# Divergences source-of-truth for the TY2021 Schedule CA input worksheet.
+# PORTED from spreadsheets/california/2023/sch_ca_divergences-2023.catalog.yaml
+# with TY2021 conformity-date deltas, cross-checked against the FTB 2021
+# Personal Income Tax Booklet "What's New / Differences between California and
+# Federal Law" (pdfs/california/2021/booklet.pdf pp.4-8) and the 2021
+# Schedule CA (540) instructions (pp.43-54). Same schema as the 2023 catalog.
+#
+# CA conformity date for TY2021 is the IRC as of January 1, 2015 (2021 booklet
+# p.4) — identical to TY2023 — so the standing TCJA/SECURE/CARES nonconformity
+# rows port unchanged. R&TC does not conform to ARPA (2021), CAA 2021, CARES,
+# or SECURE (2021 booklet p.4).
+#
+# pub1001_page citations are carried from the 2023 edition (Pub 1001 2021 ed.
+# not in-repo); the SUBSTANCE of each retained row is unchanged for 2021. Rows
+# added/adjusted below cite the booklet/Sch CA page verified in-repo and flag
+# their Pub 1001 page as unverified-in-repo.
+#
+# TY2021 deltas vs the 2023 base (conformity-DATE driven):
+#   DROPPED (federal/CA provision not yet in effect for TY2021):
+#     - R&E capitalization IRC §174 (§B 3): federal 5-yr mandate first applies
+#       TY2022; TY2021 = current deduction, no divergence.
+#     - Turf-replacement water-conservation exclusion (§B 8z, R&TC 17138.2):
+#       first applies TY2022.
+#     - Discharge of unpaid community-college fees (§B 8z, R&TC 17131.21):
+#       first applies TY2022.
+#     - CA HOPE for Children Trust Account (§B 8z, R&TC 17141.5): first
+#       applies TY2023 (FTB 2023 booklet: "for taxable years beginning on or
+#       after January 1, 2023"). CORRECTED reason per source-side review —
+#       this catalog previously stated "first applies TY2022" (AB 156's
+#       enactment year, not FTB's effective-date language); the TY2021 DROP
+#       outcome was always right, but for the wrong reason. Also absent from
+#       TY2022 (see that catalog's header) as well as TY2021.
+#     - Interagency Council on Homelessness payment exclusion (§B 8z,
+#       R&TC 17131.13): first applies TY2023 (FTB 2023 booklet, same "on or
+#       after January 1, 2023" language). NOT in effect for TY2021 (or
+#       TY2022); absent from the 2021 booklet, 2021 Pub 1001, and 2021 Sch CA
+#       line-8z enumeration. ADDED in source-side review — originally ported
+#       forward as an active row in error; row REMOVED.
+#     - Guaranteed-income pilot payment exclusion (§B 8z, R&TC 17131.12): the
+#       exclusion window opens 6/30/2022 and closes 7/1/2026 (FTB 2023
+#       booklet); all of TY2021 precedes the window. NOT in effect for
+#       TY2021; absent from the 2021 booklet, 2021 Pub 1001, and 2021 Sch CA
+#       line-8z. ADDED in source-side review — originally ported forward as
+#       an active row in error; row REMOVED. (KEPT for TY2022 — the window
+#       opens inside that year; see the 2022 catalog.)
+#     - Qualified wildfire relief payments (§B 8z): federal exclusion is from
+#       the Federal Disaster Tax Relief Act of 2023 (enacted 12/2024), postdates
+#       TY2021.
+#   ADDED (TY2021-specific ARPA nonconformity):
+#     - Employer dependent-care assistance $5,000->$10,500 ARPA increase
+#       (§A 1e): CA conforms only to $5,000; excess added back. 2021-only.
+#     - COBRA premium assistance subsidy (§B 8z): ARPA excluded it federally
+#       (4/1-9/30/2021); CA includes. 2021-only.
+#   ADJUSTED:
+#     - NOL (§B 8a): TY2021 CA NOL suspension IS in effect for net business
+#       income / modified AGI >= $1M (AB 85, TY2020-2022); carryover extended
+#       one year (2021 booklet p.6, R&TC 17276.23).
+#     - §529 (§B 8z): narrowed to the TCJA K-12 tuition expansion only; CA
+#       conforms for TY2021+ to the FCAA-2020 apprenticeship/education-loan uses
+#       (2021 booklet p.4).
+#     - SALT cap (Part II 5e): wording TY2023 -> TY2021 (flat $10k/$5k TCJA cap
+#       identical; substance unchanged).
+#     - Wildfire-settlement retroactive-window rows (Kincade §17139.2, Zogg
+#       §17139.3, Fire Victims Trust §17138.5, Thomas/Woolsey §17138.6): KEPT
+#       for TY2021 (verified-defensible) but re-cited to the STATUTE'S OWN
+#       retroactive effective window rather than a Pub 1001/booklet page,
+#       since none of these four provisions appear in the 2021 booklet or
+#       2021 Pub 1001 — their basis is the statute window, not a year-source
+#       enumeration. See each row's pub1001_page/ircrtc below.
+#
+# Drops inherited from the 2023 base (auto-derived / enumeration) still apply:
+#   Part I §B 7 generic UI + PFL (auto-derived named field — see the UI no-op
+#   below); state tax refund §B 1; RRB §A 5b; SS §A 6.
+#
+# ── TY2021 documented no-ops (federal provisions with NO Schedule CA
+#    adjustment — recorded EXPLICITLY, not left silently absent) ──
+#   * 1040 line 12b non-itemizer charitable deduction ($300 / $600 MFJ,
+#     CARES/CAA): a BELOW-AGI federal deduction. Schedule CA Part I adjusts
+#     components of federal AGI (1040 line 11); Part II adjusts itemized
+#     deductions. The line-12b deduction sits below AGI and outside CA's separate
+#     standard/itemized-deduction computation, so it never enters Schedule CA.
+#     NO adjustment row. (2021 booklet pp.4-8 list no line-12b divergence; the
+#     2021 Sch CA has no line for it. Pub 1001 unverified-in-repo.)
+#   * ARPA $10,200 unemployment-compensation exclusion: applies to TAXABLE
+#     YEARS BEGINNING IN 2020 ONLY (IRC §85(c) as added by ARPA §9042); it does
+#     NOT apply to TY2021. For TY2021 federal fully includes UI and CA fully
+#     subtracts it — the 2021 Sch CA (540) Line 7 instruction directs entering
+#     "the amount of unemployment compensation shown in column A" (the full
+#     federal amount) with NO $10,200 modification. That full subtraction is
+#     auto-derived by the compute's named field (same shape as the 2023 base,
+#     which carries no manual UI row): NO manual UI divergence row and NO
+#     shrinking-subtraction delta for TY2021. (2021 Sch CA instr. Line 7.)
+#   * Advance / expanded Child Tax Credit (ARPA) and expanded federal EIC
+#     (ARPA): federal tax CREDITS. Schedule CA carries neither; CA administers
+#     its own YCTC/CalEITC (FTB 3514) off CA figures. NO Schedule CA row.
+#     (2021 booklet p.2, p.6.)
+#   * EIDL advance grant and PPP loan-forgiveness INCOME exclusions: CA CONFORMS
+#     to the income exclusion (2021 booklet p.6; R&TC 17131.8 / AB 80) — no
+#     income-side divergence. The PPP/SVOG expense-disallowance for "ineligible
+#     entities" is retained as its own §B 3 rows.
+#   * Restaurant Revitalization Grant (ARPA): grouped with PPP/EIDL/SVOG in the
+#     2021 booklet reporting-requirements list (p.5); CA conforms to the income
+#     exclusion. NO income-side divergence row.
+#
+# Multi-line enumeration rows are split into one catalog row per Sch CA line.
+
+# ── Part I §A 1a ──────────────────────────────────────────────────────────────
+
+- id: "ic-reclassified-as-employee-income-prop-22-ab5"
+  sch_ca_line: "Part I §A 1a"
+  section_title: "Wages"
+  description: "IC reclassified as employee income (Prop 22 / AB5)"
+  direction: "Add"
+  common: true
+  pub1001_page: 6
+  ircrtc: "—"
+
+- id: "active-duty-military-pay-special-rules-spouse-residency-exclusions"
+  sch_ca_line: "Part I §A 1a"
+  section_title: "Wages"
+  description: "Active duty military pay: special rules / spouse residency exclusions"
+  direction: "Both"
+  common: true
+  pub1001_page: 6
+  ircrtc: "R&TC 17140.5"
+
+- id: "native-american-reservation-income-exclusion-tribal-members-in-ca-indian-country"
+  sch_ca_line: "Part I §A 1a"
+  section_title: "Wages"
+  description: "Native American reservation income exclusion (tribal members in CA Indian country)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 6
+  ircrtc: "R&TC 17131"
+
+- id: "tax-treaty-exclusion-doesn-t-apply-unless-treaty-specifically-exempts-state"
+  sch_ca_line: "Part I §A 1a"
+  section_title: "Wages"
+  description: "Tax-treaty exclusion doesn't apply unless treaty specifically exempts state"
+  direction: "Add"
+  common: false
+  pub1001_page: 6
+  ircrtc: "—"
+
+- id: "merchant-seamen-rail-motor-air-carrier-nonresident-wages-excluded"
+  sch_ca_line: "Part I §A 1a"
+  section_title: "Wages"
+  description: "Merchant seamen / rail / motor / air carrier nonresident wages excluded"
+  direction: "Sub"
+  common: false
+  pub1001_page: 6
+  ircrtc: "—"
+
+# ── Part I §A 1d ──────────────────────────────────────────────────────────────
+
+- id: "ihss-supplementary-payments-in-w-2-wages-excluded-by-ca"
+  sch_ca_line: "Part I §A 1d"
+  section_title: "Wages"
+  description: "IHSS supplementary payments in W-2 wages excluded by CA"
+  direction: "Sub"
+  common: false
+  pub1001_page: 7
+  ircrtc: "R&TC 17131.6"
+
+# ── Part I §A 1e ──────────────────────────────────────────────────────────────
+# ADDED for TY2021 (ARPA nonconformity): ARPA temporarily raised the
+# employer-provided dependent-care assistance gross-income exclusion from
+# $5,000 to $10,500 ($5,250 MFS). CA conforms only to $5,000 and adds back the
+# excess. 2021 Sch CA (540) instr., Additional Info: "enter the difference on
+# line 1, column C" (booklet p.44); 2021 booklet p.4. 2021-only (ARPA increase
+# lapsed after TY2021). Pub 1001 page carried from the adjacent §A 1h wages-
+# fringe rows (p.7); unverified-in-repo for this specific item.
+
+- id: "employer-dependent-care-assistance-arpa-raised-federal-exclusion-5-000-10-500-2021-only-ca-conforms-to-5-000-adds-back-the-excess"
+  sch_ca_line: "Part I §A 1e"
+  section_title: "Wages"
+  description: "Employer dependent-care assistance: ARPA raised federal exclusion $5,000->$10,500 (2021 only); CA conforms to $5,000, adds back the excess"
+  direction: "Add"
+  common: false
+  pub1001_page: 7
+  ircrtc: "IRC §129 (ARPA)"
+
+# ── Part I §A 1h ──────────────────────────────────────────────────────────────
+
+- id: "qualified-transportation-fringe-no-ca-monthly-cap-broader-ridesharing-exclusion"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "Qualified transportation fringe: no CA monthly cap; broader ridesharing exclusion"
+  direction: "Sub"
+  common: true
+  pub1001_page: 7
+  ircrtc: "IRC §132(f), R&TC 17149"
+
+- id: "hsa-employer-contribution-excluded-federally-ca-adds-back"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "HSA employer contribution excluded federally; CA adds back"
+  direction: "Add"
+  common: true
+  pub1001_page: 9
+  ircrtc: "IRC §223"
+
+- id: "moving-expense-ca-allows-non-military-moving-expense-deduction"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "Moving expense: CA allows non-military moving expense deduction"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "IRC §217 (TCJA)"
+
+- id: "clergy-housing-rental-allowance-no-ca-frv-cap"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "Clergy housing rental allowance: no CA FRV cap"
+  direction: "Both"
+  common: false
+  pub1001_page: 7
+  ircrtc: "IRC §107"
+
+- id: "state-employed-clergy-50-gross-salary-housing-exclusion-no-federal-parallel"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "State-employed clergy: 50% gross salary housing exclusion (no federal parallel)"
+  direction: "Both"
+  common: false
+  pub1001_page: 7
+  ircrtc: "—"
+
+- id: "cqso-1997-2002-exclusion-not-available-federally"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "CQSO (1997-2002) exclusion not available federally"
+  direction: "Sub"
+  common: false
+  pub1001_page: 7
+  ircrtc: "R&TC 17502"
+
+- id: "fica-rrta-sick-pay-taxable-federally-excluded-by-ca"
+  sch_ca_line: "Part I §A 1h"
+  section_title: "Wages"
+  description: "FICA/RRTA sick pay taxable federally; excluded by CA"
+  direction: "Sub"
+  common: false
+  pub1001_page: 6
+  ircrtc: "—"
+
+# ── Part I §A 1i ──────────────────────────────────────────────────────────────
+
+- id: "sinai-combat-pay-excluded-under-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part I §A 1i"
+  section_title: "Wages"
+  description: "Sinai combat pay excluded under TCJA; CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 7
+  ircrtc: "—"
+
+# ── Part I §A 2 ───────────────────────────────────────────────────────────────
+
+- id: "us-treasury-fed-obligation-interest-excluded-by-ca"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "US Treasury / Fed obligation interest excluded by CA"
+  direction: "Sub"
+  common: true
+  pub1001_page: 8
+  ircrtc: "—"
+
+- id: "out-of-state-muni-interest-excluded-federally-ca-taxes-non-ca-muni"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "Out-of-state muni interest excluded federally; CA taxes non-CA muni"
+  direction: "Add"
+  common: true
+  pub1001_page: 8
+  ircrtc: "R&TC 17143"
+
+- id: "mutual-fund-muni-interest-federal-fully-excludes-ca-only-if-50-ca-us-obligations"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "Mutual fund muni interest: federal fully excludes; CA only if ≥50% CA/US obligations"
+  direction: "Both"
+  common: true
+  pub1001_page: 8
+  ircrtc: "—"
+
+- id: "hsa-interest-dividends-excluded-federally-ca-taxes"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "HSA interest / dividends excluded federally; CA taxes"
+  direction: "Add"
+  common: true
+  pub1001_page: 9
+  ircrtc: "IRC §223"
+
+- id: "us-canada-treaty-defers-rrsp-earnings-ca-doesn-t-honor-taxable-when-earned-taxable-interest"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "US-Canada treaty defers RRSP earnings; CA doesn't honor — taxable when earned"
+  direction: "Add"
+  common: false
+  pub1001_page: 9
+  ircrtc: "—"
+
+- id: "ottoman-turkish-empire-settlement-interest-excluded-by-ca"
+  sch_ca_line: "Part I §A 2"
+  section_title: "Taxable Interest"
+  description: "Ottoman Turkish Empire settlement interest excluded by CA"
+  direction: "Sub"
+  common: false
+  pub1001_page: 8
+  ircrtc: "R&TC 17131.7"
+
+# ── Part I §A 3 ───────────────────────────────────────────────────────────────
+
+- id: "hsa-dividends-excluded-federally-ca-taxes"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "HSA dividends excluded federally; CA taxes"
+  direction: "Add"
+  common: true
+  pub1001_page: 9
+  ircrtc: "IRC §223"
+
+- id: "us-canada-treaty-defers-rrsp-earnings-ca-doesn-t-honor-taxable-when-earned-ordinary-dividends"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "US-Canada treaty defers RRSP earnings; CA doesn't honor — taxable when earned"
+  direction: "Add"
+  common: false
+  pub1001_page: 9
+  ircrtc: "—"
+
+- id: "patronage-dividends-federal-in-year-received-ca-election-to-defer-to-year-redeemed"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "Patronage dividends: federal in year received; CA election to defer to year redeemed"
+  direction: "Both"
+  common: false
+  pub1001_page: 8
+  ircrtc: "—"
+
+- id: "cfc-dividends-federal-pro-rata-when-earned-ca-taxes-when-distributed"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "CFC dividends: federal pro-rata when earned; CA taxes when distributed"
+  direction: "Both"
+  common: false
+  pub1001_page: 8
+  ircrtc: "IRC §951"
+
+- id: "pre-1987-s-corp-earnings-in-federal-aaa-ca-initial-aaa-0-c-corp-treatment"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "Pre-1987 S-corp earnings in federal AAA; CA initial AAA = 0 (C-corp treatment)"
+  direction: "Add"
+  common: false
+  pub1001_page: 8
+  ircrtc: "—"
+
+- id: "ric-undistributed-cap-gain-form-2439-federal-in-year-earned-ca-taxes-in-year-distributed"
+  sch_ca_line: "Part I §A 3"
+  section_title: "Ordinary Dividends"
+  description: "RIC undistributed cap gain (Form 2439): federal in year earned; CA taxes in year distributed"
+  direction: "Both"
+  common: false
+  pub1001_page: 8
+  ircrtc: "—"
+
+# ── Part I §A 4 ───────────────────────────────────────────────────────────────
+
+- id: "federal-ira-basis-may-differ-from-ca-basis-residency-se-income"
+  sch_ca_line: "Part I §A 4"
+  section_title: "IRA Distributions"
+  description: "Federal IRA basis may differ from CA basis (residency, SE income)"
+  direction: "Both"
+  common: true
+  pub1001_page: 9
+  ircrtc: "—"
+
+- id: "roth-ira-basis-may-differ-ca-and-federal-track-separately-from-prior-year-divergences"
+  sch_ca_line: "Part I §A 4"
+  section_title: "IRA Distributions"
+  description: "Roth IRA basis may differ: CA and federal track separately from prior-year divergences"
+  direction: "Both"
+  common: true
+  pub1001_page: 9
+  ircrtc: "IRC §408A"
+
+# ── Part I §A 5b ──────────────────────────────────────────────────────────────
+
+- id: "3-yr-rule-election-for-annuities-starting-7-2-12-31-1986-no-federal-parallel-post-7-1-1986"
+  sch_ca_line: "Part I §A 5b"
+  section_title: "Pensions and Annuities"
+  description: "3-yr rule election for annuities starting 7/2–12/31/1986 (no federal parallel post-7/1/1986)"
+  direction: "Add"
+  common: false
+  pub1001_page: 9
+  ircrtc: "—"
+
+# ── Part I §A 7 ───────────────────────────────────────────────────────────────
+
+- id: "hsa-gains-us-canada-treaty-rrsp-ca-taxes-when-earned"
+  sch_ca_line: "Part I §A 7"
+  section_title: "Capital Gains or Losses"
+  description: "HSA gains: US-Canada treaty RRSP — CA taxes when earned"
+  direction: "Add"
+  common: false
+  pub1001_page: 9
+  ircrtc: "—"
+
+- id: "principal-residence-exclusion-250k-500k-ca-conforms-peace-corps-reduces-2-yr-test"
+  sch_ca_line: "Part I §A 7"
+  section_title: "Capital Gains or Losses"
+  description: "Principal residence exclusion: $250k/$500k — CA conforms; Peace Corps reduces 2-yr test"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "IRC §121"
+
+# ── Part I §B 2a ──────────────────────────────────────────────────────────────
+
+- id: "post-2018-alimony-not-includable-federally-tcja-ca-still-includes"
+  sch_ca_line: "Part I §B 2a"
+  section_title: "Alimony Received"
+  description: "Post-2018 alimony not includable federally (TCJA); CA still includes"
+  direction: "Add"
+  common: true
+  pub1001_page: 11
+  ircrtc: "IRC §71 (TCJA)"
+
+- id: "nra-alimony-received-not-on-1040-nr-ca-includes-for-nra"
+  sch_ca_line: "Part I §B 2a"
+  section_title: "Alimony Received"
+  description: "NRA alimony received not on 1040-NR; CA includes for NRA"
+  direction: "Add"
+  common: false
+  pub1001_page: 11
+  ircrtc: "—"
+
+# ── Part I §B 3 ───────────────────────────────────────────────────────────────
+
+# DROPPED for TY2021: the TCJA IRC §174 R&E capitalization/amortization
+# mandate first applies to amounts paid or incurred in taxable years
+# beginning after 12/31/2021 (TY2022+). For TY2021 both federal and CA allow
+# a current R&E deduction — no divergence. (RE-ADDED for TY2022.)
+
+- id: "179-limits-federal-1-16m-2-89m-phaseout-ca-25k-200k-no-ca-off-shelf-software"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "§179 limits: federal $1.16M+ / $2.89M phaseout; CA $25k / $200k; no CA off-shelf software"
+  direction: "Both"
+  common: true
+  pub1001_page: 11
+  ircrtc: "IRC §179, R&TC 17255"
+
+- id: "bonus-depreciation-30-50-100-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Bonus depreciation (30/50/100%): CA doesn't conform"
+  direction: "Both"
+  common: true
+  pub1001_page: 12
+  ircrtc: "IRC §168(k)"
+
+- id: "280f-luxury-auto-caps-ca-doesn-t-conform-to-tcja-modified-caps"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "§280F luxury auto caps: CA doesn't conform to TCJA-modified caps"
+  direction: "Both"
+  common: true
+  pub1001_page: 13
+  ircrtc: "IRC §280F"
+
+- id: "ppp-forgiven-loan-expenses-deductible-federally-ca-disallows-for-ineligible-entities"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "PPP-forgiven loan expenses deductible federally; CA disallows for ineligible entities"
+  direction: "Add"
+  common: true
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "sch-c-income-reclassified-as-wages-when-ic-reclassified-as-employee"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Sch C income reclassified as wages when IC reclassified as employee"
+  direction: "Both"
+  common: true
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "business-interest-cap-30-ati-federal-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Business interest cap (30% ATI): federal TCJA; CA doesn't conform"
+  direction: "Sub"
+  common: true
+  pub1001_page: 14
+  ircrtc: "IRC §163(j)"
+
+- id: "entertainment-meals-transportation-disallowance-federal-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Entertainment / meals / transportation disallowance: federal TCJA; CA doesn't conform"
+  direction: "Both"
+  common: true
+  pub1001_page: 14
+  ircrtc: "IRC §274 (TCJA)"
+
+- id: "small-employer-health-insurance-credit-45r-wage-expense-reduced-federally-ca-full-deduction"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Small Employer Health Insurance Credit (§45R): wage expense reduced federally; CA full deduction"
+  direction: "Sub"
+  common: true
+  pub1001_page: 16
+  ircrtc: "IRC §45R"
+
+- id: "real-estate-professional-rental-nonpassive-post-1994-federal-allows-ca-remains-passive"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Real-estate professional rental nonpassive (post-1994): federal allows; CA remains passive"
+  direction: "Both"
+  common: true
+  pub1001_page: 15
+  ircrtc: "IRC §469(c)(7)"
+
+- id: "ca-apportionment-formula-vs-federal-sourcing-for-multi-state-business"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "CA apportionment formula vs. federal sourcing for multi-state business"
+  direction: "Both"
+  common: false
+  pub1001_page: 11
+  ircrtc: "CA Code Regs §17951"
+
+# DROPPED for TY2023: no divergence — CA IDC disallowance for oil/gas wells begins post-1/1/2024.
+
+# DROPPED for TY2023: no divergence — CA percentage-depletion disallowance begins post-1/1/2024.
+
+- id: "macrs-nonresidential-39-yr-federal-31-5-yr-ca-for-property-placed-5-13-1993-12-31-1996"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "MACRS nonresidential 39-yr federal; 31.5-yr CA for property placed 5/13/1993-12/31/1996"
+  direction: "Both"
+  common: false
+  pub1001_page: 11
+  ircrtc: "—"
+
+- id: "ads-30-yr-residential-rental-post-2017-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "ADS 30-yr residential rental (post-2017): CA doesn't conform"
+  direction: "Both"
+  common: false
+  pub1001_page: 11
+  ircrtc: "—"
+
+- id: "federal-acrs-pre-1987-limited-ca-acrs-for-residential-rental-7-1-1985-12-31-1986"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Federal ACRS pre-1987: limited CA ACRS for residential rental 7/1/1985-12/31/1986"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "197-intangibles-15-yr-from-acquisition-ca-uses-basis-as-of-1-1-1994-for-pre-1994"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "§197 intangibles 15-yr from acquisition; CA uses basis as of 1/1/1994 for pre-1994"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "IRC §197"
+
+- id: "prior-depreciation-method-retained-entering-ca-ca-requires-conversion-to-straight-line-if-unacceptable"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Prior depreciation method retained entering CA; CA requires conversion to straight-line if unacceptable"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "indian-reservation-property-1994-2021-macrs-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Indian reservation property (1994-2021) MACRS: CA doesn't conform"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "3-yr-race-horses-placed-in-service-2021-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "3-yr race horses placed in service 2021: CA doesn't conform"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "7-yr-motorsports-complexes-through-2025-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "7-yr motorsports complexes through 2025: CA doesn't conform"
+  direction: "Both"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "pollution-control-facility-write-off-federal-any-state-ca-only-ca-located-facilities"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Pollution control facility write-off: federal any-state; CA only CA-located facilities"
+  direction: "Add"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "federal-expense-for-tertiary-injectants-in-oil-ca-allows-depreciation-only"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Federal expense for tertiary injectants in oil; CA allows depreciation only"
+  direction: "Add"
+  common: false
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "fruit-bearing-grapevines-ads-10-20-yr-federal-5-10-yr-ca-phylloxera-pierce-s"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Fruit-bearing grapevines ADS 10/20-yr federal; 5/10-yr CA (phylloxera/Pierce's)"
+  direction: "Both"
+  common: false
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "income-forecast-depreciation-method-ca-conformed-only-post-12-31-1997"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Income forecast depreciation method: CA conformed only post-12/31/1997"
+  direction: "Both"
+  common: false
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "startup-expense-5k-50k-phaseout-ca-harmonized-with-federal-2010-increase"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Startup expense $5k/$50k phaseout: CA harmonized with federal 2010 increase"
+  direction: "Both"
+  common: false
+  pub1001_page: 13
+  ircrtc: "IRC §195"
+
+- id: "film-tv-current-expensing-pre-1-1-2026-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Film/TV current expensing (pre-1/1/2026): CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 13
+  ircrtc: "IRC §181"
+
+- id: "svog-related-expenses-deductible-federally-ca-disallows-for-ineligible-entities"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "SVOG-related expenses deductible federally; CA disallows for ineligible entities"
+  direction: "Add"
+  common: false
+  pub1001_page: 13
+  ircrtc: "—"
+
+- id: "cannabis-trade-business-deductions-federal-disallows-280e-ca-allows-for-licensed-maucrsa"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Cannabis trade/business deductions: federal disallows (§280E); CA allows for licensed MAUCRSA"
+  direction: "Sub"
+  common: false
+  pub1001_page: 13
+  ircrtc: "IRC §280E, R&TC 17209"
+
+- id: "wagering-expenses-federal-limited-to-winnings-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Wagering expenses: federal limited to winnings; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 14
+  ircrtc: "IRC §165(d) (TCJA)"
+
+- id: "sexual-harassment-nda-legal-fees-disallowed-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Sexual harassment NDA legal fees disallowed federally; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 14
+  ircrtc: "IRC §162(q) (TCJA)"
+
+- id: "pro-sports-league-franchise-owner-fines-ca-disallows-no-federal-equivalent"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Pro sports league franchise-owner fines: CA disallows (no federal equivalent)"
+  direction: "Add"
+  common: false
+  pub1001_page: 14
+  ircrtc: "R&TC 17275.4"
+
+- id: "edge-college-career-network-llc-payment-ca-disallows-for-criminal-complaint-defendants"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Edge College / Career Network LLC payment: CA disallows for criminal-complaint defendants"
+  direction: "Add"
+  common: false
+  pub1001_page: 14
+  ircrtc: "R&TC 17275.4"
+
+- id: "ca-donated-agricultural-products-transportation-credit-reduces-deduction-no-federal-business-income-or-loss"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "CA Donated Agricultural Products Transportation Credit reduces deduction (no federal)"
+  direction: "Add"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+- id: "expired-ca-farmworker-housing-credit-1997-2009-carryover-ftb-3540"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Expired CA Farmworker Housing Credit (1997-2009) carryover (FTB 3540)"
+  direction: "Both"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+- id: "federal-basis-for-former-ez-lambra-tta-includes-sales-use-tax-ca-basis-cost-only"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Federal basis for former EZ/LAMBRA/TTA includes sales/use tax; CA basis = cost only"
+  direction: "Both"
+  common: false
+  pub1001_page: 14
+  ircrtc: "IRC §164(a)"
+
+- id: "expired-ca-employer-childcare-center-credit-carryover-1994-2012-ftb-3540"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Expired CA Employer Childcare Center credit carryover (1994-2012; FTB 3540)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+- id: "expired-ca-employer-childcare-plan-credit-carryover-1994-2012-ftb-3540"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Expired CA Employer Childcare Plan credit carryover (1994-2012; FTB 3540)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+# DROPPED for TY2023: §43 not yet repealed for CA (repeal effective 1/1/2024).
+
+- id: "disabled-access-credit-44-federal-max-50-of-10-250-ca-max-125"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Disabled access credit (§44): federal max 50% of $10,250; CA max $125"
+  direction: "Both"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §44"
+
+- id: "open-space-easement-timberland-preserve-termination-fee-deduction-ca-disallows-business-income-or-loss"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Open-space easement / timberland preserve termination fee deduction: CA disallows"
+  direction: "Add"
+  common: false
+  pub1001_page: 15
+  ircrtc: "—"
+
+- id: "r-and-d-credit-federal-and-ca-conform-but-ca-credit-based-deduction-reduction-differs-business-income-or-loss"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "R&D credit: federal and CA conform but CA-credit-based deduction reduction differs"
+  direction: "Both"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §41, R&TC 17052.12"
+
+- id: "utility-energy-conservation-subsidy-exclusion-1995-ca-didn-t-conform-12-31-1994-1-1-1997"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Utility energy-conservation subsidy exclusion (1995+): CA didn't conform 12/31/1994-1/1/1997"
+  direction: "Both"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §136"
+
+- id: "work-opportunity-credit-51-wage-expense-reduced-federally-no-ca-equivalent-full-wage-deduction"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Work Opportunity Credit (§51): wage expense reduced federally; no CA equivalent; full wage deduction"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §51"
+
+- id: "orphan-drug-credit-45c-deduction-reduced-federally-no-ca-equivalent-business-income-or-loss"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Orphan Drug Credit (§45C): deduction reduced federally; no CA equivalent"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §45C"
+
+- id: "business-expense-at-discriminatory-clubs-ca-disallows-business-income-or-loss"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Business expense at discriminatory clubs: CA disallows"
+  direction: "Add"
+  common: false
+  pub1001_page: 15
+  ircrtc: "R&TC 17269"
+
+- id: "commercial-revitalization-deduction-ca-doesn-t-allow"
+  sch_ca_line: "Part I §B 3"
+  section_title: "Business Income or Loss"
+  description: "Commercial revitalization deduction: CA doesn't allow"
+  direction: "Add"
+  common: false
+  pub1001_page: 16
+  ircrtc: "IRC §1400I"
+
+# ── Part I §B 4 ───────────────────────────────────────────────────────────────
+
+# Row 77: Line 26 / §179A — treating as §B 4 (Other Gains/Losses) since it
+# concerns a vehicle deduction that flows through gains/loss treatment.
+# The Sch CA line given is "Line 26" which maps to §B 4 in Sch CA 540 context.
+- id: "179a-first-year-deduction-on-clean-fuel-vehicles-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 4"
+  section_title: "Other Gains/Losses"
+  description: "§179A first-year deduction on clean-fuel vehicles: CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 14
+  ircrtc: "IRC §179A"
+
+# ── Part I §B 5 ───────────────────────────────────────────────────────────────
+
+- id: "federal-k-1-items-differ-from-ca-k-1-ca-k-1-required"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Federal K-1 items differ from CA K-1; CA K-1 required"
+  direction: "Both"
+  common: true
+  pub1001_page: 16
+  ircrtc: "—"
+
+- id: "ca-apportionment-formula-vs-federal-sourcing-for-multi-state-entity"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "CA apportionment formula vs. federal sourcing for multi-state entity"
+  direction: "Both"
+  common: false
+  pub1001_page: 11
+  ircrtc: "CA Code Regs §17951"
+
+- id: "real-estate-professional-rental-nonpassive-federal-allows-ca-remains-passive"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Real-estate professional rental nonpassive: federal allows; CA remains passive"
+  direction: "Both"
+  common: true
+  pub1001_page: 15
+  ircrtc: "IRC §469(c)(7)"
+
+- id: "trust-accumulation-distribution-ca-resident-non-contingent-beneficiary-full-taxable-if-no-ca-tax-paid"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Trust accumulation distribution: CA-resident non-contingent beneficiary — full taxable if no CA tax paid"
+  direction: "Both"
+  common: false
+  pub1001_page: 16
+  ircrtc: "IRC §665-668, R&TC 17745"
+
+- id: "trust-accumulation-distribution-contingent-beneficiary-income-averaging"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Trust accumulation distribution: contingent beneficiary income averaging"
+  direction: "Both"
+  common: false
+  pub1001_page: 17
+  ircrtc: "R&TC 17745(b),(d)"
+
+- id: "us-shareholder-subpart-f-inclusion-no-ca-subpart-f-regime"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "US shareholder Subpart F inclusion: no CA Subpart F regime"
+  direction: "Sub"
+  common: false
+  pub1001_page: 17
+  ircrtc: "IRC §951"
+
+- id: "pollution-control-facility-write-off-federal-any-state-ca-only-ca-located-rental-royalty-partnership-s-corp-trust"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Pollution control facility write-off: federal any-state; CA only CA-located"
+  direction: "Add"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "small-employer-pension-startup-credit-45e-deduction-reduced-federally-no-ca-credit-full-deduction"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Small-employer pension startup credit (§45E): deduction reduced federally; no CA credit; full deduction"
+  direction: "Sub"
+  common: false
+  pub1001_page: 9
+  ircrtc: "IRC §45E"
+
+- id: "ca-donated-agricultural-products-transportation-credit-reduces-deduction-no-federal-rental-royalty-partnership-s-corp-trust"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "CA Donated Agricultural Products Transportation Credit reduces deduction (no federal)"
+  direction: "Add"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+- id: "work-opportunity-credit-wage-expense-reduced-federally-no-ca-equivalent-full-deduction"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Work Opportunity Credit: wage expense reduced federally; no CA equivalent; full deduction"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §51"
+
+- id: "orphan-drug-credit-45c-deduction-reduced-federally-no-ca-equivalent-rental-royalty-partnership-s-corp-trust"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Orphan Drug Credit (§45C): deduction reduced federally; no CA equivalent"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §45C"
+
+- id: "r-and-d-credit-federal-and-ca-conform-but-ca-credit-based-deduction-reduction-differs-rental-royalty-partnership-s-corp-trust"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "R&D credit: federal and CA conform but CA-credit-based deduction reduction differs"
+  direction: "Both"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §41, R&TC 17052.12"
+
+- id: "open-space-easement-timberland-preserve-termination-fee-deduction-ca-disallows-rental-royalty-partnership-s-corp-trust"
+  sch_ca_line: "Part I §B 5"
+  section_title: "Rental, Royalty, Partnership, S-Corp, Trust"
+  description: "Open-space easement / timberland preserve termination fee deduction: CA disallows"
+  direction: "Add"
+  common: false
+  pub1001_page: 15
+  ircrtc: "—"
+
+# ── Part I §B 6 ───────────────────────────────────────────────────────────────
+
+- id: "ca-apportionment-formula-vs-federal-sourcing-for-farm-income"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "CA apportionment formula vs. federal sourcing for farm income"
+  direction: "Both"
+  common: false
+  pub1001_page: 11
+  ircrtc: "CA Code Regs §17951"
+
+- id: "pollution-control-facility-write-off-federal-any-state-ca-only-ca-located-farm-income"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "Pollution control facility write-off: federal any-state; CA only CA-located"
+  direction: "Add"
+  common: false
+  pub1001_page: 12
+  ircrtc: "—"
+
+- id: "ca-donated-agricultural-products-transportation-credit-reduces-deduction-no-federal-farm-income"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "CA Donated Agricultural Products Transportation Credit reduces deduction (no federal)"
+  direction: "Add"
+  common: false
+  pub1001_page: 14
+  ircrtc: "—"
+
+- id: "work-opportunity-credit-wage-expense-reduced-federally-no-ca-equivalent"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "Work Opportunity Credit: wage expense reduced federally; no CA equivalent"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §51"
+
+- id: "orphan-drug-credit-45c-deduction-reduced-federally-no-ca-equivalent-farm-income"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "Orphan Drug Credit (§45C): deduction reduced federally; no CA equivalent"
+  direction: "Sub"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §45C"
+
+- id: "r-and-d-credit-ca-credit-based-deduction-reduction-differs-from-federal"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "R&D credit: CA-credit-based deduction reduction differs from federal"
+  direction: "Both"
+  common: false
+  pub1001_page: 15
+  ircrtc: "IRC §41, R&TC 17052.12"
+
+- id: "business-expense-at-discriminatory-clubs-ca-disallows-farm-income"
+  sch_ca_line: "Part I §B 6"
+  section_title: "Farm Income"
+  description: "Business expense at discriminatory clubs: CA disallows"
+  direction: "Add"
+  common: false
+  pub1001_page: 15
+  ircrtc: "R&TC 17269"
+
+# ── Part I §B 7 ───────────────────────────────────────────────────────────────
+# Rows 99 (generic UI) and 100 (PFL) dropped; no remaining manual §B 7 items
+# from Pub 1001 enumeration. Section omitted — no rows remain.
+
+# ── Part I §B 8a ──────────────────────────────────────────────────────────────
+
+- id: "federal-nol-carryover-ca-nol-recomputed-ty2021-ca-suspends-the-nol-carryover-deduction-for-taxpayers-with-net-business-income-or-modified-agi-1-000-000-under-ab-85-for-ty2020-2022-suspended-loss-carryover-extended-one-year-taxpayers-under-1m-or-with-disaster-loss-carryovers-unaffected"
+  sch_ca_line: "Part I §B 8a"
+  section_title: "Other Income"
+  description: "Federal NOL carryover; CA NOL recomputed (TY2021: CA suspends the NOL carryover deduction for taxpayers with net business income or modified AGI >= $1,000,000 under AB 85 for TY2020-2022; suspended-loss carryover extended one year; taxpayers under $1M or with disaster-loss carryovers unaffected)"
+  direction: "Add"
+  common: true
+  pub1001_page: 17
+  ircrtc: "R&TC 17276.23"
+
+# ── Part I §B 8b ──────────────────────────────────────────────────────────────
+
+- id: "ca-lottery-winnings-federal-taxes-all-ca-doesn-t-tax-ca-lottery"
+  sch_ca_line: "Part I §B 8b"
+  section_title: "Other Income"
+  description: "CA Lottery winnings: federal taxes all; CA doesn't tax CA Lottery"
+  direction: "Sub"
+  common: true
+  pub1001_page: 17
+  ircrtc: "R&TC 17131"
+
+# ── Part I §B 8c ──────────────────────────────────────────────────────────────
+
+- id: "qualified-principal-residence-indebtedness-exclusion-through-12-31-2025-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8c"
+  section_title: "Other Income"
+  description: "Qualified principal residence indebtedness exclusion through 12/31/2025: CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 17
+  ircrtc: "IRC §108(a)(1)(E)"
+
+- id: "employer-student-loan-payments-up-to-5-250-excluded-federally-cares-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8c"
+  section_title: "Other Income"
+  description: "Employer student loan payments up to $5,250 excluded federally (CARES); CA doesn't conform"
+  direction: "Add"
+  common: true
+  pub1001_page: 17
+  ircrtc: "IRC §127 (CARES)"
+
+# ── Part I §B 8d ──────────────────────────────────────────────────────────────
+
+- id: "foreign-earned-income-exclusion-feie-and-employer-housing-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8d"
+  section_title: "Other Income"
+  description: "Foreign earned income exclusion (FEIE) and employer housing: CA doesn't conform"
+  direction: "Add"
+  common: true
+  pub1001_page: 17
+  ircrtc: "IRC §911"
+
+- id: "contractor-combat-zone-foreign-earned-income-excluded-by-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8d"
+  section_title: "Other Income"
+  description: "Contractor combat-zone foreign earned income excluded by TCJA; CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 6
+  ircrtc: "IRC §911"
+
+# ── Part I §B 8e ──────────────────────────────────────────────────────────────
+
+- id: "archer-msa-hsa-rollover-non-taxable-federally-ca-treats-as-distribution-12-5-additional-tax"
+  sch_ca_line: "Part I §B 8e"
+  section_title: "Other Income"
+  description: "Archer MSA→HSA rollover non-taxable federally; CA treats as distribution + 12.5% additional tax"
+  direction: "Add"
+  common: false
+  pub1001_page: 9
+  ircrtc: "R&TC 17215"
+
+- id: "msa-distributions-for-menstrual-care-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8e"
+  section_title: "Other Income"
+  description: "MSA distributions for menstrual care: CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 17
+  ircrtc: "—"
+
+# ── Part I §B 8f ──────────────────────────────────────────────────────────────
+
+- id: "non-qualified-hsa-distribution-ca-adjustment-for-portion-previously-taxed-as-ca-basis"
+  sch_ca_line: "Part I §B 8f"
+  section_title: "Other Income"
+  description: "Non-qualified HSA distribution: CA adjustment for portion previously taxed as CA basis"
+  direction: "Sub"
+  common: true
+  pub1001_page: 9
+  ircrtc: "—"
+
+# ── Part I §B 8k ──────────────────────────────────────────────────────────────
+
+- id: "deferral-election-for-qualified-equity-grants-83-i-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8k"
+  section_title: "Other Income"
+  description: "Deferral election for qualified equity grants (§83(i) TCJA): CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 17
+  ircrtc: "IRC §83(i) (TCJA)"
+
+# ── Part I §B 8n ──────────────────────────────────────────────────────────────
+
+- id: "subpart-f-inclusion-required-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8n"
+  section_title: "Other Income"
+  description: "Subpart F inclusion required federally; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 18
+  ircrtc: "IRC §951(a)"
+
+# ── Part I §B 8o ──────────────────────────────────────────────────────────────
+
+- id: "gilti-inclusion-required-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8o"
+  section_title: "Other Income"
+  description: "GILTI inclusion required federally; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 18
+  ircrtc: "IRC §951A"
+
+# ── Part I §B 8p ──────────────────────────────────────────────────────────────
+
+- id: "excess-business-loss-limit-ca-conforms-generally-doesn-t-conform-to-retroactive-eliminations-carryover-treatment-differs"
+  sch_ca_line: "Part I §B 8p"
+  section_title: "Other Income"
+  description: "Excess Business Loss limit: CA conforms generally; doesn't conform to retroactive eliminations; carryover treatment differs"
+  direction: "Both"
+  common: true
+  pub1001_page: 18
+  ircrtc: "IRC §461(l)"
+
+# ── Part I §B 8z ──────────────────────────────────────────────────────────────
+
+# ADJUSTED vs 2023 base: for TY2021+ CA CONFORMS (booklet "Expanded
+# Definition of Qualified Higher Education Expenses") to the apprenticeship-
+# program and qualified-education-loan §529 distributions added by the federal
+# Further Consolidated Appropriations Act, 2020; only the TCJA K-12 tuition
+# ($10k/yr) expansion remains CA-nonconforming. Pub 1001 page carried from
+# 2023 (substance of the K-12 nonconformity unchanged); unverified-in-repo.
+- id: "529-k-12-tuition-distributions-10k-tcja-ca-doesn-t-conform-ca-conforms-to-apprenticeship-education-loan-529-uses-per-fcaa-2020"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "§529 K-12 tuition distributions ($10k, TCJA): CA doesn't conform (CA conforms to apprenticeship/education-loan §529 uses per FCAA 2020)"
+  direction: "Add"
+  common: true
+  pub1001_page: 19
+  ircrtc: "IRC §529 (TCJA)"
+
+- id: "beverage-container-recycling-income-federal-taxes-ca-excludes-consumer-recycling-income"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Beverage container recycling income: federal taxes; CA excludes consumer recycling income"
+  direction: "Sub"
+  common: true
+  pub1001_page: 19
+  ircrtc: "—"
+
+- id: "rebates-from-local-water-energy-agencies-for-conservation-appliances-ca-excludes"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Rebates from local water/energy agencies for conservation appliances: CA excludes"
+  direction: "Sub"
+  common: true
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "native-american-reservation-income-per-capita-to-tribal-members-in-ca-indian-country-excluded"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Native American reservation income: per capita to tribal members in CA Indian country excluded"
+  direction: "Sub"
+  common: false
+  pub1001_page: 6
+  ircrtc: "R&TC 17131"
+
+# DROPPED for TY2021: the federal exclusion for qualified wildfire relief
+# payments derives from the Federal Disaster Tax Relief Act of 2023 (enacted
+# 12/2024), which postdates TY2021 and is absent from the 2021 booklet.
+
+# DROPPED for TY2023: no divergence — the SECURE 2.0 529->Roth rollover applies to distributions after 12/31/2023 (TY2024+).
+
+# DROPPED for TY2023: exclusion not yet in effect (begins 1/1/2024).
+
+# DROPPED for TY2021: the CA HOPE for Children Trust Account exclusion
+# (R&TC 17141.5) first applies to taxable years beginning on or after
+# 1/1/2023 (FTB 2023 booklet: "for taxable years beginning on or after
+# January 1, 2023"). AB 156 (2022) is the enacting statute but its effective
+# date is TY2023, not TY2022 as this comment previously stated — corrected
+# per source-side review (right outcome for TY2021, wrong stated reason).
+# Absent from the 2021 booklet. (DROPPED from TY2022 catalog too.)
+
+# DROPPED for TY2021 (source-side review correction): the Interagency
+# Council on Homelessness payment exclusion (R&TC 17131.13) first applies to
+# taxable years beginning on or after 1/1/2023 (FTB 2023 booklet — same
+# language as HOPE above). NOT in effect for TY2021; absent from the 2021
+# booklet, 2021 Pub 1001, and 2021 Sch CA line-8z enumeration. Originally
+# ported forward as an active row in error; row removed.
+
+# KEPT for TY2021: Kincade Fire (2019) PG&E settlement exclusion. Absent
+# from the 2021 booklet/Pub 1001, but defensible via the STATUTE'S OWN
+# retroactive window — R&TC 17139.2 applies to taxable years beginning on or
+# after 1/1/2020 and before 1/1/2028 (amended-return reach), which covers
+# TY2021. Citation below is the statute window, not a booklet/Pub 1001 page
+# (none exists for this provision in any year-specific source).
+- id: "kincade-fire-2019-pg-and-e-settlement-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Kincade Fire (2019) PG&E settlement: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: "n/a (statute window, not Pub 1001)"
+  ircrtc: "R&TC 17139.2 — TY beginning on/after 1/1/2020 and before 1/1/2028 (amended-return reach)"
+
+# KEPT for TY2021: Zogg Fire (2020) PG&E settlement exclusion. Same statute
+# structure as Kincade above — R&TC 17139.3 applies to taxable years
+# beginning on or after 1/1/2020 and before 1/1/2028 (amended-return reach).
+# Absent from the 2021 booklet/Pub 1001; defensible via the statute window.
+- id: "zogg-fire-2020-pg-and-e-settlement-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Zogg Fire (2020) PG&E settlement: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: "n/a (statute window, not Pub 1001)"
+  ircrtc: "R&TC 17139.3 — TY beginning on/after 1/1/2020 and before 1/1/2028 (amended-return reach)"
+
+# DROPPED for TY2021: the CA exclusion for discharged unpaid community-college
+# fees (R&TC 17131.21) first applies to taxable years beginning on or after
+# 1/1/2022 (2022 booklet p.4). Not in effect for TY2021. (RE-ADDED TY2022.)
+
+# DROPPED for TY2021 (source-side review correction): the guaranteed-income
+# pilot payment exclusion (R&TC 17131.12) has an exclusion window that opens
+# 6/30/2022 and closes 7/1/2026 (FTB 2023 booklet); all of TY2021 precedes
+# the window's start. NOT in effect for TY2021; absent from the 2021
+# booklet, 2021 Pub 1001, and 2021 Sch CA line-8z. Originally ported forward
+# as an active row in error; row removed. (KEPT for TY2022 — the window
+# opens inside that year; see the 2022 catalog, annotated with the same
+# statute-window citation.)
+
+- id: "ca-small-business-nonprofit-covid-19-sick-leave-relief-grant-ca-excludes"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "CA Small Business / Nonprofit COVID-19 Sick Leave Relief Grant: CA excludes"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "R&TC 17158, 24312"
+
+# DROPPED for TY2021: the CA turf-replacement water-conservation exclusion
+# (R&TC 17138.2) first applies to taxable years beginning on or after
+# 1/1/2022 (2022 booklet p.4). Not in effect for TY2021. (RE-ADDED TY2022.)
+
+# KEPT for TY2021: Fire Victims Trust settlement exclusion. Absent from the
+# 2021 booklet/Pub 1001, but defensible via the STATUTE'S OWN retroactive
+# window — R&TC 17138.5 applies to taxable years beginning before 1/1/2028.
+# Citation below is the statute window, not a booklet/Pub 1001 page.
+- id: "fire-victims-trust-payments-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Fire Victims Trust payments: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: "n/a (statute window, not Pub 1001)"
+  ircrtc: "R&TC 17138.5 — TY beginning before 1/1/2028"
+
+# KEPT for TY2021: Thomas Fire / Woolsey Fire settlement exclusion. Absent
+# from the 2021 booklet/Pub 1001, but defensible via the STATUTE'S OWN
+# retroactive window — R&TC 17138.6 applies to taxable years beginning
+# before 1/1/2027. Citation below is the statute window, not a booklet/Pub
+# 1001 page.
+- id: "thomas-fire-2017-and-woolsey-fire-2018-sce-settlement-ca-excludes"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Thomas Fire (2017) and Woolsey Fire (2018) SCE settlement: CA excludes"
+  direction: "Sub"
+  common: false
+  pub1001_page: "n/a (statute window, not Pub 1001)"
+  ircrtc: "R&TC 17138.6 — TY beginning before 1/1/2027"
+
+- id: "ca-microbusiness-covid-19-relief-grant-ca-excludes"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "CA Microbusiness COVID-19 Relief Grant: CA excludes"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "R&TC 17158.1, 24311"
+
+- id: "ca-venues-grant-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "CA Venues Grant: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "R&TC 17158, 24312"
+
+- id: "ca-small-business-covid-19-relief-grant-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "CA Small Business COVID-19 Relief Grant: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "—"
+
+- id: "tenant-rent-forgiveness-caa-2021-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Tenant rent forgiveness (CAA 2021): CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "—"
+
+- id: "ca-residential-mitigation-program-earthquake-authority-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "CA Residential Mitigation Program / Earthquake Authority: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "—"
+
+- id: "crime-hotline-reward-federal-taxes-ca-excludes-government-crime-hotline-rewards"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Crime hotline reward: federal taxes; CA excludes government crime hotline rewards"
+  direction: "Sub"
+  common: false
+  pub1001_page: 19
+  ircrtc: "—"
+
+- id: "oid-1985-86-debt-instruments-different-inclusion-deduction-at-maturity"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "OID 1985-86 debt instruments: different inclusion/deduction at maturity"
+  direction: "Both"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "nra-federal-1040-nr-us-source-only-ca-worldwide-for-residents-foreign-losses-income-adjustments"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "NRA: federal 1040-NR US-source only; CA worldwide for residents — foreign losses/income adjustments"
+  direction: "Both"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "federal-us-treaty-income-exemptions-ca-only-honors-treaties-that-specifically-exempt-state"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Federal US treaty income exemptions: CA only honors treaties that specifically exempt state"
+  direction: "Both"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "grants-to-low-income-for-energy-efficiency-retrofit-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Grants to low-income for energy-efficiency retrofit: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "death-benefits-for-ca-nat-l-guard-state-mil-reserve-naval-militia-post-3-1-2003-ca-excludes"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Death benefits for CA Nat'l Guard / State Mil Reserve / Naval Militia (post-3/1/2003): CA excludes"
+  direction: "Sub"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "ottoman-turkish-empire-persecution-1915-1923-settlement-ca-excludes-no-federal"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Ottoman Turkish Empire persecution (1915-1923) settlement: CA excludes (no federal)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 20
+  ircrtc: "—"
+
+- id: "survivor-benefits-for-public-safety-officer-killed-pre-1-1-1997-excluded-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Survivor benefits for public safety officer killed (pre-1/1/1997) excluded federally; CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 20
+  ircrtc: "IRC §101(h)"
+
+- id: "federal-rx-drug-plan-subsidies-139a-excluded-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "Federal Rx drug plan subsidies (§139A) excluded federally; CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 20
+  ircrtc: "IRC §139A"
+
+# ADDED for TY2021 (ARPA nonconformity): ARPA excluded COBRA premium
+# assistance subsidies from gross income for the coverage period 4/1/2021-
+# 9/30/2021. CA does not conform and includes the subsidy. 2021 Sch CA (540)
+# instr. line 8z: "enter the amount excluded from federal income on line 8z,
+# column C" (booklet p.49); 2021 booklet p.4. 2021-only (subsidy window closed
+# 9/30/2021). Pub 1001 page carried from adjacent §B 8z other-income rows
+# (p.17); unverified-in-repo for this specific item.
+
+- id: "cobra-premium-assistance-subsidy-excluded-federally-arpa-4-1-9-30-2021-ca-doesn-t-conform-includes-the-subsidy"
+  sch_ca_line: "Part I §B 8z"
+  section_title: "Other Income"
+  description: "COBRA premium assistance subsidy excluded federally (ARPA, 4/1-9/30/2021); CA doesn't conform — includes the subsidy"
+  direction: "Add"
+  common: false
+  pub1001_page: 17
+  ircrtc: "IRC §139I (ARPA)"
+
+# ── Part I §B 9b1 ─────────────────────────────────────────────────────────────
+
+- id: "federal-disaster-loss-carryover-differs-from-ca-disaster-loss-in-amount-and-period"
+  sch_ca_line: "Part I §B 9b1"
+  section_title: "Other Income"
+  description: "Federal disaster loss carryover differs from CA disaster loss in amount and period"
+  direction: "Sub"
+  common: false
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §B 9b2 ─────────────────────────────────────────────────────────────
+
+- id: "federal-nol-carryover-ca-nol-carryover-differs-in-suspension-limitation-and-characterization"
+  sch_ca_line: "Part I §B 9b2"
+  section_title: "Other Income"
+  description: "Federal NOL carryover; CA NOL carryover differs in suspension, limitation, and characterization"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §B 9b3 ─────────────────────────────────────────────────────────────
+
+- id: "ez-lambra-tta-nol-deduction-no-federal-equivalent"
+  sch_ca_line: "Part I §B 9b3"
+  section_title: "Other Income"
+  description: "EZ/LAMBRA/TTA NOL deduction (no federal equivalent)"
+  direction: "Sub"
+  common: false
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §C 11 ──────────────────────────────────────────────────────────────
+
+- id: "300-above-line-educator-expense-ca-doesn-t-conform-full-add-back"
+  sch_ca_line: "Part I §C 11"
+  section_title: "Educator Expenses"
+  description: "$300 above-line educator expense: CA doesn't conform; full add-back"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "IRC §62(a)(2)(D)"
+
+# ── Part I §C 12 ──────────────────────────────────────────────────────────────
+
+- id: "reservist-performing-artist-fee-basis-ca-conforms-but-depreciation-may-differ"
+  sch_ca_line: "Part I §C 12"
+  section_title: "Certain Business Expenses"
+  description: "Reservist/performing artist/fee-basis: CA conforms but depreciation may differ"
+  direction: "Both"
+  common: false
+  pub1001_page: 21
+  ircrtc: "—"
+
+- id: "tcja-eliminated-3k-members-of-congress-living-expense-deduction-ca-doesn-t-conform"
+  sch_ca_line: "Part I §C 12"
+  section_title: "Certain Business Expenses"
+  description: "TCJA eliminated $3k Members of Congress living-expense deduction; CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §C 13 ──────────────────────────────────────────────────────────────
+
+- id: "hsa-deduction-ca-disallows-also-adds-back-employer-hsa-from-w-2"
+  sch_ca_line: "Part I §C 13"
+  section_title: "HSA Deduction"
+  description: "HSA deduction: CA disallows; also adds back employer HSA from W-2"
+  direction: "Both"
+  common: true
+  pub1001_page: 9
+  ircrtc: "IRC §223"
+
+# ── Part I §C 14 ──────────────────────────────────────────────────────────────
+
+- id: "moving-expense-suspended-federally-except-active-duty-military-ca-allows-for-non-military"
+  sch_ca_line: "Part I §C 14"
+  section_title: "Moving Expenses"
+  description: "Moving expense suspended federally except active-duty military; CA allows for non-military"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "IRC §217 (TCJA)"
+
+# ── Part I §C 15 ──────────────────────────────────────────────────────────────
+
+- id: "se-tax-deduction-if-reclassified-as-employee-no-se-tax-deduction"
+  sch_ca_line: "Part I §C 15"
+  section_title: "Self-Employment Tax"
+  description: "SE tax deduction: if reclassified as employee, no SE-tax deduction"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §C 17 ──────────────────────────────────────────────────────────────
+
+- id: "se-health-insurance-ca-doesn-t-allow-deduction-for-adult-children-with-own-support"
+  sch_ca_line: "Part I §C 17"
+  section_title: "SE Health Insurance Deduction"
+  description: "SE health insurance: CA doesn't allow deduction for adult children with >½ own support"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "—"
+
+- id: "se-health-insurance-if-reclassified-as-employee-no-deduction"
+  sch_ca_line: "Part I §C 17"
+  section_title: "SE Health Insurance Deduction"
+  description: "SE health insurance: if reclassified as employee, no deduction"
+  direction: "Sub"
+  common: true
+  pub1001_page: 21
+  ircrtc: "—"
+
+# ── Part I §C 19a ─────────────────────────────────────────────────────────────
+
+- id: "alimony-paid-not-deductible-federally-post-2018-tcja-ca-allows"
+  sch_ca_line: "Part I §C 19a"
+  section_title: "Alimony Paid"
+  description: "Alimony paid: not deductible federally (post-2018 TCJA); CA allows"
+  direction: "Add"
+  common: true
+  pub1001_page: 22
+  ircrtc: "IRC §215 (TCJA)"
+
+- id: "nra-alimony-paid-not-deducted-federally-ca-allows"
+  sch_ca_line: "Part I §C 19a"
+  section_title: "Alimony Paid"
+  description: "NRA alimony paid not deducted federally; CA allows"
+  direction: "Add"
+  common: false
+  pub1001_page: 22
+  ircrtc: "—"
+
+# ── Part I §C 20 ──────────────────────────────────────────────────────────────
+
+- id: "repealed-federal-age-70-traditional-ira-cap-secure-ca-disallows-post-70-contributions"
+  sch_ca_line: "Part I §C 20"
+  section_title: "IRA Deduction"
+  description: "Repealed federal age 70½ traditional IRA cap (SECURE); CA disallows post-70½ contributions"
+  direction: "Sub"
+  common: true
+  pub1001_page: 22
+  ircrtc: "IRC §219 (SECURE)"
+
+- id: "indexed-1-000-catch-up-and-expanded-age-50-caa-2023-ca-doesn-t-conform"
+  sch_ca_line: "Part I §C 20"
+  section_title: "IRA Deduction"
+  description: "Indexed $1,000 catch-up and expanded age 50+ (CAA 2023): CA doesn't conform"
+  direction: "Sub"
+  common: true
+  pub1001_page: 22
+  ircrtc: "IRC §414(v) (CAA 2023)"
+
+# ── Part I §C 21 ──────────────────────────────────────────────────────────────
+
+- id: "student-loan-interest-ca-conforms-except-non-ca-domiciled-military-spouse-in-community-property-state"
+  sch_ca_line: "Part I §C 21"
+  section_title: "Student Loan Interest"
+  description: "Student loan interest: CA conforms except non-CA-domiciled military spouse in community-property state"
+  direction: "Add"
+  common: false
+  pub1001_page: 22
+  ircrtc: "IRC §221"
+
+# ── Part I §C 24b ─────────────────────────────────────────────────────────────
+
+- id: "personal-property-rental-expenses-ca-generally-conforms-differences-may-apply"
+  sch_ca_line: "Part I §C 24b"
+  section_title: "Personal Property Rental Expenses"
+  description: "Personal-property rental expenses: CA generally conforms; differences may apply"
+  direction: "Both"
+  common: false
+  pub1001_page: 22
+  ircrtc: "—"
+
+# ── Part I §C 24c ─────────────────────────────────────────────────────────────
+
+- id: "olympic-paralympic-medals-and-usoc-prize-1m-agi-cap-excluded-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §C 24c"
+  section_title: "Olympic Medals"
+  description: "Olympic/Paralympic medals and USOC prize ($1M AGI cap) excluded federally; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 22
+  ircrtc: "IRC §74(d)"
+
+# ── Part I §C 24d ─────────────────────────────────────────────────────────────
+
+- id: "federal-reforestation-amortization-any-state-ca-only-ca-located"
+  sch_ca_line: "Part I §C 24d"
+  section_title: "Reforestation Amortization"
+  description: "Federal reforestation amortization any-state; CA only CA-located"
+  direction: "Sub"
+  common: false
+  pub1001_page: 22
+  ircrtc: "—"
+
+# ── Part I §C 24f ─────────────────────────────────────────────────────────────
+
+- id: "pension-contribution-amount-501-c-18-d-ca-may-differ-from-federal"
+  sch_ca_line: "Part I §C 24f"
+  section_title: "Pension Contributions"
+  description: "Pension contribution amount (§501(c)(18)(D)): CA may differ from federal"
+  direction: "Both"
+  common: false
+  pub1001_page: 22
+  ircrtc: "IRC §501(c)(18)(D)"
+
+# ── Part I §C 24g ─────────────────────────────────────────────────────────────
+
+- id: "chaplain-contribution-amount-403-b-ca-may-differ-from-federal"
+  sch_ca_line: "Part I §C 24g"
+  section_title: "Chaplain Contributions"
+  description: "Chaplain contribution amount (§403(b)): CA may differ from federal"
+  direction: "Both"
+  common: false
+  pub1001_page: 22
+  ircrtc: "IRC §403(b)"
+
+# ── Part I §C 24i ─────────────────────────────────────────────────────────────
+
+- id: "irs-whistleblower-attorney-fees-excluded-federally-ca-doesn-t-conform"
+  sch_ca_line: "Part I §C 24i"
+  section_title: "Whistleblower Attorney Fees"
+  description: "IRS whistleblower attorney fees excluded federally; CA doesn't conform"
+  direction: "Sub"
+  common: false
+  pub1001_page: 22
+  ircrtc: "—"
+
+# ── Part I §C 24j ─────────────────────────────────────────────────────────────
+
+- id: "foreign-housing-deduction-form-2555-no-similar-ca-deduction"
+  sch_ca_line: "Part I §C 24j"
+  section_title: "Foreign Housing Deduction"
+  description: "Foreign housing deduction (Form 2555): no similar CA deduction"
+  direction: "Sub"
+  common: false
+  pub1001_page: 22
+  ircrtc: "IRC §911"
+
+# ── Part II 4 ─────────────────────────────────────────────────────────────────
+
+- id: "medical-expenses-for-hsa-paid-items-federal-disallows-ca-allows-above-7-5-agi"
+  sch_ca_line: "Part II 4"
+  section_title: "Medical Expenses"
+  description: "Medical expenses for HSA-paid items: federal disallows; CA allows above 7.5% AGI"
+  direction: "Add"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §223"
+
+- id: "se-health-insurance-above-line-if-reclassified-as-employee-may-shift-to-sch-a-medical"
+  sch_ca_line: "Part II 4"
+  section_title: "Medical Expenses"
+  description: "SE health insurance above-line: if reclassified as employee, may shift to Sch A medical"
+  direction: "Add"
+  common: false
+  pub1001_page: 23
+  ircrtc: "—"
+
+# ── Part II 5a ────────────────────────────────────────────────────────────────
+
+- id: "state-local-income-or-sales-tax-deduction-ca-disallows-fully"
+  sch_ca_line: "Part II 5a"
+  section_title: "Taxes Paid"
+  description: "State/local income or sales tax deduction: CA disallows fully"
+  direction: "Sub"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §164, R&TC 17220"
+
+# ── Part II 5e ────────────────────────────────────────────────────────────────
+
+- id: "salt-cap-tcja-10k-5k-mfs-flat-with-no-income-phaseout-for-ty2021-ca-has-no-salt-cap-on-property-tax"
+  sch_ca_line: "Part II 5e"
+  section_title: "SALT Cap"
+  description: "SALT cap: TCJA $10k ($5k MFS), flat with no income phaseout for TY2021; CA has no SALT cap on property tax"
+  direction: "Add"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §164(b)(6) (TCJA)"
+
+# ── Part II 6 ─────────────────────────────────────────────────────────────────
+
+- id: "foreign-income-and-generation-skipping-tax-deductible-federally-ca-disallows"
+  sch_ca_line: "Part II 6"
+  section_title: "Foreign Taxes"
+  description: "Foreign income and generation-skipping tax deductible federally; CA disallows"
+  direction: "Sub"
+  common: false
+  pub1001_page: 23
+  ircrtc: "IRC §164"
+
+- id: "foreign-property-tax-suspended-federally-ca-allows"
+  sch_ca_line: "Part II 6"
+  section_title: "Foreign Taxes"
+  description: "Foreign property tax suspended federally; CA allows"
+  direction: "Add"
+  common: false
+  pub1001_page: 23
+  ircrtc: "IRC §164 (TCJA)"
+
+# ── Part II 8 ─────────────────────────────────────────────────────────────────
+
+- id: "acquisition-debt-cap-federal-750k-375k-tcja-ca-1m-500k"
+  sch_ca_line: "Part II 8"
+  section_title: "Home Mortgage Interest"
+  description: "Acquisition debt cap: federal $750k/$375k (TCJA); CA $1M/$500k"
+  direction: "Add"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §163(h)(3)(F) (TCJA)"
+
+- id: "100k-hel-interest-suspended-federally-unless-used-for-improvement-ca-doesn-t-conform"
+  sch_ca_line: "Part II 8"
+  section_title: "Home Mortgage Interest"
+  description: "$100k HEL interest suspended federally unless used for improvement; CA doesn't conform"
+  direction: "Add"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §163(h)(3)(C) (TCJA)"
+
+- id: "federal-mortgage-interest-credit-reduces-deduction-no-ca-credit-restore-full-deduction"
+  sch_ca_line: "Part II 8"
+  section_title: "Home Mortgage Interest"
+  description: "Federal mortgage-interest credit reduces deduction; no CA credit — restore full deduction"
+  direction: "Add"
+  common: false
+  pub1001_page: 23
+  ircrtc: "—"
+
+# ── Part II 9 ─────────────────────────────────────────────────────────────────
+
+- id: "investment-interest-form-4952-ftb-3526-ca-amount-may-differ-from-federal"
+  sch_ca_line: "Part II 9"
+  section_title: "Investment Interest"
+  description: "Investment interest (Form 4952 / FTB 3526): CA amount may differ from federal"
+  direction: "Both"
+  common: false
+  pub1001_page: 23
+  ircrtc: "—"
+
+# ── Part II 11 ────────────────────────────────────────────────────────────────
+
+- id: "cash-charitable-deduction-cap-federal-60-agi-ca-50-of-federal-agi-charitable-contributions"
+  sch_ca_line: "Part II 11"
+  section_title: "Charitable Contributions"
+  description: "Cash charitable deduction cap: federal 60% AGI; CA 50% of federal AGI"
+  direction: "Sub"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §170(b)"
+
+- id: "college-athletic-seating-rights-disallowed-federally-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part II 11"
+  section_title: "Charitable Contributions"
+  description: "College athletic seating rights disallowed federally (TCJA); CA doesn't conform"
+  direction: "Add"
+  common: false
+  pub1001_page: 23
+  ircrtc: "IRC §170(l) (TCJA)"
+
+- id: "college-access-tax-credit-fund-deduction-must-remove-if-claiming-ca-credit"
+  sch_ca_line: "Part II 11"
+  section_title: "Charitable Contributions"
+  description: "College Access Tax Credit Fund deduction: must remove if claiming CA credit"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "R&TC 17053.86"
+
+- id: "postsecondary-charitable-deduction-ca-disallows-for-criminal-complaint-defendants-charitable-contributions"
+  sch_ca_line: "Part II 11"
+  section_title: "Charitable Contributions"
+  description: "Postsecondary charitable deduction: CA disallows for criminal-complaint defendants"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "R&TC 17275.4"
+
+# ── Part II 12 ────────────────────────────────────────────────────────────────
+
+- id: "cash-charitable-deduction-cap-federal-60-agi-ca-50-of-federal-agi-charitable-contributions-2"
+  sch_ca_line: "Part II 12"
+  section_title: "Charitable Contributions"
+  description: "Cash charitable deduction cap: federal 60% AGI; CA 50% of federal AGI"
+  direction: "Sub"
+  common: true
+  pub1001_page: 23
+  ircrtc: "IRC §170(b)"
+
+- id: "conservation-easement-federal-50-agi-ca-30-agi"
+  sch_ca_line: "Part II 12"
+  section_title: "Charitable Contributions"
+  description: "Conservation easement: federal 50% AGI; CA 30% AGI"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "IRC §170(b)(1)(E)"
+
+- id: "postsecondary-charitable-deduction-ca-disallows-for-criminal-complaint-defendants-charitable-contributions-2"
+  sch_ca_line: "Part II 12"
+  section_title: "Charitable Contributions"
+  description: "Postsecondary charitable deduction: CA disallows for criminal-complaint defendants"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "R&TC 17275.4"
+
+# ── Part II 13 ────────────────────────────────────────────────────────────────
+
+- id: "federal-charitable-carryover-may-be-smaller-than-ca-carryover"
+  sch_ca_line: "Part II 13"
+  section_title: "Charitable Carryover"
+  description: "Federal charitable carryover may be smaller than CA carryover"
+  direction: "Add"
+  common: false
+  pub1001_page: 24
+  ircrtc: "—"
+
+- id: "conservation-easement-carryover-federal-15-yr-ca-5-yr"
+  sch_ca_line: "Part II 13"
+  section_title: "Charitable Carryover"
+  description: "Conservation easement carryover: federal 15-yr; CA 5-yr"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "IRC §170(b)(1)(E)"
+
+- id: "pre-1-1-2002-stock-to-private-foundation-federal-fmv-ca-limits-to-basis"
+  sch_ca_line: "Part II 13"
+  section_title: "Charitable Carryover"
+  description: "Pre-1/1/2002 stock to private foundation: federal FMV; CA limits to basis"
+  direction: "Sub"
+  common: false
+  pub1001_page: 24
+  ircrtc: "—"
+
+# ── Part II 15 ────────────────────────────────────────────────────────────────
+
+- id: "personal-casualty-theft-suspended-federally-except-federal-disaster-ca-allows-broader-ca-disaster"
+  sch_ca_line: "Part II 15"
+  section_title: "Casualty and Theft Losses"
+  description: "Personal casualty/theft suspended federally except federal disaster; CA allows broader CA-disaster"
+  direction: "Both"
+  common: true
+  pub1001_page: 24
+  ircrtc: "IRC §165(h) (TCJA)"
+
+# ── Part II 16 ────────────────────────────────────────────────────────────────
+
+- id: "gambling-losses-up-to-winnings-incl-ca-lottery-ca-disallows-ca-lottery-losses"
+  sch_ca_line: "Part II 16"
+  section_title: "Other Itemized Deductions"
+  description: "Gambling losses up to winnings (incl. CA Lottery): CA disallows CA Lottery losses"
+  direction: "Sub"
+  common: true
+  pub1001_page: 25
+  ircrtc: "—"
+
+- id: "form-2106-unreimbursed-impairment-related-work-pre-1-1-1987-depreciation-differs"
+  sch_ca_line: "Part II 16"
+  section_title: "Other Itemized Deductions"
+  description: "Form 2106 unreimbursed impairment-related work: pre-1/1/1987 depreciation differs"
+  direction: "Both"
+  common: false
+  pub1001_page: 25
+  ircrtc: "—"
+
+- id: "federal-estate-tax-on-ird-deductible-federally-ca-disallows"
+  sch_ca_line: "Part II 16"
+  section_title: "Other Itemized Deductions"
+  description: "Federal estate tax on IRD deductible federally; CA disallows"
+  direction: "Sub"
+  common: false
+  pub1001_page: 25
+  ircrtc: "—"
+
+- id: "claim-of-right-deduction-or-credit-ca-uses-ca-tax-rate-ss-repayment-not-deductible-by-ca"
+  sch_ca_line: "Part II 16"
+  section_title: "Other Itemized Deductions"
+  description: "Claim of right deduction-or-credit: CA uses CA-tax-rate; SS repayment not deductible by CA"
+  direction: "Both"
+  common: false
+  pub1001_page: 25
+  ircrtc: "IRC §1341"
+
+# ── Part II 19 ────────────────────────────────────────────────────────────────
+
+- id: "2-misc-itemized-deductions-suspended-federally-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part II 19"
+  section_title: "Misc Itemized Deductions"
+  description: "2% misc itemized deductions suspended federally (TCJA); CA doesn't conform"
+  direction: "Sub"
+  common: true
+  pub1001_page: 26
+  ircrtc: "IRC §67 (TCJA)"
+
+# ── Part II 20 ────────────────────────────────────────────────────────────────
+
+- id: "tax-preparation-fees-suspended-federally-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part II 20"
+  section_title: "Tax Preparation Fees"
+  description: "Tax preparation fees suspended federally (TCJA); CA doesn't conform"
+  direction: "Sub"
+  common: true
+  pub1001_page: 26
+  ircrtc: "IRC §67 (TCJA)"
+
+# ── Part II 21 ────────────────────────────────────────────────────────────────
+
+- id: "other-expenses-2-floor-suspended-federally-tcja-ca-doesn-t-conform"
+  sch_ca_line: "Part II 21"
+  section_title: "Other Expenses"
+  description: "'Other expenses' 2% floor suspended federally (TCJA); CA doesn't conform"
+  direction: "Sub"
+  common: true
+  pub1001_page: 26
+  ircrtc: "IRC §67 (TCJA)"
+
+# ── Part II 27 ────────────────────────────────────────────────────────────────
+
+- id: "ca-itemized-adjustments-adoption-nontaxable-income-legislator-travel-utility-loan-interest"
+  sch_ca_line: "Part II 27"
+  section_title: "Other CA Itemized Adjustments"
+  description: "CA itemized adjustments: adoption, nontaxable income, legislator travel, utility loan interest"
+  direction: "Both"
+  common: false
+  pub1001_page: 26
+  ircrtc: "—"
+
+# ── Sch D 540 ─────────────────────────────────────────────────────────────────
+
+- id: "1031-exchange-federal-limited-to-real-property-ca-conforms-post-1-10-2019-but-only-agi-250k-500k"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "§1031 exchange: federal limited to real property; CA conforms post-1/10/2019 but only AGI ≥ $250k/$500k"
+  direction: "Both"
+  common: true
+  pub1001_page: 16
+  ircrtc: "IRC §1031 (TCJA), R&TC 18031.5"
+
+- id: "federal-basis-differs-from-ca-basis-due-to-depreciation-179-bonus-differences"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "Federal basis differs from CA basis due to depreciation/§179/bonus differences"
+  direction: "Both"
+  common: true
+  pub1001_page: 16
+  ircrtc: "—"
+
+- id: "patents-inventions-excluded-from-federal-capital-asset-tcja-ca-doesn-t-conform-treats-as-capital"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "Patents/inventions excluded from federal 'capital asset' (TCJA); CA doesn't conform — treats as capital"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "IRC §1221 (TCJA)"
+
+- id: "qoz-fund-capital-gain-deferral-exclusion-ca-doesn-t-conform"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "QOZ Fund capital gain deferral/exclusion: CA doesn't conform"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "IRC §1400Z-1/2"
+
+- id: "assisted-housing-sale-federal-no-deferral-ca-permits-deferral-if-reinvested-within-2-yrs"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "Assisted-housing sale: federal no deferral; CA permits deferral if reinvested within 2 yrs"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "R&TC 18041.5"
+
+- id: "ric-undistributed-cap-gains-form-2439-federal-includes-credit-no-ca-provision"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "RIC undistributed cap gains (Form 2439): federal includes credit; no CA provision"
+  direction: "Sub"
+  common: false
+  pub1001_page: 10
+  ircrtc: "—"
+
+- id: "inherited-basis-federal-fmv-at-death-pre-1-1-1987-inheritances-may-differ"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "Inherited basis: federal FMV at death; pre-1/1/1987 inheritances may differ"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "—"
+
+- id: "capital-loss-carrybacks-corporate-federal-allows-ca-has-no-carryback"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "Capital loss carrybacks (corporate): federal allows; CA has no carryback"
+  direction: "Add"
+  common: false
+  pub1001_page: 10
+  ircrtc: "IRC §1212"
+
+- id: "qsbs-gain-5yr-federal-defers-excludes-1045-1202-ca-doesn-t-conform-full-gain"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "QSBS gain >5yr: federal defers/excludes (§1045/1202); CA doesn't conform — full gain"
+  direction: "Both"
+  common: false
+  pub1001_page: 10
+  ircrtc: "IRC §1045/1202"
+
+- id: "cars-act-rebates-federal-non-taxable-excess-over-basis-is-capital-gain-for-ca"
+  sch_ca_line: "Sch D 540"
+  section_title: "Capital Gains/Losses"
+  description: "CARS Act rebates: federal non-taxable; excess over basis is capital gain for CA"
+  direction: "Add"
+  common: false
+  pub1001_page: 16
+  ircrtc: "—"

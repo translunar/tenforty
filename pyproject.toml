@@ -22,6 +22,12 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["tenforty*"]
 
+[tool.setuptools.package-data]
+# Ship the packaged runtime data files (e.g. the CA Schedule CA divergence
+# catalogs) as package data so importlib.resources can resolve them.
+"tenforty.params.california.divergences" = ["*.yaml"]
+"tenforty.templates" = ["*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
