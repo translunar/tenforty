@@ -114,7 +114,20 @@ can never disagree with the catalog. `DivergenceSource` gains `CATALOG_AUTO`
 
 `forms/sch_ca.py` loads the year's catalog (packaged data, fail-closed on
 missing/malformed), derives auto rows, merges user rows, and routes by the
-catalog's `sch_ca_line` — which now exists in exactly one place. A
+catalog's `sch_ca_line` — which now exists in exactly one place.
+
+**Direction semantics and the §C sign fix (added 2026-07-19, adjudicated):**
+`direction` means the printed Schedule CA COLUMN everywhere
+(SUBTRACTION=col B, ADDITION=col C) — it is not an income-effect claim.
+The form nets Part I Section C against income (line 27 = line 10 − line 26
+per column, verified on the 2025 form), so a §C col-B amount RAISES CA AGI
+and a §C col-C amount LOWERS it. The pre-redesign kernel applied a flat
+`agi − Σsub + Σadd` with no section partition — sign-inverted for every
+§C row (production bug, found by this redesign's content audit; latent
+because no auto rule or filed scenario ever carried a §C row, live for
+worksheet/user §C input). The kernel fix (section-partitioned totals with
+the line-27 netting) is IN SCOPE for this redesign: shipping id-keyed §C
+user input over the flat formula would productionize the inversion. A
 schema-level test enumerates the catalog's line labels against the known
 Schedule CA line set per year, so a typo is a suite failure, not a dropped
 amount. Part II itemized is untouched (separate path, out of scope).
