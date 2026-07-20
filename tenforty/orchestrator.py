@@ -24,7 +24,6 @@ from tenforty.forms import f1120s as form_f1120s
 from tenforty.forms import f100s as form_f100s
 from tenforty.forms import f100s_k1 as form_f100s_k1
 from tenforty.forms import sch_ca as form_sch_ca
-from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
 from tenforty.ca_divergences import (
     check_unaddressed_divergences,
     entry_citation,
@@ -62,7 +61,6 @@ from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.models import (
     AmendmentCase,
     CA540Return,
-    CASchD540Adjustment,
     EntityType,
     FilingStatus,
     ItemizedDeductions,
@@ -1446,22 +1444,29 @@ class ReturnOrchestrator:
         emitted = self._emit_pdfs_internal(effective_scenario, results, output_dir)
         return results, emitted
 
-    def discover_fods_divergences(
-        self, federal_yaml_path: Path, fods_override: Path | None = None,
-    ) -> FodsDivergences:
-        """Locate and parse the `<basename>.ca.fods` worksheet, if any.
+    def _reject_legacy_fods(self, federal_yaml_path: Path) -> None:
+        """Detect-and-explain guard for the retired ``.ca.fods`` worksheet.
 
-        Discovery rules:
-        - If ``fods_override`` is given, parse it (no auto-discovery).
-        - Otherwise look for ``<basename>.ca.fods`` next to the federal YAML.
-        - Return empty FodsDivergences if no .fods is found and no override given.
+        The FODS worksheet round-trip was retired (docs/specs/2026-07-19-ca-
+        divergence-catalog-redesign.md §3): the CA divergence catalog is now
+        the single runtime source of truth and user divergences are authored
+        directly in the ``.ca.yaml``. For one release we detect a leftover
+        ``<basename>.ca.fods`` and RAISE an explanatory error rather than
+        silently ignoring it — a silent ignore would drop the user's amounts.
         """
-        if fods_override is not None:
-            return import_fods_divergences(fods_override)
         candidate = federal_yaml_path.with_suffix(".ca.fods")
         if candidate.exists():
-            return import_fods_divergences(candidate)
-        return FodsDivergences()
+            raise ValueError(
+                f"Found a legacy CA divergence worksheet at {candidate}. "
+                "The `.ca.fods` worksheet round-trip has been RETIRED "
+                "(docs/specs/2026-07-19-ca-divergence-catalog-redesign.md §3). "
+                "Author your CA divergences directly in the `.ca.yaml` instead, "
+                "using the `divergences:` list (id + amount, validated against "
+                "the year's CA divergence catalog) and the `reviewed:` list for "
+                "triggered entries you examined and zeroed. Then delete the "
+                f"`{candidate.name}` file. See the catalog ids in "
+                "tenforty/params/california/divergences/y<year>.yaml."
+            )
 
     def run_full_california_return(
         self,
@@ -1469,8 +1474,6 @@ class ReturnOrchestrator:
         ca_yaml_path: Path,
         output_dir: Path,
         federal_yaml_path: Path | None = None,
-        fods_path: Path | None = None,
-        disable_fods: bool = False,
     ) -> tuple[dict, dict[str, Path]]:
         """Canonical CA-state entry point. Re-derives federal results, runs
         Sch CA + Sch D 540 + 540 main compute, emits state PDFs.
@@ -1512,17 +1515,11 @@ class ReturnOrchestrator:
         effective_ca540 = self._build_effective_ca540(
             scenario.ca540, ca_yaml, scenario.config.year)
 
-        # 3b. Discover and merge .fods worksheet divergences, if any.
-        fods_div = (
-            FodsDivergences()
-            if disable_fods or federal_yaml_path is None
-            else self.discover_fods_divergences(
-                federal_yaml_path=federal_yaml_path,
-                fods_override=fods_path,
-            )
-        )
-        if fods_div.sch_ca:
-            effective_ca540 = effective_ca540.with_extra_divergences(fods_div.sch_ca)
+        # 3b. Detect-and-explain guard for the retired `.ca.fods` worksheet.
+        #     Divergences now live in the `.ca.yaml` (spec §3); a leftover
+        #     worksheet raises rather than being silently ignored.
+        if federal_yaml_path is not None:
+            self._reject_legacy_fods(federal_yaml_path)
         # 4. Re-derive federal results. compute_federal exposes sch_1_line_*
         #    keys directly (per #80), so downstream CA computes consume the
         #    federal results dict without an interim bridge.
@@ -1531,7 +1528,6 @@ class ReturnOrchestrator:
         # 5-7. CA computes (Sch CA → Sch D 540 → Form 540 main) + header merge.
         ca_results = self._compute_ca_results(
             scenario, effective_ca540, federal_results,
-            sch_d_540_adjustments=fods_div.sch_d_540,
         )
 
         # 8. Emit PDFs.
@@ -1545,7 +1541,6 @@ class ReturnOrchestrator:
                 output_dir=output_dir,
                 effective_ca540=effective_ca540,
                 federal_results=federal_results,
-                sch_d_540_adjustments=fods_div.sch_d_540,
                 year=scenario.config.year,
             )
 
@@ -1556,7 +1551,6 @@ class ReturnOrchestrator:
         scenario: Scenario,
         effective_ca540: CA540Return,
         federal_results: dict,
-        sch_d_540_adjustments=(),
     ) -> dict:
         """Compute the merged CA-state results dict (Sch CA → Sch D 540 →
         Form 540 main + identity header keys) from an already-resolved
@@ -1581,9 +1575,7 @@ class ReturnOrchestrator:
             scenario, effective_ca540, scenario.config.year)
         sch_ca_results = form_sch_ca.compute(
             effective_ca540, federal_results, scenario.config.year)
-        sch_d_540_results = form_sch_d_540.compute(
-            federal_results, worksheet_adjustments=list(sch_d_540_adjustments),
-        )
+        sch_d_540_results = form_sch_d_540.compute(federal_results)
         # Schedule CA Part II — CA itemized deductions, computed only when the
         # federal return actually APPLIED itemized deductions (see
         # sch_ca.federal_itemization_applied). Inherits sch_a.compute's scope
@@ -1857,19 +1849,18 @@ class ReturnOrchestrator:
         output_dir: Path,
         effective_ca540: CA540Return,
         federal_results: dict,
-        sch_d_540_adjustments: list[CASchD540Adjustment],
         year: int,
     ) -> None:
         """Write a debug ``<basename>.ca-resolved.yaml`` capturing the merged
         in-memory CA view (federal context + ca540 with all divergences
-        flattened + Sch D 540 worksheet entries). User-facing review artifact;
-        never read back by tenforty."""
+        flattened). User-facing review artifact; never read back by
+        tenforty."""
         basename = federal_yaml_path.stem
         snapshot_path = output_dir / f"{basename}.ca-resolved.yaml"
         # Merge the derived catalog-auto divergences into the SNAPSHOT view only
         # (compute derives them independently; this does not feed compute), so
         # the resolved snapshot records every materialized adjustment's origin —
-        # USER / WORKSHEET rows plus CATALOG_AUTO rows — each with its catalog_id.
+        # USER rows plus CATALOG_AUTO rows — each with its catalog_id.
         auto_divergences = form_sch_ca.derive_auto_divergences(
             federal_results, year, ca540=effective_ca540
         )
@@ -1881,16 +1872,6 @@ class ReturnOrchestrator:
                 "filing_status": federal_results.get("filing_status"),
             },
             "ca540": _ca540_to_yaml_dict(snapshot_ca540),
-            "sch_d_540_divergences": [
-                {
-                    "source": d.source.name,
-                    "direction": d.direction.name,
-                    "amount": d.amount,
-                    "description": d.description,
-                    "pub1001_ref": d.pub1001_ref,
-                }
-                for d in sch_d_540_adjustments
-            ],
         }
         snapshot_path.write_text(yaml.safe_dump(payload, sort_keys=False))
 

@@ -1052,7 +1052,7 @@ class SchCASectionCProductionParityTests(unittest.TestCase):
         production = sch_ca_compute(
             ca540=CA540Return(divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.WORKSHEET,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §C 13",
                     direction=DivergenceDirection.SUBTRACTION,
                     amount=amount,
@@ -1099,7 +1099,7 @@ class SchCASectionCProductionParityTests(unittest.TestCase):
         production = sch_ca_compute(
             ca540=CA540Return(divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.WORKSHEET,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §C 14",
                     direction=DivergenceDirection.ADDITION,
                     amount=amount,

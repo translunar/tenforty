@@ -8,6 +8,7 @@ import unittest
 
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
+from tenforty.ca_divergences import load_catalog as load_divergence_catalog
 from tenforty.mappings.catalog import (
     AMENDMENT_KNOWN_GAPS,
     CATALOG,
@@ -144,16 +145,15 @@ class CaliforniaCompletenessTests(unittest.TestCase):
             with self.subTest(year=year, piece="tax_table"):
                 self.assertGreater(len(load_table("california", year)), 500)
             with self.subTest(year=year, piece="divergence_catalog"):
-                # The CA divergence catalog is authored per year as
-                # sch_ca_divergences-<year>.catalog.yaml (the populated,
-                # hand-authored artifact consumed by
-                # scripts/build_sch_ca_fods.py). Adding a new CA year to the
-                # manifest reddens this gate until that year's catalog ships.
-                catalog = (REPO_ROOT / "spreadsheets" / "california" / str(year)
-                           / f"sch_ca_divergences-{year}.catalog.yaml")
-                self.assertTrue(catalog.exists(), f"missing {catalog}")
-                self.assertGreater(catalog.stat().st_size, 0,
-                                   f"{catalog} is empty")
+                # The CA divergence catalog is the packaged, runtime-loaded
+                # source of truth at tenforty/params/california/divergences/
+                # y<year>.yaml (spec §3; the old spreadsheets .catalog.yaml +
+                # .fods worksheet round-trip was retired). Adding a new CA year
+                # to the manifest reddens this gate until that year's catalog
+                # ships.
+                catalog_rows = load_divergence_catalog(year)
+                self.assertGreater(len(catalog_rows), 0,
+                                   f"empty CA divergence catalog for {year}")
             for (juris, form), entry in sorted(CATALOG.items()):
                 if juris != "california" or (juris, form, year) in KNOWN_GAPS:
                     continue
