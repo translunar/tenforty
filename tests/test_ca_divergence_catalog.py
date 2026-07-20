@@ -525,13 +525,20 @@ class SchemaGateTests(unittest.TestCase):
         # bookkeeping for a deliberate, behavior-preserving row addition, NOT a
         # divergence-content change: the emitted divergences (amount/line/
         # direction) are byte-for-byte identical to the pre-migration tuples.
+        #
+        # Re-pinned by the C-FRAME moving-expense direction ruling (2026-07-19):
+        # 300/344/424 -> 306/344/418. Overturned ruling #1 (BOTH moving rows are
+        # ADDITIONs): the moving-expense §A (wages "Part I §A 1h"; 2021 "Part I
+        # line 1") and §C ("Part I §C 14") rows carry direction=Add in every
+        # year. 2021/2022 were already Add; the 2023/2024/2025 pairs (6 rows)
+        # flipped Sub->Add. Net delta: Add +6, Sub -6 (Both unchanged).
         counts = {CatalogDirection.ADD: 0, CatalogDirection.BOTH: 0, CatalogDirection.SUB: 0}
         for year in YEARS:
             for entry in load_catalog(year):
                 counts[entry.direction] += 1
-        self.assertEqual(counts[CatalogDirection.ADD], 300)
+        self.assertEqual(counts[CatalogDirection.ADD], 306)
         self.assertEqual(counts[CatalogDirection.BOTH], 344)
-        self.assertEqual(counts[CatalogDirection.SUB], 424)
+        self.assertEqual(counts[CatalogDirection.SUB], 418)
 
 
 class SourceCitationSchemaTests(unittest.TestCase):
