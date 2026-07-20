@@ -34,7 +34,7 @@ def _build_minimal_ca_results(scenario: Scenario) -> dict:
     placeholders come from `scenario.config`.
 
     T17 will replace this manual assembly with the real compute pipeline:
-        sch_ca_results = sch_ca.compute(effective_ca540, federal_results)
+        sch_ca_results = sch_ca.compute(effective_ca540, federal_results, year)
         sch_d_540_results = sch_d_540.compute(federal_results, scenario.config.__dict__)
         f540_results = f540.compute(...)
         ca_results = {**sch_ca_results, **sch_d_540_results, **f540_results,

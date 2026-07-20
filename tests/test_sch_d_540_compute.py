@@ -6,7 +6,7 @@ from tenforty.models import CASchD540Adjustment, DivergenceDirection, Divergence
 
 def _adj(direction: DivergenceDirection, amount: float) -> CASchD540Adjustment:
     return CASchD540Adjustment(
-        source=DivergenceSource.WORKSHEET,
+        source=DivergenceSource.USER,
         direction=direction,
         amount=amount,
         description="test",

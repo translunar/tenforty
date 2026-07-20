@@ -4,15 +4,16 @@ from pathlib import Path
 import yaml
 
 from tenforty.attestations import validate_load_time
+from tenforty.ca_divergences import (
+    materialize_user_divergence,
+    resolve_divergence_id,
+)
 from tenforty.params.federal import load as load_federal_params
 from tenforty.models import (
     AccountingMethod,
     Address,
     CA540Return,
-    CASchCAAdjustment,
     DepreciableAsset,
-    DivergenceDirection,
-    DivergenceSource,
     EntityType,
     FilingStatus,
     Form1095A,
@@ -246,21 +247,62 @@ def _load_voluntary_contribution(data: dict) -> VoluntaryContribution:
     )
 
 
-def _load_ca_divergence(data: dict) -> CASchCAAdjustment:
-    return CASchCAAdjustment(
-        source=DivergenceSource(data["source"]),
-        sch_ca_line=data["sch_ca_line"],
-        direction=DivergenceDirection(data["direction"]),
-        amount=float(data["amount"]),
-        description=data["description"],
-        federal_source=data.get("federal_source"),
-        pub1001_ref=data.get("pub1001_ref"),
-    )
+# Keys recognized inside each id-keyed `divergences` entry (spec §2.2). The
+# loader is fail-closed: an unknown key raises rather than silently dropping.
+_KNOWN_DIVERGENCE_KEYS: frozenset[str] = frozenset({"id", "amount", "note", "direction"})
 
 
-def _load_ca540(data: dict | None) -> CA540Return | None:
+def _load_ca_divergence(data: dict, year: int) -> "CASchCAAdjustment":
+    """Materialize ONE id-keyed scenario divergence against the ``year`` catalog.
+
+    The user supplies only ``{id, amount, note?}`` (+ ``direction`` for BOTH
+    rows); ``resolve_divergence_id`` + ``materialize_user_divergence`` pull the
+    column/line/description from the catalog so a user row can never disagree
+    with it. Unknown keys, an unknown id, a non-positive amount, and the
+    direction-key rules all fail closed (see ``ca_divergences``)."""
+    if not isinstance(data, dict) or "id" not in data:
+        raise ValueError(
+            "Each ca540.divergences entry must be a mapping with an `id` key "
+            f"(id-keyed input; got {data!r})."
+        )
+    unknown = set(data) - _KNOWN_DIVERGENCE_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in ca540 divergence {data['id']!r}: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_DIVERGENCE_KEYS)}")
+    if "amount" not in data:
+        raise ValueError(
+            f"ca540 divergence {data['id']!r} is missing required key `amount`.")
+    entry = resolve_divergence_id(year, data["id"])
+    adj = materialize_user_divergence(entry, float(data["amount"]), data.get("direction"))
+    note = data.get("note")
+    if note is not None:
+        adj.note = note
+    return adj
+
+
+def _load_ca540(data: dict | None, year: int) -> CA540Return | None:
     if data is None:
         return None
+
+    raw_divergences = data.get("divergences", [])
+    seen_ids: set[str] = set()
+    divergences: list["CASchCAAdjustment"] = []
+    for d in raw_divergences:
+        adj = _load_ca_divergence(d, year)
+        if adj.catalog_id in seen_ids:
+            raise ValueError(
+                f"Duplicate ca540 divergence id {adj.catalog_id!r} in "
+                f"`divergences` (each catalog id may appear at most once).")
+        seen_ids.add(adj.catalog_id)
+        divergences.append(adj)
+
+    # Validate EVERY id in the `reviewed` list against the year's catalog too
+    # (spec's both-lists requirement) — an unknown id raises with a suggestion.
+    reviewed_ids = list(data.get("reviewed", []))
+    for rid in reviewed_ids:
+        resolve_divergence_id(year, rid)
+
     return CA540Return(
         voluntary_contributions=[
             _load_voluntary_contribution(vc)
@@ -278,10 +320,8 @@ def _load_ca540(data: dict | None) -> CA540Return | None:
             float(data["pfl_amount"])
             if data.get("pfl_amount") is not None else None
         ),
-        divergences=[
-            _load_ca_divergence(d)
-            for d in data.get("divergences", [])
-        ],
+        divergences=divergences,
+        reviewed_divergence_ids=tuple(reviewed_ids),
     )
 
 
@@ -480,7 +520,7 @@ def load_scenario(path: Path) -> Scenario:
         form_data[field_name] = [model_cls(**item) for item in items]
 
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
-    ca540 = _load_ca540(data.get("ca540"))
+    ca540 = _load_ca540(data.get("ca540"), config.year)
     itemized_raw = data.get("itemized_deductions")
     itemized_deductions = (
         ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)

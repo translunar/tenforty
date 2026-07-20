@@ -1,21 +1,24 @@
 """Schedule CA (540) generic compute kernel.
 
 Routes a list of CASchCAAdjustment entries to their respective Sch CA
-lines, sums into Col B (subtractions) and Col C (additions) per line,
-and computes CA AGI = federal AGI - Σ subtractions + Σ additions.
+lines, sums into Col B (subtractions) and Col C (additions) per line, and
+computes CA AGI by NETTING Part I Section C per the form's line-27 arithmetic
+(line 27 = line 10 income − line 26 §C adjustments, per column). See the
+bug #11 note in :func:`compute`.
 
 Produces compute output keys:
 - sch_ca_line_<normalized_line>_col_a: per-line Col A federal passthrough
   (only emitted for lines listed in `_FEDERAL_TO_SCH_CA_COL_A_MAP`)
-- sch_ca_line_<normalized_line>_subtractions: per-line Col B sum
-- sch_ca_line_<normalized_line>_additions: per-line Col C sum
-- sch_ca_total_subtractions: Σ all Col B
-- sch_ca_total_additions: Σ all Col C
+- sch_ca_line_<normalized_line>_subtractions: per-line Col B sum (raw)
+- sch_ca_line_<normalized_line>_additions: per-line Col C sum (raw)
+- sch_ca_total_subtractions: NETTED line-27 Col B = Σ §A/§B Col B − Σ §C Col B
+- sch_ca_total_additions: NETTED line-27 Col C = Σ §A/§B Col C − Σ §C Col C
 - sch_ca_federal_agi: federal AGI passthrough for Line 27 Col A
-- sch_ca_ca_agi: federal_agi - Σ subtractions + Σ additions
+- sch_ca_ca_agi: federal_agi - net_sub + net_add
 """
 
 from collections import defaultdict
+from tenforty.ca_divergences import CatalogDirection, load_catalog
 from tenforty.models import CASchCAAdjustment, DivergenceDirection, DivergenceSource
 from tenforty.rounding import irs_round
 
@@ -69,10 +72,26 @@ def _normalize_line(sch_ca_line: str) -> str:
             .strip("_"))
 
 
-def compute(ca540, federal_results: dict) -> dict:
+def _is_section_c(sch_ca_line: str) -> bool:
+    """True iff ``sch_ca_line`` is a Part I Section C (adjustments) line.
+
+    Section C lines label as ``"Part I §C <n>"`` (e.g. "Part I §C 14",
+    "Part I §C 24b"). The §179A clean-fuel row labels as ``"Part I line 26"``
+    (line 26 is the Section-C TOTAL line, and §179A is an adjustment-to-income),
+    so it is ALSO Section C — a Col-B entry there RAISES CA AGI like every other
+    §C adjustment (line 26 is subtracted to form line 27). Everything else —
+    Part I Sections A/B income lines (incl. the 2021 "Part I line 1" §A
+    sub-letter), and any non-Part-I line (Part II itemized, Sch D 540, Schedule
+    D-1) — is treated as an income-side entry so its flat Col B/C contribution is
+    PRESERVED byte-for-byte (see the bug #11 note in ``compute``).
+    """
+    return sch_ca_line.startswith("Part I §C") or sch_ca_line == "Part I line 26"
+
+
+def compute(ca540, federal_results: dict, year: int) -> dict:
     if ca540 is None:
         return {}
-    auto = derive_auto_divergences(federal_results, ca540=ca540)
+    auto = derive_auto_divergences(federal_results, year, ca540=ca540)
     all_divergences = list(ca540.divergences) + auto
     subtractions = defaultdict(float)
     additions = defaultdict(float)
@@ -94,66 +113,49 @@ def compute(ca540, federal_results: dict) -> dict:
             key = f"sch_ca_line_{_normalize_line(sch_ca_line)}_col_a"
             out[key] = irs_round(amount)
 
-    total_sub = sum(subtractions.values())
-    total_add = sum(additions.values())
-    out["sch_ca_total_subtractions"] = irs_round(total_sub)
-    out["sch_ca_total_additions"] = irs_round(total_add)
+    # ── BUG #11: Section-C sign inversion (found 2026-07-19 via the CA
+    #    divergence content-audit §C-frame check). ────────────────────────────
+    # The retired code used a FLAT total: ca_agi = federal_agi - Σ(all Col B)
+    # + Σ(all Col C), summing EVERY section's Col B/C together. That
+    # SIGN-INVERTS every Part I Section C (adjustments) divergence.
+    #
+    # The Schedule CA (540) form NETS Section C. Part I:
+    #   line 10 = Σ Sections A + B (income), per column,
+    #   line 26 = Σ Section C (adjustments to income), per column,
+    #   line 27 = line 10 − line 26, PER COLUMN A, B, and C.
+    # (Verified on the 2021-2025 Schedule CA (540) forms — every edition's
+    #  line 27 reads "Total. Subtract line 26 from line 10 in columns A, B, and
+    #  C"; see cframe-investigate.md.)
+    #
+    # So a §C Col-B entry sits on line 26 and is SUBTRACTED from the income
+    # subtotal → it RAISES CA AGI, the OPPOSITE of a §A/§B Col-B entry. Partition
+    # Part I by section and put the NETTED line-27 values into the two existing
+    # total keys (no line-10 / line-26 cells are mapped, so no new keys — see
+    # cframe-investigate.md Deliverable 1). Every zero-§C scenario nets to the
+    # income totals → byte-identical to the flat formula.
+    income_sub = income_add = 0.0  # line 10 Col B / Col C  (§A + §B)
+    adj_sub = adj_add = 0.0        # line 26 Col B / Col C  (§C)
+    for adj in all_divergences:
+        if _is_section_c(adj.sch_ca_line):
+            if adj.direction == DivergenceDirection.SUBTRACTION:
+                adj_sub += adj.amount
+            else:
+                adj_add += adj.amount
+        else:
+            if adj.direction == DivergenceDirection.SUBTRACTION:
+                income_sub += adj.amount
+            else:
+                income_add += adj.amount
+
+    net_sub = income_sub - adj_sub  # line 27 Col B = line 10 − line 26
+    net_add = income_add - adj_add  # line 27 Col C = line 10 − line 26
+    out["sch_ca_total_subtractions"] = irs_round(net_sub)
+    out["sch_ca_total_additions"] = irs_round(net_add)
 
     federal_agi = federal_results.get("agi", 0.0)
     out["sch_ca_federal_agi"] = irs_round(federal_agi)
-    out["sch_ca_ca_agi"] = irs_round(federal_agi - total_sub + total_add)
+    out["sch_ca_ca_agi"] = irs_round(federal_agi - net_sub + net_add)
     return out
-
-
-# Auto-derived divergence catalog — federal-results-keyed entries.
-# Each tuple: (federal_key, sch_ca_line, description, federal_source,
-# pub1001_ref). All entries fire as SUBTRACTION when the federal value
-# is positive; no user input needed.
-_FEDERAL_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        "sch_1_line_7_unemployment",
-        "Part I §B 7",
-        "Unemployment compensation excluded by CA per R&TC 17083",
-        "Sch 1 line 7",
-        "p.17",
-    ),
-    (
-        "social_security_taxable",
-        "Part I §A 6",
-        "Social Security benefits excluded by CA per R&TC 17087",
-        "1040 line 6b (taxable portion)",
-        "p.10",
-    ),
-    (
-        "sch_1_line_1_taxable_refunds",
-        "Part I §B 1",
-        "State income tax refund not taxed by CA per R&TC 17131",
-        "Sch 1 line 1",
-        "p.11",
-    ),
-)
-
-# Auto-derived divergence catalog — CA540Return-attribute-keyed entries.
-# Each tuple: (ca540_attr, sch_ca_line, description, federal_source,
-# pub1001_ref). Federal compute does not separately surface these
-# values, so the taxpayer supplies them on CA540Return; entries fire as
-# SUBTRACTION when the attribute is provided AND positive.
-_CA540_AUTO_DIVERGENCES: tuple[tuple[str, str, str, str, str], ...] = (
-    (
-        "rrb_tier_1_2_amount",
-        "Part I §A 5b",
-        "Railroad Retirement Tier 1/2 benefits excluded by CA per R&TC 17087",
-        "CA540Return.rrb_tier_1_2_amount",
-        "p.10",
-    ),
-    (
-        "pfl_amount",
-        "Part I §B 7",
-        "Paid Family Leave benefits excluded by CA per FTB Pub 1001",
-        "CA540Return.pfl_amount",
-        "p.17",
-    ),
-)
 
 
 def federal_itemization_applied(federal_results: dict) -> bool:
@@ -218,50 +220,51 @@ def compute_part_ii_itemized(sch_a_results: dict) -> dict:
     }
 
 
-def derive_auto_divergences(federal_results: dict, ca540=None) -> list[CASchCAAdjustment]:
-    """Generate mechanical divergences from federal results and named
-    CA540Return fields.
+def derive_auto_divergences(
+    federal_results: dict, year: int, ca540=None
+) -> list[CASchCAAdjustment]:
+    """Generate mechanical divergences from the packaged CA divergence catalog.
 
-    Federal-only catalog entries (UI, SS, state-tax refund) read from
-    `federal_results` keys produced by f1040.compute / sch_1.compute and
-    fire whenever the federal value is positive — no user input needed.
+    Sources the catalog's ``auto:`` rows for ``year`` (via ``load_catalog``) and
+    fires each whose keyed value is positive:
 
-    Named-field entries (RRB, PFL) read from CA540Return fields the
-    taxpayer supplies because federal compute does not separately
-    surface them: RRB is lumped into `pensions_taxable` (1040 line 5b)
-    and PFL is reported on 1099-G alongside UI without separation.
-    These fire only when `ca540` is provided AND the corresponding
-    field is set to a positive amount.
+    - ``federal_key`` rows (UI, SS, state-tax refund) read
+      ``federal_results[federal_key]`` — keys produced by f1040.compute /
+      sch_1.compute — and fire with no user input.
+    - ``ca540_field`` rows (RRB, PFL) read ``getattr(ca540, ca540_field)``:
+      federal compute does not separately surface these (RRB is lumped into
+      ``pensions_taxable`` / 1040 line 5b; PFL is reported on 1099-G alongside
+      UI without separation), so the taxpayer supplies them on ``CA540Return``.
+      These fire only when ``ca540`` is provided AND the field is positive.
+
+    Emitted divergences carry ``source=CATALOG_AUTO`` and ``catalog_id=<row
+    id>``; amount / line / direction / description are the migrated catalog
+    values (behavior-preserving vs the retired hardcoded tuples).
     """
     divergences: list[CASchCAAdjustment] = []
 
-    for fed_key, sch_ca_line, description, federal_source, pub1001_ref \
-            in _FEDERAL_AUTO_DIVERGENCES:
-        amount = federal_results.get(fed_key, 0.0)
+    for entry in load_catalog(year):
+        if entry.auto is None:
+            continue
+        direction = (
+            DivergenceDirection.SUBTRACTION
+            if entry.direction is CatalogDirection.SUB
+            else DivergenceDirection.ADDITION
+        )
+        if entry.auto.federal_key is not None:
+            amount = federal_results.get(entry.auto.federal_key, 0.0)
+        elif ca540 is not None:
+            amount = getattr(ca540, entry.auto.ca540_field) or 0.0
+        else:
+            continue
         if amount > 0:
             divergences.append(CASchCAAdjustment(
-                source=DivergenceSource.AUTO_DERIVED,
-                sch_ca_line=sch_ca_line,
-                direction=DivergenceDirection.SUBTRACTION,
+                source=DivergenceSource.CATALOG_AUTO,
+                sch_ca_line=entry.sch_ca_line,
+                direction=direction,
                 amount=amount,
-                description=description,
-                federal_source=federal_source,
-                pub1001_ref=pub1001_ref,
+                description=entry.description,
+                catalog_id=entry.id,
             ))
-
-    if ca540 is not None:
-        for ca540_attr, sch_ca_line, description, federal_source, pub1001_ref \
-                in _CA540_AUTO_DIVERGENCES:
-            amount = getattr(ca540, ca540_attr) or 0.0
-            if amount > 0:
-                divergences.append(CASchCAAdjustment(
-                    source=DivergenceSource.AUTO_DERIVED,
-                    sch_ca_line=sch_ca_line,
-                    direction=DivergenceDirection.SUBTRACTION,
-                    amount=amount,
-                    description=description,
-                    federal_source=federal_source,
-                    pub1001_ref=pub1001_ref,
-                ))
 
     return divergences

@@ -84,10 +84,14 @@ Only a rendered-position read (or a filled-emit read-back) is evidence.
 ## 6. Declare the year
 
 Add YYYY to the tuples in `tenforty/years.py` (and `WORKBOOK_YEARS` if
-step 1's workbook happened). For California: port the divergence catalog
-(`spreadsheets/california/YYYY/sch_ca_divergences-YYYY.catalog.yaml`, then
-regenerate the `.fods` via `scripts/build_sch_ca_fods.py`) — conformity
-changes are HUMAN JUDGMENT.
+step 1's workbook happened). For California: copy the prior-year packaged
+divergence catalog to
+`tenforty/params/california/divergences/yYYYY.yaml`, do a conformity review
+against the new year's FTB Pub 1001, and adjust rows (ids stay stable across
+years) until the schema gates pass — conformity changes are HUMAN JUDGMENT.
+There is no `.fods` regeneration: the catalog YAML is the single
+runtime-loaded source of truth (see the CA divergence catalog redesign,
+docs/specs/2026-07-19-ca-divergence-catalog-redesign.md §3).
 Check: `pytest tests/test_year_completeness_gate.py` green — this is the
 "year is complete" bit flipping on. Attestation-window failures here mean
 a law-scope review (see the gate's message), not a mechanical extension.
