@@ -261,6 +261,8 @@
   common: true
   pub1001_page: 7
   ircrtc: "R&TC 17143"
+  triggers: ["has_tax_exempt_interest"]
+  gate: true
 
 - id: "mutual-fund-muni-interest-federal-fully-excludes-ca-only"
   sch_ca_line: "Part I §A 2"
@@ -270,6 +272,7 @@
   common: true
   pub1001_page: 7
   ircrtc: "—"
+  triggers: ["has_tax_exempt_interest"]
 
 - id: "hsa-interest-dividends-excluded-federally-ca-taxes"
   sch_ca_line: "Part I §A 2"
@@ -353,6 +356,7 @@
   common: false
   pub1001_page: 8
   ircrtc: "—"
+  triggers: ["has_capital_gain_distributions"]
 
 # ── Part I §A 4 ───────────────────────────────────────────────────────────────
 
@@ -853,6 +857,7 @@
   common: true
   pub1001_page: 15
   ircrtc: "—"
+  triggers: ["has_k1"]
 
 - id: "ca-apportionment-formula-vs-federal-rental-royalty"
   sch_ca_line: "Part I §B 5"

@@ -259,13 +259,15 @@ def _build_entry(year: int, index: int, raw: object) -> CatalogEntry:
         where,
         "`triggers` must be a list",
     )
-    # Until the trigger registry lands (a later part), triggers must be empty.
-    _require(
-        len(triggers_raw) == 0,
-        year,
-        where,
-        "`triggers` must be empty until the trigger registry lands",
-    )
+    # Membership gate: every trigger name must be a key of the closed
+    # TRIGGER_PREDICATES registry. An unknown name is a fail-closed schema error.
+    for name in triggers_raw:
+        _require(
+            isinstance(name, str) and name in TRIGGER_PREDICATES,
+            year,
+            where,
+            f"unknown trigger {name!r} — not in TRIGGER_PREDICATES",
+        )
     triggers = tuple(triggers_raw)
 
     derivable_via = raw.get("derivable_via")

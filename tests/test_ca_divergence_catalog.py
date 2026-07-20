@@ -13,6 +13,7 @@ import unittest
 
 from tenforty import models
 from tenforty.ca_divergences import (
+    TRIGGER_PREDICATES,
     CatalogDirection,
     CatalogEntry,
     CatalogError,
@@ -24,6 +25,29 @@ from tenforty.scenario import load_scenario
 from tests.helpers import FIXTURES_DIR
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
+
+# The team-lead-ruled trigger/gate assignments (2026-07-19). Each maps a catalog
+# id to its EXACT (triggers, gate) pair; these four ids carry them in ALL FIVE
+# years and NO OTHER row carries a non-empty `triggers` or `gate: true`. Pinned
+# by `test_ruled_trigger_gate_assignments`.
+RULED_TRIGGER_GATE_ASSIGNMENTS = {
+    "out-of-state-muni-interest-excluded-federally-ca-taxes": (
+        ("has_tax_exempt_interest",),
+        True,
+    ),
+    "mutual-fund-muni-interest-federal-fully-excludes-ca-only": (
+        ("has_tax_exempt_interest",),
+        False,
+    ),
+    "federal-k-1-items-differ-from-ca-k-1-ca-k-1-required": (
+        ("has_k1",),
+        False,
+    ),
+    "ric-undistributed-cap-gain-form-2439-federal-in-year": (
+        ("has_capital_gain_distributions",),
+        False,
+    ),
+}
 
 # kebab-case: lowercase alnum segments joined by single hyphens.
 KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -484,11 +508,33 @@ class SchemaGateTests(unittest.TestCase):
                     if entry.auto is not None:
                         self.assertNotEqual(entry.direction, CatalogDirection.BOTH)
 
-    def test_triggers_empty(self):
+    def test_triggers_in_registry(self):
+        # Membership gate: every trigger name on every row (all years) must be a
+        # key of the closed TRIGGER_PREDICATES registry.
         for year in YEARS:
             for entry in load_catalog(year):
+                for name in entry.triggers:
+                    with self.subTest(year=year, id=entry.id, trigger=name):
+                        self.assertIn(name, TRIGGER_PREDICATES)
+
+    def test_ruled_trigger_gate_assignments(self):
+        # Pins the ruled set EXACTLY: the four ruled ids carry exactly their
+        # ruled triggers tuple + gate value in ALL FIVE years, and NO OTHER row
+        # in any year carries a non-empty `triggers` or `gate: true` (a stray
+        # future assignment fails here).
+        for year in YEARS:
+            by_id = {entry.id: entry for entry in load_catalog(year)}
+            for rid, (triggers, gate) in RULED_TRIGGER_GATE_ASSIGNMENTS.items():
+                with self.subTest(year=year, id=rid):
+                    self.assertIn(rid, by_id)
+                    self.assertEqual(by_id[rid].triggers, triggers)
+                    self.assertEqual(by_id[rid].gate, gate)
+            for entry in by_id.values():
+                if entry.id in RULED_TRIGGER_GATE_ASSIGNMENTS:
+                    continue
                 with self.subTest(year=year, id=entry.id):
                     self.assertEqual(entry.triggers, ())
+                    self.assertFalse(entry.gate)
 
     def test_direction_totals_match_known_distribution(self):
         # Pins the real data across five years. Re-pinned by the 2023 full
@@ -628,6 +674,43 @@ class SourceCitationSchemaTests(unittest.TestCase):
         )
         with self.assertRaises(CatalogError):
             self._load_rows(body)
+
+    def test_unknown_trigger_name_raises(self):
+        # The membership gate: a `triggers` name absent from TRIGGER_PREDICATES
+        # is a fail-closed CatalogError naming the row and the bad name.
+        body = (
+            "- id: bad-trigger-row\n"
+            '  sch_ca_line: "Part I §A 1a"\n'
+            '  section_title: "Row with an unknown trigger"\n'
+            '  description: "triggers naming a predicate not in the registry"\n'
+            "  direction: Add\n"
+            "  common: false\n"
+            "  pub1001_page: 7\n"
+            '  ircrtc: "R&TC 17131"\n'
+            '  triggers: ["has_not_a_real_predicate"]\n'
+        )
+        with self.assertRaises(CatalogError) as ctx:
+            self._load_rows(body)
+        message = str(ctx.exception)
+        self.assertIn("has_not_a_real_predicate", message)
+        self.assertIn("bad-trigger-row", message)
+
+    def test_known_trigger_name_loads(self):
+        # A `triggers` name that IS in the registry loads and round-trips.
+        body = (
+            "- id: good-trigger-row\n"
+            '  sch_ca_line: "Part I §A 2"\n'
+            '  section_title: "Row with a known trigger"\n'
+            '  description: "triggers naming a predicate in the registry"\n'
+            "  direction: Add\n"
+            "  common: false\n"
+            "  pub1001_page: 7\n"
+            '  ircrtc: "R&TC 17131"\n'
+            '  triggers: ["has_tax_exempt_interest"]\n'
+        )
+        entries = self._load_rows(body)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].triggers, ("has_tax_exempt_interest",))
 
 
 class ImportlibResourcesTests(unittest.TestCase):
