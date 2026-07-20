@@ -18,6 +18,7 @@ import importlib.resources
 import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING, Callable
 
 import yaml
 
@@ -26,6 +27,9 @@ from tenforty.models import (
     DivergenceDirection,
     DivergenceSource,
 )
+
+if TYPE_CHECKING:  # import only for typing; predicates touch attributes, not the class
+    from tenforty.models import Scenario
 
 _KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RESOURCE_PACKAGE = "tenforty.params.california.divergences"
@@ -405,3 +409,46 @@ def materialize_user_divergence(
         description=entry.description,
         catalog_id=entry.id,
     )
+
+
+# --- Trigger-predicate registry (spec §2.4) -----------------------------------
+#
+# The CLOSED vocabulary of trigger predicates. Each is a pure, side-effect-free
+# ``Scenario -> bool`` that inspects only the scenario's declared inputs (no
+# compute, no derived state). A catalog row's ``triggers`` value must (in a LATER
+# step) be a key of this dict; an unknown trigger name will become a catalog-load
+# error once assignments land, but that gate is NOT wired here.
+
+
+def has_tax_exempt_interest(scenario: "Scenario") -> bool:
+    """True iff any Form 1099-INT carries positive tax-exempt interest."""
+    return any(f.tax_exempt_interest > 0 for f in scenario.form1099_int)
+
+
+def has_k1(scenario: "Scenario") -> bool:
+    """True iff the scenario carries at least one Schedule K-1."""
+    return bool(scenario.schedule_k1s)
+
+
+def has_rental_depreciation(scenario: "Scenario") -> bool:
+    """True iff any rental property carries positive depreciation."""
+    return any(p.depreciation > 0 for p in scenario.rental_properties)
+
+
+def has_capital_gain_distributions(scenario: "Scenario") -> bool:
+    """True iff any Form 1099-DIV carries positive capital gain distributions."""
+    return any(f.capital_gain_distributions > 0 for f in scenario.form1099_div)
+
+
+def has_state_tax_refund(scenario: "Scenario") -> bool:
+    """True iff any Form 1099-G carries a positive state tax refund."""
+    return any(f.state_tax_refund > 0 for f in scenario.form1099_g)
+
+
+TRIGGER_PREDICATES: dict[str, Callable[["Scenario"], bool]] = {
+    "has_tax_exempt_interest": has_tax_exempt_interest,
+    "has_k1": has_k1,
+    "has_rental_depreciation": has_rental_depreciation,
+    "has_capital_gain_distributions": has_capital_gain_distributions,
+    "has_state_tax_refund": has_state_tax_refund,
+}
