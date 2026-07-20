@@ -454,3 +454,83 @@ TRIGGER_PREDICATES: dict[str, Callable[["Scenario"], bool]] = {
     "has_capital_gain_distributions": has_capital_gain_distributions,
     "has_state_tax_refund": has_state_tax_refund,
 }
+
+
+# --- Acknowledgment gate (spec §2.5) ------------------------------------------
+
+
+def entry_citation(entry: CatalogEntry) -> str:
+    """Human-readable source citation for a catalog row.
+
+    Prefers the FTB Pub 1001 page (int -> ``"Pub 1001 p.N"``, or a documented
+    non-empty string sentinel verbatim); otherwise the Schedule CA (540)
+    instructions ``source_citation``. Single source of truth shared by the
+    acknowledgment-gate message and the packet-manifest CA-divergences trail so
+    the two can never disagree on how a row cites its authority.
+    """
+    page = entry.pub1001_page
+    if isinstance(page, int) and not isinstance(page, bool):
+        return f"Pub 1001 p.{page}"
+    if isinstance(page, str) and page.strip():
+        return page
+    return entry.source_citation or "(no citation)"
+
+
+class UnaddressedDivergencesError(Exception):
+    """A gated Schedule CA divergence fired for this scenario yet was neither
+    applied (an amount in ``ca540.divergences``) nor explicitly reviewed
+    (``ca540.reviewed_divergence_ids``).
+
+    NOT a catalog-load error — the catalog is well-formed; the RETURN is
+    incomplete until every listed divergence is addressed. The message lists
+    EVERY unaddressed entry with its id, description, citation (Pub 1001 page or
+    ``source_citation``), ircrtc, and the trigger name(s) that fired, so the
+    filer sees the full acknowledgment work outstanding, not just the first.
+    """
+
+
+def check_unaddressed_divergences(scenario, ca540, year) -> None:
+    """Refuse the CA return if any gated + triggered divergence is unaddressed.
+
+    For each ``load_catalog(year)`` entry with ``gate is True``, evaluate its
+    triggers against the scenario (``TRIGGER_PREDICATES``). A gated entry whose
+    trigger fires is ADDRESSED iff its id is in ``{d.catalog_id for d in
+    ca540.divergences}`` OR in ``ca540.reviewed_divergence_ids``. Every
+    fired-and-unaddressed entry is collected and raised together as an
+    :class:`UnaddressedDivergencesError`. Returns ``None`` when nothing is
+    unaddressed (the gate is then a pure no-op). ``ca540 is None`` -> no gate.
+    """
+    if ca540 is None:
+        return None
+    addressed = {
+        d.catalog_id for d in ca540.divergences if d.catalog_id is not None
+    }
+    addressed |= set(ca540.reviewed_divergence_ids)
+
+    unaddressed: list[tuple[CatalogEntry, tuple[str, ...]]] = []
+    for entry in load_catalog(year):
+        if not entry.gate:
+            continue
+        fired = tuple(
+            name for name in entry.triggers if TRIGGER_PREDICATES[name](scenario)
+        )
+        if not fired or entry.id in addressed:
+            continue
+        unaddressed.append((entry, fired))
+
+    if not unaddressed:
+        return None
+
+    lines = [
+        "California return refuses to compute: gated Schedule CA divergence(s) "
+        "fired for this scenario but were neither applied nor reviewed. For "
+        "each, apply an amount (add to `divergences`) or mark it reviewed "
+        "(`reviewed_divergence_ids`):"
+    ]
+    for entry, fired in unaddressed:
+        lines.append(
+            f"  - {entry.id}: {entry.description} "
+            f"[{entry_citation(entry)}; R&TC/IRC {entry.ircrtc}; "
+            f"trigger: {', '.join(fired)}]"
+        )
+    raise UnaddressedDivergencesError("\n".join(lines))
