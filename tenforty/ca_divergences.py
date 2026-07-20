@@ -13,12 +13,19 @@ later parts can populate them, but no packaged row carries any of them yet.
 
 from __future__ import annotations
 
+import difflib
 import importlib.resources
 import re
 from dataclasses import dataclass
 from enum import Enum
 
 import yaml
+
+from tenforty.models import (
+    CASchCAAdjustment,
+    DivergenceDirection,
+    DivergenceSource,
+)
 
 _KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RESOURCE_PACKAGE = "tenforty.params.california.divergences"
@@ -314,3 +321,87 @@ def load_catalog(year: int) -> tuple[CatalogEntry, ...]:
         seen[entry.id] = i
 
     return entries
+
+
+class UnknownDivergenceIdError(CatalogError):
+    """Raised when a scenario references a divergence id absent from the
+    year's catalog. The message names the bad id and the year, and — when
+    :func:`difflib.get_close_matches` finds one — a did-you-mean suggestion
+    (so a typo like 'non-ca-muni-intrest' points at 'non-ca-muni-interest')."""
+
+
+def resolve_divergence_id(year: int, divergence_id: str) -> CatalogEntry:
+    """Return the ``year`` catalog entry whose id is ``divergence_id``.
+
+    Ids are YEAR-SCOPED: an id valid in an adjacent year but absent from
+    ``year`` raises :class:`UnknownDivergenceIdError` (with a suggestion),
+    never silently resolves against another year.
+    """
+    catalog = load_catalog(year)
+    for entry in catalog:
+        if entry.id == divergence_id:
+            return entry
+    matches = difflib.get_close_matches(
+        divergence_id, [entry.id for entry in catalog], n=1
+    )
+    suggestion = f"; did you mean {matches[0]!r}?" if matches else ""
+    raise UnknownDivergenceIdError(
+        f"unknown divergence id {divergence_id!r} for {year}{suggestion}"
+    )
+
+
+def materialize_user_divergence(
+    entry: CatalogEntry, amount: float, direction: str | None
+) -> CASchCAAdjustment:
+    """Materialize a user-supplied ``{id, amount, direction?}`` into a typed
+    :class:`~tenforty.models.CASchCAAdjustment`, enforcing the RULED direction
+    rules (2026-07-19) so a user row can never disagree with the catalog:
+
+    - ``amount`` must be ``> 0`` (zero or negative is a load error).
+    - An ADD or SUB catalog row FIXES the column: the user must NOT supply a
+      ``direction`` key (the catalog decides). Present → load error.
+    - A BOTH catalog row REQUIRES ``direction`` of ``"add"`` or ``"sub"``.
+      Absent (or any other value) → load error naming the two legal values.
+
+    ``source`` is stamped ``USER``; ``catalog_id`` / ``sch_ca_line`` /
+    ``description`` come from the catalog entry; only ``amount`` (and, for BOTH
+    rows, the resolved column) come from the user.
+    """
+    if amount <= 0:
+        raise ValueError(
+            f"divergence {entry.id!r}: amount must be > 0, got {amount!r} "
+            f"(a zero or negative divergence amount is a load error)."
+        )
+
+    if entry.direction in (CatalogDirection.ADD, CatalogDirection.SUB):
+        if direction is not None:
+            raise ValueError(
+                f"divergence {entry.id!r}: the catalog fixes this row's column "
+                f"to {entry.direction.value!r}; do not supply a `direction` key."
+            )
+        resolved = (
+            DivergenceDirection.ADDITION
+            if entry.direction is CatalogDirection.ADD
+            else DivergenceDirection.SUBTRACTION
+        )
+    else:  # CatalogDirection.BOTH
+        if direction not in ("add", "sub"):
+            raise ValueError(
+                f"divergence {entry.id!r}: this is a BOTH row; supply "
+                f'`direction: "add"` or `direction: "sub"` '
+                f"(got {direction!r})."
+            )
+        resolved = (
+            DivergenceDirection.ADDITION
+            if direction == "add"
+            else DivergenceDirection.SUBTRACTION
+        )
+
+    return CASchCAAdjustment(
+        source=DivergenceSource.USER,
+        sch_ca_line=entry.sch_ca_line,
+        direction=resolved,
+        amount=amount,
+        description=entry.description,
+        catalog_id=entry.id,
+    )
