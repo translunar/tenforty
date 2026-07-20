@@ -34,6 +34,10 @@ if TYPE_CHECKING:  # import only for typing; predicates touch attributes, not th
 _KEBAB_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 _RESOURCE_PACKAGE = "tenforty.params.california.divergences"
 
+# Capital-gains divergences route to Schedule D 540 / Schedule D-1, which the
+# CA return does not yet consume — see the guard in materialize_user_divergence.
+SCH_D_ROUTED_LINES: frozenset[str] = frozenset({"Sch D 540", "Schedule D-1"})
+
 
 class CatalogDirection(str, Enum):
     """Direction of a Schedule CA adjustment as recorded in the catalog.
@@ -373,6 +377,15 @@ def materialize_user_divergence(
     ``description`` come from the catalog entry; only ``amount`` (and, for BOTH
     rows, the resolved column) come from the user.
     """
+    if entry.sch_ca_line in SCH_D_ROUTED_LINES:
+        raise ValueError(
+            f"divergence {entry.id!r} routes to {entry.sch_ca_line} (capital gains): "
+            f"these divergences are surfaced for the CPA packet but are not yet "
+            f"compute-supported — that is a future follow-up. Move this id to the "
+            f"`reviewed:` list to acknowledge it without affecting the return, or "
+            f"remove it from `divergences:`."
+        )
+
     if amount <= 0:
         raise ValueError(
             f"divergence {entry.id!r}: amount must be > 0, got {amount!r} "

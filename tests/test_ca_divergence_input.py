@@ -16,7 +16,10 @@ is removed. These tests pin:
 import unittest
 
 from tenforty.ca_divergences import (
+    SCH_D_ROUTED_LINES,
+    CatalogDirection,
     UnknownDivergenceIdError,
+    load_catalog,
     materialize_user_divergence,
     resolve_divergence_id,
 )
@@ -124,6 +127,43 @@ class MaterializeDirectionRuleTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             materialize_user_divergence(entry, 4300.0, "plus")
         self.assertIn(_BOTH_ID, str(ctx.exception))
+
+    def test_sch_d_routed_user_divergence_rejected(self):
+        # Derive the id list at test time from ALL FIVE year catalogs — do not
+        # hardcode ids, so a future Sch-D row inherits the guard automatically.
+        sch_d_entries = []
+        for year in (2021, 2022, 2023, 2024, 2025):
+            for entry in load_catalog(year):
+                if entry.sch_ca_line in SCH_D_ROUTED_LINES:
+                    sch_d_entries.append(entry)
+        self.assertTrue(sch_d_entries, "no Sch-D-routed entries found across 2021-2025 catalogs")
+
+        for entry in sch_d_entries:
+            # BOTH rows need a valid direction; ADD/SUB rows need direction=None
+            # — the guard fires first regardless, but a valid direction ensures
+            # a future reorder of the checks can't turn this into a
+            # direction-rule false-pass.
+            direction = "add" if entry.direction is CatalogDirection.BOTH else None
+            with self.subTest(id=entry.id):
+                with self.assertRaises(ValueError) as ctx:
+                    materialize_user_divergence(entry, 100.0, direction)
+                msg = str(ctx.exception)
+                self.assertIn(entry.id, msg)
+                self.assertIn("reviewed", msg)
+
+    def test_part_i_user_divergence_still_materializes(self):
+        # The guard must not over-reach: a non-Sch-D-routed Part I row still
+        # materializes. This is already covered by
+        # LoadCa540IdKeyedTests.test_happy_path_materializes_from_catalog (via
+        # _load_ca540) and MaterializeDirectionRuleTests.test_sub_row_materializes_subtraction
+        # (direct materialize_user_divergence call) — both exercise _SUB_ID,
+        # "Part I §A 1a", which is not in SCH_D_ROUTED_LINES. Relying on those
+        # rather than duplicating; this test asserts the same guarantee directly.
+        entry = resolve_divergence_id(2025, _SUB_ID)
+        self.assertNotIn(entry.sch_ca_line, SCH_D_ROUTED_LINES)
+        adj = materialize_user_divergence(entry, 900.0, None)
+        self.assertEqual(adj.source, DivergenceSource.USER)
+        self.assertEqual(adj.catalog_id, _SUB_ID)
 
 
 class LoadCa540IdKeyedTests(unittest.TestCase):

@@ -708,8 +708,8 @@ class CASchCAAdjustment:
     direction: DivergenceDirection
     amount: float
     description: str  # human-readable; FTB Pub 1001 phrasing preferred
-    federal_source: str | None = None  # e.g., "Sch 1 line 7" — set for CATALOG_AUTO rows
-    pub1001_ref: str | None = None  # e.g., "p.17" — citation for audit
+    federal_source: str | None = None  # legacy; no longer populated — provenance now lives on catalog_id
+    pub1001_ref: str | None = None  # legacy; no longer populated — provenance now lives on catalog_id
     catalog_id: str | None = None  # CA divergence catalog row id — CATALOG_AUTO / USER
     # User-facing provenance note carried from an id-keyed scenario divergence
     # ({id, amount, note?}). Optional; never consumed by compute.
