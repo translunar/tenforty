@@ -213,6 +213,8 @@ def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
                 "description": d.description,
                 "federal_source": d.federal_source,
                 "pub1001_ref": d.pub1001_ref,
+                "catalog_id": d.catalog_id,
+                "note": d.note,
             }
             for d in ca540.divergences
         ],
@@ -1379,7 +1381,8 @@ class ReturnOrchestrator:
         self._verify_ca_yaml_freshness(scenario, ca_yaml_path, ca_yaml)
 
         # 3. Build effective CA540Return — ca_yaml is authoritative, but conflict-detect.
-        effective_ca540 = self._build_effective_ca540(scenario.ca540, ca_yaml)
+        effective_ca540 = self._build_effective_ca540(
+            scenario.ca540, ca_yaml, scenario.config.year)
 
         # 3b. Discover and merge .fods worksheet divergences, if any.
         fods_div = (
@@ -1415,6 +1418,7 @@ class ReturnOrchestrator:
                 effective_ca540=effective_ca540,
                 federal_results=federal_results,
                 sch_d_540_adjustments=fods_div.sch_d_540,
+                year=scenario.config.year,
             )
 
         return ca_results, ca_pdfs
@@ -1713,6 +1717,7 @@ class ReturnOrchestrator:
         effective_ca540: CA540Return,
         federal_results: dict,
         sch_d_540_adjustments: list[CASchD540Adjustment],
+        year: int,
     ) -> None:
         """Write a debug ``<basename>.ca-resolved.yaml`` capturing the merged
         in-memory CA view (federal context + ca540 with all divergences
@@ -1720,13 +1725,21 @@ class ReturnOrchestrator:
         never read back by tenforty."""
         basename = federal_yaml_path.stem
         snapshot_path = output_dir / f"{basename}.ca-resolved.yaml"
+        # Merge the derived catalog-auto divergences into the SNAPSHOT view only
+        # (compute derives them independently; this does not feed compute), so
+        # the resolved snapshot records every materialized adjustment's origin —
+        # USER / WORKSHEET rows plus CATALOG_AUTO rows — each with its catalog_id.
+        auto_divergences = form_sch_ca.derive_auto_divergences(
+            federal_results, year, ca540=effective_ca540
+        )
+        snapshot_ca540 = effective_ca540.with_extra_divergences(auto_divergences)
         payload = {
             "federal_context": {
                 "year": federal_results.get("year"),
                 "agi": federal_results.get("agi"),
                 "filing_status": federal_results.get("filing_status"),
             },
-            "ca540": _ca540_to_yaml_dict(effective_ca540),
+            "ca540": _ca540_to_yaml_dict(snapshot_ca540),
             "sch_d_540_divergences": [
                 {
                     "source": d.source.name,
@@ -1744,6 +1757,7 @@ class ReturnOrchestrator:
         self,
         in_memory_ca540: CA540Return | None,
         ca_yaml: dict,
+        year: int,
     ) -> CA540Return:
         """Build the effective CA540Return from the CA YAML.
 
@@ -1773,9 +1787,10 @@ class ReturnOrchestrator:
                 "load_scenario(), or separate CA YAML via "
                 "run_full_california_return)."
             )
-        # Reuse the existing _load_ca540 from tenforty.scenario.
+        # Reuse the existing _load_ca540 from tenforty.scenario. Divergences are
+        # id-keyed against the year's catalog, so thread the tax year through.
         from tenforty.scenario import _load_ca540
-        return _load_ca540(ca540_block)
+        return _load_ca540(ca540_block, year)
 
     def _should_emit_sch_1(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch 1 when either Part I total (line 10) or Part II total

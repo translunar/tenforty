@@ -76,15 +76,16 @@ def _is_section_c(sch_ca_line: str) -> bool:
     """True iff ``sch_ca_line`` is a Part I Section C (adjustments) line.
 
     Section C lines label as ``"Part I §C <n>"`` (e.g. "Part I §C 14",
-    "Part I §C 24b"). Everything else — Part I Sections A/B income lines
-    (incl. the 2021 "Part I line 1" §A sub-letter), and any non-Part-I line
-    (Part II itemized, Sch D 540, Schedule D-1) — is treated as an income-side
-    entry so its flat Col B/C contribution is PRESERVED byte-for-byte (see the
-    bug #11 note in ``compute``). The worksheet-only §179A clean-fuel row that
-    sits at "Part I line 26" (never auto-fired) is out of the auto path and out
-    of scope for this classifier.
+    "Part I §C 24b"). The §179A clean-fuel row labels as ``"Part I line 26"``
+    (line 26 is the Section-C TOTAL line, and §179A is an adjustment-to-income),
+    so it is ALSO Section C — a Col-B entry there RAISES CA AGI like every other
+    §C adjustment (line 26 is subtracted to form line 27). Everything else —
+    Part I Sections A/B income lines (incl. the 2021 "Part I line 1" §A
+    sub-letter), and any non-Part-I line (Part II itemized, Sch D 540, Schedule
+    D-1) — is treated as an income-side entry so its flat Col B/C contribution is
+    PRESERVED byte-for-byte (see the bug #11 note in ``compute``).
     """
-    return sch_ca_line.startswith("Part I §C")
+    return sch_ca_line.startswith("Part I §C") or sch_ca_line == "Part I line 26"
 
 
 def compute(ca540, federal_results: dict, year: int) -> dict:

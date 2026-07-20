@@ -106,12 +106,9 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
       estimated_payments: 1500.0
       use_tax: 25.0
       divergences:
-        - source: worksheet
-          sch_ca_line: "Part I §C 13"
-          direction: subtraction
+        - id: "hsa-deduction-ca-disallows-also-adds-back-employer-hsa"
           amount: 4300.0
-          description: "HSA contribution disallowed"
-          pub1001_ref: "p.9"
+          direction: sub
 """)
 
 
@@ -132,12 +129,19 @@ class CA540YamlLoaderTests(unittest.TestCase):
         self.assertEqual(scenario.ca540.estimated_payments, 1500.0)
         self.assertEqual(scenario.ca540.use_tax, 25.0)
         self.assertEqual(len(scenario.ca540.divergences), 1)
-        self.assertEqual(scenario.ca540.divergences[0].source, DivergenceSource.WORKSHEET)
-        self.assertEqual(scenario.ca540.divergences[0].direction, DivergenceDirection.SUBTRACTION)
-        self.assertEqual(scenario.ca540.divergences[0].sch_ca_line, "Part I §C 13")
-        self.assertEqual(scenario.ca540.divergences[0].amount, 4300.0)
-        self.assertEqual(scenario.ca540.divergences[0].description, "HSA contribution disallowed")
-        self.assertEqual(scenario.ca540.divergences[0].pub1001_ref, "p.9")
+        adj = scenario.ca540.divergences[0]
+        # Materialized from the catalog: source is USER, catalog_id set, and
+        # line/direction/description come from the §C 13 catalog entry; only the
+        # amount (and BOTH-row direction) come from the user.
+        self.assertEqual(adj.source, DivergenceSource.USER)
+        self.assertEqual(
+            adj.catalog_id, "hsa-deduction-ca-disallows-also-adds-back-employer-hsa")
+        self.assertEqual(adj.sch_ca_line, "Part I §C 13")
+        self.assertEqual(adj.direction, DivergenceDirection.SUBTRACTION)
+        self.assertEqual(adj.amount, 4300.0)
+        self.assertEqual(
+            adj.description,
+            "HSA deduction: CA disallows; also adds back employer HSA from W-2")
 
     def test_load_scenario_default_rrb_pfl_unset(self):
         # When the ca540 block omits rrb_tier_1_2_amount and pfl_amount,

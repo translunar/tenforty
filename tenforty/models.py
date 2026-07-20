@@ -669,17 +669,21 @@ class SCorpReturn:
 
 
 class DivergenceSource(str, Enum):
-    # DORMANT — retained for the deserialization path (scenario.py
-    # `_load_ca_divergence` reads source strings via
-    # `DivergenceSource(data["source"])`; old ca-resolved snapshots may carry
-    # 'auto_derived'); retire in Part RETIRE with that importer. No live
-    # stamping site emits AUTO_DERIVED anymore — the auto-derive kernel now
-    # stamps CATALOG_AUTO (see forms/sch_ca.py) — but the historical value must
-    # still round-trip through the deserializer, so the member stays.
+    # DORMANT — no live stamping site emits AUTO_DERIVED anymore (the
+    # auto-derive kernel stamps CATALOG_AUTO, see forms/sch_ca.py; the id-keyed
+    # scenario path stamps USER). Retained because old ``<basename>.ca-resolved``
+    # snapshots may carry the historical 'auto_derived' value; retire in Part
+    # RETIRE. (The free-form ``divergences:`` deserializer that used to read
+    # ``DivergenceSource(data["source"])`` was removed in Part INPUT.)
     AUTO_DERIVED = "auto_derived"
     # Stamped by derive_auto_divergences on divergences sourced from the
     # packaged CA divergence catalog's `auto:` rows (Part AUTO).
     CATALOG_AUTO = "catalog_auto"
+    # Stamped by materialize_user_divergence on divergences the user supplied
+    # id-keyed in the scenario (Part INPUT). The user gives {id, amount, note?}
+    # (+ direction for BOTH rows); line/direction/description are materialized
+    # from the catalog entry so a user row can never disagree with the catalog.
+    USER = "user"
     WORKSHEET = "worksheet"
 
 
@@ -705,7 +709,10 @@ class CASchCAAdjustment:
     description: str  # human-readable; FTB Pub 1001 phrasing preferred
     federal_source: str | None = None  # e.g., "Sch 1 line 7" — only for AUTO_DERIVED
     pub1001_ref: str | None = None  # e.g., "p.17" — citation for audit
-    catalog_id: str | None = None  # CA divergence catalog row id — only for CATALOG_AUTO
+    catalog_id: str | None = None  # CA divergence catalog row id — CATALOG_AUTO / USER
+    # User-facing provenance note carried from an id-keyed scenario divergence
+    # ({id, amount, note?}). Optional; never consumed by compute.
+    note: str | None = None
 
 
 @dataclass
@@ -754,6 +761,10 @@ class CA540Return:
     # can route it as an §B 7 Col B subtraction (FTB Pub 1001 p.17).
     pfl_amount: float | None = None
     divergences: list[CASchCAAdjustment] = field(default_factory=list)
+    # Catalog ids the user has explicitly reviewed (spec §2.2 `reviewed:` list).
+    # Every id is validated against the year's catalog at load; carried for
+    # audit/UX (a reviewed id need not appear in `divergences`).
+    reviewed_divergence_ids: tuple[str, ...] = ()
 
     def with_extra_divergences(self, extra: list["CASchCAAdjustment"]) -> "CA540Return":
         return replace(self, divergences=[*self.divergences, *extra])
