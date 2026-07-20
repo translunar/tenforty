@@ -23,6 +23,13 @@ at module top (iron law 4).
 import dataclasses
 import unittest
 
+from tenforty.forms.sch_ca import compute as sch_ca_compute
+from tenforty.models import (
+    CA540Return,
+    CASchCAAdjustment,
+    DivergenceDirection,
+    DivergenceSource,
+)
 from tests.oracles.ca_540_reference import (
     AGI_PHASEOUT_THRESHOLD_2025,
     BHST_RATE_2025,
@@ -1001,6 +1008,114 @@ class EndToEndSyntheticTests(unittest.TestCase):
         # Line 18 = 25k + 15k + 5k = 45k (assuming below phaseout threshold).
         self.assertAlmostEqual(
             out["schca_part_2_line_18_ca_net_itemized"], 45_000.0
+        )
+
+
+
+# ---------------------------------------------------------------------------
+# Production ⇄ oracle parity — Part I Section C netting (program bug #11)
+# ---------------------------------------------------------------------------
+class SchCASectionCProductionParityTests(unittest.TestCase):
+    """Compare the PRODUCTION Sch CA kernel (``forms.sch_ca.compute``) against
+    this hand-coded oracle on Part I Section C divergences.
+
+    The oracle supplies the expected CA AGI (``f540_line_17_ca_agi`` = federal
+    AGI − Sch CA line-27 Col B + line-27 Col C); the production kernel's
+    ``sch_ca_ca_agi`` must equal it. This is RED before the bug-#11 section-
+    partition fix (the pre-fix flat kernel sign-inverts §C) and GREEN after.
+    Oracle-driven: no CA-AGI expected value is hand-authored here.
+    """
+
+    def _oracle_out(self, federal_agi, part_i):
+        base = _make_input(filing_status="single", federal_agi=federal_agi)
+        ca = dataclasses.replace(base, sch_ca_part_i=part_i)
+        return compute_ca_540(ca)
+
+    def test_section_c_col_b_subtraction_matches_oracle(self):
+        # §C 13 HSA deduction add-back: a Column-B entry on the §C adjustments
+        # block. Oracle's worked line-10/26/27 arithmetic for this scenario
+        # (single, federal AGI 100000, §C13 col B = 3000, no other Part I entry):
+        #   line 10 col B (income, §A+§B)        = 0
+        #   line 26 col B (§C adjustments total) = 3000
+        #   line 27 col B = line 10 - line 26    = 0 - 3000 = -3000  (NET-NEGATIVE)
+        #   f540 line 14 = line 27 col B = -3000
+        #   f540 line 15/17 CA AGI = fed - line 14 = 100000 - (-3000) = 103000
+        # So the HSA add-back RAISES CA AGI. Oracle supplies both expected values.
+        federal_agi = 100_000.0
+        amount = 3_000.0
+        part_i = dataclasses.replace(
+            _zero_sch_ca_part_i(),
+            line_sc_13_col_b_hsa_deduction_addback=amount,
+        )
+        oracle_out = self._oracle_out(federal_agi, part_i)
+
+        production = sch_ca_compute(
+            ca540=CA540Return(divergences=[
+                CASchCAAdjustment(
+                    source=DivergenceSource.WORKSHEET,
+                    sch_ca_line="Part I §C 13",
+                    direction=DivergenceDirection.SUBTRACTION,
+                    amount=amount,
+                    description="HSA deduction add-back",
+                ),
+            ]),
+            federal_results={"agi": federal_agi},
+            year=2025,
+        )
+        self.assertAlmostEqual(
+            production["sch_ca_ca_agi"], oracle_out["f540_line_17_ca_agi"], places=2
+        )
+        # NET-NEGATIVE Column-B pin (end-to-end, production vs oracle): the
+        # netted line-27 Col B — the value printed on Schedule CA line 27 col B
+        # and carried to Form 540 line 14 — must be the oracle's line-27 col B,
+        # i.e. -3000 by the arithmetic above. Pins the negative total that feeds
+        # the printed cell (the f540 chain itself consumes only ca_agi).
+        self.assertAlmostEqual(
+            production["sch_ca_total_subtractions"],
+            oracle_out["schca_part_1_line_27_col_b"],
+            places=2,
+        )
+        self.assertAlmostEqual(production["sch_ca_total_subtractions"], -3_000.0, places=2)
+
+    def test_section_c_col_c_moving_addition_matches_oracle(self):
+        # §C 14 moving-expense: a Column-C entry on the §C block. Oracle's worked
+        # line-10/26/27 arithmetic (single, federal AGI 100000, §C14 col C = 4500,
+        # no other Part I entry):
+        #   line 10 col C (income, §A+§B)        = 0
+        #   line 26 col C (§C adjustments total) = 4500
+        #   line 27 col C = line 10 - line 26    = 0 - 4500 = -4500  (net-negative)
+        #   f540 line 16 = line 27 col C = -4500
+        #   f540 line 17 CA AGI = line 15 + line 16 = 100000 + (-4500) = 95500
+        # So the §C moving addition LOWERS CA AGI (opposite of a §A/§B Col-C
+        # income addition). Oracle supplies the expected CA AGI.
+        federal_agi = 100_000.0
+        amount = 4_500.0
+        part_i = dataclasses.replace(
+            _zero_sch_ca_part_i(),
+            line_sc_14_col_c_moving_expenses=amount,
+        )
+        oracle_out = self._oracle_out(federal_agi, part_i)
+
+        production = sch_ca_compute(
+            ca540=CA540Return(divergences=[
+                CASchCAAdjustment(
+                    source=DivergenceSource.WORKSHEET,
+                    sch_ca_line="Part I §C 14",
+                    direction=DivergenceDirection.ADDITION,
+                    amount=amount,
+                    description="Moving expense (CA allows non-military)",
+                ),
+            ]),
+            federal_results={"agi": federal_agi},
+            year=2025,
+        )
+        self.assertAlmostEqual(
+            production["sch_ca_ca_agi"], oracle_out["f540_line_17_ca_agi"], places=2
+        )
+        self.assertAlmostEqual(
+            production["sch_ca_total_additions"],
+            oracle_out["schca_part_1_line_27_col_c"],
+            places=2,
         )
 
 

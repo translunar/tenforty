@@ -1,18 +1,20 @@
 """Schedule CA (540) generic compute kernel.
 
 Routes a list of CASchCAAdjustment entries to their respective Sch CA
-lines, sums into Col B (subtractions) and Col C (additions) per line,
-and computes CA AGI = federal AGI - Σ subtractions + Σ additions.
+lines, sums into Col B (subtractions) and Col C (additions) per line, and
+computes CA AGI by NETTING Part I Section C per the form's line-27 arithmetic
+(line 27 = line 10 income − line 26 §C adjustments, per column). See the
+bug #11 note in :func:`compute`.
 
 Produces compute output keys:
 - sch_ca_line_<normalized_line>_col_a: per-line Col A federal passthrough
   (only emitted for lines listed in `_FEDERAL_TO_SCH_CA_COL_A_MAP`)
-- sch_ca_line_<normalized_line>_subtractions: per-line Col B sum
-- sch_ca_line_<normalized_line>_additions: per-line Col C sum
-- sch_ca_total_subtractions: Σ all Col B
-- sch_ca_total_additions: Σ all Col C
+- sch_ca_line_<normalized_line>_subtractions: per-line Col B sum (raw)
+- sch_ca_line_<normalized_line>_additions: per-line Col C sum (raw)
+- sch_ca_total_subtractions: NETTED line-27 Col B = Σ §A/§B Col B − Σ §C Col B
+- sch_ca_total_additions: NETTED line-27 Col C = Σ §A/§B Col C − Σ §C Col C
 - sch_ca_federal_agi: federal AGI passthrough for Line 27 Col A
-- sch_ca_ca_agi: federal_agi - Σ subtractions + Σ additions
+- sch_ca_ca_agi: federal_agi - net_sub + net_add
 """
 
 from collections import defaultdict
@@ -70,6 +72,21 @@ def _normalize_line(sch_ca_line: str) -> str:
             .strip("_"))
 
 
+def _is_section_c(sch_ca_line: str) -> bool:
+    """True iff ``sch_ca_line`` is a Part I Section C (adjustments) line.
+
+    Section C lines label as ``"Part I §C <n>"`` (e.g. "Part I §C 14",
+    "Part I §C 24b"). Everything else — Part I Sections A/B income lines
+    (incl. the 2021 "Part I line 1" §A sub-letter), and any non-Part-I line
+    (Part II itemized, Sch D 540, Schedule D-1) — is treated as an income-side
+    entry so its flat Col B/C contribution is PRESERVED byte-for-byte (see the
+    bug #11 note in ``compute``). The worksheet-only §179A clean-fuel row that
+    sits at "Part I line 26" (never auto-fired) is out of the auto path and out
+    of scope for this classifier.
+    """
+    return sch_ca_line.startswith("Part I §C")
+
+
 def compute(ca540, federal_results: dict, year: int) -> dict:
     if ca540 is None:
         return {}
@@ -95,14 +112,48 @@ def compute(ca540, federal_results: dict, year: int) -> dict:
             key = f"sch_ca_line_{_normalize_line(sch_ca_line)}_col_a"
             out[key] = irs_round(amount)
 
-    total_sub = sum(subtractions.values())
-    total_add = sum(additions.values())
-    out["sch_ca_total_subtractions"] = irs_round(total_sub)
-    out["sch_ca_total_additions"] = irs_round(total_add)
+    # ── BUG #11: Section-C sign inversion (found 2026-07-19 via the CA
+    #    divergence content-audit §C-frame check). ────────────────────────────
+    # The retired code used a FLAT total: ca_agi = federal_agi - Σ(all Col B)
+    # + Σ(all Col C), summing EVERY section's Col B/C together. That
+    # SIGN-INVERTS every Part I Section C (adjustments) divergence.
+    #
+    # The Schedule CA (540) form NETS Section C. Part I:
+    #   line 10 = Σ Sections A + B (income), per column,
+    #   line 26 = Σ Section C (adjustments to income), per column,
+    #   line 27 = line 10 − line 26, PER COLUMN A, B, and C.
+    # (Verified on the 2021-2025 Schedule CA (540) forms — every edition's
+    #  line 27 reads "Total. Subtract line 26 from line 10 in columns A, B, and
+    #  C"; see cframe-investigate.md.)
+    #
+    # So a §C Col-B entry sits on line 26 and is SUBTRACTED from the income
+    # subtotal → it RAISES CA AGI, the OPPOSITE of a §A/§B Col-B entry. Partition
+    # Part I by section and put the NETTED line-27 values into the two existing
+    # total keys (no line-10 / line-26 cells are mapped, so no new keys — see
+    # cframe-investigate.md Deliverable 1). Every zero-§C scenario nets to the
+    # income totals → byte-identical to the flat formula.
+    income_sub = income_add = 0.0  # line 10 Col B / Col C  (§A + §B)
+    adj_sub = adj_add = 0.0        # line 26 Col B / Col C  (§C)
+    for adj in all_divergences:
+        if _is_section_c(adj.sch_ca_line):
+            if adj.direction == DivergenceDirection.SUBTRACTION:
+                adj_sub += adj.amount
+            else:
+                adj_add += adj.amount
+        else:
+            if adj.direction == DivergenceDirection.SUBTRACTION:
+                income_sub += adj.amount
+            else:
+                income_add += adj.amount
+
+    net_sub = income_sub - adj_sub  # line 27 Col B = line 10 − line 26
+    net_add = income_add - adj_add  # line 27 Col C = line 10 − line 26
+    out["sch_ca_total_subtractions"] = irs_round(net_sub)
+    out["sch_ca_total_additions"] = irs_round(net_add)
 
     federal_agi = federal_results.get("agi", 0.0)
     out["sch_ca_federal_agi"] = irs_round(federal_agi)
-    out["sch_ca_ca_agi"] = irs_round(federal_agi - total_sub + total_add)
+    out["sch_ca_ca_agi"] = irs_round(federal_agi - net_sub + net_add)
     return out
 
 
