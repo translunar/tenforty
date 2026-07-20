@@ -29,6 +29,16 @@ class CatalogDirection(str, Enum):
 
     ``ADD``/``SUB`` map to :class:`tenforty.models.DivergenceDirection` later;
     ``BOTH`` resolves to a concrete direction at input time (a later part).
+
+    DIRECTION IS THE FORM COLUMN, EVERYWHERE. ``SUB`` means the Schedule CA
+    (540) Column B cell; ``ADD`` means the Column C cell — the literal column
+    the FTB Pub 1001 / Schedule CA instructions print the item in, NOT an
+    income-effect judgment. This matters because the kernel partitions Part I by
+    section (see ``forms.sch_ca.compute``, bug #11): Part I line 27 nets
+    Section C (line 27 = line 10 income − line 26 §C adjustments, per column), so
+    a §C Column-B (``SUB``) entry has the OPPOSITE income effect of a §A/§B
+    Column-B entry — a §C subtraction RAISES CA AGI. Record the printed column
+    and let the kernel's line-27 netting resolve the sign.
     """
 
     ADD = "Add"

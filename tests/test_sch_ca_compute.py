@@ -39,10 +39,13 @@ class SchCaKernelTests(unittest.TestCase):
             federal_results={"agi": 100_000.0},
             year=2025,
         )
-        # Subtraction reduces CA AGI
+        # Per-line Col B key is the raw amount (unchanged by the netting fix).
         self.assertEqual(result["sch_ca_line_part_i_c_13_subtractions"], 4300.0)
-        self.assertEqual(result["sch_ca_total_subtractions"], 4300.0)
-        self.assertEqual(result["sch_ca_ca_agi"], 100_000.0 - 4300.0)
+        # bug #11 fix: §C13 (HSA add-back) is a Section-C adjustment → line 26
+        # col B = 4300; line 10 col B = 0; line 27 col B = 0 - 4300 = -4300;
+        # ca_agi = fed - (-4300) = 104300 (the HSA add-back RAISES CA income).
+        self.assertEqual(result["sch_ca_total_subtractions"], -4300.0)
+        self.assertEqual(result["sch_ca_ca_agi"], 104_300.0)
 
     def test_multiple_divergences_same_line_sum(self):
         result = sch_ca_compute(
@@ -103,8 +106,12 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
         }
         ca540 = CA540Return(divergences=worksheet_divergences)
         result = sch_ca_compute(ca540=ca540, federal_results=federal_results, year=2025)
-        self.assertEqual(result["sch_ca_total_subtractions"], 4300.0 + 4500.0)
-        self.assertEqual(result["sch_ca_ca_agi"], 100_000.0 - (4300.0 + 4500.0))
+        # bug #11 fix: netting is PER COLUMN by section. UI (§B 7) is a Section-B
+        # income subtraction → line 10 col B += 4500; §C13 HSA is a Section-C
+        # adjustment → line 26 col B = 4300. line 27 col B = line 10 - line 26 =
+        # 4500 - 4300 = 200; ca_agi = fed - 200 = 99800.
+        self.assertEqual(result["sch_ca_total_subtractions"], 200.0)
+        self.assertEqual(result["sch_ca_ca_agi"], 99_800.0)
 
     def test_kernel_returns_empty_when_ca540_is_none(self):
         result = sch_ca_compute(ca540=None, federal_results={"agi": 50_000.0}, year=2025)
