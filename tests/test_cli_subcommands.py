@@ -75,9 +75,12 @@ class TestParserShape(unittest.TestCase):
             with patch("sys.stderr", io.StringIO()):
                 self.parser.parse_args(["ca", "fed.yaml"])
 
-    def test_fods_subcommand_parses(self):
-        args = self.parser.parse_args(["fods", "in.yaml", "out.fods"])
-        self.assertEqual(args.subcommand, "fods")
+    def test_fods_subcommand_is_retired(self):
+        # Part RETIRE (spec §3): the `fods` subcommand was removed along with
+        # the .ca.fods worksheet round-trip.
+        with self.assertRaises(SystemExit):
+            with patch("sys.stderr", io.StringIO()):
+                self.parser.parse_args(["fods", "in.yaml"])
 
 
 class TestDispatch(unittest.TestCase):
@@ -217,17 +220,6 @@ class TestDispatch(unittest.TestCase):
         # Orchestrator must NOT have run_full_california_return called.
         MockOrchestrator.return_value.run_full_california_return.assert_not_called()
 
-    def test_fods_returns_0_and_skips_orchestrator(self):
-        with patch.object(sys, "argv", [
-            "tenforty", "fods", "in.yaml", "out.fods",
-        ]), patch(
-            "tenforty.__main__.ReturnOrchestrator",
-        ) as MockOrchestrator:
-            with patch("sys.stdout", io.StringIO()), patch("sys.stderr", io.StringIO()):
-                result = main()
-        self.assertEqual(result, 0)
-        MockOrchestrator.assert_not_called()
-
 
 class TestSubprocessHelp(unittest.TestCase):
     """Layer 3: subprocess --help smoke tests (one per subcommand)."""
@@ -246,11 +238,6 @@ class TestSubprocessHelp(unittest.TestCase):
         result = self._run("ca", "--help")
         self.assertEqual(result.returncode, 0)
 
-    def test_fods_help_exits_zero_and_mentions_ca_redirect(self):
-        result = self._run("fods", "--help")
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("tenforty ca", result.stdout)
-
 
 class TestBackwardCompatRouter(unittest.TestCase):
     """Layer 4: backward-compat router tests."""
@@ -263,7 +250,6 @@ class TestBackwardCompatRouter(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("federal", result.stdout)
         self.assertIn("ca", result.stdout)
-        self.assertIn("fods", result.stdout)
 
     def test_bare_yaml_rewrites_to_federal(self):
         rewritten = _route_argv(["python", "foo.yaml"])

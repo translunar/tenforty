@@ -1,4 +1,4 @@
-"""CLI entry point: ``python -m tenforty {federal,ca,fods} ...``.
+"""CLI entry point: ``python -m tenforty {federal,ca} ...``.
 
 Backward-compat: ``python -m tenforty <yaml>`` (no subcommand) is still
 accepted and routed to the ``federal`` subcommand. See ``_route_argv``.
@@ -21,7 +21,7 @@ GENERIC_OUTPUT_KEYS = [
     "overpaid", "sche_line26", "sche_line41", "schd_line16",
 ]
 
-_SUBCOMMANDS = ("federal", "ca", "fods")
+_SUBCOMMANDS = ("federal", "ca")
 
 
 def print_results(results: dict, stream: TextIO = sys.stdout) -> None:
@@ -115,7 +115,7 @@ def _route_argv(argv: list[str]) -> list[str]:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    """Build the top-level argparse parser with all three subcommands."""
+    """Build the top-level argparse parser with all subcommands."""
     parser = argparse.ArgumentParser(
         prog="python -m tenforty",
         description=(
@@ -166,38 +166,6 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ca.add_argument(
         "--output-dir", type=Path, required=True, metavar="DIR",
         help="Directory to write the CA-state PDFs to (required)",
-    )
-    p_ca.add_argument(
-        "--divergences", type=Path, default=None, metavar="PATH",
-        help=(
-            "Explicit path to the CA divergences .fods worksheet. If omitted, "
-            "tenforty looks for <basename>.ca.fods next to the federal YAML."
-        ),
-    )
-    p_ca.add_argument(
-        "--no-fods", action="store_true",
-        help=(
-            "Disable .fods auto-discovery. Use when CA divergences are managed "
-            "directly in the .ca.yaml's `divergences:` list."
-        ),
-    )
-
-    p_fods = subparsers.add_parser(
-        "fods",
-        help="Note: .fods is auto-discovered by `tenforty ca`. This subcommand prints a redirect message.",
-        description=(
-            "Note: .fods worksheet handling is now built into `tenforty ca`. "
-            "Place your edited <basename>.ca.fods next to your federal YAML "
-            "and run: tenforty ca <federal.yaml> --output-dir DIR"
-        ),
-    )
-    p_fods.add_argument(
-        "scenario", type=Path, nargs="?", default=None,
-        help="(Deprecated: kept for backward compatibility)",
-    )
-    p_fods.add_argument(
-        "output", type=Path, nargs="?", default=None,
-        help="(Deprecated: kept for backward compatibility)",
     )
 
     return parser
@@ -266,23 +234,11 @@ def _run_ca(args: argparse.Namespace) -> int:
         ca_yaml_path=ca_yaml,
         output_dir=args.output_dir,
         federal_yaml_path=federal_yaml,
-        fods_path=args.divergences,
-        disable_fods=args.no_fods,
     )
 
     combined, retained = _assemble_packets_and_prune(
         emitted, args.output_dir, scenario.config.year)
     _print_packets(combined, retained)
-    return 0
-
-
-def _run_fods(_args: argparse.Namespace) -> int:
-    print(
-        "Note: .fods worksheet handling is now built into `tenforty ca`. "
-        "Place your edited <basename>.ca.fods next to your federal YAML "
-        "and run: tenforty ca <federal.yaml> --output-dir DIR",
-        file=sys.stderr,
-    )
     return 0
 
 
@@ -295,8 +251,6 @@ def main() -> int:
         return _run_federal(args)
     if args.subcommand == "ca":
         return _run_ca(args)
-    if args.subcommand == "fods":
-        return _run_fods(args)
     # subparsers(required=True) prevents this branch; keep an explicit
     # fall-through for static analysers.
     parser.error(f"Unknown subcommand: {args.subcommand!r}")

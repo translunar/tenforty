@@ -1,8 +1,16 @@
 # Starter CA inputs template. Copy to <basename>.ca.yaml next to your
 # federal YAML, edit as needed, then run `tenforty ca <federal.yaml>`.
 #
-# Divergences are sourced from <basename>.ca.fods (auto-discovered by
-# tenforty ca). Author your divergences in the .fods worksheet, not here.
+# Author CA divergences here, validated against the year's CA divergence
+# catalog (tenforty/params/california/divergences/y<year>.yaml). Add a
+# `divergences:` list of {id, amount, note?} entries and a `reviewed:` list
+# of catalog ids you examined and zeroed. Example:
+#   divergences:
+#     - id: non-ca-muni-interest
+#       amount: 412
+#       note: "Vanguard national muni fund, non-CA portion per fund letter"
+#   reviewed:
+#     - prop22-wage-reclass
 
 ca540:
   estimated_payments: 0.0          # CA Form 540-ES quarterly total

@@ -24,7 +24,7 @@ class CA540ReturnDataclassTests(unittest.TestCase):
         ca = CA540Return(
             divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.AUTO_DERIVED,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §B 7",
                     direction=DivergenceDirection.SUBTRACTION,
                     amount=4500.0,
@@ -38,8 +38,16 @@ class CA540ReturnDataclassTests(unittest.TestCase):
         self.assertEqual(ca.divergences[0].amount, 4500.0)
 
     def test_divergence_source_enum_values(self):
-        self.assertEqual(DivergenceSource.AUTO_DERIVED.value, "auto_derived")
-        self.assertEqual(DivergenceSource.WORKSHEET.value, "worksheet")
+        self.assertEqual(DivergenceSource.CATALOG_AUTO.value, "catalog_auto")
+        self.assertEqual(DivergenceSource.USER.value, "user")
+
+    def test_retired_divergence_source_values_are_gone(self):
+        # Part RETIRE (spec §3): the FODS-era provenance values were removed
+        # once the .fods importer (only WORKSHEET stamper) and the sole
+        # AUTO_DERIVED-era path were retired.
+        names = {m.name for m in DivergenceSource}
+        self.assertNotIn("WORKSHEET", names)
+        self.assertNotIn("AUTO_DERIVED", names)
 
     def test_divergence_direction_enum_values(self):
         self.assertEqual(DivergenceDirection.SUBTRACTION.value, "subtraction")
@@ -49,7 +57,7 @@ class CA540ReturnDataclassTests(unittest.TestCase):
 class CASchCAAdjustmentTests(unittest.TestCase):
     def test_minimum_required_fields(self):
         adj = CASchCAAdjustment(
-            source=DivergenceSource.WORKSHEET,
+            source=DivergenceSource.USER,
             sch_ca_line="Part I §C 13",
             direction=DivergenceDirection.SUBTRACTION,
             amount=4300.0,
