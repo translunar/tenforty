@@ -139,7 +139,7 @@
   sch_ca_line: "Part I §A 1h"
   section_title: "Wages"
   description: "Moving expense: CA allows non-military moving expense deduction"
-  direction: "Sub"
+  direction: "Add"
   common: true
   pub1001_page: 21
   ircrtc: "IRC §217 (TCJA)"
@@ -1467,7 +1467,7 @@
   sch_ca_line: "Part I §C 14"
   section_title: "Moving Expenses"
   description: "Moving expense suspended federally except active-duty military; CA allows for non-military"
-  direction: "Sub"
+  direction: "Add"
   common: true
   pub1001_page: 21
   ircrtc: "IRC §217 (TCJA)"
