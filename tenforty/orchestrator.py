@@ -25,6 +25,12 @@ from tenforty.forms import f100s as form_f100s
 from tenforty.forms import f100s_k1 as form_f100s_k1
 from tenforty.forms import sch_ca as form_sch_ca
 from tenforty.forms.sch_ca_fods import FodsDivergences, import_fods_divergences
+from tenforty.ca_divergences import (
+    check_unaddressed_divergences,
+    entry_citation,
+    resolve_divergence_id,
+)
+from tenforty.models import DivergenceSource
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -361,6 +367,84 @@ class MailedFile:
 
 
 @dataclasses.dataclass(frozen=True)
+class CADivergenceRow:
+    """One rendered Schedule CA divergence line for the packet manifest: the
+    catalog id, its description, its source citation, and — when applicable —
+    the applied amount and the filer's provenance note."""
+
+    catalog_id: str
+    description: str
+    citation: str
+    amount: float | None = None
+    note: str | None = None
+
+
+@dataclasses.dataclass(frozen=True)
+class CADivergenceTrail:
+    """The three-bucket audit trail of Schedule CA divergences on a return
+    (spec §2.6): what the catalog auto-applied, what the filer supplied, and
+    what the filer examined and dismissed as not applicable."""
+
+    auto_applied: tuple[CADivergenceRow, ...] = ()
+    user_supplied: tuple[CADivergenceRow, ...] = ()
+    reviewed_not_applicable: tuple[CADivergenceRow, ...] = ()
+
+    @classmethod
+    def build(
+        cls, ca540: CA540Return, federal_results: dict, year: int,
+    ) -> "CADivergenceTrail":
+        """Materialize the trail from a resolved CA return.
+
+        - Auto-applied: the CATALOG_AUTO divergences that fired
+          (``derive_auto_divergences``), each with its amount + catalog citation.
+        - User-supplied: the id-keyed USER divergences on ``ca540``, each with
+          its amount, citation, and note.
+        - Reviewed-not-applicable: ``ca540.reviewed_divergence_ids``, resolved to
+          catalog entries for description + citation.
+        """
+        auto = tuple(
+            CADivergenceRow(
+                catalog_id=d.catalog_id,
+                description=d.description,
+                citation=entry_citation(resolve_divergence_id(year, d.catalog_id)),
+                amount=d.amount,
+            )
+            for d in form_sch_ca.derive_auto_divergences(
+                federal_results, year, ca540=ca540)
+        )
+        user = tuple(
+            CADivergenceRow(
+                catalog_id=d.catalog_id,
+                description=d.description,
+                citation=(
+                    entry_citation(resolve_divergence_id(year, d.catalog_id))
+                    if d.catalog_id is not None else (d.pub1001_ref or "")
+                ),
+                amount=d.amount,
+                note=d.note,
+            )
+            for d in ca540.divergences
+            if d.source is DivergenceSource.USER
+        )
+        reviewed = tuple(
+            CADivergenceRow(
+                catalog_id=entry.id,
+                description=entry.description,
+                citation=entry_citation(entry),
+            )
+            for entry in (
+                resolve_divergence_id(year, rid)
+                for rid in ca540.reviewed_divergence_ids
+            )
+        )
+        return cls(
+            auto_applied=auto,
+            user_supplied=user,
+            reviewed_not_applicable=reviewed,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class PacketManifest:
     """The printed contents of an amendment mailing packet (spec §6).
 
@@ -376,6 +460,8 @@ class PacketManifest:
     mailed_files: tuple[MailedFile, ...]
     dropped: tuple[str, ...]
     caveats: tuple[str, ...]
+    ca_divergences: CADivergenceTrail = dataclasses.field(
+        default_factory=CADivergenceTrail)
 
     def render(self) -> str:
         lines: list[str] = [
@@ -401,7 +487,49 @@ class PacketManifest:
         for caveat in self.caveats:
             lines.append(f"  - {caveat}")
         lines.append("")
+        lines.extend(self._render_ca_divergences())
         return "\n".join(lines)
+
+    def _render_ca_divergences(self) -> list[str]:
+        """The CA Schedule CA divergences section (spec §2.6): three buckets,
+        each row carrying its citation. Rendered deterministically; an empty
+        bucket prints ``(none)`` so the trail is auditable even when a return
+        has no divergence in a given bucket (or no CA side at all)."""
+        trail = self.ca_divergences
+        lines = ["California Schedule CA divergences:"]
+
+        lines.append("  Auto-applied (catalog-derived):")
+        if trail.auto_applied:
+            for r in trail.auto_applied:
+                lines.append(
+                    f"    - {r.catalog_id}: {r.description} "
+                    f"— ${r.amount:,.2f} [{r.citation}]"
+                )
+        else:
+            lines.append("    (none)")
+
+        lines.append("  User-supplied:")
+        if trail.user_supplied:
+            for r in trail.user_supplied:
+                note = f" — note: {r.note}" if r.note else ""
+                lines.append(
+                    f"    - {r.catalog_id}: {r.description} "
+                    f"— ${r.amount:,.2f} [{r.citation}]{note}"
+                )
+        else:
+            lines.append("    (none)")
+
+        lines.append("  Reviewed and not applicable:")
+        if trail.reviewed_not_applicable:
+            for r in trail.reviewed_not_applicable:
+                lines.append(
+                    f"    - {r.catalog_id}: {r.description} [{r.citation}]"
+                )
+        else:
+            lines.append("    (none)")
+
+        lines.append("")
+        return lines
 
 
 class ReturnOrchestrator:
@@ -1444,6 +1572,13 @@ class ReturnOrchestrator:
         ``f540.compute`` raises NotImplementedError above the CA AGI phaseout
         threshold; that propagates unwrapped.
         """
+        # Acknowledgment gate (spec §2.5): a gated + triggered Schedule CA
+        # divergence must be applied or reviewed, or the return REFUSES. Run
+        # BEFORE any form compute so a refusal never yields a partial result.
+        # (Both the normal and amendment paths route through here; ca540 None ->
+        # no gate.)
+        check_unaddressed_divergences(
+            scenario, effective_ca540, scenario.config.year)
         sch_ca_results = form_sch_ca.compute(
             effective_ca540, federal_results, scenario.config.year)
         sch_d_540_results = form_sch_d_540.compute(
@@ -1553,6 +1688,7 @@ class ReturnOrchestrator:
         mailed: list[MailedFile] = []
         caveats: list[str] = [_ERRONEOUS_INCLUSION_CAVEAT]
         dropped: tuple[str, ...] = ()
+        ca_divergences = CADivergenceTrail()
 
         # --- Federal: corrected run feeds Column C; filed file is Column A. ---
         eff_amended, corp_amended = self._build_effective_scenario(amended_scenario)
@@ -1609,6 +1745,10 @@ class ReturnOrchestrator:
         if amended_scenario.ca540 is not None:
             corrected_ca = self._compute_ca_results(
                 amended_scenario, amended_scenario.ca540, corrected_federal)
+            # Trail (spec §2.6): the three-bucket audit of Schedule CA
+            # divergences on the corrected CA return.
+            ca_divergences = CADivergenceTrail.build(
+                amended_scenario.ca540, corrected_federal, year)
             ca_filed = amendment.load_filed_values(
                 ca_filed_path, form_schedule_x.REQUIRED_CA_FILED_KEYS)
             schedule_x_values = form_schedule_x.assemble_ca(
@@ -1646,7 +1786,8 @@ class ReturnOrchestrator:
 
         manifest = PacketManifest(
             year=year, mailed_files=tuple(mailed),
-            dropped=dropped, caveats=tuple(caveats))
+            dropped=dropped, caveats=tuple(caveats),
+            ca_divergences=ca_divergences)
         (output_dir / "packet_manifest.txt").write_text(manifest.render())
         return manifest
 

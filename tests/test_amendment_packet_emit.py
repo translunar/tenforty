@@ -260,6 +260,96 @@ class AmendmentPacketEmitTests(unittest.TestCase):
             int(float(_read_v(out / "schedule_x_2024.pdf", smap["schedule_x_line7"]))),
             round(expected_sx["schedule_x_line7"]))
 
+    def test_manifest_ca_divergences_three_buckets(self):
+        """The packet manifest carries a CA Schedule CA divergences section with
+        THREE buckets, each row rendered with its citation (spec §2.6):
+
+          * Auto-applied (catalog-derived) — here the RRB Tier 1/2 auto row,
+            fired by ca540.rrb_tier_1_2_amount, with its amount + Pub 1001 page.
+          * User-supplied — an id-keyed USER divergence, with its amount, its
+            citation, AND the filer's note.
+          * Reviewed and not applicable — a reviewed_divergence_ids entry,
+            resolved to the catalog description + citation.
+
+        Reads the rendered ``packet_manifest.txt`` back (placement discipline):
+        the exact bucket-header and row lines must appear."""
+        from tenforty.ca_divergences import (
+            materialize_user_divergence,
+            resolve_divergence_id,
+        )
+
+        year = 2024
+        # USER divergence (an ADD/SUB row — no direction key) + a filer note.
+        user_id = "us-treasury-fed-obligation-interest-excluded-by-ca"
+        user_div = dataclasses.replace(
+            materialize_user_divergence(
+                resolve_divergence_id(year, user_id), 1_234.0, None),
+            note="filer-entered per broker statement")
+        reviewed_id = "mutual-fund-muni-interest-federal-fully-excludes-ca-only"
+        # RRB auto row fires off ca540.rrb_tier_1_2_amount (a ca540_field auto).
+        rrb_entry = resolve_divergence_id(
+            year, "railroad-retirement-tier-1-2-ca-excludes-rtc-17087")
+        user_entry = resolve_divergence_id(year, user_id)
+        reviewed_entry = resolve_divergence_id(year, reviewed_id)
+
+        ca540 = CA540Return(
+            rrb_tier_1_2_amount=5_000.0,
+            divergences=[user_div],
+            reviewed_divergence_ids=(reviewed_id,),
+        )
+        base = _with_ca(build_canonical_wage_investment_rental(year))
+        original = dataclasses.replace(base, ca540=ca540)
+        amended = dataclasses.replace(
+            _bump_interest(original, 3_000.0), ca540=ca540)
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=year, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        # (a) the trail is populated with exactly the three buckets.
+        trail = manifest.ca_divergences
+        self.assertEqual(
+            [r.catalog_id for r in trail.auto_applied], [rrb_entry.id])
+        self.assertEqual(
+            [r.catalog_id for r in trail.user_supplied], [user_entry.id])
+        self.assertEqual(
+            [r.catalog_id for r in trail.reviewed_not_applicable],
+            [reviewed_entry.id])
+
+        # (b) read the rendered text back — exact header + row lines per bucket.
+        txt = (out / "packet_manifest.txt").read_text()
+        self.assertIn("California Schedule CA divergences:", txt)
+
+        self.assertIn("  Auto-applied (catalog-derived):", txt)
+        self.assertIn(
+            f"    - {rrb_entry.id}: {rrb_entry.description} "
+            f"— $5,000.00 [Pub 1001 p.{rrb_entry.pub1001_page}]",
+            txt,
+        )
+
+        self.assertIn("  User-supplied:", txt)
+        self.assertIn(
+            f"    - {user_entry.id}: {user_entry.description} "
+            f"— $1,234.00 [Pub 1001 p.{user_entry.pub1001_page}] "
+            f"— note: filer-entered per broker statement",
+            txt,
+        )
+
+        self.assertIn("  Reviewed and not applicable:", txt)
+        self.assertIn(
+            f"    - {reviewed_entry.id}: {reviewed_entry.description} "
+            f"[Pub 1001 p.{reviewed_entry.pub1001_page}]",
+            txt,
+        )
+
     def test_happy_path_full_emit_ca_2021(self):
         """2021 full-emit CA side, amended by one income component (mirrors
         ``test_happy_path_full_emit_year`` for year 2021).
