@@ -27,7 +27,7 @@ from tenforty.models import (
 
 def _adj(line, direction, amount):
     return CASchCAAdjustment(
-        source=DivergenceSource.WORKSHEET,
+        source=DivergenceSource.USER,
         sch_ca_line=line,
         direction=direction,
         amount=amount,

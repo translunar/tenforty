@@ -29,7 +29,7 @@ class SchCaKernelTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.WORKSHEET,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §C 13",
                     direction=DivergenceDirection.SUBTRACTION,
                     amount=4300.0,
@@ -51,14 +51,14 @@ class SchCaKernelTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.AUTO_DERIVED,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §B 8z",
                     direction=DivergenceDirection.SUBTRACTION,
                     amount=1500.0,
                     description="CA Lottery",
                 ),
                 CASchCAAdjustment(
-                    source=DivergenceSource.WORKSHEET,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §B 8z",
                     direction=DivergenceDirection.SUBTRACTION,
                     amount=200.0,
@@ -74,7 +74,7 @@ class SchCaKernelTests(unittest.TestCase):
         result = sch_ca_compute(
             ca540=CA540Return(divergences=[
                 CASchCAAdjustment(
-                    source=DivergenceSource.WORKSHEET,
+                    source=DivergenceSource.USER,
                     sch_ca_line="Part I §A 2",
                     direction=DivergenceDirection.ADDITION,
                     amount=350.0,
@@ -93,7 +93,7 @@ class SchCaIntegratedKernelTests(unittest.TestCase):
     def test_kernel_combines_auto_derived_and_worksheet_divergences(self):
         worksheet_divergences = [
             CASchCAAdjustment(
-                source=DivergenceSource.WORKSHEET,
+                source=DivergenceSource.USER,
                 sch_ca_line="Part I §C 13",
                 direction=DivergenceDirection.SUBTRACTION,
                 amount=4300.0,
