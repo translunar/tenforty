@@ -89,6 +89,37 @@ class F8995ThresholdGateTests(unittest.TestCase):
         self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
 
 
+class F8995NetCapitalGainFloorBoundaryTests(unittest.TestCase):
+    """Pins the max(0, net_cap_gain) guard at the upstream dict boundary.
+
+    Today's producers (both the compute path's `_preamble.net_capital_gain`
+    and the emit path) already floor net_capital_gain at 0 before it reaches
+    f8995, so a negative value can never arrive here in production. But
+    `upstream` is a public boundary any caller can populate, and the guard
+    matches the form itself: a net capital LOSS contributes nothing to line
+    12, it never subtracts. Unit tests build the upstream stub directly, so
+    they can reach this boundary even though production producers cannot.
+    """
+
+    def test_negative_net_capital_gain_floored_at_upstream_boundary(self):
+        """qualified_dividends=5,000, net_capital_gain=-8,000.
+
+        line_12 = irs_round(max(0, net_cap_gain) + qualified_divs)
+                = irs_round(max(0, -8_000) + 5_000)
+                = irs_round(0 + 5_000)
+                = 5_000
+
+        The negative net_capital_gain contributes 0 -- it must NOT subtract
+        from qualified_divs (which would wrongly yield -3,000).
+        """
+        s, upstream = _scenario_with_qbi(qbi=0.0, taxable_income=100_000.0,
+                                          net_cap_gain=-8_000.0)
+        upstream["f1040"]["qualified_dividends"] = 5_000.0
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_12_net_capital_gain"], 5_000)
+
+
 class F8995QbiThresholdYearAwarenessTests(unittest.TestCase):
     """Verify f8995.compute uses year-correct QBI threshold from FederalParams."""
 

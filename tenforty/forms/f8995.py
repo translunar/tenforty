@@ -53,6 +53,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_6 = line_3 + line_5
 
     line_11 = irs_round(taxable_income)
+    # max(0, ...) is a boundary contract on `upstream`, not a redundant guard:
+    # `upstream` is a public dict any caller can populate, and today's
+    # producers (both the compute path's `_preamble.net_capital_gain` and the
+    # emit path) already floor net_capital_gain at 0 before it reaches here,
+    # so this branch is unreachable *through today's producers* alone. It also
+    # matches the form: a net capital LOSS contributes nothing to line 12, it
+    # never subtracts qualified dividends. Pinned by
+    # F8995NetCapitalGainFloorBoundaryTests.test_negative_net_capital_gain_floored_at_upstream_boundary
+    # in tests/test_f8995_compute.py, which populates upstream directly.
     line_12 = irs_round(max(0, net_cap_gain) + qualified_divs)
     line_13 = max(0, line_11 - line_12)
     line_14 = irs_round(0.20 * line_13)
