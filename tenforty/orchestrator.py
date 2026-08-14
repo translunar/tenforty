@@ -51,6 +51,7 @@ from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
+from tenforty.filing.statement_199a import render_199a_statement_a
 from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
@@ -1333,6 +1334,10 @@ class ReturnOrchestrator:
                 checkbox_states=k1_checkbox or None,
             )
             emitted[f"1120s_k1_{i}"] = k1_output
+
+            stmt_output = output_dir / f"f1120s_k1_qbi_stmt_{i}_{year}.pdf"
+            render_199a_statement_a(alloc, year, stmt_output)
+            emitted[f"1120s_k1_qbi_stmt_{i}"] = stmt_output
 
         return emitted
 
