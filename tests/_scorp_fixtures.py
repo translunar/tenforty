@@ -12,6 +12,7 @@ from tenforty.models import (
     Address,
     FilingStatus,
     Scenario,
+    SCorp199AInfo,
     SCorpDeductions,
     SCorpIncome,
     SCorpReturn,
@@ -84,6 +85,8 @@ def _make_v1_scenario(
     gross_receipts: float = 100000.0,
     compensation_of_officers: float = 30000.0,
     other_deductions: float = 0.0,
+    shareholder_pcts: list[float] | None = None,
+    section_199a: SCorp199AInfo | None = None,
 ) -> Scenario:
     """Build a v1-profile Scenario (single shareholder, all 1120-S attestations
     true). `scope_out_attestation_defaults()` carries safe-default values for all
@@ -91,9 +94,33 @@ def _make_v1_scenario(
     `_scorp_attestation_defaults()` over it lets the 1120-S True values win —
     `validate_load_time` requires every attestation field to be non-None
     regardless of trigger.
+
+    `shareholder_pcts` builds one `SCorpShareholder` per percentage (each with
+    a distinct generic synthetic name/SSN); `None` keeps the default single
+    100%-owner shareholder. `section_199a` passes through to
+    `SCorpReturn.section_199a` unchanged.
     """
     from tests.helpers import scope_out_attestation_defaults
     attestations = {**scope_out_attestation_defaults(), **_scorp_attestation_defaults()}
+    if shareholder_pcts is None:
+        shareholders = [
+            SCorpShareholder(
+                name="Taxpayer A",
+                ssn_or_ein="000-00-0000",
+                address=_example_address(),
+                ownership_percentage=100.0,
+            ),
+        ]
+    else:
+        shareholders = [
+            SCorpShareholder(
+                name=f"Taxpayer {chr(ord('A') + i)}",
+                ssn_or_ein=f"000-00-{i:04d}",
+                address=_example_address(),
+                ownership_percentage=pct,
+            )
+            for i, pct in enumerate(shareholder_pcts)
+        ]
     return Scenario(
         config=TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
@@ -139,13 +166,7 @@ def _make_v1_scenario(
                 has_any_foreign_shareholders=False,
                 owns_foreign_entity=False,
             ),
-            shareholders=[
-                SCorpShareholder(
-                    name="Taxpayer A",
-                    ssn_or_ein="000-00-0000",
-                    address=_example_address(),
-                    ownership_percentage=100.0,
-                ),
-            ],
+            shareholders=shareholders,
+            section_199a=section_199a,
         ),
     )

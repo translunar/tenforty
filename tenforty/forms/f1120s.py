@@ -218,10 +218,18 @@ def _compute_schedule_k1_allocations(
 ) -> list[K1Allocation]:
     """Per-shareholder K-1 allocation (pro-rata by ownership %).
 
-    v1 supports only Sch K line 1 (OBI) on Sch K-1 box 1; other
-    separately-stated items have no v1 compute logic.
+    v1 supports Sch K line 1 (OBI) on Sch K-1 box 1, plus box 17 code V
+    (§199A QBI, W-2 wages, UBIA) sourced from `SCorpReturn.section_199a`;
+    other separately-stated items have no v1 compute logic.
     """
     sch_k_line_1 = schedule_k["f1120s_sch_k_ordinary_business_income"]
+    info = r.section_199a
+    entity_qbi = (
+        sch_k_line_1 if (info is None or info.qbi_override is None)
+        else irs_round(info.qbi_override)
+    )
+    entity_w2 = 0.0 if info is None else info.w2_wages
+    entity_ubia = 0.0 if info is None else info.ubia
     allocations: list[K1Allocation] = []
     for sh in r.shareholders:
         share = sh.ownership_percentage / 100.0
@@ -238,6 +246,9 @@ def _compute_schedule_k1_allocations(
             ),
             ownership_percentage=sh.ownership_percentage,
             box_1_ordinary_business_income=sch_k_line_1 * share,
+            box_17v_qbi=irs_round(entity_qbi * share),
+            box_17v_w2_wages=irs_round(entity_w2 * share),
+            box_17v_ubia=irs_round(entity_ubia * share),
         ))
     return allocations
 

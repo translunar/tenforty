@@ -98,6 +98,7 @@ class PartitionInvariantTests(unittest.TestCase):
         "f8995", "8959", "f8582", "f4562",
         # Federal corporate
         "1120s", "1120s_k1_0", "1120s_k1_1", "1120s_k1_2",
+        "1120s_k1_qbi_stmt_1",
         # California
         "f540", "sch_ca", "sch_d_540",
         # Standalone
