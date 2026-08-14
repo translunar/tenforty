@@ -299,6 +299,13 @@ class TestPdf1040Line14DeductionsPlusQbi(unittest.TestCase):
                     "taxable_income_before_qbi_deduction":
                         preamble.taxable_income_before_qbi_std,
                     "net_capital_gain": preamble.net_capital_gain,
+                    # 1040 line 3a TOTAL (1099-DIV + K-1), which f8995.compute
+                    # reads strictly. Taken from the same preamble field the
+                    # orchestrator's production stub uses, so this mirrors the
+                    # real upstream. This scenario is W-2-only (no 1099-DIV, no
+                    # K-1), so the true total is 0 — scenario-faithful, not a
+                    # value chosen to satisfy the strict read.
+                    "qualified_dividends": preamble.qualified_divs_total,
                 },
             },
         )

@@ -581,6 +581,16 @@ def compute_spine(
         # (f1040.compute renamed these in the oracle path).
         "taxable_interest": taxable_interest,
         "ordinary_dividends": ordinary_divs,
+        # 1040 line 3a TOTAL (1099-DIV + K-1). Publishing this from the spine
+        # (rather than leaving it only in the orchestrator's compute-time
+        # stub) lets the PDF-emit path -- which builds its upstream from this
+        # finished results dict -- read the same authoritative total that
+        # forms.f8995.compute reads on the compute path. Without this, the
+        # emit path's upstream["f1040"] lacked the key entirely, and f8995's
+        # `.get(..., 0)` default silently zeroed line 12 on every emitted
+        # packet. This also populates pdf_1040's existing "qualified_dividends"
+        # -> line 3a mapping, which had nothing to read before.
+        "qualified_dividends": qualified_divs,
         # AGI
         "agi": agi,
         "agi_page2": agi,
