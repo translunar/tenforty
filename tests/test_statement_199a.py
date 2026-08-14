@@ -17,6 +17,12 @@ def _alloc():
         box_17v_qbi=100_000.0, box_17v_w2_wages=40_000.0, box_17v_ubia=250_000.0,
     )
 
+def _parse_money(s: str) -> int:
+    """Convert a rendered money string like '-70,000' or '80,000' (as
+    extracted from the PDF text) into an int, for arithmetic assertions
+    against the figures as actually printed."""
+    return int(s.replace(",", ""))
+
 class Statement199ATests(unittest.TestCase):
     def test_renders_one_page_with_all_199a_items(self):
         with tempfile.TemporaryDirectory() as d:
@@ -95,8 +101,16 @@ class Statement199ATests(unittest.TestCase):
             lines = text.splitlines()
             label_idx = lines.index("Ordinary business income (loss)")
             self.assertEqual(lines[label_idx + 1], "70,000")
-            # The three printed figures must add up exactly, as printed.
-            self.assertEqual(70_000 + 10_000, 80_000)
+            # The three printed figures must add up exactly, as printed —
+            # parsed from the extracted PDF text (not literals), so this
+            # actually exercises the renderer's arithmetic rather than
+            # Python's.
+            row1 = _parse_money(lines[label_idx + 1])
+            adj_idx = lines.index("Other QBI adjustments (preparer-determined)")
+            adjustment = _parse_money(lines[adj_idx + 1])
+            total_idx = lines.index("Qualified business income")
+            total = _parse_money(lines[total_idx + 1])
+            self.assertEqual(row1 + adjustment, total)
 
     def test_default_path_no_override_single_row_layout_preserved(self):
         # Ruling I-1: when box_17v_qbi equals box_1_ordinary_business_income
@@ -104,6 +118,28 @@ class Statement199ATests(unittest.TestCase):
         # before — no separate adjustment/total rows.
         with tempfile.TemporaryDirectory() as d:
             out = render_199a_statement_a(_alloc(), 2025, Path(d) / "stmtA_default.pdf")
+            reader = pypdf.PdfReader(str(out))
+            text = reader.pages[0].extract_text()
+            self.assertNotIn("Other QBI adjustments", text)
+            self.assertNotIn("Qualified business income", text)
+
+    def test_sub_dollar_difference_rounds_to_single_row(self):
+        # Ruling I-1 corollary: box_1 and QBI can differ by a sub-dollar
+        # float amount yet round (via irs_round) to the SAME whole dollar.
+        # Because the renderer rounds BEFORE comparing the two figures, this
+        # must NOT trigger the override layout with a nonsensical
+        # zero-value adjustment row — the single-row default layout must be
+        # used, exactly as when the two figures are equal outright.
+        addr = Address(street="1 Test Way", city="Austin", state="TX", zip_code="78701")
+        alloc = K1Allocation(
+            entity=K1AllocationEntity(name="Widgets Inc", ein="00-0000000", address=addr),
+            shareholder=K1AllocationShareholder(name="Pat Sample", ssn_or_ein="123-00-6789", address=addr),
+            ownership_percentage=100.0,
+            box_1_ordinary_business_income=70_000.3,
+            box_17v_qbi=70_000.4, box_17v_w2_wages=40_000.0, box_17v_ubia=250_000.0,
+        )
+        with tempfile.TemporaryDirectory() as d:
+            out = render_199a_statement_a(alloc, 2025, Path(d) / "stmtA_subdollar.pdf")
             reader = pypdf.PdfReader(str(out))
             text = reader.pages[0].extract_text()
             self.assertNotIn("Other QBI adjustments", text)
@@ -128,7 +164,16 @@ class Statement199ATests(unittest.TestCase):
             self.assertIn("-70,000", text)   # box 1 tie-out (row 1)
             self.assertIn("-10,000", text)   # adjustment = -80,000 - (-70,000)
             self.assertIn("-80,000", text)   # QBI total
-            self.assertEqual(-70_000 + -10_000, -80_000)
+            # The three printed figures must add up exactly, as printed —
+            # parsed from the extracted PDF text (not literals).
+            lines = text.splitlines()
+            label_idx = lines.index("Ordinary business income (loss)")
+            row1 = _parse_money(lines[label_idx + 1])
+            adj_idx = lines.index("Other QBI adjustments (preparer-determined)")
+            adjustment = _parse_money(lines[adj_idx + 1])
+            total_idx = lines.index("Qualified business income")
+            total = _parse_money(lines[total_idx + 1])
+            self.assertEqual(row1 + adjustment, total)
 
     def test_sstb_ptp_aggregation_disclaimer_present(self):
         # Ruling I-2: an explicit footnote disclaiming SSTB/PTP/aggregation
