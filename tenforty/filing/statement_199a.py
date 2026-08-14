@@ -13,10 +13,11 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
 from tenforty.models import K1Allocation
+from tenforty.rounding import irs_round
 
 
 def _money(x: float) -> str:
-    return f"{x:,.0f}"
+    return f"{irs_round(x):,}"
 
 
 def render_199a_statement_a(alloc: K1Allocation, year: int, output_path: Path) -> Path:

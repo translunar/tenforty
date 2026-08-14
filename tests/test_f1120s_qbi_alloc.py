@@ -36,3 +36,15 @@ class QbiAllocationTests(unittest.TestCase):
         self.assertAlmostEqual(allocs[1].box_17v_w2_wages, 20_000.0)
         self.assertAlmostEqual(allocs[0].box_17v_ubia, 120_000.0)
         self.assertAlmostEqual(allocs[1].box_17v_ubia, 80_000.0)
+
+    def test_qbi_defaults_allocate_pro_rata_across_shareholders(self):
+        # two shareholders, 60/40, no qbi_override: box_17v_qbi must track
+        # each shareholder's own pro-rata share of Sch K line 1 (box 1),
+        # not a single-owner default. Net ordinary business income here is
+        # 100_000 gross receipts minus the fixture's 30_000 default
+        # compensation-of-officers deduction = 70_000, split 60/40.
+        allocs = self._allocs(ownership=[60.0, 40.0], obi=100_000.0)
+        self.assertAlmostEqual(allocs[0].box_17v_qbi, allocs[0].box_1_ordinary_business_income)
+        self.assertAlmostEqual(allocs[1].box_17v_qbi, allocs[1].box_1_ordinary_business_income)
+        self.assertAlmostEqual(allocs[0].box_17v_qbi, 42_000.0)
+        self.assertAlmostEqual(allocs[1].box_17v_qbi, 28_000.0)
