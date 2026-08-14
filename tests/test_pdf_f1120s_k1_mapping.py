@@ -22,6 +22,8 @@ _EXPECTED_K1_KEYS = frozenset({
     "shareholder_name_and_address",
     "ownership_percentage",
     "box_1_ordinary_business_income",
+    "box_17_code_v",
+    "box_17_code_v_amount",
 })
 
 
