@@ -81,3 +81,31 @@ class BridgeCrossPathAgreementTests(unittest.TestCase):
                    if k1.entity_ein == alloc.entity.ein]
         self.assertEqual(len(spliced), 1)
         self.assertEqual(spliced[0].qbi_amount, emitted_qbi)
+
+
+class BridgeAboveThresholdTests(unittest.TestCase):
+    def test_above_threshold_qbi_now_raises_instead_of_silently_zeroing(self):
+        """Before the bridge carried QBI, an above-threshold S-corp scenario
+        silently produced a ZERO QBI deduction — a wrong number. Now it raises
+        NotImplementedError (Form 8995-A is not implemented in v1), which is
+        the honest outcome. This test pins that intended behavior change.
+
+        `_make_v1_scenario` fixes filing_status=SINGLE, whose 2025 Form 8995
+        threshold is $197,300 (tenforty/params/federal/y2025.py). Net S-corp
+        ordinary income here is 310_000 - 30_000 = 280_000; after the
+        $15,750 single standard deduction, taxable income before QBI is
+        264_250 — comfortably above threshold, so the margin survives any
+        rounding. `acknowledges_qbi_below_threshold` is left at its scope-out
+        default (False), so the guard in tenforty/forms/f8995.py must fire.
+        """
+        scenario = _make_v1_scenario(
+            gross_receipts=310_000.0, compensation_of_officers=30_000.0)
+        self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
+
+        with tempfile.TemporaryDirectory() as d:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            with self.assertRaisesRegex(
+                NotImplementedError, "acknowledges_qbi_below_threshold"
+            ):
+                orch.compute_federal(scenario)
