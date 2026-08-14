@@ -810,7 +810,8 @@ class K1AllocationShareholder:
 @dataclass
 class K1Allocation:
     """A single shareholder's pro-rata share of an S-corp's pass-through
-    items. v1 covers only Sch K line 1 / box 1 (Ordinary Business Income).
+    items: Sch K line 1 / box 1 (Ordinary Business Income) plus the box 17
+    code V §199A items (QBI, W-2 wages, and UBIA of qualified property).
 
     This is the contract between `f1120s.compute` (producer) and the
     orchestrator (consumer for PDF emit + 1040 waterfall). Consumers
