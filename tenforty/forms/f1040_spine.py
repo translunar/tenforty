@@ -47,7 +47,7 @@ CA consumers are unaffected.
 from dataclasses import dataclass
 
 from tenforty.forms.f1040_tax import qdcgt_tax
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -76,7 +76,11 @@ class IncomePreamble:
         wages:               1040 line 1a (sum of W-2 box 1).
         taxable_interest:    1040 line 2b (sum of 1099-INT box 1).
         ordinary_divs:       1040 line 3b (sum of 1099-DIV box 1a).
-        qualified_divs:      1040 line 3a (sum of 1099-DIV box 1b).
+        qualified_divs:      1040 line 3a component from 1099-DIV box 1b only.
+        qualified_divs_k1:   1040 line 3a component from K-1 box 5b
+            (IRC 1366(b) conduit treatment), consumed from the fanout.
+        qualified_divs_total: 1040 line 3a authoritative TOTAL
+            (qualified_divs + qualified_divs_k1).
         schd_line16:         Schedule D line 16 net capital gain/loss.
         sch_1_line_10:       Schedule 1 line 10 total additional income.
         sch_1_line_26:       Schedule 1 line 26 total adjustments.
@@ -108,6 +112,8 @@ class IncomePreamble:
     taxable_interest: int
     ordinary_divs: int
     qualified_divs: int
+    qualified_divs_k1: int
+    qualified_divs_total: int
     schd_line16: int
     sch_1_line_10: int
     sch_1_line_26: int
@@ -122,6 +128,7 @@ def compute_income_preamble(
     scenario: Scenario,
     params: FederalParams,
     schedule_results: dict[str, dict],
+    k1_fanout: "K1FanoutData | None" = None,
 ) -> IncomePreamble:
     """Compute the shared 1040 income → AGI preamble (lines 1-11 + helpers).
 
@@ -152,6 +159,14 @@ def compute_income_preamble(
     qualified_divs = irs_round(
         sum(f.qualified_dividends for f in scenario.form1099_div)
     )
+    # 1040 line 3a is the TOTAL of qualified dividends from every source.
+    # 1099-DIV box 1b is one component; a K-1's box 5b is another (IRC 1366(b)
+    # conduit treatment — S-corp items keep their character in the
+    # shareholder's hands). The K-1 component is CONSUMED from the fanout,
+    # never re-summed here, so each component is aggregated exactly once.
+    _fanout = k1_fanout if k1_fanout is not None else K1FanoutData.empty()
+    qualified_divs_k1 = irs_round(_fanout.qualified_dividends_aggregate)
+    qualified_divs_total = irs_round(qualified_divs + qualified_divs_k1)
     schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
     sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
@@ -197,6 +212,8 @@ def compute_income_preamble(
         taxable_interest=taxable_interest,
         ordinary_divs=ordinary_divs,
         qualified_divs=qualified_divs,
+        qualified_divs_k1=qualified_divs_k1,
+        qualified_divs_total=qualified_divs_total,
         schd_line16=schd_line16,
         sch_1_line_10=sch_1_line_10,
         sch_1_line_26=sch_1_line_26,
