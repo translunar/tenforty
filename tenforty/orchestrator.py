@@ -112,6 +112,11 @@ def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
     The 1120-S pipeline produces typed `K1Allocation` dataclasses; the
     1040 pipeline's Sch E Part II compute consumes `ScheduleK1` dataclass
     instances. This is the bridge.
+
+    Carries box 1 (ordinary business income) and box 17 code V (QBI). All
+    other ScheduleK1 fields are zero because K1Allocation has no source
+    for them — the v1 Schedule K compute is line-1-only — not because the
+    bridge drops them.
     """
     return ScheduleK1(
         entity_name=alloc.entity.name,
@@ -119,6 +124,12 @@ def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
         entity_type=EntityType.S_CORP,
         material_participation=True,  # v1 default; caller-configurable later
         ordinary_business_income=alloc.box_1_ordinary_business_income,
+        # Box 17 code V. Without this the emitted K-1 and its §199A
+        # Statement A report QBI of $X while the shareholder's Form 8995
+        # sees $0 — the same filing contradicting itself. `box_17v_qbi` is
+        # an int (irs_round); qbi_amount is typed float, so convert
+        # explicitly rather than letting an int land in a float field.
+        qbi_amount=float(alloc.box_17v_qbi),
     )
 
 
