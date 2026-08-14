@@ -47,7 +47,7 @@ CA consumers are unaffected.
 from dataclasses import dataclass
 
 from tenforty.forms.f1040_tax import qdcgt_tax
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -76,7 +76,11 @@ class IncomePreamble:
         wages:               1040 line 1a (sum of W-2 box 1).
         taxable_interest:    1040 line 2b (sum of 1099-INT box 1).
         ordinary_divs:       1040 line 3b (sum of 1099-DIV box 1a).
-        qualified_divs:      1040 line 3a (sum of 1099-DIV box 1b).
+        qualified_divs:      1040 line 3a component from 1099-DIV box 1b only.
+        qualified_divs_k1:   1040 line 3a component from K-1 box 5b
+            (IRC 1366(b) conduit treatment), consumed from the fanout.
+        qualified_divs_total: 1040 line 3a authoritative TOTAL
+            (qualified_divs + qualified_divs_k1).
         schd_line16:         Schedule D line 16 net capital gain/loss.
         sch_1_line_10:       Schedule 1 line 10 total additional income.
         sch_1_line_26:       Schedule 1 line 26 total adjustments.
@@ -91,10 +95,16 @@ class IncomePreamble:
             (Bug #10, found 2026-07-18: this previously used line 16 alone,
             over-including a net ST gain and undertaxing such returns.)
             Equals the workbook's NetCapitalGain named range. Qualified
-            dividends are NOT included here — they are added separately
-            inside qdcgt_tax (as the ``qualified_dividends`` argument) and
-            inside f8995 (via fanout.qualified_dividends_aggregate). Keeping
-            them separate prevents double-counting when qdcgt_tax computes
+            dividends are NOT included here — they are added separately,
+            downstream, by consumers that each receive the authoritative
+            ``qualified_divs_total`` computed by this preamble: qdcgt_tax
+            (as the ``qualified_dividends`` argument) and f8995 (via the
+            orchestrator's f1040 stub, i.e. ``upstream["f1040"]
+            ["qualified_dividends"]`` — NOT ``fanout.qualified_dividends_
+            aggregate``, which is only the K-1 component; see the guard
+            comment on ``K1FanoutData.qualified_dividends_aggregate`` in
+            tenforty/models.py). Keeping qualified dividends separate here
+            prevents double-counting when qdcgt_tax computes
             ``preferential = qualified_dividends + net_capital_gain``.
         taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0.
             No longer what feeds f8995/f8582 — the orchestrator's pre-pass
@@ -108,6 +118,8 @@ class IncomePreamble:
     taxable_interest: int
     ordinary_divs: int
     qualified_divs: int
+    qualified_divs_k1: int
+    qualified_divs_total: int
     schd_line16: int
     sch_1_line_10: int
     sch_1_line_26: int
@@ -122,6 +134,7 @@ def compute_income_preamble(
     scenario: Scenario,
     params: FederalParams,
     schedule_results: dict[str, dict],
+    k1_fanout: "K1FanoutData | None" = None,
 ) -> IncomePreamble:
     """Compute the shared 1040 income → AGI preamble (lines 1-11 + helpers).
 
@@ -152,6 +165,14 @@ def compute_income_preamble(
     qualified_divs = irs_round(
         sum(f.qualified_dividends for f in scenario.form1099_div)
     )
+    # 1040 line 3a is the TOTAL of qualified dividends from every source.
+    # 1099-DIV box 1b is one component; a K-1's box 5b is another (IRC 1366(b)
+    # conduit treatment — S-corp items keep their character in the
+    # shareholder's hands). The K-1 component is CONSUMED from the fanout,
+    # never re-summed here, so each component is aggregated exactly once.
+    _fanout = k1_fanout if k1_fanout is not None else K1FanoutData.empty()
+    qualified_divs_k1 = irs_round(_fanout.qualified_dividends_aggregate)
+    qualified_divs_total = irs_round(qualified_divs + qualified_divs_k1)
     schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
     sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
@@ -197,6 +218,8 @@ def compute_income_preamble(
         taxable_interest=taxable_interest,
         ordinary_divs=ordinary_divs,
         qualified_divs=qualified_divs,
+        qualified_divs_k1=qualified_divs_k1,
+        qualified_divs_total=qualified_divs_total,
         schd_line16=schd_line16,
         sch_1_line_10=sch_1_line_10,
         sch_1_line_26=sch_1_line_26,
@@ -280,6 +303,7 @@ def compute_spine(
     scenario: Scenario,
     params: FederalParams,
     schedule_results: dict[str, dict],
+    k1_fanout: "K1FanoutData | None" = None,
 ) -> dict:
     """Assemble the 1040 lines from scenario inputs and schedule results.
 
@@ -319,11 +343,17 @@ def compute_spine(
     # -----------------------------------------------------------------------
     # Lines 1-11 are computed by the shared preamble so the orchestrator's
     # f8995/f8582 pre-pass and this spine share one source of truth for AGI.
-    preamble = compute_income_preamble(scenario, params, schedule_results)
+    preamble = compute_income_preamble(
+        scenario, params, schedule_results, k1_fanout=k1_fanout,
+    )
     wages = preamble.wages
     taxable_interest = preamble.taxable_interest
     ordinary_divs = preamble.ordinary_divs
-    qualified_divs = preamble.qualified_divs
+    # 1040 line 3a TOTAL — the QDCGT preferential base must include a K-1's
+    # qualified dividends (IRC 1366(b)), not just the 1099-DIV component.
+    # Reading the same preamble total that Form 8995 line 12 reads keeps the
+    # two consumers structurally unable to disagree.
+    qualified_divs = preamble.qualified_divs_total
     schd_line16 = preamble.schd_line16
     sch_1_line_10 = preamble.sch_1_line_10
     sch_1_line_26 = preamble.sch_1_line_26
@@ -551,6 +581,16 @@ def compute_spine(
         # (f1040.compute renamed these in the oracle path).
         "taxable_interest": taxable_interest,
         "ordinary_dividends": ordinary_divs,
+        # 1040 line 3a TOTAL (1099-DIV + K-1). Publishing this from the spine
+        # (rather than leaving it only in the orchestrator's compute-time
+        # stub) lets the PDF-emit path -- which builds its upstream from this
+        # finished results dict -- read the same authoritative total that
+        # forms.f8995.compute reads on the compute path. Without this, the
+        # emit path's upstream["f1040"] lacked the key entirely, and f8995's
+        # `.get(..., 0)` default silently zeroed line 12 on every emitted
+        # packet. This also populates pdf_1040's existing "qualified_dividends"
+        # -> line 3a mapping, which had nothing to read before.
+        "qualified_dividends": qualified_divs,
         # AGI
         "agi": agi,
         "agi_page2": agi,

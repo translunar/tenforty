@@ -88,7 +88,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         s = self._itemizing_k1_scenario(
             qbi=100_000.0, itemized_total=90_000.0, wages=150_000.0,
         )
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         # f8995_line_11_taxable_income == taxable_income_before_qbi_deduction,
         # which the orchestrator sets to AGI - actual (itemized) deduction.
@@ -115,7 +115,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
             entity_type="s_corp", material_participation=True,
             qbi_amount=10_000.0,
         )]
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         # line 6 = 20% * 10_000 = 2_000; with a standard-deduction filer whose
         # taxable income comfortably exceeds 5x QBI (AGI 100_000 wages from
@@ -135,7 +135,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         s = self._itemizing_k1_scenario(
             qbi=40_000.0, itemized_total=90_000.0, wages=130_000.0,
         )
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
         self.assertEqual(f8995["f8995_line_6_total_before_limit"], 8_000)
@@ -185,7 +185,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
             qbi=50_000.0, itemized_total=itemized, wages=wages,
         )
         # Must not raise NotImplementedError (pre-fix behavior):
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         self.assertEqual(f8995["f8995_line_11_taxable_income"], 120_000)
         self.assertEqual(f8995["f8995_line_6_total_before_limit"], 10_000)
@@ -209,7 +209,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         s = self._itemizing_k1_scenario(
             qbi=39_000.0, itemized_total=90_000.0, wages=130_000.0,
         )
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
         self.assertEqual(f8995["f8995_line_6_total_before_limit"], 7_800)
@@ -229,7 +229,7 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         s = self._itemizing_k1_scenario(
             qbi=41_000.0, itemized_total=90_000.0, wages=130_000.0,
         )
-        results = self.orch._compute_native_schedules(s)
+        results, _ = self.orch._compute_native_schedules(s)
         f8995 = results["f8995"]
         self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
         self.assertEqual(f8995["f8995_line_6_total_before_limit"], 8_200)

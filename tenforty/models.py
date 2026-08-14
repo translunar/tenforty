@@ -264,6 +264,22 @@ class K1FanoutData:
     sch_d_short_term_additions: tuple[float, ...]
     sch_d_long_term_additions: tuple[float, ...]
     qbi_aggregate: float
+    # K-1-ONLY COMPONENT of 1040 line 3a (qualified dividends) — NOT the
+    # line 3a total. Line 3a also has a 1099-DIV box 1b component. This
+    # field is summed once, here, from the K-1s' box 5b amounts, and
+    # consumed exactly once: by compute_income_preamble
+    # (tenforty/forms/f1040_spine.py), which adds it to the 1099-DIV
+    # component to build the authoritative `qualified_divs_total`. Form
+    # consumers (Form 8995 line 12; the QDCGT preferential-rate base) MUST
+    # read that preamble total, never this field directly. A form never
+    # sees an IncomePreamble object — the concrete idiom is to read the
+    # total off the upstream stub the orchestrator builds, e.g.
+    # `upstream["f1040"]["qualified_dividends"]` (see
+    # tenforty/forms/f8995.py). Reading THIS field directly is exactly the
+    # defect this unit (2026-08-14 f8995-line12-total-qualdivs) fixed: Form
+    # 8995 line 12 silently dropped every 1099-DIV qualified dividend, and
+    # the QDCGT worksheet taxed a K-1's qualified dividends as ordinary
+    # income.
     qualified_dividends_aggregate: float
     passive_activities: tuple[K1FanoutActivity, ...]
 
