@@ -68,11 +68,33 @@ def render_199a_statement_a(alloc: K1Allocation, year: int, output_path: Path) -
     c.line(left, y, right, y)
     y -= 0.26 * inch
 
-    # The three §199A line items, labeled as the 1120-S instructions'
-    # Statement A rows so a preparer recognizes the form on sight.
+    # Row 1 always ties to Schedule K-1 box 1 (Schedule K line 1 share), so
+    # this statement can never contradict the K-1 it accompanies. QBI only
+    # differs from box 1 when a qbi_override was supplied to the K1Allocation
+    # builder; compare the two AS DISPLAYED (post-irs_round) so a sub-dollar
+    # float difference can't produce a printed "0" adjustment row that
+    # visually fails to reconcile. Rounding first and computing the
+    # adjustment from the rounded figures guarantees the printed rows always
+    # add up exactly (row 1 + adjustment == total, as printed).
+    box_1 = irs_round(alloc.box_1_ordinary_business_income)
+    qbi = irs_round(alloc.box_17v_qbi)
+    if box_1 == qbi:
+        # Default path (no override in effect): single row, unchanged from
+        # today's layout. Row 1 IS the QBI.
+        qbi_rows = [("Ordinary business income (loss)", box_1)]
+    else:
+        adjustment = qbi - box_1
+        qbi_rows = [
+            ("Ordinary business income (loss)", box_1),
+            ("Other QBI adjustments (preparer-determined)", adjustment),
+            ("Qualified business income", qbi),
+        ]
+
+    # The §199A line items, labeled as the 1120-S instructions' Statement A
+    # rows so a preparer recognizes the form on sight.
     c.setFont("Helvetica", 10)
     for label, value in [
-        ("Ordinary business income (loss)", alloc.box_17v_qbi),
+        *qbi_rows,
         ("W-2 wages", alloc.box_17v_w2_wages),
         ("UBIA of qualified property", alloc.box_17v_ubia),
     ]:
@@ -88,6 +110,17 @@ def render_199a_statement_a(alloc: K1Allocation, year: int, output_path: Path) -
         left, y,
         "This statement reports the section 199A items for a single trade or "
         "business. Amounts are the shareholder's pro rata share.",
+    )
+    y -= 0.16 * inch
+    c.drawString(
+        left, y,
+        "SSTB status not determined by this software; preparer must evaluate "
+        "under Reg. §1.199A-5 and annotate.",
+    )
+    y -= 0.16 * inch
+    c.drawString(
+        left, y,
+        "PTP/aggregation likewise not determined.",
     )
     c.showPage()
     c.save()

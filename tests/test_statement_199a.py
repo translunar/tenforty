@@ -64,6 +64,84 @@ class Statement199ATests(unittest.TestCase):
             text = reader.pages[0].extract_text()
             self.assertIn("-50,000", text)
 
+    def test_qbi_override_renders_reconciliation_rows(self):
+        # Ruling I-1: when box_17v_qbi differs from box_1_ordinary_business_
+        # income (i.e. a qbi_override was in effect), row 1 must ALWAYS tie
+        # to box 1 (never the override), and two additional rows must show
+        # the adjustment and the QBI total, so the three figures add up.
+        addr = Address(street="1 Test Way", city="Austin", state="TX", zip_code="78701")
+        alloc = K1Allocation(
+            entity=K1AllocationEntity(name="Widgets Inc", ein="00-0000000", address=addr),
+            shareholder=K1AllocationShareholder(name="Pat Sample", ssn_or_ein="123-00-6789", address=addr),
+            ownership_percentage=100.0,
+            box_1_ordinary_business_income=70_000.0,
+            box_17v_qbi=80_000.0, box_17v_w2_wages=40_000.0, box_17v_ubia=250_000.0,
+        )
+        with tempfile.TemporaryDirectory() as d:
+            out = render_199a_statement_a(alloc, 2025, Path(d) / "stmtA_override.pdf")
+            reader = pypdf.PdfReader(str(out))
+            self.assertEqual(len(reader.pages), 1)
+            text = reader.pages[0].extract_text()
+            self.assertIn("70,000", text)   # box 1 tie-out (row 1)
+            self.assertIn("10,000", text)   # adjustment = 80,000 - 70,000
+            self.assertIn("80,000", text)   # QBI total
+            self.assertIn("Other QBI adjustments (preparer-determined)", text)
+            self.assertIn("Qualified business income", text)
+            # Row 1 must equal box 1, never the override: the tie-out. The
+            # renderer draws the label and its right-aligned figure as
+            # separate text objects at the same y, which pypdf extracts as
+            # adjacent lines — so the figure immediately following the
+            # "Ordinary business income (loss)" label is row 1's value.
+            lines = text.splitlines()
+            label_idx = lines.index("Ordinary business income (loss)")
+            self.assertEqual(lines[label_idx + 1], "70,000")
+            # The three printed figures must add up exactly, as printed.
+            self.assertEqual(70_000 + 10_000, 80_000)
+
+    def test_default_path_no_override_single_row_layout_preserved(self):
+        # Ruling I-1: when box_17v_qbi equals box_1_ordinary_business_income
+        # (the default, no-override path), the layout must be exactly as
+        # before — no separate adjustment/total rows.
+        with tempfile.TemporaryDirectory() as d:
+            out = render_199a_statement_a(_alloc(), 2025, Path(d) / "stmtA_default.pdf")
+            reader = pypdf.PdfReader(str(out))
+            text = reader.pages[0].extract_text()
+            self.assertNotIn("Other QBI adjustments", text)
+            self.assertNotIn("Qualified business income", text)
+
+    def test_qbi_override_negative_figures_add_up(self):
+        # Both box 1 and QBI negative (loss year with an override still in
+        # effect) must behave sanely: row 1 ties to box 1, and the three
+        # printed figures still add up exactly.
+        addr = Address(street="1 Test Way", city="Austin", state="TX", zip_code="78701")
+        alloc = K1Allocation(
+            entity=K1AllocationEntity(name="Widgets Inc", ein="00-0000000", address=addr),
+            shareholder=K1AllocationShareholder(name="Pat Sample", ssn_or_ein="123-00-6789", address=addr),
+            ownership_percentage=100.0,
+            box_1_ordinary_business_income=-70_000.0,
+            box_17v_qbi=-80_000.0, box_17v_w2_wages=40_000.0, box_17v_ubia=250_000.0,
+        )
+        with tempfile.TemporaryDirectory() as d:
+            out = render_199a_statement_a(alloc, 2025, Path(d) / "stmtA_override_neg.pdf")
+            reader = pypdf.PdfReader(str(out))
+            text = reader.pages[0].extract_text()
+            self.assertIn("-70,000", text)   # box 1 tie-out (row 1)
+            self.assertIn("-10,000", text)   # adjustment = -80,000 - (-70,000)
+            self.assertIn("-80,000", text)   # QBI total
+            self.assertEqual(-70_000 + -10_000, -80_000)
+
+    def test_sstb_ptp_aggregation_disclaimer_present(self):
+        # Ruling I-2: an explicit footnote disclaiming SSTB/PTP/aggregation
+        # determination must be rendered on the statement itself. Assert on
+        # distinctive substrings since the sentence may wrap across lines.
+        with tempfile.TemporaryDirectory() as d:
+            out = render_199a_statement_a(_alloc(), 2025, Path(d) / "stmtA_disclaimer.pdf")
+            reader = pypdf.PdfReader(str(out))
+            text = reader.pages[0].extract_text()
+            self.assertIn("SSTB status not determined", text)
+            self.assertIn("1.199A-5", text)
+            self.assertIn("PTP/aggregation likewise not determined", text)
+
 
 class MoneyRoundingTests(unittest.TestCase):
     def test_half_dollar_rounds_up_not_banker_style(self):
