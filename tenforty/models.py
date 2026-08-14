@@ -821,6 +821,9 @@ class K1Allocation:
     shareholder: K1AllocationShareholder
     ownership_percentage: float
     box_1_ordinary_business_income: float
+    box_17v_qbi: float = 0.0
+    box_17v_w2_wages: float = 0.0
+    box_17v_ubia: float = 0.0
 
 
 @dataclass(frozen=True)
