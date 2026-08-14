@@ -25,7 +25,34 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     threshold = params.qbi_threshold[scenario.config.filing_status.value]
 
     qbi_total = fanout.qbi_aggregate
-    qualified_divs = fanout.qualified_dividends_aggregate
+    # 1040 line 3a TOTAL (1099-DIV + K-1). Previously this read
+    # fanout.qualified_dividends_aggregate, which carries ONLY the K-1
+    # component — so line 12 omitted every 1099-DIV qualified dividend and
+    # the line-14 income limit came out too high.
+    #
+    # STRICT read (no silent default): upstream["f1040"] must carry
+    # "qualified_dividends", the authoritative 1040 line 3a total. The two
+    # legitimate producers are the orchestrator's compute-time stub
+    # (orchestrator.py, f1040_stub) and forms.f1040_spine.compute_spine's
+    # output dict (the emit path's upstream). A silent `.get(..., 0)`
+    # default is exactly what let the emit path — whose upstream is built
+    # from the finished 1040 results dict — quietly compute Form 8995 line
+    # 12 as 0 while the compute path got the real number. With a silent
+    # default, ANY upstream that lacks this key quietly reproduces that
+    # bug; with a strict read, such a gap becomes a loud error instead of a
+    # wrong number.
+    if "qualified_dividends" not in f1040:
+        raise KeyError(
+            "upstream[\"f1040\"] is missing \"qualified_dividends\" (the "
+            "authoritative 1040 line 3a total: 1099-DIV + K-1 qualified "
+            "dividends). Form 8995 line 12 requires this figure. Legitimate "
+            "producers are the orchestrator's compute-time f1040 stub and "
+            "forms.f1040_spine.compute_spine's output dict (the emit "
+            "path's upstream). Do not default this to 0 — a silent default "
+            "is what previously let the PDF-emit path compute line 12 as 0 "
+            "while the compute path computed the correct nonzero total."
+        )
+    qualified_divs = float(f1040["qualified_dividends"])
 
     if (qbi_total > 0
             and taxable_income > threshold
@@ -49,6 +76,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_6 = line_3 + line_5
 
     line_11 = irs_round(taxable_income)
+    # max(0, ...) is a boundary contract on `upstream`, not a redundant guard:
+    # `upstream` is a public dict any caller can populate, and today's
+    # producers (both the compute path's `_preamble.net_capital_gain` and the
+    # emit path) already floor net_capital_gain at 0 before it reaches here,
+    # so this branch is unreachable *through today's producers* alone. It also
+    # matches the form: a net capital LOSS contributes nothing to line 12, it
+    # never subtracts qualified dividends. Pinned by
+    # F8995NetCapitalGainFloorBoundaryTests.test_negative_net_capital_gain_floored_at_upstream_boundary
+    # in tests/test_f8995_compute.py, which populates upstream directly.
     line_12 = irs_round(max(0, net_cap_gain) + qualified_divs)
     line_13 = max(0, line_11 - line_12)
     line_14 = irs_round(0.20 * line_13)
