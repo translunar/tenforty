@@ -205,3 +205,16 @@ class ScenarioSCorpFieldTests(unittest.TestCase):
         )
         self.assertIsNotNone(s.s_corp_return)
         self.assertEqual(s.s_corp_return.ein, "00-0000000")
+
+
+class SCorp199AInfoTests(unittest.TestCase):
+    def test_defaults_are_zero_and_none(self):
+        from tenforty.models import SCorp199AInfo
+        info = SCorp199AInfo()
+        self.assertIsNone(info.qbi_override)
+        self.assertEqual(info.w2_wages, 0.0)
+        self.assertEqual(info.ubia, 0.0)
+
+    def test_scorp_return_section_199a_defaults_none(self):
+        from tests._scorp_fixtures import _make_scorp_return
+        self.assertIsNone(_make_scorp_return().section_199a)

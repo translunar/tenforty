@@ -611,6 +611,24 @@ class SCorpPayments:
     refundable_credits: float = 0.0
 
 
+@dataclass
+class SCorp199AInfo:
+    """Entity-level §199A (QBI) information reported on Schedule K-1 box 17
+    code V and its Statement A.
+
+    ``qbi_override`` replaces the default QBI (Schedule K line 1, ordinary
+    business income) when the caller's qualified business income differs from
+    book ordinary income; ``None`` uses the line-1 default. ``w2_wages`` and
+    ``ubia`` are the entity totals, allocated pro-rata to each shareholder's
+    Statement A. Below the §199A taxable-income threshold — tenforty's only
+    supported QBI scope (Form 8995 simplified) — W-2 wages and UBIA do not
+    limit the deduction; they are reported for completeness and to support
+    the shareholder's own above-threshold recomputation off-tenforty."""
+    qbi_override: float | None = None
+    w2_wages: float = 0.0
+    ubia: float = 0.0
+
+
 @dataclass(frozen=True)
 class SCorpCAInputs:
     """CA-side inputs for Form 100S, hung off ``SCorpReturn.ca`` when a CA
@@ -657,6 +675,7 @@ class SCorpReturn:
 
     scope_outs: SCorpScopeOuts = field(default_factory=SCorpScopeOuts)
     payments: SCorpPayments = field(default_factory=SCorpPayments)
+    section_199a: SCorp199AInfo | None = None
     ca: SCorpCAInputs | None = None
     # §4a amended-return marks. When True, the emit path checks the
     # "Amended return" box on Form 1120-S (H(4)), each Schedule K-1
@@ -791,7 +810,8 @@ class K1AllocationShareholder:
 @dataclass
 class K1Allocation:
     """A single shareholder's pro-rata share of an S-corp's pass-through
-    items. v1 covers only Sch K line 1 / box 1 (Ordinary Business Income).
+    items: Sch K line 1 / box 1 (Ordinary Business Income) plus the box 17
+    code V §199A items (QBI, W-2 wages, and UBIA of qualified property).
 
     This is the contract between `f1120s.compute` (producer) and the
     orchestrator (consumer for PDF emit + 1040 waterfall). Consumers
@@ -802,6 +822,9 @@ class K1Allocation:
     shareholder: K1AllocationShareholder
     ownership_percentage: float
     box_1_ordinary_business_income: float
+    box_17v_qbi: float = 0.0
+    box_17v_w2_wages: float = 0.0
+    box_17v_ubia: float = 0.0
 
 
 @dataclass(frozen=True)
