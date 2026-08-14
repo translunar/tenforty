@@ -57,10 +57,20 @@ class IncomePreamble:
     """Form 1040 income/AGI figures derived once from inputs + schedule results.
 
     Single source of truth for the line 1-15 arithmetic so the orchestrator's
-    f8995/f8582 pre-pass stub and ``compute_spine`` cannot drift. The pre-pass
-    uses the standard deduction as a stand-in for Schedule A (which is not yet
-    computed at that point); ``compute_spine`` recomputes ``total_deductions``
-    and the post-QBI taxable income with the actual deduction choice.
+    f8995/f8582 pre-pass stub and ``compute_spine`` cannot drift. The
+    orchestrator computes Schedule A first — it depends only on AGI, and QBI
+    is below-the-line on 1040 line 13, so there is no circularity — then
+    ``resolve_deductions`` feeds f8995/f8582 the ACTUAL (itemized-aware)
+    deduction via the stub's ``taxable_income_before_qbi_deduction``.
+    ``compute_spine`` takes its deduction-SELECTION fields (std vs.
+    itemized, ``total_deductions``) from that same ``resolve_deductions``
+    call, but it deliberately RECOMPUTES taxable-income-before-QBI itself,
+    UNFLOORED — the helper's ``taxable_income_before_qbi`` field is floored
+    at zero (needed for f8995/f8582's income-limit gates), while the
+    spine's own 1040 line-15 math requires the unfloored value. Feeding
+    the spine the helper's floored field instead of its own unfloored
+    local reintroduces the bug the tests in
+    ``tests/test_compute_spine_unfloored_taxable_income.py`` guard against.
 
     Attributes:
         wages:               1040 line 1a (sum of W-2 box 1).
@@ -86,8 +96,13 @@ class IncomePreamble:
             inside f8995 (via fanout.qualified_dividends_aggregate). Keeping
             them separate prevents double-counting when qdcgt_tax computes
             ``preferential = qualified_dividends + net_capital_gain``.
-        taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0
-            (the conservative stand-in the pre-pass stub feeds to f8995/f8582).
+        taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0.
+            No longer what feeds f8995/f8582 — the orchestrator's pre-pass
+            feeds those forms the ACTUAL (itemized-aware) deduction via
+            ``resolve_deductions`` instead (see the deduction-resolution
+            step in ``ReturnOrchestrator._compute_native_schedules``). Retained for
+            its one remaining consumer, ``tests/test_pdf_1040_mapping.py``;
+            removing the field entirely is a separate, out-of-scope proposal.
     """
     wages: int
     taxable_interest: int
@@ -121,8 +136,10 @@ def compute_income_preamble(
         schedule_results: Keyed dict of schedule return dicts (sch_1, sch_d, …).
 
     Returns:
-        IncomePreamble with the line 1-11 figures and the std-deduction-based
-        pre-QBI taxable income stand-in.
+        IncomePreamble with the line 1-11 figures, plus
+        ``taxable_income_before_qbi_std`` (a std-deduction-based figure kept
+        only for its one remaining test consumer — see that field's
+        docstring above; it is not what feeds f8995/f8582).
     """
     sch_1 = schedule_results.get("sch_1", {})
     sch_d = schedule_results.get("sch_d", {})
@@ -167,8 +184,11 @@ def compute_income_preamble(
     # This matches the workbook's NetCapitalGain named range.
     net_capital_gain = irs_round(max(0, min(schd_line15, schd_line16)))
 
-    # Pre-QBI taxable income using the standard deduction as a conservative
-    # stand-in for Schedule A (not yet computed in the f8995/f8582 pre-pass).
+    # Std-deduction-based pre-QBI taxable income. NOT what feeds f8995/f8582
+    # — the orchestrator computes Schedule A first (AGI-only, no circularity
+    # with the below-the-line QBI deduction) and feeds those forms the
+    # ACTUAL deduction via resolve_deductions. Kept only for its one
+    # remaining test consumer (tests/test_pdf_1040_mapping.py).
     std_deduction = params.standard_deduction[scenario.config.filing_status.value]
     taxable_income_before_qbi_std = max(0, irs_round(agi - std_deduction))
 
@@ -185,6 +205,74 @@ def compute_income_preamble(
         magi=magi,
         net_capital_gain=net_capital_gain,
         taxable_income_before_qbi_std=taxable_income_before_qbi_std,
+    )
+
+
+@dataclass(frozen=True)
+class DeductionResolution:
+    """Result of selecting standard vs. itemized deduction and deriving
+    taxable income before the QBI deduction. Single source of truth shared
+    by the orchestrator's f8995/f8582 pre-pass and ``compute_spine`` so the
+    two cannot drift on which deduction was applied."""
+    schedule_a_total: int
+    standard_deduction_amount: int
+    total_deductions: int
+    standard_deduction_applied: bool
+    charitable_nonitemizer: int
+    taxable_income_before_qbi: int
+
+
+def resolve_deductions(
+    scenario: Scenario,
+    params: FederalParams,
+    agi: int,
+    sch_a: dict,
+) -> DeductionResolution:
+    """Select std vs. itemized deduction and derive taxable income before QBI.
+
+    Mirrors Form 1040 line 12: deduction = max(standard, itemized). Also
+    applies the 2021 line-12b non-itemizer cash-charitable deduction
+    (CARES §2204 / CAA 2021 §212) with the same refuse-don't-cap guards as
+    ``compute_spine``. ``taxable_income_before_qbi`` is floored at 0.
+    """
+    std_deduction = params.standard_deduction[scenario.config.filing_status.value]
+    schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
+
+    if schedule_a_total >= std_deduction:
+        standard_deduction_amount = 0
+        total_deductions = schedule_a_total
+        standard_deduction_applied = False
+    else:
+        standard_deduction_amount = std_deduction
+        total_deductions = std_deduction
+        standard_deduction_applied = True
+
+    charitable_nonitemizer = 0
+    field = scenario.config.charitable_cash_nonitemizer
+    if field:
+        cap = params.nonitemizer_charitable_cap
+        if not standard_deduction_applied:
+            raise ValueError(
+                "charitable_cash_nonitemizer is the 2021 line-12b deduction for "
+                "NON-ITEMIZERS only; this return itemizes, so it cannot be claimed."
+            )
+        if cap is None or field > cap:
+            raise ValueError(
+                f"charitable_cash_nonitemizer ({field}) exceeds the 2021 "
+                f"single-filer non-itemizer cap of ${cap}."
+            )
+        charitable_nonitemizer = irs_round(field)
+        total_deductions += charitable_nonitemizer
+
+    taxable_income_before_qbi = max(0, irs_round(agi - total_deductions))
+
+    return DeductionResolution(
+        schedule_a_total=schedule_a_total,
+        standard_deduction_amount=standard_deduction_amount,
+        total_deductions=total_deductions,
+        standard_deduction_applied=standard_deduction_applied,
+        charitable_nonitemizer=charitable_nonitemizer,
+        taxable_income_before_qbi=taxable_income_before_qbi,
     )
 
 
@@ -250,45 +338,15 @@ def compute_spine(
     # Page 2 — Deductions
     # -----------------------------------------------------------------------
 
-    # Standard deduction for filing status from params.
-    std_deduction = params.standard_deduction[filing_status.value]
-
-    # Schedule A total (line 17) from schedule_results["sch_a"].
-    # Real producer key: "sch_a_line_17_total" from forms.sch_a.compute.
-    schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
-
-    # 1040 line 12: deduction = max(standard, itemized).
-    if schedule_a_total >= std_deduction:
-        # Itemized selected.
-        standard_deduction_amount = 0
-        total_deductions = schedule_a_total
-        standard_deduction_applied = False
-    else:
-        # Standard deduction selected.
-        standard_deduction_amount = std_deduction
-        total_deductions = std_deduction
-        standard_deduction_applied = True
-
-    # 2021 line 12b — above-the-line cash-charitable deduction for NON-ITEMIZERS
-    # (CARES §2204 / CAA 2021 §212). Verbatim passthrough, refuse-don't-cap.
-    # Non-single and over-cap are refused at LOAD (scenario.py); these spine
-    # guards are single-filer defense-in-depth.
-    charitable_nonitemizer = 0
-    field = scenario.config.charitable_cash_nonitemizer
-    if field:
-        cap = params.nonitemizer_charitable_cap
-        if not standard_deduction_applied:
-            raise ValueError(
-                "charitable_cash_nonitemizer is the 2021 line-12b deduction for "
-                "NON-ITEMIZERS only; this return itemizes, so it cannot be claimed."
-            )
-        if cap is None or field > cap:
-            raise ValueError(
-                f"charitable_cash_nonitemizer ({field}) exceeds the 2021 "
-                f"single-filer non-itemizer cap of ${cap}."
-            )
-        charitable_nonitemizer = irs_round(field)
-        total_deductions += charitable_nonitemizer
+    # Deduction selection (std vs itemized) + the 2021 line-12b non-itemizer
+    # charitable add-on live in the shared resolve_deductions helper so the
+    # orchestrator's f8995/f8582 pre-pass and this spine cannot drift on
+    # which deduction was applied.
+    _ded = resolve_deductions(scenario, params, agi, sch_a)
+    schedule_a_total = _ded.schedule_a_total
+    standard_deduction_amount = _ded.standard_deduction_amount
+    total_deductions = _ded.total_deductions
+    charitable_nonitemizer = _ded.charitable_nonitemizer
 
     # 1040 line 13 — QBI deduction from Form 8995 line 15.
     # Real producer key: "f8995_line_15_qbi_deduction" from forms.f8995.compute.
@@ -296,6 +354,9 @@ def compute_spine(
 
     # 1040 line 15 — Taxable income before QBI deduction (no named range in XLS;
     # derived here as AGI − deduction).
+    # DELIBERATELY UNFLOORED — do NOT substitute _ded.taxable_income_before_qbi
+    # (which resolve_deductions floors at 0 for f8995/f8582's income-limit
+    # gates). See tests/test_compute_spine_unfloored_taxable_income.py.
     taxable_income_before_qbi = irs_round(agi - total_deductions)
 
     # 1040 line 15 — Taxable income = taxable_income_before_qbi − QBI deduction.
