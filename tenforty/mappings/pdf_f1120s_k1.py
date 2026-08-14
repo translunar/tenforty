@@ -27,6 +27,18 @@ _FIELDS: dict[str, str] = {
     "box_1_ordinary_business_income": (
         "topmostSubform[0].Page1[0].RightCol[0].Lines1-12[0].f1_21[0]"
     ),
+    # Part III — Line 17 (Other information), code V (§199A): the code cell
+    # holds the literal "V"; the amount cell holds "STMT" because §199A info
+    # is furnished on the attached Statement A, not inline (IRS Sch K-1
+    # (1120-S) instructions, box 17). Confirmed by marker-probe render of the
+    # 2025 template: the "17 Other information" block's first row is
+    # f1_90 (code) / f1_91 (amount).
+    "box_17_code_v": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_90[0]"
+    ),
+    "box_17_code_v_amount": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_91[0]"
+    ),
 }
 
 
@@ -55,6 +67,18 @@ _FIELDS_2023: dict[str, str] = {
     # Part III — Line 1: Ordinary business income (loss) (2023: f1_18)
     "box_1_ordinary_business_income": (
         "topmostSubform[0].Page1[0].RightCol[0].Lines1-12[0].f1_18[0]"
+    ),
+    # Part III — Line 17 code V. Confirmed by marker-probe renders of BOTH the
+    # 2023 and 2021 templates: box 17's first row is f1_87 (code) / f1_88
+    # (amount) in each (2022 is byte-identical to 2023 per the existing note
+    # below). The 2024-era f1_90/f1_91 paths also EXIST on these templates but
+    # land at different printed lines — position, not existence, distinguishes
+    # them, exactly as for ownership_percentage and box 1 above.
+    "box_17_code_v": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_87[0]"
+    ),
+    "box_17_code_v_amount": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_88[0]"
     ),
 }
 
