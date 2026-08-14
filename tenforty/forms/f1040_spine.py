@@ -318,45 +318,16 @@ def compute_spine(
     # Page 2 — Deductions
     # -----------------------------------------------------------------------
 
-    # Standard deduction for filing status from params.
-    std_deduction = params.standard_deduction[filing_status.value]
-
-    # Schedule A total (line 17) from schedule_results["sch_a"].
-    # Real producer key: "sch_a_line_17_total" from forms.sch_a.compute.
-    schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
-
-    # 1040 line 12: deduction = max(standard, itemized).
-    if schedule_a_total >= std_deduction:
-        # Itemized selected.
-        standard_deduction_amount = 0
-        total_deductions = schedule_a_total
-        standard_deduction_applied = False
-    else:
-        # Standard deduction selected.
-        standard_deduction_amount = std_deduction
-        total_deductions = std_deduction
-        standard_deduction_applied = True
-
-    # 2021 line 12b — above-the-line cash-charitable deduction for NON-ITEMIZERS
-    # (CARES §2204 / CAA 2021 §212). Verbatim passthrough, refuse-don't-cap.
-    # Non-single and over-cap are refused at LOAD (scenario.py); these spine
-    # guards are single-filer defense-in-depth.
-    charitable_nonitemizer = 0
-    field = scenario.config.charitable_cash_nonitemizer
-    if field:
-        cap = params.nonitemizer_charitable_cap
-        if not standard_deduction_applied:
-            raise ValueError(
-                "charitable_cash_nonitemizer is the 2021 line-12b deduction for "
-                "NON-ITEMIZERS only; this return itemizes, so it cannot be claimed."
-            )
-        if cap is None or field > cap:
-            raise ValueError(
-                f"charitable_cash_nonitemizer ({field}) exceeds the 2021 "
-                f"single-filer non-itemizer cap of ${cap}."
-            )
-        charitable_nonitemizer = irs_round(field)
-        total_deductions += charitable_nonitemizer
+    # Deduction selection (std vs itemized) + the 2021 line-12b non-itemizer
+    # charitable add-on live in the shared resolve_deductions helper so the
+    # orchestrator's f8995/f8582 pre-pass and this spine cannot drift on
+    # which deduction was applied.
+    _ded = resolve_deductions(scenario, params, agi, sch_a)
+    schedule_a_total = _ded.schedule_a_total
+    standard_deduction_amount = _ded.standard_deduction_amount
+    total_deductions = _ded.total_deductions
+    standard_deduction_applied = _ded.standard_deduction_applied
+    charitable_nonitemizer = _ded.charitable_nonitemizer
 
     # 1040 line 13 — QBI deduction from Form 8995 line 15.
     # Real producer key: "f8995_line_15_qbi_deduction" from forms.f8995.compute.
