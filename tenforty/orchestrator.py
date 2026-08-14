@@ -767,6 +767,12 @@ class ReturnOrchestrator:
         # form1098s when itemized_deductions is not set directly. This bridges
         # the YAML fixture model (which uses form1098s for mortgage/property-tax)
         # to forms.sch_a.compute, which reads from scenario.itemized_deductions.
+        # BC-3: Sch A now runs before the Form 8962 (Step 10) and Form 8995
+        # (Step 11) refusal gates, so for a scenario that would trip more than
+        # one gate, Sch A's own NotImplementedError surfaces first. Refusal
+        # type is unchanged either way (still a fail-closed NotImplementedError
+        # from an unimplemented v1 scope), so this is a precedence shift only,
+        # not a correctness change — see BC-3 in the plan's behavior-change log.
         sch_a_scenario = _scenario_with_effective_itemized(effective_scenario)
         sch_a_results = (
             form_sch_a.compute(

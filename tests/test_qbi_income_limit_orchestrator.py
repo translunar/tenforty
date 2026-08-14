@@ -12,6 +12,7 @@ from pathlib import Path
 
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.models import ScheduleK1, ItemizedDeductions, W2
+from tenforty.params.federal import load as load_federal_params
 
 from tests.helpers import make_k1_scenario
 
@@ -138,6 +139,100 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         f8995 = results["f8995"]
         self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
         self.assertEqual(f8995["f8995_line_6_total_before_limit"], 8_000)
+        self.assertEqual(f8995["f8995_line_14_income_limit"], 8_000)
+        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 8_000)
+
+    def test_itemizer_below_threshold_not_gated_out(self):
+        """BC-2: an itemizer whose ACTUAL taxable income is below the Form
+        8995 simple-path threshold must compute normally, even though the
+        STANDARD-deduction-based figure (what the pre-fix stub fed f8995)
+        would have crossed the threshold and triggered a false-refusal
+        NotImplementedError. This pins the threshold-gate half of the fix,
+        which the deduction-overstatement tests above do not exercise.
+
+          wages = 220_000 -> AGI = 220_000 (no adjustments; K-1 contributes
+            only qbi_amount, not ordinary_business_income)
+          2025 single standard deduction = 15_750, so the std-based figure
+            the old buggy stub fed f8995 was 220_000 - 15_750 = 204_250,
+            which EXCEEDS the 2025 single threshold of 197_300
+            (params.qbi_threshold["single"]) -- pre-fix this raised
+            NotImplementedError.
+          itemized = 100_000 -> ACTUAL taxable-before-QBI =
+            220_000 - 100_000 = 120_000, which is BELOW 197_300, so the
+            filer was always eligible for the simple path; post-fix the
+            gate reads this actual figure and does not raise.
+
+          qbi = 50_000 -> line 6 = 20% * 50_000 = 10_000
+          line 11 = 120_000 (the actual taxable income above)
+          line 12 = 0 (no cap gain / qualified dividends in this scenario)
+          line 13 = 120_000 - 0 = 120_000
+          line 14 = 20% * 120_000 = 24_000
+          line 15 = min(10_000, 24_000) = 10_000  (line 6 binds; well under
+            the line-14 cap, unlike the income-limit tests above)
+        """
+        params = load_federal_params(2025)
+        std_ded = params.standard_deduction["single"]
+        threshold = params.qbi_threshold["single"]
+        wages = 220_000.0
+        itemized = 100_000.0
+        # Confirm the std-based figure (what the old buggy stub used) really
+        # does cross the threshold, and the actual figure really doesn't --
+        # otherwise this test wouldn't be exercising the gate at all.
+        self.assertGreater(wages - std_ded, threshold)
+        self.assertLess(wages - itemized, threshold)
+
+        s = self._itemizing_k1_scenario(
+            qbi=50_000.0, itemized_total=itemized, wages=wages,
+        )
+        # Must not raise NotImplementedError (pre-fix behavior):
+        results = self.orch._compute_native_schedules(s)
+        f8995 = results["f8995"]
+        self.assertEqual(f8995["f8995_line_11_taxable_income"], 120_000)
+        self.assertEqual(f8995["f8995_line_6_total_before_limit"], 10_000)
+        self.assertEqual(f8995["f8995_line_14_income_limit"], 24_000)
+        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 10_000)
+
+    def test_boundary_just_below_line6_binds(self):
+        """Straddle pair (just below the line6/line14 tie), paired with
+        test_boundary_just_above_line14_binds below. The existing
+        test_boundary_line6_equals_line14 sits exactly AT the tie, where
+        min(line 6, line 14) returns the same value regardless of which arm
+        is selected -- it cannot distinguish `min` from `max`, nor either
+        hardcoded arm. Moving qbi one increment off the tie on each side
+        forces a specific arm to bind.
+
+        Same wages/itemized as the tie test (taxable-before-QBI = 40_000,
+        so line 13 = 40_000, line 14 = 20% * 40_000 = 8_000 stays fixed):
+          qbi = 39_000 -> line 6 = 20% * 39_000 = 7_800 < line 14 = 8_000
+          line 15 = min(7_800, 8_000) = 7_800  (line 6 binds)
+        """
+        s = self._itemizing_k1_scenario(
+            qbi=39_000.0, itemized_total=90_000.0, wages=130_000.0,
+        )
+        results = self.orch._compute_native_schedules(s)
+        f8995 = results["f8995"]
+        self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
+        self.assertEqual(f8995["f8995_line_6_total_before_limit"], 7_800)
+        self.assertEqual(f8995["f8995_line_14_income_limit"], 8_000)
+        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 7_800)
+
+    def test_boundary_just_above_line14_binds(self):
+        """Straddle pair (just above the line6/line14 tie); see
+        test_boundary_just_below_line6_binds above for the companion case
+        and rationale.
+
+        Same wages/itemized as the tie test (line 13 = 40_000,
+        line 14 = 20% * 40_000 = 8_000 stays fixed):
+          qbi = 41_000 -> line 6 = 20% * 41_000 = 8_200 > line 14 = 8_000
+          line 15 = min(8_200, 8_000) = 8_000  (line 14 binds)
+        """
+        s = self._itemizing_k1_scenario(
+            qbi=41_000.0, itemized_total=90_000.0, wages=130_000.0,
+        )
+        results = self.orch._compute_native_schedules(s)
+        f8995 = results["f8995"]
+        self.assertEqual(f8995["f8995_line_13_subtract"], 40_000)
+        self.assertEqual(f8995["f8995_line_6_total_before_limit"], 8_200)
         self.assertEqual(f8995["f8995_line_14_income_limit"], 8_000)
         self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 8_000)
 
