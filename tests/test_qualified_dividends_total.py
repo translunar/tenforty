@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 
 from tenforty.forms import f1040_spine
+from tenforty.forms import f8995 as form_f8995
+from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import FilingStatus, Form1099DIV, K1FanoutData, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
@@ -98,16 +100,37 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
     corresponding PRE-FIX (defective) values so a future reader can see the
     shape of each defect this unit closed.
 
-    NOTE for future readers: the asserted AGI (160,000) and total_tax
-    (24,077) here bake in a SEPARATE, still-live defect (already scheduled
-    as its own fix unit): on the native spine, a K-1's `ordinary_dividends`
-    never reaches 1040 line 3b / AGI, even though that same K-1's
-    `qualified_dividends` (a subset of it, per IRC 1366(b)) IS correctly
-    given preferential treatment by the fix in THIS unit. In this scenario
-    that means the K-1's 4,000 of ordinary dividends is excluded from AGI.
-    When that separate defect is fixed, AGI here will legitimately become
-    164,000 and the tax figures in this class WILL change. Such a change
-    is NOT a regression in this unit's fix — do not treat it as one.
+    NOTE for future readers — THESE INTERIM FIGURES UNDERSTATE TAX AND ARE
+    NOT AUTHORITATIVE. The asserted AGI (160,000) and total_tax (24,077)
+    bake in a SEPARATE, still-live defect (already scheduled as its own fix
+    unit): on the native spine, a K-1's `ordinary_dividends` never reaches
+    1040 line 3b / AGI, even though that same K-1's `qualified_dividends`
+    (a subset of it, per IRC 1366(b)) IS correctly given preferential
+    treatment by the fix in THIS unit.
+
+    That combination is an IMPOSSIBLE relationship on a real 1040. Line 3a
+    (qualified dividends) is by definition a SUBSET of line 3b (ordinary
+    dividends), so line 3a can never exceed line 3b. In this interim window
+    line 3a now includes the K-1's 3,000 of qualified dividends while line
+    3b still excludes the K-1's 4,000 of ordinary dividends entirely. The
+    concrete harm: a slice of ordinary income effectively receives
+    PREFERENTIAL capital-gain rates — it is granted the preferential rate
+    via line 3a without ever having been picked up as ordinary income on
+    line 3b — so the computed tax comes out TOO LOW.
+
+    Measured magnitude: routing the same dollars through a K-1 yields
+    total_tax 24,077, whereas routing the identical dollars through a
+    1099-DIV instead yields 25,037. The 1099-DIV figure, 25,037, is the
+    TRUE one; the 960 difference is exactly the understatement this interim
+    state produces.
+
+    So the numbers asserted in this class are a regression fence for THIS
+    unit's fix ONLY. They are NOT authoritative for mixed K-1-dividend
+    shapes, and they WILL change when the companion K-1-ordinary-dividends
+    unit lands (AGI here legitimately becomes 164,000 and the tax figures
+    move). Such a change is NOT a regression in this unit's fix — do not
+    treat it as one; re-derive the expected figures from the corrected line
+    3a/3b relationship instead.
     """
 
     def setUp(self) -> None:
@@ -327,3 +350,165 @@ class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
         results = self.orchestrator._compute_1040_pipeline(self.scenario)
         self.assertEqual(results["taxable_income"], 128_000)
         self.assertEqual(results["total_tax"], 14_713)
+
+
+class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
+    """The COMPUTE path and the PDF-EMIT path must produce the SAME Form 8995.
+
+    Nothing else in this repo compares those two paths, and that gap let a
+    real regression ship: ``forms.f8995.compute`` reads
+    ``upstream["f1040"]["qualified_dividends"]``, but only ONE of the two
+    producers supplied that key. The compute path got it from the
+    orchestrator's compute-time stub (built from the shared income
+    preamble). The emit path builds a DIFFERENT upstream —
+    ``{"f1040": results, "k1_fanout": ...}`` — from the FINISHED 1040
+    results dict, and that dict carried ``dividend_income`` and
+    ``ordinary_dividends`` but NO ``qualified_dividends``. With the old
+    silent ``.get(..., 0)`` default, the emit path therefore computed line
+    12 as 0.
+
+    Measured on this exact scenario BEFORE the fix:
+
+                                  COMPUTE      EMIT
+        f8995 line 12             103,000         0
+        line 15 (QBI deduction)     6,250    10,000
+        emitted 1040 line 13                    6,250
+
+    So the emitted Form 8995 and the emitted 1040 in the SAME packet
+    contradicted each other, and the emitted 8995 asserted exactly the
+    overstated 10,000 deduction this branch exists to eliminate.
+
+    The fix has ``compute_spine`` publish ``qualified_dividends`` (the
+    authoritative 1040 line 3a total) in its output dict, so both paths
+    read one value, and makes f8995's read STRICT so any future upstream
+    that omits the key fails loudly instead of silently producing 0.
+
+    Scenario (all figures synthetic/generic): 2025 single filer, standard
+    deduction, acknowledges_qbi_below_threshold=True, NO W-2 wages. ONE
+    1099-DIV: ordinary_dividends 100,000, qualified_dividends 100,000. ONE
+    S-corp K-1: ordinary_business_income 50,000, qbi_amount 50,000,
+    ordinary_dividends 4,000, qualified_dividends 3,000. This shape is used
+    because the Form 8995 line-14 INCOME LIMIT binds here, so the defect
+    moved the QBI deduction itself (6,250 vs 10,000), not merely the
+    intermediate lines.
+    """
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.work_dir = Path(tmp.name)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.work_dir,
+        )
+        self.scenario = make_k1_scenario()
+        self.scenario.w2s = []
+        self.scenario.form1099_div = [Form1099DIV(
+            payer="Generic Brokerage",
+            ordinary_dividends=100_000.0,
+            qualified_dividends=100_000.0,
+        )]
+        self.scenario.schedule_k1s = [ScheduleK1(
+            entity_name="Generic S-Corp Inc",
+            entity_ein="00-0000000",
+            entity_type="s_corp",
+            material_participation=True,
+            ordinary_business_income=50_000.0,
+            qbi_amount=50_000.0,
+            ordinary_dividends=4_000.0,
+            qualified_dividends=3_000.0,
+        )]
+
+    def _emit_path_f8995(self) -> dict:
+        """Reproduce what the PDF-emit path does to build Form 8995.
+
+        Mirrors ``ReturnOrchestrator._emit_pdfs_internal``: compute the 1040
+        results via the pipeline, hoist the Schedule E Part II fanout, then
+        assemble ``upstream = {"f1040": results, "k1_fanout": fanout}`` and
+        run the real ``f8995.compute`` against it.
+        """
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+        _part_ii_fields, fanout = form_sch_e_part_ii.compute(
+            self.scenario, upstream={},
+        )
+        return form_f8995.compute(
+            self.scenario,
+            upstream={"f1040": results, "k1_fanout": fanout},
+        )
+
+    def test_emit_path_f8995_equals_compute_path_f8995(self) -> None:
+        """The emit-path Form 8995 must equal the compute-path Form 8995.
+
+        This is an equality between two INDEPENDENTLY-COMPUTED pipelines,
+        not a tautology: each side builds its own ``upstream`` dict from a
+        different producer (the orchestrator's compute-time preamble stub
+        vs. the finished spine results dict) and runs the same form against
+        it. Before the fix these two sides disagreed on lines 12-15 — that
+        disagreement IS the bug, and this assertion is what would have
+        caught it.
+        """
+        compute_sched, _ = self.orchestrator._compute_native_schedules(
+            self.scenario,
+        )
+        compute_f8995 = compute_sched["f8995"]
+        emit_f8995 = self._emit_path_f8995()
+
+        for line in (
+            "f8995_line_12_net_capital_gain",
+            "f8995_line_13_subtract",
+            "f8995_line_14_income_limit",
+            "f8995_line_15_qbi_deduction",
+        ):
+            with self.subTest(line=line):
+                self.assertEqual(
+                    emit_f8995[line], compute_f8995[line],
+                    f"emit path and compute path disagree on {line}: "
+                    f"emit={emit_f8995[line]} compute={compute_f8995[line]}. "
+                    "The emitted Form 8995 would contradict the emitted 1040 "
+                    "in the same packet.",
+                )
+
+        # Pin the shared values against the independent derivation recorded
+        # on QualifiedDividendsIncomeLimitBindingEndToEndTests, so a future
+        # change that breaks BOTH paths identically cannot pass this test by
+        # agreeing on a wrong number.
+        self.assertEqual(emit_f8995["f8995_line_12_net_capital_gain"], 103_000)
+        self.assertEqual(emit_f8995["f8995_line_15_qbi_deduction"], 6_250)
+
+    def test_1040_line_3a_is_the_authoritative_1099div_plus_k1_total(self) -> None:
+        """1040 line 3a (``qualified_dividends`` in the spine's output dict)
+        must equal the authoritative total: 1099-DIV qualified dividends
+        100,000 + K-1 qualified dividends 3,000 = 103,000.
+
+        The 103,000 literal is derived from the scenario inputs by the line-3a
+        formula (1099-DIV box 1b + K-1 box 5b, per IRC 1366(b)), not read back
+        out of the code under test.
+
+        BEHAVIOR CHANGE pinned here: ``mappings.pdf_1040`` has always mapped
+        the key ``qualified_dividends`` to 1040 line 3a for every year, but
+        ``compute_spine`` never emitted that key — so line 3a was BLANK on
+        every emitted 1040 to date. That was a pre-existing DISPLAY defect
+        (the tax math was already right; the printed form was incomplete).
+        Publishing the key both fixes the display and gives the emit path the
+        value Form 8995 line 12 needs.
+        """
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+
+        self.assertEqual(results["qualified_dividends"], 103_000)
+
+        # Line 3a must also be a SUBSET of line 3b on a well-formed 1040.
+        # It is NOT today, because of the separate still-live K-1
+        # ordinary-dividends defect documented on
+        # QualifiedDividendsMixedSourceEndToEndTests: line 3b here is
+        # 100,000 (the K-1's 4,000 never reaches it) while line 3a is
+        # 103,000. Pinned as an explicit inequality so the companion fix
+        # unit has a failing marker to land against rather than a silent
+        # inconsistency.
+        self.assertEqual(results["ordinary_dividends"], 100_000)
+        self.assertGreater(
+            results["qualified_dividends"], results["ordinary_dividends"],
+            "Expected the KNOWN-BAD interim state (line 3a > line 3b). If "
+            "this now fails, the companion K-1-ordinary-dividends fix has "
+            "landed — re-derive the figures in this file per the NOTE on "
+            "QualifiedDividendsMixedSourceEndToEndTests.",
+        )

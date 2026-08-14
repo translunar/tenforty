@@ -31,6 +31,13 @@ def _scenario_with_qbi(qbi: float = 20_000.0, taxable_income: float = 100_000.0,
         "f1040": {
             "taxable_income_before_qbi_deduction": taxable_income,
             "net_capital_gain": net_cap_gain,
+            # 1040 line 3a TOTAL (1099-DIV + K-1), which f8995.compute reads
+            # strictly. This fixture's TRUE total is 0: make_k1_scenario()
+            # carries no 1099-DIV, and the K-1 constructed above sets no
+            # qualified dividends (hence qualified_dividends_aggregate=0.0
+            # on the fanout). 0 is scenario-faithful here, not a value
+            # chosen to satisfy the strict read.
+            "qualified_dividends": 0.0,
         },
         "k1_fanout": fanout,
     }
