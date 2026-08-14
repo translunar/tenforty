@@ -188,6 +188,74 @@ def compute_income_preamble(
     )
 
 
+@dataclass(frozen=True)
+class DeductionResolution:
+    """Result of selecting standard vs. itemized deduction and deriving
+    taxable income before the QBI deduction. Single source of truth shared
+    by the orchestrator's f8995/f8582 pre-pass and ``compute_spine`` so the
+    two cannot drift on which deduction was applied."""
+    schedule_a_total: int
+    standard_deduction_amount: int
+    total_deductions: int
+    standard_deduction_applied: bool
+    charitable_nonitemizer: int
+    taxable_income_before_qbi: int
+
+
+def resolve_deductions(
+    scenario: Scenario,
+    params: FederalParams,
+    agi: int,
+    sch_a: dict,
+) -> DeductionResolution:
+    """Select std vs. itemized deduction and derive taxable income before QBI.
+
+    Mirrors Form 1040 line 12: deduction = max(standard, itemized). Also
+    applies the 2021 line-12b non-itemizer cash-charitable deduction
+    (CARES §2204 / CAA 2021 §212) with the same refuse-don't-cap guards as
+    ``compute_spine``. ``taxable_income_before_qbi`` is floored at 0.
+    """
+    std_deduction = params.standard_deduction[scenario.config.filing_status.value]
+    schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
+
+    if schedule_a_total >= std_deduction:
+        standard_deduction_amount = 0
+        total_deductions = schedule_a_total
+        standard_deduction_applied = False
+    else:
+        standard_deduction_amount = std_deduction
+        total_deductions = std_deduction
+        standard_deduction_applied = True
+
+    charitable_nonitemizer = 0
+    field = scenario.config.charitable_cash_nonitemizer
+    if field:
+        cap = params.nonitemizer_charitable_cap
+        if not standard_deduction_applied:
+            raise ValueError(
+                "charitable_cash_nonitemizer is the 2021 line-12b deduction for "
+                "NON-ITEMIZERS only; this return itemizes, so it cannot be claimed."
+            )
+        if cap is None or field > cap:
+            raise ValueError(
+                f"charitable_cash_nonitemizer ({field}) exceeds the 2021 "
+                f"single-filer non-itemizer cap of ${cap}."
+            )
+        charitable_nonitemizer = irs_round(field)
+        total_deductions += charitable_nonitemizer
+
+    taxable_income_before_qbi = max(0, irs_round(agi - total_deductions))
+
+    return DeductionResolution(
+        schedule_a_total=schedule_a_total,
+        standard_deduction_amount=standard_deduction_amount,
+        total_deductions=total_deductions,
+        standard_deduction_applied=standard_deduction_applied,
+        charitable_nonitemizer=charitable_nonitemizer,
+        taxable_income_before_qbi=taxable_income_before_qbi,
+    )
+
+
 def compute_spine(
     scenario: Scenario,
     params: FederalParams,
