@@ -326,7 +326,6 @@ def compute_spine(
     schedule_a_total = _ded.schedule_a_total
     standard_deduction_amount = _ded.standard_deduction_amount
     total_deductions = _ded.total_deductions
-    standard_deduction_applied = _ded.standard_deduction_applied
     charitable_nonitemizer = _ded.charitable_nonitemizer
 
     # 1040 line 13 — QBI deduction from Form 8995 line 15.
