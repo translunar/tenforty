@@ -62,9 +62,15 @@ class IncomePreamble:
     is below-the-line on 1040 line 13, so there is no circularity — then
     ``resolve_deductions`` feeds f8995/f8582 the ACTUAL (itemized-aware)
     deduction via the stub's ``taxable_income_before_qbi_deduction``.
-    ``compute_spine`` derives ``total_deductions`` and the post-QBI taxable
-    income from that same ``resolve_deductions`` call, so the two paths
-    cannot drift.
+    ``compute_spine`` takes its deduction-SELECTION fields (std vs.
+    itemized, ``total_deductions``) from that same ``resolve_deductions``
+    call, but it deliberately RECOMPUTES taxable-income-before-QBI itself,
+    UNFLOORED — the helper's ``taxable_income_before_qbi`` field is floored
+    at zero (needed for f8995/f8582's income-limit gates), while the
+    spine's own 1040 line-15 math requires the unfloored value. Feeding
+    the spine the helper's floored field instead of its own unfloored
+    local reintroduces the bug the tests in
+    ``tests/test_compute_spine_unfloored_taxable_income.py`` guard against.
 
     Attributes:
         wages:               1040 line 1a (sum of W-2 box 1).
@@ -93,8 +99,8 @@ class IncomePreamble:
         taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0.
             No longer what feeds f8995/f8582 — the orchestrator's pre-pass
             feeds those forms the ACTUAL (itemized-aware) deduction via
-            ``resolve_deductions`` instead (see Step 8/9 in
-            ``ReturnOrchestrator._compute_native_schedules``). Retained for
+            ``resolve_deductions`` instead (see the deduction-resolution
+            step in ``ReturnOrchestrator._compute_native_schedules``). Retained for
             its one remaining consumer, ``tests/test_pdf_1040_mapping.py``;
             removing the field entirely is a separate, out-of-scope proposal.
     """
@@ -348,6 +354,9 @@ def compute_spine(
 
     # 1040 line 15 — Taxable income before QBI deduction (no named range in XLS;
     # derived here as AGI − deduction).
+    # DELIBERATELY UNFLOORED — do NOT substitute _ded.taxable_income_before_qbi
+    # (which resolve_deductions floors at 0 for f8995/f8582's income-limit
+    # gates). See tests/test_compute_spine_unfloored_taxable_income.py.
     taxable_income_before_qbi = irs_round(agi - total_deductions)
 
     # 1040 line 15 — Taxable income = taxable_income_before_qbi − QBI deduction.

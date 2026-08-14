@@ -258,6 +258,45 @@ class QbiIncomeLimitOrchestratorTests(unittest.TestCase):
         self.assertEqual(result["qbi_deduction"], 12_000)
         self.assertEqual(result["taxable_income"], 48_000)
 
+    def test_itemizer_above_threshold_still_refused(self):
+        """The threshold gate this branch fixed the FEED for must still FIRE
+        when the taxpayer's ACTUAL (itemized-aware) taxable income is
+        genuinely above the Form 8995 simple-path threshold. This branch's
+        bug was the orchestrator overstating taxable income (std-based
+        instead of itemized-aware) for filers whose ACTUAL figure was below
+        threshold, producing a false refusal (see
+        test_itemizer_below_threshold_not_gated_out above). That fix must
+        not have gone too far and silenced the gate outright for filers who
+        are genuinely over threshold on the actual figure -- and unit-level
+        f8995 tests, which hand-build the stub, cannot catch a regression in
+        what the ORCHESTRATOR feeds the gate.
+
+          wages = 320_000 -> AGI = 320_000 (no adjustments; K-1 contributes
+            only qbi_amount, not ordinary_business_income)
+          itemized = 100_000 -> ACTUAL taxable-before-QBI =
+            320_000 - 100_000 = 220_000
+          2025 single threshold (params.qbi_threshold["single"]) = 197_300
+          220_000 > 197_300, so the simple-path gate must still raise
+          NotImplementedError.
+        """
+        params = load_federal_params(2025)
+        threshold = params.qbi_threshold["single"]
+        wages = 320_000.0
+        itemized = 100_000.0
+        actual_taxable_before_qbi = wages - itemized
+        # Confirm the actual (itemized-aware) figure really does exceed the
+        # threshold -- otherwise this test wouldn't be exercising the gate.
+        self.assertGreater(actual_taxable_before_qbi, threshold)
+
+        s = self._itemizing_k1_scenario(
+            qbi=50_000.0, itemized_total=itemized, wages=wages,
+        )
+        with self.assertRaisesRegex(
+            NotImplementedError,
+            "exceeds the Form 8995 simple-path threshold",
+        ):
+            self.orch._compute_native_schedules(s)
+
 
 if __name__ == "__main__":
     unittest.main()

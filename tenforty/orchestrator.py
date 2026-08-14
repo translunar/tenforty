@@ -767,12 +767,22 @@ class ReturnOrchestrator:
         # form1098s when itemized_deductions is not set directly. This bridges
         # the YAML fixture model (which uses form1098s for mortgage/property-tax)
         # to forms.sch_a.compute, which reads from scenario.itemized_deductions.
-        # BC-3: Sch A now runs before the Form 8962 (Step 10) and Form 8995
-        # (Step 11) refusal gates, so for a scenario that would trip more than
-        # one gate, Sch A's own NotImplementedError surfaces first. Refusal
-        # type is unchanged either way (still a fail-closed NotImplementedError
-        # from an unimplemented v1 scope), so this is a precedence shift only,
-        # not a correctness change — see BC-3 in the plan's behavior-change log.
+        # BC-3: Sch A now runs before the Form 8962 and Form 8995 refusal
+        # gates, so for a scenario that would trip more than one gate, Sch
+        # A's own NotImplementedError surfaces first. This is not merely a
+        # precedence shift among identical refusal types: the deduction-
+        # resolution step below calls resolve_deductions, which can itself
+        # raise ValueError (the 2021 charitable-nonitemizer line-12b guard)
+        # for an itemizer with charitable_cash_nonitemizer set — a scenario
+        # that previously hit the Form 8995 threshold gate's
+        # NotImplementedError first. So the surfaced exception TYPE can now
+        # differ, not just which of two NotImplementedErrors fires first.
+        # The ValueError's type and message text are byte-identical to
+        # main's in that case — no standing ruling is violated, and it is
+        # arguably a better outcome (a more specific, actionable diagnosis
+        # that can no longer be masked) — but callers relying on
+        # NotImplementedError specifically for that combination will now
+        # see ValueError instead. See BC-3 in the plan's behavior-change log.
         sch_a_scenario = _scenario_with_effective_itemized(effective_scenario)
         sch_a_results = (
             form_sch_a.compute(
