@@ -95,10 +95,16 @@ class IncomePreamble:
             (Bug #10, found 2026-07-18: this previously used line 16 alone,
             over-including a net ST gain and undertaxing such returns.)
             Equals the workbook's NetCapitalGain named range. Qualified
-            dividends are NOT included here — they are added separately
-            inside qdcgt_tax (as the ``qualified_dividends`` argument) and
-            inside f8995 (via fanout.qualified_dividends_aggregate). Keeping
-            them separate prevents double-counting when qdcgt_tax computes
+            dividends are NOT included here — they are added separately,
+            downstream, by consumers that each receive the authoritative
+            ``qualified_divs_total`` computed by this preamble: qdcgt_tax
+            (as the ``qualified_dividends`` argument) and f8995 (via the
+            orchestrator's f1040 stub, i.e. ``upstream["f1040"]
+            ["qualified_dividends"]`` — NOT ``fanout.qualified_dividends_
+            aggregate``, which is only the K-1 component; see the guard
+            comment on ``K1FanoutData.qualified_dividends_aggregate`` in
+            tenforty/models.py). Keeping qualified dividends separate here
+            prevents double-counting when qdcgt_tax computes
             ``preferential = qualified_dividends + net_capital_gain``.
         taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0.
             No longer what feeds f8995/f8582 — the orchestrator's pre-pass

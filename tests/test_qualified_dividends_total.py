@@ -34,7 +34,6 @@ class QualifiedDividendsTotalPreambleTests(unittest.TestCase):
         s = make_simple_scenario()
         params = load_federal_params(2025)
         # Give the scenario a 1099-DIV carrying qualified dividends.
-        from tenforty.models import Form1099DIV
         s.form1099_div = [Form1099DIV(
             payer="Generic Brokerage",
             ordinary_dividends=9_000.0,
@@ -50,7 +49,6 @@ class QualifiedDividendsTotalPreambleTests(unittest.TestCase):
     def test_total_equals_1099div_when_no_k1(self):
         s = make_simple_scenario()
         params = load_federal_params(2025)
-        from tenforty.models import Form1099DIV
         s.form1099_div = [Form1099DIV(
             payer="Generic Brokerage",
             ordinary_dividends=9_000.0,
@@ -99,6 +97,17 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
     for the confirmation run. Docstrings on individual tests record the
     corresponding PRE-FIX (defective) values so a future reader can see the
     shape of each defect this unit closed.
+
+    NOTE for future readers: the asserted AGI (160,000) and total_tax
+    (24,077) here bake in a SEPARATE, still-live defect (already scheduled
+    as its own fix unit): on the native spine, a K-1's `ordinary_dividends`
+    never reaches 1040 line 3b / AGI, even though that same K-1's
+    `qualified_dividends` (a subset of it, per IRC 1366(b)) IS correctly
+    given preferential treatment by the fix in THIS unit. In this scenario
+    that means the K-1's 4,000 of ordinary dividends is excluded from AGI.
+    When that separate defect is fixed, AGI here will legitimately become
+    164,000 and the tax figures in this class WILL change. Such a change
+    is NOT a regression in this unit's fix — do not treat it as one.
     """
 
     def setUp(self) -> None:
@@ -157,15 +166,17 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
         11,000) in the preferential-rate base, not the 1099-DIV component
         alone.
 
-        Independent derivation (not a tautology): rather than reading
-        ``total_tax`` back out of the pipeline and comparing it to itself,
-        this calls ``qdcgt_tax`` directly — a genuinely different code path
-        than the one the pipeline's internal ``compute_spine`` call takes to
-        produce ``total_tax`` — using the combined 11,000 total and the
-        pipeline's own reported taxable_income (134,250, an input, not the
-        value under test) as inputs. If the pipeline's wiring is correct,
-        the two computations of "tax on the same taxable income with the
-        same preferential base" must agree.
+        The hardcoded ``24_077`` below is the real independent derivation —
+        computed from the IRS ordinary-rate schedule/table and the QDCGT
+        breakpoints by hand, not read back out of the code under test. The
+        direct ``qdcgt_tax`` call that follows is NOT an independent
+        derivation: it re-invokes the exact same ``qdcgt_tax`` function with
+        the same arguments the pipeline itself uses, so it cannot detect a
+        defect inside ``qdcgt_tax``. What it DOES prove is wiring: that the
+        pipeline actually passes the full combined total through to
+        ``qdcgt_tax`` rather than silently substituting a partial figure —
+        and it demonstrably fails (defect B, below) when that wiring
+        regresses.
 
         PRE-FIX (defect B): f1040_spine.py fed qdcgt_tax
         ``preamble.qualified_divs`` — the 1099-DIV-only component (8,000)
@@ -212,3 +223,107 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
         # when fed the SAME combined_total that f8995 used for line 12 —
         # proving both consumers were fed the one authoritative figure.
         self.assertEqual(results["total_tax"], tax_with_combined_total)
+
+
+class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
+    """Pins the actual taxpayer-visible harm of defect A, which the tests in
+    ``QualifiedDividendsMixedSourceEndToEndTests`` do NOT: in that class's
+    scenario, Form 8995 line 15 = min(line 6 = 10,000, line 14 = 26,650) is
+    bound by line 6, so reverting defect A moves lines 12-14 but leaves the
+    QBI deduction (and therefore total_tax) completely unchanged — no dollar
+    the taxpayer sees is affected. This class uses a scenario where the
+    line-14 INCOME LIMIT binds instead, so the QBI deduction itself moves.
+
+    Scenario (all figures synthetic/generic): 2025 single filer, standard
+    deduction, acknowledges_qbi_below_threshold=True, NO W-2 wages. ONE
+    1099-DIV: ordinary_dividends 100,000, qualified_dividends 100,000. ONE
+    S-corp K-1: ordinary_business_income 50,000, qbi_amount 50,000,
+    ordinary_dividends 4,000, qualified_dividends 3,000. No 1099-B /
+    Schedule D activity, so net_capital_gain is 0.
+
+    Derivation (independently worked by hand from the Form 8995 formula,
+    the 2025 IRS Tax Table/rate schedule, and the QDCGT worksheet — see the
+    fix-wave report for the full arithmetic — then cross-checked against
+    the code):
+      AGI = wages 0 + 1099-DIV ordinary_dividends 100,000 + K-1
+      ordinary_business_income 50,000 = 150,000. (The K-1's own 4,000 of
+      ordinary_dividends does NOT reach AGI here — see the NOTE on
+      ``QualifiedDividendsMixedSourceEndToEndTests`` above; that is a
+      separate, still-live defect, not something this test is about.)
+      Taxable income before QBI (f8995 line 11) = AGI - standard deduction
+      15,750 = 134,250.
+
+      qbi_total = 50,000 (K-1 qbi_amount); f8995 line 6 = 20% x 50,000 =
+      10,000.
+
+      POST-FIX line 12 = qualified_divs_total (100,000 + 3,000) +
+      max(0, net_capital_gain) = 103,000. line 13 = 134,250 - 103,000 =
+      31,250. line 14 = 20% x 31,250 = 6,250. line 15 (QBI deduction) =
+      min(6,250, 10,000) = 6,250 — the INCOME LIMIT (line 14) binds, not
+      line 6.
+
+      Final taxable income = 134,250 - 6,250 = 128,000. Preferential base
+      (qualified dividends total) = 103,000; ordinary portion = 128,000 -
+      103,000 = 25,000, taxed via the 2025 Tax Table at 25,000 = 2,765.
+      The 103,000 preferential amount stacks on top of the 25,000 ordinary
+      floor: 23,350 of it falls in the 0% band (25,000 to the 48,350
+      breakpoint) and the remaining 79,650 falls in the 15% band, taxed at
+      79,650 x 15% = 11,947.50, IRS-rounded to 11,948. total_tax = 2,765 +
+      11,948 = 14,713.
+
+      UNDER DEFECT A (f8995.py reading ``fanout.qualified_dividends_aggregate``
+      — the K-1-only 3,000 — instead of the preamble total): line 12 =
+      3,000; line 13 = 131,250; line 14 = 26,250; line 15 = min(26,250,
+      10,000) = 10,000 — now line 6 binds instead, and the QBI deduction
+      is OVERSTATED by 10,000 - 6,250 = 3,750. Final taxable income drops
+      to 124,250 and total_tax comes out to 13,700 — UNDERSTATING the
+      taxpayer's tax liability by 14,713 - 13,700 = 1,013.
+    """
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.work_dir = Path(tmp.name)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.work_dir,
+        )
+        self.scenario = make_k1_scenario()
+        self.scenario.w2s = []
+        self.scenario.form1099_div = [Form1099DIV(
+            payer="Generic Brokerage",
+            ordinary_dividends=100_000.0,
+            qualified_dividends=100_000.0,
+        )]
+        self.scenario.schedule_k1s = [ScheduleK1(
+            entity_name="Generic S-Corp Inc",
+            entity_ein="00-0000000",
+            entity_type="s_corp",
+            material_participation=True,
+            ordinary_business_income=50_000.0,
+            qbi_amount=50_000.0,
+            ordinary_dividends=4_000.0,
+            qualified_dividends=3_000.0,
+        )]
+
+    def test_qbi_deduction_moves_when_income_limit_binds(self) -> None:
+        """The QBI deduction itself (f8995 line 15) must reflect the FULL
+        qualified-dividend total in the line-12/13/14 chain, because here
+        the income limit (line 14), not line 6, is the binding constraint.
+
+        Correct (post-fix): line 15 = 6,250; total_tax = 14,713.
+        Under defect A: line 15 = 10,000 (overstated by 3,750);
+        total_tax = 13,700 (understated by 1,013) — a real dollar amount
+        the taxpayer would see on their return.
+        """
+        sched, _ = self.orchestrator._compute_native_schedules(self.scenario)
+        f8995 = sched["f8995"]
+
+        self.assertEqual(f8995["f8995_line_12_net_capital_gain"], 103_000)
+        self.assertEqual(f8995["f8995_line_13_subtract"], 31_250)
+        self.assertEqual(f8995["f8995_line_14_income_limit"], 6_250)
+        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 6_250)
+
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+        self.assertEqual(results["taxable_income"], 128_000)
+        self.assertEqual(results["total_tax"], 14_713)
