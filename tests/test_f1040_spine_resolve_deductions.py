@@ -6,8 +6,6 @@ from tenforty.forms.f1040_spine import resolve_deductions
 from tenforty.params.federal import load as load_federal_params
 
 from tests.helpers import make_simple_scenario
-from tenforty.models import ItemizedDeductions
-import dataclasses
 
 
 class ResolveDeductionsTests(unittest.TestCase):
@@ -39,6 +37,26 @@ class ResolveDeductionsTests(unittest.TestCase):
         self.assertEqual(res.total_deductions, itemized)
         self.assertEqual(res.standard_deduction_amount, 0)
         self.assertEqual(res.taxable_income_before_qbi, agi - itemized)
+
+    def test_itemized_selected_on_exact_tie_with_standard(self):
+        """Pin the >= tie-break: at exact equality, ITEMIZED is selected.
+
+        ``total_deductions`` is identical under ``>=`` and ``>`` at the tie,
+        so this test asserts the two fields that actually differ:
+        ``standard_deduction_applied`` (load-bearing — it gates the 2021
+        charitable-nonitemizer guard and, from Task 3 on, what the
+        orchestrator reports as the applied deduction) and
+        ``standard_deduction_amount``.
+        """
+        s = make_simple_scenario()
+        params = self._params()
+        std = params.standard_deduction[s.config.filing_status.value]
+        agi = 200_000
+        res = resolve_deductions(
+            s, params, agi, sch_a={"sch_a_line_17_total": std},
+        )
+        self.assertFalse(res.standard_deduction_applied)
+        self.assertEqual(res.standard_deduction_amount, 0)
 
     def test_taxable_income_before_qbi_floored_at_zero(self):
         s = make_simple_scenario()
