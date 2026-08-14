@@ -297,6 +297,7 @@ def compute_spine(
     scenario: Scenario,
     params: FederalParams,
     schedule_results: dict[str, dict],
+    k1_fanout: "K1FanoutData | None" = None,
 ) -> dict:
     """Assemble the 1040 lines from scenario inputs and schedule results.
 
@@ -336,11 +337,17 @@ def compute_spine(
     # -----------------------------------------------------------------------
     # Lines 1-11 are computed by the shared preamble so the orchestrator's
     # f8995/f8582 pre-pass and this spine share one source of truth for AGI.
-    preamble = compute_income_preamble(scenario, params, schedule_results)
+    preamble = compute_income_preamble(
+        scenario, params, schedule_results, k1_fanout=k1_fanout,
+    )
     wages = preamble.wages
     taxable_interest = preamble.taxable_interest
     ordinary_divs = preamble.ordinary_divs
-    qualified_divs = preamble.qualified_divs
+    # 1040 line 3a TOTAL — the QDCGT preferential base must include a K-1's
+    # qualified dividends (IRC 1366(b)), not just the 1099-DIV component.
+    # Reading the same preamble total that Form 8995 line 12 reads keeps the
+    # two consumers structurally unable to disagree.
+    qualified_divs = preamble.qualified_divs_total
     schd_line16 = preamble.schd_line16
     sch_1_line_10 = preamble.sch_1_line_10
     sch_1_line_26 = preamble.sch_1_line_26
