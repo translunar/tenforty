@@ -1,10 +1,11 @@
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
 
 from tenforty.forms import f1120s
 from tenforty.models import (
-    Address, EntityType, K1Allocation, K1AllocationEntity, K1AllocationShareholder,
+    Address, EntityType, K1Allocation, K1AllocationEntity, K1AllocationShareholder, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
 from tests._scorp_fixtures import _make_v1_scenario
@@ -91,15 +92,35 @@ class BridgeAboveThresholdTests(unittest.TestCase):
         the honest outcome. This test pins that intended behavior change.
 
         `_make_v1_scenario` fixes filing_status=SINGLE, whose 2025 Form 8995
-        threshold is $197,300 (tenforty/params/federal/y2025.py). Net S-corp
-        ordinary income here is 310_000 - 30_000 = 280_000; after the
-        $15,750 single standard deduction, taxable income before QBI is
-        264_250 — comfortably above threshold, so the margin survives any
-        rounding. `acknowledges_qbi_below_threshold` is left at its scope-out
-        default (False), so the guard in tenforty/forms/f8995.py must fire.
+        threshold is $197,300 (tenforty/params/federal/y2025.py). The S-corp
+        stays at the fixture's default gross_receipts=100_000 /
+        compensation_of_officers=30_000 — comfortably under the $250,000
+        Schedule L / M-1 attestation trigger (tenforty/attestations.py) — so
+        the 8 True `acknowledges_no_1120s_schedule_*` attestations
+        `_make_v1_scenario` sets stay honest, and its net ordinary income
+        (and QBI) is 100_000 - 30_000 = 70_000, positive and nonzero as the
+        Form 8995 guard requires. Above-threshold income instead comes from a
+        200_000 W-2 wage added on the individual side: combined with the
+        70_000 of pass-through K-1 income, that's 270_000 before the $15,750
+        single standard deduction, leaving taxable income before QBI at
+        254_250 — comfortably above the 197_300 threshold, so the margin
+        survives any rounding. `acknowledges_qbi_below_threshold` is left at
+        its scope-out default (False), so the guard in
+        tenforty/forms/f8995.py must fire.
         """
         scenario = _make_v1_scenario(
-            gross_receipts=310_000.0, compensation_of_officers=30_000.0)
+            gross_receipts=100_000.0, compensation_of_officers=30_000.0)
+        scenario = dataclasses.replace(scenario, w2s=[
+            W2(
+                employer="Example Employer Inc.",
+                wages=200_000.0,
+                federal_tax_withheld=40_000.0,
+                ss_wages=200_000.0,
+                ss_tax_withheld=round(200_000.0 * 0.062),
+                medicare_wages=200_000.0,
+                medicare_tax_withheld=round(200_000.0 * 0.0145),
+            ),
+        ])
         self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
 
         with tempfile.TemporaryDirectory() as d:
