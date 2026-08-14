@@ -25,7 +25,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     threshold = params.qbi_threshold[scenario.config.filing_status.value]
 
     qbi_total = fanout.qbi_aggregate
-    qualified_divs = fanout.qualified_dividends_aggregate
+    # 1040 line 3a TOTAL (1099-DIV + K-1), supplied by the orchestrator from the
+    # shared income preamble. Previously this read fanout.qualified_dividends_aggregate,
+    # which carries ONLY the K-1 component — so line 12 omitted every 1099-DIV
+    # qualified dividend and the line-14 income limit came out too high.
+    qualified_divs = float(f1040.get("qualified_dividends", 0))
 
     if (qbi_total > 0
             and taxable_income > threshold

@@ -669,9 +669,9 @@ class ReturnOrchestrator:
                 )
             return self._compute_1040_via_workbook(effective_scenario)
         params = load_params(effective_scenario.config.year)
-        schedule_results = self._compute_native_schedules(effective_scenario)
+        schedule_results, k1_fanout = self._compute_native_schedules(effective_scenario)
         spine_result = f1040_spine.compute_spine(
-            effective_scenario, params, schedule_results,
+            effective_scenario, params, schedule_results, k1_fanout=k1_fanout,
         )
         # Forward f8949 box-total keys into the final result dict so oracle
         # cross-check consumers (e.g. test_f8949_oracle.py) can read them
@@ -682,7 +682,7 @@ class ReturnOrchestrator:
 
     def _compute_native_schedules(
         self, effective_scenario: Scenario,
-    ) -> dict[str, dict]:
+    ) -> tuple[dict[str, dict], K1FanoutData]:
         """Run each native schedule compute in dependency order.
 
         Returns a dict keyed by schedule name, each value being that
@@ -753,6 +753,7 @@ class ReturnOrchestrator:
             effective_scenario,
             _params,
             {"sch_1": sch_1_results, "sch_d": sch_d_results},
+            k1_fanout=k1_fanout,
         )
         # Partial stub for Schedule A, which reads only agi/magi. QBI is
         # below-the-line (1040 line 13), so Schedule A (line 12, depends on AGI
@@ -761,6 +762,10 @@ class ReturnOrchestrator:
             "agi": _preamble.agi,
             "magi": _preamble.magi,
             "net_capital_gain": _preamble.net_capital_gain,
+            # 1040 line 3a TOTAL (1099-DIV + K-1). Form 8995 line 12 reads this
+            # rather than the K-1-only fanout aggregate, so the form sees the
+            # whole figure the IRS instructions call for.
+            "qualified_dividends": _preamble.qualified_divs_total,
         }
 
         # --- Step 8: Sch A (needs agi from the stub) ---
@@ -878,7 +883,7 @@ class ReturnOrchestrator:
         # schedule_results.get("f8962", {}) and defaults every value to 0.
         if f8962_results is not None:
             results["f8962"] = f8962_results
-        return results
+        return results, k1_fanout
 
     def _compute_1040_via_workbook(
         self, effective_scenario: Scenario,
