@@ -108,6 +108,19 @@ class K1Box17EmitTests(unittest.TestCase):
                 self.assertEqual(
                     _read_v(k1_path, f"{base}.{amount_cell}"), "STMT")
 
+    def test_statement_a_emitted_and_in_corporate_packet(self):
+        scenario = _make_v1_scenario(
+            gross_receipts=100000.0, compensation_of_officers=30000.0)
+        out_dir = Path(self._tmp.name) / "out"
+        _results, emitted = self.orch.run_full_return(scenario, out_dir)
+
+        self.assertIn("1120s_k1_qbi_stmt_1", emitted)
+        self.assertTrue(emitted["1120s_k1_qbi_stmt_1"].exists())
+
+        from tenforty.pdf_packet import classify_key
+        self.assertEqual(
+            classify_key("1120s_k1_qbi_stmt_1"), "federal_corporate")
+
 
 if __name__ == "__main__":
     unittest.main()

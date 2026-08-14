@@ -85,6 +85,7 @@ FEDERAL_CORPORATE = Packet(
     members=(
         PacketMember("1120s"),
         PacketMember("1120s_k1", family=True),
+        PacketMember("1120s_k1_qbi_stmt", family=True),
     ),
 )
 
