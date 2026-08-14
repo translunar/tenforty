@@ -57,10 +57,14 @@ class IncomePreamble:
     """Form 1040 income/AGI figures derived once from inputs + schedule results.
 
     Single source of truth for the line 1-15 arithmetic so the orchestrator's
-    f8995/f8582 pre-pass stub and ``compute_spine`` cannot drift. The pre-pass
-    uses the standard deduction as a stand-in for Schedule A (which is not yet
-    computed at that point); ``compute_spine`` recomputes ``total_deductions``
-    and the post-QBI taxable income with the actual deduction choice.
+    f8995/f8582 pre-pass stub and ``compute_spine`` cannot drift. The
+    orchestrator computes Schedule A first — it depends only on AGI, and QBI
+    is below-the-line on 1040 line 13, so there is no circularity — then
+    ``resolve_deductions`` feeds f8995/f8582 the ACTUAL (itemized-aware)
+    deduction via the stub's ``taxable_income_before_qbi_deduction``.
+    ``compute_spine`` derives ``total_deductions`` and the post-QBI taxable
+    income from that same ``resolve_deductions`` call, so the two paths
+    cannot drift.
 
     Attributes:
         wages:               1040 line 1a (sum of W-2 box 1).
@@ -86,8 +90,13 @@ class IncomePreamble:
             inside f8995 (via fanout.qualified_dividends_aggregate). Keeping
             them separate prevents double-counting when qdcgt_tax computes
             ``preferential = qualified_dividends + net_capital_gain``.
-        taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0
-            (the conservative stand-in the pre-pass stub feeds to f8995/f8582).
+        taxable_income_before_qbi_std:  AGI − standard deduction, floored at 0.
+            No longer what feeds f8995/f8582 — the orchestrator's pre-pass
+            feeds those forms the ACTUAL (itemized-aware) deduction via
+            ``resolve_deductions`` instead (see Step 8/9 in
+            ``ReturnOrchestrator._compute_native_schedules``). Retained for
+            its one remaining consumer, ``tests/test_pdf_1040_mapping.py``;
+            removing the field entirely is a separate, out-of-scope proposal.
     """
     wages: int
     taxable_interest: int
@@ -121,8 +130,10 @@ def compute_income_preamble(
         schedule_results: Keyed dict of schedule return dicts (sch_1, sch_d, …).
 
     Returns:
-        IncomePreamble with the line 1-11 figures and the std-deduction-based
-        pre-QBI taxable income stand-in.
+        IncomePreamble with the line 1-11 figures, plus
+        ``taxable_income_before_qbi_std`` (a std-deduction-based figure kept
+        only for its one remaining test consumer — see that field's
+        docstring above; it is not what feeds f8995/f8582).
     """
     sch_1 = schedule_results.get("sch_1", {})
     sch_d = schedule_results.get("sch_d", {})
@@ -167,8 +178,11 @@ def compute_income_preamble(
     # This matches the workbook's NetCapitalGain named range.
     net_capital_gain = irs_round(max(0, min(schd_line15, schd_line16)))
 
-    # Pre-QBI taxable income using the standard deduction as a conservative
-    # stand-in for Schedule A (not yet computed in the f8995/f8582 pre-pass).
+    # Std-deduction-based pre-QBI taxable income. NOT what feeds f8995/f8582
+    # — the orchestrator computes Schedule A first (AGI-only, no circularity
+    # with the below-the-line QBI deduction) and feeds those forms the
+    # ACTUAL deduction via resolve_deductions. Kept only for its one
+    # remaining test consumer (tests/test_pdf_1040_mapping.py).
     std_deduction = params.standard_deduction[scenario.config.filing_status.value]
     taxable_income_before_qbi_std = max(0, irs_round(agi - std_deduction))
 
