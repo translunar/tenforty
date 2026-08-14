@@ -1320,6 +1320,8 @@ class ReturnOrchestrator:
                 "ownership_percentage": alloc.ownership_percentage,
                 "box_1_ordinary_business_income":
                     alloc.box_1_ordinary_business_income,
+                "box_17_code_v": "V",
+                "box_17_code_v_amount": "STMT",
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
