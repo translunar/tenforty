@@ -1,9 +1,13 @@
+import tempfile
 import unittest
+from pathlib import Path
 
+from tenforty.forms import f1120s
 from tenforty.models import (
     Address, EntityType, K1Allocation, K1AllocationEntity, K1AllocationShareholder,
 )
-from tenforty.orchestrator import _make_k1_from_1120s_allocation
+from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
+from tests._scorp_fixtures import _make_v1_scenario
 
 
 def _address():
@@ -52,3 +56,28 @@ class BridgeCarriesQbiTests(unittest.TestCase):
         self.assertEqual(k1.entity_ein, "00-0000000")
         self.assertEqual(k1.entity_type, EntityType.S_CORP)
         self.assertEqual(k1.ordinary_business_income, 70_000.0)
+
+
+class BridgeCrossPathAgreementTests(unittest.TestCase):
+    def test_emitted_qbi_equals_consumed_qbi(self):
+        """The QBI the entity side reports on the K-1 must be the QBI the
+        individual side's Form 8995 consumes. Same run, same number."""
+        scenario = _make_v1_scenario(
+            gross_receipts=100_000.0, compensation_of_officers=30_000.0)
+
+        # ENTITY side: what the emitted K-1 / Statement A assert.
+        corp = f1120s.compute(scenario, upstream={})
+        alloc = corp["f1120s_sch_k1_allocations"][0]
+        emitted_qbi = float(alloc.box_17v_qbi)
+        self.assertGreater(emitted_qbi, 0.0)  # fixture must be QBI-bearing
+
+        # INDIVIDUAL side: drive the real orchestrator path end to end.
+        with tempfile.TemporaryDirectory() as d:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            effective, _corp_results = orch._build_effective_scenario(scenario)
+
+        spliced = [k1 for k1 in effective.schedule_k1s
+                   if k1.entity_ein == alloc.entity.ein]
+        self.assertEqual(len(spliced), 1)
+        self.assertEqual(spliced[0].qbi_amount, emitted_qbi)
