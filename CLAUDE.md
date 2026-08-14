@@ -27,6 +27,8 @@ These exist because agents have failure modes humans contributing to a codebase 
 
 4. **Plan before execute.** Non-trivial implementation work gets a written plan first, reviewed by Juno before execution. The plan goes to **`~/Projects/tenforty/docs/plans/<date>-<feature>.md`** — the canonical Obsidian vault location, NOT the worktree-local `docs/plans/`. (The path is gitignored, so the absolute location matters even though the relative path looks identical from each worktree.) Juno reads via her Obsidian vault rooted at `~/Projects/tenforty/`; team-lead provides technical review; Juno approves. Then the team-member dispatches implementer subagents per task using `superpowers:subagent-driven-development`.
 
+5. **Fresh-worktree provisioning.** A brand-new worktree fails `tests/test_no_personal_data.py::test_verification_script_passes` out of the box: `scripts/personal_data_config.yaml` is gitignored, so new worktrees lack it and the scanner fails closed. This is provisioning, not a defect — copy the file from the main checkout (the failure message gives the exact command) and create a `.venv` with `pip install -e ".[dev]"`. Never "fix" the red test by touching the scanner, setting env vars, or adding pytest flags.
+
 ## Emotional safety and feedback culture
 
 Juno wants team members to feel safe raising concerns, asking questions, and pushing back on direction — including pushing back on Juno or on team-lead. Feedback flows in multiple directions, and team members should feel free to use whichever channel feels most natural:
