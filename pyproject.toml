@@ -12,6 +12,7 @@ dependencies = [
     "PyYAML>=6.0",
     "pypdf>=4.0",
     "odfpy>=1.4",
+    "reportlab>=4.0",
 ]
 
 [project.optional-dependencies]
