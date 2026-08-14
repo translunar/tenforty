@@ -55,6 +55,14 @@ class FederalParams:
     # every year the provision does not exist (it was not extended past
     # 2021). No default — each year's module must set this explicitly.
     nonitemizer_charitable_cap: int | None
+    # IRC §1211(b) net-capital-loss limitation: the maximum net capital loss
+    # deductible against ordinary income in a single year (Schedule D line
+    # 21). $3,000 for all statuses except $1,500 for married filing
+    # separately. These figures are STATUTORY and NOT inflation-indexed —
+    # they are identical across every supported year (2021-2025). A future
+    # maintainer should not go hunting for a year-by-year inflation table;
+    # there isn't one.
+    capital_loss_limit: dict[str, int]
 
 
 def load(year: int) -> FederalParams:
