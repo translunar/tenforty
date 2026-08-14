@@ -114,6 +114,27 @@ ATTESTED: dict[str, object] = {
         "qualifying_widow": (89250, 553850),
     },
 
+    # STATUTORY, not inflation-adjusted: IRC §1211(b) (limitation on capital
+    # losses of non-corporate taxpayers). The section contains no cost-of-
+    # living/indexing provision and has not been amended since Pub. L. 99-514
+    # (1986); it appears nowhere in Rev. Proc. 2022-38, the TY2023 inflation-
+    # adjustment revenue procedure. §1211(b) allows losses "to the extent of
+    # the gains ..., plus (if such losses exceed such gains) the lower of—
+    # (1) $3,000 ($1,500 in the case of a married individual filing a separate
+    # return), or (2) the excess of such losses over such gains."
+    # Confirmed on the face of the 2023 Schedule D (Form 1040), Line 21:
+    # "the smaller of: • The loss on line 16; or • ($3,000), or if married
+    # filing separately, ($1,500)"; and in the 2023 Instructions for Schedule D,
+    # "Capital Losses" (page 4). MFS is the ONLY status the statute halves;
+    # single/HoH/MFJ/QSS all take the full $3,000.
+    "capital_loss_limit": {
+        "single": 3000,
+        "married_jointly": 3000,
+        "married_separately": 1500,
+        "head_of_household": 3000,
+        "qualifying_widow": 3000,
+    },
+
     # STATUTORY, not inflation-adjusted: IRC §3101(b)(2) (Additional Medicare
     # Tax). Confirmed against IRS's "Questions and Answers for the Additional
     # Medicare Tax" FAQ page (irs.gov/businesses/small-businesses-self-employed/
@@ -238,6 +259,15 @@ SOURCES: tuple[str, ...] = (
     "(Earned Income Credit) for eic_income_ceiling; SECTION 3.15 (Standard "
     "Deduction) for standard_deduction; SECTION 3.27 (Qualified Business "
     "Income, IRC section 199A) for qbi_threshold.",
+    "IRC section 1211(b) (limitation on capital losses), statutory, not "
+    "inflation-indexed (no cost-of-living provision in the section; unamended "
+    "since Pub. L. 99-514, 1986; absent from Rev. Proc. 2022-38) -- "
+    "https://www.law.cornell.edu/uscode/text/26/1211 -- confirmed against the "
+    "2023 Schedule D (Form 1040), https://www.irs.gov/pub/irs-prior/"
+    "f1040sd--2023.pdf, Line 21 ('($3,000), or if married filing separately, "
+    "($1,500)'), and the 2023 Instructions for Schedule D (Form 1040), "
+    "https://www.irs.gov/pub/irs-prior/i1040sd--2023.pdf, 'Capital Losses' "
+    "section (page 4), for capital_loss_limit.",
     "IRC section 3101(b)(2) (Additional Medicare Tax), statutory, not "
     "inflation-adjusted -- confirmed against IRS 'Questions and Answers for "
     "the Additional Medicare Tax', "

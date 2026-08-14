@@ -60,4 +60,9 @@ PARAMS = FederalParams(
         _S: 10_000, _MFJ: 10_000, _HOH: 10_000, _QW: 10_000, _MFS: 5_000,
     },
     eic_income_ceiling=_EIC_CEILING,
+    # IRC §1211(b) net-capital-loss limitation: $3,000 ($1,500 MFS), NOT
+    # inflation-indexed — identical across all supported years.
+    capital_loss_limit={
+        _S: 3_000, _MFJ: 3_000, _HOH: 3_000, _QW: 3_000, _MFS: 1_500,
+    },
 )

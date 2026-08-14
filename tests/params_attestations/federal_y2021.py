@@ -21,6 +21,22 @@ SOURCES: tuple[str, ...] = (
     "2021 Instructions for Form 8959, https://www.irs.gov/pub/irs-prior/i8959--2021.pdf",
     # ARPA-expanded 2021 EITC completed-phaseout (max AGI) limits.
     "IRS Pub. 596 (2021), https://www.irs.gov/pub/irs-prior/p596--2021.pdf",
+    # §1211(b) capital-loss-against-ordinary-income limitation (STATUTORY,
+    # NOT inflation-indexed; unchanged since Pub. L. 99-514 (1986)).
+    "26 U.S.C. § 1211(b): 'losses ... shall be allowed only to the extent of "
+    "the gains ..., plus (if such losses exceed such gains) the lower of — "
+    "(1) $3,000 ($1,500 in the case of a married individual filing a separate "
+    "return), or (2) the excess of such losses over such gains.' "
+    "https://www.law.cornell.edu/uscode/text/26/1211",
+    "2021 Schedule D (Form 1040), https://www.irs.gov/pub/irs-prior/"
+    "f1040sd--2021.pdf, Line 21 (face of form): 'If line 16 is a loss, enter "
+    "here and on Form 1040, 1040-SR, or 1040-NR, line 7, the smaller of: "
+    "• The loss on line 16; or • ($3,000), or if married filing separately, "
+    "($1,500)'.",
+    "2021 Instructions for Schedule D (Form 1040), "
+    "https://www.irs.gov/pub/irs-prior/i1040sd--2021.pdf, 'Capital Losses' "
+    "(page 4): 'You can deduct capital losses up to the amount of your "
+    "capital gains plus $3,000 ($1,500 if married filing separately).'",
     # 2021 non-itemizer charitable cash-contribution deduction (Line 12b cap).
     "2021 Instructions for Form 1040 (and 1040-SR), "
     "https://www.irs.gov/pub/irs-prior/i1040gi--2021.pdf: 'Line 12b' "
@@ -60,6 +76,19 @@ ATTESTED: dict[str, object] = {
         "married_separately": (40400, 250800),  # MFS: $40,400 / $250,800
         "head_of_household": (54100, 473750),   # head of household: $54,100 / $473,750
         "qualifying_widow": (80800, 501600),    # surviving spouse takes joint row: $80,800 / $501,600
+    },
+    "capital_loss_limit": {
+        # IRC § 1211(b) — STATUTORY, NOT inflation-indexed (the section
+        # contains no cost-of-living provision and has not been amended since
+        # Pub. L. 99-514 (1986); § 1211 appears nowhere in Rev. Proc. 2020-45,
+        # the 2021 inflation-adjustment revenue procedure). Confirmed on the
+        # face of the 2021 Schedule D, Line 21: "($3,000), or if married
+        # filing separately, ($1,500)".
+        "single": 3000,
+        "married_jointly": 3000,
+        "married_separately": 1500,  # ONLY MFS differs: § 1211(b)(1) parenthetical
+        "head_of_household": 3000,
+        "qualifying_widow": 3000,
     },
     "addl_medicare_threshold": {
         # 2021 Instructions for Form 8959, "Threshold Amounts for Additional

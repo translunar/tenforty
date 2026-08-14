@@ -43,6 +43,21 @@ ATTESTED: dict[str, object] = {
         "head_of_household": (55800, 488500), # "individual who is the head of a household"
         "qualifying_widow": (83350, 517200),  # QSS shares the "surviving spouse" (joint) figures per §3.03
     },
+    "capital_loss_limit": {
+        # IRC §1211(b), STATUTORY and NOT inflation-indexed: the section has no
+        # cost-of-living provision, has not been amended since Pub. L. 99-514
+        # (1986), and does not appear in Rev. Proc. 2021-45 (the 2022
+        # inflation-adjustment revenue procedure). Read verbatim off the face
+        # of the 2022 Schedule D (Form 1040), Line 21: "the smaller of:
+        # • The loss on line 16; or • ($3,000), or if married filing
+        # separately, ($1,500)". 2022 Instr. Sch. D, "Capital Losses" (page 4)
+        # agrees: "$3,000 ($1,500 if married filing separately)".
+        "single": 3000,
+        "married_jointly": 3000,
+        "married_separately": 1500,  # only MFS differs, per §1211(b)(1)
+        "head_of_household": 3000,
+        "qualifying_widow": 3000,    # QSS is not MFS -> full $3,000
+    },
     "addl_medicare_threshold": {
         # 2022 Instructions for Form 8959, "Threshold Amounts for Additional Medicare Tax"
         # (§3101(b)(2)/§1411; note: not indexed for inflation)
@@ -128,6 +143,17 @@ SOURCES: tuple[str, ...] = (
     "§3.06(1) Earned Income Credit table, MFJ completed-phaseout row (eic_income_ceiling); "
     "§3.15(1) Standard Deduction (standard_deduction); "
     "§3.27 Qualified Business Income (qbi_threshold); §3 header (year).",
+    "26 U.S.C. §1211(b), https://www.law.cornell.edu/uscode/text/26/1211: "
+    "'... the lower of— (1) $3,000 ($1,500 in the case of a married individual "
+    "filing a separate return), or (2) the excess of such losses over such "
+    "gains.' STATUTORY, not inflation-indexed (no cost-of-living provision; "
+    "unamended since Pub. L. 99-514, 1986) (capital_loss_limit).",
+    "2022 Schedule D (Form 1040), https://www.irs.gov/pub/irs-prior/f1040sd--2022.pdf: "
+    "Line 21 on the face of the form — '($3,000), or if married filing separately, "
+    "($1,500)' (capital_loss_limit).",
+    "2022 Instructions for Schedule D (Form 1040), https://www.irs.gov/pub/irs-prior/i1040sd--2022.pdf: "
+    "'Capital Losses' (page 4) — 'You can deduct capital losses up to the amount of your "
+    "capital gains plus $3,000 ($1,500 if married filing separately)' (capital_loss_limit).",
     "2022 Instructions for Form 8959, https://www.irs.gov/pub/irs-prior/i8959--2022.pdf: "
     "'Threshold Amounts for Additional Medicare Tax' (addl_medicare_threshold; §3101(b)(2)/§1411).",
     "IRS Publication 15 (Circular E), 2022 revision, https://www.irs.gov/pub/irs-prior/p15--2022.pdf: "

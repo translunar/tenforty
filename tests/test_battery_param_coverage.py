@@ -23,6 +23,12 @@ EXERCISED: dict[str, tuple[str, ...]] = {
     "salt_cap_floor": ("itemizer_with_w2_state_tax",),
     "salt_phaseout_threshold": ("itemizer_with_w2_state_tax",),  # consulted every itemizer
     "nonitemizer_charitable_cap": ("charitable_nonitemizer_2021",),
+    # EXERCISED, deliberately NOT waived: the defect this unit exists to fix
+    # is precisely an unenforced §1211(b) cap, which regresses SILENTLY — a
+    # loss deducted in full instead of at $3,000 understates tax badly and
+    # raises nothing. The scenario drives a $50,000 net capital loss, far
+    # past the cap, so the limitation binds by a wide margin.
+    "capital_loss_limit": ("capital_loss_over_cap",),
 }
 
 # field -> reason it is consciously NOT exercised. Shrinking this map is
