@@ -695,11 +695,18 @@ class ReturnOrchestrator:
         3. Sch 1 — needs sch_e.
         4. Sch D — needs k1_fanout (via f8949 if applicable).
         5. F8959 — standalone (W-2 Medicare wages only at v1 scope).
-        6. AGI pre-compute stub — provides agi/magi/taxable_income_before_qbi
-           from parts already computed (uses std deduction as stand-in for sch_a).
-        7. F8995 — needs k1_fanout + f1040 stub (taxable_income_before_qbi).
-        8. F8582 — needs k1_fanout + sch_e + f1040 stub (magi).
-        9. Sch A — needs agi from the f1040 stub.
+        6. Income preamble — provides agi/magi/net_capital_gain from parts
+           already computed; seeds a partial f1040 stub (no
+           taxable_income_before_qbi_deduction yet).
+        7. Sch A — needs only agi from the partial stub (QBI is below-the-line
+           on 1040 line 13, so this has no circularity with QBI).
+        8. Resolve deductions (std vs. itemized) via the actual Sch A result,
+           then finalize the stub's taxable_income_before_qbi_deduction with
+           the ACTUAL (itemized-aware) figure.
+        9. F8962 — needs agi.
+        10. F8995 — needs k1_fanout + f1040 stub (taxable_income_before_qbi,
+            now the actual figure).
+        11. F8582 — needs k1_fanout + sch_e + f1040 stub (magi).
         """
         from tenforty.forms import f1040_spine
         from tenforty.params.federal import load as _load_params
@@ -736,30 +743,53 @@ class ReturnOrchestrator:
         # --- Step 6: F8959 (standalone W-2 wages only) ---
         f8959_results = form_8959.compute(effective_scenario, upstream={})
 
-        # --- Step 7: AGI pre-compute stub ---
-        # F8995 and F8582 need upstream["f1040"]["magi"] /
-        # "taxable_income_before_qbi_deduction". Build a lightweight stub from
-        # the SHARED income preamble so the AGI/total-income math has a single
-        # source of truth with compute_spine (they cannot drift). Sch A is not
-        # yet computed, so the preamble's pre-QBI taxable income uses the
-        # standard deduction as a conservative stand-in for the QBI-threshold
-        # check in f8995 (over-estimates taxable income slightly if itemized
-        # beats std, which is safe: the threshold guard is generous).
+        # --- Step 7: AGI pre-compute stub (shared preamble) ---
+        # F8995 and F8582 need upstream["f1040"]. Build from the SHARED income
+        # preamble so the AGI/total-income math has a single source of truth
+        # with compute_spine (they cannot drift).
         _params = _load_params(effective_scenario.config.year)
         _preamble = f1040_spine.compute_income_preamble(
             effective_scenario,
             _params,
             {"sch_1": sch_1_results, "sch_d": sch_d_results},
         )
+        # Partial stub for Schedule A, which reads only agi/magi. QBI is
+        # below-the-line (1040 line 13), so Schedule A (line 12, depends on AGI
+        # only) can be computed now — no circularity.
         f1040_stub: dict = {
             "agi": _preamble.agi,
             "magi": _preamble.magi,
-            "taxable_income_before_qbi_deduction":
-                _preamble.taxable_income_before_qbi_std,
             "net_capital_gain": _preamble.net_capital_gain,
         }
 
-        # --- Step 7b: Form 8962 (Premium Tax Credit) ---
+        # --- Step 8: Sch A (needs agi from the stub) ---
+        # Build an effective scenario with itemized_deductions populated from
+        # form1098s when itemized_deductions is not set directly. This bridges
+        # the YAML fixture model (which uses form1098s for mortgage/property-tax)
+        # to forms.sch_a.compute, which reads from scenario.itemized_deductions.
+        sch_a_scenario = _scenario_with_effective_itemized(effective_scenario)
+        sch_a_results = (
+            form_sch_a.compute(
+                sch_a_scenario,
+                upstream={"f1040": f1040_stub},
+            )
+            if sch_a_scenario.itemized_deductions is not None
+            else {}
+        )
+
+        # --- Step 9: finalize the stub with the ACTUAL deduction ---
+        # taxable-income-before-QBI now uses the taxpayer's actual deduction
+        # (itemized when itemizing), so Form 8995's line-14 income limit binds
+        # correctly and the threshold gate reads the correct figure. Uses the
+        # SAME resolve_deductions helper as compute_spine (no drift).
+        _ded = f1040_spine.resolve_deductions(
+            effective_scenario, _params, _preamble.agi, sch_a_results,
+        )
+        f1040_stub["taxable_income_before_qbi_deduction"] = (
+            _ded.taxable_income_before_qbi
+        )
+
+        # --- Step 10: Form 8962 (Premium Tax Credit) ---
         # Computed here because it consumes AGI (now known from the shared
         # preamble) and its outputs feed the totals downstream (net PTC →
         # total_payments, excess-APTC repayment → overpaid) — mirroring how
@@ -799,13 +829,13 @@ class ReturnOrchestrator:
                 params=params_f8962.load(effective_scenario.config.year),
             )
 
-        # --- Step 8: F8995 (needs k1_fanout + f1040 stub) ---
+        # --- Step 11: F8995 (needs k1_fanout + f1040 stub) ---
         f8995_results = form_f8995.compute(
             effective_scenario,
             upstream={"k1_fanout": k1_fanout, "f1040": f1040_stub},
         )
 
-        # --- Step 9: F8582 (needs k1_fanout + sch_e + f1040 stub) ---
+        # --- Step 12: F8582 (needs k1_fanout + sch_e + f1040 stub) ---
         f8582_results = form_f8582.compute(
             effective_scenario,
             upstream={
@@ -813,21 +843,6 @@ class ReturnOrchestrator:
                 "sch_e": sch_e_combined,
                 "f1040": f1040_stub,
             },
-        )
-
-        # --- Step 10: Sch A (needs agi from f1040 stub) ---
-        # Build an effective scenario with itemized_deductions populated from
-        # form1098s when itemized_deductions is not set directly. This bridges
-        # the YAML fixture model (which uses form1098s for mortgage/property-tax)
-        # to forms.sch_a.compute, which reads from scenario.itemized_deductions.
-        sch_a_scenario = _scenario_with_effective_itemized(effective_scenario)
-        sch_a_results = (
-            form_sch_a.compute(
-                sch_a_scenario,
-                upstream={"f1040": f1040_stub},
-            )
-            if sch_a_scenario.itemized_deductions is not None
-            else {}
         )
 
         results: dict[str, dict] = {
