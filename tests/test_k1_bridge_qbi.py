@@ -2,14 +2,18 @@ import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from tenforty.forms import f1120s
 from tenforty.models import (
-    Address, EntityType, Form1099INT, K1Allocation, K1AllocationEntity,
-    K1AllocationShareholder, W2,
+    Address, EntityType, FilingStatus, Form1099INT, K1Allocation,
+    K1AllocationEntity, K1AllocationShareholder, ScheduleK1, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
 from tests._scorp_fixtures import _make_v1_scenario
+from tests.helpers import make_k1_scenario, needs_libreoffice
 
 
 def _address():
@@ -174,3 +178,167 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
             results["taxable_income"],
             results["taxable_income_before_qbi_deduction"],
         )
+
+
+def _mfj(scenario):
+    """Re-file a `_make_v1_scenario()` fixture (which fixes filing_status=
+    SINGLE) as MARRIED_JOINTLY, leaving every other field untouched."""
+    return dataclasses.replace(
+        scenario,
+        config=dataclasses.replace(
+            scenario.config, filing_status=FilingStatus.MARRIED_JOINTLY),
+    )
+
+
+@needs_libreoffice
+class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
+    """Non-SINGLE filers are out of native-1040-spine scope
+    (`_scenario_in_spine_scope` returns False for any non-SINGLE filing
+    status), so they route to the XLSX workbook path instead of the native
+    spine where `forms/f8995.py`'s above-threshold refusal lives. The 2025
+    workbook has an `8995` (simple-path) sheet and no `8995A` sheet, so
+    before the orchestrator-level guard these scenarios silently computed a
+    workbook-based result with no refusal, using formula that Form 8995-A
+    is supposed to replace above the threshold. These two tests pin both
+    sides of the boundary at the MARRIED_JOINTLY 2025 threshold ($394,600,
+    tenforty/params/federal/y2025.py) using `_make_v1_scenario`'s default
+    S-corp (gross_receipts=100,000 - compensation_of_officers=30,000 =
+    70,000 ordinary business income / QBI, comfortably under the $250,000
+    Schedule L / M-1 attestation trigger).
+
+    Oracle-tier (real XLSX workbook via LibreOffice): `_compute_1040_pipeline`
+    only reaches the new guard by actually routing a non-SINGLE scenario
+    through `_compute_1040_via_workbook`, which requires soffice -- see
+    `tests/helpers.py::needs_libreoffice`. The guard's conditional logic
+    itself (independent of the real workbook numbers) is additionally pinned
+    without soffice by `WorkbookQbiThresholdGuardUnitTests` below, via a
+    mocked `_compute_1040_via_workbook`."""
+
+    @pytest.mark.oracle
+    def test_above_threshold_non_single_raises_instead_of_silent_workbook_result(self):
+        """400,000 of W-2 wages plus the 70,000 K-1 QBI-bearing income is
+        470,000, minus the 2025 MFJ standard deduction (31,500), leaving
+        taxable income before QBI at 438,500 -- comfortably above the
+        394,600 MFJ threshold, so the margin survives any rounding. Without
+        the orchestrator-level guard this scenario would route straight to
+        the XLSX workbook (MARRIED_JOINTLY is out of native-spine scope) and
+        compute silently via the workbook's `8995` sheet, which is not valid
+        above the threshold."""
+        scenario = _mfj(_make_v1_scenario(
+            gross_receipts=100_000.0, compensation_of_officers=30_000.0))
+        scenario = dataclasses.replace(scenario, w2s=[
+            W2(
+                employer="Example Employer Inc.",
+                wages=400_000.0,
+                federal_tax_withheld=80_000.0,
+                ss_wages=176_100.0,
+                ss_tax_withheld=round(176_100.0 * 0.062),
+                medicare_wages=400_000.0,
+                medicare_tax_withheld=round(400_000.0 * 0.0145),
+            ),
+        ])
+
+        with tempfile.TemporaryDirectory() as d:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            with self.assertRaisesRegex(
+                NotImplementedError, "8995-A|8995A"
+            ):
+                orch.compute_federal(scenario)
+
+    @pytest.mark.oracle
+    def test_below_threshold_non_single_still_computes_via_workbook(self):
+        """No added W-2 income: taxable income before QBI is the 70,000 K-1
+        income minus the 2025 MFJ standard deduction (31,500) = 38,500,
+        comfortably below the 394,600 MFJ threshold. QBI is still positive
+        (70,000), so this scenario must NOT be refused -- the workbook's
+        `8995` sheet is valid below the threshold and must keep computing
+        exactly as it does today. Asserts on real computed figures (the
+        exact taxable-income-before-QBI input figure, and that a positive
+        QBI deduction was actually subtracted), not merely the absence of
+        an exception."""
+        scenario = _mfj(_make_v1_scenario(
+            gross_receipts=100_000.0, compensation_of_officers=30_000.0))
+
+        with tempfile.TemporaryDirectory() as d:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            results = orch.compute_federal(scenario)
+
+        self.assertEqual(
+            results["taxable_income_before_qbi_deduction"], 38_500)
+        self.assertGreater(results["qbi_deduction"], 0)
+        self.assertEqual(
+            results["taxable_income"],
+            results["taxable_income_before_qbi_deduction"]
+            - results["qbi_deduction"],
+        )
+
+
+class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
+    """Isolates the orchestrator-level guard added to `_compute_1040_pipeline`
+    from the real XLSX workbook, which requires LibreOffice (the oracle
+    tier pinned end to end by BridgeNonSingleWorkbookRoutingQbiThresholdTests
+    above). Patches `_compute_1040_via_workbook` to return a synthetic
+    result carrying a chosen `taxable_income_before_qbi_deduction`, so the
+    guard's three-part conditional (QBI > 0 AND above threshold AND
+    out-of-spine-scope) is pinned deterministically without launching
+    soffice. Drives `_compute_1040_pipeline` directly rather than
+    `compute_federal`: the guard lives entirely inside that method, and
+    `_build_effective_scenario`'s S-corp waterfall / compute-time gates are
+    orthogonal to it."""
+
+    def _mfj_scenario_with_qbi(self, qbi_amount=70_000.0):
+        scenario = make_k1_scenario()
+        scenario.config.filing_status = FilingStatus.MARRIED_JOINTLY
+        scenario.schedule_k1s = [
+            ScheduleK1(
+                entity_name="Example Partnership",
+                entity_ein="00-0000000",
+                entity_type=EntityType.PARTNERSHIP,
+                material_participation=True,
+                ordinary_business_income=70_000.0,
+                qbi_amount=qbi_amount,
+            ),
+        ]
+        return scenario
+
+    def _orch(self):
+        return ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path("/tmp/tenforty-qbi-guard-unit"),
+        )
+
+    def test_raises_when_qbi_positive_and_workbook_taxable_income_above_threshold(self):
+        scenario = self._mfj_scenario_with_qbi()
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            return_value={"taxable_income_before_qbi_deduction": 500_000.0},
+        ):
+            with self.assertRaisesRegex(NotImplementedError, "8995-A|8995A"):
+                self._orch()._compute_1040_pipeline(scenario)
+
+    def test_does_not_raise_and_passes_through_result_when_below_threshold(self):
+        scenario = self._mfj_scenario_with_qbi()
+        sentinel_result = {
+            "taxable_income_before_qbi_deduction": 100_000.0,
+            "sentinel": "unmodified",
+        }
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            return_value=sentinel_result,
+        ):
+            result = self._orch()._compute_1040_pipeline(scenario)
+        self.assertEqual(result, sentinel_result)
+
+    def test_does_not_raise_when_qbi_is_zero_even_above_threshold(self):
+        """QBI == 0 must never trigger the guard, regardless of taxable
+        income -- mirrors f8995.compute's `qbi_total > 0` condition."""
+        scenario = self._mfj_scenario_with_qbi(qbi_amount=0.0)
+        sentinel_result = {"taxable_income_before_qbi_deduction": 500_000.0}
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            return_value=sentinel_result,
+        ):
+            result = self._orch()._compute_1040_pipeline(scenario)
+        self.assertEqual(result, sentinel_result)
