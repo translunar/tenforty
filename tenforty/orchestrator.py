@@ -663,6 +663,7 @@ class ReturnOrchestrator:
         surface (non-single filers, EIC, etc.) until the spine is extended."""
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
+        params = load_params(effective_scenario.config.year)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # A 1095-A scenario that is out of native-spine scope
@@ -678,8 +679,53 @@ class ReturnOrchestrator:
                     "dropping the PTC. Extend the native spine to cover this "
                     "filer class before enabling 8962 for it."
                 )
-            return self._compute_1040_via_workbook(effective_scenario)
-        params = load_params(effective_scenario.config.year)
+            workbook_result = self._compute_1040_via_workbook(effective_scenario)
+            # The native spine's f8995.compute refuses (NotImplementedError)
+            # when QBI > 0 and taxable income before the QBI deduction exceeds
+            # the Form 8995 simple-path threshold, because Form 8995-A (the
+            # above-threshold form) is not implemented in v1. That guard lives
+            # inside f8995.py, which only runs on the spine path — every
+            # non-single filer (and any EIC-possible filer) routes here
+            # instead, to the XLSX workbook. The 2025 workbook has an `8995`
+            # sheet (simple path) and NO `8995A` sheet, so an above-threshold
+            # scenario routed here would silently get a workbook-computed
+            # result with no refusal — a wrong number, silently, exactly the
+            # failure mode the 1095-A guard above exists to prevent for PTC.
+            # Mirror it for QBI: validate the already-computed workbook result
+            # against the same threshold and refuse after the fact, since
+            # taxable income does not exist before the workbook runs. This
+            # leaves the below-threshold path (where the workbook's `8995`
+            # sheet IS valid) completely untouched.
+            qbi_total = sum(
+                k1.qbi_amount for k1 in effective_scenario.schedule_k1s
+            )
+            if qbi_total > 0:
+                threshold = params.qbi_threshold[
+                    effective_scenario.config.filing_status.value
+                ]
+                # Same figure f8995.compute gates on: taxable income BEFORE
+                # the QBI deduction (form_1040.compute adds the deduction
+                # back onto its own "taxable_income" output under this key).
+                taxable_income_before_qbi = float(
+                    workbook_result.get("taxable_income_before_qbi_deduction", 0)
+                )
+                if taxable_income_before_qbi > threshold:
+                    raise NotImplementedError(
+                        f"Taxable income before QBI ({taxable_income_before_qbi:.0f}) "
+                        f"exceeds the Form 8995 simple-path threshold ({threshold}) "
+                        f"for filing status "
+                        f"{effective_scenario.config.filing_status.value}, and the "
+                        f"scenario has {qbi_total:.0f} of QBI. This scenario is out "
+                        "of native-1040-spine scope (EIC-possible or non-single "
+                        "filer), so it routes to the XLSX workbook path, which has "
+                        "an `8995` (simple-path) sheet but no `8995A` sheet. Form "
+                        "8995-A is not implemented in tenforty v1. Refusing rather "
+                        "than silently returning a workbook-computed result that "
+                        "used the wrong QBI deduction formula. Extend the native "
+                        "spine to cover this filer class (or implement Form "
+                        "8995-A) before enabling this scenario."
+                    )
+            return workbook_result
         schedule_results, k1_fanout = self._compute_native_schedules(effective_scenario)
         spine_result = f1040_spine.compute_spine(
             effective_scenario, params, schedule_results, k1_fanout=k1_fanout,
