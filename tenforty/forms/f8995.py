@@ -69,11 +69,36 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         )
 
     line_1 = irs_round(qbi_total)
-    line_2 = line_1
+    # IRS Form 8995 line 4: "Total qualified business income. Combine lines 2
+    # and 3. If zero or less, enter -0-." Line 3 there is the prior-year QBI
+    # loss carryforward IN -- an input channel v1 does not model yet (see
+    # program ledger; deliberately out of scope for this fix), so the combine
+    # here is just line_1 alone. Floor it at 0 *before* it feeds the 20%
+    # component below: an unfloored negative combine would otherwise flow
+    # straight through line_3 -> line_6 -> line_15 and produce a QBI
+    # deduction that is negative -- i.e. one that *increases* taxable income,
+    # which is the defect this fix corrects. Flooring here (rather than only
+    # at line_15) keeps every derived line internally consistent with what
+    # the real form would show for a loss year.
+    combined_qbi = line_1
+    line_2 = max(0, combined_qbi)
     line_3 = irs_round(0.20 * line_2)
     line_4 = 0
     line_5 = 0
     line_6 = line_3 + line_5
+
+    # IRS Form 8995 line 16: "Total qualified business (loss) carryforward.
+    # Combine lines 2 and 3. If greater than zero, enter -0-." This is the
+    # mirror image of the line_2 floor above: whatever the combine above
+    # floors OFF becomes the loss carried to next year. SIGN CONVENTION:
+    # stored NEGATIVE (or 0), matching how the IRS form itself reports this
+    # carryforward -- a loss year yields a negative number here, e.g. -30,000
+    # QBI carries forward as -30,000, not +30,000. Write-only in v1: computed
+    # and surfaced in the returned dict, consumed by nothing downstream yet
+    # (the matching prior-year-loss INPUT channel is the deferred follow-up
+    # noted above). Mirrors the existing write-only-carryforward pattern in
+    # forms/f8582.py's `per_activity_carryforwards`.
+    line_16_qbi_loss_carryforward = min(0, combined_qbi)
 
     line_11 = irs_round(taxable_income)
     # max(0, ...) is a boundary contract on `upstream`, not a redundant guard:
@@ -104,4 +129,5 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8995_line_13_subtract": line_13,
         "f8995_line_14_income_limit": line_14,
         "f8995_line_15_qbi_deduction": line_15,
+        "f8995_line_16_qbi_loss_carryforward": line_16_qbi_loss_carryforward,
     }

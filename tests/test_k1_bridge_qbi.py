@@ -5,7 +5,8 @@ from pathlib import Path
 
 from tenforty.forms import f1120s
 from tenforty.models import (
-    Address, EntityType, K1Allocation, K1AllocationEntity, K1AllocationShareholder, W2,
+    Address, EntityType, Form1099INT, K1Allocation, K1AllocationEntity,
+    K1AllocationShareholder, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
 from tests._scorp_fixtures import _make_v1_scenario
@@ -130,3 +131,46 @@ class BridgeAboveThresholdTests(unittest.TestCase):
                 NotImplementedError, "acknowledges_qbi_below_threshold"
             ):
                 orch.compute_federal(scenario)
+
+
+class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
+    def test_loss_year_scorp_no_longer_yields_negative_deduction(self):
+        """End-to-end reproduction of the originally-reported defect: a
+        loss-year S-corp (ordinary business income and QBI both -30,000)
+        combined with 120,000 of interest income previously produced a
+        NEGATIVE Form 8995 deduction that INCREASED taxable income instead
+        of leaving it alone. The bridge (tenforty/orchestrator.py,
+        forms/sch_e_part_ii.py) correctly carries the -30,000 QBI through
+        intact -- test_loss_qbi_crosses_intact in this file pins that. The
+        floor belongs downstream in forms/f8995.py, where the IRS form
+        itself puts it ("if zero or less, enter -0-"), and this test proves
+        the floor lands: the QBI deduction must not be negative, and taxable
+        income must equal taxable-income-before-QBI (a zero deduction was
+        applied), not the inflated pre-fix figure.
+
+        gross_receipts=20,000 - compensation_of_officers=50,000 yields
+        ordinary business income (and QBI) of exactly -30,000, matching the
+        controller's original repro. 120,000 of interest plus the 2025
+        single standard deduction ($15,750) puts taxable-income-before-QBI
+        at 74,250 -- the correct final taxable income once the deduction is
+        properly floored at 0, versus the pre-fix 80,250 (74,250 minus a
+        -6,000 "deduction" that actually added 6,000 back to taxable
+        income).
+        """
+        scenario = _make_v1_scenario(
+            gross_receipts=20_000.0, compensation_of_officers=50_000.0)
+        scenario = dataclasses.replace(scenario, form1099_int=[
+            Form1099INT(payer="Example Bank", interest=120_000.0),
+        ])
+        self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
+
+        with tempfile.TemporaryDirectory() as d:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            results = orch.compute_federal(scenario)
+
+        self.assertGreaterEqual(results["qbi_deduction"], 0)
+        self.assertEqual(
+            results["taxable_income"],
+            results["taxable_income_before_qbi_deduction"],
+        )
