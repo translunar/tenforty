@@ -837,6 +837,38 @@ class F1040(FormMapping):
             "sch_1_line_21_student_loan_interest": "StudentLoanIntDeduct",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
+            # 1040 line 7a — the IRC §1211(b)-CAPPED capital gain/loss actually
+            # TRANSFERRED from Schedule D line 21. Deliberately distinct from
+            # `schd_line16` above, which is the TRUE, UNCAPPED Schedule D line
+            # 16 total; the two diverge whenever a net loss exceeds the $3,000
+            # ($1,500 MFS) cap. This mirrors the capped/uncapped split the
+            # native spine already makes (f1040_spine.py emits both keys).
+            # Without this output nothing read the workbook's capped value and
+            # line 7a printed the UNCAPPED loss while line 9 (total income)
+            # printed the capped one — an internally inconsistent PDF.
+            #
+            # Read BY NAME, not by cell address. The underlying cell moves in
+            # EVERY year — '1040'!AC43 (2021), AC53 (2022), AD59 (2023), AD62
+            # (2024), AL74 (2025) — so an address mapping would need five
+            # separate entries and would rot silently on the next workbook. The
+            # NAME is stable and verified present in all five workbooks.
+            #
+            # Formula shape is consistent year to year: manual-override ->
+            # '1099-DIV' direct when Schedule D isn't required -> the
+            # loss-limited chain. For 2024 that chain ends at 'Sch. D'!O88 =
+            # IF(N58<0,-MIN(-N58,-S91),""), which is §1211(b); S91 carries the
+            # married-filing-separately halving.
+            #
+            # 2021 VARIANT (2021 inherits this block via 2022/2023): 2021's
+            # CapitalGains reads the `SchDLine16` named range DIRECTLY on its
+            # gain branch. That is harmless, not a bug — cap and uncapped
+            # coincide for a gain — and 2021's LOSS branch still routes to its
+            # own capped cell, 'Sch. D'!O89. So 2021 is capped correctly too.
+            #
+            # A blank result (empty Schedule D) surfaces as None and is left
+            # as None ON PURPOSE — see the note in forms/f1040.py where the
+            # old `schd_line16 -> capital_gain_loss` alias used to live.
+            "capital_gain_loss": "CapitalGains",
             "interest_income": "Interest_Inc",
             "dividend_income": "Dividend_Inc",
             "schedule_a_total": "Tot_Item_Deduct",
@@ -936,6 +968,14 @@ class F1040(FormMapping):
             "sch_1_line_21_student_loan_interest": "StudentLoanIntDeduct",
             "sche_line41": "SchE1_Line41",
             "schd_line16": "SchDLine16",
+            # 1040 line 7a — the §1211(b)-CAPPED transfer from Schedule D line
+            # 21, as opposed to `schd_line16`'s TRUE uncapped line-16 total.
+            # See the 2024 block for the full rationale (why by NAME and not by
+            # address, the per-year cell drift, and the 2021 gain-branch
+            # variant). 2025's loss-limited cell is 'Sch. D'!P87 =
+            # IF(O57<0,-MIN(-O57,-T90),""), with T90 =
+            # IF(File_Marr_Sep="",-T88,-T89) carrying the MFS halving.
+            "capital_gain_loss": "CapitalGains",
             "interest_income": "Interest_Inc",
             "dividend_income": "Dividend_Inc",
             "schedule_a_total": "Tot_Item_Deduct",

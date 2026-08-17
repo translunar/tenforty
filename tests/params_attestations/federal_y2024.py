@@ -27,6 +27,16 @@ SOURCES: tuple[str, ...] = (
     "irs.gov/irb/2023-48_IRB): Tax Rate Tables, Maximum Capital Gains Rate, "
     "Qualified Business Income (§199A) threshold, Earned Income Credit, "
     "Standard Deduction — TY2024 inflation-adjusted amounts.",
+    "26 U.S.C. §1211(b) (law.cornell.edu/uscode/text/26/1211): capital-loss "
+    "limitation — '$3,000 ($1,500 in the case of a married individual filing "
+    "a separate return)'. Statutory, NOT inflation-indexed (no cost-of-living "
+    "provision; unamended since Pub. L. 99-514, 1986; absent from Rev. Proc. "
+    "2023-34).",
+    "IRS 2024 Schedule D (Form 1040) (irs.gov/pub/irs-prior/f1040sd--2024.pdf), "
+    "Line 21 on the face of the form: '($3,000), or if married filing "
+    "separately, ($1,500)'; and IRS 2024 Instructions for Schedule D (Form "
+    "1040) (irs.gov/pub/irs-prior/i1040sd--2024.pdf), 'Capital Losses' (page "
+    "4) — for capital_loss_limit.",
     "IRS Topic no. 560, Additional Medicare Tax (irs.gov/taxtopics/tc560): "
     "0.9% Additional Medicare Tax filing-status thresholds (statutory, not "
     "inflation-adjusted).",
@@ -107,6 +117,23 @@ ATTESTED: dict[str, object] = {
         "married_separately": (47025, 291850),
         "head_of_household": (63000, 551350),
         "qualifying_widow": (94050, 583750),  # QSS = MFJ
+    },
+
+    # IRC §1211(b) — STATUTORY, NOT inflation-indexed. The section has no
+    # cost-of-living provision, has not been amended since Pub. L. 99-514
+    # (1986), and does not appear in Rev. Proc. 2023-34 (the TY2024
+    # inflation-adjustment revenue procedure). Statute: losses allowed to the
+    # extent of gains "plus (if such losses exceed such gains) the lower of—
+    # (1) $3,000 ($1,500 in the case of a married individual filing a separate
+    # return), or (2) the excess of such losses over such gains." Confirmed on
+    # the face of the 2024 Schedule D (Form 1040), Line 21. MFS is the only
+    # halved status.
+    "capital_loss_limit": {
+        "single": 3000,
+        "married_jointly": 3000,
+        "married_separately": 1500,
+        "head_of_household": 3000,
+        "qualifying_widow": 3000,  # QSS is not MFS -> full $3,000
     },
 
     # IRS Topic no. 560 — statutory 0.9% Additional Medicare Tax thresholds

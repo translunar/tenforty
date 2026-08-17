@@ -11,6 +11,7 @@ from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import f8962 as f8962_params
+from tenforty.params.federal import load as load_federal_params
 from tests.fixtures.spine_battery import battery_for
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -19,6 +20,7 @@ _EXPECTED_NAMES = [
     "canonical_wage_investment_rental",
     "qdcgt_15_to_20_boundary",
     "net_short_term_gain_with_ltcg_and_qualdiv",
+    "capital_loss_over_cap",
     "qbi_threshold_boundary",
     "qbi_k1_deduction",
     "addl_medicare_boundary",
@@ -141,6 +143,31 @@ class BatteryParameterizationTests(unittest.TestCase):
                 self.assertGreater(
                     sum(f.qualified_dividends
                         for f in scenario.form1099_div), 0)
+
+    def test_capital_loss_over_cap_scenario_is_materially_over_the_cap(self):
+        # Regime pin for the scenario that exercises `capital_loss_limit`:
+        # the net capital loss must actually EXCEED the year's IRC §1211(b)
+        # limit, otherwise the cap it exists to exercise never binds and the
+        # coverage claim in test_battery_param_coverage.py would be hollow.
+        # Sch D line 16 is derived through the real f8949 -> sch_d pipeline
+        # (not read off the fixture's literals), so a routing bug that
+        # dropped the loss lot surfaces here. NO golden dollar amount — the
+        # exact figure is the parity gate's business.
+        for year in (year_manifest.FEDERAL_YEARS
+                     + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
+            with self.subTest(year=year):
+                build = dict(battery_for(year))["capital_loss_over_cap"]
+                scenario = build()
+                f8949_result = form_f8949.compute(scenario, upstream={})
+                sch_d_result = form_sch_d.compute(
+                    scenario, upstream={"f8949": f8949_result})
+                net = sch_d_result["sch_d_line_16_total"]
+                self.assertLess(net, 0, "scenario must carry a NET LOSS")
+                limit = load_federal_params(year).capital_loss_limit[
+                    scenario.config.filing_status]
+                # A loss deeper than the cap is what makes the limitation
+                # bind. Compare magnitudes: |net loss| > the year's limit.
+                self.assertGreater(abs(net), limit)
 
     def test_qbi_k1_deduction_yields_positive_qbi_every_year(self):
         # Structural regime pin: the QBI-active scenario must materially

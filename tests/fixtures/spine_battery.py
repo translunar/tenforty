@@ -3,7 +3,7 @@
 Each builder takes the tax year and returns a single-filer Scenario whose
 income is high enough to clear the EIC scope-gate, so _compute_1040_pipeline
 routes to the native spine rather than the workbook. battery_for(year)
-yields the same eleven boundary scenarios for any supported year (plus a
+yields the same fifteen boundary scenarios for any supported year (plus a
 2021-only twelfth, the ARPA unemployment-compensation special rule) —
 adding a year adds zero code here.
 
@@ -205,6 +205,49 @@ def build_net_short_term_gain_with_ltcg_and_qualdiv(year: int) -> Scenario:
                 date_sold=f"{year}-09-01",
                 proceeds=55_000.0,
                 cost_basis=40_000.0,
+                short_term=False,
+                basis_reported_to_irs=True,
+            ),
+        ],
+    )
+
+
+def build_capital_loss_over_cap(year: int) -> Scenario:
+    """Net capital LOSS materially LARGER than the IRC §1211(b) limit — the
+    BINDING case for `capital_loss_limit`.
+
+    A single long-term lot sold at a $50,000 loss (proceeds $20,000 against
+    a $70,000 basis) against wages of $130,000. Sch D line 16 is therefore
+    about -$50,000, more than sixteen times the $3,000 single-filer cap, so
+    the limitation binds by a wide margin rather than by a rounding hair: a
+    cap that silently stopped applying would move taxable income by $47,000,
+    not by pennies.
+
+    Wages $130,000 clear every year's EIC ceiling, so the return routes to
+    the native spine. Once the cap is honored, taxable income lands near
+    $112,000-$114,000 depending on the year's standard deduction — above the
+    $100,000 tax-table cutoff, where the rate schedule and the published
+    table coincide (see build_zero_tax_refund for why that matters).
+
+    NOTE: nothing consumes `capital_loss_limit` yet — the Sch D line-21 cap
+    and its transfer to Form 1040 line 7 land in later commits. Until then
+    this scenario carries the shape but the spine still deducts the loss in
+    full; that ordering is deliberate.
+    """
+    return Scenario(
+        config=_battery_config(year),
+        w2s=[
+            _w2(year, employer="Synthetic Employer J", wages=130_000.0,
+                federal_tax_withheld=24_000.0),
+        ],
+        form1099_b=[
+            Form1099B(
+                broker="Synthetic Broker",
+                description="Synthetic Loss Lot",
+                date_acquired=f"{year - 3}-04-01",
+                date_sold=f"{year}-07-01",
+                proceeds=20_000.0,
+                cost_basis=70_000.0,
                 short_term=False,
                 basis_reported_to_irs=True,
             ),
@@ -558,6 +601,7 @@ _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
     ("net_short_term_gain_with_ltcg_and_qualdiv",
      build_net_short_term_gain_with_ltcg_and_qualdiv),
+    ("capital_loss_over_cap", build_capital_loss_over_cap),
     ("qbi_threshold_boundary", build_qbi_threshold_boundary),
     ("qbi_k1_deduction", build_qbi_k1_deduction),
     ("addl_medicare_boundary", build_addl_medicare_boundary),

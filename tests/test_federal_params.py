@@ -139,3 +139,27 @@ class StandardDeductionAllStatusesTests(unittest.TestCase):
         self.assertEqual(p.standard_deduction["married_separately"], 14_600)
         self.assertEqual(p.standard_deduction["head_of_household"], 21_900)
         self.assertEqual(p.standard_deduction["qualifying_widow"], 29_200)
+
+
+class CapitalLossLimitAllYearsAllStatusesTests(unittest.TestCase):
+    """IRC §1211(b): $3,000 net-capital-loss limit against ordinary income
+    ($1,500 for MFS). Statutory, not inflation-indexed — pinned identically
+    across every supported federal year."""
+
+    ALL_YEARS = (2021, 2022, 2023, 2024, 2025)
+    NON_MFS_STATUSES = (
+        FilingStatus.SINGLE.value,
+        FilingStatus.MARRIED_JOINTLY.value,
+        FilingStatus.HEAD_OF_HOUSEHOLD.value,
+        FilingStatus.QUALIFYING_WIDOW.value,
+    )
+    MFS = FilingStatus.MARRIED_SEPARATELY.value
+
+    def test_capital_loss_limit_every_year_every_status(self):
+        for year in self.ALL_YEARS:
+            p = load(year)
+            with self.subTest(year=year, status=self.MFS):
+                self.assertEqual(p.capital_loss_limit[self.MFS], 1_500)
+            for status in self.NON_MFS_STATUSES:
+                with self.subTest(year=year, status=status):
+                    self.assertEqual(p.capital_loss_limit[status], 3_000)

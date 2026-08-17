@@ -67,16 +67,22 @@ def set_oracle_sanction(item) -> None:
         os.environ.pop("TENFORTY_ORACLE_SANCTIONED", None)
 
 
-# Test fixtures affirm three attestations as True because they match the
+# Test fixtures affirm four attestations as True because they match the
 # common in-memory scenario posture: unlimited at-risk amounts, basis
-# tracked externally, no K-1 credits. Every other registered attestation
-# defaults to False. To change the default for an attestation that
-# already exists, edit this set; new attestations default to False
-# automatically.
+# tracked externally, no K-1 credits, no prior-year capital-loss
+# carryforward. Every other registered attestation defaults to False. To
+# change the default for an attestation that already exists, edit this
+# set; new attestations default to False automatically.
 _TEST_POSTURE_AFFIRMED: frozenset[str] = frozenset({
     "acknowledges_unlimited_at_risk",
     "basis_tracked_externally",
     "acknowledges_no_k1_credits",
+    # Every synthetic test scenario is built from scratch with no
+    # prior-year history, so it genuinely HAS no capital-loss carryover
+    # under IRC §1212(b): affirming this is scenario-faithful, not a
+    # convenience default. Tests that want the refusal set it False
+    # explicitly on scenario.config.
+    "acknowledges_no_capital_loss_carryforward",
 })
 
 
