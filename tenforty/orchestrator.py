@@ -2118,9 +2118,33 @@ class ReturnOrchestrator:
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
-        (the IRS Part I / Part II filing threshold)."""
-        total_interest = sum(i.interest for i in scenario.form1099_int)
-        total_dividends = sum(d.ordinary_dividends for d in scenario.form1099_div)
+        (the IRS Part I / Part II filing threshold).
+
+        "Total" means the 1040 line 2b / 3b TOTAL across every source -- 1099
+        plus the K-1 conduit components (IRC 1366(b)) -- not the 1099 slice
+        alone. Summing only the 1099s (the historic behavior, which this
+        docstring already claimed not to do) meant a return with $1,400 on a
+        1099 and $1,400 on a K-1 had a true $2,800 Schedule B total, failed
+        the gate, and was emitted with NO Schedule B at all.
+
+        The totals are read BY REFERENCE from the finished 1040 results rather
+        than re-derived here, so this gate cannot drift from the lines it
+        gates: whatever convention lines 2b/3b use (including how the K-1
+        additions are rounded), the threshold is applied to the very figure
+        Schedule B will print. Re-summing the scenario here would also have to
+        duplicate sch_e_part_ii's per-entity-type classification of which K-1s
+        contribute -- a copy that rots the moment that classification changes.
+
+        Fallback: callers that pass no 1040 results (unit-level callers with an
+        empty dict) degrade to the 1099-only sums, i.e. the historic behavior.
+        That is a strict LOWER bound on the true totals -- the K-1 components
+        only ever add -- so the fallback can under-emit but never over-emit,
+        and it is never silently zero.
+        """
+        interest_1099 = sum(i.interest for i in scenario.form1099_int)
+        dividends_1099 = sum(d.ordinary_dividends for d in scenario.form1099_div)
+        total_interest = results.get("taxable_interest", interest_1099)
+        total_dividends = results.get("ordinary_dividends", dividends_1099)
         return total_interest >= 1500.0 or total_dividends >= 1500.0
 
     def _should_compute_8949(self, scenario: Scenario) -> bool:
