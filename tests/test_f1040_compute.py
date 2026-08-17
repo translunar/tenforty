@@ -17,12 +17,23 @@ class F1040ComputeTests(unittest.TestCase):
         result = compute(raw_1040=raw, upstream={})
         self.assertEqual(result["taxable_interest"], 100)
         self.assertEqual(result["ordinary_dividends"], 200)
-        self.assertEqual(result["capital_gain_loss"], 300)
         self.assertEqual(result["other_income"], 400)
         self.assertEqual(result["federal_withheld_w2"], 1000)
         self.assertEqual(result["federal_withheld_other"], 50)
         self.assertEqual(result["agi"], 75000)
         self.assertEqual(result["agi_page2"], 75000)
+
+        # `schd_line16` is NOT renamed: it is the true, UNCAPPED Schedule D
+        # line 16 total and survives under its own name for its own consumers
+        # (sch_d_540, the CLI summary, the e2e tests).
+        self.assertEqual(result["schd_line16"], 300)
+
+        # And it is NOT copied into `capital_gain_loss`. That key is 1040 line
+        # 7a, the IRC §1211(b)-CAPPED transfer from Schedule D line 21, and it
+        # comes only from the workbook's `CapitalGains` named range. This raw
+        # dict has no `capital_gain_loss`, so compute() must not synthesize
+        # one -- pinning against reintroduction of the old convenience alias.
+        self.assertNotIn("capital_gain_loss", result)
 
     def test_sums_line_25d(self):
         raw = {
