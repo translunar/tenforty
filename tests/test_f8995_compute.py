@@ -150,5 +150,88 @@ class F8995QbiThresholdYearAwarenessTests(unittest.TestCase):
         self.assertGreater(out["f8995_line_15_qbi_deduction"], 0)
 
 
+class F8995QbiLossZeroFloorTests(unittest.TestCase):
+    """Pins the zero-floor on combined QBI (IRS Form 8995 line 4: "Total
+    qualified business income. Combine lines 2 and 3. If zero or less, enter
+    -0-.") and the companion loss-carryforward output (IRS line 16).
+
+    Reproduces the defect: a loss-year S-corp (QBI = -30,000) previously
+    produced a NEGATIVE deduction that increased taxable income instead of
+    reducing it. The fix floors the combined QBI at 0 before it feeds the 20%
+    component, so the deduction can never go negative, and surfaces the
+    floored-off loss as a write-only carryforward (negative, per the sign
+    convention documented in tenforty/forms/f8995.py).
+    """
+
+    def test_negative_qbi_deduction_floors_at_zero_not_negative(self):
+        s, upstream = _scenario_with_qbi(
+            qbi=-30_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
+
+    def test_printed_line_2_shows_the_unfloored_loss(self):
+        """Line 2 is a PRINTED, PDF-mapped line (field f1_18 in both era
+        mappings of tenforty/mappings/pdf_f8995.py) whose IRS caption is
+        "Total qualified business income or (loss)" -- it must print the TRUE
+        combine, loss and all. A prior fix floored it at zero, which made the
+        emitted form contradict itself: line 1 showed -30,000 while line 2
+        claimed 0. The zero floor belongs strictly DOWNSTREAM, at the 20%
+        component (line 3) and everything fed from it, never at line 2's
+        printed value."""
+        s, upstream = _scenario_with_qbi(
+            qbi=-30_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_1_qbi"], -30_000)
+        self.assertEqual(out["f8995_line_2_total_qbi"], -30_000)
+        self.assertEqual(out["f8995_line_3_component"], 0)
+        self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
+
+    def test_negative_qbi_carryforward_carries_the_loss(self):
+        """SIGN CONVENTION under test: the carryforward is stored NEGATIVE,
+        mirroring whatever the DOWNSTREAM floor (`floored_qbi`) removes from
+        the combined QBI. (Line 2 itself is no longer floored -- it prints
+        the loss; see test_printed_line_2_shows_the_unfloored_loss.) A
+        -30,000 QBI year must carry forward exactly -30,000, not +30,000 and
+        not the post-floor 0."""
+        s, upstream = _scenario_with_qbi(
+            qbi=-30_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], -30_000)
+
+    def test_zero_qbi_deduction_and_carryforward_both_zero(self):
+        """Boundary: QBI exactly 0 is neither a gain nor a loss year -- the
+        deduction is 0 (nothing to deduct) and there is no loss to carry."""
+        s, upstream = _scenario_with_qbi(
+            qbi=0.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
+        self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], 0)
+
+    def test_positive_qbi_deduction_and_carryforward_unchanged(self):
+        """Regression guard: the floor must be a no-op on the normal
+        (positive-QBI) path. Same figures as
+        F8995SimpleTests.test_below_threshold_basic -- real computed values,
+        not tautologies -- plus the new line_16 key, which must be 0 (no
+        loss to carry forward in a profit year)."""
+        s, upstream = _scenario_with_qbi(
+            qbi=20_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_1_qbi"], 20_000)
+        self.assertEqual(out["f8995_line_2_total_qbi"], 20_000)
+        self.assertEqual(out["f8995_line_3_component"], 4_000)
+        self.assertEqual(out["f8995_line_15_qbi_deduction"], 4_000)
+        self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
