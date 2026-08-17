@@ -234,7 +234,11 @@ def compute_income_preamble(
     sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
 
     total_income = irs_round(
-        wages + taxable_interest + ordinary_divs + schd_line21_allowed + sch_1_line_10
+        wages
+        + taxable_interest_total
+        + ordinary_divs_total
+        + schd_line21_allowed
+        + sch_1_line_10
     )
     agi = irs_round(total_income - sch_1_line_26)
     # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
@@ -407,8 +411,15 @@ def compute_spine(
         scenario, params, schedule_results, k1_fanout=k1_fanout,
     )
     wages = preamble.wages
-    taxable_interest = preamble.taxable_interest
-    ordinary_divs = preamble.ordinary_divs
+    # 1040 lines 2b / 3b TOTALS — same reasoning as line 3a below: a K-1's
+    # interest / ordinary dividends keep their character in the shareholder's
+    # hands (IRC 1366(b)), so the LINE is the 1099 component plus the K-1
+    # component. The 1099-only preamble fields (preamble.taxable_interest /
+    # .ordinary_divs) are components, not lines, and are deliberately NOT
+    # bound here — the emitted Schedule B totals the same K-1 additions, so a
+    # spine that published the components would contradict its own Schedule B.
+    taxable_interest_total = preamble.taxable_interest_total
+    ordinary_divs_total = preamble.ordinary_divs_total
     # 1040 line 3a TOTAL — the QDCGT preferential base must include a K-1's
     # qualified dividends (IRC 1366(b)), not just the 1099-DIV component.
     # Reading the same preamble total that Form 8995 line 12 reads keeps the
@@ -635,13 +646,20 @@ def compute_spine(
         # scenario inputs and refuse-by-absence (their mapping entries are
         # retired). Feeds line 9.
         "total_w2_income": wages,
-        "interest_income": taxable_interest,
-        "dividend_income": ordinary_divs,
+        # 1040 lines 2b / 3b are TOTALS across every source, so these publish
+        # the authoritative 1099+K-1 figures, not the 1099-only components.
+        # Anything reading these keys (PDF line 2b/3b boxes, Sch CA Part I §A
+        # lines 2/3, the CLI summary) is asking for the line, not the 1099
+        # slice, and the emitted Schedule B totals the same fanout additions --
+        # so publishing the 1099-only figure here left the 1040 and its own
+        # Schedule B disagreeing on the same return, with tax understated.
+        "interest_income": taxable_interest_total,
+        "dividend_income": ordinary_divs_total,
         "total_income": total_income,
         # PDF-ready aliases: PDF mapping uses taxable_interest / ordinary_dividends
         # (f1040.compute renamed these in the oracle path).
-        "taxable_interest": taxable_interest,
-        "ordinary_dividends": ordinary_divs,
+        "taxable_interest": taxable_interest_total,
+        "ordinary_dividends": ordinary_divs_total,
         # 1040 line 3a TOTAL (1099-DIV + K-1). Publishing this from the spine
         # (rather than leaving it only in the orchestrator's compute-time
         # stub) lets the PDF-emit path -- which builds its upstream from this
