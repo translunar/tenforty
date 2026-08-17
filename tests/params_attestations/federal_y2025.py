@@ -56,6 +56,17 @@ SOURCES: tuple[str, ...] = (
     "IRS 2024 Instructions for Schedule A (Form 1040) "
     "(irs.gov/pub/irs-prior/i1040sca--2024.pdf): TY2024 SALT cap $10,000 "
     "($5,000 MFS) — for prior_year_salt_cap lookback.",
+    "26 U.S.C. §1211(b) (law.cornell.edu/uscode/text/26/1211): capital-loss "
+    "limitation — '$3,000 ($1,500 in the case of a married individual filing "
+    "a separate return)'. Statutory, NOT inflation-indexed (no cost-of-living "
+    "provision; unamended since Pub. L. 99-514, 1986; absent from Rev. Proc. "
+    "2024-40; untouched by OBBBA).",
+    "IRS 2025 Schedule D (Form 1040) (irs.gov/pub/irs-pdf/f1040sd.pdf), Line "
+    "21 on the face of the form: 'If line 16 is a loss, enter here and on Form "
+    "1040, 1040-SR, or 1040-NR, line 7a, the smaller of: • The loss on line "
+    "16; or • ($3,000), or if married filing separately, ($1,500)'; and IRS "
+    "2025 Instructions for Schedule D (Form 1040) (irs.gov/pub/irs-pdf/"
+    "i1040sd.pdf), 'Capital Losses' (page 3) — for capital_loss_limit.",
     "IRS Topic no. 560, Additional Medicare Tax (irs.gov/taxtopics/tc560): "
     "0.9% Additional Medicare Tax filing-status thresholds (statutory).",
     "IRS Topic no. 502, Medical and Dental Expenses (irs.gov/taxtopics/tc502): "
@@ -131,6 +142,25 @@ ATTESTED: dict[str, object] = {
         "married_separately": (48350, 300000),
         "head_of_household": (64750, 566700),
         "qualifying_widow": (96700, 600050),  # QSS = MFJ
+    },
+
+    # IRC §1211(b) — STATUTORY, NOT inflation-indexed. No cost-of-living
+    # provision appears in §1211; the section has not been amended since
+    # Pub. L. 99-514 (1986) and OBBBA did not touch it; §1211 appears nowhere
+    # in Rev. Proc. 2024-40 (the TY2025 inflation-adjustment revenue
+    # procedure). Statute: losses allowed to the extent of gains "plus (if
+    # such losses exceed such gains) the lower of— (1) $3,000 ($1,500 in the
+    # case of a married individual filing a separate return), or (2) the
+    # excess of such losses over such gains." Confirmed on the face of the
+    # 2025 Schedule D (Form 1040), Line 21 — note the 2025 form carries this
+    # to Form 1040 line 7a (renumbered from line 7 in 2021-2024). MFS is the
+    # only halved status.
+    "capital_loss_limit": {
+        "single": 3000,
+        "married_jointly": 3000,
+        "married_separately": 1500,
+        "head_of_household": 3000,
+        "qualifying_widow": 3000,  # QSS is not MFS -> full $3,000
     },
 
     # IRS Topic no. 560 — statutory 0.9% Additional Medicare Tax thresholds

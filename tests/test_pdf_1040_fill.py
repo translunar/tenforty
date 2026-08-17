@@ -127,11 +127,15 @@ class TestPdf1040FillGroundTruth(unittest.TestCase):
         self._assert_field("topmostSubform[0].Page1[0].f1_75[0]", "12750")
 
     def test_line_7a_capital_gain_left_blank(self):
-        # Engine produces no `capital_gain_loss` key for this W-2 scenario;
-        # Schedule D line 16 is surfaced as `schd_line16` but no translation
-        # rename wires it. Field f1_70 must stay blank — regression guard
-        # against accidental routing of total_income here, which is the bug
-        # that motivated this fix.
+        # Engine produces no `capital_gain_loss` value for this W-2 scenario:
+        # the key now comes from the workbook's `CapitalGains` named range
+        # (the IRC §1211(b)-capped line 7a figure), which is blank/None with
+        # no Schedule D activity, and that None is deliberately NOT normalized
+        # to 0 so the field stays blank. The uncapped Schedule D line 16 is
+        # surfaced separately as `schd_line16` and is never routed here.
+        # Field f1_70 must stay blank — regression guard against accidental
+        # routing of total_income here, which is the bug that motivated this
+        # fix.
         self._assert_field("topmostSubform[0].Page1[0].f1_70[0]", "")
 
     # === PAGE 2 ===

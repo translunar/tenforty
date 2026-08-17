@@ -81,7 +81,15 @@ class IncomePreamble:
             (IRC 1366(b) conduit treatment), consumed from the fanout.
         qualified_divs_total: 1040 line 3a authoritative TOTAL
             (qualified_divs + qualified_divs_k1).
-        schd_line16:         Schedule D line 16 net capital gain/loss.
+        schd_line16:         Schedule D line 16 net capital gain/loss (TRUE
+            uncapped total — this is what Schedule D itself reports; it is
+            NOT what reaches 1040 line 7/line 9, see schd_line21_allowed).
+        schd_line21_allowed: Schedule D line 21 — the §1211(b)-capped amount
+            (net capital loss limited to $3,000 / $1,500 MFS; equals
+            schd_line16 whenever there's a gain or the loss is within the
+            cap). This is what actually reaches 1040 line 7 and feeds
+            total_income/line 9. Defaults to schd_line16 when sch_d omits
+            the key (no Sch D block at all).
         sch_1_line_10:       Schedule 1 line 10 total additional income.
         sch_1_line_26:       Schedule 1 line 26 total adjustments.
         total_income:        1040 line 9.
@@ -121,6 +129,7 @@ class IncomePreamble:
     qualified_divs_k1: int
     qualified_divs_total: int
     schd_line16: int
+    schd_line21_allowed: int
     sch_1_line_10: int
     sch_1_line_26: int
     total_income: int
@@ -175,11 +184,21 @@ def compute_income_preamble(
     qualified_divs_total = irs_round(qualified_divs + qualified_divs_k1)
     schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
+    # IRC §1211(b): the net capital LOSS deductible against ordinary income
+    # in-year is capped ($3,000 / $1,500 MFS). Schedule D line 21 is the
+    # ALLOWED figure post-cap (equals line 16 when there's a gain, or when a
+    # loss is within the cap); it is what actually reaches 1040 line 7 / line
+    # 9 total income. Line 16 itself stays the true uncapped Schedule D total
+    # (see schd_line16 usage below and in compute_spine's output keys) — only
+    # this total_income transfer is capped. Defaults to schd_line16 when
+    # absent (e.g. no sch_d block at all) so gain-only / no-Sch-D returns are
+    # numerically unperturbed.
+    schd_line21_allowed = sch_d.get("sch_d_line_21_allowed_loss", schd_line16)
     sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
     sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
 
     total_income = irs_round(
-        wages + taxable_interest + ordinary_divs + schd_line16 + sch_1_line_10
+        wages + taxable_interest + ordinary_divs + schd_line21_allowed + sch_1_line_10
     )
     agi = irs_round(total_income - sch_1_line_26)
     # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
@@ -221,6 +240,7 @@ def compute_income_preamble(
         qualified_divs_k1=qualified_divs_k1,
         qualified_divs_total=qualified_divs_total,
         schd_line16=schd_line16,
+        schd_line21_allowed=schd_line21_allowed,
         sch_1_line_10=sch_1_line_10,
         sch_1_line_26=sch_1_line_26,
         total_income=total_income,
@@ -355,6 +375,7 @@ def compute_spine(
     # two consumers structurally unable to disagree.
     qualified_divs = preamble.qualified_divs_total
     schd_line16 = preamble.schd_line16
+    schd_line21_allowed = preamble.schd_line21_allowed
     sch_1_line_10 = preamble.sch_1_line_10
     sch_1_line_26 = preamble.sch_1_line_26
     total_income = preamble.total_income
@@ -618,13 +639,20 @@ def compute_spine(
         # Tax
         "total_tax": total_tax,
         # Capital gain — oracle key + PDF alias.
-        # capital_gain_loss mirrors schd_line16 and maps to PDF line 7a.
+        # schd_line16 is the TRUE, uncapped Schedule D line 16 total — the
+        # form itself always reports the real net gain/loss, uncapped.
+        # capital_gain_loss maps to 1040 line 7a instead, which is the
+        # TRANSFER from Schedule D line 21 — the §1211(b)-capped figure (a
+        # net loss is limited to $3,000 / $1,500 MFS; a gain, or a loss
+        # within the cap, passes through unchanged). These two keys
+        # deliberately diverge whenever the loss exceeds the cap; see
+        # schd_line21_allowed's docstring on IncomePreamble.
         # Omit (None) when zero so the PDF field stays blank for W-2-only
         # scenarios — matching the oracle's behavior where a blank Sch D
         # cell propagates as None (not 0) and PdfFiller skips None values.
         "net_capital_gain": net_capital_gain,
         "schd_line16": schd_line16,
-        "capital_gain_loss": schd_line16 if schd_line16 else None,
+        "capital_gain_loss": schd_line21_allowed if schd_line21_allowed else None,
         # Payments — split by source so PDF mapping can route each line
         "federal_withheld_w2": fed_withheld_w2,    # line 25a
         "federal_withheld_1099": fed_withheld_1099, # line 25b

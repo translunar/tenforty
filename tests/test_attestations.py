@@ -6,7 +6,12 @@ from pathlib import Path
 
 import yaml
 
-from tenforty.attestations import Attestation, _ATTESTATIONS, enforce_compute_time
+from tenforty.attestations import (
+    Attestation,
+    _ATTESTATIONS,
+    _always,
+    enforce_compute_time,
+)
 from tenforty.models import Form1099B, Scenario, TaxReturnConfig
 from tenforty.scenario import load_scenario
 from tests.helpers import scope_out_attestation_defaults
@@ -67,8 +72,57 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_other_state_tax_credit",
             "acknowledges_no_railroad_retirement_benefits",
             "acknowledges_no_paid_family_leave_benefits",
+            # Schedule D prior-year capital-loss carryover (IRC §1212(b))
+            "acknowledges_no_capital_loss_carryforward",
         }
         self.assertEqual(expected, fields)
+
+
+class TestAlwaysEntriesSortLast(unittest.TestCase):
+    """Pins the registry-ORDER invariant that `_always` entries must occupy
+    the tail of `_ATTESTATIONS`.
+
+    `enforce_compute_time` walks `_ATTESTATIONS` in order and raises on the
+    FIRST entry whose gate is violated, so tuple position IS the error
+    precedence. An `_always` entry's trigger fires for every scenario, so
+    an `_always` entry placed before a data-conditional one would preempt
+    it for any scenario that violates both — silently changing which error
+    a multi-violation scenario reports. Tests that assert on error IDENTITY
+    (message text, not just NotImplementedError) would start passing or
+    failing for the wrong reason.
+
+    Until now this was protected only by a code comment on the entry, which
+    is documentation, not enforcement. This test is the enforcement."""
+
+    def test_no_conditional_entry_follows_an_always_entry(self) -> None:
+        always_positions = [
+            i for i, a in enumerate(_ATTESTATIONS)
+            if a.triggered_when is _always
+        ]
+        self.assertTrue(
+            always_positions,
+            "No `_always`-triggered attestation found. If the last such "
+            "entry was intentionally removed or re-triggered, delete this "
+            "test deliberately rather than letting it pass vacuously.",
+        )
+        total = len(_ATTESTATIONS)
+        expected_tail = list(range(total - len(always_positions), total))
+        misplaced = [
+            (_ATTESTATIONS[i].field, _ATTESTATIONS[j].field)
+            for i in always_positions
+            for j in range(i + 1, total)
+            if _ATTESTATIONS[j].triggered_when is not _always
+        ]
+        self.assertEqual(
+            expected_tail, always_positions,
+            "`_always` attestations must sort LAST in _ATTESTATIONS; these "
+            "conditional entries are preempted by an earlier `_always` "
+            "entry (always_field, preempted_field): "
+            f"{misplaced}. Move the `_always` entries to the end of the "
+            "tuple — an `_always` gate fires for every scenario and would "
+            "otherwise decide which error every multi-violation scenario "
+            "reports.",
+        )
 
 
 class TestLoadTimeValidation(unittest.TestCase):
@@ -126,6 +180,7 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_other_state_tax_credit=False,
             acknowledges_no_railroad_retirement_benefits=False,
             acknowledges_no_paid_family_leave_benefits=False,
+            acknowledges_no_capital_loss_carryforward=True,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise

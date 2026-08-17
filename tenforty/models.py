@@ -376,6 +376,14 @@ class TaxReturnConfig:
     acknowledges_no_28_rate_gain: bool | None = None
     # Any 1099-B lot with is_section_1250=True + False raises.
     acknowledges_no_unrecaptured_section_1250: bool | None = None
+    # --- Schedule D prior-year capital-loss carryover scope-out ---
+    # True affirms the filer has NO prior-year capital-loss carryforward.
+    # False means one EXISTS: Sch D line 6 (short-term carryover) and line 14
+    # (long-term carryover) are not modeled in tenforty v1, so compute REFUSES
+    # unconditionally rather than silently treating the carryover as zero.
+    # Unlike the 1099-B gates above this has no data-derived trigger — the
+    # attestation itself is the only signal, so its trigger is `_always`.
+    acknowledges_no_capital_loss_carryforward: bool | None = None
     # --- 1120-S scope-out attestations (8 unconditional) ---
     # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
     # gross_receipts >= $250,000 + False raises.

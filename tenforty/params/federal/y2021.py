@@ -146,4 +146,14 @@ PARAMS = FederalParams(
         2: 53_865,   # Pub. 596 (2021) / Rev. Proc. 2020-45: $53,865 MFJ
         3: 57_414,   # Pub. 596 (2021) / Rev. Proc. 2020-45: $57,414 MFJ
     },
+    # IRC §1211(b) net-capital-loss limitation: $3,000 ($1,500 MFS). This
+    # figure is STATUTORY, NOT inflation-indexed — identical across every
+    # supported year (2021-2025). No year-by-year table exists for it.
+    capital_loss_limit={
+        _S: 3_000,
+        _MFJ: 3_000,
+        _MFS: 1_500,
+        _HOH: 3_000,
+        _QSS: 3_000,
+    },
 )

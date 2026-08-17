@@ -86,6 +86,21 @@ def _never(s: Scenario) -> bool:
     return False
 
 
+def _always(s: Scenario) -> bool:
+    """Sentinel `triggered_when` predicate: fires for EVERY scenario.
+
+    The mirror image of `_never`. Use this for a scope-out whose subject
+    leaves no trace in scenario data, so the attestation itself is the only
+    signal available — there is no field to inspect and therefore no
+    data-derived trigger to write. With `_always`, `enforce_compute_time`
+    raises `NotImplementedError(compute_error)` for any scenario whose
+    attestation is False, and proceeds when it is True.
+
+    An `_always` entry MUST carry a non-empty `compute_error`: it is the
+    only text the user ever sees for the refusal."""
+    return True
+
+
 def _has_scorp_large_balance_sheet(s: Scenario) -> bool:
     if s.s_corp_return is None:
         return False
@@ -110,7 +125,7 @@ def _has_scorp_section_1374_tax(s: Scenario) -> bool:
     )
 
 
-_ATTESTATIONS: tuple[Attestation, ...] = (
+_FEDERAL_ATTESTATIONS: tuple[Attestation, ...] = (
     # --- Load-time-only attestations ---
     Attestation(
         field="has_foreign_accounts",
@@ -522,7 +537,12 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
 )
 
 
-# CA-specific scope-out attestations (11 entries; year-aware)
+# CA-specific scope-out attestations (year-aware).
+# Membership is meaningful, not just ordering: tests/helpers.py derives
+# CA_SCOPE_OUT_FIELDS from this tuple, so every member is enumerated as
+# Californian by the test suite. Federal gates do NOT belong here even when
+# a desired enforcement order would put them at this point in the registry —
+# use _ALWAYS_TAIL below.
 _CA_ATTESTATIONS = (
     Attestation(
         field="acknowledges_no_540nr_filing",
@@ -698,7 +718,74 @@ _CA_ATTESTATIONS = (
     ),
 )
 
-_ATTESTATIONS = _ATTESTATIONS + _CA_ATTESTATIONS
+
+# Unconditionally-triggered attestations, concatenated LAST (see
+# _ATTESTATIONS below). This group exists to make an ordering invariant
+# structural instead of positional-by-accident.
+#
+# `enforce_compute_time` walks _ATTESTATIONS in order and raises on the
+# FIRST violated gate, so tuple position IS error precedence. An
+# `_always`-triggered gate fires for EVERY scenario, so wherever it sits it
+# preempts every data-conditional gate after it — silently changing which
+# error a multi-violation scenario reports, and with it the identity of the
+# message that error-text assertions match on. That makes "`_always` entries
+# sort last" load-bearing behavior, not stylistic tidiness.
+#
+# Previously the sole `_always` entry got this property by accident: it was
+# parked at the physical end of _CA_ATTESTATIONS, with a comment claiming it
+# was "LAST in the federal tuple" — which was false, and which also made a
+# FEDERAL gate a member of the tuple tests/helpers.py enumerates as the CA
+# scope-out set. A separate trailing group gives the invariant a home that
+# does not depend on which jurisdiction's tuple happens to be concatenated
+# last, and keeps the CA set honest. Add `_always` entries HERE, never to a
+# jurisdiction tuple. tests/test_attestations.py::TestAlwaysEntriesSortLast
+# enforces this.
+_ALWAYS_TAIL: tuple[Attestation, ...] = (
+    # --- Schedule D prior-year capital-loss carryover (IRC §1212(b)) ---
+    # Federal, not Californian, despite formerly sitting inside
+    # _CA_ATTESTATIONS: it applies to every return regardless of state.
+    Attestation(
+        field="acknowledges_no_capital_loss_carryforward",
+        triggered_when=_always,  # no data-derived trigger exists; see _always
+        load_error=(
+            "Scenario config field `acknowledges_no_capital_loss_carryforward` "
+            "is required and must be either true or false. A prior-year "
+            "capital-loss carryover enters Schedule D at line 6 (short-term "
+            "carryover) and line 14 (long-term carryover), retaining its "
+            "character; tenforty v1 models NEITHER line and has no scenario "
+            "field to carry either amount. Set true to affirm the filer has "
+            "no prior-year capital-loss carryforward. Set false if one "
+            "exists — compute will then refuse with NotImplementedError "
+            "rather than produce a return that ignores it."
+        ),
+        compute_error=(
+            "`acknowledges_no_capital_loss_carryforward` is false: the filer "
+            "has a prior-year capital-loss carryover. Carryovers enter "
+            "Schedule D line 6 (short-term) and line 14 (long-term), "
+            "retaining their character. tenforty v1 models NEITHER line, so "
+            "the carryover would be silently treated as zero and the return "
+            "would be WRONG: the carryover's deduction is dropped, so the "
+            "computed tax is OVERSTATED, and the §1212(b) carryforward to "
+            "next year is UNDERSTATED. No attestation value makes v1 able to "
+            "produce this return; supporting it requires modeling the "
+            "short-term/long-term carryover split as a feature."
+        ),
+        # applies_in_years=None (ALL years) is deliberate, not an oversight.
+        # Unlike the CA entries above — whose windows track FTB conformity
+        # dates that genuinely move year to year — the carryover rules here
+        # are statutory constants: IRC §1211(b) (the flat capital-loss
+        # deduction cap) and §1212(b) (the character-preserving carryforward
+        # to succeeding years) have not been amended since the Tax Reform Act
+        # of 1986 (Pub. L. 99-514). There is no year in tenforty's supported
+        # range in which a filer with a prior-year carryover is computable,
+        # so there is no window to bound and none should be added.
+        applies_in_years=None,
+    ),
+)
+
+_ATTESTATIONS: tuple[Attestation, ...] = (
+    _FEDERAL_ATTESTATIONS + _CA_ATTESTATIONS + _ALWAYS_TAIL
+)
 
 
 def validate_load_time(cfg) -> None:
