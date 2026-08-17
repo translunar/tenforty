@@ -182,11 +182,24 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
 
 def _mfj(scenario):
     """Re-file a `_make_v1_scenario()` fixture (which fixes filing_status=
-    SINGLE) as MARRIED_JOINTLY, leaving every other field untouched."""
+    SINGLE) as MARRIED_JOINTLY, leaving every other field untouched.
+
+    Also supplies a synthetic spouse identity so the MFJ scenario is complete
+    at setup: filing MARRIED_JOINTLY with `spouse_first_name` /
+    `spouse_last_name` / `spouse_ssn` left empty is an incomplete return, and
+    the tests built on this helper must be able to fail only on the guard
+    under test, never at setup. The spouse mirrors the fixture's own
+    conventions for the primary filer (`first_name="Taxpayer"`,
+    `last_name="A"`, `ssn="000-00-0000"`)."""
     return dataclasses.replace(
         scenario,
         config=dataclasses.replace(
-            scenario.config, filing_status=FilingStatus.MARRIED_JOINTLY),
+            scenario.config,
+            filing_status=FilingStatus.MARRIED_JOINTLY,
+            spouse_first_name="Taxpayer",
+            spouse_last_name="B",
+            spouse_ssn="000-00-0001",
+        ),
     )
 
 
@@ -281,16 +294,27 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
     tier pinned end to end by BridgeNonSingleWorkbookRoutingQbiThresholdTests
     above). Patches `_compute_1040_via_workbook` to return a synthetic
     result carrying a chosen `taxable_income_before_qbi_deduction`, so the
-    guard's three-part conditional (QBI > 0 AND above threshold AND
-    out-of-spine-scope) is pinned deterministically without launching
-    soffice. Drives `_compute_1040_pipeline` directly rather than
+    guard's conditional (out-of-spine-scope AND QBI > 0 AND the
+    `acknowledges_qbi_below_threshold` attestation NOT set AND above
+    threshold) is pinned deterministically without launching soffice. Drives `_compute_1040_pipeline` directly rather than
     `compute_federal`: the guard lives entirely inside that method, and
     `_build_effective_scenario`'s S-corp waterfall / compute-time gates are
     orthogonal to it."""
 
-    def _mfj_scenario_with_qbi(self, qbi_amount=70_000.0):
+    def _mfj_scenario_with_qbi(self, qbi_amount=70_000.0,
+                               acknowledges_qbi_below_threshold=False):
         scenario = make_k1_scenario()
         scenario.config.filing_status = FilingStatus.MARRIED_JOINTLY
+        # Set EXPLICITLY, never inherited: `make_k1_scenario()` (tests/
+        # helpers.py) turns every K-1 gate attestation ON, including
+        # `acknowledges_qbi_below_threshold`, so the fixture default here is
+        # True -- the opposite of what the refusal tests need. The guard now
+        # honors this attestation (matching f8995.compute), so leaving it
+        # inherited would bypass the guard and make every refusal test in
+        # this class pass vacuously.
+        scenario.config.acknowledges_qbi_below_threshold = (
+            acknowledges_qbi_below_threshold
+        )
         scenario.schedule_k1s = [
             ScheduleK1(
                 entity_name="Example Partnership",
@@ -311,12 +335,53 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
 
     def test_raises_when_qbi_positive_and_workbook_taxable_income_above_threshold(self):
         scenario = self._mfj_scenario_with_qbi()
+        self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
         with patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",
             return_value={"taxable_income_before_qbi_deduction": 500_000.0},
         ):
             with self.assertRaisesRegex(NotImplementedError, "8995-A|8995A"):
                 self._orch()._compute_1040_pipeline(scenario)
+
+    def test_raise_message_names_the_attestation_escape_hatch(self):
+        """A refusal that does not name its own escape hatch is a dead end
+        for the reader. f8995.compute's native-spine message names
+        `acknowledges_qbi_below_threshold`; this workbook-path message must
+        too, since the two refuse the same class of scenario and differ only
+        in which route the filer's filing status happened to take."""
+        scenario = self._mfj_scenario_with_qbi()
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            return_value={"taxable_income_before_qbi_deduction": 500_000.0},
+        ):
+            with self.assertRaisesRegex(
+                NotImplementedError, "acknowledges_qbi_below_threshold"
+            ):
+                self._orch()._compute_1040_pipeline(scenario)
+
+    def test_attestation_bypasses_the_guard_on_the_workbook_path_too(self):
+        """The attestation is honored on BOTH paths. f8995.compute's
+        native-spine guard has `and not
+        scenario.config.acknowledges_qbi_below_threshold` as its third
+        conjunct; without the same conjunct here, an identical
+        above-threshold scenario would be admitted when it routes to the
+        native spine and refused when filing status sends it to the
+        workbook -- the escape hatch would be granted or denied by filer
+        class rather than by what the filer attested. With the attestation
+        set, the guard is bypassed and the workbook result passes through
+        untouched."""
+        scenario = self._mfj_scenario_with_qbi(
+            acknowledges_qbi_below_threshold=True)
+        sentinel_result = {
+            "taxable_income_before_qbi_deduction": 500_000.0,
+            "sentinel": "unmodified",
+        }
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            return_value=sentinel_result,
+        ):
+            result = self._orch()._compute_1040_pipeline(scenario)
+        self.assertEqual(result, sentinel_result)
 
     def test_does_not_raise_and_passes_through_result_when_below_threshold(self):
         scenario = self._mfj_scenario_with_qbi()

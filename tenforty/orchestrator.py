@@ -699,15 +699,54 @@ class ReturnOrchestrator:
             qbi_total = sum(
                 k1.qbi_amount for k1 in effective_scenario.schedule_k1s
             )
-            if qbi_total > 0:
+            # HONOR THE ATTESTATION ON BOTH PATHS. f8995.compute's
+            # native-spine guard reads
+            # `not scenario.config.acknowledges_qbi_below_threshold` as the
+            # third conjunct of its refusal condition. If this workbook-path
+            # guard omitted it, the same attestation would admit a scenario
+            # on the spine path and be ignored here -- so whether the filer
+            # can invoke the escape hatch would depend on filer class (which
+            # is what picks the route), not on anything the filer attested
+            # to. Same condition shape as f8995.py, deliberately.
+            if (qbi_total > 0
+                    and not effective_scenario.config
+                    .acknowledges_qbi_below_threshold):
                 threshold = params.qbi_threshold[
                     effective_scenario.config.filing_status.value
                 ]
                 # Same figure f8995.compute gates on: taxable income BEFORE
                 # the QBI deduction (form_1040.compute adds the deduction
                 # back onto its own "taxable_income" output under this key).
+                #
+                # STRICT read (no silent default): a `.get(..., 0)` default
+                # here would mean that if the workbook path ever stopped
+                # producing this key, `0 > threshold` is False and this
+                # guard would silently no-op -- routing an above-threshold,
+                # nonzero-QBI scenario straight through to a workbook-
+                # computed result with the wrong QBI deduction formula,
+                # exactly the silent-wrong-number failure this guard exists
+                # to prevent. The sole legitimate producer of this key is
+                # `_compute_1040_via_workbook` (the XLSX workbook path,
+                # bound to `workbook_result` above); if it is ever missing,
+                # that is a bug in the workbook path itself and must surface
+                # loudly here, not be papered over with a default of 0.
+                if "taxable_income_before_qbi_deduction" not in workbook_result:
+                    raise KeyError(
+                        "workbook_result is missing "
+                        "\"taxable_income_before_qbi_deduction\", which this "
+                        "QBI above-threshold guard requires to compare "
+                        "against the Form 8995 simple-path threshold. The "
+                        "expected producer is "
+                        "_compute_1040_via_workbook (the XLSX workbook "
+                        "path). Do not default this to 0 -- a silent "
+                        "default would make `0 > threshold` false and let "
+                        "this guard silently no-op, routing an "
+                        "above-threshold, nonzero-QBI scenario through to a "
+                        "workbook-computed result that used the wrong QBI "
+                        "deduction formula."
+                    )
                 taxable_income_before_qbi = float(
-                    workbook_result.get("taxable_income_before_qbi_deduction", 0)
+                    workbook_result["taxable_income_before_qbi_deduction"]
                 )
                 if taxable_income_before_qbi > threshold:
                     raise NotImplementedError(
@@ -721,7 +760,10 @@ class ReturnOrchestrator:
                         "an `8995` (simple-path) sheet but no `8995A` sheet. Form "
                         "8995-A is not implemented in tenforty v1. Refusing rather "
                         "than silently returning a workbook-computed result that "
-                        "used the wrong QBI deduction formula. Extend the native "
+                        "used the wrong QBI deduction formula. Set "
+                        "`acknowledges_qbi_below_threshold: true` ONLY if you "
+                        "have confirmed that the simple-path formula is "
+                        "correct for your return; otherwise extend the native "
                         "spine to cover this filer class (or implement Form "
                         "8995-A) before enabling this scenario."
                     )
