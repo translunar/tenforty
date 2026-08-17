@@ -125,7 +125,7 @@ def _has_scorp_section_1374_tax(s: Scenario) -> bool:
     )
 
 
-_ATTESTATIONS: tuple[Attestation, ...] = (
+_FEDERAL_ATTESTATIONS: tuple[Attestation, ...] = (
     # --- Load-time-only attestations ---
     Attestation(
         field="has_foreign_accounts",
@@ -537,7 +537,12 @@ _ATTESTATIONS: tuple[Attestation, ...] = (
 )
 
 
-# CA-specific scope-out attestations (11 entries; year-aware)
+# CA-specific scope-out attestations (12 entries; year-aware).
+# Membership is meaningful, not just ordering: tests/helpers.py derives
+# CA_SCOPE_OUT_FIELDS from this tuple, so every member is enumerated as
+# Californian by the test suite. Federal gates do NOT belong here even when
+# a desired enforcement order would put them at this point in the registry —
+# use _ALWAYS_TAIL below.
 _CA_ATTESTATIONS = (
     Attestation(
         field="acknowledges_no_540nr_filing",
@@ -711,11 +716,34 @@ _CA_ATTESTATIONS = (
         compute_error="",
         applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
     ),
+)
+
+
+# Unconditionally-triggered attestations, concatenated LAST (see
+# _ATTESTATIONS below). This group exists to make an ordering invariant
+# structural instead of positional-by-accident.
+#
+# `enforce_compute_time` walks _ATTESTATIONS in order and raises on the
+# FIRST violated gate, so tuple position IS error precedence. An
+# `_always`-triggered gate fires for EVERY scenario, so wherever it sits it
+# preempts every data-conditional gate after it — silently changing which
+# error a multi-violation scenario reports, and with it the identity of the
+# message that error-text assertions match on. That makes "`_always` entries
+# sort last" load-bearing behavior, not stylistic tidiness.
+#
+# Previously the sole `_always` entry got this property by accident: it was
+# parked at the physical end of _CA_ATTESTATIONS, with a comment claiming it
+# was "LAST in the federal tuple" — which was false, and which also made a
+# FEDERAL gate a member of the tuple tests/helpers.py enumerates as the CA
+# scope-out set. A separate trailing group gives the invariant a home that
+# does not depend on which jurisdiction's tuple happens to be concatenated
+# last, and keeps the CA set honest. Add `_always` entries HERE, never to a
+# jurisdiction tuple. tests/test_attestations.py::TestAlwaysEntriesSortLast
+# enforces this.
+_ALWAYS_TAIL: tuple[Attestation, ...] = (
     # --- Schedule D prior-year capital-loss carryover (IRC §1212(b)) ---
-    # Deliberately LAST in the federal tuple: `_always` fires for every
-    # scenario, so an earlier position would preempt every other
-    # compute-time gate and change which error a mixed-violation scenario
-    # reports first. Last position leaves existing enforcement order intact.
+    # Federal, not Californian, despite formerly sitting inside
+    # _CA_ATTESTATIONS: it applies to every return regardless of state.
     Attestation(
         field="acknowledges_no_capital_loss_carryforward",
         triggered_when=_always,  # no data-derived trigger exists; see _always
@@ -755,7 +783,9 @@ _CA_ATTESTATIONS = (
     ),
 )
 
-_ATTESTATIONS = _ATTESTATIONS + _CA_ATTESTATIONS
+_ATTESTATIONS: tuple[Attestation, ...] = (
+    _FEDERAL_ATTESTATIONS + _CA_ATTESTATIONS + _ALWAYS_TAIL
+)
 
 
 def validate_load_time(cfg) -> None:
