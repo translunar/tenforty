@@ -328,7 +328,18 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         identical routing through `_compute_1040_via_workbook`, with
         arithmetic the workbook gets right. Substituting the filing status
         keeps this test's own subject honestly covered while the MFJ defect
-        is pinned where it belongs, in the unit that fixes it."""
+        is pinned where it belongs, in the unit that fixes it.
+
+        HOH is STRUCTURALLY immune, not merely observed to pass:
+        `Birthday_Needed` ('1040'!BI136) consults the spouse-birthdate cells
+        only inside a branch guarded on the Married-Joint or Married-Separate
+        box being checked. For HOH it reduces to "is the FILER's birthdate
+        missing", which `_make_v1_scenario` supplies. So no fixture change
+        short of removing the filer's own birthdate can reawaken the defect
+        here -- this test cannot silently start passing for the wrong
+        reason. The same branch structure is why the blast radius is MFJ and
+        MFS only, and why QUALIFYING_WIDOW is excluded despite sharing the
+        MFJ standard-deduction amount."""
         scenario = _hoh(_make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0))
 
