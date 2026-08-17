@@ -74,8 +74,18 @@ class IncomePreamble:
 
     Attributes:
         wages:               1040 line 1a (sum of W-2 box 1).
-        taxable_interest:    1040 line 2b (sum of 1099-INT box 1).
-        ordinary_divs:       1040 line 3b (sum of 1099-DIV box 1a).
+        taxable_interest:    1040 line 2b component from 1099-INT box 1 only.
+            NOT the authoritative line 2b — see taxable_interest_total.
+        taxable_interest_k1: 1040 line 2b component from the K-1s' interest
+            (IRC 1366(b) conduit treatment), consumed from the fanout.
+        taxable_interest_total: 1040 line 2b authoritative TOTAL
+            (taxable_interest + taxable_interest_k1).
+        ordinary_divs:       1040 line 3b component from 1099-DIV box 1a only.
+            NOT the authoritative line 3b — see ordinary_divs_total.
+        ordinary_divs_k1:    1040 line 3b component from the K-1s' ordinary
+            dividends (IRC 1366(b)), consumed from the fanout.
+        ordinary_divs_total: 1040 line 3b authoritative TOTAL
+            (ordinary_divs + ordinary_divs_k1).
         qualified_divs:      1040 line 3a component from 1099-DIV box 1b only.
         qualified_divs_k1:   1040 line 3a component from K-1 box 5b
             (IRC 1366(b) conduit treatment), consumed from the fanout.
@@ -128,6 +138,10 @@ class IncomePreamble:
     qualified_divs: int
     qualified_divs_k1: int
     qualified_divs_total: int
+    taxable_interest_k1: int
+    taxable_interest_total: int
+    ordinary_divs_k1: int
+    ordinary_divs_total: int
     schd_line16: int
     schd_line21_allowed: int
     sch_1_line_10: int
@@ -182,6 +196,28 @@ def compute_income_preamble(
     _fanout = k1_fanout if k1_fanout is not None else K1FanoutData.empty()
     qualified_divs_k1 = irs_round(_fanout.qualified_dividends_aggregate)
     qualified_divs_total = irs_round(qualified_divs + qualified_divs_k1)
+    # 1040 lines 2b and 3b are likewise TOTALS across every source. A 1099-INT
+    # / 1099-DIV is one component; a K-1's interest / ordinary dividends is
+    # another (IRC 1366(b) conduit treatment — S-corp items keep their
+    # character in the shareholder's hands). Both K-1 components are CONSUMED
+    # from the fanout, never re-summed here, so each is aggregated exactly
+    # once.
+    #
+    # Rounding: each payer's amount is rounded to whole dollars and the
+    # ROUNDED figures are summed, matching how Schedule B totals the very
+    # same fanout additions (see tenforty/forms/sch_b.py — each addition is
+    # appended as irs_round(pa.amount), then total_interest sums those). One
+    # round at the end over the raw amounts is a different function once
+    # cents are involved, and would leave the 1040 and its own Schedule B a
+    # dollar apart on the same return.
+    taxable_interest_k1 = sum(
+        irs_round(pa.amount) for pa in _fanout.sch_b_interest_additions
+    )
+    taxable_interest_total = irs_round(taxable_interest + taxable_interest_k1)
+    ordinary_divs_k1 = sum(
+        irs_round(pa.amount) for pa in _fanout.sch_b_dividend_additions
+    )
+    ordinary_divs_total = irs_round(ordinary_divs + ordinary_divs_k1)
     schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
     # IRC §1211(b): the net capital LOSS deductible against ordinary income
@@ -239,6 +275,10 @@ def compute_income_preamble(
         qualified_divs=qualified_divs,
         qualified_divs_k1=qualified_divs_k1,
         qualified_divs_total=qualified_divs_total,
+        taxable_interest_k1=taxable_interest_k1,
+        taxable_interest_total=taxable_interest_total,
+        ordinary_divs_k1=ordinary_divs_k1,
+        ordinary_divs_total=ordinary_divs_total,
         schd_line16=schd_line16,
         schd_line21_allowed=schd_line21_allowed,
         sch_1_line_10=sch_1_line_10,
