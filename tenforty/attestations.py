@@ -742,6 +742,16 @@ _CA_ATTESTATIONS = (
             "produce this return; supporting it requires modeling the "
             "short-term/long-term carryover split as a feature."
         ),
+        # applies_in_years=None (ALL years) is deliberate, not an oversight.
+        # Unlike the CA entries above — whose windows track FTB conformity
+        # dates that genuinely move year to year — the carryover rules here
+        # are statutory constants: IRC §1211(b) (the flat capital-loss
+        # deduction cap) and §1212(b) (the character-preserving carryforward
+        # to succeeding years) have not been amended since the Tax Reform Act
+        # of 1986 (Pub. L. 99-514). There is no year in tenforty's supported
+        # range in which a filer with a prior-year carryover is computable,
+        # so there is no window to bound and none should be added.
+        applies_in_years=None,
     ),
 )
 
