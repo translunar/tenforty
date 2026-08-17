@@ -707,7 +707,24 @@ class ReturnOrchestrator:
             # on the spine path and be ignored here -- so whether the filer
             # can invoke the escape hatch would depend on filer class (which
             # is what picks the route), not on anything the filer attested
-            # to. Same condition shape as f8995.py, deliberately.
+            # to. Same refusal condition as f8995.py, deliberately.
+            #
+            # ONE DELIBERATE DIFFERENCE from f8995.py: there, the strict
+            # `qualified_dividends` read sits OUTSIDE the guard and fires
+            # unconditionally, because that figure is needed to compute the
+            # form no matter what the guard decides. Here the strict
+            # `taxable_income_before_qbi_deduction` read sits INSIDE, so a
+            # workbook result missing that key goes undetected when QBI <= 0
+            # or when the attestation is set. That is acceptable because,
+            # unlike f8995's, this figure is used for NOTHING but the
+            # threshold comparison below -- on both of those branches no
+            # comparison happens, so there is no decision a missing key
+            # could corrupt, and the workbook result passes through exactly
+            # as it would have. Reading it unconditionally would instead
+            # turn a key this call never needed into a hard failure. The key
+            # is read strictly on precisely the path whose correctness
+            # depends on it. Pinned by WorkbookQbiThresholdGuardUnitTests::
+            # test_missing_taxable_income_key_raises_rather_than_defaulting_to_zero.
             if (qbi_total > 0
                     and not effective_scenario.config
                     .acknowledges_qbi_below_threshold):

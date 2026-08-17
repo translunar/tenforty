@@ -296,8 +296,9 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
     result carrying a chosen `taxable_income_before_qbi_deduction`, so the
     guard's conditional (out-of-spine-scope AND QBI > 0 AND the
     `acknowledges_qbi_below_threshold` attestation NOT set AND above
-    threshold) is pinned deterministically without launching soffice. Drives `_compute_1040_pipeline` directly rather than
-    `compute_federal`: the guard lives entirely inside that method, and
+    threshold) is pinned deterministically without launching soffice.
+    Drives `_compute_1040_pipeline` directly rather than `compute_federal`:
+    the guard lives entirely inside that method, and
     `_build_effective_scenario`'s S-corp waterfall / compute-time gates are
     orthogonal to it."""
 
@@ -359,6 +360,31 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
             ):
                 self._orch()._compute_1040_pipeline(scenario)
 
+    def test_missing_taxable_income_key_raises_rather_than_defaulting_to_zero(self):
+        """The strict read is deliberate and must stay strict. Every OTHER
+        test in this class hands the guard a workbook result that carries
+        `taxable_income_before_qbi_deduction`, so without this test a
+        refactor could restore the old `.get(..., 0)` default and the whole
+        suite would stay green -- while this exact scenario (MFJ, 70,000 of
+        QBI, 500,000 of taxable income) silently returned a simple-path-8995
+        workbook result instead of refusing, because `0 > threshold` is
+        False. Asserting on the message as well as the type pins that the
+        KeyError is the guard's own deliberate refusal and not an incidental
+        dict lookup failing somewhere else in the pipeline."""
+        scenario = self._mfj_scenario_with_qbi()
+        self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
+        with patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            # Deliberately WITHOUT "taxable_income_before_qbi_deduction".
+            return_value={"sentinel": "no_taxable_income_key"},
+        ):
+            with self.assertRaises(KeyError) as ctx:
+                self._orch()._compute_1040_pipeline(scenario)
+        message = str(ctx.exception)
+        self.assertIn("taxable_income_before_qbi_deduction", message)
+        self.assertIn("_compute_1040_via_workbook", message)
+        self.assertIn("Do not default this to 0", message)
+
     def test_attestation_bypasses_the_guard_on_the_workbook_path_too(self):
         """The attestation is honored on BOTH paths. f8995.compute's
         native-spine guard has `and not
@@ -381,7 +407,16 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
             return_value=sentinel_result,
         ):
             result = self._orch()._compute_1040_pipeline(scenario)
-        self.assertEqual(result, sentinel_result)
+        # Compared against a FRESH literal, not against `sentinel_result`:
+        # the pipeline returns the very object the patch handed back, so
+        # `assertEqual(result, sentinel_result)` would compare that object
+        # with itself and hold even if the guard had mutated it in place.
+        # The literal below is the only independent record of what the
+        # workbook returned, so it is what makes "untouched" testable.
+        self.assertEqual(result, {
+            "taxable_income_before_qbi_deduction": 500_000.0,
+            "sentinel": "unmodified",
+        })
 
     def test_does_not_raise_and_passes_through_result_when_below_threshold(self):
         scenario = self._mfj_scenario_with_qbi()
@@ -394,7 +429,12 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
             return_value=sentinel_result,
         ):
             result = self._orch()._compute_1040_pipeline(scenario)
-        self.assertEqual(result, sentinel_result)
+        # Fresh literal, not `sentinel_result` -- see the note in
+        # test_attestation_bypasses_the_guard_on_the_workbook_path_too.
+        self.assertEqual(result, {
+            "taxable_income_before_qbi_deduction": 100_000.0,
+            "sentinel": "unmodified",
+        })
 
     def test_does_not_raise_when_qbi_is_zero_even_above_threshold(self):
         """QBI == 0 must never trigger the guard, regardless of taxable
