@@ -20,10 +20,41 @@ _RENAMES: dict[str, str] = {
 # are preserved in the result. This allows downstream consumers (tests,
 # native math) to read either name without a second lookup.
 _ALIASES: dict[str, str] = {
-    "schd_line16": "capital_gain_loss",
     "sch_1_line_10": "sch_1_line_10_total_additional_income",
     "sch_1_line_26": "sch_1_line_26_total_adjustments",
 }
+
+# NOT aliased: `schd_line16` -> `capital_gain_loss`.
+#
+# That alias copied the TRUE, UNCAPPED Schedule D line 16 total into
+# `capital_gain_loss`, which pdf_1040 maps to 1040 line 7a. Line 7a is the
+# IRC §1211(b)-CAPPED transfer from Schedule D line 21 ($3,000 / $1,500 MFS),
+# so on any workbook-routed return with a net loss above the cap the emitted
+# PDF printed the uncapped loss on line 7a while line 9 (total income) used
+# the correctly capped figure — internally inconsistent.
+#
+# The workbook was right all along and we simply never read it: the
+# `CapitalGains` named range holds the capped value in all five year
+# workbooks, and is now wired as a first-class F1040 OUTPUT (mappings/f1040.py)
+# instead of being back-filled from line 16 here. `schd_line16` REMAINS
+# available under its own name — it is the real, uncapped line-16 total and has
+# its own consumers (sch_d_540.py, __main__.py's summary, the e2e tests). This
+# is the same capped/uncapped split the native spine already makes
+# (f1040_spine.py emits `schd_line16` AND `capital_gain_loss` separately).
+#
+# BLANK/None: deliberately NOT normalized to 0, unlike _NUMERIC_SCH_1_KEYS
+# below and the scoped `f8959_tax_total` coercion. The established contract for
+# THIS key is that None means "leave 1040 line 7a blank": the native spine
+# emits None on purpose when the value is zero (f1040_spine.py: "Omit (None)
+# when zero so the PDF field stays blank for W-2-only scenarios"), filing/pdf.py
+# skips None-valued fields, and sch_ca.compute's Col-A loop guards with a
+# truthiness check (`if amount:`) before doing any arithmetic. So no consumer
+# can TypeError on None, and coercing to 0 would instead PRINT "0" on line 7a
+# for every W-2-only return and diverge from the native spine.
+assert "capital_gain_loss" not in _ALIASES.values(), (
+    "capital_gain_loss must come from the CapitalGains named range "
+    "(F1040.OUTPUTS), not from an alias of the uncapped schd_line16"
+)
 
 assert not (set(_RENAMES) & set(_ALIASES)), (
     f"Keys appear in both _RENAMES and _ALIASES: "
