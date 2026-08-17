@@ -171,11 +171,32 @@ class F8995QbiLossZeroFloorTests(unittest.TestCase):
         out = f8995.compute(s, upstream=upstream)
         self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
 
+    def test_printed_line_2_shows_the_unfloored_loss(self):
+        """Line 2 is a PRINTED, PDF-mapped line (field f1_18 in both era
+        mappings of tenforty/mappings/pdf_f8995.py) whose IRS caption is
+        "Total qualified business income or (loss)" -- it must print the TRUE
+        combine, loss and all. A prior fix floored it at zero, which made the
+        emitted form contradict itself: line 1 showed -30,000 while line 2
+        claimed 0. The zero floor belongs strictly DOWNSTREAM, at the 20%
+        component (line 3) and everything fed from it, never at line 2's
+        printed value."""
+        s, upstream = _scenario_with_qbi(
+            qbi=-30_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
+        )
+        s.config.acknowledges_qbi_below_threshold = False
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_1_qbi"], -30_000)
+        self.assertEqual(out["f8995_line_2_total_qbi"], -30_000)
+        self.assertEqual(out["f8995_line_3_component"], 0)
+        self.assertEqual(out["f8995_line_15_qbi_deduction"], 0)
+
     def test_negative_qbi_carryforward_carries_the_loss(self):
         """SIGN CONVENTION under test: the carryforward is stored NEGATIVE,
-        mirroring the combined QBI that was floored off of line_2. A -30,000
-        QBI year must carry forward exactly -30,000, not +30,000 and not the
-        post-floor 0."""
+        mirroring whatever the DOWNSTREAM floor (`floored_qbi`) removes from
+        the combined QBI. (Line 2 itself is no longer floored -- it prints
+        the loss; see test_printed_line_2_shows_the_unfloored_loss.) A
+        -30,000 QBI year must carry forward exactly -30,000, not +30,000 and
+        not the post-floor 0."""
         s, upstream = _scenario_with_qbi(
             qbi=-30_000.0, taxable_income=100_000.0, net_cap_gain=0.0,
         )
