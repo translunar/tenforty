@@ -69,28 +69,36 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         )
 
     line_1 = irs_round(qbi_total)
-    # IRS Form 8995 line 4: "Total qualified business income. Combine lines 2
-    # and 3. If zero or less, enter -0-." Line 3 there is the prior-year QBI
-    # loss carryforward IN -- an input channel v1 does not model yet (see
-    # program ledger; deliberately out of scope for this fix), so the combine
-    # here is just line_1 alone. Floor it at 0 *before* it feeds the 20%
-    # component below: an unfloored negative combine would otherwise flow
-    # straight through line_3 -> line_6 -> line_15 and produce a QBI
-    # deduction that is negative -- i.e. one that *increases* taxable income,
-    # which is the defect this fix corrects. Flooring here (rather than only
-    # at line_15) keeps every derived line internally consistent with what
-    # the real form would show for a loss year.
+    # IRS Form 8995 line 2: "Total qualified business income or (loss).
+    # Combine lines 1i through 1v." This is a PRINTED line (PDF-mapped in
+    # tenforty/mappings/pdf_f8995.py, field f1_18) -- it must show the true,
+    # UNFLOORED combine of line 1, even in a loss year, or the filed form
+    # contradicts itself (line 1 shows a loss but line 2 claims the combine
+    # is zero). combined_qbi is the same unfloored total; it is NOT line_2
+    # itself, it is the value line_2 *would feed forward as* on the real
+    # form's line 4 ("Total qualified business income. Combine lines 2 and
+    # 3. If zero or less, enter -0-.") -- line 3 there is the prior-year QBI
+    # loss carryforward IN, an input channel v1 does not model yet (see
+    # program ledger; deliberately out of scope for this fix), so the
+    # combine tenforty models is just line_1 alone. Floor THAT at 0 before it
+    # feeds the 20% component below: an unfloored negative combine would
+    # otherwise flow straight through line_3 -> line_6 -> line_15 and
+    # produce a QBI deduction that is negative -- i.e. one that *increases*
+    # taxable income, which is the defect this fix corrects. The floor must
+    # apply downstream of the printed line_2, not to it.
     combined_qbi = line_1
-    line_2 = max(0, combined_qbi)
-    line_3 = irs_round(0.20 * line_2)
+    line_2 = combined_qbi
+    floored_qbi = max(0, combined_qbi)
+    line_3 = irs_round(0.20 * floored_qbi)
     line_4 = 0
     line_5 = 0
     line_6 = line_3 + line_5
 
     # IRS Form 8995 line 16: "Total qualified business (loss) carryforward.
     # Combine lines 2 and 3. If greater than zero, enter -0-." This is the
-    # mirror image of the line_2 floor above: whatever the combine above
-    # floors OFF becomes the loss carried to next year. SIGN CONVENTION:
+    # mirror image of the floored_qbi floor above: whatever the floor
+    # applied to combined_qbi removes becomes the loss carried to next year.
+    # SIGN CONVENTION:
     # stored NEGATIVE (or 0), matching how the IRS form itself reports this
     # carryforward -- a loss year yields a negative number here, e.g. -30,000
     # QBI carries forward as -30,000, not +30,000. Write-only in v1: computed
