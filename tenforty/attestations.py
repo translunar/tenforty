@@ -86,6 +86,21 @@ def _never(s: Scenario) -> bool:
     return False
 
 
+def _always(s: Scenario) -> bool:
+    """Sentinel `triggered_when` predicate: fires for EVERY scenario.
+
+    The mirror image of `_never`. Use this for a scope-out whose subject
+    leaves no trace in scenario data, so the attestation itself is the only
+    signal available — there is no field to inspect and therefore no
+    data-derived trigger to write. With `_always`, `enforce_compute_time`
+    raises `NotImplementedError(compute_error)` for any scenario whose
+    attestation is False, and proceeds when it is True.
+
+    An `_always` entry MUST carry a non-empty `compute_error`: it is the
+    only text the user ever sees for the refusal."""
+    return True
+
+
 def _has_scorp_large_balance_sheet(s: Scenario) -> bool:
     if s.s_corp_return is None:
         return False
@@ -695,6 +710,38 @@ _CA_ATTESTATIONS = (
         ),
         compute_error="",
         applies_in_years=frozenset({2021, 2022, 2023, 2024, 2025}),
+    ),
+    # --- Schedule D prior-year capital-loss carryover (IRC §1212(b)) ---
+    # Deliberately LAST in the federal tuple: `_always` fires for every
+    # scenario, so an earlier position would preempt every other
+    # compute-time gate and change which error a mixed-violation scenario
+    # reports first. Last position leaves existing enforcement order intact.
+    Attestation(
+        field="acknowledges_no_capital_loss_carryforward",
+        triggered_when=_always,  # no data-derived trigger exists; see _always
+        load_error=(
+            "Scenario config field `acknowledges_no_capital_loss_carryforward` "
+            "is required and must be either true or false. A prior-year "
+            "capital-loss carryover enters Schedule D at line 6 (short-term "
+            "carryover) and line 14 (long-term carryover), retaining its "
+            "character; tenforty v1 models NEITHER line and has no scenario "
+            "field to carry either amount. Set true to affirm the filer has "
+            "no prior-year capital-loss carryforward. Set false if one "
+            "exists — compute will then refuse with NotImplementedError "
+            "rather than produce a return that ignores it."
+        ),
+        compute_error=(
+            "`acknowledges_no_capital_loss_carryforward` is false: the filer "
+            "has a prior-year capital-loss carryover. Carryovers enter "
+            "Schedule D line 6 (short-term) and line 14 (long-term), "
+            "retaining their character. tenforty v1 models NEITHER line, so "
+            "the carryover would be silently treated as zero and the return "
+            "would be WRONG: the carryover's deduction is dropped, so the "
+            "computed tax is OVERSTATED, and the §1212(b) carryforward to "
+            "next year is UNDERSTATED. No attestation value makes v1 able to "
+            "produce this return; supporting it requires modeling the "
+            "short-term/long-term carryover split as a feature."
+        ),
     ),
 )
 

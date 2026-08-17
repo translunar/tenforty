@@ -8,6 +8,7 @@ subtraction, no re-partitioning. The no-double-count invariant is
 enforced separately on the f8949 emission.
 """
 
+from tenforty.attestations import enforce_compute_time
 from tenforty.models import K1FanoutData, Scenario
 from tenforty.params.federal import load as load_federal_params
 from tenforty.rounding import irs_round
@@ -32,6 +33,18 @@ def compute(
     Returns with no capped loss need not supply it. See the VALIDITY
     BOUNDARY comment below for the full case table.
     """
+    # Attestation gates. Sch D is the only compute step on the 1040 pipeline
+    # that runs for EVERY scenario, so it is the site that can actually reach
+    # the `acknowledges_no_capital_loss_carryforward` gate (whose subject,
+    # lines 6 and 14, is a Sch D concern). The other dispatch sites —
+    # f8949.compute, sch_e_part_ii.compute, the 1120-S pipeline — are all
+    # conditional on data (1099-B lots, K-1s, an S-corp return) that a plain
+    # W-2 return does not have. Every other registered gate's trigger is
+    # keyed to exactly that conditional data, so those gates have already
+    # fired upstream when they can fire at all; this call adds no new
+    # enforcement ordering.
+    enforce_compute_time(scenario)
+
     f8949 = upstream.get("f8949", {})
     fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
 
