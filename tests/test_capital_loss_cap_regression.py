@@ -40,10 +40,14 @@ from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
 
 YEAR = 2025
 
-# 2025 Form 1040 field for line 7a (capital gain/loss) — see
-# tenforty/mappings/pdf_1040.py's 2025 block and
-# tests/test_pdf_1040_fill.py, which pins this same field to the same
-# translation key ("capital_gain_loss").
+# 2025 Form 1040 field for line 7a (capital gain/loss). What the
+# cross-references below actually establish is CONSISTENCY, not an
+# independent reading of the IRS form: tenforty/mappings/pdf_1040.py's 2025
+# block maps this field to the "capital_gain_loss" translation key, and
+# tests/test_pdf_1040_fill.py pins the same field to the same key. Both
+# would agree even if the constant named the wrong box. Independent
+# evidence that it is line 7a is positional — the field sits in the 2025
+# block's monotonic sequence f1_68 = 6a, f1_69 = 6b, f1_70 = 7a.
 _LINE_7A_FIELD = "topmostSubform[0].Page1[0].f1_70[0]"
 
 
@@ -126,9 +130,9 @@ class EndToEndCappedLossTests(unittest.TestCase):
         wages = 130_000
         results = _pipeline_results(scenario)
         self.assertEqual(results["total_income"], wages - cap)  # 127,000
-        # The pre-fix value, stated explicitly so a reader sees the defect's
-        # shape: wages - the FULL loss = 130,000 - 50,000 = 80,000.
-        self.assertNotEqual(results["total_income"], wages - 50_000)
+        # For orientation only, not a check: the pre-fix value was wages -
+        # the FULL loss = 130,000 - 50,000 = 80,000. The assertEqual above
+        # is what detects that defect.
 
     def test_capital_gain_loss_line_7a_is_the_capped_allowed_loss(self):
         scenario = build_capital_loss_over_cap(YEAR)
@@ -140,6 +144,79 @@ class EndToEndCappedLossTests(unittest.TestCase):
         scenario = build_capital_loss_over_cap(YEAR)
         results = _pipeline_results(scenario)
         self.assertEqual(results["net_capital_gain"], 0)
+
+    def test_pipeline_results_omit_both_carryforward_keys(self):
+        """NAMED TRIPWIRE — expected to FAIL BY DESIGN when THE SECOND-PASS
+        CARRYFORWARD UNIT lands. Read the failure as an instruction, not as
+        a regression to be diagnosed.
+
+        This scenario has a real $47,000 disallowed remainder to carry
+        forward, but ``sch_d.compute`` cannot know the correct split without
+        this year's unfloored taxable income, and the orchestrator does not
+        supply it. So ``sch_d.compute`` deliberately OMITS both carryforward
+        keys rather than emitting a guess, and every consumer fails closed
+        on ``KeyError``. End-to-end carryforward production is deferred to
+        the second-pass carryforward unit: a post-spine pass that reads the
+        FINISHED taxable income and the preserved uncapped line 16, and
+        which will also convert this omission into a hard raise.
+
+        ``tests/test_sch_d_capital_loss_limit.py`` already pins the omission
+        at the ``sch_d.compute`` boundary. This test pins it at the boundary
+        consumers actually read — the ``_compute_1040_pipeline`` results
+        dict. Without it, a future change that synthesised a ``0``
+        carryforward into the pipeline results would silently convert
+        fail-CLOSED into fail-WRONG, and nothing in the repo would notice.
+
+        WHY THE CHECK IS BY SHAPE AND NOT BY EXACT KEY NAME: the pipeline
+        results dict does NOT forward ``sch_d.compute``'s key names.
+        ``compute_income_preamble`` reads sch_d's output and re-emits under
+        spine-level names (``sch_d_line_16_total`` becomes ``schd_line16``;
+        ``sch_d_line_21_allowed_loss`` reaches the caller as
+        ``capital_gain_loss``), and NO ``sch_d_``-prefixed key survives into
+        the results at all. So an ``assertNotIn`` naming sch_d's own
+        carryforward keys would be unfailable HERE by construction — it
+        would pass even with the omission removed at source (verified:
+        forcing ``sch_d.compute`` to emit both keys leaves this dict
+        unchanged). This scans for any carryforward-SHAPED key instead, so
+        it stays sensitive to whatever name the second-pass unit chooses.
+
+        WHEN THIS TEST FAILS: if you have just built the second-pass
+        carryforward unit, that is the designed signal and this test has
+        done its job. Do NOT restore the omission to make it green. Replace
+        the assertion below with assertions on the carryforward VALUES your
+        pass now produces, under whatever key names it introduces (for this
+        scenario, a -47,000 remainder split short-term/long-term). If you
+        have NOT built it, a carryforward has been synthesised without the
+        taxable income needed to compute it correctly — fix the producer,
+        not this test. If it fired for an UNRELATED carryover (an NOL or
+        charitable carryover, say), narrow the match below rather than
+        deleting it.
+        """
+        scenario = build_capital_loss_over_cap(YEAR)
+        results = _pipeline_results(scenario)
+        carryforward_keys = sorted(
+            k for k in results
+            if "carryforward" in k.lower() or "carryover" in k.lower()
+        )
+        self.assertEqual(
+            carryforward_keys, [],
+            "NAMED TRIPWIRE FIRED: the pipeline results now contain "
+            f"carryforward-shaped key(s) {carryforward_keys!r}, on a "
+            "scenario whose carryforward CANNOT be computed (the "
+            "orchestrator never supplies taxable_income_unfloored, so "
+            "sch_d.compute deliberately omits it). This assertion is "
+            "EXPECTED TO FAIL BY DESIGN when THE SECOND-PASS CARRYFORWARD "
+            "UNIT lands — the deferred post-spine pass that computes "
+            "capital-loss carryforwards from finished taxable income. If "
+            "you just built that unit, this is an INSTRUCTION, not a "
+            "regression: do not restore the omission, replace this "
+            "assertion with assertions on the carryforward VALUES your "
+            "pass produces. If you did NOT build it, a carryforward has "
+            "been synthesised without the taxable income needed to compute "
+            "it correctly, converting sch_d.compute's deliberate "
+            "fail-CLOSED omission into fail-WRONG — fix the producer, not "
+            "this test.",
+        )
 
 
 class BoundaryPairTests(unittest.TestCase):
@@ -167,6 +244,16 @@ class BoundaryPairTests(unittest.TestCase):
         self.assertEqual(results["total_income"], wages - (cap - 1))  # 47,001
 
     def test_loss_exactly_at_cap_fully_allowed(self):
+        """Documents that the cap is INCLUSIVE — a loss of exactly the cap
+        is allowed in full, not treated as "over" it.
+
+        Honest statement of what this adds: nothing uniquely. It is
+        inversion-BLIND (a loss exactly at the cap is fully allowed under
+        both ``max(line_16, -cap)`` and its inversion, so it survives that
+        mutation), and the ±1 cases on either side of it are what actually
+        force the comparison's sign convention. It is kept as executable
+        documentation of the boundary's inclusivity, not as coverage.
+        """
         cap = _cap("single")
         wages = 50_000
         scenario = _lt_lot_scenario(wages, -cap)  # -3,000
@@ -180,16 +267,14 @@ class BoundaryPairTests(unittest.TestCase):
         scenario = _lt_lot_scenario(wages, -(cap + 1))  # -3,001
         results = _pipeline_results(scenario)
         # Smaller-in-MAGNITUDE of 3,001 and 3,000 is 3,000: capped, NOT the
-        # full -3,001. An inverted comparison would instead let -3,001
-        # through untouched (matching the under-cap case's total_income)
-        # while wrongly capping the under-cap case above — this pair
-        # catches either direction of the inversion.
+        # full -3,001 (which would be wages - 3,001 in total_income). An
+        # inverted comparison would instead let -3,001 through untouched
+        # while wrongly capping the under-cap case above; the two
+        # assertEquals below, together with their counterparts in the
+        # under-cap test, are what fail in that event — mutation-verified,
+        # both cases fire.
         self.assertEqual(results["capital_gain_loss"], -cap)
         self.assertEqual(results["total_income"], wages - cap)  # 47,000
-        # And it must differ from the just-under-cap case by exactly $1 of
-        # allowed loss (2,999 vs 3,000 capped), i.e. total_income must NOT
-        # equal wages - 3,001.
-        self.assertNotEqual(results["total_income"], wages - (cap + 1))
 
 
 class MFSCapTests(unittest.TestCase):
@@ -212,9 +297,17 @@ class MFSCapTests(unittest.TestCase):
     result for an MFS scenario. This is the maximal "real pipeline" reach
     available for a non-single filing status in the current codebase.
 
-    Derivation: cap (MFS, 2025) = $1,500. Wages $60,000, one long-term lot
-    at an $8,000 loss (proceeds $50,000, basis $58,000). schd_line16 =
-    -8,000; schd_line21_allowed = max(-8,000, -1,500) = -1,500.
+    NOTE ON THE INPUT PATH: this scenario has NO 1099-B lot. The loss
+    arrives as a long-term K-1 addition (``K1FanoutData``'s
+    ``sch_d_long_term_additions``), fed to ``sch_d.compute`` as upstream
+    ``k1_fanout``. So what this covers is the K-1-fanout entry into
+    Schedule D and the MFS branch of the cap; it does NOT cover the
+    1099-B/Form 8949 entry path for an MFS filer (the other classes in this
+    file cover the 1099-B path, but only for a single filer).
+
+    Derivation: cap (MFS, 2025) = $1,500. Wages $60,000, one long-term K-1
+    loss addition of $8,000. sch_d_line_16_total = -8,000;
+    sch_d_line_21_allowed_loss = max(-8,000, -1,500) = -1,500.
     total_income = 60,000 + (-1,500) = 58,500.
     """
 
@@ -245,11 +338,10 @@ class MFSCapTests(unittest.TestCase):
         preamble = f1040_spine.compute_income_preamble(
             scenario, params, {"sch_d": sch_d_results}, k1_fanout=fanout,
         )
+        # 58,500 is distinct from both figures a wrong branch would give:
+        # the single/MFJ $3,000 cap (57,000) and the uncapped full loss
+        # (52,000). Stated for orientation; the assertEqual is the check.
         self.assertEqual(preamble.total_income, 58_500)
-        # Not the single/MFJ $3,000 cap's figure (57,000), and not the
-        # uncapped full loss (52,000).
-        self.assertNotEqual(preamble.total_income, wages - 3_000)
-        self.assertNotEqual(preamble.total_income, wages - 8_000)
 
 
 class Line16UncappedTests(unittest.TestCase):
@@ -265,9 +357,11 @@ class Line16UncappedTests(unittest.TestCase):
         scenario = build_capital_loss_over_cap(YEAR)
         cap = _cap("single")
         results = _pipeline_results(scenario)
+        # The two must hold DIFFERENT figures here; the pair of assertEquals
+        # pins each to its own value, which is what a "tidy-up" aligning
+        # them would break.
         self.assertEqual(results["schd_line16"], -50_000)   # TRUE, uncapped
         self.assertEqual(results["capital_gain_loss"], -cap)  # -3,000, capped
-        self.assertNotEqual(results["schd_line16"], results["capital_gain_loss"])
 
 
 class CrossPathEmitTests(unittest.TestCase):
@@ -313,8 +407,8 @@ class GainYearUnaffectedTests(unittest.TestCase):
     also clamps gains (e.g. a naive ``min`` instead of ``max``, or a cap
     applied without a loss guard).
 
-    Wages $100,000, one long-term lot at a $10,000 GAIN (proceeds $60,000,
-    basis $50,000), single filer 2025. Schedule D line 16 = +10,000 (a
+    Wages $100,000, one long-term lot at a $10,000 GAIN (proceeds $50,000,
+    basis $40,000), single filer 2025. Schedule D line 16 = +10,000 (a
     gain, not a loss — §1211(b) never applies): schd_line21_allowed equals
     schd_line16 unchanged (see ``TestLine21Cap.test_net_gain_passes_
     through_untouched`` in test_sch_d_capital_loss_limit.py — the gain

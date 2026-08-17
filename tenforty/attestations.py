@@ -537,7 +537,7 @@ _FEDERAL_ATTESTATIONS: tuple[Attestation, ...] = (
 )
 
 
-# CA-specific scope-out attestations (12 entries; year-aware).
+# CA-specific scope-out attestations (year-aware).
 # Membership is meaningful, not just ordering: tests/helpers.py derives
 # CA_SCOPE_OUT_FIELDS from this tuple, so every member is enumerated as
 # Californian by the test suite. Federal gates do NOT belong here even when
