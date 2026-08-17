@@ -124,7 +124,14 @@ def _make_v1_scenario(
     return Scenario(
         config=TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
-            birthdate="01-01-1980", state="EX",
+            # YYYY-MM-DD, matching every other birthdate in the repo.
+            # `oracle/flattener.py` splits this on "-" and assigns
+            # parts[0]->year, parts[1]->month, parts[2]->day with no format
+            # validation, so the MM-DD-YYYY spelling this fixture used to
+            # carry ("01-01-1980") reached the workbook as birth year 1,
+            # day 1980 -- a filer some two thousand years old, feeding the
+            # age-dependent (65+/blind) standard-deduction neighbourhood.
+            birthdate="1980-01-01", state="EX",
             first_name="Taxpayer", last_name="A", ssn="000-00-0000",
             **attestations,
         ),
