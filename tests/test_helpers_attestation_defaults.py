@@ -4,7 +4,7 @@ The helper is auto-derived from `tenforty.attestations._ATTESTATIONS`, but
 this test pins the exact dict the helper produces today as a hardcoded
 golden value. If a future registry change silently shifts what
 `scope_out_attestation_defaults()` returns, this test fails loudly. The
-hardcoded `True` set documents the three "common test posture" affirmations
+hardcoded `True` set documents the four "common test posture" affirmations
 that override the auto-derived `False` default."""
 
 import unittest
@@ -51,5 +51,6 @@ class ScopeOutAttestationDefaultsSnapshotTests(unittest.TestCase):
             "acknowledges_no_other_state_tax_credit": False,
             "acknowledges_no_railroad_retirement_benefits": False,
             "acknowledges_no_paid_family_leave_benefits": False,
+            "acknowledges_no_capital_loss_carryforward": True,
         }
         self.assertEqual(expected, scope_out_attestation_defaults())

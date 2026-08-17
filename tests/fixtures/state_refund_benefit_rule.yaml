@@ -38,6 +38,7 @@ config:
   acknowledges_no_k1_credits: false
   acknowledges_no_section_179: false
   acknowledges_no_estate_trust_k1: false
+  acknowledges_no_capital_loss_carryforward: true
   prior_year_itemized: true
   prior_year_itemized_deduction_amount: 30000.00
   prior_year_standard_deduction_amount: 14600.00

@@ -55,6 +55,7 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_other_state_tax_credit": False,
         "acknowledges_no_railroad_retirement_benefits": False,
         "acknowledges_no_paid_family_leave_benefits": False,
+        "acknowledges_no_capital_loss_carryforward": True,
     }
     cfg.update(overrides)
     return cfg
