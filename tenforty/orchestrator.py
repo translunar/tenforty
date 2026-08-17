@@ -112,6 +112,11 @@ def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
     The 1120-S pipeline produces typed `K1Allocation` dataclasses; the
     1040 pipeline's Sch E Part II compute consumes `ScheduleK1` dataclass
     instances. This is the bridge.
+
+    Carries box 1 (ordinary business income) and box 17 code V (QBI). All
+    other ScheduleK1 fields are zero because K1Allocation has no source
+    for them — the v1 Schedule K compute is line-1-only — not because the
+    bridge drops them.
     """
     return ScheduleK1(
         entity_name=alloc.entity.name,
@@ -119,6 +124,12 @@ def _make_k1_from_1120s_allocation(alloc: K1Allocation) -> ScheduleK1:
         entity_type=EntityType.S_CORP,
         material_participation=True,  # v1 default; caller-configurable later
         ordinary_business_income=alloc.box_1_ordinary_business_income,
+        # Box 17 code V. Without this the emitted K-1 and its §199A
+        # Statement A report QBI of $X while the shareholder's Form 8995
+        # sees $0 — the same filing contradicting itself. `box_17v_qbi` is
+        # an int (irs_round); qbi_amount is typed float, so convert
+        # explicitly rather than letting an int land in a float field.
+        qbi_amount=float(alloc.box_17v_qbi),
     )
 
 
@@ -652,6 +663,7 @@ class ReturnOrchestrator:
         surface (non-single filers, EIC, etc.) until the spine is extended."""
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
+        params = load_params(effective_scenario.config.year)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # A 1095-A scenario that is out of native-spine scope
@@ -667,8 +679,112 @@ class ReturnOrchestrator:
                     "dropping the PTC. Extend the native spine to cover this "
                     "filer class before enabling 8962 for it."
                 )
-            return self._compute_1040_via_workbook(effective_scenario)
-        params = load_params(effective_scenario.config.year)
+            workbook_result = self._compute_1040_via_workbook(effective_scenario)
+            # The native spine's f8995.compute refuses (NotImplementedError)
+            # when QBI > 0 and taxable income before the QBI deduction exceeds
+            # the Form 8995 simple-path threshold, because Form 8995-A (the
+            # above-threshold form) is not implemented in v1. That guard lives
+            # inside f8995.py, which only runs on the spine path — every
+            # non-single filer (and any EIC-possible filer) routes here
+            # instead, to the XLSX workbook. The 2025 workbook has an `8995`
+            # sheet (simple path) and NO `8995A` sheet, so an above-threshold
+            # scenario routed here would silently get a workbook-computed
+            # result with no refusal — a wrong number, silently, exactly the
+            # failure mode the 1095-A guard above exists to prevent for PTC.
+            # Mirror it for QBI: validate the already-computed workbook result
+            # against the same threshold and refuse after the fact, since
+            # taxable income does not exist before the workbook runs. This
+            # leaves the below-threshold path (where the workbook's `8995`
+            # sheet IS valid) completely untouched.
+            qbi_total = sum(
+                k1.qbi_amount for k1 in effective_scenario.schedule_k1s
+            )
+            # HONOR THE ATTESTATION ON BOTH PATHS. f8995.compute's
+            # native-spine guard reads
+            # `not scenario.config.acknowledges_qbi_below_threshold` as the
+            # third conjunct of its refusal condition. If this workbook-path
+            # guard omitted it, the same attestation would admit a scenario
+            # on the spine path and be ignored here -- so whether the filer
+            # can invoke the escape hatch would depend on filer class (which
+            # is what picks the route), not on anything the filer attested
+            # to. Same refusal condition as f8995.py, deliberately.
+            #
+            # ONE DELIBERATE DIFFERENCE from f8995.py: there, the strict
+            # `qualified_dividends` read sits OUTSIDE the guard and fires
+            # unconditionally, because that figure is needed to compute the
+            # form no matter what the guard decides. Here the strict
+            # `taxable_income_before_qbi_deduction` read sits INSIDE, so a
+            # workbook result missing that key goes undetected when QBI <= 0
+            # or when the attestation is set. That is acceptable because,
+            # unlike f8995's, this figure is used for NOTHING but the
+            # threshold comparison below -- on both of those branches no
+            # comparison happens, so there is no decision a missing key
+            # could corrupt, and the workbook result passes through exactly
+            # as it would have. Reading it unconditionally would instead
+            # turn a key this call never needed into a hard failure. The key
+            # is read strictly on precisely the path whose correctness
+            # depends on it. Pinned by WorkbookQbiThresholdGuardUnitTests::
+            # test_missing_taxable_income_key_raises_rather_than_defaulting_to_zero.
+            if (qbi_total > 0
+                    and not effective_scenario.config
+                    .acknowledges_qbi_below_threshold):
+                threshold = params.qbi_threshold[
+                    effective_scenario.config.filing_status.value
+                ]
+                # Same figure f8995.compute gates on: taxable income BEFORE
+                # the QBI deduction (form_1040.compute adds the deduction
+                # back onto its own "taxable_income" output under this key).
+                #
+                # STRICT read (no silent default): a `.get(..., 0)` default
+                # here would mean that if the workbook path ever stopped
+                # producing this key, `0 > threshold` is False and this
+                # guard would silently no-op -- routing an above-threshold,
+                # nonzero-QBI scenario straight through to a workbook-
+                # computed result with the wrong QBI deduction formula,
+                # exactly the silent-wrong-number failure this guard exists
+                # to prevent. The sole legitimate producer of this key is
+                # `_compute_1040_via_workbook` (the XLSX workbook path,
+                # bound to `workbook_result` above); if it is ever missing,
+                # that is a bug in the workbook path itself and must surface
+                # loudly here, not be papered over with a default of 0.
+                if "taxable_income_before_qbi_deduction" not in workbook_result:
+                    raise KeyError(
+                        "workbook_result is missing "
+                        "\"taxable_income_before_qbi_deduction\", which this "
+                        "QBI above-threshold guard requires to compare "
+                        "against the Form 8995 simple-path threshold. The "
+                        "expected producer is "
+                        "_compute_1040_via_workbook (the XLSX workbook "
+                        "path). Do not default this to 0 -- a silent "
+                        "default would make `0 > threshold` false and let "
+                        "this guard silently no-op, routing an "
+                        "above-threshold, nonzero-QBI scenario through to a "
+                        "workbook-computed result that used the wrong QBI "
+                        "deduction formula."
+                    )
+                taxable_income_before_qbi = float(
+                    workbook_result["taxable_income_before_qbi_deduction"]
+                )
+                if taxable_income_before_qbi > threshold:
+                    raise NotImplementedError(
+                        f"Taxable income before QBI ({taxable_income_before_qbi:.0f}) "
+                        f"exceeds the Form 8995 simple-path threshold ({threshold}) "
+                        f"for filing status "
+                        f"{effective_scenario.config.filing_status.value}, and the "
+                        f"scenario has {qbi_total:.0f} of QBI. This scenario is out "
+                        "of native-1040-spine scope (EIC-possible or non-single "
+                        "filer), so it routes to the XLSX workbook path, which has "
+                        "an `8995` (simple-path) sheet but no `8995A` sheet. Form "
+                        "8995-A is not implemented in tenforty v1. Refusing rather "
+                        "than silently returning a workbook-computed result that "
+                        "used the wrong QBI deduction formula. Set "
+                        "`acknowledges_qbi_below_threshold: true` ONLY if you "
+                        "have confirmed that the simple-path formula is "
+                        "correct for your return; otherwise extend the native "
+                        "spine to cover this filer class (or implement Form "
+                        "8995-A) before enabling this scenario."
+                    )
+            return workbook_result
         schedule_results, k1_fanout = self._compute_native_schedules(effective_scenario)
         spine_result = f1040_spine.compute_spine(
             effective_scenario, params, schedule_results, k1_fanout=k1_fanout,
