@@ -85,23 +85,6 @@ PARITY_KEYS = (
 )
 
 
-# Native-key -> oracle-key overrides for the parity comparison. Default is
-# same-key. EXPLICIT exception: the native spine's `total_tax` is line-16-only
-# (Schedule 2 joins `overpaid`, not `total_tax`; 1040-X line 6 composes from
-# this line-16 base), but the workbook's production `total_tax` OUTPUT points at
-# the `Tax` named range, which is SUM(Tax_SubTotal, Schedule2_Tax) — i.e.
-# Schedule-2-INCLUSIVE, because its production consumer (the out-of-spine
-# workbook-fallback path → Form 4868 balance-due) needs FULL liability. The two
-# paths serve different consumers with different-but-correct semantics and are
-# deliberately NOT unified. So parity on the line-16 quantity compares native
-# `total_tax` against the workbook's separate line-16-only OUTPUT
-# `total_tax_line16` (← the `Tax_SubTotal` named range). See
-# tenforty/mappings/f1040.py's OUTPUTS entries for the mapping-side rationale.
-_PARITY_ORACLE_KEY = {
-    "total_tax": "total_tax_line16",
-}
-
-
 def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> None:
     """Run penny-parity check for every (name, builder) pair in battery.
 
@@ -132,12 +115,11 @@ def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> 
                 oracle = orch._compute_1040_via_workbook(eff)
 
             for key in PARITY_KEYS:
-                oracle_key = _PARITY_ORACLE_KEY.get(key, key)
                 test_case.assertEqual(
                     native[key],
-                    oracle[oracle_key],
+                    oracle[key],
                     f"{name}: {key} native={native[key]!r} "
-                    f"oracle[{oracle_key}]={oracle[oracle_key]!r}",
+                    f"oracle={oracle[key]!r}",
                 )
 
 

@@ -810,9 +810,6 @@ class F1040(FormMapping):
             # honest producer for `tax_plus_schedule2`.
             "schedule2_tax": "Schedule2_Tax",
             "tax_plus_schedule2": "Tax",
-            # Retained for now; a later task retires it. After the repoint
-            # above this is identical to `total_tax`.
-            "total_tax_line16": "Tax_SubTotal",
             # 1040 LINE 24 — "Add lines 22 and 23. This is your total tax."
             # The `Tot_Tax` named range, present in all five workbooks:
             #   2021 '1040'!AC65   2022 AC74   2023 AD80
@@ -836,14 +833,17 @@ class F1040(FormMapping):
             # by name so it survives vendor cell moves, and skips the
             # arithmetic where composition goes wrong. See forms/f4868.py.
             #
-            # ON THE `_line24` SUFFIX. `total_tax_line16` above is being
-            # retired on the grounds that suffixed keys invite drift; do NOT
-            # cite that retirement as grounds to drop this suffix. They are
-            # different situations. `total_tax_line16` is a DUPLICATE — it
-            # points at the same named range as `total_tax` and names the same
-            # quantity twice. `tax_liability_line24` names a DIFFERENT QUANTITY
-            # that has no other key. The suffix is doing semantic work, not
-            # disambiguating a duplicate.
+            # ON THE `_line24` SUFFIX. A sibling key `total_tax_line16` was
+            # RETIRED on the grounds that suffixed keys invite drift; do NOT
+            # cite that retirement as grounds to drop this suffix. They were
+            # different situations. `total_tax_line16` was a DUPLICATE — it
+            # pointed at the same named range as `total_tax` (`Tax_SubTotal`)
+            # and named the same quantity twice, which is exactly how one name
+            # regrows two meanings. Its absence from every year's resolved
+            # OUTPUTS is pinned by tests/test_f1040_mapping.py::
+            # TestF1040TaxBandOutputsEveryYear. `tax_liability_line24` names a
+            # DIFFERENT QUANTITY that has no other key. The suffix is doing
+            # semantic work, not disambiguating a duplicate.
             #
             # NO SEPARATE DIAGNOSTIC GUARD IS NEEDED for this key: the
             # `deduction_diagnostic` refusal below fires in forms/f1040.py
@@ -986,9 +986,6 @@ class F1040(FormMapping):
             # lines printed blank. See the 2024 block.
             "schedule2_tax": "Schedule2_Tax",
             "tax_plus_schedule2": "Tax",
-            # Retained for now; a later task retires it. After the repoint
-            # above this is identical to `total_tax`. See the 2024 block.
-            "total_tax_line16": "Tax_SubTotal",
             # 1040 LINE 24 (total tax) — the `Tot_Tax` named range,
             # '1040'!AL104 here. Consumed by Form 4868 line 4, harvested
             # rather than composed, and the `_line24` suffix is load-bearing
