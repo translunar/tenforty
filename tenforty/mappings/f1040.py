@@ -791,11 +791,17 @@ class F1040(FormMapping):
             # `total_tax` IS IRS Form 1040 LINE 16, on every path. The native
             # spine emits line-16 income tax under this key (f1040_spine.py),
             # every year block of pdf_1040.py maps it to the line-16 box, and
-            # f1040x line 6 composes on a line-16 base (it adds Schedule 2
-            # Part I itself). This mapping formerly pointed at `Tax`, which is
-            # line 18 (`SUM(Tax_SubTotal, Schedule2_Tax)`) — that printed an
-            # overstated line 16 whenever Schedule 2 Part I was nonzero and
-            # made f1040x double-count the excess-APTC repayment.
+            # f1040x line 6 composes on a line-16 base, adding the excess-APTC
+            # repayment (Schedule 2 LINE 2) itself — and ONLY that. It does NOT
+            # add the AMT component (Schedule 2 line 1), so line 6 is NOT
+            # Part-I-complete; see f1040x.py's module docstring for the precise
+            # statement. This mapping formerly pointed at `Tax`, which is line
+            # 18 — the SUM of line 16 and the line-17 CELL, that cell being
+            # `IF(<override><>"", ROUND(<override>,0), Schedule2_Tax)`, i.e.
+            # `Schedule2_Tax` absent a manual override tenforty never writes.
+            # Pointing here printed an overstated line 16 whenever Schedule 2
+            # Part I was nonzero and made f1040x double-count the excess-APTC
+            # repayment.
             "total_tax": "Tax_SubTotal",
             # Line 17 — Schedule 2 line 3 (Part I: AMT + excess APTC) — and
             # line 18 — "Add lines 16 and 17". Both keys were mapped to their
