@@ -18,7 +18,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.models import (
     Form1095A,
@@ -27,7 +26,7 @@ from tenforty.models import (
     TaxReturnConfig,
     W2,
 )
-from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.orchestrator import ReturnOrchestrator, _FederalFormSpec
 from tenforty.rounding import irs_round
 from tenforty.years import FEDERAL_YEARS
 from tests.helpers import scope_out_attestation_defaults
@@ -84,17 +83,39 @@ class _NativeComputeCase(unittest.TestCase):
             work_dir=Path(self._tmp.name) / "work",
         )
 
-    def _fields(self, results: dict, year: int = YEAR) -> dict[str, str]:
-        """The exact {pdf_field_path: rendered_string} dict the 1040 emit would
-        write. Built through the same `PdfFiller.resolve_fields` the render and
-        the changed-forms selector use, and with the same derivations the
-        orchestrator passes for the 1040 spec, so it cannot drift from what
-        actually fills."""
-        return PdfFiller.resolve_fields(
-            Pdf1040.get_mapping(year),
-            results,
-            derivations=Pdf1040.get_derivations(year),
+    def _spec_1040(self, scenario: Scenario, results: dict) -> _FederalFormSpec:
+        """The orchestrator's OWN prepared 1040 emit spec.
+
+        Taken from `_federal_individual_emit_specs` rather than reassembled
+        here, because the wiring is part of what these tests have to protect.
+        An earlier version of this helper called `Pdf1040.get_mapping` and
+        `Pdf1040.get_derivations` itself and claimed it therefore "could not
+        drift from what actually fills" — which was FALSE, and provably so:
+        deleting `derivations=Pdf1040.get_derivations(year)` from the
+        orchestrator's 1040 spec left the whole always-running gate byte-for-
+        byte green while every emitted 1040 went back to a blank line 24. A
+        test that rebuilds the wiring cannot see the wiring removed.
+        """
+        specs = self.orch._federal_individual_emit_specs(scenario, results)
+        spec = next(s for s in specs if s.name == "1040")
+        # The wiring assertion itself, sited where every payload-based test
+        # below passes through it: if the orchestrator stops handing the 1040
+        # its derivations, line 24 silently reverts to blank, so an empty
+        # derivations dict is a defect and not merely an absent optional.
+        self.assertTrue(
+            spec.derivations,
+            "the orchestrator's 1040 spec carries no derivations — 1040 line "
+            "24 has no other producer and would print blank",
         )
+        return spec
+
+    def _fields(self, scenario: Scenario, results: dict) -> dict[str, str]:
+        """The exact {pdf_field_path: rendered_string} dict the 1040 emit would
+        write, resolved through the orchestrator's own spec and its own
+        `_federal_spec_payload` — the same call the renderer and the
+        changed-forms selector go through."""
+        return ReturnOrchestrator._federal_spec_payload(
+            self._spec_1040(scenario, results))
 
 
 class NativeSchedule2LineProducersTests(_NativeComputeCase):
@@ -126,9 +147,9 @@ class NativeSchedule2LineProducersTests(_NativeComputeCase):
         self.assertEqual(without["total_tax"], with_block["total_tax"])
 
     def test_line_17_and_18_print_rather_than_going_blank(self):
-        results = self.orch.compute_federal(
-            _scenario(55_000, 8_000, _repayment_block()))
-        fields = self._fields(results)
+        scenario = _scenario(55_000, 8_000, _repayment_block())
+        results = self.orch.compute_federal(scenario)
+        fields = self._fields(scenario, results)
         mapping = Pdf1040.get_mapping(YEAR)
 
         line_17_box = mapping["schedule2_tax"]
@@ -153,11 +174,12 @@ class NativeSchedule2ZeroPrintsZeroTests(_NativeComputeCase):
     """
 
     def test_empty_schedule_2_prints_a_literal_zero_in_the_line_17_box(self):
-        results = self.orch.compute_federal(_scenario(55_000, 8_000, None))
+        scenario = _scenario(55_000, 8_000, None)
+        results = self.orch.compute_federal(scenario)
         self.assertEqual(0, results["schedule2_tax"])
         self.assertIsNotNone(results["schedule2_tax"])
 
-        fields = self._fields(results)
+        fields = self._fields(scenario, results)
         line_17_box = Pdf1040.get_mapping(YEAR)["schedule2_tax"]
         self.assertIn(line_17_box, fields)
         self.assertEqual("0", fields[line_17_box])
@@ -178,12 +200,12 @@ class NativeLine24TotalTaxTests(_NativeComputeCase):
     18 and the test could not tell the two apart.
     """
 
-    def _high_wage_results(self) -> dict:
-        return self.orch.compute_federal(
-            _scenario(250_000, 40_000, _repayment_block()))
+    def _high_wage(self) -> tuple[Scenario, dict]:
+        scenario = _scenario(250_000, 40_000, _repayment_block())
+        return scenario, self.orch.compute_federal(scenario)
 
     def test_line_24_box_is_filled_and_carries_line_24_semantics(self):
-        results = self._high_wage_results()
+        scenario, results = self._high_wage()
         self.assertGreater(results["schedule2_tax"], 0)
         self.assertGreater(results["f8959_tax_total"], 0)
 
@@ -203,7 +225,7 @@ class NativeLine24TotalTaxTests(_NativeComputeCase):
         self.assertNotEqual(line_18, expected_line_24)
         self.assertNotEqual(results["total_tax"], line_18)
 
-        fields = self._fields(results)
+        fields = self._fields(scenario, results)
         line_24_box = Pdf1040.get_mapping(YEAR)["tax_liability_line24"]
         self.assertIn(line_24_box, fields)
         self.assertEqual(str(irs_round(expected_line_24)), fields[line_24_box])
@@ -215,12 +237,71 @@ class NativeLine24TotalTaxTests(_NativeComputeCase):
         — in the common case, where the two Schedule 2 components are both
         zero and a producer that silently dropped out would be invisible in
         the arithmetic."""
-        results = self.orch.compute_federal(_scenario(55_000, 8_000, None))
-        fields = self._fields(results)
+        scenario = _scenario(55_000, 8_000, None)
+        results = self.orch.compute_federal(scenario)
+        fields = self._fields(scenario, results)
         line_24_box = Pdf1040.get_mapping(YEAR)["tax_liability_line24"]
         self.assertIn(line_24_box, fields)
         self.assertEqual(str(irs_round(results["total_tax"])), fields[line_24_box])
         self.assertNotEqual("", fields[line_24_box])
+
+
+class NativeResultsMustNotCarryTheLine24KeyTests(_NativeComputeCase):
+    """The native spine must NOT emit `tax_liability_line24`. Load-bearing.
+
+    THIS IS THE DESIGN DECISION BEHIND THE LINE-24 DERIVATION, WRITTEN AS AN
+    ASSERTION. Read this before "simplifying" line 24 into a spine output key:
+    the key's ABSENCE from a native results dict is what tells the two compute
+    paths apart, in two places that both branch on exactly that.
+
+      - `forms/f4868.py::total_tax_liability_line_24` returns the key's value
+        outright when it is present (the WORKBOOK harvest, the vendor's own
+        line 24) and only otherwise composes from the spine's parts.
+      - `tests/invariants.py`'s 4868 fill helper branches the same way, and its
+        workbook arm exists precisely to compare production against an
+        INDEPENDENT oracle — the vendor's `Tot_Tax` — rather than against our
+        own arithmetic.
+
+    So a spine that published this key would silently route every native
+    return down the harvest arm: `compose_line_24` would go dead, and the
+    invariant's independent-oracle comparison would become a comparison of our
+    own answer with itself. Both would still be green. That is why line 24 is
+    produced at the PDF layer (`Pdf1040.get_derivations`) instead.
+
+    THE NEGATIVE SPACE IS REACHABLE, so this is a real assertion and not a
+    decorative one about a name that could never appear: adding
+    `"tax_liability_line24": max(0, tax_plus_schedule2) + f8959_tax_total` to
+    the spine's output dict — the correct-valued line that a well-meaning
+    future task would write — is a one-line change that leaves the entire
+    always-running gate unchanged. This test is the thing that reddens.
+    """
+
+    _KEY = "tax_liability_line24"
+
+    def test_native_results_do_not_carry_the_line_24_key(self):
+        for label, scenario in (
+            ("plain", _scenario(55_000, 8_000, None)),
+            ("schedule 2 part I + part II",
+             _scenario(250_000, 40_000, _repayment_block())),
+        ):
+            with self.subTest(scenario=label):
+                results = self.orch.compute_federal(scenario)
+                # Precondition: this really is the native path, and it really
+                # did produce a tax band — otherwise "key absent" would be
+                # true for the boring reason that nothing was computed.
+                self.assertIn("tax_plus_schedule2", results)
+                self.assertGreater(results["total_tax"], 0)
+                self.assertNotIn(self._KEY, results)
+
+    def test_the_line_24_box_still_fills_without_that_key(self):
+        """The other half, so the assertion above cannot be satisfied by
+        deleting line 24's producer: the key is absent from `results` AND the
+        box is filled anyway, by the derivation."""
+        scenario = _scenario(55_000, 8_000, None)
+        results = self.orch.compute_federal(scenario)
+        self.assertNotIn(self._KEY, results)
+        fields = self._fields(scenario, results)
+        self.assertIn(Pdf1040.get_mapping(YEAR)["tax_liability_line24"], fields)
 
 
 class Line24KeyNameReconciliationTests(unittest.TestCase):
