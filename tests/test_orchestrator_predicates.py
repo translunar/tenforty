@@ -55,6 +55,46 @@ class OrchestratorPredicateTests(unittest.TestCase):
         )
         self.assertFalse(self.orchestrator._should_emit_sch_b(scenario, {}))
 
+    def test_should_emit_sch_b_counts_k1_components_toward_the_threshold(
+        self,
+    ) -> None:
+        """A return whose interest is split across a 1099-INT and a K-1 must
+        still get a Schedule B when the TOTAL clears $1,500.
+
+        1099-INT 1,400 + K-1 interest 1,400 = 2,800 of taxable interest on
+        1040 line 2b. Each component alone is under the threshold, so the
+        historic 1099-only gate returned False and the packet was emitted with
+        NO Schedule B at all — while line 2b itself read 2,800. Both halves are
+        asserted here: the 1099-only sum really is under the threshold (so this
+        test cannot pass for the wrong reason), and the gate says True anyway
+        once it is handed the finished 1040 totals.
+        """
+        scenario = make_k1_scenario()
+        scenario.form1099_int.append(
+            Form1099INT(payer="Generic Bank", interest=1400.0)
+        )
+        scenario.schedule_k1s = [
+            ScheduleK1(
+                entity_name="Generic S-Corp Inc",
+                entity_ein="00-0000000",
+                entity_type="s_corp",
+                material_participation=True,
+                ordinary_business_income=10_000.0,
+                qbi_amount=10_000.0,
+                interest_income=1400.0,
+            ),
+        ]
+
+        # Neither component alone clears $1,500 — the 1099-only gate is False.
+        self.assertLess(
+            sum(i.interest for i in scenario.form1099_int), 1500.0,
+        )
+        self.assertFalse(self.orchestrator._should_emit_sch_b(scenario, {}))
+
+        results = self.orchestrator._compute_1040_pipeline(scenario)
+        self.assertEqual(results["taxable_interest"], 2_800)
+        self.assertTrue(self.orchestrator._should_emit_sch_b(scenario, results))
+
     def test_should_emit_sch_1_false_when_no_additional_income(self) -> None:
         scenario = make_simple_scenario()
         self.assertFalse(self.orchestrator._should_emit_sch_1(scenario, {}))

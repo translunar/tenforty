@@ -93,44 +93,55 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
 
     Every expected figure below was independently derived from the Form
     8995 formula (line 6 = 20% x QBI; line 13 = line 11 - line 12;
-    line 14 = 20% x line 13; line 15 = min(line 6, line 14)) and from the
-    QDCGT worksheet, then confirmed to match what the current (post-fix)
-    code actually produces before being hardcoded here — see task-3-report
-    for the confirmation run. Docstrings on individual tests record the
-    corresponding PRE-FIX (defective) values so a future reader can see the
-    shape of each defect this unit closed.
+    line 14 = 20% x line 13; line 15 = min(line 6, line 14)), from the
+    2025 IRS single rate schedule, and from the QDCGT worksheet, then
+    confirmed to match what the current code actually produces before being
+    hardcoded here. Docstrings on individual tests record the corresponding
+    PRE-FIX (defective) values so a future reader can see the shape of each
+    defect this unit closed.
 
-    NOTE for future readers — THESE INTERIM FIGURES UNDERSTATE TAX AND ARE
-    NOT AUTHORITATIVE. The asserted AGI (160,000) and total_tax (24,077)
-    bake in a SEPARATE, still-live defect (already scheduled as its own fix
-    unit): on the native spine, a K-1's `ordinary_dividends` never reaches
-    1040 line 3b / AGI, even though that same K-1's `qualified_dividends`
-    (a subset of it, per IRC 1366(b)) IS correctly given preferential
-    treatment by the fix in THIS unit.
+    THE INTERIM WINDOW IS NOW CLOSED. An earlier revision of this docstring
+    warned that the figures here understated tax, because a companion
+    defect was still live: on the native spine a K-1's `ordinary_dividends`
+    never reached 1040 line 3b / AGI, even though that same K-1's
+    `qualified_dividends` (a subset of it, per IRC 1366(b)) WAS already
+    given preferential treatment. That produced the arithmetically
+    impossible relationship line 3a > line 3b and taxed a slice of ordinary
+    income at preferential rates. **That companion unit has landed**: a
+    K-1's ordinary dividends and interest now reach 1040 lines 3b/2b and
+    AGI. The warning no longer applies and has been removed; the figures
+    below are the authoritative post-fix ones.
 
-    That combination is an IMPOSSIBLE relationship on a real 1040. Line 3a
-    (qualified dividends) is by definition a SUBSET of line 3b (ordinary
-    dividends), so line 3a can never exceed line 3b. In this interim window
-    line 3a now includes the K-1's 3,000 of qualified dividends while line
-    3b still excludes the K-1's 4,000 of ordinary dividends entirely. The
-    concrete harm: a slice of ordinary income effectively receives
-    PREFERENTIAL capital-gain rates — it is granted the preferential rate
-    via line 3a without ever having been picked up as ordinary income on
-    line 3b — so the computed tax comes out TOO LOW.
+    What changed when it landed, for THIS scenario:
+      AGI 160,000 -> 164,000 (the K-1's 4,000 of ordinary dividends now
+      reaches line 3b), and total_tax 24,077 -> 25,037. The 960 delta is
+      exactly 4,000 taxed at this scenario's 24% marginal ordinary rate —
+      and 25,037 is precisely what routing the identical dollars through a
+      1099-DIV instead has always produced, which is the cross-check that
+      identified the defect in the first place.
 
-    Measured magnitude: routing the same dollars through a K-1 yields
-    total_tax 24,077, whereas routing the identical dollars through a
-    1099-DIV instead yields 25,037. The 1099-DIV figure, 25,037, is the
-    TRUE one; the 960 difference is exactly the understatement this interim
-    state produces.
-
-    So the numbers asserted in this class are a regression fence for THIS
-    unit's fix ONLY. They are NOT authoritative for mixed K-1-dividend
-    shapes, and they WILL change when the companion K-1-ordinary-dividends
-    unit lands (AGI here legitimately becomes 164,000 and the tax figures
-    move). Such a change is NOT a regression in this unit's fix — do not
-    treat it as one; re-derive the expected figures from the corrected line
-    3a/3b relationship instead.
+    Full post-fix derivation for this scenario (all from the IRS schedules,
+    not read out of the code):
+      AGI = wages 100,000 + 1099-DIV ordinary dividends 10,000 + K-1
+      ordinary dividends 4,000 + K-1 ordinary_business_income 50,000
+      = 164,000.
+      f8995 line 11 = 164,000 - standard deduction 15,750 = 148,250.
+      line 6 = 20% x qbi 50,000 = 10,000.
+      line 12 = qualified_divs_total (8,000 + 3,000) + max(0, ncg 0)
+      = 11,000. line 13 = 148,250 - 11,000 = 137,250. line 14 = 20% x
+      137,250 = 27,450. line 15 = min(10,000, 27,450) = 10,000 — LINE 6
+      binds here, NOT the income limit, so the QBI deduction does not move
+      when line 12 moves (that case is covered by
+      QualifiedDividendsIncomeLimitBindingEndToEndTests instead).
+      Final taxable income = 148,250 - 10,000 = 138,250.
+      Preferential base = 11,000; ordinary portion = 138,250 - 11,000
+      = 127,250. That is at/above the 100,000 Tax Table ceiling, so the
+      rate schedule applies: 11,925 x 10% = 1,192.50, plus 36,550 x 12%
+      = 4,386, plus 54,875 x 22% = 12,072.50, plus 23,900 x 24% = 5,736
+      => 23,387. The ordinary floor 127,250 already exceeds the 48,350
+      0%-band breakpoint, so all 11,000 of preferential income falls in
+      the 15% band: 11,000 x 15% = 1,650. total_tax = 23,387 + 1,650
+      = 25,037.
     """
 
     def setUp(self) -> None:
@@ -189,9 +200,10 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
         11,000) in the preferential-rate base, not the 1099-DIV component
         alone.
 
-        The hardcoded ``24_077`` below is the real independent derivation —
+        The hardcoded ``25_037`` below is the real independent derivation —
         computed from the IRS ordinary-rate schedule/table and the QDCGT
-        breakpoints by hand, not read back out of the code under test. The
+        breakpoints by hand, not read back out of the code under test (see
+        the class docstring for the step-by-step arithmetic). The
         direct ``qdcgt_tax`` call that follows is NOT an independent
         derivation: it re-invokes the exact same ``qdcgt_tax`` function with
         the same arguments the pipeline itself uses, so it cannot detect a
@@ -205,11 +217,14 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
         ``preamble.qualified_divs`` — the 1099-DIV-only component (8,000)
         — so the K-1's 3,000 of qualified dividends was taxed as ORDINARY
         income instead of at the QDCGT preferential rate, overstating tax
-        by (24,347 - 24,077 =) 270.
+        by (25,307 - 25,037 =) 270. That 270 is 3,000 x (24% ordinary
+        marginal rate - 15% preferential rate); it is unchanged by the
+        K-1-ordinary-dividends unit, which moved both figures up by the
+        same 960 without changing the marginal rate either sits at.
         """
         results = self.orchestrator._compute_1040_pipeline(self.scenario)
 
-        self.assertEqual(results["total_tax"], 24_077)
+        self.assertEqual(results["total_tax"], 25_037)
 
         params = load_federal_params(2025)
         independently_computed_tax = qdcgt_tax(
@@ -251,11 +266,21 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
 class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
     """Pins the actual taxpayer-visible harm of defect A, which the tests in
     ``QualifiedDividendsMixedSourceEndToEndTests`` do NOT: in that class's
-    scenario, Form 8995 line 15 = min(line 6 = 10,000, line 14 = 26,650) is
+    scenario, Form 8995 line 15 = min(line 6 = 10,000, line 14 = 27,450) is
     bound by line 6, so reverting defect A moves lines 12-14 but leaves the
     QBI deduction (and therefore total_tax) completely unchanged — no dollar
     the taxpayer sees is affected. This class uses a scenario where the
     line-14 INCOME LIMIT binds instead, so the QBI deduction itself moves.
+
+    (That 27,450 is the POST-fix figure and must stay in step with the
+    derivation in ``QualifiedDividendsMixedSourceEndToEndTests``'s own
+    docstring, which is its source: line 13 = 148,250 - 11,000 = 137,250,
+    line 14 = 20% x 137,250 = 27,450. It read 26,650 — the pre-fix value
+    from the AGI-160,000 world — until 2026-08-17, when the two docstrings
+    were caught giving different line-14 figures for the same scenario. The
+    point being made here is true either way, since line 6's 10,000 binds
+    against both; only the cited number was stale. Any figure quoted from
+    another class is a cross-reference, and cross-references rot.)
 
     Scenario (all figures synthetic/generic): 2025 single filer, standard
     deduction, acknowledges_qbi_below_threshold=True, NO W-2 wages. ONE
@@ -265,42 +290,48 @@ class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
     Schedule D activity, so net_capital_gain is 0.
 
     Derivation (independently worked by hand from the Form 8995 formula,
-    the 2025 IRS Tax Table/rate schedule, and the QDCGT worksheet — see the
-    fix-wave report for the full arithmetic — then cross-checked against
-    the code):
+    the 2025 IRS Tax Table/rate schedule, and the QDCGT worksheet, then
+    cross-checked against the code):
       AGI = wages 0 + 1099-DIV ordinary_dividends 100,000 + K-1
-      ordinary_business_income 50,000 = 150,000. (The K-1's own 4,000 of
-      ordinary_dividends does NOT reach AGI here — see the NOTE on
-      ``QualifiedDividendsMixedSourceEndToEndTests`` above; that is a
-      separate, still-live defect, not something this test is about.)
+      ordinary_dividends 4,000 + K-1 ordinary_business_income 50,000
+      = 154,000. (The K-1's own 4,000 of ordinary dividends reaches line 3b
+      and AGI as of the K-1-ordinary-dividends unit; before that unit landed
+      it did not, and AGI here was 150,000.)
       Taxable income before QBI (f8995 line 11) = AGI - standard deduction
-      15,750 = 134,250.
+      15,750 = 138,250.
 
       qbi_total = 50,000 (K-1 qbi_amount); f8995 line 6 = 20% x 50,000 =
       10,000.
 
-      POST-FIX line 12 = qualified_divs_total (100,000 + 3,000) +
-      max(0, net_capital_gain) = 103,000. line 13 = 134,250 - 103,000 =
-      31,250. line 14 = 20% x 31,250 = 6,250. line 15 (QBI deduction) =
-      min(6,250, 10,000) = 6,250 — the INCOME LIMIT (line 14) binds, not
-      line 6.
+      line 12 = qualified_divs_total (100,000 + 3,000) +
+      max(0, net_capital_gain) = 103,000 — unchanged by the
+      K-1-ordinary-dividends unit, since only the K-1's ORDINARY dividends
+      moved; its 3,000 of qualified dividends was already included.
+      line 13 = 138,250 - 103,000 = 35,250. line 14 = 20% x 35,250 =
+      7,050. line 15 (QBI deduction) = min(7,050, 10,000) = 7,050 — the
+      INCOME LIMIT (line 14) still binds, not line 6.
 
-      Final taxable income = 134,250 - 6,250 = 128,000. Preferential base
-      (qualified dividends total) = 103,000; ordinary portion = 128,000 -
-      103,000 = 25,000, taxed via the 2025 Tax Table at 25,000 = 2,765.
-      The 103,000 preferential amount stacks on top of the 25,000 ordinary
-      floor: 23,350 of it falls in the 0% band (25,000 to the 48,350
-      breakpoint) and the remaining 79,650 falls in the 15% band, taxed at
-      79,650 x 15% = 11,947.50, IRS-rounded to 11,948. total_tax = 2,765 +
-      11,948 = 14,713.
+      Final taxable income = 138,250 - 7,050 = 131,200. Preferential base
+      (qualified dividends total) = 103,000; ordinary portion = 131,200 -
+      103,000 = 28,200, which is below the 100,000 Tax Table ceiling, so
+      the 2025 Tax Table applies: the 28,200-28,250 single row carries
+      3,149 (the bin midpoint 28,225 gives 1,192.50 + 12% x 16,300 =
+      3,148.50, IRS-rounded to 3,149).
+      The 103,000 preferential amount stacks on top of the 28,200 ordinary
+      floor: 20,150 of it falls in the 0% band (28,200 to the 48,350
+      breakpoint) and the remaining 82,850 falls in the 15% band, taxed at
+      82,850 x 15% = 12,427.50, IRS-rounded to 12,428. total_tax = 3,149 +
+      12,428 = 15,577.
 
       UNDER DEFECT A (f8995.py reading ``fanout.qualified_dividends_aggregate``
       — the K-1-only 3,000 — instead of the preamble total): line 12 =
-      3,000; line 13 = 131,250; line 14 = 26,250; line 15 = min(26,250,
+      3,000; line 13 = 135,250; line 14 = 27,050; line 15 = min(27,050,
       10,000) = 10,000 — now line 6 binds instead, and the QBI deduction
-      is OVERSTATED by 10,000 - 6,250 = 3,750. Final taxable income drops
-      to 124,250 and total_tax comes out to 13,700 — UNDERSTATING the
-      taxpayer's tax liability by 14,713 - 13,700 = 1,013.
+      is OVERSTATED by 10,000 - 7,050 = 2,950. Final taxable income drops
+      to 128,250, whose ordinary portion 25,250 draws 2,795 from the Tax
+      Table while 23,100 lands in the 0% band and 79,900 x 15% = 11,985
+      in the 15% band, so total_tax comes out to 14,780 — UNDERSTATING the
+      taxpayer's tax liability by 15,577 - 14,780 = 797.
     """
 
     def setUp(self) -> None:
@@ -334,22 +365,25 @@ class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
         qualified-dividend total in the line-12/13/14 chain, because here
         the income limit (line 14), not line 6, is the binding constraint.
 
-        Correct (post-fix): line 15 = 6,250; total_tax = 14,713.
-        Under defect A: line 15 = 10,000 (overstated by 3,750);
-        total_tax = 13,700 (understated by 1,013) — a real dollar amount
+        Correct: line 15 = 7,050; total_tax = 15,577.
+        Under defect A: line 15 = 10,000 (overstated by 2,950);
+        total_tax = 14,780 (understated by 797) — a real dollar amount
         the taxpayer would see on their return.
         """
         sched, _ = self.orchestrator._compute_native_schedules(self.scenario)
         f8995 = sched["f8995"]
 
+        # line 12 is unchanged by the K-1-ordinary-dividends unit (only the
+        # K-1's ORDINARY dividends moved); lines 13-15 move because line 11
+        # rose with AGI. See the class docstring for the full derivation.
         self.assertEqual(f8995["f8995_line_12_net_capital_gain"], 103_000)
-        self.assertEqual(f8995["f8995_line_13_subtract"], 31_250)
-        self.assertEqual(f8995["f8995_line_14_income_limit"], 6_250)
-        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 6_250)
+        self.assertEqual(f8995["f8995_line_13_subtract"], 35_250)
+        self.assertEqual(f8995["f8995_line_14_income_limit"], 7_050)
+        self.assertEqual(f8995["f8995_line_15_qbi_deduction"], 7_050)
 
         results = self.orchestrator._compute_1040_pipeline(self.scenario)
-        self.assertEqual(results["taxable_income"], 128_000)
-        self.assertEqual(results["total_tax"], 14_713)
+        self.assertEqual(results["taxable_income"], 131_200)
+        self.assertEqual(results["total_tax"], 15_577)
 
 
 class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
@@ -367,7 +401,12 @@ class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
     silent ``.get(..., 0)`` default, the emit path therefore computed line
     12 as 0.
 
-    Measured on this exact scenario BEFORE the fix:
+    Measured on this exact scenario BEFORE the fix — and note these are
+    HISTORICAL measurements, taken while AGI here was still 150,000,
+    i.e. before the K-1-ordinary-dividends unit landed. The QBI-deduction
+    figures below are therefore the pre-that-unit ones (6,250); today the
+    correct deduction is 7,050. The SHAPE of the defect is what this table
+    records, not figures to compare against current assertions:
 
                                   COMPUTE      EMIT
         f8995 line 12             103,000         0
@@ -389,8 +428,7 @@ class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
     S-corp K-1: ordinary_business_income 50,000, qbi_amount 50,000,
     ordinary_dividends 4,000, qualified_dividends 3,000. This shape is used
     because the Form 8995 line-14 INCOME LIMIT binds here, so the defect
-    moved the QBI deduction itself (6,250 vs 10,000), not merely the
-    intermediate lines.
+    moved the QBI deduction itself, not merely the intermediate lines.
     """
 
     def setUp(self) -> None:
@@ -473,7 +511,7 @@ class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
         # change that breaks BOTH paths identically cannot pass this test by
         # agreeing on a wrong number.
         self.assertEqual(emit_f8995["f8995_line_12_net_capital_gain"], 103_000)
-        self.assertEqual(emit_f8995["f8995_line_15_qbi_deduction"], 6_250)
+        self.assertEqual(emit_f8995["f8995_line_15_qbi_deduction"], 7_050)
 
     def test_1040_line_3a_is_the_authoritative_1099div_plus_k1_total(self) -> None:
         """1040 line 3a (``qualified_dividends`` in the spine's output dict)
@@ -496,19 +534,37 @@ class QualifiedDividendsEmitPathAgreesWithComputePathTests(unittest.TestCase):
 
         self.assertEqual(results["qualified_dividends"], 103_000)
 
-        # Line 3a must also be a SUBSET of line 3b on a well-formed 1040.
-        # It is NOT today, because of the separate still-live K-1
-        # ordinary-dividends defect documented on
-        # QualifiedDividendsMixedSourceEndToEndTests: line 3b here is
-        # 100,000 (the K-1's 4,000 never reaches it) while line 3a is
-        # 103,000. Pinned as an explicit inequality so the companion fix
-        # unit has a failing marker to land against rather than a silent
-        # inconsistency.
-        self.assertEqual(results["ordinary_dividends"], 100_000)
-        self.assertGreater(
+        # Line 3a must be a SUBSET of line 3b on a well-formed 1040:
+        # qualified dividends are a subset of ordinary dividends, so line 3a
+        # can never exceed line 3b.
+        #
+        # HISTORY: this assertion used to read assertGreater(3a, 3b) — it
+        # deliberately PINNED the known-bad interim state, in which line 3a
+        # already included the K-1's 3,000 of qualified dividends while line
+        # 3b still excluded the K-1's 4,000 of ordinary dividends entirely
+        # (3a 103,000 > 3b 100,000, arithmetically impossible on a real
+        # 1040). It served as a failing marker for the companion
+        # K-1-ordinary-dividends unit to land against. That unit HAS landed,
+        # line 3b is now 104,000, and the assertion flipped to the correct
+        # invariant below.
+        #
+        # This inequality is asserted BEFORE the line-3b equality on
+        # purpose: a regression that stops the K-1's ordinary dividends from
+        # reaching line 3b breaks both, and running the diagnostic one first
+        # is what makes the explanatory message below the thing a failing
+        # reader actually sees. (Previously the bare equality ran first and
+        # this message never printed.)
+        self.assertLessEqual(
             results["qualified_dividends"], results["ordinary_dividends"],
-            "Expected the KNOWN-BAD interim state (line 3a > line 3b). If "
-            "this now fails, the companion K-1-ordinary-dividends fix has "
-            "landed — re-derive the figures in this file per the NOTE on "
-            "QualifiedDividendsMixedSourceEndToEndTests.",
+            "1040 line 3a (qualified dividends) exceeds line 3b (ordinary "
+            "dividends), which is impossible: line 3a is by definition a "
+            "SUBSET of line 3b. This is the signature of a K-1's qualified "
+            "dividends reaching line 3a while its ordinary dividends fail "
+            "to reach line 3b — the exact defect the K-1-ordinary-dividends "
+            "unit fixed. A slice of ordinary income is being granted "
+            "preferential capital-gain rates, understating tax.",
         )
+        # Line 3b = 1099-DIV 100,000 + K-1 4,000 = 104,000, per IRC 1366(b)
+        # conduit treatment; derived from the scenario inputs, not read back
+        # out of the code under test.
+        self.assertEqual(results["ordinary_dividends"], 104_000)

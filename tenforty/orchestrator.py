@@ -2118,9 +2118,111 @@ class ReturnOrchestrator:
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
-        (the IRS Part I / Part II filing threshold)."""
-        total_interest = sum(i.interest for i in scenario.form1099_int)
-        total_dividends = sum(d.ordinary_dividends for d in scenario.form1099_div)
+        (tenforty's rendering of the IRS Part I / Part II filing threshold;
+        on ``>=`` versus the IRS's "over $1,500" wording see unit (p) below).
+
+        In these docstrings a single parenthesised letter names an
+        internally-tracked follow-up work item, glossed at its first mention.
+        (p) is the ``>=`` $1,500 versus IRS "over $1,500" threshold question.
+
+        "Total" means the 1040 line 2b / 3b TOTAL across every source -- 1099
+        plus the K-1 conduit components (IRC 1366(b)) -- not the 1099 slice
+        alone. Summing only the 1099s (the historic behavior, which this
+        docstring already claimed not to do) meant a return with $1,400 on a
+        1099 and $1,400 on a K-1 had a true $2,800 Schedule B total, failed
+        the gate, and was emitted with NO Schedule B at all.
+
+        The totals are read BY REFERENCE from the finished 1040 results rather
+        than re-derived here. ON THE NATIVE-SPINE PATH that means the gate
+        cannot drift from THE LINES IT GATES: whatever convention lines 2b/3b
+        use (including how the K-1 additions are rounded), the threshold is
+        applied to the very figure the 1040 PUBLISHES on lines 2b/3b.
+        Re-summing the scenario here would also have to duplicate
+        sch_e_part_ii's per-entity-type classification of which K-1s
+        contribute -- a copy that rots the moment that classification changes.
+
+        "The lines it gates" is the whole of the claim, and it is deliberately
+        NOT "the figure Schedule B prints". Those CAN be different numbers,
+        because the two are rounded by different conventions: Schedule B
+        rounds each payer and sums the rounded figures, while the 1099 leg of
+        compute_income_preamble rounds once over the raw sum.
+
+        This docstring deliberately states NO rule for when the two agree.
+        That condition carries caveats, and it lives in exactly ONE place --
+        ``K1ScheduleBEmitPathAgreesWith1040Tests`` in
+        tests/test_k1_ordinary_income_totals.py. Read it there; do not
+        reconstruct it here from the two rows below. (Every earlier attempt to
+        state the rule in two places produced two texts that disagreed.)
+
+        Two measured examples, native path, single filer, two 1099-INTs,
+        no K-1:
+
+            2 x 749.60   line 2b = 1499   Sch B line 4 = 1500   gate declines
+            2 x 750.25   line 2b = 1501   Sch B line 4 = 1500   gate fires
+
+        The gate follows line 2b, so in the first row it declines while the
+        Schedule B that would have printed totals 1,500. Judged against the
+        predicate this method actually implements -- ``>= 1500.0`` applied to
+        line 2b -- that is the predicate answering correctly: line 2b is
+        1,499, which is below 1,500. Note the basis matters here, because
+        ``>=`` is inclusive: measured, a return whose line 2b is exactly 1,500
+        (two 1099-INTs at 750.00) makes this gate FIRE. So "1,499.20 is not
+        over $1,500" would be the wrong justification -- it reasons from the
+        IRS's "over $1,500" wording, which is not the predicate below.
+        Whether ``>=`` or "over" is correct is a PRE-EXISTING question this
+        method's change neither created nor settles; it is chartered as
+        follow-up unit (p), which owns it.
+
+        The 1040-vs-Schedule-B rounding split is likewise real and
+        pre-existing, chartered as follow-up unit (n) -- the 1099 leg's
+        round-once-over-the-raw-sum convention. Whichever convention
+        (n) settles on, this gate keeps tracking lines 2b/3b by reference and
+        needs no edit -- which is the actual value of reading by reference.
+
+        ⚠️ SCOPE -- the no-drift guarantee above is NATIVE-PATH ONLY. It does
+        NOT hold on the XLSX workbook path, which _compute_1040_pipeline uses
+        for every out-of-spine-scope scenario (non-single filers, and any
+        EIC-possible filer). The workbook's Interest_Inc / Dividend_Inc named
+        ranges are 1099-only: oracle.flattener emits k1_<letter>_interest_income
+        and ..._ordinary_dividends, but F1040.INPUTS carries no such keys, and
+        oracle.engine drops unmapped input keys silently. So for that filer
+        class this gate reads a value NAMED like a total that is in fact the
+        1099 slice, while the Schedule B emitted in the same packet DOES carry
+        the K-1 payers (form_sch_b.compute receives the fanout regardless of
+        which 1040 path ran). The $1,400-on-a-1099 + $1,400-on-a-K-1 case is
+        therefore still unfixed for an MFJ or EIC-possible filer, and their
+        K-1 interest/dividends are still outside AGI.
+
+        That gap is PRE-EXISTING -- this method's change did not create it and
+        cannot close it, because closing it means teaching the workbook path
+        about K-1 conduit income. It is chartered as follow-up unit (r) --
+        the XLSX workbook path's missing K-1 interest/dividend support. Every
+        test covering this gate is a single-filer native-path scenario; there
+        is deliberately no test asserting the workbook-path behavior, because
+        asserting it would bless it.
+
+        Fallback: callers that pass no 1040 results (unit-level callers with an
+        empty dict) degrade to the 1099-only sums, i.e. the historic behavior.
+        That is a strict LOWER bound on the true totals -- the K-1 components
+        only ever add -- so the fallback can under-emit but never over-emit,
+        and it is never silently zero.
+        """
+        interest_1099 = sum(i.interest for i in scenario.form1099_int)
+        dividends_1099 = sum(d.ordinary_dividends for d in scenario.form1099_div)
+        # HAZARD (documented, deliberately NOT guarded): dict.get's default
+        # fires only on a MISSING key, not on a key present with value None.
+        # A None here would reach `None >= 1500.0` and TypeError at PDF-emit
+        # time rather than falling back to the 1099 sums. This cannot happen
+        # today -- Interest_Inc and Dividend_Inc are formula cells in all five
+        # year workbooks (2021-2025), so they evaluate numeric, never blank --
+        # which is why there is no coercion here and no entry for these two
+        # keys in f1040.py's _NUMERIC_SCH_1_KEYS. It would become live if
+        # either named range were repointed at a raw input cell, or a new
+        # year's workbook left one blank. Flagged for follow-up unit (r),
+        # which owns the workbook path; a defensive `or` here would be dead
+        # code guarding a state the codebase cannot currently reach.
+        total_interest = results.get("taxable_interest", interest_1099)
+        total_dividends = results.get("ordinary_dividends", dividends_1099)
         return total_interest >= 1500.0 or total_dividends >= 1500.0
 
     def _should_compute_8949(self, scenario: Scenario) -> bool:
