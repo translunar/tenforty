@@ -6,10 +6,14 @@ WHY THIS FILE EXISTS — read this before deleting it as redundant with
 `total_tax` used to mean two different 1040 lines depending on which producer
 answered. The native spine assigned it line 16 (`income_tax`, the
 QDCGT/rate-schedule figure). The workbook harvest mapped it to the vendor's
-`Tax` named range, which is LINE 18 — `Tax` is literally
-`SUM(Tax_SubTotal, <the line-17 cell>)` in all five shipped workbooks, and
-`Tax_SubTotal` is line 16. So on any return with a nonzero Schedule 2 Part I,
-the same key named two different numbers on the two paths.
+`Tax` named range, which is LINE 18 — the `Tax` cell is
+`IF(<override><>"", ROUND(<override>,0), SUM(Tax_SubTotal, <the line-17 cell>))`
+in all five shipped workbooks, and `Tax_SubTotal` is line 16. (An earlier draft
+called that "literally `SUM(Tax_SubTotal, …)`". It is not literal — every year
+wraps the SUM in the manual-override branch shown above — and dropping the
+wrapper is the same tidying-a-quotation habit corrected in `f1040_spine.py`'s
+`Overpaid` paragraph.) So on any return with a nonzero Schedule 2 Part I, the
+same key named two different numbers on the two paths.
 
 THE DISAGREEMENT WAS INVISIBLE BECAUSE NOTHING EVER ASKED THE TWO PATHS TO
 AGREE ON WHICH LINE THE KEY NAMES. The native tests asserted native arithmetic
@@ -32,9 +36,19 @@ THAT IS FALSE. The battery already ran a nonzero-Part-I scenario:
 which redirected the comparison onto a SEPARATE line-16-only workbook output
 key, beneath a comment calling the two semantics "different-but-correct" and
 "deliberately NOT unified". So the old battery COULD NOT have caught the fork:
-the one comparison that would have exposed it was explicitly aliased away, and
-that alias key was itself retired earlier in this unit. Nothing has asked the
-question since — until this file.
+the one comparison that would have exposed it was explicitly aliased away.
+
+BE PRECISE ABOUT WHAT THE BATTERY DOES TODAY, because a reader who checks will
+find a live cross-path comparison and distrust this paragraph otherwise. The
+alias was retired earlier in this unit, `PARITY_KEYS` still carries
+`total_tax` with no override, and `ptc_capped_repayment` is still in the
+battery — so the battery now DOES compare the two `total_tax` keys by VALUE, on
+a nonzero-Part-I scenario. What it still cannot do is answer the question this
+file asks. A penny-parity comparison is green whenever the two paths agree
+NUMERICALLY, so a fork that moved BOTH paths to line 18 together would sail
+through it; only an assertion about which LINE the key names, made against the
+other keys in the band, can catch that. That question has never been asked
+anywhere — until this file.
 
 That is the gap this file closes, and it is why the assertions below
 insist on a scenario where line 16 and line 18 are DIFFERENT numbers: on a
@@ -109,16 +123,40 @@ class _OrchestratorCase(unittest.TestCase):
     def _native(self) -> dict:
         return self.orch._compute_1040_pipeline(self._effective_scenario())
 
+    # Class-level cache of the WORKBOOK dict only. See `_both_paths`.
+    _workbook_cache: dict | None = None
+
     def _both_paths(self) -> tuple[dict, dict]:
         """(native, workbook) result dicts for the SAME effective scenario.
 
         Uses the orchestrator's own two entry points rather than a reassembled
         pipeline, for the same reason the parity battery does: the routing is
         part of what is under test.
+
+        THE WORKBOOK HALF IS CACHED ACROSS TESTS IN THIS CLASS, deliberately,
+        and the native half is NOT. Every test here needs the same TY2024
+        scenario computed through LibreOffice, which is a scarce global slot;
+        computing it once instead of once per test cuts this file's oracle-tier
+        cost by about two-thirds. The scenario is a module constant, so there
+        is nothing per-test for the workbook result to depend on.
+
+        THE CACHE CANNOT LET ONE TEST MASK ANOTHER, which is the property that
+        makes it safe rather than merely cheap:
+          - each caller gets a COPY, so a test that mutated its dict cannot
+            change what any other test sees (the values are scalars, so a
+            shallow copy is a full one here);
+          - the cache is only populated on SUCCESS, so if the workbook compute
+            raises, the next test retries it and fails on its own merits
+            instead of inheriting a poisoned entry; and
+          - the routing guard and the native compute still run per test, so
+            nothing about path selection is cached.
         """
         eff = self._effective_scenario()
-        return (self.orch._compute_1040_pipeline(eff),
-                self.orch._compute_1040_via_workbook(eff))
+        native = self.orch._compute_1040_pipeline(eff)
+        cls = type(self)
+        if cls._workbook_cache is None:
+            cls._workbook_cache = self.orch._compute_1040_via_workbook(eff)
+        return native, dict(cls._workbook_cache)
 
     def assert_line_16_meaning(self, results: dict, path: str) -> None:
         """`total_tax` is line 16 and `tax_plus_schedule2` is line 18, here.
