@@ -813,6 +813,43 @@ class F1040(FormMapping):
             # Retained for now; a later task retires it. After the repoint
             # above this is identical to `total_tax`.
             "total_tax_line16": "Tax_SubTotal",
+            # 1040 LINE 24 — "Add lines 22 and 23. This is your total tax."
+            # The `Tot_Tax` named range, present in all five workbooks:
+            #   2021 '1040'!AC65   2022 AC74   2023 AD80
+            #   2024 '1040'!AD83   2025 AL104
+            # Every year is `=SUM(<line 22>, <line 23>)`, where line 22 is
+            # `MAX(0, SUM(Tax, -<line 21 credits>))` and line 23 is
+            # `TotalOtherTaxes` (Schedule 2 Part II). Pinned per-year — cell,
+            # name resolution, and formula shape — by tests/
+            # test_f1040_mapping.py::TestF1040TotalTaxLiabilityLine24.
+            #
+            # WHO CONSUMES IT: Form 4868 line 4, "Estimate of Total Tax
+            # Liability", whose instruction names 1040 line 24 explicitly
+            # (pdfs/federal/2025/f4868.pdf). f4868 previously read `total_tax`
+            # raw, which is line 16, so line 4, the balance due AND the
+            # payment voucher all came out short by the whole of Schedule 2.
+            #
+            # HARVESTED, NOT COMPOSED, on this path — deliberately asymmetric
+            # with the native path, which has no line-24 producer and must
+            # compose. The harvest inherits what the workbook ACTUALLY
+            # computes (including NIIT, which the native side cannot), resolves
+            # by name so it survives vendor cell moves, and skips the
+            # arithmetic where composition goes wrong. See forms/f4868.py.
+            #
+            # ON THE `_line24` SUFFIX. `total_tax_line16` above is being
+            # retired on the grounds that suffixed keys invite drift; do NOT
+            # cite that retirement as grounds to drop this suffix. They are
+            # different situations. `total_tax_line16` is a DUPLICATE — it
+            # points at the same named range as `total_tax` and names the same
+            # quantity twice. `tax_liability_line24` names a DIFFERENT QUANTITY
+            # that has no other key. The suffix is doing semantic work, not
+            # disambiguating a duplicate.
+            #
+            # NO SEPARATE DIAGNOSTIC GUARD IS NEEDED for this key: the
+            # `deduction_diagnostic` refusal below fires in forms/f1040.py
+            # before any harvested tax figure is consumed, for every MFJ/MFS
+            # filer. Do not add a redundant one.
+            "tax_liability_line24": "Tot_Tax",
             # THE WORKBOOK'S OWN REFUSAL CHANNEL, and the ONLY OUTPUT key that
             # legitimately holds a STRING. `Deduction` is the Form 1040 line-12
             # CAPTION cell: on a return the sheet computed it names the
@@ -952,6 +989,12 @@ class F1040(FormMapping):
             # Retained for now; a later task retires it. After the repoint
             # above this is identical to `total_tax`. See the 2024 block.
             "total_tax_line16": "Tax_SubTotal",
+            # 1040 LINE 24 (total tax) — the `Tot_Tax` named range,
+            # '1040'!AL104 here. Consumed by Form 4868 line 4, harvested
+            # rather than composed, and the `_line24` suffix is load-bearing
+            # rather than a duplicate-disambiguator. See the 2024 block for
+            # all three arguments in full.
+            "tax_liability_line24": "Tot_Tax",
             # The workbook's own refusal channel — the line-12 CAPTION cell,
             # which holds a plain-English DIAGNOSTIC on any return the sheet
             # declined to compute (and blanks `Tax_SubTotal` when it does).
