@@ -188,12 +188,19 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
                         f"repoint this at a cell address — the address drifts "
                         f"every year. Find what the vendor renamed it to.",
                     )
-                    # And it must resolve to a real cell, not a dangling ref.
+                    # And it must be a SINGLE-AREA name: exactly one
+                    # destination entry. That is ALL this establishes — it does
+                    # NOT prove the name reaches a real cell. One entry can be
+                    # a multi-cell RANGE, and openpyxl yields an entry just as
+                    # happily for a sheet that does not exist. The existence
+                    # assertion above is the load-bearing one; this only rules
+                    # out the name growing extra areas.
                     destinations = list(
                         wb.defined_names["Deduction"].destinations)
                     self.assertEqual(
                         len(destinations), 1,
-                        f"{year} `Deduction` must resolve to exactly one cell",
+                        f"{year} `Deduction` must have exactly one "
+                        f"destination entry",
                     )
                 finally:
                     wb.close()

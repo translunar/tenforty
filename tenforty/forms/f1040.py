@@ -101,10 +101,13 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 # WHAT THE SHEET ACTUALLY DOES DIFFERS BY BRANCH — do not over-generalize this,
 # and see the per-branch note below. On the `Birthday_Needed` and
 # `FilingStatusError` branches it BLANKS `Tax_SubTotal` (Form 1040 LINE 16,
-# tenforty's `total_tax`) outright. On the other three it leaves line 16
-# computing but zeroes line 12, so line 16 is derived from a base the sheet
-# itself flagged as unusable. Refusing is right in all five cases; only the
-# reason differs.
+# tenforty's `total_tax`) outright. On the two remaining FILING-STATUS branches
+# it leaves line 16 computing but zeroes line 12, so line 16 is derived from a
+# base the sheet itself flagged as unusable. On `Manual Override` it does
+# NEITHER: lines 12 and 16 both compute exactly as they would on a clean
+# return, and we refuse because we cannot tell what that sheet state means —
+# not because the figures are known to be tainted. Refusing is right in all
+# five cases; only the reason differs.
 #
 # `Deduction` is the line-12 CAPTION cell, and it is NEVER EMPTY. Its IF-chain
 # has ELEVEN branches — five diagnostics and six ordinary labels — so "refuse on
@@ -117,8 +120,18 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 #
 # THE FIVE DIAGNOSTIC BRANCHES (verbatim, identical in all five workbooks),
 # with what each one actually does to the figures:
-#   "Manual Override"           <- AM46/AN62/AN65/AX78, a hand-entered override
-#                                  cell tenforty never writes. Line 16 computes.
+#   "Manual Override"           <- a hand-entered override cell tenforty never
+#                                  writes. It is a DIFFERENT CELL EACH YEAR, so
+#                                  listing them per year rather than as a slash
+#                                  run is what makes a missing year visible:
+#                                    2021 AM46   (caption `'1040'!$AJ$51`)
+#                                    2022 AM56   (caption `'1040'!$AJ$58`)
+#                                    2023 AN62   (caption `'1040'!$AK$64`)
+#                                    2024 AN65   (caption `'1040'!$AK$67`)
+#                                    2025 AX78   (caption `'1040'!$AU$91`)
+#                                  Lines 12 and 16 BOTH still compute; see the
+#                                  note below on why the caption does not even
+#                                  establish that line 12 was overridden.
 #   "Filing status error."      <- FilingStatusError (NumFileStatusBoxes>1).
 #                                  BLANKS `Tax_SubTotal`; zeroes line 12.
 #   "Birthdate(s) needed."      <- Birthday_Needed.
@@ -132,7 +145,13 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 # (plural, line-12 AMOUNT) guard is wider and covers four of the five. So the
 # caption is the widest signal available and the right thing to key on.
 # "Manual Override" is UNREACHABLE — tenforty never writes the override cells —
-# but it is deliberately NOT special-cased, for the reason above.
+# but it is deliberately NOT special-cased, for the reason above. Note also
+# that the caption's override cell is NOT the amount's override cell: 2022
+# (`'1040'!$AC$58`) and 2023 (`'1040'!$AD$64`) give `Deductions` no override
+# arm at all, and the three years that have one read a DIFFERENT cell from the
+# caption (2021 AM48 vs AM46, 2024 AN67 vs AN65, 2025 AX91 vs AX78). So a
+# "Manual Override" caption is evidence about an unrecognised sheet state, not
+# evidence that the line-12 AMOUNT was overridden.
 #
 # THE SIX LABEL BRANCHES, which must NOT refuse (seven strings — one branch is
 # worded differently in 2025 than in 2021-2024). Matched by EQUALITY after
@@ -196,10 +215,17 @@ _REFUSAL = (
     "applied deduction) AND blanks `Tax_SubTotal` — Form 1040 LINE 16, "
     "tenforty's `total_tax` — which the engine reads as None; refusing is what "
     "keeps that blank from being read as zero, which would answer \"your tax "
-    "is zero\" on a real return. On the remaining branches line 16 still "
-    "computes, but off a line 12 the sheet has zeroed or a hand-entered "
-    "override, so the number is derived from a base the sheet itself flagged. "
-    "Either way the figures are not ours to publish.\n"
+    "is zero\" on a real return. On the two FILING-STATUS branches line 16 "
+    "still computes, but off a line 12 the sheet has zeroed, so the number is "
+    "derived from a base the sheet itself flagged. On `Manual Override` the "
+    "sheet disturbs NEITHER line — lines 12 and 16 both compute normally, and "
+    "the caption does not even establish that line 12 was overridden, because "
+    "it tests a different cell from the one the line-12 amount reads (and in "
+    "2022 and 2023 that amount has no override arm at all). We refuse there "
+    "because we do not know what that sheet state means, NOT because those "
+    "figures are known to be tainted: an unrecognised state is exactly when "
+    "guessing is worst. In none of these cases are the figures ours to "
+    "publish.\n"
     "\n"
     "CAUSE: for MARRIED_JOINTLY and MARRIED_SEPARATE — which is every return "
     "that reaches this refusal today — tenforty supplies no spouse birthdate "
@@ -213,10 +239,12 @@ _REFUSAL = (
     "ON THE TWO BLANKING BRANCHES this refusal ALSO protects lines 17 and 18, "
     "which that same blank corrupts WITHOUT their going blank themselves and "
     "so without any other signal that they are wrong. Form 6251 takes "
-    "`Tax_SubTotal` as a "
-    "SUM operand (2021-2024) or through "
-    "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)` (2025), summing the "
-    "blank as 0; that understates regular tax and OVERSTATES the AMT, so line "
+    "`Tax_SubTotal` as a SUM operand in EVERY year, 2021 through 2025; 2025 "
+    "ADDITIONALLY routes it through "
+    "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)`, an explicit coercion "
+    "ALONGSIDE its SUM-operand reference rather than a replacement for it. "
+    "Both paths take the blank as 0; that understates regular tax and "
+    "OVERSTATES the AMT, so line "
     "17 (`schedule2_tax`) harvests a wrong NONZERO number on an AMT-bearing "
     "return. Line 18 is worse: `Tax` is `SUM(Tax_SubTotal, <line-17 cell>)` "
     "and spreadsheet SUM() IGNORES text, so a refused line 16 is silently "
