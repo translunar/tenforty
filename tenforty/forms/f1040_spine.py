@@ -500,6 +500,32 @@ def compute_spine(
     # join the FULL-liability subtraction inside `overpaid` (see below).
     total_tax = income_tax
 
+    # 1040 line 17 — "Amount from Schedule 2, line 3", i.e. the whole of
+    # Schedule 2 PART I. Part I has exactly two components: line 1 (Form 6251
+    # alternative minimum tax) and line 2 (Form 8962 excess-advance-PTC
+    # repayment). This assignment carries only the SECOND of them, because
+    # there is no Form 6251 module in `tenforty/forms/` and the native spine
+    # computes no federal AMT anywhere — AMT is zero here by ABSENCE, not by
+    # computation. Do NOT read this line as a claim that Part I is complete.
+    # The always-required `acknowledges_no_federal_amt` attestation
+    # (`tenforty/attestations.py`, `_ALWAYS_TAIL`) is what makes that gap
+    # explicit to the filer instead of silent; the two ship together on
+    # purpose, so the key's name stops overclaiming the day it gains a
+    # producer.
+    #
+    # ALWAYS A NUMBER, NEVER None. `f8962_repayment` defaults to 0 when the
+    # scenario carries no 1095-A (see its assignment above), and
+    # `filing/pdf.py::PdfFiller.resolve_fields` renders 0 but SKIPS None — so
+    # line 17 prints a literal "0" rather than going blank. The workbook path
+    # reaches the same convention from the other side, by normalizing a blank
+    # `Schedule2_Tax` harvest to 0 in `forms/f1040.py::compute`. Matching it
+    # here is the point: one key, one printed convention, on both paths.
+    schedule2_tax = f8962_repayment
+
+    # 1040 line 18 — "Add lines 16 and 17". Line 16 is `total_tax`; line 17 is
+    # `schedule2_tax` above. Inherits line 17's AMT gap, necessarily.
+    tax_plus_schedule2 = total_tax + schedule2_tax
+
     # -----------------------------------------------------------------------
     # Page 2 — Payments
     # -----------------------------------------------------------------------
@@ -696,6 +722,16 @@ def compute_spine(
         "taxable_income": taxable_income,
         # Tax
         "total_tax": total_tax,
+        # 1040 line 17 (Schedule 2 Part I) and line 18 (lines 16 + 17). Both
+        # are derived a few dozen lines above `total_tax`'s own assignment;
+        # read the comments there for the AMT gap and the print-"0"-not-blank
+        # convention. Before these two keys existed, lines 17 and 18 were
+        # mapped to PDF boxes in all five year blocks of `mappings/pdf_1040.py`
+        # and produced by nothing on the native path, so both printed BLANK on
+        # every 1040 the spine emitted — including returns that attach a
+        # Schedule 2 for an excess-APTC repayment.
+        "schedule2_tax": schedule2_tax,
+        "tax_plus_schedule2": tax_plus_schedule2,
         # Capital gain — oracle key + PDF alias.
         # schd_line16 is the TRUE, uncapped Schedule D line 16 total — the
         # form itself always reports the real net gain/loss, uncapped.

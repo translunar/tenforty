@@ -62,6 +62,7 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_railroad_retirement_benefits": False,
         "acknowledges_no_paid_family_leave_benefits": False,
         "acknowledges_no_capital_loss_carryforward": True,
+        "acknowledges_no_federal_amt": True,
     }
     for name in _UNCONDITIONAL_FIELDS:
         cfg[name] = False

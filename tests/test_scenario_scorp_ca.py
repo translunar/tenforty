@@ -59,6 +59,7 @@ _YAML_WITH_SCORP_NO_CA = textwrap.dedent("""\
       acknowledges_no_railroad_retirement_benefits: false
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
+      acknowledges_no_federal_amt: true
     s_corp_return:
       name: "Example S-Corp Inc."
       ein: "00-0000000"

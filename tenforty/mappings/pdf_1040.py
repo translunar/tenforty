@@ -7,8 +7,28 @@ identifying which 1040 line it corresponds to.
 
 Field names use the full path format:
     topmostSubform[0].Page1[0].f1_47[0]
+
+LINE 24'S COMPUTE KEY WAS RENAMED, DELIBERATELY: `total_tax_liability` ->
+`tax_liability_line24`. Both names existed at once and named the same quantity
+— 1040 line 24, total tax — `total_tax_liability` here in the PDF mapping and
+`tax_liability_line24` as the F1040 workbook-harvest OUTPUT key
+(`mappings/f1040.py`, <- the `Tot_Tax` named range) and as `forms/f4868.py`'s
+`_LINE_24_KEY`. A duplicate pair naming one quantity is how one name regrows
+two meanings; the sibling key `total_tax_line16` was retired in this same unit
+for exactly that shape, so minting a fresh instance of it here would have been
+indefensible. `tax_liability_line24` is the survivor because it is the name the
+harvest, `forms/f4868.py` and `tests/invariants.py` already use. THIS WAS
+DECIDED, NOT OVERLOOKED.
+
+Line 24 also had NO PRODUCER at all — neither path emitted either key — so it
+printed blank on every emitted 1040. `get_derivations` below supplies one; see
+its docstring for where the value comes from and why it is a derivation rather
+than a new spine output key.
 """
 
+from collections.abc import Callable, Mapping
+
+from tenforty.forms.f4868 import total_tax_liability_line_24
 from tenforty.mappings.registry import PdfFormMapping
 
 
@@ -131,8 +151,9 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "tax_after_credits": "topmostSubform[0].Page2[0].f2_08[0]",
             # Line 23: Other taxes from Schedule 2, line 21
             "other_taxes": "topmostSubform[0].Page2[0].f2_09[0]",
-            # Line 24: Total tax (add lines 22 and 23)
-            "total_tax_liability": "topmostSubform[0].Page2[0].f2_10[0]",
+            # Line 24: Total tax (add lines 22 and 23). Key renamed from
+            # `total_tax_liability` — see the module docstring.
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_10[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
@@ -290,8 +311,9 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "tax_after_credits": "topmostSubform[0].Page2[0].f2_08[0]",
             # Line 23: Other taxes from Schedule 2, line 21
             "other_taxes": "topmostSubform[0].Page2[0].f2_09[0]",
-            # Line 24: Total tax (add lines 22 and 23)
-            "total_tax_liability": "topmostSubform[0].Page2[0].f2_10[0]",
+            # Line 24: Total tax (add lines 22 and 23). Key renamed from
+            # `total_tax_liability` — see the module docstring.
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_10[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
@@ -453,8 +475,9 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "tax_after_credits": "topmostSubform[0].Page2[0].f2_08[0]",
             # Line 23: Other taxes from Schedule 2, line 21
             "other_taxes": "topmostSubform[0].Page2[0].f2_09[0]",
-            # Line 24: Total tax (add lines 22 and 23)
-            "total_tax_liability": "topmostSubform[0].Page2[0].f2_10[0]",
+            # Line 24: Total tax (add lines 22 and 23). Key renamed from
+            # `total_tax_liability` — see the module docstring.
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_10[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
@@ -606,8 +629,9 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "tax_after_credits": "topmostSubform[0].Page2[0].f2_13[0]",
             # Line 23: Other taxes from Schedule 2, line 21
             "other_taxes": "topmostSubform[0].Page2[0].f2_14[0]",
-            # Line 24: Total tax (add lines 22 and 23)
-            "total_tax_liability": "topmostSubform[0].Page2[0].f2_15[0]",
+            # Line 24: Total tax (add lines 22 and 23). Key renamed from
+            # `total_tax_liability` — see the module docstring.
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_15[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
@@ -752,8 +776,9 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "tax_after_credits": "topmostSubform[0].Page2[0].f2_14[0]",
             # Line 23: Other taxes from Schedule 2, line 21
             "other_taxes": "topmostSubform[0].Page2[0].f2_15[0]",
-            # Line 24: Total tax (add lines 22 and 23)
-            "total_tax_liability": "topmostSubform[0].Page2[0].f2_16[0]",
+            # Line 24: Total tax (add lines 22 and 23). Key renamed from
+            # `total_tax_liability` — see the module docstring.
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_16[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
@@ -797,4 +822,57 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "estimated_tax_penalty": "topmostSubform[0].Page2[0].f2_36[0]",
         },
     }
+
+    @classmethod
+    def get_derivations(
+        cls, year: int,
+    ) -> dict[str, Callable[[Mapping[str, object]], object]]:
+        """PDF field path -> lambda(values) for cells no result key fills.
+
+        ONE ENTRY: 1040 line 24, total tax. It is a derivation rather than a
+        new spine output key, and the choice was between exactly those two:
+
+        - The single implementation of line-24 arithmetic already exists, as
+          `forms/f4868.py::total_tax_liability_line_24`, and it already serves
+          BOTH paths: it returns the workbook's harvested `tax_liability_line24`
+          when present and otherwise composes from the native spine's parts via
+          `compose_line_24` (whose zero floor sits on line 18 minus credits,
+          BEFORE Schedule 2 Part II is added — get that order backwards and the
+          result UNDERSTATES; the shape is pinned in the workbook itself by
+          tests/test_f1040_mapping.py::TestF1040TotalTaxLiabilityLine24).
+          Calling it here leaves that one implementation one implementation.
+          Re-deriving the sum in the spine would have made two copies of the
+          floor-order trap, one of which would eventually be fixed alone.
+
+        - Emitting `tax_liability_line24` from the native spine INSTEAD would
+          have broken a live discriminator: `forms/f4868.py` and
+          `tests/invariants.py` both test that key's PRESENCE to tell the
+          workbook path from the native one. Publishing it on the native path
+          too would silently route native returns down the harvest branch and
+          turn the invariant's independent-oracle comparison into a comparison
+          of our own answer with itself.
+
+        A derivation is applied AFTER the 1:1 mapping pass and overwrites it
+        (`filing/pdf.py::PdfFiller.resolve_fields`), so the mapped
+        `tax_liability_line24` entry above and this derivation cannot disagree:
+        on the workbook path the function returns that very harvested value.
+        The mapping entry is kept so line 24's box stays enumerable as a mapped
+        field, and so the workbook path still fills it if a caller renders
+        without derivations.
+
+        WHAT LINE 24 IS AND IS NOT, on the native path: the composition omits
+        AMT (no Form 6251 in `tenforty/forms/` — the always-required
+        `acknowledges_no_federal_amt` attestation is the guard) and NIIT (no
+        Form 8960; ticket (s)). The workbook harvest has neither gap. That
+        asymmetry is documented at the composition site too; see
+        `total_tax_liability_line_24`.
+
+        Keyed off `_MAPPINGS` rather than a literal field path so the
+        derivation cannot drift from the box the same key maps to — the line-24
+        field path is f2_10 in 2021-2023, f2_15 in 2024 and f2_16 in 2025.
+        """
+        return {
+            cls.get_mapping(year)["tax_liability_line24"]:
+                total_tax_liability_line_24,
+        }
 
