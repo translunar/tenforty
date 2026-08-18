@@ -119,6 +119,54 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     if translated.get("f8959_tax_total") is None:
         translated["f8959_tax_total"] = 0
 
+    # schedule2_tax (1040 line 17 = Schedule 2 line 3, Part I: AMT + excess
+    # APTC): normalize a blank harvest to numeric 0 so line 17 prints "0" in
+    # all five years. The `Schedule2_Tax` named range's formula DRIFTED between
+    # vendor workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric
+    # 0 when Part I is empty), 2024-2025 wrap the same sum in
+    # `IF(SUM(...)>0, SUM(...), "")` and go blank instead. The engine reads a
+    # blank cell as None and filing/pdf.py renders 0 but SKIPS None, so absent
+    # this coercion an empty Schedule 2 Part I prints "0" on a 2023 1040 and
+    # nothing on a 2024 one. We impose the convention on the read side rather
+    # than let vendor formula drift reach a filed form.
+    #
+    # WHY THIS COERCION IS SAFE — both halves are load-bearing:
+    #   1. The cell's OWN formula defines blank AS zero. `IF(SUM>0, SUM, "")`
+    #      emits "" exactly where the sum is not positive; both components
+    #      (Form 6251 AMT, which is itself `IF(M64="",0,M64)`, and the 8962
+    #      excess-APTC repayment) are non-negative, so blank means the sum is
+    #      0. The blank is not missing data — it is the vendor's way of
+    #      WRITING zero, and normalizing recovers the cell's stated meaning.
+    #   2. `Schedule2_Tax` is NOT one of the five cells gated by the workbook's
+    #      `Birthday_Needed` diagnostic. Those five all live on the '1040'
+    #      sheet; `Schedule2_Tax` is 'Sch. 2'!AC13 (2021-23) / 'Sch. 2'!AD35
+    #      (2024-25) and no diagnostic short-circuits it. So its blank can
+    #      never be a REFUSAL in disguise. (The one diagnostic anywhere in its
+    #      dependency chain, `FilingStatusError`, blanks the AMT *component*
+    #      rather than this cell; it is `NumFileStatusBoxes>1`, structurally
+    #      unreachable because tenforty writes exactly one status box; and
+    #      when it does fire it ALSO blanks `Tax_SubTotal`, so it surfaces at
+    #      the guarded cell instead of being swallowed here.)
+    #
+    # THIS IS NOT A PRECEDENT FOR `None -> 0` ANYWHERE ELSE, and specifically
+    # NOT for `total_tax` / `Tax_SubTotal`, which is the visually identical
+    # coercion one line away in meaning and a serious defect. `Tax_SubTotal`
+    # IS one of the five `Birthday_Needed`-gated cells, and that flag is
+    # unconditionally TRUE for every MFJ/MFS return (tenforty has no
+    # spouse-birthdate concept). Its blank therefore means "the workbook
+    # REFUSED to compute your tax", and writing 0 there would silently answer
+    # "your tax is zero" on a real return. `total_tax` is handled the opposite
+    # way — refuse loudly at harvest, never coerce. The distinction is not
+    # stylistic: the test for a blank is whether the CELL ITSELF defines blank
+    # as zero (coerce) or whether some diagnostic upstream declined to answer
+    # (refuse). Do not cite this block for a cell in the second category.
+    #
+    # Deliberately NOT extended to `tax_plus_schedule2` (line 18, the `Tax`
+    # named range): `Tax` is `SUM(Tax_SubTotal, Schedule2_Tax)`, so a blank
+    # there is the refusal case above, not a definitional zero.
+    if translated.get("schedule2_tax") is None:
+        translated["schedule2_tax"] = 0
+
     if "agi" in translated:
         translated["agi_page2"] = translated["agi"]
 
