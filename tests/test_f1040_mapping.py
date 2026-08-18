@@ -149,6 +149,55 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
                     "Deduction",
                 )
 
+    def test_deduction_named_range_exists_in_every_workbook(self):
+        """The mapping VALUE being right is not the same as the NAME existing.
+
+        This is the assertion that keeps the refusal guard from quietly
+        becoming dead code while its own tests certify it — the exact failure
+        mode this unit exists to remove, turned on the guard itself.
+
+        `oracle/engine.py::_read_outputs` resolves an OUTPUT by looking its
+        value up in `wb.defined_names`, falling back to SHEET_MAP, and then
+        SILENTLY assigning None (`engine.py:192`). So if a future year's
+        workbook ships without a `Deduction` name, the key is still PRESENT in
+        the harvest, carrying None; `forms/f1040.py::workbook_refusal` reads
+        that as "no diagnostic" and passes — by design, since an absent
+        diagnostic must not refuse — and refused blanks get read as data
+        again, with every non-oracle test still green and the sibling
+        `test_deduction_diagnostic_is_harvested_by_name_every_year` above
+        still passing, because the MAPPING would be untouched.
+
+        Asserting resolution against the real workbooks is the only thing that
+        catches that. Same shape as `TestF1040Form8962Mapping::
+        test_ptc_output_named_ranges` and `TestF1040EstimatedTaxPayments::
+        test_named_range_resolves_in_every_workbook` below.
+        """
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                workbook_path = (
+                    SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                )
+                wb = openpyxl.load_workbook(workbook_path, read_only=False)
+                try:
+                    self.assertIn(
+                        "Deduction", wb.defined_names,
+                        f"{year} is missing the `Deduction` named range. The "
+                        f"harvest would fall through to None "
+                        f"(oracle/engine.py:192), silently disarming the "
+                        f"workbook-refusal guard in forms/f1040.py. Do NOT "
+                        f"repoint this at a cell address — the address drifts "
+                        f"every year. Find what the vendor renamed it to.",
+                    )
+                    # And it must resolve to a real cell, not a dangling ref.
+                    destinations = list(
+                        wb.defined_names["Deduction"].destinations)
+                    self.assertEqual(
+                        len(destinations), 1,
+                        f"{year} `Deduction` must resolve to exactly one cell",
+                    )
+                finally:
+                    wb.close()
+
 
 class TestF1040MappingValidity(unittest.TestCase):
     """Pre-flight checks: every direct cell ref in SHEET_MAP must point at a
