@@ -813,6 +813,26 @@ class F1040(FormMapping):
             # Retained for now; a later task retires it. After the repoint
             # above this is identical to `total_tax`.
             "total_tax_line16": "Tax_SubTotal",
+            # THE WORKBOOK'S OWN REFUSAL CHANNEL, and the ONLY OUTPUT key that
+            # legitimately holds a STRING. `Deduction` is the Form 1040 line-12
+            # CAPTION cell: on a return the sheet computed it names the
+            # deduction SOURCE ("Standard Deduction", "Schedule A", ...), but
+            # on one it declined to compute it holds a plain-English DIAGNOSTIC
+            # ("Birthdate(s) needed.", "Filing status error.", ...). In those
+            # branches the sheet also forces line 12 to 0 and blanks
+            # `Tax_SubTotal` (line 16), so harvesting the number WITHOUT the
+            # diagnostic reads a REFUSAL as data. forms/f1040.py::
+            # workbook_refusal turns it back into a refusal; see that function
+            # for the branch enumeration and the fail-closed rule.
+            #
+            # By NAME, never by address: this cell moves every single year
+            # (2021 '1040'!AJ51, 2022 AJ58, 2023 AK64, 2024 AK67, 2025 AU91)
+            # while the name resolves in all five workbooks. Mind the
+            # singular/plural trap -- `Deductions` is a DIFFERENT named range
+            # holding the line-12 DOLLAR AMOUNT (the value the diagnostic
+            # zeroes); `Deduction` is the caption. Pinned per-year by
+            # tests/test_f1040_mapping.py::TestF1040TaxBandOutputsEveryYear.
+            "deduction_diagnostic": "Deduction",
             "federal_withheld": "W2_FedTaxWH",
             "additional_medicare_withheld": "F8959_WH",
             "f8959_tax_total": "F8959_Tax",
@@ -932,6 +952,14 @@ class F1040(FormMapping):
             # Retained for now; a later task retires it. After the repoint
             # above this is identical to `total_tax`. See the 2024 block.
             "total_tax_line16": "Tax_SubTotal",
+            # The workbook's own refusal channel — the line-12 CAPTION cell,
+            # which holds a plain-English DIAGNOSTIC on any return the sheet
+            # declined to compute (and blanks `Tax_SubTotal` when it does).
+            # The only OUTPUT key that legitimately holds a string. Harvested
+            # by NAME because the address drifts every year (2025 is
+            # '1040'!AU91). See the 2024 block for the full rationale, and
+            # forms/f1040.py::workbook_refusal for the decision it feeds.
+            "deduction_diagnostic": "Deduction",
             "federal_withheld": "W2_FedTaxWH",
             # Form 8959 Part III: Additional Medicare Tax withheld by employers
             # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).
