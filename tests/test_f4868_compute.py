@@ -20,6 +20,7 @@ from tenforty.models import (
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
+from tests.invariants import expected_4868_pdf_values
 
 
 def _scenario(**overrides):
@@ -355,6 +356,129 @@ class F4868NativePathLine24Tests(unittest.TestCase):
     def test_line_5_is_the_1040_total_payments(self):
         self.assertEqual(
             self.f4868["total_payments"], self.results["total_payments"])
+
+
+class Expected4868PdfValuesTests(unittest.TestCase):
+    """`tests/invariants.py::expected_4868_pdf_values`, on the standard gate.
+
+    That function is the oracle behind `assert_4868_fills_correctly`, and it
+    BRANCHES BY PATH: on the workbook path it compares against the harvested
+    `Tot_Tax`, on the native path against production's composition. Its three
+    live callers are all `@needs_libreoffice`, and — verified against the
+    fixtures and `orchestrator._scenario_in_spine_scope` — NONE of them
+    currently reaches the workbook branch:
+
+      - `test_e2e_simple_w2.py` (simple_w2.yaml) and `test_e2e_itemized.py`
+        (itemized_deductions.yaml) are SINGLE filers with
+        `_scenario_in_spine_scope` True, so they route NATIVE.
+      - `test_deduction_outputs.py::TestStandardDeductionMFJ` (mfj_simple.yaml)
+        is the only workbook-path caller, and it is `xfail(strict=True)`,
+        dying in `setUpClass` on the `Deduction`-diagnostic refusal before any
+        assertion runs.
+
+    So the branch that carries the honest, independent oracle is the one no
+    executing test touches. This class closes that: `expected_4868_pdf_values`
+    is a pure dict->dict function, so injected dicts exercise both arms here,
+    on the always-running `-m "not oracle"` gate, with no LibreOffice. Guard
+    and oracle LOGIC belongs on that gate; only soffice plumbing may sit
+    behind the oracle marker.
+    """
+
+    # A harvest that DISAGREES with the composition of its sibling keys, in
+    # exactly the shape the real disagreement takes: the workbook's line 23
+    # (`TotalOtherTaxes`) carries self-employment tax and NIIT, for which the
+    # native composition has no term at all, in all five workbook years.
+    _NIIT_AND_SE_TAX = 6_500
+
+    def _workbook_results(self) -> dict:
+        parts = {"total_tax": 69_035, "f8962_repayment": 4_800,
+                 "f8959_tax_total": 900, "total_payments": 60_000}
+        return {
+            "tax_liability_line24": (
+                69_035 + 4_800 + 900 + self._NIIT_AND_SE_TAX),
+            **parts,
+        }
+
+    def _native_results(self) -> dict:
+        return {k: v for k, v in self._workbook_results().items()
+                if k != "tax_liability_line24"}
+
+    def test_workbook_branch_uses_the_harvested_tot_tax(self):
+        got = expected_4868_pdf_values(self._workbook_results())
+        self.assertEqual(got["estimated_total_tax"], "81235")
+        self.assertEqual(got["balance_due"], "21235")
+
+    def test_native_branch_uses_the_composition(self):
+        got = expected_4868_pdf_values(self._native_results())
+        self.assertEqual(got["estimated_total_tax"], "74735")
+        self.assertEqual(got["balance_due"], "14735")
+
+    def test_workbook_branch_differs_from_the_native_composition(self):
+        """THE assertion the branch exists for.
+
+        The two dicts differ ONLY by the presence of `tax_liability_line24`.
+        If this helper ever stopped honouring the harvest — the same silent
+        fallback that `TestF1040TotalTaxLiabilityLine24::
+        test_named_range_exists_in_every_workbook` guards on the mapping side
+        — the two would collapse to the same number and the oracle would go
+        on passing while silently checking the wrong quantity.
+
+        Both sides are pinned to their actual values as well as being asserted
+        unequal, so a change that accidentally equalises them fails with the
+        numbers rather than a bare NotEqual.
+        """
+        workbook = expected_4868_pdf_values(self._workbook_results())
+        native = expected_4868_pdf_values(self._native_results())
+        self.assertNotEqual(
+            workbook["estimated_total_tax"], native["estimated_total_tax"])
+        self.assertEqual(workbook["estimated_total_tax"], "81235")
+        self.assertEqual(native["estimated_total_tax"], "74735")
+        self.assertEqual(
+            int(workbook["estimated_total_tax"])
+            - int(native["estimated_total_tax"]),
+            self._NIIT_AND_SE_TAX,
+        )
+
+    def test_rounds_the_whole_value_once_not_each_part(self):
+        """Matches the RENDERER, which rounds once.
+
+        `filing/pdf.py::PdfFiller._render_scalar` is `str(irs_round(value))`,
+        so the printed figure is one half-up rounding of the whole amount.
+        69,035.4 + 4,800.4 + 900.4 = 74,736.2 -> 74,736. The old helper
+        rounded each part first and would print 74,735 — a dollar low.
+
+        (This is NOT because the workbook rounds the total. It does not:
+        `Tot_Tax` is a bare `SUM(<line 22>, <line 23>)` with no `ROUND` in any
+        of the five years.)
+        """
+        got = expected_4868_pdf_values({
+            "total_tax": 69_035.4,
+            "f8962_repayment": 4_800.4,
+            "f8959_tax_total": 900.4,
+            "total_payments": 60_000,
+        })
+        self.assertEqual(got["estimated_total_tax"], "74736")
+
+    def test_rendering_is_irs_half_up_not_bankers(self):
+        # Python's built-in round() is half-to-even and gives 74,734 here;
+        # irs_round gives 74,735. The old helper used int(round(...)).
+        got = expected_4868_pdf_values(
+            {"tax_liability_line24": 74_734.5, "total_payments": 0})
+        self.assertEqual(got["estimated_total_tax"], "74735")
+
+    def test_refund_case_floors_the_balance_at_zero(self):
+        got = expected_4868_pdf_values(
+            {"total_tax": 3_000, "total_payments": 5_000})
+        self.assertEqual(got["balance_due"], "0")
+        self.assertEqual(got["amount_paying_with_extension"], "0")
+
+    def test_missing_line_24_raises_rather_than_asserting_zero_owed(self):
+        # Inherited from compute_balance_due: a results dict with no tax at
+        # all must not quietly produce a "$0 balance due" expectation that a
+        # broken emit would then match.
+        with self.assertRaises(ValueError) as ctx:
+            expected_4868_pdf_values({"total_payments": 5_000})
+        self.assertIn("total_tax", str(ctx.exception))
 
 
 class ExtensionPaymentFieldAbsenceTests(unittest.TestCase):
