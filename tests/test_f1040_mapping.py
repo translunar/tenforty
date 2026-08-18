@@ -65,7 +65,6 @@ class TestF1040Outputs2025(unittest.TestCase):
         # Part I. See tenforty/mappings/f1040.py OUTPUTS for the rationale and
         # TestF1040TaxBandOutputsEveryYear for the all-years pin.
         self.assertEqual(outputs["total_tax"], "Tax_SubTotal")
-        self.assertEqual(outputs["total_tax_line16"], "Tax_SubTotal")
         self.assertEqual(outputs["federal_withheld"], "W2_FedTaxWH")
         self.assertEqual(outputs["overpaid"], "Overpaid")
 
@@ -117,6 +116,37 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertEqual(
                     F1040.get_outputs(year)["total_tax"], "Tax_SubTotal")
+
+    def test_total_tax_line16_is_absent_from_every_year(self):
+        """`total_tax_line16` must not exist on any year. It was a DUPLICATE
+        of `total_tax` — both pointed at the `Tax_SubTotal` named range and
+        named the same quantity, IRS 1040 line 16.
+
+        Its absence is PINNED rather than assumed because a duplicate key is
+        the mechanism by which the semantic fork silently returns: while
+        `total_tax` meant line 16 on the native spine and line 18 on the
+        workbook, this key existed solely so the parity battery could compare
+        like with like. Two names for one quantity means someone can repoint
+        one and not the other, and tenforty is back to one key with two
+        meanings — with every path still self-consistent and no test noticing,
+        which is exactly how the original fork survived.
+
+        Checked on all five years' RESOLVED outputs, not just the two explicit
+        OUTPUTS blocks: 2023 inherits 2024, 2022 inherits 2023 and 2021
+        inherits 2022 via `F1040.inherit` (a plain dict-merge that can add but
+        never remove), so re-adding the key to either explicit block would
+        propagate down the chain. The per-year loop is what proves that.
+        """
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                self.assertNotIn(
+                    "total_tax_line16", F1040.get_outputs(year),
+                    f"{year} carries `total_tax_line16`, a retired duplicate "
+                    f"of `total_tax`. Both name IRS 1040 line 16; use "
+                    f"`total_tax`. For line 17 use `schedule2_tax`, for line "
+                    f"18 `tax_plus_schedule2`, for line 24 "
+                    f"`tax_liability_line24`.",
+                )
 
     def test_schedule2_and_line18_keys_have_workbook_producers(self):
         """Both keys are mapped to PDF boxes in all five year blocks of
