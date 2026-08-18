@@ -788,26 +788,24 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
-            # `total_tax` INTENTIONALLY stays the `Tax` named range, which is
-            # SUM(Tax_SubTotal, Schedule2_Tax) — i.e. Schedule-2-INCLUSIVE. The
-            # production workbook-FALLBACK path (out-of-native-spine filers:
-            # MFJ/EIC) feeds this into Form 4868's balance-due, which must be
-            # computed against FULL liability including Schedule 2; line-16-only
-            # would understate a fallback filer's balance due. Two extra
-            # reasons NOT to point this at `Tax_SubTotal`: (1) `Tax`'s SUM
-            # numeric-coerces a blank `Tax_SubTotal` (the AL96 formula can
-            # evaluate to "") to 0, so `Tax` is always numeric where a raw
-            # `Tax_SubTotal` read can surface None; (2) the native spine and
-            # this fallback serve different consumers with different-but-correct
-            # semantics and must not be unified. The line-16-only quantity the
-            # parity test needs is exposed SEPARATELY as `total_tax_line16`
-            # below — see test_f1040_spine_oracle.py's parity loop.
-            "total_tax": "Tax",
-            # Line-16 tax ONLY (pre-Schedule-2), for the native-vs-workbook
-            # PARITY comparison — the native spine's `total_tax` is line-16-only
-            # by design (Sch 2 joins `overpaid`, not `total_tax`), and 1040-X
-            # line 6 composes from this line-16 base. NOT consumed in production;
-            # only test_f1040_spine_oracle.py reads it.
+            # `total_tax` IS IRS Form 1040 LINE 16, on every path. The native
+            # spine emits line-16 income tax under this key (f1040_spine.py),
+            # every year block of pdf_1040.py maps it to the line-16 box, and
+            # f1040x line 6 composes on a line-16 base (it adds Schedule 2
+            # Part I itself). This mapping formerly pointed at `Tax`, which is
+            # line 18 (`SUM(Tax_SubTotal, Schedule2_Tax)`) — that printed an
+            # overstated line 16 whenever Schedule 2 Part I was nonzero and
+            # made f1040x double-count the excess-APTC repayment.
+            "total_tax": "Tax_SubTotal",
+            # Line 17 — Schedule 2 line 3 (Part I: AMT + excess APTC) — and
+            # line 18 — "Add lines 16 and 17". Both keys were mapped to their
+            # PDF boxes but produced by nothing, so both lines printed blank
+            # on every emitted 1040. `Tax` is exactly line 18, so it is the
+            # honest producer for `tax_plus_schedule2`.
+            "schedule2_tax": "Schedule2_Tax",
+            "tax_plus_schedule2": "Tax",
+            # Retained for now; a later task retires it. After the repoint
+            # above this is identical to `total_tax`.
             "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             "additional_medicare_withheld": "F8959_WH",
@@ -917,14 +915,16 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
-            # `total_tax` stays `Tax` (Schedule-2-INCLUSIVE) — see the 2024
-            # block for the full rationale (fallback 4868 balance-due needs full
-            # liability; `Tax`'s SUM masks a blank `Tax_SubTotal`; paths serve
-            # different consumers). The line-16-only quantity for the parity
-            # test is exposed separately as `total_tax_line16`.
-            "total_tax": "Tax",
-            # Line-16 tax ONLY (pre-Schedule-2), parity-comparison read only —
-            # see the 2024 block.
+            # `total_tax` IS IRS 1040 line 16 (`Tax_SubTotal`) — see the 2024
+            # block for the full rationale. It formerly pointed at `Tax`, which
+            # is line 18.
+            "total_tax": "Tax_SubTotal",
+            # Lines 17 and 18 — previously orphan keys with no producer, so both
+            # lines printed blank. See the 2024 block.
+            "schedule2_tax": "Schedule2_Tax",
+            "tax_plus_schedule2": "Tax",
+            # Retained for now; a later task retires it. After the repoint
+            # above this is identical to `total_tax`. See the 2024 block.
             "total_tax_line16": "Tax_SubTotal",
             "federal_withheld": "W2_FedTaxWH",
             # Form 8959 Part III: Additional Medicare Tax withheld by employers

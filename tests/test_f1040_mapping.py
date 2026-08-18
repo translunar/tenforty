@@ -59,16 +59,35 @@ class TestF1040Outputs2025(unittest.TestCase):
         outputs = F1040.get_outputs(2025)
         self.assertEqual(outputs["agi"], "Adj_Gross_Inc")
         self.assertEqual(outputs["taxable_income"], "Taxable_Inc")
-        # `total_tax` INTENTIONALLY points at `Tax` (Schedule-2-INCLUSIVE) — the
-        # production workbook-fallback consumer (Form 4868 balance-due) needs
-        # full liability. The line-16-only quantity for native-vs-workbook
-        # parity is a SEPARATE key, `total_tax_line16` → `Tax_SubTotal`. The two
-        # are deliberately distinct; do not "unify" them. See
-        # tenforty/mappings/f1040.py OUTPUTS and test_f1040_spine_oracle.py.
-        self.assertEqual(outputs["total_tax"], "Tax")
+        # `total_tax` is IRS 1040 line 16 (`Tax_SubTotal`) on every path. It
+        # formerly pointed at `Tax`, which is line 18 = line 16 + Schedule 2
+        # Part I. See tenforty/mappings/f1040.py OUTPUTS for the rationale and
+        # test_total_tax_is_line_16_on_every_year for the per-year pin.
+        self.assertEqual(outputs["total_tax"], "Tax_SubTotal")
         self.assertEqual(outputs["total_tax_line16"], "Tax_SubTotal")
         self.assertEqual(outputs["federal_withheld"], "W2_FedTaxWH")
         self.assertEqual(outputs["overpaid"], "Overpaid")
+
+    def test_total_tax_is_line_16_on_every_year(self):
+        """`total_tax` means IRS 1040 line 16 on every path. The workbook
+        previously mapped it to `Tax` (line 18 = line 16 + Schedule 2 Part I),
+        which printed an overstated line 16 and double-counted excess APTC
+        through f1040x line 6. Pinned per-year: 2023/2022/2021 inherit these
+        OUTPUTS, so a regression in the inheritance chain surfaces here."""
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertEqual(
+                    F1040.get_outputs(year)["total_tax"], "Tax_SubTotal")
+
+    def test_schedule2_and_line18_keys_have_workbook_producers(self):
+        """Both keys are mapped to PDF boxes in all five year blocks of
+        pdf_1040.py but had NO producer on either path, so lines 17 and 18
+        printed blank on every emitted 1040. This wires the workbook side."""
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                outputs = F1040.get_outputs(year)
+                self.assertEqual(outputs["schedule2_tax"], "Schedule2_Tax")
+                self.assertEqual(outputs["tax_plus_schedule2"], "Tax")
 
     def test_schedule_e_output(self):
         outputs = F1040.get_outputs(2025)
