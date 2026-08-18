@@ -142,10 +142,10 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
                 self.assertNotIn(
                     "total_tax_line16", F1040.get_outputs(year),
                     f"{year} carries `total_tax_line16`, a retired duplicate "
-                    f"of `total_tax`. Both name IRS 1040 line 16; use "
-                    f"`total_tax`. For line 17 use `schedule2_tax`, for line "
-                    f"18 `tax_plus_schedule2`, for line 24 "
-                    f"`tax_liability_line24`.",
+                    "of `total_tax`. Both name IRS 1040 line 16; use "
+                    "`total_tax`. For line 17 use `schedule2_tax`, for line "
+                    "18 `tax_plus_schedule2`, for line 24 "
+                    "`tax_liability_line24`.",
                 )
 
     def test_schedule2_and_line18_keys_have_workbook_producers(self):
