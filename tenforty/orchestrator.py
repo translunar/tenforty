@@ -2121,6 +2121,10 @@ class ReturnOrchestrator:
         (tenforty's rendering of the IRS Part I / Part II filing threshold;
         on ``>=`` versus the IRS's "over $1,500" wording see unit (p) below).
 
+        In these docstrings a single parenthesised letter names an
+        internally-tracked follow-up work item, glossed at its first mention.
+        (p) is the ``>=`` $1,500 versus IRS "over $1,500" threshold question.
+
         "Total" means the 1040 line 2b / 3b TOTAL across every source -- 1099
         plus the K-1 conduit components (IRC 1366(b)) -- not the 1099 slice
         alone. Summing only the 1099s (the historic behavior, which this
@@ -2170,7 +2174,8 @@ class ReturnOrchestrator:
         follow-up unit (p), which owns it.
 
         The 1040-vs-Schedule-B rounding split is likewise real and
-        pre-existing, chartered as follow-up unit (n). Whichever convention
+        pre-existing, chartered as follow-up unit (n) -- the 1099 leg's
+        round-once-over-the-raw-sum convention. Whichever convention
         (n) settles on, this gate keeps tracking lines 2b/3b by reference and
         needs no edit -- which is the actual value of reading by reference.
 
@@ -2190,7 +2195,8 @@ class ReturnOrchestrator:
 
         That gap is PRE-EXISTING -- this method's change did not create it and
         cannot close it, because closing it means teaching the workbook path
-        about K-1 conduit income. It is chartered as follow-up unit (r). Every
+        about K-1 conduit income. It is chartered as follow-up unit (r) --
+        the XLSX workbook path's missing K-1 interest/dividend support. Every
         test covering this gate is a single-filer native-path scenario; there
         is deliberately no test asserting the workbook-path behavior, because
         asserting it would bless it.

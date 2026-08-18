@@ -372,7 +372,10 @@ class K1OrdinaryIncomeRoundingMatchesScheduleBTests(unittest.TestCase):
 #
 # That is PRE-EXISTING and out of this unit's scope — reaching it means
 # teaching the workbook path about K-1 conduit income. It is chartered as
-# follow-up unit (r). Nothing below asserts anything about the workbook path,
+# follow-up unit (r) — the XLSX workbook path's missing K-1
+# interest/dividend support. (In this file a single parenthesised letter
+# names an internally-tracked follow-up work item, glossed at its first
+# mention.) Nothing below asserts anything about the workbook path,
 # deliberately: asserting the current behavior would bless it. Read every
 # "must" below as "must, on the native spine".
 # ---------------------------------------------------------------------------
@@ -603,11 +606,12 @@ class K1VersusForm1099ChannelEquivalenceTests(_OrchestratorTestCase):
        Same root cause as the cross-path gap documented on
        ``K1ScheduleBEmitPathAgreesWith1040Tests`` (which is the single place
        the condition and its domain of validity are stated), and chartered to
-       the same follow-up unit (n). Both
-       fixtures below are whole-dollar, which is why the equality holds
-       here; unlike the cross-path class this one has no guard asserting
-       that, so a future editor adding cents gets a bare inequality. Worth
-       adding a guard if this class ever grows fractional fixtures.
+       the same follow-up unit (n) — the 1099 leg's
+       round-once-over-the-raw-sum convention. Both fixtures below are
+       whole-dollar, which is why the equality holds here; unlike the
+       cross-path class this one has no guard asserting that, so a future
+       editor adding cents gets a bare inequality. Worth adding a guard if
+       this class ever grows fractional fixtures.
 
     Both scenarios (all figures synthetic/generic) are 2025 single filers on
     the standard deduction with the SAME ``TaxReturnConfig`` — including the
@@ -756,12 +760,26 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
         bases, plus every cent combination for three payers at one base.
 
     ⚠️ DOMAIN OF VALIDITY — the rule above is a statement about DECIMAL
-    arithmetic, and this code does not do decimal arithmetic. Both legs sum
-    Python floats, and an amount like 236.67 has no exact double. So when
-    sum(e_i) lands EXACTLY on ±0.50 — on the boundary the rule names — the
-    binary representation decides the outcome rather than the rule, and it
-    decides BOTH WAYS. Both rows below are real measurements on the native
-    path, single filer, 1099-INTs only, no K-1:
+    arithmetic, and this code does not do decimal arithmetic. EXACTLY ONE of
+    the two legs sums Python floats: the 1099 leg of
+    ``compute_income_preamble``, ``irs_round(sum(f.interest ...))``. Schedule
+    B rounds each payer to an int first and sums those ints, which is exact,
+    and so does the 1040's own K-1 sub-leg. One float sum is enough, because
+    an amount like 236.67 has no exact double, so the float sum can land a
+    hair short of the exact decimal sum.
+
+    Where that matters is a .50 boundary — so the fragile case is the EXACT
+    DECIMAL SUM having fractional part .50, equivalently sum(e_i) being a
+    HALF-INTEGER. Those are the same condition: sum(e_i) is by definition
+    sum(irs_round(a_i)) - sum(a_i), an integer minus the exact sum, so it is
+    a half-integer exactly when the exact sum's fractional part is .50.
+    There the binary representation decides the outcome rather than the rule,
+    and it decides BOTH WAYS. ±0.50 is the SMALLEST half-integer, not the
+    only one, and the rule's two clauses are exposed at different ones: the
+    AGREE/diverge frontier sits at ±0.50, which is what the first two rows
+    below flip, while the divergence-SIZE clause is exposed at every
+    half-integer, which is what the third row moves. All three are real
+    measurements on the native path, single filer, 1099-INTs only, no K-1:
 
         three @ 236.67 / 9,468.63 / 4,113.20
             exact sum(e_i) = +0.50, so the rule predicts AGREE
@@ -771,6 +789,13 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
             exact sum(e_i) = -0.50, so the rule predicts DIVERGE
             actual: 1040 line 2b = 13,803   Sch B line 4 = 13,803  -> AGREE
             (the float sum is 13803.499999999998, not 13803.50)
+        six @ 14,843.22 / 17,204.10 / 19,412.44 / 4,840.33 / 6,371.24 /
+             955.17
+            exact sum(e_i) = -1.50 — a half-integer, but NOT ±0.50 — so the
+            rule predicts a divergence of 2 dollars
+            actual: 1040 line 2b = 63,626   Sch B line 4 = 63,625  -> 1
+            (the float sum is 63626.49999999999, not 63626.50; six payers
+             is inside INTEREST_MAX_ROWS, so this row is on the emit path)
 
     WHICH float sums fall short of their decimal value is deliberately NOT
     characterised here. Nobody has measured it, and stating more than has
@@ -778,17 +803,18 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
     owns that question. Every other example in this docstring was re-measured
     on the real path and is consistent with the decimal rule.
 
-    Three consequences, each measured, and each contradicting a plausible
-    guess someone has already made about this:
+    Three consequences, each backed by measurement or by a search, and each
+    contradicting a plausible guess someone has already made about this:
 
-      * TWO OR MORE fractional payers is NECESSARY. No divergence has been
-        found for a single fractional payer among whole-dollar ones. Note
-        that a lone payer whose amount ends in .50 sits EXACTLY on the
-        boundary the DOMAIN OF VALIDITY note above describes, so this one was
-        re-searched in float rather than assumed: every cent fraction at
-        bases from 0 up to 10^10 with up to five whole-dollar companions,
-        plus 400,000 random cases half of them pinned to .50 — zero
-        divergences. But two or more is NOT SUFFICIENT:
+      * NO DIVERGENCE HAS BEEN FOUND for a single fractional payer among
+        whole-dollar ones, so two or more fractional payers looks NECESSARY
+        — that is a search result, not a proof. Note that a lone payer whose
+        amount ends in .50 sits EXACTLY on the boundary the DOMAIN OF
+        VALIDITY note above describes, so this one was re-searched in float
+        rather than assumed: every cent fraction at bases from 0 up to
+        10^10 with up to five whole-dollar companions, plus 400,000 random
+        cases half of them pinned to .50 — zero divergences. But two or more
+        is NOT SUFFICIENT:
             two @ 100.10  ->  200 vs 200, agree   (errors -0.10 each)
             two @ 100.01  ->  200 vs 200, agree   (errors -0.01 each)
             two @ 100.25  ->  201 vs 200, differ  (errors -0.25 each)
