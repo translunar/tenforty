@@ -92,11 +92,19 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 
 # --- The workbook's refusal channel -----------------------------------------
 #
-# The vendor sheet does not only COMPUTE. It DETECTS incomplete input, writes a
-# plain-English diagnostic into the `Deduction` named range, forces line 12 (the
-# applied deduction) to 0, and blanks `Tax_SubTotal` — Form 1040 LINE 16, which
-# is tenforty's `total_tax`. Harvesting the blanked number without reading the
-# diagnostic is reading a REFUSAL as data, and that is what this guard stops.
+# The vendor sheet does not only COMPUTE. It DETECTS incomplete input and says
+# so, writing a plain-English diagnostic into the `Deduction` named range and
+# refusing to stand behind the figures below it. Harvesting those figures
+# without reading the diagnostic is reading a REFUSAL as data, and that is what
+# this guard stops.
+#
+# WHAT THE SHEET ACTUALLY DOES DIFFERS BY BRANCH — do not over-generalize this,
+# and see the per-branch note below. On the `Birthday_Needed` and
+# `FilingStatusError` branches it BLANKS `Tax_SubTotal` (Form 1040 LINE 16,
+# tenforty's `total_tax`) outright. On the other three it leaves line 16
+# computing but zeroes line 12, so line 16 is derived from a base the sheet
+# itself flagged as unusable. Refusing is right in all five cases; only the
+# reason differs.
 #
 # `Deduction` is the line-12 CAPTION cell, and it is NEVER EMPTY. Its IF-chain
 # has ELEVEN branches — five diagnostics and six ordinary labels — so "refuse on
@@ -107,57 +115,91 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 # would reproduce, at smaller scale, the original defect — the sheet says
 # something and we decide it is not worth listening to.
 #
-# THE FIVE DIAGNOSTIC BRANCHES (verbatim, identical in all five workbooks):
-#   "Manual Override"                                 <- AM46/AN62/AN65/AX78 set
-#   "Filing status error."                            <- FilingStatusError
-#   "Birthdate(s) needed."                            <- Birthday_Needed
-#   "Filing status error or invalid spouse input."    <- $AL$9/$AV$10/$BF$12
-#   "Filing status not indicated."                    <- NumFileStatusBoxes=0
+# THE FIVE DIAGNOSTIC BRANCHES (verbatim, identical in all five workbooks),
+# with what each one actually does to the figures:
+#   "Manual Override"           <- AM46/AN62/AN65/AX78, a hand-entered override
+#                                  cell tenforty never writes. Line 16 computes.
+#   "Filing status error."      <- FilingStatusError (NumFileStatusBoxes>1).
+#                                  BLANKS `Tax_SubTotal`; zeroes line 12.
+#   "Birthdate(s) needed."      <- Birthday_Needed.
+#                                  BLANKS `Tax_SubTotal`; zeroes line 12.
+#   "Filing status error or invalid spouse input."  <- $AL$9/$AV$10/$BF$12.
+#                                  Zeroes line 12 only; line 16 still computes.
+#   "Filing status not indicated."  <- NumFileStatusBoxes=0.
+#                                  Zeroes line 12 only; line 16 still computes.
+# Only the middle two appear in `Tax_SubTotal`'s own guard
+# (`IF(OR(Birthday_Needed,FilingStatusError),"", ...)`); the `Deductions`
+# (plural, line-12 AMOUNT) guard is wider and covers four of the five. So the
+# caption is the widest signal available and the right thing to key on.
 # "Manual Override" is UNREACHABLE — tenforty never writes the override cells —
 # but it is deliberately NOT special-cased, for the reason above.
 #
-# THE SIX LABEL BRANCHES, which must NOT refuse, matched as normalized prefixes
-# (seven strings — one branch is worded differently in 2025 than in 2021-2024):
+# THE SIX LABEL BRANCHES, which must NOT refuse (seven strings — one branch is
+# worded differently in 2025 than in 2021-2024). Matched by EQUALITY after
+# normalization, except the two marked PREFIX:
 #   "Standard Deduction"
 #   "Standard deduction plus net qualified disaster losses\non Sch. A, Line 16."
 #   "Schedule A"
-#   "See Standard \n Deduction Chart\n at right  →"        (2021-2024)
-#   "See Standard \n Deduction Calculation\n at right  →"  (2025 rewording)
+#   "See Standard \n Deduction Chart\n at right  →"        PREFIX (2021-2024)
+#   "See Standard \n Deduction Calculation\n at right  →"  PREFIX (2025)
 #   "Line 12a - Standard Deduction for Dependents"
 #   "Deduction is $0 due to spouse itemizing or dual-status alien."
-# Prefixes rather than equality because three of these are assembled in-sheet
-# from CHAR(10)s, and two carry doubled spaces and a trailing "→"; matching a
-# prefix keeps a whitespace or arrow-encoding difference in the recalc
-# round-trip from refusing an ordinary return. Note "Standard Deduction" is a
-# prefix of the disaster-loss label — both are benign, so the overlap is
-# harmless, and no diagnostic branch is a prefix of any label branch. A vendor
-# REWORDING of any of these refuses loudly; that is the intended direction.
 #
-# Only `Tax_SubTotal`'s blank is a refusal. `Schedule2_Tax` (line 17) is NOT
-# gated by `Birthday_Needed` — its blank is definitional and IS coerced to 0
-# below. That contrast is the whole rule: coerce when the CELL ITSELF defines
-# blank as zero; refuse when some diagnostic upstream declined to answer.
+# WHY EQUALITY, AND WHY THE TWO EXCEPTIONS ARE EXCEPTIONS. A short prefix is a
+# hole in a fail-closed allowlist: matching on the prefix "schedule a" would
+# silently wave through a future vendor diagnostic like "Schedule A required —
+# attach…", re-opening this very defect on a narrower surface. Equality closes
+# that: anything the vendor rewords or extends refuses loudly. The two
+# "See Standard …" labels are the only ones that cannot use equality, because
+# they alone carry a trailing "  →" — a non-ASCII glyph after a doubled space,
+# assembled in-sheet from CHAR(10)s — and I cannot verify what the LibreOffice
+# recalc round-trip does to those bytes without launching soffice. Their
+# prefixes stop BEFORE the arrow and are long and specific ("see standard
+# deduction chart" / "… calculation"), so the hole is confined to a rewording
+# that keeps that entire phrase as its opening. Normalization (whitespace
+# collapsed, casefolded) is applied to both arms, which is what lets the
+# CHAR(10)-joined disaster-loss label match by equality at all.
+#
+# No diagnostic branch equals or is prefixed by any label branch, so the
+# allowlist cannot swallow a known refusal.
+#
+# `Schedule2_Tax` (line 17) is NOT gated by `Birthday_Needed` — its blank is
+# definitional and IS coerced to 0 below. That contrast is the whole rule:
+# coerce when the CELL ITSELF defines blank as zero; refuse when some
+# diagnostic upstream declined to answer.
 _DEDUCTION_DIAGNOSTIC_KEY = "deduction_diagnostic"
 
-_DEDUCTION_LABEL_PREFIXES: tuple[str, ...] = (
+_DEDUCTION_LABELS: frozenset[str] = frozenset({
     "standard deduction",
+    "standard deduction plus net qualified disaster losses "
+    "on sch. a, line 16.",
     "schedule a",
-    "see standard deduction chart",
-    "see standard deduction calculation",
     "line 12a - standard deduction for dependents",
     "deduction is $0 due to spouse itemizing or dual-status alien.",
+})
+
+# Prefix-matched ONLY because of the trailing "  →"; see above.
+_DEDUCTION_LABEL_PREFIXES: tuple[str, ...] = (
+    "see standard deduction chart",
+    "see standard deduction calculation",
 )
 
 _REFUSAL = (
     "The 1040 workbook DECLINED to compute this return. Its `Deduction` named "
     "range — the Form 1040 line-12 caption cell — reads {diagnostic!r}, which "
     "is not one of the deduction-source captions it carries on a return the "
-    "sheet was willing to compute. When that cell holds a diagnostic the sheet "
-    "has short-circuited: line 12 (the applied deduction) is forced to 0 and "
-    "`Tax_SubTotal` — Form 1040 LINE 16, tenforty's `total_tax` — evaluates "
-    "BLANK, which the engine reads as None. tenforty refuses here rather than "
-    "reading that blank as zero, which would answer \"your tax is zero\" on a "
-    "real return.\n"
+    "sheet was willing to compute. That is the sheet declining to stand behind "
+    "the figures below line 12, so tenforty declines to emit them.\n"
+    "\n"
+    "WHAT THE SHEET DID depends on which diagnostic this is. On the "
+    "`Birthday_Needed` and `FilingStatusError` branches it zeroes line 12 (the "
+    "applied deduction) AND blanks `Tax_SubTotal` — Form 1040 LINE 16, "
+    "tenforty's `total_tax` — which the engine reads as None; refusing is what "
+    "keeps that blank from being read as zero, which would answer \"your tax "
+    "is zero\" on a real return. On the remaining branches line 16 still "
+    "computes, but off a line 12 the sheet has zeroed or a hand-entered "
+    "override, so the number is derived from a base the sheet itself flagged. "
+    "Either way the figures are not ours to publish.\n"
     "\n"
     "CAUSE: for MARRIED_JOINTLY and MARRIED_SEPARATE — which is every return "
     "that reaches this refusal today — tenforty supplies no spouse birthdate "
@@ -168,8 +210,10 @@ _REFUSAL = (
     "this population, so this refusal converts a silently WRONG return into a "
     "loudly REFUSED one. It does not make the return computable.\n"
     "\n"
-    "This refusal ALSO protects lines 17 and 18, which the same blank corrupts "
-    "WITHOUT their going blank themselves. Form 6251 takes `Tax_SubTotal` as a "
+    "ON THE TWO BLANKING BRANCHES this refusal ALSO protects lines 17 and 18, "
+    "which that same blank corrupts WITHOUT their going blank themselves and "
+    "so without any other signal that they are wrong. Form 6251 takes "
+    "`Tax_SubTotal` as a "
     "SUM operand (2021-2024) or through "
     "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)` (2025), summing the "
     "blank as 0; that understates regular tax and OVERSTATES the AMT, so line "
@@ -202,6 +246,8 @@ def workbook_refusal(harvested: dict) -> str | None:
         return None
     normalized = " ".join(str(diagnostic).split()).casefold()
     if not normalized:
+        return None
+    if normalized in _DEDUCTION_LABELS:
         return None
     if normalized.startswith(_DEDUCTION_LABEL_PREFIXES):
         return None

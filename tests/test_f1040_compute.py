@@ -244,6 +244,37 @@ class WorkbookDiagnosticRefusalTests(unittest.TestCase):
                 self.assertIsNotNone(message)
                 self.assertIn(diagnostic, message)
 
+    def test_refuses_a_diagnostic_that_merely_starts_with_a_label(self):
+        """The allowlist is matched by EQUALITY, not by short prefix.
+
+        A short prefix is a hole in a fail-closed allowlist. If "schedule a"
+        or "standard deduction" were prefix-matched, a future vendor
+        diagnostic opening with those words would be waved through as an
+        ordinary caption -- re-opening this defect on a narrower surface,
+        which is the very species this unit exists to remove.
+
+        The two "See Standard ..." labels are the deliberate exceptions,
+        because they alone carry a trailing "  →" whose encoding across the
+        recalc round-trip is not verifiable without launching soffice. Their
+        prefixes stop before the arrow and are long enough to be specific.
+        The last case pins that the exception stays NARROW: a string that
+        opens with "See Standard" but then says something else still refuses.
+        """
+        for extended in (
+            "Schedule A required — attach Form 8283.",
+            "Standard Deduction unavailable; see instructions.",
+            "Standard deduction plus something the vendor added later.",
+            "Line 12a - Standard Deduction for Dependents cannot be computed.",
+            "See Standard Deduction Worksheet — spouse data missing.",
+        ):
+            with self.subTest(extended=extended):
+                self.assertIsNotNone(
+                    workbook_refusal({"deduction_diagnostic": extended}),
+                    f"{extended!r} opens like a caption but is not one. "
+                    f"Waving it through would be exactly the guess this "
+                    f"guard exists to refuse.",
+                )
+
     def test_refuses_on_an_unrecognised_diagnostic(self):
         """(c) FAIL CLOSED. An unrecognised string is precisely when guessing
         is worst -- it means the vendor changed something we have not read."""
