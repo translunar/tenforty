@@ -266,11 +266,21 @@ class QualifiedDividendsMixedSourceEndToEndTests(unittest.TestCase):
 class QualifiedDividendsIncomeLimitBindingEndToEndTests(unittest.TestCase):
     """Pins the actual taxpayer-visible harm of defect A, which the tests in
     ``QualifiedDividendsMixedSourceEndToEndTests`` do NOT: in that class's
-    scenario, Form 8995 line 15 = min(line 6 = 10,000, line 14 = 26,650) is
+    scenario, Form 8995 line 15 = min(line 6 = 10,000, line 14 = 27,450) is
     bound by line 6, so reverting defect A moves lines 12-14 but leaves the
     QBI deduction (and therefore total_tax) completely unchanged — no dollar
     the taxpayer sees is affected. This class uses a scenario where the
     line-14 INCOME LIMIT binds instead, so the QBI deduction itself moves.
+
+    (That 27,450 is the POST-fix figure and must stay in step with the
+    derivation in ``QualifiedDividendsMixedSourceEndToEndTests``'s own
+    docstring, which is its source: line 13 = 148,250 - 11,000 = 137,250,
+    line 14 = 20% x 137,250 = 27,450. It read 26,650 — the pre-fix value
+    from the AGI-160,000 world — until 2026-08-17, when the two docstrings
+    were caught giving different line-14 figures for the same scenario. The
+    point being made here is true either way, since line 6's 10,000 binds
+    against both; only the cited number was stale. Any figure quoted from
+    another class is a cross-reference, and cross-references rot.)
 
     Scenario (all figures synthetic/generic): 2025 single filer, standard
     deduction, acknowledges_qbi_below_threshold=True, NO W-2 wages. ONE
