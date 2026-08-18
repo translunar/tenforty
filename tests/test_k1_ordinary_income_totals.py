@@ -22,21 +22,29 @@ whether or not the totals are computed correctly.
 All figures are GENERIC/synthetic.
 """
 
+import dataclasses
+import tempfile
 import unittest
+from pathlib import Path
 
 from tenforty.forms import f1040_spine
 from tenforty.forms import sch_b as form_sch_b
+from tenforty.forms import sch_ca as form_sch_ca
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.models import (
+    CA540Return,
     Form1099DIV,
     Form1099INT,
     K1FanoutData,
     PayerAmount,
     ScheduleK1,
 )
+from tenforty.orchestrator import ReturnOrchestrator, _k1_positive_income
 from tenforty.params.federal import load as load_federal_params
 
 from tests.helpers import make_k1_scenario, make_simple_scenario
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _fanout(interest_items=(), dividend_items=()) -> K1FanoutData:
@@ -341,6 +349,652 @@ class K1OrdinaryIncomeRoundingMatchesScheduleBTests(unittest.TestCase):
         self.assertEqual(
             pre.ordinary_divs_total, sch_b["total_ordinary_dividends"],
         )
+
+
+# ---------------------------------------------------------------------------
+# Task 4 — cross-path and end-to-end regression coverage.
+#
+# Everything above this line exercises ``compute_income_preamble`` (and the
+# Schedule E Part II fanout that feeds it) directly. Everything below drives
+# the REAL orchestrator end to end, because the defect this unit closed was
+# not in the preamble's arithmetic — it was in what the 1040 spine did with
+# the preamble's answer. A test that stops at the preamble cannot see that.
+# ---------------------------------------------------------------------------
+
+
+def _hand_authored_k1(
+    *,
+    entity_name: str = "Generic S-Corp Inc",
+    **income,
+) -> ScheduleK1:
+    """A hand-authored S-corp ``ScheduleK1`` with every income box at 0
+    except the ones named in ``income``.
+
+    FIXTURE RULE (see the module docstring): K-1s produced by tenforty's own
+    1120-S pipeline carry STRUCTURALLY ZERO interest and dividends, so a
+    fixture routed through that pipeline would exercise none of this code and
+    would pass whether or not the totals are computed correctly. Every K-1 in
+    this module is therefore constructed directly.
+    """
+    return ScheduleK1(
+        entity_name=entity_name,
+        entity_ein="00-0000000",
+        entity_type="s_corp",
+        material_participation=True,
+        **income,
+    )
+
+
+class _OrchestratorTestCase(unittest.TestCase):
+    """Base class supplying a real ``ReturnOrchestrator`` on a temp work dir."""
+
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name),
+        )
+
+
+def _mixed_source_scenario():
+    """The canonical mixed-source scenario shared by Task 4's Steps 1, 3 and 4b.
+
+    All figures synthetic/generic. 2025 single filer, standard deduction:
+
+      W-2 wages                                        100,000
+      1099-INT  "Generic Bank"          interest         2,000
+      1099-DIV  "Generic Brokerage"     ord. dividends    5,000
+                                        qual. dividends       0
+      K-1       "Generic S-Corp Inc"    interest_income   3,000
+                                        ordinary_dividends 6,000
+
+    The K-1 carries NO ordinary_business_income and NO qbi_amount, so
+    Schedule E Part II line 41 is 0, Schedule 1 line 10 is 0, and no Form
+    8995 is emitted. There is no 1099-B and no K-1 capital gain, so
+    Schedule D line 16 (and therefore line 21) is 0. That isolates the two
+    lines under test: every dollar of total income above wages arrives on
+    line 2b or line 3b.
+
+    DERIVED FROM THE FORM, not read out of the code (IRC 1366(b) conduit
+    treatment — an S corporation's interest and dividend items keep their
+    character in the shareholder's hands, so they land on the shareholder's
+    own lines 2b/3b exactly as a 1099 would):
+
+      line 2b (taxable interest)   = 2,000 + 3,000 =  5,000
+      line 3b (ordinary dividends) = 5,000 + 6,000 = 11,000
+      line 3a (qualified dividends)                =      0
+      line 9  (total income) = 100,000 + 5,000 + 11,000 = 116,000
+      line 11 (AGI)          = 116,000 - 0 adjustments  = 116,000
+
+    The K-1's contribution to AGI is 3,000 + 6,000 = 9,000; a 1099-only AGI
+    (the pre-fix figure) would be 107,000.
+    """
+    s = make_k1_scenario()
+    s.form1099_int = [Form1099INT(payer="Generic Bank", interest=2_000.0)]
+    s.form1099_div = [Form1099DIV(
+        payer="Generic Brokerage",
+        ordinary_dividends=5_000.0,
+        qualified_dividends=0.0,
+    )]
+    s.schedule_k1s = [_hand_authored_k1(
+        interest_income=3_000.0,
+        ordinary_dividends=6_000.0,
+    )]
+    return s
+
+
+# Derived in _mixed_source_scenario's docstring. Named so a reader can see at
+# a glance which figure each assertion is pinning.
+MIXED_LINE_2B = 5_000
+MIXED_LINE_3B = 11_000
+MIXED_TOTAL_INCOME = 116_000
+MIXED_AGI = 116_000
+MIXED_AGI_WITHOUT_K1 = 107_000
+
+
+class K1IncomeReachesLines2b3bAndAgiTests(_OrchestratorTestCase):
+    """Task 4 Step 1 — the end-to-end test.
+
+    A K-1's interest and ordinary dividends must reach 1040 lines 2b and 3b
+    and be INSIDE adjusted gross income. Before this unit landed they reached
+    the emitted Schedule B (via the Schedule E Part II fanout) but were
+    silently dropped by the native spine, so the 1040 and its own Schedule B
+    reported different totals on the same return and tax was understated.
+
+    See ``_mixed_source_scenario`` for the scenario and the full derivation.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.scenario = _mixed_source_scenario()
+
+    def test_fanout_actually_carries_the_k1_items(self) -> None:
+        """Fixture guard, not a behavioral claim.
+
+        If the Schedule E Part II fanout carried no interest/dividend
+        additions for this K-1 — the situation for an 1120-S-GENERATED K-1,
+        whose Schedule K interest and dividend boxes are structurally zero —
+        every assertion in this class would still pass, vacuously, because
+        the totals would collapse onto the 1099 components. This pins that
+        the negative space is genuinely occupied.
+        """
+        _fields, fanout = form_sch_e_part_ii.compute(self.scenario, upstream={})
+        self.assertEqual(len(fanout.sch_b_interest_additions), 1)
+        self.assertEqual(len(fanout.sch_b_dividend_additions), 1)
+        self.assertEqual(fanout.sch_b_interest_additions[0].amount, 3_000.0)
+        self.assertEqual(fanout.sch_b_dividend_additions[0].amount, 6_000.0)
+
+    def test_lines_2b_and_3b_are_the_1099_plus_k1_totals(self) -> None:
+        """1040 line 2b = 5,000 and line 3b = 11,000, per the derivation.
+
+        Both spellings of each line are asserted: ``interest_income`` /
+        ``dividend_income`` are the spine's oracle-facing keys and
+        ``taxable_interest`` / ``ordinary_dividends`` are the PDF-facing
+        aliases. They are separate entries in the spine's output dict, and
+        the CA Schedule CA kernel reads the PDF-facing pair while the CLI
+        summary reads the other — so a regression that fixed only one
+        spelling would leave the two halves of the packet disagreeing.
+        """
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+
+        self.assertEqual(results["taxable_interest"], MIXED_LINE_2B)
+        self.assertEqual(results["interest_income"], MIXED_LINE_2B)
+        self.assertEqual(results["ordinary_dividends"], MIXED_LINE_3B)
+        self.assertEqual(results["dividend_income"], MIXED_LINE_3B)
+
+    def test_agi_includes_the_k1_interest_and_dividends(self) -> None:
+        """1040 line 9 = 116,000 and line 11 = 116,000, per the derivation.
+
+        The K-1's 9,000 is the whole point: the pre-fix spine published the
+        corrected totals on lines 2b/3b but summed the 1099-ONLY components
+        into total income, so AGI came out at 107,000 while the printed
+        lines 2b/3b said otherwise — an internally inconsistent 1040.
+        """
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+
+        self.assertEqual(results["total_income"], MIXED_TOTAL_INCOME)
+        self.assertEqual(results["agi"], MIXED_AGI)
+        self.assertEqual(
+            results["agi"] - MIXED_AGI_WITHOUT_K1, 9_000,
+            "AGI does not include the K-1's 3,000 of interest and 6,000 of "
+            "ordinary dividends. Under IRC 1366(b) those items keep their "
+            "character in the shareholder's hands and belong on 1040 lines "
+            "2b/3b, inside total income. An AGI of "
+            f"{MIXED_AGI_WITHOUT_K1} means total_income is summing the "
+            "1099-only components (preamble.taxable_interest / "
+            ".ordinary_divs) instead of the authoritative totals "
+            "(.taxable_interest_total / .ordinary_divs_total).",
+        )
+
+    def test_compute_path_preamble_agrees_with_the_pipeline(self) -> None:
+        """The orchestrator's own compute-time preamble — the one that feeds
+        the Form 8995 / Form 8582 pre-pass stub — must land on the same
+        totals and the same AGI as the finished spine results.
+
+        These are two different producers of the same figures (the pre-pass
+        builds a stub dict from ``compute_income_preamble``; the spine builds
+        its output dict from a second call to the same helper with the full
+        schedule results), and a return whose 8995 was computed against one
+        AGI and whose 1040 printed another would be internally inconsistent.
+        """
+        schedules, fanout = self.orchestrator._compute_native_schedules(
+            self.scenario,
+        )
+        preamble = f1040_spine.compute_income_preamble(
+            self.scenario,
+            load_federal_params(2025),
+            schedules,
+            k1_fanout=fanout,
+        )
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+
+        self.assertEqual(preamble.taxable_interest_total, MIXED_LINE_2B)
+        self.assertEqual(preamble.ordinary_divs_total, MIXED_LINE_3B)
+        self.assertEqual(preamble.agi, MIXED_AGI)
+        self.assertEqual(preamble.agi, results["agi"])
+
+
+class K1VersusForm1099ChannelEquivalenceTests(_OrchestratorTestCase):
+    """Task 4 Step 2 — the channel-equivalence test.
+
+    IDENTICAL dollars of interest and ordinary dividends must produce an
+    IDENTICAL return whether they arrive on a K-1 or on 1099s. That is the
+    defect's economics stated directly: under IRC 1366(b) an S corporation's
+    interest and dividend items pass through with their character intact, so
+    the shareholder's 1040 cannot care which piece of paper reported them.
+    Pre-fix the two channels diverged, because only the 1099 channel reached
+    total income.
+
+    Both scenarios (all figures synthetic/generic) are 2025 single filers on
+    the standard deduction with the SAME ``TaxReturnConfig`` — including the
+    same K-1 attestations — so the ONLY difference between them is which
+    channel carries the money:
+
+      W-2 wages                    100,000   (both)
+      interest                       6,000   (K-1 box 4  |  1099-INT)
+      ordinary dividends            14,000   (K-1 box 5a |  1099-DIV box 1a)
+      qualified dividends                0   (both — keeps all of it ordinary)
+
+    DERIVED FROM THE FORMS AND THE 2025 IRS SINGLE RATE SCHEDULE, not read
+    out of the code:
+
+      line 9 / line 11 (AGI) = 100,000 + 6,000 + 14,000 = 120,000
+      line 15 (taxable income) = 120,000 - standard deduction 15,750
+                               = 104,250
+      No qualified dividends and no net capital gain, so the QDCGT
+      worksheet has an empty preferential base and the entire 104,250 is
+      taxed at ordinary rates. 104,250 is at/above the 100,000 Tax Table
+      ceiling, so the rate schedule applies:
+          11,925 x 10%  =  1,192.50
+          36,550 x 12%  =  4,386.00   (11,925 -> 48,475)
+          54,875 x 22%  = 12,072.50   (48,475 -> 103,350)
+             900 x 24%  =    216.00   (103,350 -> 104,250)
+                          ----------
+                            17,867.00
+      No SE income and wages below the 200,000 Additional Medicare
+      threshold, so line 16 is the whole of total tax: 17,867.
+    """
+
+    INTEREST = 6_000.0
+    ORDINARY_DIVIDENDS = 14_000.0
+    EXPECTED_AGI = 120_000
+    EXPECTED_TAXABLE_INCOME = 104_250
+    EXPECTED_TOTAL_TAX = 17_867
+
+    def setUp(self) -> None:
+        super().setUp()
+
+        self.k1_channel = make_k1_scenario()
+        self.k1_channel.form1099_int = []
+        self.k1_channel.form1099_div = []
+        self.k1_channel.schedule_k1s = [_hand_authored_k1(
+            interest_income=self.INTEREST,
+            ordinary_dividends=self.ORDINARY_DIVIDENDS,
+        )]
+
+        # Same base builder, so the two configs are identical field for field.
+        self.form1099_channel = make_k1_scenario()
+        self.form1099_channel.form1099_int = [
+            Form1099INT(payer="Generic Bank", interest=self.INTEREST),
+        ]
+        self.form1099_channel.form1099_div = [Form1099DIV(
+            payer="Generic Brokerage",
+            ordinary_dividends=self.ORDINARY_DIVIDENDS,
+            qualified_dividends=0.0,
+        )]
+        self.form1099_channel.schedule_k1s = []
+
+    def test_the_two_channels_produce_the_same_return(self) -> None:
+        """Same dollars, same AGI, same taxable income, same tax.
+
+        The equality assertions are the durable invariant — they hold under
+        any future retune of rates or the standard deduction, because both
+        sides move together. The literal figures alongside them stop a
+        regression that breaks BOTH channels identically from passing by
+        agreeing on a wrong number.
+        """
+        k1_results = self.orchestrator._compute_1040_pipeline(self.k1_channel)
+        f1099_results = self.orchestrator._compute_1040_pipeline(
+            self.form1099_channel,
+        )
+
+        for key in ("total_income", "agi", "taxable_income", "total_tax"):
+            with self.subTest(key=key):
+                self.assertEqual(
+                    k1_results[key], f1099_results[key],
+                    f"1040 {key} differs by channel: routing the SAME "
+                    f"{self.INTEREST:,.0f} of interest and "
+                    f"{self.ORDINARY_DIVIDENDS:,.0f} of ordinary dividends "
+                    f"through a K-1 gives {k1_results[key]}, through 1099s "
+                    f"gives {f1099_results[key]}. Under IRC 1366(b) these "
+                    "items pass through with their character intact, so the "
+                    "two must be identical; a difference means the K-1 "
+                    "channel is being dropped somewhere between the "
+                    "Schedule E Part II fanout and 1040 line 9.",
+                )
+
+        # Independently derived (see the class docstring), asserted on BOTH
+        # sides so neither channel can drift while matching the other.
+        for label, results in (
+            ("k1", k1_results), ("form1099", f1099_results),
+        ):
+            with self.subTest(channel=label):
+                self.assertEqual(results["agi"], self.EXPECTED_AGI)
+                self.assertEqual(
+                    results["taxable_income"], self.EXPECTED_TAXABLE_INCOME,
+                )
+                self.assertEqual(
+                    results["total_tax"], self.EXPECTED_TOTAL_TAX,
+                )
+
+
+class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
+    """Task 4 Step 3 — the CROSS-PATH test (standing policy).
+
+    The emitted Schedule B and the emitted 1040 travel in the SAME packet.
+    Schedule B is the itemization the IRS reads against 1040 lines 2b/3b, so
+    the two must agree to the dollar. Nothing in this repo compared them
+    across the two paths before, and that gap is what let the previous unit's
+    regression ship: the compute path and the PDF-emit path build DIFFERENT
+    upstream dicts from different producers, so a value can be right on one
+    and wrong on the other while every unit test stays green.
+
+    The emit side here is built the way
+    ``ReturnOrchestrator._federal_individual_emit_specs`` builds it — the
+    finished 1040 results dict plus a hoisted Schedule E Part II fanout —
+    rather than by hand, so it exercises the real seam.
+
+    See ``_mixed_source_scenario`` for the scenario and the derivation:
+    line 2b = 5,000, line 3b = 11,000.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.scenario = _mixed_source_scenario()
+
+    def _emit_path_sch_b(self, results: dict) -> dict:
+        _part_ii_fields, fanout = form_sch_e_part_ii.compute(
+            self.scenario, upstream={},
+        )
+        return form_sch_b.compute(
+            self.scenario,
+            upstream={"f1040": results, "k1_fanout": fanout},
+        )
+
+    def test_emitted_schedule_b_totals_equal_1040_lines_2b_and_3b(self) -> None:
+        results = self.orchestrator._compute_1040_pipeline(self.scenario)
+        sch_b = self._emit_path_sch_b(results)
+
+        for label, sch_b_key, f1040_key in (
+            ("interest (Sch B line 4 / 1040 line 2b)",
+             "total_interest", "taxable_interest"),
+            ("interest (Sch B taxable-interest alias)",
+             "taxable_interest", "taxable_interest"),
+            ("ordinary dividends (Sch B line 6 / 1040 line 3b)",
+             "total_ordinary_dividends", "ordinary_dividends"),
+        ):
+            with self.subTest(line=label):
+                self.assertEqual(
+                    sch_b[sch_b_key], results[f1040_key],
+                    f"the emitted Schedule B and the emitted 1040 disagree on "
+                    f"{label}: Schedule B says {sch_b[sch_b_key]}, the 1040 "
+                    f"says {results[f1040_key]}. They would ship in the same "
+                    "packet, with Schedule B itemizing the very payers the "
+                    "1040 line totals.",
+                )
+
+        # Pin the shared figures against the independent derivation, so a
+        # change that breaks both sides identically cannot pass by agreeing.
+        self.assertEqual(sch_b["total_interest"], MIXED_LINE_2B)
+        self.assertEqual(sch_b["total_ordinary_dividends"], MIXED_LINE_3B)
+
+
+class ScheduleBGateCountsK1IncomeTests(_OrchestratorTestCase):
+    """Task 4 Step 4 — the Schedule B emission gate (P-3).
+
+    The IRS Part I / Part II filing threshold is applied to the 1040 line 2b
+    / 3b TOTAL, not to the 1099 slice. Historically the gate summed only the
+    1099s, so a return with 1,400 on a 1099-INT and 1,400 on a K-1 had a true
+    2,800 Schedule B total, failed the gate, and was emitted with NO Schedule
+    B at all -- the taxpayer's own itemization of the income missing from the
+    packet.
+
+    The three scenarios below share one shape (2025 single filer, W-2 wages
+    100,000, no dividends anywhere) and differ ONLY in the two interest
+    amounts, so the boundary pair is a genuine pair.
+
+    ⚠️ DELIBERATELY OFF THE 1,500 BOUNDARY. Whether the gate should fire at
+    exactly 1,500 or only ABOVE it is an open question on this program,
+    ledgered separately and NOT settled by this unit. Every figure here is
+    comfortably clear of 1,500 (totals of 1,200 / 1,600 / 2,800) so these
+    assertions are correct under EITHER resolution and pre-judge neither.
+    """
+
+    def _scenario(self, *, form1099_interest: float, k1_interest: float):
+        s = make_k1_scenario()
+        s.form1099_int = [
+            Form1099INT(payer="Generic Bank", interest=form1099_interest),
+        ]
+        s.form1099_div = []
+        s.schedule_k1s = [_hand_authored_k1(interest_income=k1_interest)]
+        return s
+
+    def _gate(self, scenario) -> bool:
+        """Run the real gate against the real finished 1040 results, exactly
+        as ``_federal_individual_emit_specs`` does."""
+        results = self.orchestrator._compute_1040_pipeline(scenario)
+        return self.orchestrator._should_emit_sch_b(scenario, results)
+
+    def test_boundary_pair_under_and_over_the_threshold(self) -> None:
+        """A boundary PAIR, so the negative half is provably reachable.
+
+        Both scenarios carry 600 of 1099 interest and differ only in the
+        K-1's interest:
+
+          UNDER: K-1   600 -> line 2b = 1,200 -> no Schedule B
+          OVER:  K-1 1,000 -> line 2b = 1,600 -> Schedule B
+
+        The OVER case demonstrates that "Schedule B is emitted" is an
+        outcome this scenario shape CAN produce, which is what makes the
+        UNDER case a real constraint rather than a decoration. The pair also
+        catches an inverted comparison, which a single large-magnitude
+        scenario cannot.
+        """
+        under = self._scenario(form1099_interest=600.0, k1_interest=600.0)
+        over = self._scenario(form1099_interest=600.0, k1_interest=1_000.0)
+
+        # Fixture guard: the two really do straddle the threshold on line 2b.
+        self.assertEqual(
+            self.orchestrator._compute_1040_pipeline(under)["taxable_interest"],
+            1_200,
+        )
+        self.assertEqual(
+            self.orchestrator._compute_1040_pipeline(over)["taxable_interest"],
+            1_600,
+        )
+
+        self.assertFalse(
+            self._gate(under),
+            "Schedule B was emitted for a return whose TOTAL interest is "
+            "1,200 -- comfortably below the 1,500 filing threshold on every "
+            "reading of it. The gate is over-emitting.",
+        )
+        self.assertTrue(
+            self._gate(over),
+            "Schedule B was NOT emitted for a return whose TOTAL interest is "
+            "1,600. Since the otherwise-identical 1,200 scenario correctly "
+            "produces no Schedule B, the gate is reading a partial total.",
+        )
+
+    def test_split_across_channels_still_clears_the_threshold(self) -> None:
+        """The P-3 regression case: 1,400 on a 1099 and 1,400 on a K-1.
+
+        NEITHER channel clears 1,500 alone; the TOTAL, 2,800, clears it
+        comfortably. Under the historic 1099-only gate this return was
+        emitted with no Schedule B whatsoever. This is the scenario the gate
+        fix exists for, and it is the one assertion here that a 1099-only
+        gate cannot satisfy.
+        """
+        s = self._scenario(form1099_interest=1_400.0, k1_interest=1_400.0)
+        results = self.orchestrator._compute_1040_pipeline(s)
+
+        self.assertEqual(results["taxable_interest"], 2_800)
+        self.assertTrue(
+            self.orchestrator._should_emit_sch_b(s, results),
+            "Schedule B was NOT emitted for a return with 1,400 of 1099 "
+            "interest and 1,400 of K-1 interest. 1040 line 2b is 2,800, well "
+            "over the 1,500 threshold; the gate is summing the 1099s alone "
+            "instead of reading the published line 2b/3b totals.",
+        )
+
+
+class K1IncomeFlowsThroughToScheduleCaColumnATests(_OrchestratorTestCase):
+    """Task 4 Step 4b — the CA flow-through, in exactly ONE assertion.
+
+    California starts from federal AGI, and ``sch_ca.py`` maps the federal
+    ``taxable_interest`` / ``ordinary_dividends`` output keys straight into
+    Schedule CA (540) Part I Section A lines 2 and 3, column A. Those column-A
+    figures moving with the corrected federal totals is the POINT of this
+    change, not a side effect -- so it is pinned here rather than left to be
+    discovered by someone diffing CA output.
+
+    Scope is deliberately one assertion. Broader CA verification is covered
+    by the merge-gate regression against real CA returns.
+
+    See ``_mixed_source_scenario``: line 2b = 5,000, line 3b = 11,000.
+    """
+
+    def test_sch_ca_part_i_section_a_lines_2_and_3_column_a(self) -> None:
+        scenario = _mixed_source_scenario()
+        federal_results = self.orchestrator._compute_1040_pipeline(scenario)
+        sch_ca = form_sch_ca.compute(
+            CA540Return(divergences=[]), federal_results, 2025,
+        )
+
+        self.assertEqual(
+            {
+                "line 2 col A": sch_ca.get("sch_ca_line_part_i_a_2_col_a"),
+                "line 3 col A": sch_ca.get("sch_ca_line_part_i_a_3_col_a"),
+            },
+            {"line 2 col A": MIXED_LINE_2B, "line 3 col A": MIXED_LINE_3B},
+            "Schedule CA (540) Part I Section A column A does not carry the "
+            "corrected federal totals. Column A is a pure passthrough of "
+            "federal 1040 lines 2b/3b; the 1099-only figures here would be "
+            "2,000 and 5,000. CA conforms to the federal treatment of "
+            "pass-through interest and dividends, so the CA return must "
+            "follow the federal correction.",
+        )
+
+
+def _fields_reaching_k1_positive_income() -> tuple[str, ...]:
+    """Discover, BEHAVIORALLY, which ``ScheduleK1`` fields the routing gate's
+    ``_k1_positive_income`` enumerates.
+
+    Probes each float field of ``ScheduleK1`` by setting it (and only it) to
+    1.0 and asking ``_k1_positive_income`` what it returns. No source or AST
+    parsing: the discovery survives a refactor of that function and
+    automatically picks up any field added to it later.
+    """
+    seen = []
+    for f in dataclasses.fields(ScheduleK1):
+        if f.name in {
+            "entity_name", "entity_ein", "entity_type", "material_participation",
+        }:
+            continue
+        probe = _hand_authored_k1(**{f.name: 1.0})
+        if _k1_positive_income(probe) == 1.0:
+            seen.append(f.name)
+    return tuple(seen)
+
+
+class K1RoutingGateIncomeAlsoReachesTotalIncomeTests(_OrchestratorTestCase):
+    """Task 4 Step 4c — the mechanical partial-total detector.
+
+    THE INVARIANT: every K-1 income field the ROUTING GATE counts must also
+    reach 1040 line 9 (total income).
+
+    ``_scenario_in_spine_scope`` builds an ``agi_estimate`` from
+    ``_k1_positive_income`` to decide whether a return is high-income enough
+    to bypass the EIC-eligibility check and stay on the native spine. That
+    estimate is the routing gate's own model of "income this K-1 produces".
+    If the gate counts a channel that the real AGI computation drops, the
+    codebase is holding two contradictory beliefs about the same dollars --
+    and the one that reaches the taxpayer's return is the wrong one. That
+    asymmetry is the mechanical signature of the partial-total defect species
+    this unit closed, and it is checkable without knowing anything about
+    which channel is currently broken.
+
+    THIS IS THE TEST THAT WOULD HAVE CAUGHT THIS UNIT'S DEFECT. Before it
+    landed, ``interest_income`` and ``ordinary_dividends`` were counted by
+    ``_k1_positive_income`` and dropped by ``total_income`` -- so the
+    detector's negative space is not hypothetical, it was occupied by this
+    very unit's bug.
+
+    Method: a baseline scenario (2025 single filer, W-2 wages 100,000, one
+    hand-authored S-corp K-1 with every income box at zero, no 1099s) has a
+    known total income of 100,000. For each discovered field, the SAME
+    scenario is rebuilt with that one field at 10,000 and nothing else
+    changed. Each of these boxes is gross income under IRC 61 reaching the
+    shareholder under the IRC 1366 conduit rules, so adding 10,000 to any one
+    of them must raise 1040 line 9 by exactly 10,000. (10,000 is a gain in
+    the two capital-gain boxes, so the IRC 1211(b) loss cap never engages and
+    the expected delta is unconditional.)
+
+    ALLOWLIST: empty, deliberately. If a field genuinely does not belong in
+    total income as a matter of tax law, an entry may be added here WITH that
+    justification in writing. An entry added merely to turn the test green
+    would convert a live defect into a permanent, documented lie -- if a
+    field fails, that is a finding to report, not a chore to silence.
+    """
+
+    PROBE_AMOUNT = 10_000
+    BASELINE_TOTAL_INCOME = 100_000
+
+    #: field name -> written tax-law justification for exclusion. See the
+    #: class docstring before adding anything here.
+    LEGITIMATELY_EXCLUDED: dict[str, str] = {}
+
+    def _scenario(self, **k1_income):
+        s = make_k1_scenario()
+        s.form1099_int = []
+        s.form1099_div = []
+        s.schedule_k1s = [_hand_authored_k1(**k1_income)]
+        return s
+
+    def test_baseline_is_wages_only(self) -> None:
+        """Fixture guard: an all-zero K-1 contributes nothing, so every
+        per-field delta below is attributable to that field alone."""
+        results = self.orchestrator._compute_1040_pipeline(self._scenario())
+        self.assertEqual(results["total_income"], self.BASELINE_TOTAL_INCOME)
+        self.assertEqual(results["agi"], self.BASELINE_TOTAL_INCOME)
+
+    def test_discovery_probe_finds_the_gate_fields(self) -> None:
+        """Fixture guard for the discovery probe itself.
+
+        If ``_fields_reaching_k1_positive_income`` returned an empty tuple --
+        say because ``_k1_positive_income`` was refactored to take a
+        different argument shape -- the detector below would iterate nothing
+        and pass vacuously forever. Assert it found a real set, including the
+        two channels this unit repaired.
+        """
+        fields = _fields_reaching_k1_positive_income()
+        self.assertGreaterEqual(len(fields), 9)
+        self.assertIn("interest_income", fields)
+        self.assertIn("ordinary_dividends", fields)
+
+    def test_every_routing_gate_income_field_reaches_total_income(self) -> None:
+        """Each field the routing gate counts must move 1040 line 9 by the
+        full amount placed on it."""
+        for field_name in _fields_reaching_k1_positive_income():
+            if field_name in self.LEGITIMATELY_EXCLUDED:
+                continue
+            with self.subTest(k1_field=field_name):
+                scenario = self._scenario(
+                    **{field_name: float(self.PROBE_AMOUNT)},
+                )
+                results = self.orchestrator._compute_1040_pipeline(scenario)
+                delta = results["total_income"] - self.BASELINE_TOTAL_INCOME
+                self.assertEqual(
+                    delta, self.PROBE_AMOUNT,
+                    f"PARTIAL-TOTAL DEFECT on ScheduleK1.{field_name}: "
+                    f"{self.PROBE_AMOUNT:,} placed on that box moved 1040 "
+                    f"line 9 (total income) by {delta:,}, not "
+                    f"{self.PROBE_AMOUNT:,}.\n"
+                    "INVARIANT: every K-1 income field enumerated by "
+                    "orchestrator._k1_positive_income -- the routing gate's "
+                    "own agi_estimate, which decides whether a return stays "
+                    "on the native spine -- must also be reachable in the "
+                    "spine's total_income summands. The gate already counts "
+                    f"{field_name} as income; a total_income that does not "
+                    "is the partial-total signature: two contradictory "
+                    "beliefs about the same dollars, with the taxpayer-"
+                    "visible one understating income.\n"
+                    "FIX THE ROUTE, do not allowlist the field. An entry in "
+                    "LEGITIMATELY_EXCLUDED is permitted only where exclusion "
+                    "is correct as a matter of tax law, and must carry that "
+                    "justification in writing.",
+                )
 
 
 if __name__ == "__main__":
