@@ -154,7 +154,16 @@ class ComposeLine24Tests(unittest.TestCase):
 
 
 class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
-    """Which of the two paths supplies line 24, and how each is detected."""
+    """Which of the two paths supplies line 24, and how each is detected.
+
+    THE INJECTED DICTS CARRY `schedule2_tax` — 1040 line 17, the Schedule 2
+    Part I TOTAL — because that is what a real native results dict carries and
+    what the composition reads. They carry `f8962_repayment` alongside it, at
+    the same value, because the spine emits both and assigns one from the
+    other; a dict with only the component would no longer model anything the
+    code produces. `Line24ComposesFromTheScheduleTwoTotalTests` below is the
+    test that distinguishes the two.
+    """
 
     def test_harvested_key_wins_over_composition(self):
         # Workbook path: `Tot_Tax` is harvested whole. It legitimately
@@ -164,6 +173,7 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
         harvested = total_tax_liability_line_24({
             "tax_liability_line24": 88_000,
             "total_tax": 69_035,
+            "schedule2_tax": 4_800,
             "f8962_repayment": 4_800,
             "f8959_tax_total": 900,
         })
@@ -192,6 +202,7 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
                 got = total_tax_liability_line_24({
                     "tax_liability_line24": harvested_zero,
                     "total_tax": 69_035,
+                    "schedule2_tax": 4_800,
                     "f8962_repayment": 4_800,
                     "f8959_tax_total": 900,
                 })
@@ -200,6 +211,7 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
     def test_composes_when_no_harvested_key_is_present(self):
         composed = total_tax_liability_line_24({
             "total_tax": 69_035,
+            "schedule2_tax": 4_800,
             "f8962_repayment": 4_800,
             "f8959_tax_total": 900,
         })
@@ -208,6 +220,7 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
     def test_composition_reads_nonrefundable_credits_when_present(self):
         composed = total_tax_liability_line_24({
             "total_tax": 10_000,
+            "schedule2_tax": 500,
             "f8962_repayment": 500,
             "nonrefundable_credits": 12_000,
             "f8959_tax_total": 900,
@@ -216,6 +229,89 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
 
     def test_missing_line_16_yields_none_so_the_balance_due_raise_names_it(self):
         self.assertIsNone(total_tax_liability_line_24({}))
+
+
+class Line24ComposesFromTheScheduleTwoTotalTests(unittest.TestCase):
+    """Schedule 2 Part I must come from the TOTAL, not from one component.
+
+    THE NAMED FAILURE SPECIES: an aggregate feeding a tax computation sourced
+    from a component that merely EQUALS the total today. The composition read
+    `f8962_repayment` (the excess-APTC repayment) before 1040 line 17 had a
+    canonical key. On today's spine the two are equal by assignment
+    (`schedule2_tax = f8962_repayment`, the repayment being the only Part I
+    component modelled), so no live return computes differently either way —
+    which is exactly why nothing would have caught the divergence when AMT or
+    another Part I item finally lands.
+
+    THE NEGATIVE SPACE IS REACHABLE, and this test is built to occupy it: the
+    dict below carries a `schedule2_tax` that EXCEEDS `f8962_repayment` by the
+    amount a Form 6251 AMT would contribute, which is the shape the real dict
+    takes the day AMT is modelled. Sourcing the component again yields 74,735
+    and this test reddens; sourcing the total yields 77,735.
+
+    Reading the total also cannot silently break the AMT-less present: the
+    sibling tests above inject dicts where the two are equal and pin the same
+    numbers as before.
+    """
+
+    _LINE_16 = 69_035
+    _REPAYMENT = 4_800
+    _AMT = 3_000
+    _PART_II = 900
+
+    def _results(self) -> dict:
+        return {
+            "total_tax": self._LINE_16,
+            # Line 17 = Schedule 2 line 3 = AMT + excess-APTC repayment.
+            "schedule2_tax": self._REPAYMENT + self._AMT,
+            "f8962_repayment": self._REPAYMENT,
+            "f8959_tax_total": self._PART_II,
+        }
+
+    def test_line_24_uses_the_line_17_total_not_the_repayment_component(self):
+        self.assertEqual(
+            self._LINE_16 + self._REPAYMENT + self._AMT + self._PART_II,
+            total_tax_liability_line_24(self._results()),
+        )
+
+    def test_the_component_and_the_total_are_distinguishable_here(self):
+        """The precondition, asserted rather than assumed.
+
+        If the fixture ever drifted so that `schedule2_tax` equalled
+        `f8962_repayment`, the test above would pass under either source and
+        would be quietly decorative.
+        """
+        results = self._results()
+        self.assertNotEqual(results["schedule2_tax"], results["f8962_repayment"])
+        component_answer = compose_line_24(
+            line_16=results["total_tax"],
+            schedule_2_part_i=results["f8962_repayment"],
+            nonrefundable_credits=0,
+            schedule_2_part_ii=results["f8959_tax_total"],
+        )
+        self.assertNotEqual(
+            component_answer, total_tax_liability_line_24(results),
+            "composing from the component and from the total give the same "
+            "number, so this fixture cannot tell them apart",
+        )
+
+    def test_a_missing_line_17_key_does_not_crash_the_payment_path(self):
+        """`.get(...) or 0` on a dict without line 17, kept deliberately.
+
+        Not every dict reaching this function is a full spine result — the PDF
+        derivation passes whatever mapping it is given, and the 1040-X path
+        assembles its own. The tolerant read keeps line 24 computable from
+        line 16 alone rather than raising on the one form the filer pays from.
+        It UNDERSTATES when line 17 is genuinely nonzero and absent, which is
+        why the spine emits the key unconditionally.
+        """
+        self.assertEqual(
+            self._LINE_16 + self._PART_II,
+            total_tax_liability_line_24({
+                "total_tax": self._LINE_16,
+                "f8959_tax_total": self._PART_II,
+            }),
+        )
 
 
 class F4868ComputeTests(unittest.TestCase):
@@ -430,7 +526,8 @@ class Expected4868PdfValuesTests(unittest.TestCase):
     _NIIT_AND_SE_TAX = 6_500
 
     def _workbook_results(self) -> dict:
-        parts = {"total_tax": 69_035, "f8962_repayment": 4_800,
+        parts = {"total_tax": 69_035, "schedule2_tax": 4_800,
+                 "f8962_repayment": 4_800,
                  "f8959_tax_total": 900, "total_payments": 60_000}
         return {
             "tax_liability_line24": (
@@ -602,6 +699,7 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         """
         got = expected_4868_pdf_values({
             "total_tax": 69_035.4,
+            "schedule2_tax": 4_800.4,
             "f8962_repayment": 4_800.4,
             "f8959_tax_total": 900.4,
             "total_payments": 60_000,
@@ -627,6 +725,7 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         got = expected_4868_pdf_values({
             "tax_liability_line24": 74_734.5,
             "total_tax": 69_034.5,
+            "schedule2_tax": 4_800,
             "f8962_repayment": 4_800,
             "f8959_tax_total": 900,
             "total_payments": 0,
