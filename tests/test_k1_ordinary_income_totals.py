@@ -359,6 +359,22 @@ class K1OrdinaryIncomeRoundingMatchesScheduleBTests(unittest.TestCase):
 # the REAL orchestrator end to end, because the defect this unit closed was
 # not in the preamble's arithmetic — it was in what the 1040 spine did with
 # the preamble's answer. A test that stops at the preamble cannot see that.
+#
+# ⚠️ SCOPE NOTE FOR EVERY CLASS BELOW — NATIVE-SPINE PATH ONLY.
+# Every scenario here is a SINGLE filer, and that is load-bearing rather than
+# incidental. ``_compute_1040_pipeline`` routes out-of-spine-scope scenarios
+# (non-single filers, and any EIC-possible filer) to the XLSX workbook, which
+# never calls ``compute_income_preamble`` at all: its line 2b/3b named ranges
+# are 1099-only and the flattener's K-1 interest/dividend keys are dropped
+# because ``F1040.INPUTS`` has no slot for them. So for THAT filer class a
+# K-1's interest and ordinary dividends are still outside AGI, and the
+# Schedule B gate still reads a 1099-only figure.
+#
+# That is PRE-EXISTING and out of this unit's scope — reaching it means
+# teaching the workbook path about K-1 conduit income. It is chartered as
+# follow-up unit (r). Nothing below asserts anything about the workbook path,
+# deliberately: asserting the current behavior would bless it. Read every
+# "must" below as "must, on the native spine".
 # ---------------------------------------------------------------------------
 
 
@@ -456,11 +472,14 @@ MIXED_AGI_WITHOUT_K1 = 107_000
 class K1IncomeReachesLines2b3bAndAgiTests(_OrchestratorTestCase):
     """Task 4 Step 1 — the end-to-end test.
 
-    A K-1's interest and ordinary dividends must reach 1040 lines 2b and 3b
-    and be INSIDE adjusted gross income. Before this unit landed they reached
-    the emitted Schedule B (via the Schedule E Part II fanout) but were
-    silently dropped by the native spine, so the 1040 and its own Schedule B
-    reported different totals on the same return and tax was understated.
+    On the native spine (see the SCOPE NOTE above this class — a non-single
+    filer routes to the workbook, where this is still broken, follow-up unit
+    (r)), a K-1's interest and ordinary dividends must reach 1040 lines 2b
+    and 3b and be INSIDE adjusted gross income. Before this unit landed they
+    reached the emitted Schedule B (via the Schedule E Part II fanout) but
+    were silently dropped by the native spine, so the 1040 and its own
+    Schedule B reported different totals on the same return and tax was
+    understated.
 
     See ``_mixed_source_scenario`` for the scenario and the full derivation.
     """
@@ -565,6 +584,11 @@ class K1VersusForm1099ChannelEquivalenceTests(_OrchestratorTestCase):
     the shareholder's 1040 cannot care which piece of paper reported them.
     Pre-fix the two channels diverged, because only the 1099 channel reached
     total income.
+
+    Native spine only — see the SCOPE NOTE above this class. On the XLSX
+    workbook path (non-single or EIC-possible filers) the two channels STILL
+    diverge, because that path never consults the income preamble; that is
+    follow-up unit (r), not something this class claims to have closed.
 
     Both scenarios (all figures synthetic/generic) are 2025 single filers on
     the standard deduction with the SAME ``TaxReturnConfig`` — including the
@@ -673,17 +697,60 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
     """Task 4 Step 3 — the CROSS-PATH test (standing policy).
 
     The emitted Schedule B and the emitted 1040 travel in the SAME packet.
-    Schedule B is the itemization the IRS reads against 1040 lines 2b/3b, so
-    the two must agree to the dollar. Nothing in this repo compared them
-    across the two paths before, and that gap is what let the previous unit's
-    regression ship: the compute path and the PDF-emit path build DIFFERENT
-    upstream dicts from different producers, so a value can be right on one
-    and wrong on the other while every unit test stays green.
+    Schedule B is the itemization the IRS reads against 1040 lines 2b/3b.
+    Nothing in this repo compared them across the two paths before, and that
+    gap is what let the previous unit's regression ship: the compute path and
+    the PDF-emit path build DIFFERENT upstream dicts from different
+    producers, so a value can be right on one and wrong on the other while
+    every unit test stays green.
 
     The emit side here is built the way
     ``ReturnOrchestrator._federal_individual_emit_specs`` builds it — the
     finished 1040 results dict plus a hoisted Schedule E Part II fanout —
     rather than by hand, so it exercises the real seam.
+
+    ⚠️ SCOPE OF THE INVARIANT — READ BEFORE STRENGTHENING THIS TEST.
+    "Schedule B agrees with lines 2b/3b to the dollar" is NOT true in
+    general today. Whole-dollar payer amounts are a SUFFICIENT condition for
+    it, and that is the condition this class relies on — every fixture here
+    is whole-dollar by construction, pinned by
+    ``test_fixture_is_whole_dollar_by_construction``.
+
+    (Whole dollars are sufficient but not strictly necessary: the two
+    conventions also coincide when only ONE payer on a line is fractional,
+    since rounding a one-element sum is the same as rounding its one
+    element. Divergence needs TWO OR MORE fractional payers on the same
+    line — measured below. The guard asserts the simple sufficient
+    condition rather than the exact one, because "no fractional amounts" is
+    what a fixture author can actually keep true.)
+
+    The reason is a rounding-convention split. ``sch_b.compute`` rounds EACH
+    payer's amount and sums the rounded figures. This unit matched that on
+    the K-1 leg (see ``K1OrdinaryIncomeRoundingMatchesScheduleBTests``), but
+    the 1099 leg of ``compute_income_preamble`` still rounds ONCE over the
+    raw sum — ``irs_round(sum(f.interest for f in scenario.form1099_int))``.
+    Those are different functions the moment cents are involved. Measured on
+    the native path:
+
+        two 1099-INTs @ 100.50, two 1099-DIVs @ 250.50, no K-1
+            1040 line 2b = 201   Schedule B line 4 = 202
+            1040 line 3b = 501   Schedule B line 6 = 502
+        the same, plus a K-1 @ 100.50 interest / 250.50 dividends
+            1040 line 2b = 302   Schedule B line 4 = 303
+        ONE 1099-INT @ 2,000.50, no K-1  (both conventions coincide)
+            1040 line 2b = 2001  Schedule B line 4 = 2001
+
+    Note the K-1 leg adds the SAME 101 / 251 to both sides — the entire $1
+    divergence is the 1099 leg. So this test would fail on a `.50` fixture,
+    and it would be failing for a real, pre-existing reason that this unit
+    did not introduce and deliberately did not fix: correcting the 1099 leg
+    moves ``total_income`` and therefore a real taxpayer's tax, which needs
+    its own oracle-checked unit. **That is chartered as follow-up unit (n).**
+
+    Per team-lead's ruling this is left as a NAMED GAP rather than an xfail:
+    a documented boundary plus a ledgered unit beats an expected-failure
+    marker that nobody owns. Do not widen the fixture to fractional amounts
+    to "prove" the gap — that converts a ledgered follow-up into red CI.
 
     See ``_mixed_source_scenario`` for the scenario and the derivation:
     line 2b = 5,000, line 3b = 11,000.
@@ -702,7 +769,53 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
             upstream={"f1040": results, "k1_fanout": fanout},
         )
 
-    def test_emitted_schedule_b_totals_equal_1040_lines_2b_and_3b(self) -> None:
+    def test_fixture_is_whole_dollar_by_construction(self) -> None:
+        """Pin the precondition the equality test depends on.
+
+        The cross-path equality below holds only for whole-dollar payer
+        amounts (see the class docstring, and follow-up unit (n)). Without
+        this guard, a future editor who changes a fixture amount to, say,
+        2,000.50 would get a bare off-by-one failure and no way to tell a
+        real regression from the known 1099-leg rounding split. With it,
+        they get told which is which.
+        """
+        amounts = (
+            [("1099-INT", f.payer, f.interest)
+             for f in self.scenario.form1099_int]
+            + [("1099-DIV", f.payer, f.ordinary_dividends)
+               for f in self.scenario.form1099_div]
+            + [("K-1 interest", k.entity_name, k.interest_income)
+               for k in self.scenario.schedule_k1s]
+            + [("K-1 dividends", k.entity_name, k.ordinary_dividends)
+               for k in self.scenario.schedule_k1s]
+        )
+        for source, payer, amount in amounts:
+            with self.subTest(source=source, payer=payer):
+                self.assertEqual(
+                    amount, int(amount),
+                    f"{source} payer {payer!r} carries a fractional amount "
+                    f"({amount}). The cross-path equality in this class is "
+                    "guaranteed only for whole-dollar amounts: the 1099 leg "
+                    "of compute_income_preamble rounds once over the raw sum "
+                    "while Schedule B rounds per payer, so two or more "
+                    "fractional payers on the same line make the 1040 and "
+                    "its own Schedule B differ by a dollar. (A single "
+                    "fractional payer happens to survive, but do not rely on "
+                    "that — adding a second payer would silently break it.) "
+                    "That divergence is REAL and PRE-EXISTING, chartered as "
+                    "follow-up unit (n) — it is not something this test "
+                    "should be made to demonstrate.",
+                )
+
+    def test_whole_dollar_schedule_b_totals_equal_1040_lines_2b_and_3b(
+        self,
+    ) -> None:
+        """On a whole-dollar return, the emitted Schedule B's totals equal
+        the emitted 1040's lines 2b/3b.
+
+        Scoped to whole dollars deliberately — see the class docstring for
+        why the general claim is false today and where it is chartered.
+        """
         results = self.orchestrator._compute_1040_pipeline(self.scenario)
         sch_b = self._emit_path_sch_b(results)
 
@@ -721,7 +834,10 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
                     f"{label}: Schedule B says {sch_b[sch_b_key]}, the 1040 "
                     f"says {results[f1040_key]}. They would ship in the same "
                     "packet, with Schedule B itemizing the very payers the "
-                    "1040 line totals.",
+                    "1040 line totals. This fixture is whole-dollar, so the "
+                    "known 1099-leg rounding split (follow-up unit (n)) "
+                    "cannot explain a difference here — treat it as a real "
+                    "regression in which total the 1040 publishes.",
                 )
 
         # Pin the shared figures against the independent derivation, so a
@@ -733,12 +849,22 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
 class ScheduleBGateCountsK1IncomeTests(_OrchestratorTestCase):
     """Task 4 Step 4 — the Schedule B emission gate (P-3).
 
-    The IRS Part I / Part II filing threshold is applied to the 1040 line 2b
-    / 3b TOTAL, not to the 1099 slice. Historically the gate summed only the
-    1099s, so a return with 1,400 on a 1099-INT and 1,400 on a K-1 had a true
-    2,800 Schedule B total, failed the gate, and was emitted with NO Schedule
-    B at all -- the taxpayer's own itemization of the income missing from the
-    packet.
+    ON THE NATIVE-SPINE PATH the IRS Part I / Part II filing threshold is
+    applied to the 1040 line 2b / 3b TOTAL, not to the 1099 slice.
+    Historically the gate summed only the 1099s, so a return with 1,400 on a
+    1099-INT and 1,400 on a K-1 had a true 2,800 Schedule B total, failed the
+    gate, and was emitted with NO Schedule B at all -- the taxpayer's own
+    itemization of the income missing from the packet.
+
+    ⚠️ SCOPE -- "native-spine path" above is load-bearing, not a hedge. Every
+    scenario in this class is a SINGLE filer, which is what keeps it on the
+    native spine. A non-single or EIC-possible filer routes to the XLSX
+    workbook, whose line 2b/3b named ranges are 1099-only, so for that filer
+    class the 1,400 + 1,400 case below is STILL BROKEN and this class does not
+    say otherwise. See the scope note on
+    ``ReturnOrchestrator._should_emit_sch_b``; chartered as follow-up unit
+    (r). There is deliberately no workbook-path test here: asserting the
+    current workbook behavior would bless it.
 
     The three scenarios below share one shape (2025 single filer, W-2 wages
     100,000, no dividends anywhere) and differ ONLY in the two interest
@@ -867,25 +993,56 @@ class K1IncomeFlowsThroughToScheduleCaColumnATests(_OrchestratorTestCase):
         )
 
 
-def _fields_reaching_k1_positive_income() -> tuple[str, ...]:
+#: ``ScheduleK1`` fields that carry identity rather than money. Probing them
+#: with a 1.0 would be meaningless, so the discovery below skips them.
+_K1_NON_INCOME_FIELDS = frozenset({
+    "entity_name", "entity_ein", "entity_type", "material_participation",
+})
+
+
+def _probe_k1_positive_income() -> tuple[tuple[str, ...], dict[str, float]]:
     """Discover, BEHAVIORALLY, which ``ScheduleK1`` fields the routing gate's
     ``_k1_positive_income`` enumerates.
 
-    Probes each float field of ``ScheduleK1`` by setting it (and only it) to
-    1.0 and asking ``_k1_positive_income`` what it returns. No source or AST
-    parsing: the discovery survives a refactor of that function and
+    Probes each non-identity field of ``ScheduleK1`` by setting it (and only
+    it) to 1.0 and asking ``_k1_positive_income`` what it returns. No source
+    or AST parsing: the discovery survives a refactor of that function and
     automatically picks up any field added to it later.
+
+    Returns ``(counted, anomalous)``:
+
+    - ``counted`` — fields whose probe contributed exactly 1.0. These are the
+      fields the gate enumerates once, and they are what the detector below
+      iterates.
+    - ``anomalous`` — field name -> contribution, for any field whose probe
+      returned something OTHER than 0.0 or 1.0.
+
+    ``anomalous`` exists because of a blind spot found in review on
+    2026-08-17. The probe originally kept a field only on an exact ``== 1.0``
+    match, which meant a field the gate DOUBLE-COUNTED (contribution 2.0, or
+    any scaled/clamped variant) silently fell out of the discovered set — and
+    the detector then stopped checking that field entirely. The single most
+    alarming thing the gate could do to a field was the one thing that made
+    the detector look away from it. Surfacing anomalies instead of dropping
+    them turns that silence into a named failure (see
+    ``test_discovery_probe_finds_the_gate_fields``).
+
+    Deliberately returns data rather than asserting: this runs inside test
+    methods, never at import, so a future anomaly is a FAILURE in one test
+    and never a collection-time ERROR that takes the rest of the file down
+    with it.
     """
-    seen = []
+    counted: list[str] = []
+    anomalous: dict[str, float] = {}
     for f in dataclasses.fields(ScheduleK1):
-        if f.name in {
-            "entity_name", "entity_ein", "entity_type", "material_participation",
-        }:
+        if f.name in _K1_NON_INCOME_FIELDS:
             continue
-        probe = _hand_authored_k1(**{f.name: 1.0})
-        if _k1_positive_income(probe) == 1.0:
-            seen.append(f.name)
-    return tuple(seen)
+        contribution = _k1_positive_income(_hand_authored_k1(**{f.name: 1.0}))
+        if contribution == 1.0:
+            counted.append(f.name)
+        elif contribution != 0.0:
+            anomalous[f.name] = contribution
+    return tuple(counted), anomalous
 
 
 class K1RoutingGateIncomeAlsoReachesTotalIncomeTests(_OrchestratorTestCase):
@@ -950,23 +1107,59 @@ class K1RoutingGateIncomeAlsoReachesTotalIncomeTests(_OrchestratorTestCase):
         self.assertEqual(results["agi"], self.BASELINE_TOTAL_INCOME)
 
     def test_discovery_probe_finds_the_gate_fields(self) -> None:
-        """Fixture guard for the discovery probe itself.
+        """Fixture guard for the discovery probe itself — TWO ways it can go
+        quiet, both of which shrink the detector's coverage silently.
 
-        If ``_fields_reaching_k1_positive_income`` returned an empty tuple --
-        say because ``_k1_positive_income`` was refactored to take a
-        different argument shape -- the detector below would iterate nothing
-        and pass vacuously forever. Assert it found a real set, including the
-        two channels this unit repaired.
+        1. AN EMPTY SET. If ``_probe_k1_positive_income`` returned no counted
+           fields -- say because ``_k1_positive_income`` was refactored to
+           take a different argument shape -- the detector below would
+           iterate nothing and pass vacuously forever.
+
+        2. AN ANOMALOUS CONTRIBUTION. A field whose probe returns anything
+           other than 0.0 or 1.0 is not counted, so it drops out of the
+           detected set and the detector stops examining it. The most
+           important case is a contribution of 2.0: the gate DOUBLE-COUNTS
+           that field. That is a defect in its own right -- the routing
+           gate's agi_estimate is overstated for every return carrying it --
+           and, left unguarded, it would make the detector look away from the
+           one field most worth looking at. It fails loudly here instead.
+
+        A field legitimately outside the gate contributes exactly 0.0 and is
+        simply absent from ``counted``; that is normal and silent, which is
+        why 0.0 is not an anomaly.
         """
-        fields = _fields_reaching_k1_positive_income()
-        self.assertGreaterEqual(len(fields), 9)
-        self.assertIn("interest_income", fields)
-        self.assertIn("ordinary_dividends", fields)
+        counted, anomalous = _probe_k1_positive_income()
+
+        self.assertEqual(
+            anomalous, {},
+            "orchestrator._k1_positive_income gave an ANOMALOUS contribution "
+            "for one or more ScheduleK1 fields. Each field was probed at "
+            "exactly 1.0 in isolation, so a correctly-enumerated field "
+            "contributes 1.0 and an unenumerated field contributes 0.0. "
+            f"These contributed neither: {anomalous}. A contribution of 2.0 "
+            "means the field is summed TWICE in that function, overstating "
+            "the routing gate's agi_estimate; any other value means it is "
+            "scaled or clamped. Fix _k1_positive_income -- do NOT relax this "
+            "guard, because an anomalous field is EXCLUDED from the "
+            "partial-total detector below, so leaving it anomalous silently "
+            "removes it from that coverage as well.",
+        )
+        self.assertGreaterEqual(len(counted), 9)
+        self.assertIn("interest_income", counted)
+        self.assertIn("ordinary_dividends", counted)
 
     def test_every_routing_gate_income_field_reaches_total_income(self) -> None:
         """Each field the routing gate counts must move 1040 line 9 by the
-        full amount placed on it."""
-        for field_name in _fields_reaching_k1_positive_income():
+        full amount placed on it.
+
+        Coverage caveat, stated so it is not over-read: this iterates the
+        fields the probe COUNTED. A field the gate handles anomalously (e.g.
+        double-counts) is not in that set and is therefore not checked here
+        — ``test_discovery_probe_finds_the_gate_fields`` is what makes that
+        exclusion loud rather than silent.
+        """
+        counted, _anomalous = _probe_k1_positive_income()
+        for field_name in counted:
             if field_name in self.LEGITIMATELY_EXCLUDED:
                 continue
             with self.subTest(k1_field=field_name):

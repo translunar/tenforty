@@ -2128,12 +2128,34 @@ class ReturnOrchestrator:
         the gate, and was emitted with NO Schedule B at all.
 
         The totals are read BY REFERENCE from the finished 1040 results rather
-        than re-derived here, so this gate cannot drift from the lines it
-        gates: whatever convention lines 2b/3b use (including how the K-1
-        additions are rounded), the threshold is applied to the very figure
-        Schedule B will print. Re-summing the scenario here would also have to
-        duplicate sch_e_part_ii's per-entity-type classification of which K-1s
-        contribute -- a copy that rots the moment that classification changes.
+        than re-derived here. ON THE NATIVE-SPINE PATH that means the gate
+        cannot drift from the lines it gates: whatever convention lines 2b/3b
+        use (including how the K-1 additions are rounded), the threshold is
+        applied to the very figure Schedule B will print. Re-summing the
+        scenario here would also have to duplicate sch_e_part_ii's
+        per-entity-type classification of which K-1s contribute -- a copy that
+        rots the moment that classification changes.
+
+        ⚠️ SCOPE -- the no-drift guarantee above is NATIVE-PATH ONLY. It does
+        NOT hold on the XLSX workbook path, which _compute_1040_pipeline uses
+        for every out-of-spine-scope scenario (non-single filers, and any
+        EIC-possible filer). The workbook's Interest_Inc / Dividend_Inc named
+        ranges are 1099-only: oracle.flattener emits k1_<letter>_interest_income
+        and ..._ordinary_dividends, but F1040.INPUTS carries no such keys, and
+        oracle.engine drops unmapped input keys silently. So for that filer
+        class this gate reads a value NAMED like a total that is in fact the
+        1099 slice, while the Schedule B emitted in the same packet DOES carry
+        the K-1 payers (form_sch_b.compute receives the fanout regardless of
+        which 1040 path ran). The $1,400-on-a-1099 + $1,400-on-a-K-1 case is
+        therefore still unfixed for an MFJ or EIC-possible filer, and their
+        K-1 interest/dividends are still outside AGI.
+
+        That gap is PRE-EXISTING -- this method's change did not create it and
+        cannot close it, because closing it means teaching the workbook path
+        about K-1 conduit income. It is chartered as follow-up unit (r). Every
+        test covering this gate is a single-filer native-path scenario; there
+        is deliberately no test asserting the workbook-path behavior, because
+        asserting it would bless it.
 
         Fallback: callers that pass no 1040 results (unit-level callers with an
         empty dict) degrade to the 1099-only sums, i.e. the historic behavior.
@@ -2143,6 +2165,18 @@ class ReturnOrchestrator:
         """
         interest_1099 = sum(i.interest for i in scenario.form1099_int)
         dividends_1099 = sum(d.ordinary_dividends for d in scenario.form1099_div)
+        # HAZARD (documented, deliberately NOT guarded): dict.get's default
+        # fires only on a MISSING key, not on a key present with value None.
+        # A None here would reach `None >= 1500.0` and TypeError at PDF-emit
+        # time rather than falling back to the 1099 sums. This cannot happen
+        # today -- Interest_Inc and Dividend_Inc are formula cells in all five
+        # year workbooks (2021-2025), so they evaluate numeric, never blank --
+        # which is why there is no coercion here and no entry for these two
+        # keys in f1040.py's _NUMERIC_SCH_1_KEYS. It would become live if
+        # either named range were repointed at a raw input cell, or a new
+        # year's workbook left one blank. Flagged for follow-up unit (r),
+        # which owns the workbook path; a defensive `or` here would be dead
+        # code guarding a state the codebase cannot currently reach.
         total_interest = results.get("taxable_interest", interest_1099)
         total_dividends = results.get("ordinary_dividends", dividends_1099)
         return total_interest >= 1500.0 or total_dividends >= 1500.0
