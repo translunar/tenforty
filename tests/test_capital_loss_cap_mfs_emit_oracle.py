@@ -35,26 +35,46 @@ the scenario below starts routing native, ``test_mfs_scenario_routes_to_the_
 workbook_not_the_native_spine`` fails as its designed signal, and this test
 should be re-pointed at (or duplicated for) the native path.
 
-WHY THE HARVEST IS NARROWED TO THE INCOME SECTION — DO NOT WIDEN IT.
-There is a known PRE-EXISTING defect on the workbook path for every MFJ/MFS
-return: tenforty has no spouse-birthdate concept, so the workbook's
-``Birthday_Needed`` flag ('1040'!BI136) is unconditionally TRUE for those
-statuses (BI143 = ``OR(SpouseBirthMonth="", ...)``, always true for us). The
-workbook then REFUSES to compute the deduction-and-below section:
+FOUR OF THESE TESTS ARE STRICT-XFAIL, AND THE REASON IS NOT ABOUT CAPITAL LOSS.
+This file's earlier revision narrowed its harvest to the income section and
+explained why; that narrowing is now moot, because tenforty refuses the whole
+scenario before any figure is produced. Read on before "fixing" anything here.
+
+There is a PRE-EXISTING defect on the workbook path for every MFJ/MFS return:
+tenforty has no spouse-birthdate concept, so the workbook's ``Birthday_Needed``
+flag ('1040'!BI136) is unconditionally TRUE for those statuses (BI143 =
+``OR(SpouseBirthMonth="", ...)``, always true for us). The workbook then REFUSES
+to compute the deduction-and-below section:
   * '1040'!AL91 (line 12, the deduction) short-circuits to 0 on Birthday_Needed;
   * the ``Deduction`` named range ('1040'!AU91) holds the literal diagnostic
-    string "Birthdate(s) needed." instead of a label;
+    string "Birthdate(s) needed." instead of a deduction-source caption;
   * ``Tax_SubTotal`` ('1040'!AL96) evaluates to "" (blank) on Birthday_Needed,
     which the engine reads as None.
-So ``total_deductions``, ``taxable_income`` and ``total_tax`` are all corrupt or
-blank for an MFS return. Asserting on them would produce a confusing ERROR or a
-meaningless wrong number that reads as harness breakage rather than a real
-finding — and it is a DIFFERENT bug from the one this file is about.
+tenforty now HARVESTS that diagnostic and refuses on it
+(``tenforty/forms/f1040.py::workbook_refusal``, raising NotImplementedError from
+``f1040.compute``), instead of reading the blanked line 16 as data and emitting
+a 1040 whose line 18 silently omitted its own line-16 component. So an MFS
+scenario no longer produces figures at all: ``compute_federal`` raises.
 
-Line 7a and ``total_income`` sit ABOVE that refusal point and are structurally
-unaffected: '1040'!AL74 (line 7a / ``CapitalGains``) and '1040'!AL77
-(``Total_Income``) contain no Birthday_Needed guard, and neither does the wages
-chain feeding them (AL51/AL60). Verified by reading the 2025 workbook formulas.
+That makes the four tests below — every one that actually runs the workbook —
+structurally unreachable, through no fault of their own subject. They keep their
+assertions and are marked ``xfail(strict=True)`` rather than skipped or deleted,
+because strict xfail is self-enforcing: the day the spouse-birthdate unit lands,
+these XPASS, strict-xfail turns that into a FAILURE, and whoever lands that unit
+is forced to restore them as live pins. A skip would rot silently. THE §1211(b)
+MFS EMIT PLUMBING IS THEREFORE UNPINNED END-TO-END until that unit lands — this
+file names that gap rather than papering over it.
+
+The two tests that need no workbook (the params cap identity and the routing
+tripwire) still run and still pass.
+
+Line 7a and ``total_income`` do sit ABOVE the workbook's own refusal point and
+are structurally unaffected BY THE SHEET: '1040'!AL74 (line 7a /
+``CapitalGains``) and '1040'!AL77 (``Total_Income``) contain no Birthday_Needed
+guard, and neither does the wages chain feeding them (AL51/AL60). Verified by
+reading the 2025 workbook formulas. They are unreachable only because tenforty's
+refusal is at harvest, which is deliberately coarser than the sheet's: a return
+the sheet declined to finish is not a return we will emit half of.
 
 THEREFORE: this file deliberately does NOT reuse ``PARITY_KEYS`` from
 ``tests/test_f1040_spine_oracle.py``. That constant contains ``taxable_income``,
@@ -250,6 +270,9 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
                 "revisited.",
             )
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "MFS Deduction-diagnostic refusal fires at harvest, before any "
+        "figure is produced; spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_emitted_1040_line_7a_is_the_halved_mfs_cap(self):
         """THE CENTRAL ASSERTION: 1040 line 7a on the filled PDF == -1,500.
@@ -278,6 +301,9 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             f"raw Schedule D line 16 total reached line 7a.",
         )
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "MFS Deduction-diagnostic refusal fires at harvest, before any "
+        "figure is produced; spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_compute_capital_gain_loss_is_the_halved_mfs_cap(self):
         """Same quantity one layer earlier, to localise a failure.
@@ -292,6 +318,9 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["capital_gain_loss"], -cap)
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "MFS Deduction-diagnostic refusal fires at harvest, before any "
+        "figure is produced; spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_total_income_is_wages_minus_the_halved_cap(self):
         """Total income (1040 line 9) = wages + the ALLOWED loss, not the full
@@ -308,6 +337,9 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["total_income"], WAGES - cap)  # 58,500
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "MFS Deduction-diagnostic refusal fires at harvest, before any "
+        "figure is produced; spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_schedule_d_line_16_stays_the_true_uncapped_loss(self):
         """Schedule D line 16 is the TRUE net loss (-8,000) even though line 7a

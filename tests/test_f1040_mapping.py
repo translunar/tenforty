@@ -127,6 +127,28 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
                 self.assertEqual(outputs["schedule2_tax"], "Schedule2_Tax")
                 self.assertEqual(outputs["tax_plus_schedule2"], "Tax")
 
+    def test_deduction_diagnostic_is_harvested_by_name_every_year(self):
+        """The refusal guard is only as good as its harvest.
+
+        `forms/f1040.py::workbook_refusal` passes silently when this key is
+        ABSENT -- it must, since a missing key is indistinguishable from a
+        caller that does not harvest it. So a year that lost the mapping
+        would silently return to reading a refused blank as a number, and no
+        refusal test would notice. This is the assertion that notices.
+
+        Mapped to the NAME `Deduction`, never to an address: the cell moves
+        every year (2021 '1040'!AJ51, 2022 AJ58, 2023 AK64, 2024 AK67, 2025
+        AU91) while the name is stable in all five workbooks. Note the name
+        is SINGULAR -- `Deductions` (plural) is a DIFFERENT named range, the
+        line-12 dollar amount, which is the value the diagnostic zeroes.
+        """
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    F1040.get_outputs(year)["deduction_diagnostic"],
+                    "Deduction",
+                )
+
 
 class TestF1040MappingValidity(unittest.TestCase):
     """Pre-flight checks: every direct cell ref in SHEET_MAP must point at a

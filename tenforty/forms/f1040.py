@@ -90,9 +90,141 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 })
 
 
+# --- The workbook's refusal channel -----------------------------------------
+#
+# The vendor sheet does not only COMPUTE. It DETECTS incomplete input, writes a
+# plain-English diagnostic into the `Deduction` named range, forces line 12 (the
+# applied deduction) to 0, and blanks `Tax_SubTotal` — Form 1040 LINE 16, which
+# is tenforty's `total_tax`. Harvesting the blanked number without reading the
+# diagnostic is reading a REFUSAL as data, and that is what this guard stops.
+#
+# `Deduction` is the line-12 CAPTION cell, and it is NEVER EMPTY. Its IF-chain
+# has ELEVEN branches — five diagnostics and six ordinary labels — so "refuse on
+# any non-empty string" would refuse every return ever computed. The refusal
+# rule is therefore an ALLOWLIST OF LABELS, which is what fail-closed means for
+# a cell of this shape: anything that is not a known label refuses, including a
+# string nobody here has seen before. Refusing only on strings we recognise
+# would reproduce, at smaller scale, the original defect — the sheet says
+# something and we decide it is not worth listening to.
+#
+# THE FIVE DIAGNOSTIC BRANCHES (verbatim, identical in all five workbooks):
+#   "Manual Override"                                 <- AM46/AN62/AN65/AX78 set
+#   "Filing status error."                            <- FilingStatusError
+#   "Birthdate(s) needed."                            <- Birthday_Needed
+#   "Filing status error or invalid spouse input."    <- $AL$9/$AV$10/$BF$12
+#   "Filing status not indicated."                    <- NumFileStatusBoxes=0
+# "Manual Override" is UNREACHABLE — tenforty never writes the override cells —
+# but it is deliberately NOT special-cased, for the reason above.
+#
+# THE SIX LABEL BRANCHES, which must NOT refuse, matched as normalized prefixes
+# (seven strings — one branch is worded differently in 2025 than in 2021-2024):
+#   "Standard Deduction"
+#   "Standard deduction plus net qualified disaster losses\non Sch. A, Line 16."
+#   "Schedule A"
+#   "See Standard \n Deduction Chart\n at right  →"        (2021-2024)
+#   "See Standard \n Deduction Calculation\n at right  →"  (2025 rewording)
+#   "Line 12a - Standard Deduction for Dependents"
+#   "Deduction is $0 due to spouse itemizing or dual-status alien."
+# Prefixes rather than equality because three of these are assembled in-sheet
+# from CHAR(10)s, and two carry doubled spaces and a trailing "→"; matching a
+# prefix keeps a whitespace or arrow-encoding difference in the recalc
+# round-trip from refusing an ordinary return. Note "Standard Deduction" is a
+# prefix of the disaster-loss label — both are benign, so the overlap is
+# harmless, and no diagnostic branch is a prefix of any label branch. A vendor
+# REWORDING of any of these refuses loudly; that is the intended direction.
+#
+# Only `Tax_SubTotal`'s blank is a refusal. `Schedule2_Tax` (line 17) is NOT
+# gated by `Birthday_Needed` — its blank is definitional and IS coerced to 0
+# below. That contrast is the whole rule: coerce when the CELL ITSELF defines
+# blank as zero; refuse when some diagnostic upstream declined to answer.
+_DEDUCTION_DIAGNOSTIC_KEY = "deduction_diagnostic"
+
+_DEDUCTION_LABEL_PREFIXES: tuple[str, ...] = (
+    "standard deduction",
+    "schedule a",
+    "see standard deduction chart",
+    "see standard deduction calculation",
+    "line 12a - standard deduction for dependents",
+    "deduction is $0 due to spouse itemizing or dual-status alien.",
+)
+
+_REFUSAL = (
+    "The 1040 workbook DECLINED to compute this return. Its `Deduction` named "
+    "range — the Form 1040 line-12 caption cell — reads {diagnostic!r}, which "
+    "is not one of the deduction-source captions it carries on a return the "
+    "sheet was willing to compute. When that cell holds a diagnostic the sheet "
+    "has short-circuited: line 12 (the applied deduction) is forced to 0 and "
+    "`Tax_SubTotal` — Form 1040 LINE 16, tenforty's `total_tax` — evaluates "
+    "BLANK, which the engine reads as None. tenforty refuses here rather than "
+    "reading that blank as zero, which would answer \"your tax is zero\" on a "
+    "real return.\n"
+    "\n"
+    "CAUSE: for MARRIED_JOINTLY and MARRIED_SEPARATE — which is every return "
+    "that reaches this refusal today — tenforty supplies no spouse birthdate "
+    "at all, so the workbook's `Birthday_Needed` flag is unconditionally TRUE "
+    "and this diagnostic always fires. REMEDY: the spouse-birthdate unit adds "
+    "that input and lifts this refusal. There is no scenario-side workaround, "
+    "and none is wanted: the figures at and below line 12 were never right for "
+    "this population, so this refusal converts a silently WRONG return into a "
+    "loudly REFUSED one. It does not make the return computable.\n"
+    "\n"
+    "This refusal ALSO protects lines 17 and 18, which the same blank corrupts "
+    "WITHOUT their going blank themselves. Form 6251 takes `Tax_SubTotal` as a "
+    "SUM operand (2021-2024) or through "
+    "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)` (2025), summing the "
+    "blank as 0; that understates regular tax and OVERSTATES the AMT, so line "
+    "17 (`schedule2_tax`) harvests a wrong NONZERO number on an AMT-bearing "
+    "return. Line 18 is worse: `Tax` is `SUM(Tax_SubTotal, <line-17 cell>)` "
+    "and spreadsheet SUM() IGNORES text, so a refused line 16 is silently "
+    "SKIPPED and line 18 prints a plausible number that omits its own line-16 "
+    "component — a mislabeled partial total."
+)
+
+
+def workbook_refusal(harvested: dict) -> str | None:
+    """Return a refusal message if the workbook declined to compute, else None.
+
+    The decision, deliberately separated from `compute` and from any workbook
+    run: it is a pure function of a harvested dict, so it is exercisable with
+    an injected dict and therefore VISIBLE to the standard `-m "not oracle"`
+    gate. The oracle tier is deselected by that invocation, so a guard
+    reachable only through a real LibreOffice recalc is invisible to every gate
+    this branch reports — which is precisely how the defect it guards survived.
+
+    Passes when the key is ABSENT. That is required, not an oversight: a
+    missing key is indistinguishable from a caller that does not harvest one,
+    and a guard that fires unconditionally is indistinguishable from a broken
+    pipeline. The harvest itself is pinned per-year by
+    tests/test_f1040_mapping.py, which is what would catch a lost mapping.
+    """
+    diagnostic = harvested.get(_DEDUCTION_DIAGNOSTIC_KEY)
+    if diagnostic is None:
+        return None
+    normalized = " ".join(str(diagnostic).split()).casefold()
+    if not normalized:
+        return None
+    if normalized.startswith(_DEDUCTION_LABEL_PREFIXES):
+        return None
+    return _REFUSAL.format(diagnostic=diagnostic)
+
+
 def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     """Translate raw engine output into a PDF-ready 1040 result dict."""
     translated: dict = dict(raw_1040)
+
+    # Listen to the workbook's refusal BEFORE translating anything. Sited here
+    # for the same reason as the `schedule2_tax` normalization below: `compute`
+    # is a pure dict transform with exactly one caller
+    # (orchestrator._compute_1040_via_workbook) and no workbook dependency, so
+    # the guard stays testable — and therefore gate-visible — without soffice.
+    # The diagnostic is CONSUMED, not forwarded: it is a harvest-time control
+    # value, not a result, and it is the one OUTPUT that holds a string, so
+    # letting it travel onward would put a caption where every downstream
+    # consumer expects money.
+    refusal = workbook_refusal(translated)
+    translated.pop(_DEDUCTION_DIAGNOSTIC_KEY, None)
+    if refusal is not None:
+        raise NotImplementedError(refusal)
 
     for old, new in _RENAMES.items():
         if old in translated:
@@ -175,7 +307,10 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # spouse-birthdate concept). Its blank therefore means "the workbook
     # REFUSED to compute your tax", and writing 0 there would silently answer
     # "your tax is zero" on a real return. `total_tax` is handled the opposite
-    # way — refuse loudly at harvest, never coerce. The distinction is not
+    # way — refuse loudly at harvest, never coerce; that refusal is
+    # `workbook_refusal` above, reading the diagnostic the sheet writes into
+    # the `Deduction` named range whenever it blanks this cell. The two blocks
+    # are a matched pair, not two opinions about blanks. The distinction is not
     # stylistic: the test for a blank is whether the CELL ITSELF defines blank
     # as zero (coerce) or whether some diagnostic upstream declined to answer
     # (refuse). Do not cite this block for a cell in the second category.
