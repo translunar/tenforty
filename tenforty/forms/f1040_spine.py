@@ -509,14 +509,20 @@ def compute_spine(
     # 2023 AD73, 2024 AD76, 2025 AL97), so "the cell above" lands on line 17
     # and re-commits the very conflation described above. Nor is there a fixed
     # offset to substitute: `Tax_SubTotal` is THREE rows above `Tax` in
-    # 2021-2024 (AC56, AC65, AD71, AD74) but TWO in 2025 (AL96), because the
-    # older layouts carry a caption-only row between lines 16 and 17. Resolve
-    # BOTH ranges BY NAME. Two successive drafts of this comment asserted a row
-    # offset and both were wrong in the direction of the defect, which is why
-    # this is spelled out rather than summarized.
-    # (Do not expect to confirm this by finding a printed "16" beside
-    # `Tax_SubTotal`: only the 2025 workbook captions that row. In 2021-2024
-    # the "Tax (see instructions)" caption prints one row BELOW it. Anchor on
+    # 2021-2024 (AC56, AC65, AD71, AD74) but TWO in 2025 (AL96), because in
+    # 2021-2024 the line-16 AMOUNT cell sits one row above LINE 16'S OWN
+    # PRINTED ROW. That intervening row is not filler and not caption-only: it
+    # carries the printed "16" (E57, E66, F72, F75, and again in the AB/AC
+    # columns), the "Tax (see instructions)" caption, the 8814/4972 checkbox
+    # band, the manual-override input cell that `Tax_SubTotal`'s own formula
+    # READS (AM57, AM66, AN72, AN75) and, in 2021-2023, a live addend it also
+    # reads (AO57, AO66, AP72). Resolve BOTH ranges BY NAME. Two successive
+    # drafts of this comment asserted a row offset and both were wrong in the
+    # direction of the defect, which is why this is spelled out rather than
+    # summarized.
+    # (So do not expect to confirm line 16 by finding a printed "16" on
+    # `Tax_SubTotal`'s OWN row: in 2021-2024 that caption prints one row BELOW
+    # the amount cell, and only 2025 puts the two on the same row. Anchor on
     # the line-18 label row and the formula relationship instead.)
     # `mappings/f1040.py` maps `total_tax` -> `Tax_SubTotal` in every year, and
     # `mappings/pdf_1040.py` maps it to the line-16 amount box.
@@ -618,15 +624,18 @@ def compute_spine(
     # (Sch 2 line 2). f8962_repayment joins the subtraction exactly like
     # f8959_tax_total — it raises the liability that total_payments is measured
     # against, and is 0 when no 1095-A is present. The workbook's own `Overpaid`
-    # named range is, in every year,
-    #     IF(<override><>"", ROUND(<override>,0),
-    #        IF(Tot_Payments > Tot_Tax, SUM(Tot_Payments, -Tot_Tax), 0))
-    # — quoted with its manual-override branch rather than simplified, because
-    # a comment that presents a reduced form as the literal formula is how the
-    # next reader concludes the sheet does something it does not. The operand
-    # really is the `Tot_Payments` named range (checked per year, not assumed
-    # from the cell address). What matters here is the second branch: it
-    # measures against 1040 LINE 24, the full liability.
+    # named range is, in every year (2021's text; the others differ only in
+    # their addresses):
+    #     =IF(AM84<>"",ROUND(AM84,0),IF(AC83>Tot_Tax,SUM(AC83,-Tot_Tax),0))
+    # — quoted VERBATIM, with its manual-override branch and its raw addresses,
+    # because a comment that presents a tidied form as the literal formula is
+    # how the next reader concludes the sheet does something it does not. Note
+    # the asymmetry in the sheet's own style: it writes `Tot_Tax` BY NAME but
+    # the payments operand as a bare ADDRESS. That address resolves to the
+    # `Tot_Payments` cell in every year (2021 AC83, 2022 AC87, 2023 AD93, 2024
+    # AD96, 2025 AL124 — checked per year, not inferred from one). What matters
+    # here is the second branch: it measures against 1040 LINE 24, the full
+    # liability.
     # The native spine mirrors that: compose the liability from parts here —
     # income_tax + f8959 + f8962 repayment — rather than reaching for
     # `total_tax`, which is line 16 only (see its assignment above).
