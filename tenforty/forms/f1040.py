@@ -238,13 +238,15 @@ _REFUSAL = (
     "\n"
     "ON THE TWO BLANKING BRANCHES this refusal ALSO protects lines 17 and 18, "
     "which that same blank corrupts WITHOUT their going blank themselves and "
-    "so without any other signal that they are wrong. Form 6251 takes "
-    "`Tax_SubTotal` as a SUM operand in EVERY year, 2021 through 2025; 2025 "
-    "ADDITIONALLY routes it through "
-    "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)`, an explicit coercion "
-    "ALONGSIDE its SUM-operand reference rather than a replacement for it. "
-    "Both paths take the blank as 0; that understates regular tax and "
-    "OVERSTATES the AMT, so line "
+    "so without any other signal that they are wrong. Form 6251's "
+    "REGULAR-TAX line takes `Tax_SubTotal` as a SUM operand in 2021-2024 "
+    "(`SUM(Tax_SubTotal, PTC_ExcessAdv, -...)`); in 2025 that direct operand "
+    "is REPLACED rather than supplemented — the live line reads "
+    "`'6251'!M59 = IF(Tax_SubTotal=\"\",0,Tax_SubTotal)` instead. (A "
+    "`SUM(Tax_SubTotal, PTC_ExcessAdv, ...)` does still exist in the 2025 "
+    "workbook, but in an off-form helper column, not on the line that feeds "
+    "the AMT.) Both shapes take the blank as 0; that understates regular tax "
+    "and OVERSTATES the AMT, so line "
     "17 (`schedule2_tax`) harvests a wrong NONZERO number on an AMT-bearing "
     "return. Line 18 is worse: `Tax` is `SUM(Tax_SubTotal, <line-17 cell>)` "
     "and spreadsheet SUM() IGNORES text, so a refused line 16 is silently "
@@ -329,7 +331,7 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # normalize a blank harvest to numeric 0 so line 17 prints "0" in all five
     # years. The `Schedule2_Tax` named range's formula DRIFTED between vendor
     # workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric 0 when
-    # Part I is empty), 2024-2025 wrap the same sum in
+    # Part I is empty), 2024-2025 wrap their own two-addend sum in
     # `IF(SUM(...)>0, SUM(...), "")` and go blank instead. The engine reads a
     # blank cell as None and filing/pdf.py renders 0 but SKIPS None, so absent
     # this coercion an empty Schedule 2 Part I prints "0" on a 2023 1040 and
@@ -339,20 +341,40 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # WHY THIS COERCION IS SAFE — both halves are load-bearing:
     #   1. The cell's OWN formula defines blank AS zero. `IF(SUM>0, SUM, "")`
     #      emits "" exactly where the sum is not positive, and the sum cannot
-    #      go negative, so blank means exactly 0. Its two addends are line 1z
-    #      and line 2. Line 2 is the Form 6251 AMT, non-negative by
-    #      construction (the 6251 bottom line is `MAX(0, ...)`, and the `AMT`
-    #      named range wraps it in `IF(<cell>="",0,<cell>)`; the row number
-    #      DRIFTS by year — '6251'!M62 in 2021, M63 in 2022-2024, M64 in 2025
-    #      — so match on the named range, not an address). Line 1z is a SUM of
-    #      SEVEN operands, not two: the 8962 excess-APTC repayment plus six
-    #      raw input cells ('Sch. 2'!Z15/Z18/Z19/Z23/Z29/Z32 — Schedule A
-    #      (Form 8936) recapture, Form 4255 net-EPE recapture, and other
-    #      additions to tax). All six are empty in the shipped workbooks and
-    #      tenforty writes none of them; every one is an ADDITION to tax, and
-    #      the excess-APTC repayment is a repayment amount, so none can be
-    #      negative. The blank is not missing data — it is the vendor's way of
-    #      WRITING zero, and normalizing recovers the cell's stated meaning.
+    #      go negative, so blank means exactly 0.
+    #
+    #      THE DECOMPOSITION THAT FOLLOWS IS 2024-2025 ONLY — the only years
+    #      that can go blank at all, and so the only years this coercion can
+    #      fire on. Do NOT read it as the general shape; the years genuinely
+    #      differ, and dropping that qualifier is how a safety argument turns
+    #      into a false one. In those two years the addends are line 1z
+    #      ('Sch. 2'!AD33) and line 2 ('Sch. 2'!AD34). Line 2 is the Form 6251
+    #      AMT, non-negative by construction (the 6251 bottom line is
+    #      `MAX(0, ...)`, and the `AMT` named range wraps it in
+    #      `IF(<cell>="",0,<cell>)`; the row number DRIFTS by year —
+    #      '6251'!M62 in 2021, M63 in 2022-2024, M64 in 2025 — so match on the
+    #      named range, not an address). Line 1z is a SUM of SEVEN operands,
+    #      not two: the 8962 excess-APTC repayment plus six raw input cells
+    #      ('Sch. 2'!Z15/Z18/Z19/Z23/Z29/Z32 — Schedule A (Form 8936)
+    #      recapture, Form 4255 net-EPE recapture, and other additions to
+    #      tax). All six are empty in the shipped workbooks and tenforty
+    #      writes none of them; every one is an ADDITION to tax, and the
+    #      excess-APTC repayment is a repayment amount, so none can be
+    #      negative.
+    #
+    #      2021-2023 ARE A DIFFERENT FORMULA WITH THE ROLES INVERTED:
+    #      `'Sch. 2'!AC13 = IF(AJ13<>"",ROUND(AJ13,0),SUM(AC11:AC12))` — a
+    #      two-cell RANGE, no line-1z cell anywhere, and AC11 is the AMT while
+    #      AC12 is the excess-APTC repayment, the mirror of 2024-2025's
+    #      AD33/AD34. The six `Z` cells do not participate. Those years never
+    #      go blank (the outer IF always falls through to a numeric SUM, and
+    #      SUM over a range ignores a blank AC11), so the coercion is a NO-OP
+    #      there. Non-negativity still holds — an AMT and a repayment — which
+    #      is why the CONCLUSION covers all five years even though the
+    #      decomposition above covers two.
+    #
+    #      The blank is not missing data — it is the vendor's way of WRITING
+    #      zero, and normalizing recovers the cell's stated meaning.
     #   2. NO DIAGNOSTIC BLANKS THIS CELL. `Schedule2_Tax` ('Sch. 2'!AC13 in
     #      2021-23, 'Sch. 2'!AD35 in 2024-25) is not one of the five cells
     #      gated by the workbook's `Birthday_Needed` flag — those five all live

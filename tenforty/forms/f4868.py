@@ -66,12 +66,19 @@ def compose_line_24(
     the 2025 cells; the other four years are the same formulas at different
     addresses:
 
-        AL102 (line 22) = IF(<override>, ..., MAX(0, SUM(Tax, -AL101)))
-        AL103 (line 23) = TotalOtherTaxes
+        AL102 (line 22) = IF(AX102<>"", ROUND(AX102,0),
+                             MAX(0, SUM(Tax, -AL101)))
+        AL103 (line 23) = IF(AX103<>"", ROUND(AX103,0), TotalOtherTaxes)
         AL104 (line 24) = SUM(AL102, AL103)
 
     where `Tax` is line 18 (line 16 + Schedule 2 Part I) and AL101 is line 21
-    (total nonrefundable credits).
+    (total nonrefundable credits). QUOTED WITH THEIR MANUAL-OVERRIDE WRAPPERS
+    ON PURPOSE: lines 22 and 23 carry one in all five years (line 24 does
+    not), and an earlier version of this block showed line 23 as a bare
+    `TotalOtherTaxes` — the same tidying-a-quotation habit corrected twice
+    elsewhere on this branch. tenforty never writes an override cell, so the
+    wrappers never fire; that is a fact about our inputs, not about the
+    formulas, and the quotation should say what the sheet says.
 
     THE ZERO FLOOR SITS ON (line 18 - credits) AND NOTHING ELSE. Schedule 2
     Part II is added AFTER it, never inside it. Applying the floor to the
@@ -116,10 +123,10 @@ def total_tax_liability_line_24(f1040: dict) -> float | None:
     name promises is the defect species this module was fixed to remove):
 
       - AMT (Form 6251, Schedule 2 line 1). The native spine does not compute
-        it — there is no Form 6251 anywhere in the native path. The sibling
-        `acknowledges_no_federal_amt` attestation is the guard for this; it is
-        NOT YET LANDED as of this writing (a sibling task in the same unit
-        lands it). Do not build a second guard here — reference that one.
+        it — there is no Form 6251 anywhere in the native path. The
+        always-required `acknowledges_no_federal_amt` attestation
+        (`tenforty/attestations.py`, `_ALWAYS_TAIL`) is the guard for this.
+        Do not build a second guard here — reference that one.
       - NIIT (Form 8960, Schedule 2 line 12). The native spine does not
         compute it. THE WORKBOOK DOES: `'8960'!N48 F8960_Tax` flows through
         Schedule 2 into `TotalOtherTaxes` and thence into `Tot_Tax`, and the

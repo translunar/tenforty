@@ -514,9 +514,14 @@ class Expected4868PdfValuesTests(unittest.TestCase):
     here would be worthless, because both functions read the same key: the
     only thing worth pinning at this level is that the ORACLE reaches for the
     vendor's number ITSELF rather than relaying production's. Every value-only
-    assertion in this class is blind to that distinction, so the two tests
-    that carry it stub production out — see
+    assertion in this class is blind to that distinction, so the tests that
+    carry it are exactly the ones that STUB PRODUCTION OUT — `mock.patch` on
+    `tenforty.forms.f4868.total_tax_liability_line_24`, followed by an
+    assertion about whether it was called — see
     `test_workbook_branch_reads_the_harvest_itself_not_through_production`.
+    Identify them by that property, not by a tally: this sentence used to say
+    "the two tests", which was true when written and which a later commit
+    falsified without touching this docstring.
     """
 
     # A harvest that DISAGREES with the composition of its sibling keys, in
@@ -675,12 +680,18 @@ class Expected4868PdfValuesTests(unittest.TestCase):
                     return_value=self._PRODUCTION_SENTINEL,
                 ) as production:
                     got = expected_4868_pdf_values(results)
+                # Arm-INDEPENDENT, and so deliberately OUTSIDE the scope of
+                # the comment below: the helper copies `total_payments`
+                # through on either arm, so no arm-selection regression can
+                # move it. It pins the rendering, nothing about the branch.
+                self.assertEqual(got["total_payments"], "60000")
                 # VALUES FIRST, deliberately: the arm-selection regression this
                 # test names must be visible in what the helper PRINTS, not
                 # only in a call count. `assert_not_called` last means it can
-                # never be the sole evidence of a failure here.
+                # never be the sole evidence of a failure here. Both values
+                # below DISCRIMINATE — falling through to the native arm would
+                # print the sentinel, and a balance due of 939,999 with it.
                 self.assertEqual(got["estimated_total_tax"], "0")
-                self.assertEqual(got["total_payments"], "60000")
                 # Payments exceed a zero liability, so the balance floors at 0.
                 self.assertEqual(got["balance_due"], "0")
                 production.assert_not_called()
