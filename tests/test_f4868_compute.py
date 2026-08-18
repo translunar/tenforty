@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 from tenforty import models
 from tenforty.forms.f4868 import (
@@ -382,6 +383,16 @@ class Expected4868PdfValuesTests(unittest.TestCase):
     on the always-running `-m "not oracle"` gate, with no LibreOffice. Guard
     and oracle LOGIC belongs on that gate; only soffice plumbing may sit
     behind the oracle marker.
+
+    WHAT THIS CLASS ADDS OVER `TotalTaxLiabilityLine24SourceTests` is
+    INDEPENDENCE, not a second copy of the harvest-wins assertion. That class
+    pins the PRODUCTION function's sourcing, on the same figures. Repeating it
+    here would be worthless, because both functions read the same key: the
+    only thing worth pinning at this level is that the ORACLE reaches for the
+    vendor's number ITSELF rather than relaying production's. Every value-only
+    assertion in this class is blind to that distinction, so the two tests
+    that carry it stub production out — see
+    `test_workbook_branch_reads_the_harvest_itself_not_through_production`.
     """
 
     # A harvest that DISAGREES with the composition of its sibling keys, in
@@ -403,8 +414,36 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         return {k: v for k, v in self._workbook_results().items()
                 if k != "tax_liability_line24"}
 
-    def test_workbook_branch_uses_the_harvested_tot_tax(self):
-        got = expected_4868_pdf_values(self._workbook_results())
+    # A value production would never return for either injected dict, so any
+    # figure traceable to it proves the helper asked production instead of
+    # reading the harvest itself.
+    _PRODUCTION_SENTINEL = 999_999
+
+    def test_workbook_branch_reads_the_harvest_itself_not_through_production(self):
+        """INDEPENDENCE, which is the branch's whole reason to exist.
+
+        Asserting only that the helper RETURNS 81,235 on the workbook dict
+        cannot see this branch disappear, because production's
+        `total_tax_liability_line_24` reads the very same
+        `tax_liability_line24` key first (`forms/f4868.py`). Delete the branch
+        and route everything through production and the number is still
+        81,235 — both sides of the comparison having fetched it from the same
+        place. The oracle would have quietly become a mirror of the thing it
+        audits, which is exactly what the docstring on
+        `expected_4868_pdf_values` promises it is not ("a genuinely
+        independent oracle — the vendor's answer for 1040 line 24, not ours").
+
+        So production is STUBBED to a value it could never produce. If the
+        helper still answers 81,235, it read the harvest with its own hands.
+        The `assert_not_called` states the same property directly rather than
+        inferring it from the number.
+        """
+        with mock.patch(
+            "tenforty.forms.f4868.total_tax_liability_line_24",
+            return_value=self._PRODUCTION_SENTINEL,
+        ) as production:
+            got = expected_4868_pdf_values(self._workbook_results())
+        production.assert_not_called()
         self.assertEqual(got["estimated_total_tax"], "81235")
         self.assertEqual(got["balance_due"], "21235")
 
@@ -412,6 +451,26 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         got = expected_4868_pdf_values(self._native_results())
         self.assertEqual(got["estimated_total_tax"], "74735")
         self.assertEqual(got["balance_due"], "14735")
+
+    def test_native_branch_asks_production_rather_than_recomposing_here(self):
+        """The mirror of the test above, for the other arm.
+
+        On the native path the helper is DELIBERATELY not independent — no
+        independent source of line 24 exists, so it asks production and proves
+        only the fill (see `expected_4868_pdf_values`'s docstring). That is a
+        real, checkable property and not merely the absence of the other one:
+        a helper that hand-composed line 24 from the parts itself would keep
+        passing `test_native_branch_uses_the_composition` while silently
+        drifting from whatever production computes. Stubbing production and
+        watching the stub's value come back out is what distinguishes them.
+        """
+        with mock.patch(
+            "tenforty.forms.f4868.total_tax_liability_line_24",
+            return_value=self._PRODUCTION_SENTINEL,
+        ) as production:
+            got = expected_4868_pdf_values(self._native_results())
+        production.assert_called_once_with(self._native_results())
+        self.assertEqual(got["estimated_total_tax"], "999999")
 
     def test_workbook_branch_differs_from_the_native_composition(self):
         """THE assertion the branch exists for.
@@ -460,10 +519,28 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         self.assertEqual(got["estimated_total_tax"], "74736")
 
     def test_rendering_is_irs_half_up_not_bankers(self):
-        # Python's built-in round() is half-to-even and gives 74,734 here;
-        # irs_round gives 74,735. The old helper used int(round(...)).
-        got = expected_4868_pdf_values(
-            {"tax_liability_line24": 74_734.5, "total_payments": 0})
+        """Python's built-in round() is half-to-even and gives 74,734 here.
+
+        `irs_round` gives 74,735. The old helper used `int(round(...))`.
+
+        THE INJECTED DICT IS DELIBERATELY COMPLETE ON BOTH ARMS, and its
+        composition lands on the SAME 74,734.5 as its harvest
+        (69,034.5 + 4,800 + 900). Rounding mode is a property of the render,
+        not of which arm sourced line 24, so this test must be blind to the
+        arm — and it earlier was not: carrying only `tax_liability_line24`
+        made it die with a `ValueError` out of `compute_balance_due` under any
+        mutation that ignored the harvest, i.e. it failed on a missing key
+        rather than on the rounding property its name asserts. A test that
+        fails for a reason other than its own name inflates mutation-kill
+        counts with kills it did not earn.
+        """
+        got = expected_4868_pdf_values({
+            "tax_liability_line24": 74_734.5,
+            "total_tax": 69_034.5,
+            "f8962_repayment": 4_800,
+            "f8959_tax_total": 900,
+            "total_payments": 0,
+        })
         self.assertEqual(got["estimated_total_tax"], "74735")
 
     def test_refund_case_floors_the_balance_at_zero(self):
