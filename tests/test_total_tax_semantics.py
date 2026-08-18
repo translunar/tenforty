@@ -11,13 +11,32 @@ QDCGT/rate-schedule figure). The workbook harvest mapped it to the vendor's
 `Tax_SubTotal` is line 16. So on any return with a nonzero Schedule 2 Part I,
 the same key named two different numbers on the two paths.
 
-THE DISAGREEMENT WAS INVISIBLE BECAUSE EACH PATH WAS ONLY EVER TESTED AGAINST
-ITSELF. The native tests asserted native arithmetic; the workbook tests
-asserted workbook arithmetic; and the one test that did compare them —
-`tests/test_f1040_spine_oracle.py`'s penny-parity battery — compared only
-scenarios whose Schedule 2 Part I was zero at the time, where lines 16 and 18
-coincide. Nothing anywhere asked the two paths to agree on WHICH LINE the key
-names. That is the gap this file closes, and it is why the assertions below
+THE DISAGREEMENT WAS INVISIBLE BECAUSE NOTHING EVER ASKED THE TWO PATHS TO
+AGREE ON WHICH LINE THE KEY NAMES. The native tests asserted native arithmetic
+and the workbook tests asserted workbook arithmetic. The one test that did
+compare the paths — `tests/test_f1040_spine_oracle.py`'s penny-parity battery —
+ROUTED AROUND THE FORK BY DESIGN rather than missing it by accident.
+
+That distinction is exactly why this file should survive, so be precise about
+it. An earlier draft of this docstring said the battery "compared only
+scenarios whose Schedule 2 Part I was zero at the time" — which would mean the
+battery merely needed a better fixture, and would make this file redundant.
+THAT IS FALSE. The battery already ran a nonzero-Part-I scenario:
+`ptc_capped_repayment` — the very one used below, Part I = 950 — entered
+`_BUILDERS` in 97fce62, a month BEFORE the workbook mapping was repointed in
+419670d. It stayed green because the battery did not compare the two
+`total_tax` keys at all. It carried
+
+    _PARITY_ORACLE_KEY = {"total_tax": "total_tax_line16"}
+
+which redirected the comparison onto a SEPARATE line-16-only workbook output
+key, beneath a comment calling the two semantics "different-but-correct" and
+"deliberately NOT unified". So the old battery COULD NOT have caught the fork:
+the one comparison that would have exposed it was explicitly aliased away, and
+that alias key was itself retired earlier in this unit. Nothing has asked the
+question since — until this file.
+
+That is the gap this file closes, and it is why the assertions below
 insist on a scenario where line 16 and line 18 are DIFFERENT numbers: on a
 return with an empty Schedule 2 every assertion here would pass under either
 meaning and prove nothing.
@@ -60,18 +79,6 @@ from tests.helpers import REPO_ROOT, needs_libreoffice
 YEAR = 2024
 
 
-def _compute_both_paths(orch: ReturnOrchestrator) -> tuple[dict, dict]:
-    """Return (native, workbook) result dicts for the SAME effective scenario.
-
-    Uses the orchestrator's own two entry points rather than a reassembled
-    pipeline, for the same reason the parity battery does: the routing is part
-    of what is under test.
-    """
-    scenario = build_ptc_capped_repayment(YEAR)
-    eff, _ = orch._build_effective_scenario(scenario)
-    return orch._compute_1040_pipeline(eff), orch._compute_1040_via_workbook(eff)
-
-
 class _OrchestratorCase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -81,18 +88,37 @@ class _OrchestratorCase(unittest.TestCase):
             work_dir=Path(self._tmp.name) / "work",
         )
 
-    def _native(self) -> dict:
+    def _effective_scenario(self):
+        """The effective scenario, past the ROUTING GUARD.
+
+        Copied in spirit from the parity battery: if this scenario ever fell
+        back to the workbook, every "native path" assertion below would
+        silently be a workbook assertion. Every caller goes through here — the
+        cross-path helper included — so the guard cannot apply to one arm and
+        not the other.
+        """
         scenario = build_ptc_capped_repayment(YEAR)
         eff, _ = self.orch._build_effective_scenario(scenario)
-        # ROUTING GUARD, copied in spirit from the parity battery: if this
-        # scenario ever fell back to the workbook, every "native path"
-        # assertion below would silently be a workbook assertion.
         self.assertTrue(
             self.orch._scenario_in_spine_scope(eff),
             "the scenario did not route to the native spine, so nothing below "
             "would be testing the native path",
         )
-        return self.orch._compute_1040_pipeline(eff)
+        return eff
+
+    def _native(self) -> dict:
+        return self.orch._compute_1040_pipeline(self._effective_scenario())
+
+    def _both_paths(self) -> tuple[dict, dict]:
+        """(native, workbook) result dicts for the SAME effective scenario.
+
+        Uses the orchestrator's own two entry points rather than a reassembled
+        pipeline, for the same reason the parity battery does: the routing is
+        part of what is under test.
+        """
+        eff = self._effective_scenario()
+        return (self.orch._compute_1040_pipeline(eff),
+                self.orch._compute_1040_via_workbook(eff))
 
     def assert_line_16_meaning(self, results: dict, path: str) -> None:
         """`total_tax` is line 16 and `tax_plus_schedule2` is line 18, here.
@@ -146,14 +172,26 @@ class _OrchestratorCase(unittest.TestCase):
             the canonical totals.
           - WORKBOOK: production HARVESTS line 24 (the vendor's `Tot_Tax`), so
             this pins a composition against an INDEPENDENT AUTHORITY. That
-            authority legitimately carries terms the composition has no term
-            for at all — self-employment tax and NIIT both reach `Tot_Tax`
-            through `TotalOtherTaxes` in all five workbooks. The fixture has
-            neither (a single W-2 filer well under the Additional Medicare
-            threshold, no Schedule C, no investment income), which is what
-            makes the equality legitimate HERE. A failure on this arm is
-            therefore a claim about the fixture or about the harvest, not
-            about the composition.
+            authority carries THREE terms the composition can be blind to, and
+            they are blind in two different ways — enumerate all three, because
+            naming only the first two is what makes a future fixture change
+            look safe:
+              1. self-employment tax, and
+              2. NIIT (Form 8960) — both reach `Tot_Tax` through
+                 `TotalOtherTaxes` in all five workbooks. This fixture has
+                 neither: a single W-2 filer well under the Additional Medicare
+                 threshold, no Schedule C, no investment income.
+              3. 1040 LINE 21, nonrefundable credits — and this one is not
+                 merely zero for this fixture, it is STRUCTURALLY UNAVAILABLE:
+                 `nonrefundable_credits` is not an `F1040.OUTPUTS` key in ANY
+                 year, so on the workbook path `.get(...) or 0` below always
+                 passes 0 while the vendor's `Tot_Tax` subtracts whatever the
+                 sheet computed. It is the term most likely to be nonzero in a
+                 future fixture, and it moves line 24 in the opposite
+                 direction from the other two.
+            Those absences are what make the equality legitimate HERE. A
+            failure on this arm is therefore a claim about the fixture or about
+            the harvest, not about the composition.
         """
         expected = compose_line_24(
             line_16=results["total_tax"],
@@ -176,9 +214,11 @@ class _OrchestratorCase(unittest.TestCase):
             f"path both sides are compositions and must match exactly. On the "
             f"workbook path the left side is a composition and the right side "
             f"is the vendor's harvested `Tot_Tax` — an independent authority "
-            f"that carries self-employment tax and NIIT, which this fixture "
-            f"has neither of, so a mismatch here indicts the fixture or the "
-            f"harvest rather than the composition.",
+            f"that can carry self-employment tax, NIIT and 1040 line 21 "
+            f"nonrefundable credits, none of which this composition has a "
+            f"live term for. Check those three against the fixture first: a "
+            f"mismatch here indicts the fixture or the harvest rather than "
+            f"the composition.",
         )
 
 
@@ -204,7 +244,7 @@ class TotalTaxMeansLine16OnBothPathsTests(_OrchestratorCase):
     """
 
     def test_the_two_paths_agree_on_which_1040_line_total_tax_names(self):
-        native, workbook = _compute_both_paths(self.orch)
+        native, workbook = self._both_paths()
 
         self.assert_line_16_meaning(native, "native")
         self.assert_line_16_meaning(workbook, "workbook")
@@ -244,13 +284,13 @@ class TotalTaxMeansLine16OnBothPathsTests(_OrchestratorCase):
         `schedule2_tax` nor `tax_plus_schedule2`), so this is the only place
         the whole band is compared across paths.
         """
-        native, workbook = _compute_both_paths(self.orch)
+        native, workbook = self._both_paths()
         for key in ("schedule2_tax", "tax_plus_schedule2"):
             with self.subTest(key=key):
                 self.assertEqual(native[key], workbook[key])
 
     def test_form_4868_line_4_matches_the_uniform_composition_on_both_paths(self):
-        native, workbook = _compute_both_paths(self.orch)
+        native, workbook = self._both_paths()
         self.assert_line_4_composes_from_the_uniform_keys(native, "native")
         self.assert_line_4_composes_from_the_uniform_keys(workbook, "workbook")
 
