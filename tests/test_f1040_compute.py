@@ -87,6 +87,22 @@ class Schedule2TaxHarvestNormalizationTests(unittest.TestCase):
 
     These are injected synthetic result dicts, not workbook runs: the
     normalization must stay visible to the standard `-m "not oracle"` gate.
+
+    NO TEST HERE PINS A HARVESTED NUMERIC 0 (the 2021-2023 shape). That input
+    exercises no code path in `compute`: the `is None` guard does not fire, so
+    0 passes through identically whether the normalization is present or
+    absent. Such a test cannot fail under any mutation of the code it claims
+    to cover, so it is deliberately ABSENT rather than counted as coverage.
+
+    There is likewise NO test asserting `tax_plus_schedule2 is None`, because
+    the workbook cannot produce that input: the `Tax` named range's else-arm
+    is unconditionally `SUM(Tax_SubTotal, <line-17 cell>)`, and spreadsheet
+    SUM() ignores text in referenced cells, so `Tax` always evaluates to a
+    number. Line 18's real hazard is that it is a PLAUSIBLE NUMBER silently
+    omitting its own line-16 component on MFJ/MFS -- a mislabeled partial
+    total no normalization here can detect or repair. See
+    `test_normalization_does_not_reach_the_refusal_keys` for the property
+    that actually needs guarding at this layer.
     """
 
     def test_blank_schedule2_tax_normalizes_to_numeric_zero(self):
@@ -97,21 +113,23 @@ class Schedule2TaxHarvestNormalizationTests(unittest.TestCase):
         self.assertIsNotNone(result["schedule2_tax"])
 
     def test_nonzero_schedule2_tax_passes_through_unchanged(self):
-        # A real Schedule 2 Part I total (AMT and/or excess-APTC repayment)
-        # must survive untouched -- normalization may not clamp or re-round.
+        # A real Schedule 2 Part I total must survive untouched --
+        # normalization may not clamp, zero, or re-round a live value.
         result = compute(raw_1040={"schedule2_tax": 1234.0}, upstream={})
         self.assertEqual(result["schedule2_tax"], 1234.0)
 
-    def test_harvested_numeric_zero_passes_through_unchanged(self):
-        # The 2021-2023 shape: the plain `SUM(...)` already yields numeric 0.
-        # Those years must reach the same value by a different route.
-        result = compute(raw_1040={"schedule2_tax": 0}, upstream={})
-        self.assertEqual(result["schedule2_tax"], 0)
+    def test_normalization_does_not_reach_the_refusal_keys(self):
+        """A blank `total_tax` must stay None, never become 0.
 
-    def test_tax_plus_schedule2_is_not_normalized(self):
-        # Line 18 (`Tax` = SUM(Tax_SubTotal, Schedule2_Tax)) is DELIBERATELY
-        # excluded from this normalization. Its blank would come from a blank
-        # Tax_SubTotal -- the Birthday_Needed refusal -- and zeroing that would
-        # answer "your tax is zero" to a workbook that refused to compute it.
-        result = compute(raw_1040={"tax_plus_schedule2": None}, upstream={})
-        self.assertIsNone(result["tax_plus_schedule2"])
+        This is the exclusion with real teeth. `total_tax` maps to
+        `Tax_SubTotal`, which IS one of the cells gated by the workbook's
+        `Birthday_Needed` flag -- unconditionally true for every MFJ/MFS
+        return -- so None here is a PRODUCIBLE input meaning "the workbook
+        REFUSED to compute your tax", not "your tax is zero". If anyone ever
+        generalizes the `schedule2_tax` coercion into a key-set sweep, this
+        is what breaks first, and it must: coercing this key would fabricate
+        a zero tax on a real return and silently disarm the sibling refusal
+        guard.
+        """
+        result = compute(raw_1040={"total_tax": None}, upstream={})
+        self.assertIsNone(result["total_tax"])

@@ -119,11 +119,11 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     if translated.get("f8959_tax_total") is None:
         translated["f8959_tax_total"] = 0
 
-    # schedule2_tax (1040 line 17 = Schedule 2 line 3, Part I: AMT + excess
-    # APTC): normalize a blank harvest to numeric 0 so line 17 prints "0" in
-    # all five years. The `Schedule2_Tax` named range's formula DRIFTED between
-    # vendor workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric
-    # 0 when Part I is empty), 2024-2025 wrap the same sum in
+    # schedule2_tax (1040 line 17 = Schedule 2 line 3, "Add lines 1z and 2"):
+    # normalize a blank harvest to numeric 0 so line 17 prints "0" in all five
+    # years. The `Schedule2_Tax` named range's formula DRIFTED between vendor
+    # workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric 0 when
+    # Part I is empty), 2024-2025 wrap the same sum in
     # `IF(SUM(...)>0, SUM(...), "")` and go blank instead. The engine reads a
     # blank cell as None and filing/pdf.py renders 0 but SKIPS None, so absent
     # this coercion an empty Schedule 2 Part I prints "0" on a 2023 1040 and
@@ -132,21 +132,40 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     #
     # WHY THIS COERCION IS SAFE — both halves are load-bearing:
     #   1. The cell's OWN formula defines blank AS zero. `IF(SUM>0, SUM, "")`
-    #      emits "" exactly where the sum is not positive; both components
-    #      (Form 6251 AMT, which is itself `IF(M64="",0,M64)`, and the 8962
-    #      excess-APTC repayment) are non-negative, so blank means the sum is
-    #      0. The blank is not missing data — it is the vendor's way of
+    #      emits "" exactly where the sum is not positive, and the sum cannot
+    #      go negative, so blank means exactly 0. Its two addends are line 1z
+    #      and line 2. Line 2 is the Form 6251 AMT, non-negative by
+    #      construction (the 6251 bottom line is `MAX(0, ...)`, and the `AMT`
+    #      named range wraps it in `IF(<cell>="",0,<cell>)`; the row number
+    #      DRIFTS by year — '6251'!M62 in 2021, M63 in 2022-2024, M64 in 2025
+    #      — so match on the named range, not an address). Line 1z is a SUM of
+    #      SEVEN operands, not two: the 8962 excess-APTC repayment plus six
+    #      raw input cells ('Sch. 2'!Z15/Z18/Z19/Z23/Z29/Z32 — Schedule A
+    #      (Form 8936) recapture, Form 4255 net-EPE recapture, and other
+    #      additions to tax). All six are empty in the shipped workbooks and
+    #      tenforty writes none of them; every one is an ADDITION to tax, and
+    #      the excess-APTC repayment is a repayment amount, so none can be
+    #      negative. The blank is not missing data — it is the vendor's way of
     #      WRITING zero, and normalizing recovers the cell's stated meaning.
-    #   2. `Schedule2_Tax` is NOT one of the five cells gated by the workbook's
-    #      `Birthday_Needed` diagnostic. Those five all live on the '1040'
-    #      sheet; `Schedule2_Tax` is 'Sch. 2'!AC13 (2021-23) / 'Sch. 2'!AD35
-    #      (2024-25) and no diagnostic short-circuits it. So its blank can
-    #      never be a REFUSAL in disguise. (The one diagnostic anywhere in its
-    #      dependency chain, `FilingStatusError`, blanks the AMT *component*
-    #      rather than this cell; it is `NumFileStatusBoxes>1`, structurally
-    #      unreachable because tenforty writes exactly one status box; and
-    #      when it does fire it ALSO blanks `Tax_SubTotal`, so it surfaces at
-    #      the guarded cell instead of being swallowed here.)
+    #   2. NO DIAGNOSTIC BLANKS THIS CELL. `Schedule2_Tax` ('Sch. 2'!AC13 in
+    #      2021-23, 'Sch. 2'!AD35 in 2024-25) is not one of the five cells
+    #      gated by the workbook's `Birthday_Needed` flag — those five all live
+    #      on the '1040' sheet — so a blank here is never a REFUSAL in
+    #      disguise, which is the only property this coercion depends on.
+    #
+    #      That is NOT the same as saying no diagnostic REACHES this cell.
+    #      `Birthday_Needed` reaches it TRANSITIVELY through Form 6251:
+    #      the 6251 regular-tax line takes `Tax_SubTotal` as an operand
+    #      (`SUM(Tax_SubTotal, PTC_ExcessAdv, -...)` in 2021-2024; routed
+    #      through '6251'!M59 = `IF(Tax_SubTotal="",0,Tax_SubTotal)` in 2025),
+    #      and AMT = `MAX(0, tentative_minimum_tax - regular_tax)` feeds line
+    #      2. So on an MFJ/MFS return WITH AMT, the `Birthday_Needed`-blanked
+    #      `Tax_SubTotal` is summed as 0, understating regular tax, which
+    #      OVERSTATES the AMT and makes line 17 harvest a WRONG NONZERO
+    #      number. This coercion neither causes nor cures that — it only ever
+    #      fires on a blank, and blank still means zero — but do not read
+    #      point 2 as a guarantee that line 17's VALUE is trustworthy on
+    #      MFJ/MFS. It guarantees only that its BLANK is not a refusal.
     #
     # THIS IS NOT A PRECEDENT FOR `None -> 0` ANYWHERE ELSE, and specifically
     # NOT for `total_tax` / `Tax_SubTotal`, which is the visually identical
@@ -161,9 +180,18 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # as zero (coerce) or whether some diagnostic upstream declined to answer
     # (refuse). Do not cite this block for a cell in the second category.
     #
-    # Deliberately NOT extended to `tax_plus_schedule2` (line 18, the `Tax`
-    # named range): `Tax` is `SUM(Tax_SubTotal, Schedule2_Tax)`, so a blank
-    # there is the refusal case above, not a definitional zero.
+    # Deliberately NOT extended to `tax_plus_schedule2` (1040 line 18, the
+    # `Tax` named range) — and NOT because it might be blank. `Tax` is NEVER
+    # blank: its else-arm is unconditionally `SUM(Tax_SubTotal, <line-17
+    # cell>)`, and spreadsheet SUM() IGNORES text in referenced cells, so a
+    # refused `Tax_SubTotal = ""` is silently SKIPPED rather than propagated
+    # and `Tax` always evaluates to a number. That is the hazard: on the
+    # workbook path today, every MFJ/MFS return makes line 18 a plausible
+    # number that OMITS ITS OWN LINE-16 COMPONENT — a mislabeled partial
+    # total, the exact species this unit exists to remove. `None` would have
+    # been the safer failure; the workbook denies us even that. So a populated
+    # line 18 is NOT evidence that line 18 is correct, and no normalization
+    # here could make it so.
     if translated.get("schedule2_tax") is None:
         translated["schedule2_tax"] = 0
 
