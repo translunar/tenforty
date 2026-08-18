@@ -34,11 +34,11 @@ _LINE_24_KEY = "tax_liability_line24"
 
 def compose_line_24(
     *,
-    line_16,
-    schedule_2_part_i,
-    nonrefundable_credits,
-    schedule_2_part_ii,
-):
+    line_16: float,
+    schedule_2_part_i: float,
+    nonrefundable_credits: float,
+    schedule_2_part_ii: float,
+) -> float:
     """Build IRS Form 1040 line 24 (total tax) from its four parts.
 
     The vendor workbook's own arithmetic, verified in all five shipped
@@ -66,7 +66,7 @@ def compose_line_24(
     return line_22 + schedule_2_part_ii
 
 
-def total_tax_liability_line_24(f1040: dict):
+def total_tax_liability_line_24(f1040: dict) -> float | None:
     """Return IRS Form 1040 line 24 for this return, or None if unknowable.
 
     THE TWO PATHS ARE HANDLED DIFFERENTLY, DELIBERATELY.
@@ -150,12 +150,26 @@ def total_tax_liability_line_24(f1040: dict):
     )
 
 
-def compute_balance_due(total_tax, total_payments) -> int:
+def compute_balance_due(
+    total_tax: float | None, total_payments: float | None,
+) -> float:
     """Compute 4868 line 6 balance due, floored at zero.
 
     `total_tax` is 1040 LINE 24 (the 4868's own line 4), not line 16 — see
     `total_tax_liability_line_24`. The parameter keeps its historic name for
     callers; the quantity it must be given is total tax LIABILITY.
+
+    RETURNS A FLOAT, not an int — this was annotated `-> int` and that was
+    wrong. The native path passes whole-dollar ints (the spine `irs_round`s its
+    outputs) but the WORKBOOK path passes the harvested `Tot_Tax`, which the
+    engine reads out of the sheet as a float, so the difference is a float too.
+    NO ROUNDING IS APPLIED HERE, deliberately: whole-dollar rendering is the
+    PDF layer's job and happens in exactly one place for every numeric field
+    (`filing/pdf.py::PdfFiller._render_scalar`, via `irs_round`). Rounding here
+    as well would put a second, independently-driftable rounding decision on
+    the payment path, and would also diverge from how every other harvested
+    money key is handled (`forms/f1040.py` passes them through as harvested).
+    `int` remains acceptable to this annotation under PEP 484's numeric tower.
 
     A `None` `total_tax` RAISES. It used to be coerced with `total_tax or 0`,
     which answered "you owe nothing" on a return whose tax we failed to

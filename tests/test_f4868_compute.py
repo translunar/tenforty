@@ -119,8 +119,13 @@ class ComposeLine24Tests(unittest.TestCase):
 
         Flooring the WHOLE thing after adding Part II instead would give
         max(0, 10,500 - 12,000 + 900) = 0 — it would swallow a Part II tax
-        the filer genuinely owes and print a smaller payment voucher. This
-        assertion is the difference between the two orders.
+        the filer genuinely owes and print a smaller payment voucher.
+
+        This assertion is the difference between the two orders. The inputs
+        are chosen so the UNFLOORED line 22 (10,000 + 500 - 12,000 = -1,500)
+        is negative, which is the only region where the two orders disagree
+        at all. Confirmed live by mutation: applying the floor after Part II
+        makes this call return 0.
         """
         self.assertEqual(
             compose_line_24(
@@ -131,9 +136,6 @@ class ComposeLine24Tests(unittest.TestCase):
             ),
             900,
         )
-        # Guard that the case above really is inside the floor's reach: the
-        # unfloored line 22 is negative, so the two orders genuinely differ.
-        self.assertLess(10_000 + 500 - 12_000, 0)
 
     def test_credits_do_not_reach_part_ii_when_line_22_stays_positive(self):
         # Complementary direction: with the floor slack, credits subtract
@@ -325,11 +327,30 @@ class F4868NativePathLine24Tests(unittest.TestCase):
         self.assertGreater(expected, 0)  # a real balance due, not the floor
         self.assertEqual(self.f4868["balance_due"], expected)
 
-    def test_voucher_amount_tracks_the_balance_due(self):
-        # The figure the filer actually pays. Understating it is the
-        # penalty-and-interest direction.
+    def test_voucher_amount_is_the_line_24_balance_not_the_line_16_one(self):
+        """The figure the filer actually pays; understating it is the
+        penalty-and-interest direction.
+
+        Asserted against the 1040's own parts, NOT against
+        `self.f4868["balance_due"]`: `compute` assigns both keys from the same
+        local, so comparing them to each other could not fail however badly
+        line 4 regressed.
+        """
+        line_24 = (
+            self.results["total_tax"]
+            + self.results["f8962_repayment"]
+            + self.results["f8959_tax_total"]
+        )
         self.assertEqual(
-            self.f4868["voucher_amount"], self.f4868["balance_due"])
+            self.f4868["voucher_amount"],
+            line_24 - self.results["total_payments"],
+        )
+        # And that is strictly more than the line-16-based voucher this task
+        # removed — the $5,700 of Schedule 2 the filer used to be told to skip.
+        self.assertGreater(
+            self.f4868["voucher_amount"],
+            self.results["total_tax"] - self.results["total_payments"],
+        )
 
     def test_line_5_is_the_1040_total_payments(self):
         self.assertEqual(
