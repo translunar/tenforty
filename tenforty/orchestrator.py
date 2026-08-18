@@ -2129,12 +2129,33 @@ class ReturnOrchestrator:
 
         The totals are read BY REFERENCE from the finished 1040 results rather
         than re-derived here. ON THE NATIVE-SPINE PATH that means the gate
-        cannot drift from the lines it gates: whatever convention lines 2b/3b
+        cannot drift from THE LINES IT GATES: whatever convention lines 2b/3b
         use (including how the K-1 additions are rounded), the threshold is
-        applied to the very figure Schedule B will print. Re-summing the
-        scenario here would also have to duplicate sch_e_part_ii's
-        per-entity-type classification of which K-1s contribute -- a copy that
-        rots the moment that classification changes.
+        applied to the very figure the 1040 PUBLISHES on lines 2b/3b.
+        Re-summing the scenario here would also have to duplicate
+        sch_e_part_ii's per-entity-type classification of which K-1s
+        contribute -- a copy that rots the moment that classification changes.
+
+        "The lines it gates" is the whole of the claim, and it is deliberately
+        NOT "the figure Schedule B prints". Those can be different numbers.
+        Schedule B rounds each payer and sums; the 1099 leg of
+        compute_income_preamble rounds once over the raw sum, so on a return
+        with two or more cent-bearing 1099 payers the printed Schedule B total
+        and 1040 line 2b/3b differ. Measured on the native path, single filer,
+        two 1099-INTs, no K-1:
+
+            2 x 749.60   line 2b = 1499   Sch B line 4 = 1500   gate declines
+            2 x 750.25   line 2b = 1501   Sch B line 4 = 1500   gate fires
+
+        The gate follows line 2b, so in the first row it declines while the
+        Schedule B that would have printed totals 1,500. That OUTCOME is
+        defensible -- the raw interest is 1,499.20, which is not over $1,500
+        on either rounding convention, so declining is right -- and this gate
+        is not the place to fix it. It is recorded here only because the
+        underlying 1040-vs-Schedule-B rounding split is real and pre-existing,
+        chartered as follow-up unit (n). Whichever convention (n) settles on,
+        this gate keeps tracking lines 2b/3b by reference and needs no edit --
+        which is the actual value of reading by reference.
 
         ⚠️ SCOPE -- the no-drift guarantee above is NATIVE-PATH ONLY. It does
         NOT hold on the XLSX workbook path, which _compute_1040_pipeline uses
