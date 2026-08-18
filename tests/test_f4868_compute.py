@@ -169,6 +169,34 @@ class TotalTaxLiabilityLine24SourceTests(unittest.TestCase):
         })
         self.assertEqual(harvested, 88_000)
 
+    def test_a_harvested_zero_is_a_harvest_not_an_absent_key(self):
+        """The boundary that `is not None` exists to hold, and `if harvested:`
+        would lose.
+
+        A filer whose total tax liability is genuinely zero harvests `Tot_Tax`
+        as `0` — or `0.0`, since the engine reads sheet cells as floats. That
+        is a REAL vendor answer for line 24 and must win exactly as 88,000 does
+        above. Under a truthiness test the key reads as absent and the function
+        falls through to its NIIT-less composition, which is precisely the
+        silent-fallback failure the harvest-wins branch exists to prevent,
+        occurring at the boundary rather than in the interior.
+
+        The sibling parts are deliberately chosen to compose to something
+        NONZERO, because that asymmetry is the entire assertion: honouring the
+        harvest yields 0, falling through yields 74,735. A dict whose parts
+        also composed to zero would pass under either reading and prove
+        nothing.
+        """
+        for harvested_zero in (0, 0.0):
+            with self.subTest(harvested=repr(harvested_zero)):
+                got = total_tax_liability_line_24({
+                    "tax_liability_line24": harvested_zero,
+                    "total_tax": 69_035,
+                    "f8962_repayment": 4_800,
+                    "f8959_tax_total": 900,
+                })
+                self.assertEqual(got, 0)
+
     def test_composes_when_no_harvested_key_is_present(self):
         composed = total_tax_liability_line_24({
             "total_tax": 69_035,
@@ -437,6 +465,25 @@ class Expected4868PdfValuesTests(unittest.TestCase):
         helper still answers 81,235, it read the harvest with its own hands.
         The `assert_not_called` states the same property directly rather than
         inferring it from the number.
+
+        THE `assert_not_called` IS DELIBERATELY SENSITIVE TO THE HELPER'S
+        SHAPE, not merely to its answer, and it is KEPT for that reason. A
+        semantics-preserving refactor that evaluated production eagerly and
+        then selected the harvested value would return the same, fully
+        independent 81,235 and still fail this line. That is not an accident of
+        the assertion; it is the property being asserted. What this arm
+        promises is architectural — "on the workbook path the oracle does not
+        consult the thing it audits" — and no assertion about a returned VALUE
+        can state an architectural claim. The sentinel assertion below proves
+        the ANSWER is independent; only this line proves the ORACLE is. The
+        class wants both, because they are different claims.
+
+        The price of keeping it is one false alarm on a refactor nobody has a
+        reason to make: evaluating production on this arm can only add a
+        failure mode, since the composition is KNOWN to be incomplete here (no
+        NIIT or SE-tax term) and its value is discarded. If someone makes that
+        change anyway, a failure pointing at this docstring is the right
+        outcome, not a silent pass.
         """
         with mock.patch(
             "tenforty.forms.f4868.total_tax_liability_line_24",
@@ -497,6 +544,49 @@ class Expected4868PdfValuesTests(unittest.TestCase):
             - int(native["estimated_total_tax"]),
             self._NIIT_AND_SE_TAX,
         )
+
+    def test_a_harvested_zero_still_selects_the_workbook_arm(self):
+        """The arm-selection boundary: `is not None`, never `if harvested:`.
+
+        A filer whose total tax liability is genuinely zero harvests `Tot_Tax`
+        as `0`/`0.0`. That is a real vendor answer, so the helper must take the
+        WORKBOOK arm and print it, not read the falsy value as "no harvest" and
+        fall through to the native arm. Falling through at exactly the boundary
+        is the same "oracle stops honouring the harvest" regression that
+        `test_workbook_branch_differs_from_the_native_composition` guards in
+        the interior.
+
+        PRODUCTION MUST BE STUBBED FOR THIS TEST TO SEE ANYTHING, and that is
+        worth stating because it is not obvious. Production's own
+        `total_tax_liability_line_24` also tests `is not None`, so with the
+        real function in place a helper that fell through would hand it a dict
+        that STILL carries `tax_liability_line24: 0`, get 0 straight back, and
+        print the correct "0" — the wrong arm producing the right number. The
+        sentinel is what makes the two arms distinguishable at the boundary at
+        all: honouring the harvest prints "0", falling through prints "999999".
+
+        The sibling parts compose to a NONZERO 74,735, so this dict is one on
+        which the arms genuinely disagree; the sentinel then makes that
+        disagreement visible regardless of what production would have said.
+        """
+        for harvested_zero in (0, 0.0):
+            with self.subTest(harvested=repr(harvested_zero)):
+                results = {**self._native_results(),
+                           "tax_liability_line24": harvested_zero}
+                with mock.patch(
+                    "tenforty.forms.f4868.total_tax_liability_line_24",
+                    return_value=self._PRODUCTION_SENTINEL,
+                ) as production:
+                    got = expected_4868_pdf_values(results)
+                # VALUES FIRST, deliberately: the arm-selection regression this
+                # test names must be visible in what the helper PRINTS, not
+                # only in a call count. `assert_not_called` last means it can
+                # never be the sole evidence of a failure here.
+                self.assertEqual(got["estimated_total_tax"], "0")
+                self.assertEqual(got["total_payments"], "60000")
+                # Payments exceed a zero liability, so the balance floors at 0.
+                self.assertEqual(got["balance_due"], "0")
+                production.assert_not_called()
 
     def test_rounds_the_whole_value_once_not_each_part(self):
         """Matches the RENDERER, which rounds once.
