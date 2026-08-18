@@ -24,11 +24,30 @@ owe, which is the penalty-and-interest direction.
 
 # The F1040 OUTPUT key carrying the workbook's harvested 1040 line 24.
 #
-# NOT to be confused with `total_tax_liability`, which is the *pdf_1040* field
-# key for the same 1040 line. That one has no producer on either path (1040
-# line 24 prints blank on every emitted 1040) and wiring it is a separate
-# task. Do not merge the two by hand: this key is a WORKBOOK HARVEST, that one
-# is a PDF FIELD, and the native path has no producer for either yet.
+# THIS COMMENT USED TO WARN AGAINST CONFUSING IT WITH `total_tax_liability`,
+# the *pdf_1040* field key for the same 1040 line, and said that key had no
+# producer on either path, that line 24 printed blank on every emitted 1040,
+# and that wiring it was a separate task. All of that is now out of date:
+#
+#   - `total_tax_liability` NO LONGER EXISTS. The duplicate pair was resolved
+#     by renaming the PDF-mapping key to `tax_liability_line24` — this same
+#     name — in every year block of `mappings/pdf_1040.py`. Pinned by
+#     tests/test_1040_tax_band_native_producers.py::
+#     Line24KeyNameReconciliationTests.
+#   - Line 24 is PRODUCED ON BOTH PATHS, not blank. `Pdf1040.get_derivations`
+#     fills the line-24 box by calling `total_tax_liability_line_24` below,
+#     which harvests this key on the workbook path and composes on the native
+#     one.
+#
+# WHAT REMAINS TRUE, and is the reason this constant still exists: this key is
+# a WORKBOOK HARVEST and nothing else. It is deliberately NOT a native spine
+# output key, because its PRESENCE is the discriminator that tells the two
+# compute paths apart — here, and in `tests/invariants.py`. Publishing it from
+# the spine would route native returns down the harvest branch and turn an
+# independent-oracle comparison into a self-comparison. See
+# `mappings/pdf_1040.py::Pdf1040.get_derivations` for the full argument and
+# tests/test_1040_tax_band_native_producers.py::
+# NativeResultsMustNotCarryTheLine24KeyTests for the assertion that holds it.
 _LINE_24_KEY = "tax_liability_line24"
 
 
@@ -82,9 +101,17 @@ def total_tax_liability_line_24(f1040: dict) -> float | None:
       3. composition is where the arithmetic goes wrong — see the floor trap
          in `compose_line_24`.
 
-    NATIVE PATH — COMPOSE, and knowingly INCOMPLETE. The native spine exposes
-    no line-17/18/22/23/24 key, so line 24 is built from the parts it does
-    produce. What that composition CANNOT include, stated plainly so this
+    NATIVE PATH — COMPOSE, and knowingly INCOMPLETE. The native spine now
+    exposes 1040 LINE 17 as `schedule2_tax` and LINE 18 as `tax_plus_schedule2`
+    (both are spine output keys, and this function composes from the line-17
+    total). It still exposes NO key for lines 22, 23 or 24 — line 24 is
+    produced at the PDF layer by `Pdf1040.get_derivations`, which calls this
+    function, and is deliberately not a spine key (see `_LINE_24_KEY` above).
+    So line 24 is built here from the parts the spine does produce. Say it that
+    way round and it stays true as the remaining lines land: the earlier
+    version of this sentence claimed the spine exposed no line-17/18/22/23/24
+    key at all, which stopped being true for 17 and 18 the moment they landed.
+    What the composition CANNOT include, stated plainly so this
     function's name does not overclaim (a total that does not contain what its
     name promises is the defect species this module was fixed to remove):
 
@@ -139,9 +166,18 @@ def total_tax_liability_line_24(f1040: dict) -> float | None:
         return None
     return compose_line_24(
         line_16=line_16,
-        # Schedule 2 Part I: the Form 8962 excess-APTC repayment. AMT, the
-        # other Part I component, is unmodeled — see the docstring.
-        schedule_2_part_i=f1040.get("f8962_repayment") or 0,
+        # Schedule 2 Part I — 1040 line 17, THE TOTAL, not a component of it.
+        #
+        # This read `f8962_repayment` (the excess-APTC repayment) until the
+        # spine gained a canonical line-17 key. The two are equal today — the
+        # spine literally assigns `schedule2_tax = f8962_repayment`, because
+        # the repayment is the only Part I component it models — so this is
+        # not a bug fix. It removes a LATENT one: the day AMT (the other Part
+        # I component) or anything else joins `schedule2_tax`, a line 24 built
+        # from the component would UNDERSTATE, on a payment voucher, with
+        # nothing pointing at the divergence. Prefer the total to a component
+        # that merely equals it today.
+        schedule_2_part_i=f1040.get("schedule2_tax") or 0,
         # 1040 line 21. No producer emits this today; see the docstring.
         nonrefundable_credits=f1040.get("nonrefundable_credits") or 0,
         # Schedule 2 Part II: Form 8959 Additional Medicare Tax. NIIT, the
