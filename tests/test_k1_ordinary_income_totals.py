@@ -601,8 +601,9 @@ class K1VersusForm1099ChannelEquivalenceTests(_OrchestratorTestCase):
            1099 channel  line 2b = 1501   total income = 101,501   AGI = 101,501
 
        Same root cause as the cross-path gap documented on
-       ``K1ScheduleBEmitPathAgreesWith1040Tests`` (which carries the exact
-       condition), and chartered to the same follow-up unit (n). Both
+       ``K1ScheduleBEmitPathAgreesWith1040Tests`` (which is the single place
+       the condition and its domain of validity are stated), and chartered to
+       the same follow-up unit (n). Both
        fixtures below are whole-dollar, which is why the equality holds
        here; unlike the cross-path class this one has no guard asserting
        that, so a future editor adding cents gets a bare inequality. Worth
@@ -738,29 +739,76 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
     that simple sufficient condition rather than the exact one, because "no
     fractional amounts" is what a fixture author can actually keep true.
 
-    EXACT CONDITION — stated because this boundary has now been mis-stated
-    three times (twice by the controller, once by me), each time by guessing
-    at it from a couple of examples. Derived, then brute-force verified in
-    exact rational arithmetic over 1,210,000 cases — all 2-payer and all
-    3-payer cent combinations exhaustively, plus 200,000 random returns of
-    1-20 payers — with ZERO mismatches:
+    THE CONDITION, AND THE ARITHMETIC IT IS TRUE IN — stated in one place
+    only, because this boundary has been mis-stated repeatedly, every time by
+    generalising from whichever examples were in hand. The production-side
+    docstring on ``ReturnOrchestrator._should_emit_sch_b`` deliberately does
+    NOT restate it and points here instead.
 
-        Let e_i = irs_round(a_i) - a_i be a payer's rounding error, which
-        lies in (-0.50, +0.50]. The two conventions AGREE exactly when
-        sum(e_i) also lies in (-0.50, +0.50]. Otherwise they diverge, by
-        however many whole dollars sum(e_i) escapes that window by.
+        In EXACT DECIMAL arithmetic: let e_i = irs_round(a_i) - a_i be a
+        payer's rounding error, which for a non-negative amount lies in
+        (-0.50, +0.50]. The two conventions AGREE exactly when sum(e_i) also
+        lies in (-0.50, +0.50]. Otherwise they diverge, by however many whole
+        dollars sum(e_i) escapes that window by.
+
+        Verified in exact decimal arithmetic over 1,070,000 cases with zero
+        mismatches: every cent combination for two payers at each of seven
+        bases, plus every cent combination for three payers at one base.
+
+    ⚠️ DOMAIN OF VALIDITY — the rule above is a statement about DECIMAL
+    arithmetic, and this code does not do decimal arithmetic. Both legs sum
+    Python floats, and an amount like 236.67 has no exact double. So when
+    sum(e_i) lands EXACTLY on ±0.50 — on the boundary the rule names — the
+    binary representation decides the outcome rather than the rule, and it
+    decides BOTH WAYS. Both rows below are real measurements on the native
+    path, single filer, 1099-INTs only, no K-1:
+
+        three @ 236.67 / 9,468.63 / 4,113.20
+            exact sum(e_i) = +0.50, so the rule predicts AGREE
+            actual: 1040 line 2b = 13,818   Sch B line 4 = 13,819  -> DIVERGE
+            (the float sum is 13818.499999999998, not 13818.50)
+        four @ 5,220.94 / 3,432.22 / 4,230.48 / 919.86
+            exact sum(e_i) = -0.50, so the rule predicts DIVERGE
+            actual: 1040 line 2b = 13,803   Sch B line 4 = 13,803  -> AGREE
+            (the float sum is 13803.499999999998, not 13803.50)
+
+    WHICH float sums fall short of their decimal value is deliberately NOT
+    characterised here. Nobody has measured it, and stating more than has
+    been measured is exactly how this paragraph went wrong before. Unit (n)
+    owns that question. Every other example in this docstring was re-measured
+    on the real path and is consistent with the decimal rule.
 
     Three consequences, each measured, and each contradicting a plausible
     guess someone has already made about this:
 
-      * TWO OR MORE fractional payers is NECESSARY. One fractional payer
-        among whole-dollar ones can never diverge (verified over every cent
-        fraction). But it is NOT SUFFICIENT:
+      * TWO OR MORE fractional payers is NECESSARY. No divergence has been
+        found for a single fractional payer among whole-dollar ones. Note
+        that a lone payer whose amount ends in .50 sits EXACTLY on the
+        boundary the DOMAIN OF VALIDITY note above describes, so this one was
+        re-searched in float rather than assumed: every cent fraction at
+        bases from 0 up to 10^10 with up to five whole-dollar companions,
+        plus 400,000 random cases half of them pinned to .50 — zero
+        divergences. But two or more is NOT SUFFICIENT:
             two @ 100.10  ->  200 vs 200, agree   (errors -0.10 each)
+            two @ 100.01  ->  200 vs 200, agree   (errors -0.01 each)
             two @ 100.25  ->  201 vs 200, differ  (errors -0.25 each)
       * The magnitude is NOT capped at one dollar; it grows with the number
-        of payers:  ten @ 0.49 -> 5 vs 0 (five dollars);
-                    a hundred @ 0.49 -> 49 vs 0.
+        of payers. On the EMIT path the payer count is itself capped, so the
+        growth is too: ``sch_b.compute`` raises NotImplementedError above
+        ``pdf_sch_b.INTEREST_MAX_ROWS`` (14) interest rows and
+        ``DIVIDEND_MAX_ROWS`` (16) dividend rows. Measured:
+            ten 1099-INTs @ 0.49   ->  1040 2b = 5   Sch B line 4 = 0
+            14 1099-INTs @ 0.49    ->  1040 2b = 7   Sch B line 4 = 0
+            14 1099-INTs @ 0.51    ->  1040 2b = 7   Sch B line 4 = 14
+            16 1099-DIVs @ 0.49    ->  1040 3b = 8   Sch B line 6 = 0
+            16 1099-DIVs @ 0.51    ->  1040 3b = 8   Sch B line 6 = 16
+        The widest gap MEASURED on the emit path is 7 dollars on interest
+        and 8 on dividends, in either direction; applying the two rounding
+        conventions directly to 4,000 random 2-to-14-payer amount sets turned
+        up nothing wider than 7 either. A larger
+        arithmetic gap (a hundred payers @ 0.49 would be 49 vs 0) is real on
+        the 1040 side but UNREACHABLE through Schedule B, which refuses the
+        emit rather than printing a second page.
       * The DIRECTION is not fixed either. Schedule B can be higher OR lower
         than 1040 line 2b:  ten @ 0.51 -> Sch B five dollars HIGHER;
                             ten @ 0.49 -> Sch B five dollars LOWER.
@@ -790,11 +838,14 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
     (Careful about what a fractional fixture would actually break here.
     Giving THIS fixture's single 1099-INT cents does NOT break the
     cross-path equality — one fractional payer per line agrees, per the
-    exact condition above — it breaks the pinned literals MIXED_LINE_2B /
-    MIXED_LINE_3B instead. Reaching a genuine cross-path divergence takes a
-    SECOND fractional payer on the same line. Both failures are worth
-    avoiding, which is why the guard asks for whole dollars outright rather
-    than trying to encode the exact condition.)
+    condition above. What it CAN break instead is the pinned literals
+    MIXED_LINE_2B / MIXED_LINE_3B — "can", not "does": measured on this
+    fixture, an interest amount of 2,000.50 moves line 2b to 5,001, while
+    2,000.10 and 2,000.49 leave BOTH literals untouched, as does 2,000.01
+    together with a dividend amount of 5,000.01. Reaching a genuine
+    cross-path divergence takes a SECOND fractional payer on the same line.
+    Both failures are worth avoiding, which is why the guard asks for whole
+    dollars outright rather than trying to encode the condition.)
 
     Per team-lead's ruling this is left as a NAMED GAP rather than an xfail:
     a documented boundary plus a ledgered unit beats an expected-failure
@@ -844,9 +895,10 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
                     amount, int(amount),
                     f"{source} payer {payer!r} carries a fractional amount "
                     f"({amount}). This class's assertions are guaranteed "
-                    "only for whole-dollar amounts. Two things can break: "
-                    "the pinned literals MIXED_LINE_2B / MIXED_LINE_3B move "
-                    "as soon as ANY amount gains cents, and the cross-path "
+                    "only for whole-dollar amounts. Two things CAN break — "
+                    "and 'can' is the operative word, since some cent values "
+                    "break neither: cents can move the pinned literals "
+                    "MIXED_LINE_2B / MIXED_LINE_3B, and the cross-path "
                     "equality can break once TWO OR MORE payers on the SAME "
                     "line carry cents — the 1099 leg of "
                     "compute_income_preamble rounds once over the raw sum "
@@ -854,8 +906,9 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
                     "fractional payers is necessary but not sufficient for "
                     "that second failure, and when it does occur the gap is "
                     "not capped at one dollar and can fall in either "
-                    "direction; see this class's docstring for the exact "
-                    "condition. That divergence is REAL and PRE-EXISTING, "
+                    "direction; see this class's docstring for the condition "
+                    "and its domain of validity. That divergence is REAL "
+                    "and PRE-EXISTING, "
                     "chartered as follow-up unit (n) — it is not something "
                     "this test should be made to demonstrate.",
                 )

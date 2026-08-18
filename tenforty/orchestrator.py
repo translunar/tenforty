@@ -2118,7 +2118,8 @@ class ReturnOrchestrator:
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
         """Emit Sch B when either total interest or total dividends >= $1,500
-        (the IRS Part I / Part II filing threshold).
+        (tenforty's rendering of the IRS Part I / Part II filing threshold;
+        on ``>=`` versus the IRS's "over $1,500" wording see unit (p) below).
 
         "Total" means the 1040 line 2b / 3b TOTAL across every source -- 1099
         plus the K-1 conduit components (IRC 1366(b)) -- not the 1099 slice
@@ -2137,25 +2138,41 @@ class ReturnOrchestrator:
         contribute -- a copy that rots the moment that classification changes.
 
         "The lines it gates" is the whole of the claim, and it is deliberately
-        NOT "the figure Schedule B prints". Those can be different numbers.
-        Schedule B rounds each payer and sums; the 1099 leg of
-        compute_income_preamble rounds once over the raw sum, so on a return
-        with two or more cent-bearing 1099 payers the printed Schedule B total
-        and 1040 line 2b/3b differ. Measured on the native path, single filer,
-        two 1099-INTs, no K-1:
+        NOT "the figure Schedule B prints". Those CAN be different numbers,
+        because the two are rounded by different conventions: Schedule B
+        rounds each payer and sums the rounded figures, while the 1099 leg of
+        compute_income_preamble rounds once over the raw sum.
+
+        This docstring deliberately states NO rule for when the two agree.
+        That condition carries caveats, and it lives in exactly ONE place --
+        ``K1ScheduleBEmitPathAgreesWith1040Tests`` in
+        tests/test_k1_ordinary_income_totals.py. Read it there; do not
+        reconstruct it here from the two rows below. (Every earlier attempt to
+        state the rule in two places produced two texts that disagreed.)
+
+        Two measured examples, native path, single filer, two 1099-INTs,
+        no K-1:
 
             2 x 749.60   line 2b = 1499   Sch B line 4 = 1500   gate declines
             2 x 750.25   line 2b = 1501   Sch B line 4 = 1500   gate fires
 
         The gate follows line 2b, so in the first row it declines while the
-        Schedule B that would have printed totals 1,500. That OUTCOME is
-        defensible -- the raw interest is 1,499.20, which is not over $1,500
-        on either rounding convention, so declining is right -- and this gate
-        is not the place to fix it. It is recorded here only because the
-        underlying 1040-vs-Schedule-B rounding split is real and pre-existing,
-        chartered as follow-up unit (n). Whichever convention (n) settles on,
-        this gate keeps tracking lines 2b/3b by reference and needs no edit --
-        which is the actual value of reading by reference.
+        Schedule B that would have printed totals 1,500. Judged against the
+        predicate this method actually implements -- ``>= 1500.0`` applied to
+        line 2b -- that is the predicate answering correctly: line 2b is
+        1,499, which is below 1,500. Note the basis matters here, because
+        ``>=`` is inclusive: measured, a return whose line 2b is exactly 1,500
+        (two 1099-INTs at 750.00) makes this gate FIRE. So "1,499.20 is not
+        over $1,500" would be the wrong justification -- it reasons from the
+        IRS's "over $1,500" wording, which is not the predicate below.
+        Whether ``>=`` or "over" is correct is a PRE-EXISTING question this
+        method's change neither created nor settles; it is chartered as
+        follow-up unit (p), which owns it.
+
+        The 1040-vs-Schedule-B rounding split is likewise real and
+        pre-existing, chartered as follow-up unit (n). Whichever convention
+        (n) settles on, this gate keeps tracking lines 2b/3b by reference and
+        needs no edit -- which is the actual value of reading by reference.
 
         ⚠️ SCOPE -- the no-drift guarantee above is NATIVE-PATH ONLY. It does
         NOT hold on the XLSX workbook path, which _compute_1040_pipeline uses
