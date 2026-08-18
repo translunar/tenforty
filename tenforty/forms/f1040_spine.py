@@ -500,9 +500,20 @@ def compute_spine(
     # "Matches the oracle workbook's `Tax` named range" until this unit, and
     # that was false: `Tax` is LINE 18. In all five shipped workbooks (2021-
     # 2025) the `Tax` cell is `IF(<override>, ..., SUM(Tax_SubTotal, <the
-    # line-17 cell>))` and sits on the row captioned "Add lines 16 and 17";
-    # `Tax_SubTotal` is the cell directly above it. So the sentence documenting
-    # line 16 named line 18 — the exact conflation this unit exists to remove.
+    # line-17 cell>))` and sits on the row captioned "Add lines 16 and 17". So
+    # the sentence documenting line 16 named line 18 — the exact conflation
+    # this unit exists to remove.
+    #
+    # DO NOT LOCATE LINE 16 BY COUNTING ROWS FROM `Tax`. The cell DIRECTLY
+    # ABOVE `Tax` is the LINE-17 cell in every year (2021 AC58, 2022 AC67,
+    # 2023 AD73, 2024 AD76, 2025 AL97), so "the cell above" lands on line 17
+    # and re-commits the very conflation described above. Nor is there a fixed
+    # offset to substitute: `Tax_SubTotal` is THREE rows above `Tax` in
+    # 2021-2024 (AC56, AC65, AD71, AD74) but TWO in 2025 (AL96), because the
+    # older layouts carry a caption-only row between lines 16 and 17. Resolve
+    # BOTH ranges BY NAME. Two successive drafts of this comment asserted a row
+    # offset and both were wrong in the direction of the defect, which is why
+    # this is spelled out rather than summarized.
     # (Do not expect to confirm this by finding a printed "16" beside
     # `Tax_SubTotal`: only the 2025 workbook captions that row. In 2021-2024
     # the "Tax (see instructions)" caption prints one row BELOW it. Anchor on
@@ -607,8 +618,15 @@ def compute_spine(
     # (Sch 2 line 2). f8962_repayment joins the subtraction exactly like
     # f8959_tax_total — it raises the liability that total_payments is measured
     # against, and is 0 when no 1095-A is present. The workbook's own `Overpaid`
-    # named range is `IF(Tot_Payments > Tot_Tax, Tot_Payments - Tot_Tax, 0)` in
-    # every year, i.e. it measures against 1040 LINE 24, the full liability.
+    # named range is, in every year,
+    #     IF(<override><>"", ROUND(<override>,0),
+    #        IF(Tot_Payments > Tot_Tax, SUM(Tot_Payments, -Tot_Tax), 0))
+    # — quoted with its manual-override branch rather than simplified, because
+    # a comment that presents a reduced form as the literal formula is how the
+    # next reader concludes the sheet does something it does not. The operand
+    # really is the `Tot_Payments` named range (checked per year, not assumed
+    # from the cell address). What matters here is the second branch: it
+    # measures against 1040 LINE 24, the full liability.
     # The native spine mirrors that: compose the liability from parts here —
     # income_tax + f8959 + f8962 repayment — rather than reaching for
     # `total_tax`, which is line 16 only (see its assignment above).
