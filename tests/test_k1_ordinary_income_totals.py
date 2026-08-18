@@ -585,10 +585,28 @@ class K1VersusForm1099ChannelEquivalenceTests(_OrchestratorTestCase):
     Pre-fix the two channels diverged, because only the 1099 channel reached
     total income.
 
-    Native spine only — see the SCOPE NOTE above this class. On the XLSX
-    workbook path (non-single or EIC-possible filers) the two channels STILL
-    diverge, because that path never consults the income preamble; that is
-    follow-up unit (r), not something this class claims to have closed.
+    ⚠️ TWO LIMITS ON THAT "cannot care" — it is what SHOULD hold, and this
+    class pins it only where it actually does.
+
+    1. Native spine only — see the SCOPE NOTE above this class. On the XLSX
+       workbook path (non-single or EIC-possible filers) the two channels
+       STILL diverge, because that path never consults the income preamble;
+       that is follow-up unit (r).
+    2. WHOLE-DOLLAR AMOUNTS ONLY, even on the native spine. The K-1 leg
+       rounds per payer and the 1099 leg rounds once over the raw sum, so
+       cent-bearing amounts can still diverge BY CHANNEL. Measured, single
+       filer, native path, two payers @ 750.50 each:
+
+           K-1 channel   line 2b = 1502   total income = 101,502   AGI = 101,502
+           1099 channel  line 2b = 1501   total income = 101,501   AGI = 101,501
+
+       Same root cause as the cross-path gap documented on
+       ``K1ScheduleBEmitPathAgreesWith1040Tests`` (which carries the exact
+       condition), and chartered to the same follow-up unit (n). Both
+       fixtures below are whole-dollar, which is why the equality holds
+       here; unlike the cross-path class this one has no guard asserting
+       that, so a future editor adding cents gets a bare inequality. Worth
+       adding a guard if this class ever grows fractional fixtures.
 
     Both scenarios (all figures synthetic/generic) are 2025 single filers on
     the standard deduction with the SAME ``TaxReturnConfig`` — including the
@@ -716,13 +734,36 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
     is whole-dollar by construction, pinned by
     ``test_fixture_is_whole_dollar_by_construction``.
 
-    (Whole dollars are sufficient but not strictly necessary: the two
-    conventions also coincide when only ONE payer on a line is fractional,
-    since rounding a one-element sum is the same as rounding its one
-    element. Divergence needs TWO OR MORE fractional payers on the same
-    line — measured below. The guard asserts the simple sufficient
-    condition rather than the exact one, because "no fractional amounts" is
-    what a fixture author can actually keep true.)
+    Whole dollars are sufficient but NOT necessary, and the guard asserts
+    that simple sufficient condition rather than the exact one, because "no
+    fractional amounts" is what a fixture author can actually keep true.
+
+    EXACT CONDITION — stated because this boundary has now been mis-stated
+    three times (twice by the controller, once by me), each time by guessing
+    at it from a couple of examples. Derived, then brute-force verified in
+    exact rational arithmetic over 1,210,000 cases — all 2-payer and all
+    3-payer cent combinations exhaustively, plus 200,000 random returns of
+    1-20 payers — with ZERO mismatches:
+
+        Let e_i = irs_round(a_i) - a_i be a payer's rounding error, which
+        lies in (-0.50, +0.50]. The two conventions AGREE exactly when
+        sum(e_i) also lies in (-0.50, +0.50]. Otherwise they diverge, by
+        however many whole dollars sum(e_i) escapes that window by.
+
+    Three consequences, each measured, and each contradicting a plausible
+    guess someone has already made about this:
+
+      * TWO OR MORE fractional payers is NECESSARY. One fractional payer
+        among whole-dollar ones can never diverge (verified over every cent
+        fraction). But it is NOT SUFFICIENT:
+            two @ 100.10  ->  200 vs 200, agree   (errors -0.10 each)
+            two @ 100.25  ->  201 vs 200, differ  (errors -0.25 each)
+      * The magnitude is NOT capped at one dollar; it grows with the number
+        of payers:  ten @ 0.49 -> 5 vs 0 (five dollars);
+                    a hundred @ 0.49 -> 49 vs 0.
+      * The DIRECTION is not fixed either. Schedule B can be higher OR lower
+        than 1040 line 2b:  ten @ 0.51 -> Sch B five dollars HIGHER;
+                            ten @ 0.49 -> Sch B five dollars LOWER.
 
     The reason is a rounding-convention split. ``sch_b.compute`` rounds EACH
     payer's amount and sums the rounded figures. This unit matched that on
@@ -741,11 +782,19 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
             1040 line 2b = 2001  Schedule B line 4 = 2001
 
     Note the K-1 leg adds the SAME 101 / 251 to both sides — the entire $1
-    divergence is the 1099 leg. So this test would fail on a `.50` fixture,
-    and it would be failing for a real, pre-existing reason that this unit
-    did not introduce and deliberately did not fix: correcting the 1099 leg
-    moves ``total_income`` and therefore a real taxpayer's tax, which needs
-    its own oracle-checked unit. **That is chartered as follow-up unit (n).**
+    divergence is the 1099 leg, the leg this unit deliberately did not
+    touch. Correcting it moves ``total_income`` and therefore a real
+    taxpayer's tax, which needs its own oracle-checked unit. **That is
+    chartered as follow-up unit (n).**
+
+    (Careful about what a fractional fixture would actually break here.
+    Giving THIS fixture's single 1099-INT cents does NOT break the
+    cross-path equality — one fractional payer per line agrees, per the
+    exact condition above — it breaks the pinned literals MIXED_LINE_2B /
+    MIXED_LINE_3B instead. Reaching a genuine cross-path divergence takes a
+    SECOND fractional payer on the same line. Both failures are worth
+    avoiding, which is why the guard asks for whole dollars outright rather
+    than trying to encode the exact condition.)
 
     Per team-lead's ruling this is left as a NAMED GAP rather than an xfail:
     a documented boundary plus a ledgered unit beats an expected-failure
@@ -794,17 +843,21 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
                 self.assertEqual(
                     amount, int(amount),
                     f"{source} payer {payer!r} carries a fractional amount "
-                    f"({amount}). The cross-path equality in this class is "
-                    "guaranteed only for whole-dollar amounts: the 1099 leg "
-                    "of compute_income_preamble rounds once over the raw sum "
-                    "while Schedule B rounds per payer, so two or more "
-                    "fractional payers on the same line make the 1040 and "
-                    "its own Schedule B differ by a dollar. (A single "
-                    "fractional payer happens to survive, but do not rely on "
-                    "that — adding a second payer would silently break it.) "
-                    "That divergence is REAL and PRE-EXISTING, chartered as "
-                    "follow-up unit (n) — it is not something this test "
-                    "should be made to demonstrate.",
+                    f"({amount}). This class's assertions are guaranteed "
+                    "only for whole-dollar amounts. Two things can break: "
+                    "the pinned literals MIXED_LINE_2B / MIXED_LINE_3B move "
+                    "as soon as ANY amount gains cents, and the cross-path "
+                    "equality can break once TWO OR MORE payers on the SAME "
+                    "line carry cents — the 1099 leg of "
+                    "compute_income_preamble rounds once over the raw sum "
+                    "while Schedule B rounds per payer. Two or more "
+                    "fractional payers is necessary but not sufficient for "
+                    "that second failure, and when it does occur the gap is "
+                    "not capped at one dollar and can fall in either "
+                    "direction; see this class's docstring for the exact "
+                    "condition. That divergence is REAL and PRE-EXISTING, "
+                    "chartered as follow-up unit (n) — it is not something "
+                    "this test should be made to demonstrate.",
                 )
 
     def test_whole_dollar_schedule_b_totals_equal_1040_lines_2b_and_3b(
