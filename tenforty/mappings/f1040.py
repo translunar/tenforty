@@ -797,8 +797,13 @@ class F1040(FormMapping):
             # Part-I-complete; see f1040x.py's module docstring for the precise
             # statement. This mapping formerly pointed at `Tax`, which is line
             # 18 — the SUM of line 16 and the line-17 CELL, that cell being
-            # `IF(<override><>"", ROUND(<override>,0), Schedule2_Tax)`, i.e.
-            # `Schedule2_Tax` absent a manual override tenforty never writes.
+            # `IF(<override><>"", ROUND(<override>,0), Schedule2_Tax)` in
+            # 2022-2025, i.e. `Schedule2_Tax` absent a manual override
+            # tenforty never writes. 2021 IS THE SAME CELL UNDER A DIFFERENT
+            # NAME: '1040'!AC58 reads `Schedule2`, a separate defined name
+            # that resolves to the same 'Sch. 2'!AC13 as `Schedule2_Tax`.
+            # Nothing computational turns on that — but a reader grepping the
+            # 2021 workbook for `Schedule2_Tax` at line 17 will not find it.
             # Pointing here printed an overstated line 16 whenever Schedule 2
             # Part I was nonzero and made f1040x double-count the excess-APTC
             # repayment.

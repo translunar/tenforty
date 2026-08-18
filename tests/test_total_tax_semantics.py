@@ -71,8 +71,13 @@ LibreOffice, so every class that computes a workbook result carries
 `@needs_libreoffice` (which is also what stamps `pytest.mark.oracle` — see
 `tests/helpers.py::needs_libreoffice`; a second, hand-written `pytest.mark.oracle`
 would be a duplicate of state that has exactly one source on purpose). The
-native-only assertions are deliberately left on the always-running gate, so a
-native-side regression reddens without a soffice slot.
+native-only assertions are deliberately left on the always-running gate, so
+the native-side claims this file CAN make are checked without a soffice slot.
+Which ones those are is scoped in `assert_line_16_meaning`'s docstring, and it
+is narrower than "a native-side regression reddens here": a uniform relabeling
+of the whole native tax band sails through this file, because the spine derives
+line 18 FROM line 16. Its anchor lives in
+`tests/test_1040_tax_band_native_producers.py`.
 """
 
 import tempfile
@@ -161,10 +166,29 @@ class _OrchestratorCase(unittest.TestCase):
     def assert_line_16_meaning(self, results: dict, path: str) -> None:
         """`total_tax` is line 16 and `tax_plus_schedule2` is line 18, here.
 
-        Both halves are asserted, and the second is what gives the first its
-        teeth: line 18 must be line 16 PLUS line 17, and line 17 must be
-        nonzero, so a `total_tax` that had silently become line 18 would make
-        the sum overshoot and fail.
+        Both halves are asserted, and ON THE WORKBOOK ARM the second is what
+        gives the first its teeth: line 18 must be line 16 PLUS line 17, and
+        line 17 must be nonzero, so a `total_tax` that had silently become
+        line 18 would make the sum overshoot and fail. The two keys are
+        harvested from SEPARATE vendor cells there, so they can disagree.
+
+        ON THE NATIVE ARM THAT IS NOT TRUE, and it is worth saying because the
+        sentence above was written unscoped and read as universal. The spine
+        DERIVES line 18 from line 16 (`tax_plus_schedule2 = total_tax +
+        schedule2_tax`), so a uniform relabeling of the whole band moves both
+        keys together and satisfies all three assertions below. Verified by
+        mutation rather than by reading: with the spine assigning
+        `total_tax = income_tax + f8962_repayment`, this file's
+        always-running tests stay GREEN.
+
+        That is a limit on what this HELPER can claim on that arm, not a
+        coverage hole. The same mutation REDDENS
+        `tests/test_1040_tax_band_native_producers.py::
+        NativeSchedule2LineProducersTests::
+        test_line_17_is_the_excess_aptc_repayment_and_line_18_adds_it_to_16`,
+        which carries the anchor this arm lacks: it computes the same scenario
+        WITH and WITHOUT the Schedule 2 block and asserts line 16 is unchanged
+        by the addition. Do not delete that test as redundant with this file.
         """
         line_16 = results["total_tax"]
         line_17 = results["schedule2_tax"]
