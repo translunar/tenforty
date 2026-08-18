@@ -55,6 +55,7 @@ def _base_config(**overrides) -> dict:
         "acknowledges_no_railroad_retirement_benefits": False,
         "acknowledges_no_paid_family_leave_benefits": False,
         "acknowledges_no_capital_loss_carryforward": True,
+        "acknowledges_no_federal_amt": True,
         "acknowledges_qbi_below_threshold": False,
         "acknowledges_unlimited_at_risk": False,
         "basis_tracked_externally": False,

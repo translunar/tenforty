@@ -71,7 +71,7 @@ Fields verified through round-trip PDF tests: engine → translate → fill PDF 
 | total_credits | 1040 L21 | — |
 | tax_after_credits | 1040 L22 | — |
 | other_taxes | 1040 L23 | — |
-| total_tax_liability | 1040 L24 | — |
+| tax_liability_line24 | 1040 L24 | — |
 
 ### Page 2 — Payments
 

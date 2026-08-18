@@ -48,6 +48,7 @@ config:
   acknowledges_no_railroad_retirement_benefits: false
   acknowledges_no_paid_family_leave_benefits: false
   acknowledges_no_capital_loss_carryforward: true
+  acknowledges_no_federal_amt: true
 form_1095a:
   months:
     jan: {premium: 0, slcsp: 0, aptc: 0}

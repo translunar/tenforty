@@ -131,7 +131,11 @@ class TestPdf1040Basic(unittest.TestCase):
             m["taxable_income"], "topmostSubform[0].Page1[0].f1_59[0]"
         )
         self.assertEqual(m["total_tax"], "topmostSubform[0].Page2[0].f2_02[0]")
+        # Line 24's compute key was renamed `total_tax_liability` ->
+        # `tax_liability_line24`, converging with the F1040 harvest OUTPUT key
+        # and forms/f4868.py's `_LINE_24_KEY`; see pdf_1040.py's module
+        # docstring. The BOX is unchanged, which is what this test is about.
         self.assertEqual(
-            m["total_tax_liability"], "topmostSubform[0].Page2[0].f2_10[0]"
+            m["tax_liability_line24"], "topmostSubform[0].Page2[0].f2_10[0]"
         )
         self.assertNotIn("agi_page2", m)

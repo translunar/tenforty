@@ -1200,6 +1200,11 @@ class ReturnOrchestrator:
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year), values=results,
+            # 1040 line 24 (total tax) is filled by a derivation rather than a
+            # result key: no key fills it on the native path, and the single
+            # shared implementation of the arithmetic lives in forms/f4868.py.
+            # See Pdf1040.get_derivations for why not a spine output key.
+            derivations=Pdf1040.get_derivations(year),
         ))
 
         specs.append(_FederalFormSpec(
