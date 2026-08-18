@@ -74,8 +74,18 @@ class IncomePreamble:
 
     Attributes:
         wages:               1040 line 1a (sum of W-2 box 1).
-        taxable_interest:    1040 line 2b (sum of 1099-INT box 1).
-        ordinary_divs:       1040 line 3b (sum of 1099-DIV box 1a).
+        taxable_interest:    1040 line 2b component from 1099-INT box 1 only.
+            NOT the authoritative line 2b — see taxable_interest_total.
+        taxable_interest_k1: 1040 line 2b component from the K-1s' interest
+            (IRC 1366(b) conduit treatment), consumed from the fanout.
+        taxable_interest_total: 1040 line 2b authoritative TOTAL
+            (taxable_interest + taxable_interest_k1).
+        ordinary_divs:       1040 line 3b component from 1099-DIV box 1a only.
+            NOT the authoritative line 3b — see ordinary_divs_total.
+        ordinary_divs_k1:    1040 line 3b component from the K-1s' ordinary
+            dividends (IRC 1366(b)), consumed from the fanout.
+        ordinary_divs_total: 1040 line 3b authoritative TOTAL
+            (ordinary_divs + ordinary_divs_k1).
         qualified_divs:      1040 line 3a component from 1099-DIV box 1b only.
         qualified_divs_k1:   1040 line 3a component from K-1 box 5b
             (IRC 1366(b) conduit treatment), consumed from the fanout.
@@ -128,6 +138,10 @@ class IncomePreamble:
     qualified_divs: int
     qualified_divs_k1: int
     qualified_divs_total: int
+    taxable_interest_k1: int
+    taxable_interest_total: int
+    ordinary_divs_k1: int
+    ordinary_divs_total: int
     schd_line16: int
     schd_line21_allowed: int
     sch_1_line_10: int
@@ -182,6 +196,28 @@ def compute_income_preamble(
     _fanout = k1_fanout if k1_fanout is not None else K1FanoutData.empty()
     qualified_divs_k1 = irs_round(_fanout.qualified_dividends_aggregate)
     qualified_divs_total = irs_round(qualified_divs + qualified_divs_k1)
+    # 1040 lines 2b and 3b are likewise TOTALS across every source. A 1099-INT
+    # / 1099-DIV is one component; a K-1's interest / ordinary dividends is
+    # another (IRC 1366(b) conduit treatment — S-corp items keep their
+    # character in the shareholder's hands). Both K-1 components are CONSUMED
+    # from the fanout, never re-summed here, so each is aggregated exactly
+    # once.
+    #
+    # Rounding: each payer's amount is rounded to whole dollars and the
+    # ROUNDED figures are summed, matching how Schedule B totals the very
+    # same fanout additions (see tenforty/forms/sch_b.py — each addition is
+    # appended as irs_round(pa.amount), then total_interest sums those). One
+    # round at the end over the raw amounts is a different function once
+    # cents are involved, and would leave the 1040 and its own Schedule B a
+    # dollar apart on the same return.
+    taxable_interest_k1 = sum(
+        irs_round(pa.amount) for pa in _fanout.sch_b_interest_additions
+    )
+    taxable_interest_total = irs_round(taxable_interest + taxable_interest_k1)
+    ordinary_divs_k1 = sum(
+        irs_round(pa.amount) for pa in _fanout.sch_b_dividend_additions
+    )
+    ordinary_divs_total = irs_round(ordinary_divs + ordinary_divs_k1)
     schd_line15 = sch_d.get("sch_d_line_15_net_long", 0)
     schd_line16 = sch_d.get("sch_d_line_16_total", 0)
     # IRC §1211(b): the net capital LOSS deductible against ordinary income
@@ -198,7 +234,11 @@ def compute_income_preamble(
     sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
 
     total_income = irs_round(
-        wages + taxable_interest + ordinary_divs + schd_line21_allowed + sch_1_line_10
+        wages
+        + taxable_interest_total
+        + ordinary_divs_total
+        + schd_line21_allowed
+        + sch_1_line_10
     )
     agi = irs_round(total_income - sch_1_line_26)
     # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
@@ -239,6 +279,10 @@ def compute_income_preamble(
         qualified_divs=qualified_divs,
         qualified_divs_k1=qualified_divs_k1,
         qualified_divs_total=qualified_divs_total,
+        taxable_interest_k1=taxable_interest_k1,
+        taxable_interest_total=taxable_interest_total,
+        ordinary_divs_k1=ordinary_divs_k1,
+        ordinary_divs_total=ordinary_divs_total,
         schd_line16=schd_line16,
         schd_line21_allowed=schd_line21_allowed,
         sch_1_line_10=sch_1_line_10,
@@ -367,8 +411,15 @@ def compute_spine(
         scenario, params, schedule_results, k1_fanout=k1_fanout,
     )
     wages = preamble.wages
-    taxable_interest = preamble.taxable_interest
-    ordinary_divs = preamble.ordinary_divs
+    # 1040 lines 2b / 3b TOTALS — same reasoning as line 3a below: a K-1's
+    # interest / ordinary dividends keep their character in the shareholder's
+    # hands (IRC 1366(b)), so the LINE is the 1099 component plus the K-1
+    # component. The 1099-only preamble fields (preamble.taxable_interest /
+    # .ordinary_divs) are components, not lines, and are deliberately NOT
+    # bound here — the emitted Schedule B totals the same K-1 additions, so a
+    # spine that published the components would contradict its own Schedule B.
+    taxable_interest_total = preamble.taxable_interest_total
+    ordinary_divs_total = preamble.ordinary_divs_total
     # 1040 line 3a TOTAL — the QDCGT preferential base must include a K-1's
     # qualified dividends (IRC 1366(b)), not just the 1099-DIV component.
     # Reading the same preamble total that Form 8995 line 12 reads keeps the
@@ -595,13 +646,20 @@ def compute_spine(
         # scenario inputs and refuse-by-absence (their mapping entries are
         # retired). Feeds line 9.
         "total_w2_income": wages,
-        "interest_income": taxable_interest,
-        "dividend_income": ordinary_divs,
+        # 1040 lines 2b / 3b are TOTALS across every source, so these publish
+        # the authoritative 1099+K-1 figures, not the 1099-only components.
+        # Anything reading these keys (PDF line 2b/3b boxes, Sch CA Part I §A
+        # lines 2/3, the CLI summary) is asking for the line, not the 1099
+        # slice, and the emitted Schedule B totals the same fanout additions --
+        # so publishing the 1099-only figure here left the 1040 and its own
+        # Schedule B disagreeing on the same return, with tax understated.
+        "interest_income": taxable_interest_total,
+        "dividend_income": ordinary_divs_total,
         "total_income": total_income,
         # PDF-ready aliases: PDF mapping uses taxable_interest / ordinary_dividends
         # (f1040.compute renamed these in the oracle path).
-        "taxable_interest": taxable_interest,
-        "ordinary_dividends": ordinary_divs,
+        "taxable_interest": taxable_interest_total,
+        "ordinary_dividends": ordinary_divs_total,
         # 1040 line 3a TOTAL (1099-DIV + K-1). Publishing this from the spine
         # (rather than leaving it only in the orchestrator's compute-time
         # stub) lets the PDF-emit path -- which builds its upstream from this
