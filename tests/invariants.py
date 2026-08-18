@@ -13,6 +13,7 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.models import Scenario
+from tenforty.rounding import irs_round
 
 
 def assert_agi_consistent(
@@ -236,6 +237,69 @@ def verify_pdf_round_trip(
             print(f"    {gap}", file=sys.stderr)
 
 
+def _expected_4868_pdf_values(results: dict) -> dict[str, str]:
+    """Return the {4868 compute key: rendered PDF string} this return must fill.
+
+    WHAT THIS ASSERTS, AND WHAT IT DELIBERATELY DOES NOT RE-DERIVE.
+
+    The subject of `assert_4868_fills_correctly` is the FILL: that each 4868
+    compute key reaches the PDF field `Pdf4868` maps it to, and survives the
+    fill/read-back round-trip. It is NOT a second implementation of the 1040
+    line-24 arithmetic. That oracle lives in tests/test_f4868_compute.py, which
+    runs on the standard `-m "not oracle"` gate; all three callers of this
+    helper are `@needs_libreoffice`, so anything asserted ONLY here is invisible
+    to that gate — which makes this exactly the copy that drifts unnoticed.
+
+    It previously did re-derive it, and was WRONG in two ways:
+
+      1. It hand-composed line 24 as
+         `max(0, total_tax + f8962_repayment - nonrefundable_credits)
+          + f8959_tax_total`.
+         On the WORKBOOK path production does not compose at all — it prints the
+         harvested `Tot_Tax`, whose line 23 is the workbook's `TotalOtherTaxes`
+         = `SUM(SelfEmploymentTax, AO53, AD87, ROUND(AD88,0))`. That carries
+         NIIT and SE tax, which the hand-composition has no term for. So the
+         oracle asserted a DIFFERENT quantity than production emits.
+      2. It rounded EACH PART to whole dollars and then summed, while the
+         workbook rounds the TOTAL — an off-by-one exposure independent of (1).
+
+    THE BRANCH BELOW IS BY PATH, deliberately, because the two paths have
+    different amounts of independent evidence available:
+
+      - WORKBOOK path (`tax_liability_line24` present in `results`): compare
+        against the workbook's OWN `Tot_Tax`. That is a genuinely independent
+        oracle — the vendor's answer for 1040 line 24, not ours — and it is
+        specifically the assertion that catches f4868 silently falling back to
+        its NIIT-less native composition on a path where the harvest exists.
+
+      - NATIVE path (key absent): no independent source of line 24 exists,
+        because the spine has no line-22/23/24 producer. Ask production what it
+        computed and let this helper prove only the fill. The arithmetic is
+        proven, on the always-running gate, by
+        tests/test_f4868_compute.py::F4868NativePathLine24Tests.
+
+    Rendering to whole dollars uses `irs_round`, the repo-wide convention that
+    `PdfFiller._render_scalar` applies to every numeric field.
+    """
+    from tenforty.forms.f4868 import compute_balance_due, total_tax_liability_line_24
+
+    harvested = results.get("tax_liability_line24")
+    if harvested is not None:
+        line_24 = harvested          # WORKBOOK path: the vendor's own line 24.
+    else:
+        line_24 = total_tax_liability_line_24(results)   # NATIVE path.
+
+    total_payments = results.get("total_payments") or 0
+    balance_due = compute_balance_due(line_24, total_payments)
+
+    return {
+        "estimated_total_tax": str(irs_round(line_24)),
+        "total_payments": str(irs_round(total_payments)),
+        "balance_due": str(irs_round(balance_due)),
+        "amount_paying_with_extension": "0",
+    }
+
+
 def assert_4868_fills_correctly(
     testcase,
     results: dict,
@@ -245,23 +309,19 @@ def assert_4868_fills_correctly(
     """Emit a 4868 from results + config, re-read it, assert lines 4/5/6/7.
 
     Line 4 = IRS Form 1040 LINE 24 (total tax liability), NOT results
-             ['total_tax'], which is line 16. Composed here from the parts by
-             hand — deliberately not by calling forms/f4868.py, which would
-             make this a tautology rather than an oracle:
-                 line 22 = max(0, (line 16 + Sch 2 Part I) − credits)
-                 line 24 = line 22 + Sch 2 Part II
-             The zero floor is on line 22 only; see forms/f4868.py
-             ::compose_line_24 for the vendor-workbook evidence.
+             ['total_tax'], which is line 16.
     Line 5 = results['total_payments']
     Line 6 = max(0, line_4 − line_5)
     Line 7 = 0 (default — no amount paid with extension in the fixture path)
+
+    See `_expected_4868_pdf_values` for how each expectation is sourced, and
+    for why line 4's source differs between the workbook and native paths.
 
     ASSUMES personal-info fields populated on config. This helper patches a copy
     of the scenario's config in memory; it does not mutate the caller's scenario.
     """
     import tempfile
 
-    from tenforty.forms.f4868 import compute_balance_due
     from tenforty.mappings.pdf_4868 import Pdf4868
     from tenforty.models import Scenario
     from tenforty.orchestrator import ReturnOrchestrator
@@ -284,24 +344,7 @@ def assert_4868_fills_correctly(
     fields = reader.get_fields()
 
     mapping = Pdf4868.get_mapping(year)
-
-    def _int(key):
-        return int(round(float(results.get(key) or 0)))
-
-    line_22 = max(
-        0,
-        _int("total_tax") + _int("f8962_repayment") - _int("nonrefundable_credits"),
-    )
-    line_24 = line_22 + _int("f8959_tax_total")
-    total_payments = int(round(float(results.get("total_payments", 0))))
-    balance_due = compute_balance_due(line_24, total_payments)
-
-    expected = {
-        "estimated_total_tax": str(line_24),
-        "total_payments": str(total_payments),
-        "balance_due": str(balance_due),
-        "amount_paying_with_extension": "0",
-    }
+    expected = _expected_4868_pdf_values(results)
 
     for key, expected_val in expected.items():
         pdf_field = mapping[key]
