@@ -1,3 +1,4 @@
+import re
 import unittest
 
 import openpyxl
@@ -201,6 +202,136 @@ class TestF1040TaxBandOutputsEveryYear(unittest.TestCase):
                         len(destinations), 1,
                         f"{year} `Deduction` must have exactly one "
                         f"destination entry",
+                    )
+                finally:
+                    wb.close()
+
+
+def _sole_destination(wb, name: str) -> tuple[str, str]:
+    """Return the single (sheet, cell) a defined name resolves to."""
+    destinations = list(wb.defined_names[name].destinations)
+    if len(destinations) != 1:
+        raise AssertionError(
+            f"`{name}` must resolve to exactly one destination; "
+            f"got {destinations!r}")
+    sheet_name, cell_ref = destinations[0]
+    return sheet_name, cell_ref.replace("$", "")
+
+
+class TestF1040TotalTaxLiabilityLine24(unittest.TestCase):
+    """1040 LINE 24 (`Tot_Tax`), harvested for Form 4868 line 4.
+
+    Form 4868 line 4 is "Estimate of Total Tax Liability" and its instruction
+    (pdfs/federal/2025/f4868.pdf) names 1040 line 24 explicitly. Line 24 is
+    NOT `total_tax` (line 16) and NOT `tax_plus_schedule2` (line 18), so it
+    needs its own OUTPUT — see forms/f4868.py for why the workbook path
+    HARVESTS it while the native path composes.
+
+    2023/2022/2021 inherit these OUTPUTS off 2024 rather than declaring them,
+    so the per-year loop is what proves the inheritance chain carries the key.
+    """
+
+    YEARS = (2021, 2022, 2023, 2024, 2025)
+
+    # Line 24's cell in each shipped workbook, for the formula-shape pin
+    # below. Recorded so a vendor re-layout is visible as a test failure
+    # naming the year, not as a silent semantic change.
+    LINE_24_CELL = {
+        2021: ("1040", "AC65"),
+        2022: ("1040", "AC74"),
+        2023: ("1040", "AD80"),
+        2024: ("1040", "AD83"),
+        2025: ("1040", "AL104"),
+    }
+
+    def test_mapped_to_the_name_on_every_year(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    F1040.get_outputs(year)["tax_liability_line24"], "Tot_Tax")
+
+    def test_named_range_exists_in_every_workbook(self):
+        """The mapping VALUE being right is not the same as the NAME existing.
+
+        `oracle/engine.py::_read_outputs` resolves an OUTPUT by looking its
+        value up in `wb.defined_names` and SILENTLY assigns None
+        (`engine.py:192`) when the name does not resolve. A `Tot_Tax` that
+        stopped resolving would therefore harvest as None, f4868 would fall
+        through to its native composition on the WORKBOOK path, and line 4
+        would quietly lose NIIT and AMT with every mapping test still green.
+        Same shape as `TestF1040Form8962Mapping::test_ptc_output_named_ranges`.
+        """
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                workbook_path = (
+                    SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                )
+                wb = openpyxl.load_workbook(workbook_path, read_only=False)
+                try:
+                    self.assertIn(
+                        "Tot_Tax", wb.defined_names,
+                        f"{year} is missing the `Tot_Tax` named range, so "
+                        f"Form 4868 line 4 would silently fall back to the "
+                        f"incomplete native composition. Do NOT repoint this "
+                        f"at a cell address — line 24's address moves in "
+                        f"every one of the five workbooks.",
+                    )
+                    self.assertEqual(
+                        self.LINE_24_CELL[year],
+                        _sole_destination(wb, "Tot_Tax"),
+                    )
+                finally:
+                    wb.close()
+
+    def test_line_24_is_line_22_plus_line_23_with_the_floor_on_line_22(self):
+        """Pin the vendor's own arithmetic, including WHERE the floor sits.
+
+        Every year:  line 24 = SUM(line 22, line 23)
+                     line 22 = MAX(0, SUM(Tax, -<line 21 credits>))
+                     line 23 = TotalOtherTaxes   (Schedule 2 Part II)
+
+        The zero floor is on (line 18 - nonrefundable credits) and nothing
+        else — Schedule 2 Part II is added AFTER it. forms/f4868.py's native
+        composition mirrors that order; this is the evidence it mirrors.
+        """
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                workbook_path = (
+                    SPREADSHEETS_DIR / "federal" / str(year) / "1040.xlsx"
+                )
+                wb = openpyxl.load_workbook(workbook_path, data_only=False)
+                try:
+                    sheet_name, cell_ref = _sole_destination(wb, "Tot_Tax")
+                    sheet = wb[sheet_name]
+                    line_24 = sheet[cell_ref].value
+                    match = re.fullmatch(
+                        r"=SUM\(([A-Z]+\d+),\s*([A-Z]+\d+)\)", str(line_24))
+                    self.assertIsNotNone(
+                        match,
+                        f"{year} line 24 ({cell_ref}) is no longer a plain "
+                        f"two-operand SUM: {line_24!r}",
+                    )
+                    line_22_ref, line_23_ref = match.group(1), match.group(2)
+
+                    line_22 = str(sheet[line_22_ref].value)
+                    self.assertIn(
+                        "MAX(0,SUM(Tax,-", line_22.replace(" ", ""),
+                        f"{year} line 22 ({line_22_ref}) no longer floors "
+                        f"(line 18 - credits) at zero: {line_22!r}",
+                    )
+                    # The floor's operand is line 18 MINUS credits and stops
+                    # there: Schedule 2 Part II must NOT be inside it.
+                    self.assertNotIn(
+                        "TotalOtherTaxes", line_22,
+                        f"{year} line 22 ({line_22_ref}) now floors Schedule "
+                        f"2 Part II too, which would swallow other taxes a "
+                        f"filer owes: {line_22!r}",
+                    )
+                    line_23 = str(sheet[line_23_ref].value)
+                    self.assertIn(
+                        "TotalOtherTaxes", line_23,
+                        f"{year} line 23 ({line_23_ref}) is no longer "
+                        f"Schedule 2 Part II: {line_23!r}",
                     )
                 finally:
                     wb.close()

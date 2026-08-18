@@ -244,7 +244,14 @@ def assert_4868_fills_correctly(
 ) -> None:
     """Emit a 4868 from results + config, re-read it, assert lines 4/5/6/7.
 
-    Line 4 = results['total_tax']
+    Line 4 = IRS Form 1040 LINE 24 (total tax liability), NOT results
+             ['total_tax'], which is line 16. Composed here from the parts by
+             hand — deliberately not by calling forms/f4868.py, which would
+             make this a tautology rather than an oracle:
+                 line 22 = max(0, (line 16 + Sch 2 Part I) − credits)
+                 line 24 = line 22 + Sch 2 Part II
+             The zero floor is on line 22 only; see forms/f4868.py
+             ::compose_line_24 for the vendor-workbook evidence.
     Line 5 = results['total_payments']
     Line 6 = max(0, line_4 − line_5)
     Line 7 = 0 (default — no amount paid with extension in the fixture path)
@@ -278,12 +285,19 @@ def assert_4868_fills_correctly(
 
     mapping = Pdf4868.get_mapping(year)
 
-    total_tax = int(round(float(results.get("total_tax", 0))))
+    def _int(key):
+        return int(round(float(results.get(key) or 0)))
+
+    line_22 = max(
+        0,
+        _int("total_tax") + _int("f8962_repayment") - _int("nonrefundable_credits"),
+    )
+    line_24 = line_22 + _int("f8959_tax_total")
     total_payments = int(round(float(results.get("total_payments", 0))))
-    balance_due = compute_balance_due(total_tax, total_payments)
+    balance_due = compute_balance_due(line_24, total_payments)
 
     expected = {
-        "estimated_total_tax": str(total_tax),
+        "estimated_total_tax": str(line_24),
         "total_payments": str(total_payments),
         "balance_due": str(balance_due),
         "amount_paying_with_extension": "0",
