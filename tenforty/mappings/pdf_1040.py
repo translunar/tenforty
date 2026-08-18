@@ -20,16 +20,36 @@ indefensible. `tax_liability_line24` is the survivor because it is the name the
 harvest, `forms/f4868.py` and `tests/invariants.py` already use. THIS WAS
 DECIDED, NOT OVERLOOKED.
 
-Line 24 also had NO PRODUCER at all — neither path emitted either key — so it
-printed blank on every emitted 1040. `get_derivations` below supplies one; see
-its docstring for where the value comes from and why it is a derivation rather
-than a new spine output key.
+Line 24 also printed blank on every emitted 1040 — but scope WHY, because the
+unqualified version of that sentence is false. The NATIVE path had no line-24
+producer of any kind. The WORKBOOK path DID: `mappings/f1040.py` has harvested
+`tax_liability_line24` <- `Tot_Tax` since Form 4868 line 4 was fixed. Its box
+was blank for a different reason — the PDF mapping keyed on the OTHER name, so
+the harvested value had nothing to flow into. The rename above fixes the
+workbook path's blank by itself; `get_derivations` below is what supplies the
+missing native producer, and it also serves the workbook path so both go
+through one function. See its docstring for where the value comes from and why
+it is a derivation rather than a new spine output key.
 """
 
 from collections.abc import Callable, Mapping
 
 from tenforty.forms.f4868 import total_tax_liability_line_24
 from tenforty.mappings.registry import PdfFormMapping
+
+
+def _derive_line_24(values: Mapping[str, object]) -> object:
+    """1040 line 24 for the derivation table below. A named adapter, not a
+    bare reference to `total_tax_liability_line_24`, for one reason: the
+    derivation contract `filing/pdf.py::PdfFiller.resolve_fields` declares is
+    `Callable[[Mapping[str, object]], object]`, while the callee annotates its
+    parameter `dict`. A `Mapping` is not a `dict`, so passing the callee
+    straight through would have been a real (if currently inert — no type
+    checker is configured, and every live caller passes a dict) annotation
+    mismatch. Materializing a dict here makes the declared type honest without
+    editing `forms/f4868.py`, and keeps ONE implementation of the arithmetic.
+    """
+    return total_tax_liability_line_24(dict(values))
 
 
 class Pdf1040(PdfFormMapping[dict[str, str]]):
@@ -872,7 +892,5 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
         field path is f2_10 in 2021-2023, f2_15 in 2024 and f2_16 in 2025.
         """
         return {
-            cls.get_mapping(year)["tax_liability_line24"]:
-                total_tax_liability_line_24,
+            cls.get_mapping(year)["tax_liability_line24"]: _derive_line_24,
         }
-
