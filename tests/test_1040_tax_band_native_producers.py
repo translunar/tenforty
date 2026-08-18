@@ -112,8 +112,12 @@ class _NativeComputeCase(unittest.TestCase):
     def _fields(self, scenario: Scenario, results: dict) -> dict[str, str]:
         """The exact {pdf_field_path: rendered_string} dict the 1040 emit would
         write, resolved through the orchestrator's own spec and its own
-        `_federal_spec_payload` — the same call the renderer and the
-        changed-forms selector go through."""
+        `_federal_spec_payload` — THE SAME RESOLUTION the renderer and the
+        changed-forms selector get. Not the same CALL in both cases, and the
+        difference is worth a clause: the selector calls
+        `_federal_spec_payload` literally (`orchestrator.py:1882-1884`), while
+        the renderer goes through `PdfFiller.fill`, which delegates to
+        `resolve_fields` with the same arguments."""
         return ReturnOrchestrator._federal_spec_payload(
             self._spec_1040(scenario, results))
 
@@ -272,8 +276,11 @@ class NativeResultsMustNotCarryTheLine24KeyTests(_NativeComputeCase):
     decorative one about a name that could never appear: adding
     `"tax_liability_line24": max(0, tax_plus_schedule2) + f8959_tax_total` to
     the spine's output dict — the correct-valued line that a well-meaning
-    future task would write — is a one-line change that leaves the entire
-    always-running gate unchanged. This test is the thing that reddens.
+    future task would write — is a one-line change that leaves every OTHER
+    always-running test unchanged. This test is the thing that reddens. (Say
+    it that way round: "leaves the gate unchanged" would contradict itself,
+    because this file is ON that gate. Measured, not asserted — under that
+    mutation the gate EXCLUDING this file is 1697 passed, 0 failed.)
     """
 
     _KEY = "tax_liability_line24"
@@ -286,9 +293,23 @@ class NativeResultsMustNotCarryTheLine24KeyTests(_NativeComputeCase):
         ):
             with self.subTest(scenario=label):
                 results = self.orch.compute_federal(scenario)
-                # Precondition: this really is the native path, and it really
-                # did produce a tax band — otherwise "key absent" would be
-                # true for the boring reason that nothing was computed.
+                # Precondition, and READ WHAT IT CLAIMS: these two asserts
+                # prove a tax band was actually computed, so "key absent"
+                # cannot be true for the boring reason that nothing was. They
+                # do NOT discriminate the compute paths, and an earlier
+                # version of this comment said they did —
+                # `tax_plus_schedule2` is a workbook OUTPUT key too, in all
+                # five years (`mappings/f1040.py:812`, `:988`, <- `Tax`), so
+                # its presence is silent about which path ran.
+                #
+                # NO PATH ASSERTION IS NEEDED, so do not "strengthen" this by
+                # adding one. Path-nativeness is SELF-GUARDING here: every
+                # year's workbook OUTPUTS carry `tax_liability_line24` (<-
+                # `Tot_Tax`), so a scenario that silently rerouted to the
+                # workbook would arrive holding the very key the next line
+                # forbids. A reroute REDDENS this test rather than sneaking
+                # past it, which is the property a path assertion would have
+                # been bought to get.
                 self.assertIn("tax_plus_schedule2", results)
                 self.assertGreater(results["total_tax"], 0)
                 self.assertNotIn(self._KEY, results)
