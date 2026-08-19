@@ -228,7 +228,10 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     before the orchestrator-level guard these scenarios silently computed a
     workbook-based result with no refusal, using formula that Form 8995-A
     is supposed to replace above the threshold. These two tests pin both
-    sides of that boundary using `_make_v1_scenario`'s default S-corp
+    sides of that boundary -- though the above-threshold half is currently
+    STRICT-XFAIL, because the `Deduction`-diagnostic refusal fires on MFJ
+    before the workbook result the guard inspects can exist; see that test's
+    own docstring -- using `_make_v1_scenario`'s default S-corp
     (gross_receipts=100,000 - compensation_of_officers=30,000 = 70,000
     ordinary business income / QBI, comfortably under the $250,000
     Schedule L / M-1 attestation trigger).
@@ -252,6 +255,9 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     without soffice by `WorkbookQbiThresholdGuardUnitTests` below, via a
     mocked `_compute_1040_via_workbook`."""
 
+    @pytest.mark.xfail(strict=True, reason=(
+        "Birthday_Needed harvest refusal fires before the QBI guard; "
+        "spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_above_threshold_non_single_raises_instead_of_silent_workbook_result(self):
         """400,000 of W-2 wages plus the 70,000 K-1 QBI-bearing income is
@@ -265,13 +271,27 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         This one stays on MFJ deliberately, unlike its below-threshold
         companion. The refusal it pins is robust to the MFJ standard-
         deduction defect described in that companion's docstring: today the
-        guard sees 470,000 (the deduction is never subtracted), and once the
-        spouse_birthdate unit lands it will see 438,500 (470,000 minus the
-        31,500 MFJ standard deduction). Both are comfortably above 394,600,
-        so this test refuses for the right reason before and after that fix,
-        and keeps real MFJ coverage on the guard in the meantime. It asserts
-        only the refusal, never an arithmetic figure, which is why the
-        defect cannot make it silently pass for a wrong reason."""
+        guard would see 470,000 (the deduction is never subtracted), and once
+        the spouse_birthdate unit lands it will see 438,500 (470,000 minus
+        the 31,500 MFJ standard deduction). Both are comfortably above
+        394,600, so this test refuses for the right reason before and after
+        that fix. It asserts only the refusal, never an arithmetic figure,
+        which is why the defect cannot make it silently pass for a wrong
+        reason.
+
+        STRICT-XFAIL, NOT SKIPPED, AND THE ASSERTION IS KEPT. The QBI guard
+        reads a workbook result that `_compute_1040_via_workbook` must first
+        produce, and that call now REFUSES on MFJ before returning: the
+        `Deduction` named range carries "Birthdate(s) needed.", so
+        `f1040.compute` raises. The refusal is a NotImplementedError too, but
+        with a different message, so `assertRaisesRegex(..., "8995-A|8995A")`
+        fails rather than passing for the wrong reason — which is exactly
+        what the xfail expects. This guard's MFJ coverage is therefore
+        STRUCTURALLY UNREACHABLE until the spouse-birthdate unit lands; the
+        HOH companion below still covers the below-threshold side live.
+        Strict xfail is self-enforcing: when reachability returns this XPASSes,
+        strict-xfail turns that into a suite FAILURE, and whoever lands that
+        unit is forced to restore the live pin."""
         scenario = _mfj(_make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0))
         scenario = dataclasses.replace(scenario, w2s=[
@@ -316,10 +336,13 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         QBI or to this branch: the vendor sheet zeroes line 12 whenever its
         `Birthday_Needed` flag fires, and that flag is permanently TRUE for
         MFJ/MFS because tenforty has no spouse-birthdate input to write.
-        The sheet even reports "Birthdate(s) needed." in `'1040'!AU91`, a
-        cell tenforty does not harvest. It is ticketed as its own unit
-        (spouse_birthdate + the AU91 diagnostic-harvest guard), which owns
-        the MFJ arithmetic pin as its failing-first test.
+        The sheet reports "Birthdate(s) needed." in the `Deduction` named
+        range (`'1040'!AU91` in 2025). tenforty NOW HARVESTS that cell and
+        refuses on it (`forms/f1040.py::workbook_refusal`), so an MFJ
+        scenario no longer returns wrong arithmetic -- it raises. The
+        remaining half, supplying a spouse birthdate so the sheet will
+        compute at all, is ticketed as its own unit, which owns the MFJ
+        arithmetic pin as its failing-first test.
 
         HOH is the right substitute rather than a workaround: this test's
         subject is the GUARD BOUNDARY -- that a below-threshold scenario on

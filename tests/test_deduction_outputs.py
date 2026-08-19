@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
+
 from tenforty.models import TaxReturnConfig
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
@@ -14,11 +16,34 @@ from tests.helpers import FIXTURES_DIR, SPREADSHEETS_DIR, needs_libreoffice
 from tests.invariants import assert_4868_fills_correctly
 
 
+@pytest.mark.xfail(strict=True, reason=(
+    "MFJ Deduction-diagnostic refusal fires in setUpClass, before either "
+    "assertion runs; spouse-birthdate unit restores reachability"))
 @needs_libreoffice
 class TestStandardDeductionMFJ(unittest.TestCase):
     """Core fix for issue #2: MFJ standard deduction must be $31,500
     (OBBBA). With the old SD_Single mapping this returned $15,750 —
     wrong by $15,750 for any MFJ filer.
+
+    UNREACHABLE AS OF THE Deduction-DIAGNOSTIC HARVEST, and marked
+    ``xfail(strict=True)`` at CLASS level because the refusal lands in
+    ``setUpClass``, not in either test body — pytest applies an xfail marker to
+    a setup-phase error, so both methods report XFAIL rather than ERROR.
+
+    WHY: this fixture is MARRIED_JOINTLY, so the workbook's ``Birthday_Needed``
+    flag is unconditionally TRUE (tenforty has no spouse-birthdate input), the
+    ``Deduction`` named range holds "Birthdate(s) needed.", and
+    ``f1040.compute`` now refuses instead of harvesting a blanked line 16.
+    ``compute_federal`` therefore raises before ``cls._results`` exists.
+
+    NOTE THE COVERAGE THIS COSTS, because it is not nothing and it is not
+    obvious: ``standard_deduction`` maps to the ``Standard`` named range, which
+    is NOT ``Birthday_Needed``-gated and was still computing $31,500 correctly.
+    It is ``Deductions`` (plural — the line-12 APPLIED amount) that the sheet
+    zeroes. So the assertion below was passing on its own merits and is being
+    parked for an unrelated reason. Strict xfail is what gets it back: when the
+    spouse-birthdate unit lands these XPASS, strict-xfail converts that into a
+    suite FAILURE, and the marker must be removed. A skip would rot silently.
     """
 
     @classmethod

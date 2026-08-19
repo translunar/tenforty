@@ -13,6 +13,7 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.models import Scenario
+from tenforty.rounding import irs_round
 
 
 def assert_agi_consistent(
@@ -236,6 +237,107 @@ def verify_pdf_round_trip(
             print(f"    {gap}", file=sys.stderr)
 
 
+def expected_4868_pdf_values(results: dict) -> dict[str, str]:
+    """Return the {4868 compute key: rendered PDF string} this return must fill.
+
+    WHAT THIS ASSERTS, AND WHAT IT DELIBERATELY DOES NOT RE-DERIVE.
+
+    The subject of `assert_4868_fills_correctly` is the FILL: that each 4868
+    compute key reaches the PDF field `Pdf4868` maps it to, and survives the
+    fill/read-back round-trip. It is NOT a second implementation of the 1040
+    line-24 arithmetic. That oracle lives in tests/test_f4868_compute.py, which
+    runs on the standard `-m "not oracle"` gate; all three callers of this
+    helper are `@needs_libreoffice`, so anything asserted ONLY here is invisible
+    to that gate — which makes this exactly the copy that drifts unnoticed.
+
+    It previously did re-derive it, and was WRONG in two ways:
+
+      1. It hand-composed line 24 as
+         `max(0, total_tax + f8962_repayment - nonrefundable_credits)
+          + f8959_tax_total`.
+         On the WORKBOOK path production does not compose at all — it prints the
+         harvested `Tot_Tax`, whose line 23 is the workbook's `TotalOtherTaxes`.
+         THAT LINE CARRIES SELF-EMPLOYMENT TAX AND NIIT, for which the
+         hand-composition has no term at all, so the oracle asserted a DIFFERENT
+         quantity than production emits. Both terms are present in ALL FIVE
+         workbook years, by different wiring — do not read any single year's
+         cell list as the general shape, because the formula is different in
+         four of the five:
+
+             2021 'Sch. 2'!AC72  SUM(SelfEmploymentTax, AC20:AG32, AC68, AC69)
+             2022 'Sch. 2'!AC73  SUM(SelfEmploymentTax, AN34, AC69)
+             2023 'Sch. 2'!AC73  SUM(SelfEmploymentTax, AN34, AC69)
+             2024 'Sch. 2'!AD91  SUM(SelfEmploymentTax, AO52, AD87, ROUND(AD88,0))
+             2025 'Sch. 2'!AD91  SUM(SelfEmploymentTax, AO53, AD87, ROUND(AD88,0))
+
+         (each shown without its `IF(<override><>"", ROUND(<override>,0), …)`
+         wrapper). `SelfEmploymentTax` is a direct operand every year. NIIT
+         arrives indirectly and the hop differs: the cell holding `F8960_Tax` is
+         AC25 (2021), AC26 (2022-23), AD46 (2024), AD47 (2025); in 2021 that
+         cell falls inside the `AC20:AG32` range directly, while 2022-2025 go
+         through a mirror column — e.g. 2025 `AO47 = IF(AD47="",0,AD47)` and
+         `AO53 = SUM(AO41:AO52)`. Traced per year against the workbooks.
+      2. It rounded EACH PART to whole dollars and then summed. The right shape
+         is to round ONCE, at the end — not because the workbook rounds the
+         total (IT DOES NOT: `Tot_Tax` is a bare `SUM(<line 22>, <line 23>)`
+         with no `ROUND` in any of the five years; the workbook rounds various
+         COMPONENTS instead) but because THE RENDERER does. Every numeric field
+         on every form goes through
+         `filing/pdf.py::PdfFiller._render_scalar`, which is
+         `str(irs_round(value))` — one half-up rounding of the whole value.
+         This helper predicts what is printed, so it must match the renderer.
+         Rounding per-part is a dollar low whenever the discarded fractions sum
+         past 0.5, and `int(round(...))` was additionally banker's rounding
+         rather than IRS half-up.
+
+    THE BRANCH BELOW IS BY PATH, deliberately, because the two paths have
+    different amounts of independent evidence available:
+
+      - WORKBOOK path (`tax_liability_line24` present in `results`): compare
+        against the workbook's OWN `Tot_Tax`. That is a genuinely independent
+        oracle — the vendor's answer for 1040 line 24, not ours — and it is
+        specifically the assertion that catches f4868 silently falling back to
+        its NIIT-less native composition on a path where the harvest exists.
+
+      - NATIVE path (key absent): no independent source of line 24 exists,
+        because the spine has no line-22/23/24 producer. Ask production what it
+        computed and let this helper prove only the fill. The arithmetic is
+        proven, on the always-running gate, by
+        tests/test_f4868_compute.py::F4868NativePathLine24Tests.
+
+    NO LIVE CALLER CURRENTLY REACHES THE WORKBOOK BRANCH, and that is why this
+    function is a separately-importable pure dict->dict function rather than
+    inline code. Of the three callers: `tests/test_e2e_simple_w2.py` and
+    `tests/test_e2e_itemized.py` both load SINGLE-filer fixtures for which
+    `orchestrator._scenario_in_spine_scope` returns True, so they route NATIVE;
+    the only workbook-path caller, `tests/test_deduction_outputs.py::
+    TestStandardDeductionMFJ`, is MFJ and is `xfail(strict=True)`, dying in
+    `setUpClass` on the `Deduction`-diagnostic refusal before any assertion
+    runs. So the workbook branch is true of the code and unexercised by the
+    suite. `tests/test_f4868_compute.py::Expected4868PdfValuesTests` calls this
+    function directly with injected dicts to close that gap on the
+    always-running gate; when the spouse-birthdate unit lifts the MFJ refusal,
+    `TestStandardDeductionMFJ` will exercise it end-to-end as well.
+    """
+    from tenforty.forms.f4868 import compute_balance_due, total_tax_liability_line_24
+
+    harvested = results.get("tax_liability_line24")
+    if harvested is not None:
+        line_24 = harvested          # WORKBOOK path: the vendor's own line 24.
+    else:
+        line_24 = total_tax_liability_line_24(results)   # NATIVE path.
+
+    total_payments = results.get("total_payments") or 0
+    balance_due = compute_balance_due(line_24, total_payments)
+
+    return {
+        "estimated_total_tax": str(irs_round(line_24)),
+        "total_payments": str(irs_round(total_payments)),
+        "balance_due": str(irs_round(balance_due)),
+        "amount_paying_with_extension": "0",
+    }
+
+
 def assert_4868_fills_correctly(
     testcase,
     results: dict,
@@ -244,17 +346,20 @@ def assert_4868_fills_correctly(
 ) -> None:
     """Emit a 4868 from results + config, re-read it, assert lines 4/5/6/7.
 
-    Line 4 = results['total_tax']
+    Line 4 = IRS Form 1040 LINE 24 (total tax liability), NOT results
+             ['total_tax'], which is line 16.
     Line 5 = results['total_payments']
     Line 6 = max(0, line_4 − line_5)
     Line 7 = 0 (default — no amount paid with extension in the fixture path)
+
+    See `expected_4868_pdf_values` for how each expectation is sourced, and
+    for why line 4's source differs between the workbook and native paths.
 
     ASSUMES personal-info fields populated on config. This helper patches a copy
     of the scenario's config in memory; it does not mutate the caller's scenario.
     """
     import tempfile
 
-    from tenforty.forms.f4868 import compute_balance_due
     from tenforty.mappings.pdf_4868 import Pdf4868
     from tenforty.models import Scenario
     from tenforty.orchestrator import ReturnOrchestrator
@@ -277,17 +382,7 @@ def assert_4868_fills_correctly(
     fields = reader.get_fields()
 
     mapping = Pdf4868.get_mapping(year)
-
-    total_tax = int(round(float(results.get("total_tax", 0))))
-    total_payments = int(round(float(results.get("total_payments", 0))))
-    balance_due = compute_balance_due(total_tax, total_payments)
-
-    expected = {
-        "estimated_total_tax": str(total_tax),
-        "total_payments": str(total_payments),
-        "balance_due": str(balance_due),
-        "amount_paying_with_extension": "0",
-    }
+    expected = expected_4868_pdf_values(results)
 
     for key, expected_val in expected.items():
         pdf_field = mapping[key]

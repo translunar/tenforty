@@ -67,12 +67,15 @@ def set_oracle_sanction(item) -> None:
         os.environ.pop("TENFORTY_ORACLE_SANCTIONED", None)
 
 
-# Test fixtures affirm four attestations as True because they match the
+# Test fixtures affirm five attestations as True because they match the
 # common in-memory scenario posture: unlimited at-risk amounts, basis
 # tracked externally, no K-1 credits, no prior-year capital-loss
-# carryforward. Every other registered attestation defaults to False. To
-# change the default for an attestation that already exists, edit this
-# set; new attestations default to False automatically.
+# carryforward, no federal AMT. Every other registered attestation defaults
+# to False. To change the default for an attestation that already exists,
+# edit this set; new attestations default to False automatically.
+#
+# THE FIVE ARE NOT AFFIRMED ON THE SAME GROUNDS. Read each entry's own
+# comment before citing one as precedent for another.
 _TEST_POSTURE_AFFIRMED: frozenset[str] = frozenset({
     "acknowledges_unlimited_at_risk",
     "basis_tracked_externally",
@@ -83,6 +86,34 @@ _TEST_POSTURE_AFFIRMED: frozenset[str] = frozenset({
     # convenience default. Tests that want the refusal set it False
     # explicitly on scenario.config.
     "acknowledges_no_capital_loss_carryforward",
+    # (a) THE BASIS IS TEST INTENT, and it is deliberately NOT the basis the
+    #     carryforward entry above uses. That one affirms a FACT about the
+    #     fixtures — a scenario built from scratch genuinely has no prior-year
+    #     history. The parallel sentence here, "synthetic fixtures genuinely
+    #     have no AMT", is a TAX-LAW claim about which modeled inputs can
+    #     produce AMT, and that is exactly the derivation nobody has done (see
+    #     the registry entry in attestations._ALWAYS_TAIL). So the basis is the
+    #     weaker, checkable one: these fixtures were not CONSTRUCTED to
+    #     represent AMT-bearing filers. That is verifiable by reading them.
+    # (b) THIS IS NOT A CLAIM THAT AMT CANNOT ARISE from fixture data. It is a
+    #     statement about what the fixtures were written to exercise, nothing
+    #     more.
+    # (c) Ticket (q) — "can any modeled input construct an AMT-positive
+    #     scenario?" — is what would force revisiting this default. If (q)
+    #     concludes that some fixture can owe AMT, this entry is wrong and the
+    #     fixtures, not just this line, need revisiting.
+    # (d) ANY FUTURE TEST THAT EXERCISES THE AMT REFUSAL must set the field
+    #     False EXPLICITLY at its point of use, with an `assertFalse`
+    #     precondition proving it took effect. Never reach the gate through
+    #     this affirming default: a refusal test that depends on the default
+    #     is testing nothing it names, and would silently stop exercising the
+    #     refusal the day the default flips.
+    # Why not leave it undecided: both defaults encode a claim. Defaulting
+    # False would say "these fixtures may owe AMT" — unfalsifiable on the same
+    # evidence — AND, because the gate's trigger is `_always`, it would fire
+    # the refusal on every fixture in the suite, making everything downstream
+    # untestable and reading as breakage rather than as posture.
+    "acknowledges_no_federal_amt",
 })
 
 

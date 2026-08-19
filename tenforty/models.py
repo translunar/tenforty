@@ -384,6 +384,14 @@ class TaxReturnConfig:
     # Unlike the 1099-B gates above this has no data-derived trigger — the
     # attestation itself is the only signal, so its trigger is `_always`.
     acknowledges_no_capital_loss_carryforward: bool | None = None
+    # --- Federal alternative minimum tax (Form 6251) scope-out ---
+    # True affirms the filer owes NO federal AMT. False means AMT may apply:
+    # there is no Form 6251 anywhere in tenforty's native path, so AMT
+    # (Schedule 2 line 1, flowing to 1040 line 17 -> line 18 -> line 24) is
+    # silently zero and the computed tax is UNDERSTATED. Like the carryforward
+    # gate above it has no data-derived trigger; the registry entry in
+    # `attestations._ALWAYS_TAIL` records why the shape is `_always`.
+    acknowledges_no_federal_amt: bool | None = None
     # --- 1120-S scope-out attestations (8 unconditional) ---
     # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
     # gross_receipts >= $250,000 + False raises.

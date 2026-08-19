@@ -90,9 +90,225 @@ _NUMERIC_SCH_1_KEYS: frozenset[str] = frozenset({
 })
 
 
+# --- The workbook's refusal channel -----------------------------------------
+#
+# The vendor sheet does not only COMPUTE. It DETECTS incomplete input and says
+# so, writing a plain-English diagnostic into the `Deduction` named range and
+# refusing to stand behind the figures below it. Harvesting those figures
+# without reading the diagnostic is reading a REFUSAL as data, and that is what
+# this guard stops.
+#
+# WHAT THE SHEET ACTUALLY DOES DIFFERS BY BRANCH — do not over-generalize this,
+# and see the per-branch note below. On the `Birthday_Needed` and
+# `FilingStatusError` branches it BLANKS `Tax_SubTotal` (Form 1040 LINE 16,
+# tenforty's `total_tax`) outright. On the two remaining FILING-STATUS branches
+# it leaves line 16 computing but zeroes line 12, so line 16 is derived from a
+# base the sheet itself flagged as unusable. On `Manual Override` it does
+# NEITHER: lines 12 and 16 both compute exactly as they would on a clean
+# return, and we refuse because we cannot tell what that sheet state means —
+# not because the figures are known to be tainted. Refusing is right in all
+# five cases; only the reason differs.
+#
+# `Deduction` is the line-12 CAPTION cell, and it is NEVER EMPTY. Its IF-chain
+# has ELEVEN branches — five diagnostics and six ordinary labels — so "refuse on
+# any non-empty string" would refuse every return ever computed. The refusal
+# rule is therefore an ALLOWLIST OF LABELS, which is what fail-closed means for
+# a cell of this shape: anything that is not a known label refuses, including a
+# string nobody here has seen before. Refusing only on strings we recognise
+# would reproduce, at smaller scale, the original defect — the sheet says
+# something and we decide it is not worth listening to.
+#
+# THE FIVE DIAGNOSTIC BRANCHES (verbatim, identical in all five workbooks),
+# with what each one actually does to the figures:
+#   "Manual Override"           <- a hand-entered override cell tenforty never
+#                                  writes. It is a DIFFERENT CELL EACH YEAR, so
+#                                  listing them per year rather than as a slash
+#                                  run is what makes a missing year visible:
+#                                    2021 AM46   (caption `'1040'!$AJ$51`)
+#                                    2022 AM56   (caption `'1040'!$AJ$58`)
+#                                    2023 AN62   (caption `'1040'!$AK$64`)
+#                                    2024 AN65   (caption `'1040'!$AK$67`)
+#                                    2025 AX78   (caption `'1040'!$AU$91`)
+#                                  Lines 12 and 16 BOTH still compute; see the
+#                                  note below on why the caption does not even
+#                                  establish that line 12 was overridden.
+#   "Filing status error."      <- FilingStatusError (NumFileStatusBoxes>1).
+#                                  BLANKS `Tax_SubTotal`; zeroes line 12.
+#   "Birthdate(s) needed."      <- Birthday_Needed.
+#                                  BLANKS `Tax_SubTotal`; zeroes line 12.
+#   "Filing status error or invalid spouse input."  <- $AL$9/$AV$10/$BF$12.
+#                                  Zeroes line 12 only; line 16 still computes.
+#   "Filing status not indicated."  <- NumFileStatusBoxes=0.
+#                                  Zeroes line 12 only; line 16 still computes.
+# Only the middle two appear in `Tax_SubTotal`'s own guard
+# (`IF(OR(Birthday_Needed,FilingStatusError),"", ...)`); the `Deductions`
+# (plural, line-12 AMOUNT) guard is wider and covers four of the five. So the
+# caption is the widest signal available and the right thing to key on.
+# "Manual Override" is UNREACHABLE — tenforty never writes the override cells —
+# but it is deliberately NOT special-cased, for the reason above. Note also
+# that the caption's override cell is NOT the amount's override cell: 2022
+# (`'1040'!$AC$58`) and 2023 (`'1040'!$AD$64`) give `Deductions` no override
+# arm at all, and the three years that have one read a DIFFERENT cell from the
+# caption (2021 AM48 vs AM46, 2024 AN67 vs AN65, 2025 AX91 vs AX78). So a
+# "Manual Override" caption is evidence about an unrecognised sheet state, not
+# evidence that the line-12 AMOUNT was overridden.
+#
+# THE SIX LABEL BRANCHES, which must NOT refuse (seven strings — one branch is
+# worded differently in 2025 than in 2021-2024). Matched by EQUALITY after
+# normalization, except the two marked PREFIX:
+#   "Standard Deduction"
+#   "Standard deduction plus net qualified disaster losses\non Sch. A, Line 16."
+#   "Schedule A"
+#   "See Standard \n Deduction Chart\n at right  →"        PREFIX (2021-2024)
+#   "See Standard \n Deduction Calculation\n at right  →"  PREFIX (2025)
+#   "Line 12a - Standard Deduction for Dependents"
+#   "Deduction is $0 due to spouse itemizing or dual-status alien."
+#
+# WHY EQUALITY, AND WHY THE TWO EXCEPTIONS ARE EXCEPTIONS. A short prefix is a
+# hole in a fail-closed allowlist: matching on the prefix "schedule a" would
+# silently wave through a future vendor diagnostic like "Schedule A required —
+# attach…", re-opening this very defect on a narrower surface. Equality closes
+# that: anything the vendor rewords or extends refuses loudly. The two
+# "See Standard …" labels are the only ones that cannot use equality, because
+# they alone carry a trailing "  →" — a non-ASCII glyph after a doubled space,
+# assembled in-sheet from CHAR(10)s — and I cannot verify what the LibreOffice
+# recalc round-trip does to those bytes without launching soffice. Their
+# prefixes stop BEFORE the arrow and are long and specific ("see standard
+# deduction chart" / "… calculation"), so the hole is confined to a rewording
+# that keeps that entire phrase as its opening. Normalization (whitespace
+# collapsed, casefolded) is applied to both arms, which is what lets the
+# CHAR(10)-joined disaster-loss label match by equality at all.
+#
+# No diagnostic branch equals or is prefixed by any label branch, so the
+# allowlist cannot swallow a known refusal.
+#
+# `Schedule2_Tax` (line 17) is NOT gated by `Birthday_Needed` — its blank is
+# definitional and IS coerced to 0 below. That contrast is the whole rule:
+# coerce when the CELL ITSELF defines blank as zero; refuse when some
+# diagnostic upstream declined to answer.
+_DEDUCTION_DIAGNOSTIC_KEY = "deduction_diagnostic"
+
+_DEDUCTION_LABELS: frozenset[str] = frozenset({
+    "standard deduction",
+    "standard deduction plus net qualified disaster losses "
+    "on sch. a, line 16.",
+    "schedule a",
+    "line 12a - standard deduction for dependents",
+    "deduction is $0 due to spouse itemizing or dual-status alien.",
+})
+
+# Prefix-matched ONLY because of the trailing "  →"; see above.
+_DEDUCTION_LABEL_PREFIXES: tuple[str, ...] = (
+    "see standard deduction chart",
+    "see standard deduction calculation",
+)
+
+_REFUSAL = (
+    "The 1040 workbook DECLINED to compute this return. Its `Deduction` named "
+    "range — the Form 1040 line-12 caption cell — reads {diagnostic!r}, which "
+    "is not one of the deduction-source captions it carries on a return the "
+    "sheet was willing to compute. That is the sheet declining to stand behind "
+    "the figures below line 12, so tenforty declines to emit them.\n"
+    "\n"
+    "WHAT THE SHEET DID depends on which diagnostic this is. On the "
+    "`Birthday_Needed` and `FilingStatusError` branches it zeroes line 12 (the "
+    "applied deduction) AND blanks `Tax_SubTotal` — Form 1040 LINE 16, "
+    "tenforty's `total_tax` — which the engine reads as None; refusing is what "
+    "keeps that blank from being read as zero, which would answer \"your tax "
+    "is zero\" on a real return. On the two FILING-STATUS branches line 16 "
+    "still computes, but off a line 12 the sheet has zeroed, so the number is "
+    "derived from a base the sheet itself flagged. On `Manual Override` the "
+    "sheet disturbs NEITHER line — lines 12 and 16 both compute normally, and "
+    "the caption does not even establish that line 12 was overridden, because "
+    "it tests a different cell from the one the line-12 amount reads (and in "
+    "2022 and 2023 that amount has no override arm at all). We refuse there "
+    "because we do not know what that sheet state means, NOT because those "
+    "figures are known to be tainted: an unrecognised state is exactly when "
+    "guessing is worst. In none of these cases are the figures ours to "
+    "publish.\n"
+    "\n"
+    "CAUSE: for MARRIED_JOINTLY and MARRIED_SEPARATE — which is every return "
+    "that reaches this refusal today — tenforty supplies no spouse birthdate "
+    "at all, so the workbook's `Birthday_Needed` flag is unconditionally TRUE "
+    "and this diagnostic always fires. REMEDY: the spouse-birthdate unit adds "
+    "that input and lifts this refusal. There is no scenario-side workaround, "
+    "and none is wanted: the figures at and below line 12 were never right for "
+    "this population, so this refusal converts a silently WRONG return into a "
+    "loudly REFUSED one. It does not make the return computable.\n"
+    "\n"
+    "ON THE TWO BLANKING BRANCHES this refusal ALSO protects lines 17 and 18, "
+    "which that same blank corrupts WITHOUT their going blank themselves and "
+    "so without any other signal that they are wrong. Form 6251's "
+    "REGULAR-TAX line takes `Tax_SubTotal` as a SUM operand in 2021-2024 "
+    "(`SUM(Tax_SubTotal, PTC_ExcessAdv, -...)`); in 2025 that direct operand "
+    "is REPLACED rather than supplemented — the regular-tax line is routed "
+    "through `'6251'!M59 = IF(Tax_SubTotal=\"\", 0, Tax_SubTotal)` instead. "
+    "(A `SUM(Tax_SubTotal, PTC_ExcessAdv, ...)` does still exist on the 2025 "
+    "6251 sheet, at `AC60`, but that is an off-form helper column rather than "
+    "the regular-tax line. Other sheets reference `Tax_SubTotal` as well; "
+    "this paragraph surveys only the 6251 chain, so a grep will find hits it "
+    "does not account for.) Both shapes take the blank as 0; that understates "
+    "regular tax and OVERSTATES the AMT. On the `Birthday_Needed` branch that "
+    "overstated AMT reaches line 17, so line 17 (`schedule2_tax`) harvests a "
+    "wrong NONZERO number on an AMT-bearing return. On the `FilingStatusError` "
+    "branch it does not: that flag ALSO blanks the AMT cell feeding Schedule 2 "
+    "(`'Sch. 2'!AC11` in 2021-2023, `AD34` in 2024-2025), so line 17 goes "
+    "wrong in the opposite direction — by OMITTING AMT rather than "
+    "overstating it. Line 18 is corrupted on BOTH branches, and worse: "
+    "`Tax` is `SUM(Tax_SubTotal, <line-17 cell>)` "
+    "and spreadsheet SUM() IGNORES text, so a refused line 16 is silently "
+    "SKIPPED and line 18 prints a plausible number that omits its own line-16 "
+    "component — a mislabeled partial total."
+)
+
+
+def workbook_refusal(harvested: dict) -> str | None:
+    """Return a refusal message if the workbook declined to compute, else None.
+
+    The decision, deliberately separated from `compute` and from any workbook
+    run: it is a pure function of a harvested dict, so it is exercisable with
+    an injected dict and therefore VISIBLE to the standard `-m "not oracle"`
+    gate. The oracle tier is deselected by that invocation, so a guard
+    reachable only through a real LibreOffice recalc is invisible to every gate
+    this branch reports — which is the kind of blind spot that lets this
+    species survive.
+
+    Passes when the key is ABSENT. That is required, not an oversight: a
+    missing key is indistinguishable from a caller that does not harvest one,
+    and a guard that fires unconditionally is indistinguishable from a broken
+    pipeline. The harvest itself is pinned per-year by
+    tests/test_f1040_mapping.py, which is what would catch a lost mapping.
+    """
+    diagnostic = harvested.get(_DEDUCTION_DIAGNOSTIC_KEY)
+    if diagnostic is None:
+        return None
+    normalized = " ".join(str(diagnostic).split()).casefold()
+    if not normalized:
+        return None
+    if normalized in _DEDUCTION_LABELS:
+        return None
+    if normalized.startswith(_DEDUCTION_LABEL_PREFIXES):
+        return None
+    return _REFUSAL.format(diagnostic=diagnostic)
+
+
 def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     """Translate raw engine output into a PDF-ready 1040 result dict."""
     translated: dict = dict(raw_1040)
+
+    # Listen to the workbook's refusal BEFORE translating anything. Sited here
+    # for the same reason as the `schedule2_tax` normalization below: `compute`
+    # is a pure dict transform with exactly one caller
+    # (orchestrator._compute_1040_via_workbook) and no workbook dependency, so
+    # the guard stays testable — and therefore gate-visible — without soffice.
+    # The diagnostic is CONSUMED, not forwarded: it is a harvest-time control
+    # value, not a result, and it is the one OUTPUT that holds a string, so
+    # letting it travel onward would put a caption where every downstream
+    # consumer expects money.
+    refusal = workbook_refusal(translated)
+    translated.pop(_DEDUCTION_DIAGNOSTIC_KEY, None)
+    if refusal is not None:
+        raise NotImplementedError(refusal)
 
     for old, new in _RENAMES.items():
         if old in translated:
@@ -118,6 +334,110 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     # key — blank provably means zero here — NOT a general blank-coercion.
     if translated.get("f8959_tax_total") is None:
         translated["f8959_tax_total"] = 0
+
+    # schedule2_tax (1040 line 17 = Schedule 2 line 3). ITS CAPTION IS NOT THE
+    # SAME IN ALL FIVE YEARS, and the 2024-25 one is the familiar one: the
+    # vendor sheet reads "Add lines 1z and 2" at 'Sch. 2'!E35 in 2024-2025 but
+    # "Add lines 1 and 2" at 'Sch. 2'!E13 in 2021-2023 — which is the same
+    # split as the formula decomposition below, and for the same reason (no
+    # line-1z row exists in the earlier years at all).
+    # Normalize a blank harvest to numeric 0 so line 17 prints "0" in all five
+    # years. The `Schedule2_Tax` named range's formula DRIFTED between vendor
+    # workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric 0 when
+    # Part I is empty), 2024-2025 wrap their own two-addend sum in
+    # `IF(SUM(...)>0, SUM(...), "")` and go blank instead. The engine reads a
+    # blank cell as None and filing/pdf.py renders 0 but SKIPS None, so absent
+    # this coercion an empty Schedule 2 Part I prints "0" on a 2023 1040 and
+    # nothing on a 2024 one. We impose the convention on the read side rather
+    # than let vendor formula drift reach a filed form.
+    #
+    # WHY THIS COERCION IS SAFE — both halves are load-bearing:
+    #   1. The cell's OWN formula defines blank AS zero. `IF(SUM>0, SUM, "")`
+    #      emits "" exactly where the sum is not positive, and the sum cannot
+    #      go negative, so blank means exactly 0.
+    #
+    #      THE DECOMPOSITION THAT FOLLOWS IS 2024-2025 ONLY — the only years
+    #      that can go blank at all, and so the only years this coercion can
+    #      fire on. Do NOT read it as the general shape; the years genuinely
+    #      differ, and dropping that qualifier is how a safety argument turns
+    #      into a false one. In those two years the addends are line 1z
+    #      ('Sch. 2'!AD33) and line 2 ('Sch. 2'!AD34). Line 2 is the Form 6251
+    #      AMT, non-negative by construction (the 6251 bottom line is
+    #      `MAX(0, ...)`, and the `AMT` named range wraps it in
+    #      `IF(<cell>="",0,<cell>)`; the row number DRIFTS by year —
+    #      '6251'!M62 in 2021, M63 in 2022-2024, M64 in 2025 — so match on the
+    #      named range, not an address). Line 1z is a SUM of SEVEN operands,
+    #      not two: the 8962 excess-APTC repayment plus six raw input cells
+    #      ('Sch. 2'!Z15/Z18/Z19/Z23/Z29/Z32 — Schedule A (Form 8936)
+    #      recapture, Form 4255 net-EPE recapture, and other additions to
+    #      tax). All six are empty in the shipped workbooks and tenforty
+    #      writes none of them; every one is an ADDITION to tax, and the
+    #      excess-APTC repayment is a repayment amount, so none can be
+    #      negative.
+    #
+    #      2021-2023 ARE A DIFFERENT FORMULA WITH THE ROLES INVERTED:
+    #      `'Sch. 2'!AC13 = IF(AJ13<>"",ROUND(AJ13,0),SUM(AC11:AC12))` — a
+    #      two-cell RANGE, no line-1z cell anywhere, and AC11 is the AMT while
+    #      AC12 is the excess-APTC repayment, the mirror of 2024-2025's
+    #      AD33/AD34. The six `Z` cells do not participate. Those years never
+    #      go blank (the outer IF always falls through to a numeric SUM, and
+    #      SUM over a range ignores a blank AC11), so the coercion is a NO-OP
+    #      there. Non-negativity still holds — an AMT and a repayment — which
+    #      is why the CONCLUSION covers all five years even though the
+    #      decomposition above covers two.
+    #
+    #      The blank is not missing data — it is the vendor's way of WRITING
+    #      zero, and normalizing recovers the cell's stated meaning.
+    #   2. NO DIAGNOSTIC BLANKS THIS CELL. `Schedule2_Tax` ('Sch. 2'!AC13 in
+    #      2021-23, 'Sch. 2'!AD35 in 2024-25) is not one of the five cells
+    #      gated by the workbook's `Birthday_Needed` flag — those five all live
+    #      on the '1040' sheet — so a blank here is never a REFUSAL in
+    #      disguise, which is the only property this coercion depends on.
+    #
+    #      That is NOT the same as saying no diagnostic REACHES this cell.
+    #      `Birthday_Needed` reaches it TRANSITIVELY through Form 6251:
+    #      the 6251 regular-tax line takes `Tax_SubTotal` as an operand
+    #      (`SUM(Tax_SubTotal, PTC_ExcessAdv, -...)` in 2021-2024; routed
+    #      through '6251'!M59 = `IF(Tax_SubTotal="",0,Tax_SubTotal)` in 2025),
+    #      and AMT = `MAX(0, tentative_minimum_tax - regular_tax)` feeds line
+    #      2. So on an MFJ/MFS return WITH AMT, the `Birthday_Needed`-blanked
+    #      `Tax_SubTotal` is summed as 0, understating regular tax, which
+    #      OVERSTATES the AMT and makes line 17 harvest a WRONG NONZERO
+    #      number. This coercion neither causes nor cures that — it only ever
+    #      fires on a blank, and blank still means zero — but do not read
+    #      point 2 as a guarantee that line 17's VALUE is trustworthy on
+    #      MFJ/MFS. It guarantees only that its BLANK is not a refusal.
+    #
+    # THIS IS NOT A PRECEDENT FOR `None -> 0` ANYWHERE ELSE, and specifically
+    # NOT for `total_tax` / `Tax_SubTotal`, which is the visually identical
+    # coercion one line away in meaning and a serious defect. `Tax_SubTotal`
+    # IS one of the five `Birthday_Needed`-gated cells, and that flag is
+    # unconditionally TRUE for every MFJ/MFS return (tenforty has no
+    # spouse-birthdate concept). Its blank therefore means "the workbook
+    # REFUSED to compute your tax", and writing 0 there would silently answer
+    # "your tax is zero" on a real return. `total_tax` is handled the opposite
+    # way — refuse loudly at harvest, never coerce; that refusal is
+    # `workbook_refusal` above, reading the diagnostic the sheet writes into
+    # the `Deduction` named range whenever it blanks this cell. The two blocks
+    # are a matched pair, not two opinions about blanks. The distinction is not
+    # stylistic: the test for a blank is whether the CELL ITSELF defines blank
+    # as zero (coerce) or whether some diagnostic upstream declined to answer
+    # (refuse). Do not cite this block for a cell in the second category.
+    #
+    # Deliberately NOT extended to `tax_plus_schedule2` (1040 line 18, the
+    # `Tax` named range) — and NOT because it might be blank. `Tax` is NEVER
+    # blank: its else-arm is unconditionally `SUM(Tax_SubTotal, <line-17
+    # cell>)`, and spreadsheet SUM() IGNORES text in referenced cells, so a
+    # refused `Tax_SubTotal = ""` is silently SKIPPED rather than propagated
+    # and `Tax` always evaluates to a number. That is the hazard: on the
+    # workbook path today, every MFJ/MFS return makes line 18 a plausible
+    # number that OMITS ITS OWN LINE-16 COMPONENT — a mislabeled partial
+    # total, the exact species this unit exists to remove. `None` would have
+    # been the safer failure; the workbook denies us even that. So a populated
+    # line 18 is NOT evidence that line 18 is correct, and no normalization
+    # here could make it so.
+    if translated.get("schedule2_tax") is None:
+        translated["schedule2_tax"] = 0
 
     if "agi" in translated:
         translated["agi_page2"] = translated["agi"]

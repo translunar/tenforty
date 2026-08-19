@@ -166,11 +166,26 @@ class TestPdf1040FillGroundTruth(unittest.TestCase):
         # NOT the amount. Line 16 amount is f2_08. Tax on 0 taxable = 0.
         self._assert_field("topmostSubform[0].Page2[0].f2_08[0]", "0")
 
-    def test_line_24_total_tax_liability_blank(self):
-        # Engine doesn't produce `total_tax_liability` for this scenario
-        # (total tax = 0). Field must stay blank — regression guard against
-        # e.g. `overpaid` (2034) accidentally routing here.
-        self._assert_field("topmostSubform[0].Page2[0].f2_16[0]", "")
+    def test_line_24_total_tax_liability(self):
+        # WAS `test_line_24_total_tax_liability_blank`, asserting "". Line 24
+        # printed blank because NOTHING produced it — neither path emitted a
+        # value for the box — and this assertion pinned that hole rather than
+        # a property of the scenario. Line 24 now has a producer
+        # (`Pdf1040.get_derivations` -> `forms/f4868.total_tax_liability_
+        # line_24`), so the box prints.
+        #
+        # "0" IS THE SCENARIO'S ANSWER, not a fallback: this filer's taxable
+        # income is 0 (line 15 above), so line 16 is 0, there is no Schedule 2
+        # activity, and line 24 = MAX(0, line 18 - credits) + Part II = 0. On
+        # this workbook-routed scenario the value is the harvested `Tot_Tax`.
+        # The original regression guard still holds — `overpaid` is 2034, so a
+        # "0" here is still evidence that nothing from the payments block
+        # leaked into this box.
+        #
+        # NOT RUN when this line was written: this class is @needs_libreoffice
+        # and oracle-tier runs are separately sanctioned. Treat this expected
+        # value as derived-and-unverified until an oracle run confirms it.
+        self._assert_field("topmostSubform[0].Page2[0].f2_16[0]", "0")
 
     def test_line_25a_federal_withheld_w2(self):
         self._assert_field("topmostSubform[0].Page2[0].f2_17[0]", "1550")

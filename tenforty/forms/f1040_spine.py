@@ -491,14 +491,82 @@ def compute_spine(
     f8959_tax_total = f8959.get("f8959_line_18", 0)
 
     # 1040 line 16 — Tax (income tax from the QDCGT/rate-schedule worksheet).
-    # Matches the oracle workbook's "Tax" named range and the PDF field at
-    # line 16. Does NOT include Schedule 2 additions — neither Form 8959
-    # (Additional Medicare Tax) NOR Form 8962 excess-APTC repayment (Sch 2
-    # line 2). The oracle's total_tax key also omits Schedule 2, keeping
-    # parity semantics aligned: both oracle and native expose line-16 income
-    # tax only under the "total_tax" key. The Schedule 2 additions instead
-    # join the FULL-liability subtraction inside `overpaid` (see below).
+    #
+    # THE INVARIANT: `total_tax` means 1040 LINE 16 on every compute path, by
+    # design and by test. It is not a coincidence between two producers that
+    # happen to agree; it is a property something is holding.
+    #
+    # ITS WORKBOOK COUNTERPART IS `Tax_SubTotal`, NOT `Tax`. This comment said
+    # "Matches the oracle workbook's `Tax` named range" until this unit, and
+    # that was false: `Tax` is LINE 18. In all five shipped workbooks (2021-
+    # 2025) the `Tax` cell is `IF(<override>, ..., SUM(Tax_SubTotal, <the
+    # line-17 cell>))` and sits on the row captioned "Add lines 16 and 17". So
+    # the sentence documenting line 16 named line 18 — the exact conflation
+    # this unit exists to remove.
+    #
+    # DO NOT LOCATE LINE 16 BY COUNTING ROWS FROM `Tax`. The cell DIRECTLY
+    # ABOVE `Tax` is the LINE-17 cell in every year (2021 AC58, 2022 AC67,
+    # 2023 AD73, 2024 AD76, 2025 AL97), so "the cell above" lands on line 17
+    # and re-commits the very conflation described above. Nor is there a fixed
+    # offset to substitute: `Tax_SubTotal` is THREE rows above `Tax` in
+    # 2021-2024 (AC56, AC65, AD71, AD74) but TWO in 2025 (AL96), because in
+    # 2021-2024 the line-16 AMOUNT cell sits one row above LINE 16'S OWN
+    # PRINTED ROW. That intervening row is not filler and not caption-only: it
+    # carries the printed "16" (E57, E66, F72, F75, and again in the AB/AC
+    # columns), the "Tax (see instructions)" caption, the 8814/4972 checkbox
+    # band, the manual-override input cell that `Tax_SubTotal`'s own formula
+    # READS (AM57, AM66, AN72, AN75) and, in 2021-2023, a live addend it also
+    # reads (AO57, AO66, AP72). Resolve BOTH ranges BY NAME. Two successive
+    # drafts of this comment asserted a row offset and both were wrong in the
+    # direction of the defect, which is why this is spelled out rather than
+    # summarized.
+    # (So do not expect to confirm line 16 by finding a printed "16" on
+    # `Tax_SubTotal`'s OWN row: in 2021-2024 that caption prints one row BELOW
+    # the amount cell, and only 2025 puts the two on the same row. Anchor on
+    # the line-18 label row and the formula relationship instead.)
+    # `mappings/f1040.py` maps `total_tax` -> `Tax_SubTotal` in every year, and
+    # `mappings/pdf_1040.py` maps it to the line-16 amount box.
+    #
+    # Line 16 does NOT include Schedule 2 — neither Form 8959 (Additional
+    # Medicare Tax, Part II) NOR the Form 8962 excess-APTC repayment (Part I,
+    # Sch 2 line 2). Those are carried by `schedule2_tax` (line 17) and
+    # `tax_plus_schedule2` (line 18) just below, and they join the
+    # FULL-liability subtraction inside `overpaid` further down.
+    #
+    # WHAT HOLDS THE INVARIANT: tests/test_total_tax_semantics.py computes one
+    # scenario BOTH ways and asserts the two paths name the same 1040 line, on
+    # a fixture whose Schedule 2 Part I is nonzero so lines 16 and 18 are
+    # different numbers and the two meanings are distinguishable. Consumers
+    # rely on this: `forms/f1040x.py` builds 1040-X line 6 as `total_tax +
+    # f8962_repayment`, which is right on a line-16 base and double-counts the
+    # repayment on a line-18 one.
     total_tax = income_tax
+
+    # 1040 line 17 — "Amount from Schedule 2, line 3", i.e. the whole of
+    # Schedule 2 PART I. Part I has exactly two components: line 1 (Form 6251
+    # alternative minimum tax) and line 2 (Form 8962 excess-advance-PTC
+    # repayment). This assignment carries only the SECOND of them, because
+    # there is no Form 6251 module in `tenforty/forms/` and the native spine
+    # computes no federal AMT anywhere — AMT is zero here by ABSENCE, not by
+    # computation. Do NOT read this line as a claim that Part I is complete.
+    # The always-required `acknowledges_no_federal_amt` attestation
+    # (`tenforty/attestations.py`, `_ALWAYS_TAIL`) is what makes that gap
+    # explicit to the filer instead of silent; the two ship together on
+    # purpose, so the key's name stops overclaiming the day it gains a
+    # producer.
+    #
+    # ALWAYS A NUMBER, NEVER None. `f8962_repayment` defaults to 0 when the
+    # scenario carries no 1095-A (see its assignment above), and
+    # `filing/pdf.py::PdfFiller.resolve_fields` renders 0 but SKIPS None — so
+    # line 17 prints a literal "0" rather than going blank. The workbook path
+    # reaches the same convention from the other side, by normalizing a blank
+    # `Schedule2_Tax` harvest to 0 in `forms/f1040.py::compute`. Matching it
+    # here is the point: one key, one printed convention, on both paths.
+    schedule2_tax = f8962_repayment
+
+    # 1040 line 18 — "Add lines 16 and 17". Line 16 is `total_tax`; line 17 is
+    # `schedule2_tax` above. Inherits line 17's AMT gap, necessarily.
+    tax_plus_schedule2 = total_tax + schedule2_tax
 
     # -----------------------------------------------------------------------
     # Page 2 — Payments
@@ -555,20 +623,61 @@ def compute_spine(
     # both f8959 Additional Medicare Tax AND Form 8962 excess-APTC repayment
     # (Sch 2 line 2). f8962_repayment joins the subtraction exactly like
     # f8959_tax_total — it raises the liability that total_payments is measured
-    # against, and is 0 when no 1095-A is present. The oracle workbook's
-    # Overpaid named range also uses the full tax figure internally (it
-    # subtracts all tax lines from total_payments), even though the oracle's
-    # total_tax key exposes only line 16. The native spine mirrors this: use
-    # income_tax + f8959 + f8962 repayment here, not the line-16-only total_tax.
-    # Note: NIIT (Form 8960) is computed by NEITHER the native spine nor the
-    # workbook oracle — the oracle workbook exports no Form 8960 named range, so
-    # both sides are symmetrically pre-NIIT. Consequently high-income scenarios
-    # WITH investment income (e.g. the qdcgt_15_to_20_boundary battery scenario,
-    # AGI ~$570k with ~$72k net investment income) are INCLUDED in the parity
-    # battery and pass — because both native and oracle omit the same NIIT term.
-    # A future task that implements NIIT on the native side must expect those
-    # battery scenarios to start diverging until the oracle side is also updated
-    # to compute (or export) NIIT.
+    # against, and is 0 when no 1095-A is present. The workbook's own `Overpaid`
+    # named range is, in every year (2021's text; the others differ only in
+    # their addresses):
+    #     =IF(AM84<>"",ROUND(AM84,0),IF(AC83>Tot_Tax,SUM(AC83,-Tot_Tax),0))
+    # — quoted VERBATIM, with its manual-override branch and its raw addresses,
+    # because a comment that presents a tidied form as the literal formula is
+    # how the next reader concludes the sheet does something it does not. Note
+    # the asymmetry in the sheet's own style: it writes `Tot_Tax` BY NAME but
+    # the payments operand as a bare ADDRESS. That address resolves to the
+    # `Tot_Payments` cell in every year (2021 AC83, 2022 AC87, 2023 AD93, 2024
+    # AD96, 2025 AL124 — checked per year, not inferred from one). What matters
+    # here is the second branch: it measures against 1040 LINE 24, the full
+    # liability.
+    # The native spine mirrors that: compose the liability from parts here —
+    # income_tax + f8959 + f8962 repayment — rather than reaching for
+    # `total_tax`, which is line 16 only (see its assignment above).
+    #
+    # THAT COMPOSITION IS WHY THIS LINE WAS NEVER WRONG while `total_tax` meant
+    # two different things on the two paths: it never trusted `total_tax` as a
+    # liability in the first place. Form 4868's line-4 composition
+    # (`forms/f4868.py::compose_line_24`) was built the same way and for the
+    # same reason, so this is a pattern worth naming rather than two
+    # coincidences — build a liability out of its parts; do not assume a key
+    # whose name sounds like a total is one.
+    #
+    # NIIT (Form 8960) IS ASYMMETRIC BETWEEN THE PATHS, and this comment used
+    # to claim the opposite. The native spine computes no NIIT. THE WORKBOOK
+    # DOES: an `8960` sheet plus the named ranges F8960_Tax, F8960_Applicable,
+    # File8960 and Form8960_Threshhold exist in all five workbooks, the sheet
+    # self-arms off MAGI (`F8960_Applicable = ModAdjGrossInc >
+    # Form8960_Threshhold`) with no input tenforty must supply, and
+    # `'8960'!N48` flows through a Schedule 2 Part II row into
+    # `TotalOtherTaxes`, 1040 line 23 and thence `Tot_Tax` (line 24). So the
+    # claim that "the oracle workbook exports no Form 8960 named range" was
+    # false in every year. The underlying gap — native NIIT is unmodeled — is
+    # tracked as ticket (s), post-package; do NOT fix it here and do not add an
+    # attestation for it, both are (s)'s scope.
+    #
+    # THE PARITY BATTERY STILL PASSES, for two reasons that are worth stating
+    # because a green test resting on a false stated reason is one nobody can
+    # re-derive when it goes red:
+    #   1. `total_tax` compares line-16-only quantities on both sides (native
+    #      `total_tax` vs the workbook's `Tax_SubTotal`). NIIT reaches the 1040
+    #      at line 23, downstream of both line 16 and line 18, so it cannot
+    #      enter the compared number at all.
+    #   2. `overpaid` IS also compared, and the workbook's side of it DOES
+    #      include NIIT via `Tot_Tax`. It agrees anyway because of the zero
+    #      floor: the only battery scenario whose MAGI clears the NIIT
+    #      threshold WITH net investment income (qdcgt_15_to_20_boundary, AGI
+    #      ~$570k, ~$72k of dividends and long-term gain) computes `overpaid`
+    #      as 0 natively in all five years — that filer owes — and adding NIIT
+    #      only raises the workbook's liability, so its `Overpaid` is 0 too.
+    # Neither reason is "both sides omit NIIT". Ticket (s) should expect the
+    # second one to be the fragile one: a scenario that clears the NIIT
+    # threshold AND overpays would diverge on `overpaid` today.
     overpaid = max(0, irs_round(
         total_payments - income_tax - f8959_tax_total - f8962_repayment
     ))
@@ -696,6 +805,16 @@ def compute_spine(
         "taxable_income": taxable_income,
         # Tax
         "total_tax": total_tax,
+        # 1040 line 17 (Schedule 2 Part I) and line 18 (lines 16 + 17). Both
+        # are derived a few dozen lines above `total_tax`'s own assignment;
+        # read the comments there for the AMT gap and the print-"0"-not-blank
+        # convention. Before these two keys existed, lines 17 and 18 were
+        # mapped to PDF boxes in all five year blocks of `mappings/pdf_1040.py`
+        # and produced by nothing on the native path, so both printed BLANK on
+        # every 1040 the spine emitted — including returns that attach a
+        # Schedule 2 for an excess-APTC repayment.
+        "schedule2_tax": schedule2_tax,
+        "tax_plus_schedule2": tax_plus_schedule2,
         # Capital gain — oracle key + PDF alias.
         # schd_line16 is the TRUE, uncapped Schedule D line 16 total — the
         # form itself always reports the real net gain/loss, uncapped.
