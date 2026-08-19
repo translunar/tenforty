@@ -213,6 +213,13 @@ class F8995PlacementByCaptionTests(unittest.TestCase):
                         f"on line {expected_line} ({frag!r})",
                     )
 
+    # Why two tests, not one: placement is asserted by printed-line NUMBER
+    # (test_placement_by_line); the caption fragment is enforced separately by
+    # test_caption_fragments_are_unambiguous. On Form 8995 every numeric printed
+    # line has exactly one captioned row (singleton caption sets, verified all
+    # five years), so the two together pin compute-key -> line <-> caption. Do
+    # NOT delete the uniqueness test as "redundant": it is what makes the caption
+    # pin real and what survives ticket (cc)'s key rename.
     def test_caption_fragments_are_unambiguous(self):
         """Each caption fragment must identify EXACTLY the one printed line it is
         paired with. If a fragment matched two lines (or the wrong line), the

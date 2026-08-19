@@ -8,22 +8,22 @@ Field names enumerated from ``pdfs/federal/2025/f8995.pdf``:
   f1_01  Name
   f1_02  SSN
   f1_03..f1_17  Line 1 table (5 rows × 3 cols: name, EIN, QBI) — unmapped v1
-  f1_18  Line 2 (total QBI)
-  f1_19  Line 3 (20% QBI component)
-  f1_20  Line 4 (REIT/PTP dividends — zero in v1)
-  f1_21  Line 5 (20% REIT/PTP component — zero in v1)
-  f1_22  Line 6 (total before income limit)
-  f1_23  Line 7 (prior-year QBI loss carryforward — zero in v1)
-  f1_24  Line 8 (net QBI loss — zero in v1)
-  f1_25  Line 9 (total QBI after losses — zero in v1)
-  f1_26  Line 10 (20% of line 9 — zero in v1)
-  f1_27  Line 11 (taxable income)
-  f1_28  Line 12 (net capital gain)
-  f1_29  Line 13 (taxable income minus net capital gain)
-  f1_30  Line 14 (20% income limit)
-  f1_31  Line 15 (QBI deduction)
-  f1_32  Line 16 (carryforward — zero in v1)
-  f1_33  Line 17 (net QBI loss carryforward — zero in v1)
+  f1_18  Line 2 — Total qualified business income or (loss). Combine lines 1i through 1v…
+  f1_19  Line 3 — Qualified business net (loss) carryforward from the prior year
+  f1_20  Line 4 — Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-
+  f1_21  Line 5 — Qualified business income component. Multiply line 4 by 20% (0.20)
+  f1_22  Line 6 — Qualified REIT dividends and publicly traded partnership (PTP) income or (loss)
+  f1_23  Line 7 — Qualified REIT dividends and qualified PTP (loss) carryforward from the prior…
+  f1_24  Line 8 — Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero…
+  f1_25  Line 9 — REIT and PTP component. Multiply line 8 by 20% (0.20)
+  f1_26  Line 10 — Qualified business income deduction before the income limitation. Add lines 5 and 9
+  f1_27  Line 11 — Taxable income before qualified business income deduction (see instructions)
+  f1_28  Line 12 — Enter your net capital gain, if any, increased by any qualified dividends (2021–22: "Net capital gain (see instructions)")
+  f1_29  Line 13 — Subtract line 12 from line 11. If zero or less, enter -0-
+  f1_30  Line 14 — Income limitation. Multiply line 13 by 20% (0.20)
+  f1_31  Line 15 — Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this…
+  f1_32  Line 16 — Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter…
+  f1_33  Line 17 — Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater…
 
 Compute-key ↔ FORM-line seam
 ----------------------------
