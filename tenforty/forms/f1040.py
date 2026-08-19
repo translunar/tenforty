@@ -263,7 +263,8 @@ def workbook_refusal(harvested: dict) -> str | None:
     an injected dict and therefore VISIBLE to the standard `-m "not oracle"`
     gate. The oracle tier is deselected by that invocation, so a guard
     reachable only through a real LibreOffice recalc is invisible to every gate
-    this branch reports — which is precisely how the defect it guards survived.
+    this branch reports — which is the kind of blind spot that lets this
+    species survive.
 
     Passes when the key is ABSENT. That is required, not an oversight: a
     missing key is indistinguishable from a caller that does not harvest one,
@@ -327,8 +328,13 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     if translated.get("f8959_tax_total") is None:
         translated["f8959_tax_total"] = 0
 
-    # schedule2_tax (1040 line 17 = Schedule 2 line 3, "Add lines 1z and 2"):
-    # normalize a blank harvest to numeric 0 so line 17 prints "0" in all five
+    # schedule2_tax (1040 line 17 = Schedule 2 line 3). ITS CAPTION IS NOT THE
+    # SAME IN ALL FIVE YEARS, and the 2024-25 one is the familiar one: the
+    # vendor sheet reads "Add lines 1z and 2" at 'Sch. 2'!E35 in 2024-2025 but
+    # "Add lines 1 and 2" at 'Sch. 2'!E13 in 2021-2023 — which is the same
+    # split as the formula decomposition below, and for the same reason (no
+    # line-1z row exists in the earlier years at all).
+    # Normalize a blank harvest to numeric 0 so line 17 prints "0" in all five
     # years. The `Schedule2_Tax` named range's formula DRIFTED between vendor
     # workbooks — 2021-2023 fall through to a plain `SUM(...)` (numeric 0 when
     # Part I is empty), 2024-2025 wrap their own two-addend sum in
