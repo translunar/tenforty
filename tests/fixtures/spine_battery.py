@@ -334,11 +334,16 @@ def build_addl_medicare_boundary(year: int) -> Scenario:
     Exercises the f8959 line 18 flow.
 
     Wages-only (no investment income) to keep this scenario a clean isolation
-    of the Additional-Medicare branch. (NIIT does not enter here regardless,
-    since neither the native spine nor the oracle workbook computes Form 8960
-    — see the qdcgt_15_to_20_boundary scenario, which DOES carry investment
-    income at AGI > $200k and still passes because both sides omit NIIT
-    symmetrically.)
+    of the Additional-Medicare branch. NIIT does not enter here because Form
+    8960 line 16 is the SMALLER of net investment income and the MAGI excess,
+    and this filer's net investment income is zero — NOT because Form 8960 is
+    unmodeled on both sides, which is what this docstring used to say and is
+    false. The vendor workbook computes NIIT (an `8960` sheet and four named
+    ranges in all five years, self-arming off MAGI); the native spine does
+    not. That asymmetry is ticket (s). See the `overpaid` comment in
+    `tenforty/forms/f1040_spine.py` for why the parity battery is green
+    anyway, including for qdcgt_15_to_20_boundary, which DOES carry investment
+    income above the threshold.
     """
     return Scenario(
         config=_battery_config(year),

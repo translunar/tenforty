@@ -55,6 +55,7 @@ _YAML_WITHOUT_CA540 = textwrap.dedent("""\
       acknowledges_no_railroad_retirement_benefits: false
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
+      acknowledges_no_federal_amt: true
 """)
 
 
@@ -104,6 +105,7 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
       acknowledges_no_railroad_retirement_benefits: false
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
+      acknowledges_no_federal_amt: true
     ca540:
       estimated_payments: 1500.0
       use_tax: 25.0

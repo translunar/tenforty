@@ -1051,9 +1051,11 @@ class ReturnOrchestrator:
         # None -> 0 for parity. Scoped DELIBERATELY to the PTC money keys only:
         # any OTHER output going blank should surface loudly as None rather
         # than be silently zeroed.
-        # (Sibling scoped normalization: f8959_tax_total is normalized in
-        # forms/f1040.compute — a new scoped normalization should find both
-        # sites and choose its location deliberately.)
+        # (Sibling scoped normalizations: f8959_tax_total and schedule2_tax are
+        # normalized in forms/f1040.compute — a new scoped normalization should
+        # find both sites and choose its location deliberately. See the
+        # schedule2_tax block there for the test that separates a coercible
+        # definitional blank from a diagnostic refusal that must NOT be zeroed.)
         for _ptc_key in ("f8962_net_ptc", "f8962_repayment"):
             if raw.get(_ptc_key) is None:
                 raw[_ptc_key] = 0
@@ -1198,6 +1200,11 @@ class ReturnOrchestrator:
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year), values=results,
+            # 1040 line 24 (total tax) is filled by a derivation rather than a
+            # result key: no key fills it on the native path, and the single
+            # shared implementation of the arithmetic lives in forms/f4868.py.
+            # See Pdf1040.get_derivations for why not a spine output key.
+            derivations=Pdf1040.get_derivations(year),
         ))
 
         specs.append(_FederalFormSpec(

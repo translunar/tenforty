@@ -788,27 +788,93 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
-            # `total_tax` INTENTIONALLY stays the `Tax` named range, which is
-            # SUM(Tax_SubTotal, Schedule2_Tax) — i.e. Schedule-2-INCLUSIVE. The
-            # production workbook-FALLBACK path (out-of-native-spine filers:
-            # MFJ/EIC) feeds this into Form 4868's balance-due, which must be
-            # computed against FULL liability including Schedule 2; line-16-only
-            # would understate a fallback filer's balance due. Two extra
-            # reasons NOT to point this at `Tax_SubTotal`: (1) `Tax`'s SUM
-            # numeric-coerces a blank `Tax_SubTotal` (the AL96 formula can
-            # evaluate to "") to 0, so `Tax` is always numeric where a raw
-            # `Tax_SubTotal` read can surface None; (2) the native spine and
-            # this fallback serve different consumers with different-but-correct
-            # semantics and must not be unified. The line-16-only quantity the
-            # parity test needs is exposed SEPARATELY as `total_tax_line16`
-            # below — see test_f1040_spine_oracle.py's parity loop.
-            "total_tax": "Tax",
-            # Line-16 tax ONLY (pre-Schedule-2), for the native-vs-workbook
-            # PARITY comparison — the native spine's `total_tax` is line-16-only
-            # by design (Sch 2 joins `overpaid`, not `total_tax`), and 1040-X
-            # line 6 composes from this line-16 base. NOT consumed in production;
-            # only test_f1040_spine_oracle.py reads it.
-            "total_tax_line16": "Tax_SubTotal",
+            # `total_tax` IS IRS Form 1040 LINE 16, on every path. The native
+            # spine emits line-16 income tax under this key (f1040_spine.py),
+            # every year block of pdf_1040.py maps it to the line-16 box, and
+            # f1040x line 6 composes on a line-16 base, adding the excess-APTC
+            # repayment (Schedule 2 LINE 2) itself — and ONLY that. It does NOT
+            # add the AMT component (Schedule 2 line 1), so line 6 is NOT
+            # Part-I-complete; see f1040x.py's module docstring for the precise
+            # statement. This mapping formerly pointed at `Tax`, which is line
+            # 18 — the SUM of line 16 and the line-17 CELL, that cell being
+            # `IF(<override><>"", ROUND(<override>,0), Schedule2_Tax)` in
+            # 2022-2025, i.e. `Schedule2_Tax` absent a manual override
+            # tenforty never writes. 2021 IS THE SAME CELL UNDER A DIFFERENT
+            # NAME: '1040'!AC58 reads `Schedule2`, a separate defined name
+            # that resolves to the same 'Sch. 2'!AC13 as `Schedule2_Tax`.
+            # Nothing computational turns on that — but a reader grepping the
+            # 2021 workbook for `Schedule2_Tax` at line 17 will not find it.
+            # Pointing here printed an overstated line 16 whenever Schedule 2
+            # Part I was nonzero and made f1040x double-count the excess-APTC
+            # repayment.
+            "total_tax": "Tax_SubTotal",
+            # Line 17 — Schedule 2 line 3 (Part I: AMT + excess APTC) — and
+            # line 18 — "Add lines 16 and 17". Both keys were mapped to their
+            # PDF boxes but produced by nothing, so both lines printed blank
+            # on every emitted 1040. `Tax` is exactly line 18, so it is the
+            # honest producer for `tax_plus_schedule2`.
+            "schedule2_tax": "Schedule2_Tax",
+            "tax_plus_schedule2": "Tax",
+            # 1040 LINE 24 — "Add lines 22 and 23. This is your total tax."
+            # The `Tot_Tax` named range, present in all five workbooks:
+            #   2021 '1040'!AC65   2022 AC74   2023 AD80
+            #   2024 '1040'!AD83   2025 AL104
+            # Every year is `=SUM(<line 22>, <line 23>)`, where line 22 is
+            # `MAX(0, SUM(Tax, -<line 21 credits>))` and line 23 is
+            # `TotalOtherTaxes` (Schedule 2 Part II). Pinned per-year — cell,
+            # name resolution, and formula shape — by tests/
+            # test_f1040_mapping.py::TestF1040TotalTaxLiabilityLine24.
+            #
+            # WHO CONSUMES IT: Form 4868 line 4, "Estimate of Total Tax
+            # Liability", whose instruction names 1040 line 24 explicitly
+            # (pdfs/federal/2025/f4868.pdf). f4868 previously read `total_tax`
+            # raw, which is line 16, so line 4, the balance due AND the
+            # payment voucher all came out short by the whole of Schedule 2.
+            #
+            # HARVESTED, NOT COMPOSED, on this path — deliberately asymmetric
+            # with the native path, which has no line-24 producer and must
+            # compose. The harvest inherits what the workbook ACTUALLY
+            # computes (including NIIT, which the native side cannot), resolves
+            # by name so it survives vendor cell moves, and skips the
+            # arithmetic where composition goes wrong. See forms/f4868.py.
+            #
+            # ON THE `_line24` SUFFIX. A sibling key `total_tax_line16` was
+            # RETIRED on the grounds that suffixed keys invite drift; do NOT
+            # cite that retirement as grounds to drop this suffix. They were
+            # different situations. `total_tax_line16` was a DUPLICATE — it
+            # pointed at the same named range as `total_tax` (`Tax_SubTotal`)
+            # and named the same quantity twice, which is exactly how one name
+            # regrows two meanings. Its absence from every year's resolved
+            # OUTPUTS is pinned by tests/test_f1040_mapping.py::
+            # TestF1040TaxBandOutputsEveryYear. `tax_liability_line24` names a
+            # DIFFERENT QUANTITY that has no other key. The suffix is doing
+            # semantic work, not disambiguating a duplicate.
+            #
+            # NO SEPARATE DIAGNOSTIC GUARD IS NEEDED for this key: the
+            # `deduction_diagnostic` refusal below fires in forms/f1040.py
+            # before any harvested tax figure is consumed, for every MFJ/MFS
+            # filer. Do not add a redundant one.
+            "tax_liability_line24": "Tot_Tax",
+            # THE WORKBOOK'S OWN REFUSAL CHANNEL, and the ONLY OUTPUT key that
+            # legitimately holds a STRING. `Deduction` is the Form 1040 line-12
+            # CAPTION cell: on a return the sheet computed it names the
+            # deduction SOURCE ("Standard Deduction", "Schedule A", ...), but
+            # on one it declined to compute it holds a plain-English DIAGNOSTIC
+            # ("Birthdate(s) needed.", "Filing status error.", ...). In those
+            # branches the sheet also forces line 12 to 0 and blanks
+            # `Tax_SubTotal` (line 16), so harvesting the number WITHOUT the
+            # diagnostic reads a REFUSAL as data. forms/f1040.py::
+            # workbook_refusal turns it back into a refusal; see that function
+            # for the branch enumeration and the fail-closed rule.
+            #
+            # By NAME, never by address: this cell moves every single year
+            # (2021 '1040'!AJ51, 2022 AJ58, 2023 AK64, 2024 AK67, 2025 AU91)
+            # while the name resolves in all five workbooks. Mind the
+            # singular/plural trap -- `Deductions` is a DIFFERENT named range
+            # holding the line-12 DOLLAR AMOUNT (the value the diagnostic
+            # zeroes); `Deduction` is the caption. Pinned per-year by
+            # tests/test_f1040_mapping.py::TestF1040TaxBandOutputsEveryYear.
+            "deduction_diagnostic": "Deduction",
             "federal_withheld": "W2_FedTaxWH",
             "additional_medicare_withheld": "F8959_WH",
             "f8959_tax_total": "F8959_Tax",
@@ -917,15 +983,28 @@ class F1040(FormMapping):
             "agi": "Adj_Gross_Inc",
             "standard_deduction": "Standard",
             "taxable_income": "Taxable_Inc",
-            # `total_tax` stays `Tax` (Schedule-2-INCLUSIVE) — see the 2024
-            # block for the full rationale (fallback 4868 balance-due needs full
-            # liability; `Tax`'s SUM masks a blank `Tax_SubTotal`; paths serve
-            # different consumers). The line-16-only quantity for the parity
-            # test is exposed separately as `total_tax_line16`.
-            "total_tax": "Tax",
-            # Line-16 tax ONLY (pre-Schedule-2), parity-comparison read only —
-            # see the 2024 block.
-            "total_tax_line16": "Tax_SubTotal",
+            # `total_tax` IS IRS 1040 line 16 (`Tax_SubTotal`) — see the 2024
+            # block for the full rationale. It formerly pointed at `Tax`, which
+            # is line 18.
+            "total_tax": "Tax_SubTotal",
+            # Lines 17 and 18 — previously orphan keys with no producer, so both
+            # lines printed blank. See the 2024 block.
+            "schedule2_tax": "Schedule2_Tax",
+            "tax_plus_schedule2": "Tax",
+            # 1040 LINE 24 (total tax) — the `Tot_Tax` named range,
+            # '1040'!AL104 here. Consumed by Form 4868 line 4, harvested
+            # rather than composed, and the `_line24` suffix is load-bearing
+            # rather than a duplicate-disambiguator. See the 2024 block for
+            # all three arguments in full.
+            "tax_liability_line24": "Tot_Tax",
+            # The workbook's own refusal channel — the line-12 CAPTION cell,
+            # which holds a plain-English DIAGNOSTIC on any return the sheet
+            # declined to compute (and blanks `Tax_SubTotal` when it does).
+            # The only OUTPUT key that legitimately holds a string. Harvested
+            # by NAME because the address drifts every year (2025 is
+            # '1040'!AU91). See the 2024 block for the full rationale, and
+            # forms/f1040.py::workbook_refusal for the decision it feeds.
+            "deduction_diagnostic": "Deduction",
             "federal_withheld": "W2_FedTaxWH",
             # Form 8959 Part III: Additional Medicare Tax withheld by employers
             # on wages exceeding the $200k/$250k threshold (IRC §3101(b)(2)).

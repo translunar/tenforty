@@ -781,6 +781,75 @@ _ALWAYS_TAIL: tuple[Attestation, ...] = (
         # so there is no window to bound and none should be added.
         applies_in_years=None,
     ),
+    # --- Federal alternative minimum tax (IRC §55, Form 6251) ---
+    # Placed AFTER the carryforward entry on purpose: tuple position is error
+    # precedence (see the block comment above), and appending rather than
+    # inserting leaves every existing error-text assertion matching the same
+    # message it matched before.
+    #
+    # WHY THE SHAPE IS `_always` — THIS WAS A USER DECISION, NOT A DERIVATION.
+    # The alternative considered was a DATA-TRIGGERED attestation: a predicate
+    # over scenario inputs that fires only on returns that could plausibly owe
+    # AMT. It was rejected for one reason only — writing that predicate means
+    # deriving an AMT-exposure trigger from IRS Form 6251 "Who Must File"
+    # material, which is not in this repo, and the user declined to have it
+    # fetched. Rather than invent a tax-law trigger from memory, the gate asks
+    # every filer.
+    #
+    # READ THAT SCOPE EXACTLY. This entry is NOT a finding that no combination
+    # of modeled scenario inputs can produce an AMT-positive return. That
+    # question is OPEN and tracked as ticket (q). Because the shape is
+    # decision-driven rather than claim-driven, no neutral derivation is owed
+    # here: `_always` is the conservative SUPERSET of whatever data trigger (q)
+    # eventually justifies, so it cannot be wrong in the dangerous direction —
+    # only noisier than necessary. Narrowing it needs (q)'s answer first.
+    #
+    # THE REAL FIX for (q) is to compute AMT: either port Form 6251 to the
+    # native path or harvest the vendor workbook's own 6251 figures. Until one
+    # of those lands, this attestation converts a SILENT understatement into an
+    # explicit acknowledgment. That is all it does; it computes nothing.
+    Attestation(
+        field="acknowledges_no_federal_amt",
+        triggered_when=_always,  # user decision, not a derived trigger; see above
+        load_error=(
+            "Scenario config field `acknowledges_no_federal_amt` is required "
+            "and must be either true or false. Federal alternative minimum "
+            "tax (IRC §55) is reported on Form 6251 and enters the return at "
+            "Schedule 2 line 1, which flows to Form 1040 line 17, then line "
+            "18, then line 24. tenforty's native compute path implements no "
+            "Form 6251 at all, so it treats AMT as zero. Set true to affirm "
+            "the filer owes no federal AMT. Set false if AMT may apply — "
+            "compute will then refuse rather than emit a return whose tax is "
+            "understated by the whole of the AMT."
+        ),
+        compute_error=(
+            "`acknowledges_no_federal_amt` is false: federal alternative "
+            "minimum tax may apply to this filer. AMT is computed on Form "
+            "6251 and enters the return as Schedule 2 line 1, reaching Form "
+            "1040 line 17 (`schedule2_tax`), line 18 (`tax_plus_schedule2`) "
+            "and line 24 (total tax). tenforty's NATIVE compute path has no "
+            "Form 6251 and no other federal AMT computation, so AMT would be "
+            "silently treated as zero. AMT is an ADDITION to tax, so dropping "
+            "it makes the computed tax LOWER than the true tax: the return "
+            "would be UNDERSTATED — the penalty-and-interest direction, not "
+            "the safe one. Note the direction is the OPPOSITE of the "
+            "capital-loss-carryforward gate above, which drops a DEDUCTION "
+            "and therefore OVERSTATES. THE ALTERNATIVE AVAILABLE TODAY: the "
+            "vendor-workbook path does compute Form 6251, and the figures "
+            "tenforty harvests from it (Schedule 2 line 3 via `Schedule2_Tax`, "
+            "1040 line 18 via `Tax`, line 24 via `Tot_Tax`) carry that AMT "
+            "inside them, so the workbook path can produce a return the native "
+            "path cannot. Scoped, not absolute: that path's AMT figure is "
+            "distrusted on MFJ/MFS returns (see `forms/f1040.py`), and those "
+            "returns are refused at harvest today anyway."
+        ),
+        # applies_in_years=None (ALL years): IRC §55 imposes AMT on individuals
+        # in every year tenforty supports. The exemption amounts and phaseout
+        # thresholds move year to year, but there is no supported year in which
+        # an AMT-bearing filer is computable on the native path, so there is no
+        # window to bound.
+        applies_in_years=None,
+    ),
 )
 
 _ATTESTATIONS: tuple[Attestation, ...] = (

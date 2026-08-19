@@ -34,6 +34,17 @@ from tenforty.orchestrator import (
 from tests._scorp_fixtures import _make_v1_scenario, _scorp_attestation_defaults
 from tests.helpers import scope_out_attestation_defaults
 
+# The INDIVIDUAL-return emit specs run alongside the corporate ones, and Form
+# 4868 line 4 (total tax liability) refuses a MISSING 1040 tax rather than
+# printing a $0 payment voucher off it — see forms/f4868.py::
+# compute_balance_due. The corporate tests below inject synthetic `results`
+# dicts carrying corporate keys only, a shape production never produces
+# (`results` always comes from compute_federal). Merge this zero-tax minimum
+# in so the 4868 emit is well-defined and the corporate forms stay the subject
+# of the test. Do NOT instead soften the 4868 guard: an absent 1040 tax and a
+# None one are the same hazard on a payment form.
+_MINIMAL_1040_RESULTS = {"total_tax": 0, "total_payments": 0}
+
 
 class ComputeCorporateTests(unittest.TestCase):
     def setUp(self):
@@ -91,7 +102,7 @@ class EmitCorporatePdfsTests(unittest.TestCase):
         corp_results = self.orch.compute_corporate(s)
         out_dir = Path(self._tmp.name) / "out"
         paths = self.orch._emit_pdfs_internal(
-            scenario=s, results={**corp_results},
+            scenario=s, results={**_MINIMAL_1040_RESULTS, **corp_results},
             output_dir=out_dir,
         )
         # Expect f1120s.pdf for the entity and f1120s_k1_<n>.pdf per
@@ -105,7 +116,9 @@ class EmitCorporatePdfsTests(unittest.TestCase):
         s = _make_v1_scenario()
         s.s_corp_return = None
         out_dir = Path(self._tmp.name) / "out"
-        paths = self.orch.emit_pdfs(scenario=s, results={}, output_dir=out_dir)
+        paths = self.orch.emit_pdfs(
+            scenario=s, results=dict(_MINIMAL_1040_RESULTS),
+            output_dir=out_dir)
         self.assertNotIn("1120s", paths)
 
 
@@ -316,7 +329,8 @@ class EmitCorporatePdfsAggregationTests(unittest.TestCase):
         out_dir = Path(self._tmp.name) / "out"
         # Provide a minimal results dict that satisfies _emit_pdfs_internal (K-1
         # allocations key must exist; its value can be empty for this test).
-        results = {"f1120s_sch_k1_allocations": [], **extra_results}
+        results = {**_MINIMAL_1040_RESULTS,
+                   "f1120s_sch_k1_allocations": [], **extra_results}
         paths = self.orch._emit_pdfs_internal(scenario=s, results=results, output_dir=out_dir)
         return paths["1120s"]
 
@@ -466,7 +480,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
         out_dir = Path(self._tmp.name) / "out"
         paths = self.orch._emit_pdfs_internal(
             scenario=scenario,
-            results={**corp_results},
+            results={**_MINIMAL_1040_RESULTS, **corp_results},
             output_dir=out_dir,
         )
         self.assertIn("1120s_k1_1", paths)
@@ -515,7 +529,9 @@ class EmitPdfsGuardTests(unittest.TestCase):
         s = _make_v1_scenario()
         s.s_corp_return = None
         out_dir = Path(self._tmp.name) / "out"
-        paths = self.orch.emit_pdfs(scenario=s, results={}, output_dir=out_dir)
+        paths = self.orch.emit_pdfs(
+            scenario=s, results=dict(_MINIMAL_1040_RESULTS),
+            output_dir=out_dir)
         # 1040 + 4868 are emitted unconditionally for any non-S-corp scenario.
         self.assertIn("1040", paths)
         self.assertIn("4868", paths)

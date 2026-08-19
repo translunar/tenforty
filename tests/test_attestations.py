@@ -74,6 +74,8 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_paid_family_leave_benefits",
             # Schedule D prior-year capital-loss carryover (IRC §1212(b))
             "acknowledges_no_capital_loss_carryforward",
+            # Federal alternative minimum tax (IRC §55, Form 6251)
+            "acknowledges_no_federal_amt",
         }
         self.assertEqual(expected, fields)
 
@@ -181,6 +183,7 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_railroad_retirement_benefits=False,
             acknowledges_no_paid_family_leave_benefits=False,
             acknowledges_no_capital_loss_carryforward=True,
+            acknowledges_no_federal_amt=True,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise

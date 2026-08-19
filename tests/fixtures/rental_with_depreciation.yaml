@@ -42,6 +42,7 @@ config:
   acknowledges_no_section_179: false
   acknowledges_no_estate_trust_k1: false
   acknowledges_no_capital_loss_carryforward: true
+  acknowledges_no_federal_amt: true
   prior_year_itemized: false
 depreciable_assets:
   - description: "Rental building"
