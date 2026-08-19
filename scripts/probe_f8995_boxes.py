@@ -28,6 +28,31 @@ they are composed with the nearest numeric line label above THEM (which is
 always "1" on this form, but the script does not hardcode that — it derives
 it the same way it derives everything else) to produce a label like "1i".
 
+CAPTION EXTRACTION
+------------------
+A caption is the text printed on the SAME baseline as the bound label
+(within 0.6pt), at x >= the label's own x, excluding:
+
+  - the label span itself (excluded by object identity, NOT by position —
+    the caption very often renders at the *exact same x* as its line
+    number, e.g. 2021 line 4 has both label and caption at x=45.40, so an
+    `x > label_x` test silently drops the real caption); and
+  - right-hand glyphs at x > 380 that contain no letters — these are the
+    line-number reprints and box ornaments beside the entry boxes, which
+    an `x > label_x` test would otherwise pick up as a bogus one-character
+    "caption" (that is how "4", "5", "10" ended up in this column before).
+
+Trailing dot leaders are stripped. The caption's indentation is
+YEAR-DEPENDENT (line 12's caption is at x=40.39 in 2021–2022 but x=64.80 in
+2023–2025), which is why the rule keys off the label's own x rather than
+any fixed column.
+
+Fields bound to a row marker ("1i".."1v") have no caption on their own
+baseline — the line-1 table's captions are its COLUMN HEADERS. For those,
+the caption is the header text whose x falls within that field's own
+`/Rect` x-range, so the column is derived from the field's geometry rather
+than assumed. This is a real caption, not a fallback.
+
 Usage:
     .venv/bin/python scripts/probe_f8995_boxes.py
     .venv/bin/python scripts/probe_f8995_boxes.py --years 2025
@@ -48,6 +73,16 @@ NEAR_THRESHOLD_PT = 20.0
 LEFT_MARGIN_X = 70.0
 ROMAN_ROW_MARKERS = ("i", "ii", "iii", "iv", "v")
 NUMERIC_LABEL_RE = re.compile(r"^\d{1,2}$")
+
+# Baseline tolerance for "same printed row". Captions on a hanging indent sit
+# up to ~0.2pt off their label's baseline (2021 line 2: label y=433.54,
+# caption y=433.34), so an exact match is too strict.
+BASELINE_TOL_PT = 0.6
+# x beyond which a letter-free glyph is an entry-box ornament (the reprinted
+# line number, the "( )" negative-wrapper, the "▶" arrow), not caption text.
+ENTRY_BOX_X = 380.0
+DOT_LEADER_RE = re.compile(r"[\s.]*\.\s*\.[\s.]*$")
+CAPTION_MAX_CHARS = 96
 
 
 @dataclass
@@ -173,17 +208,66 @@ def nearest_above(y: float, candidates: list[TextLabel], max_gap: float | None =
     return best, best_gap
 
 
-def caption_excerpt(y: float, labels: list[TextLabel], label_x: float) -> str:
-    """Text on the same baseline as a label, to the right of it — the
-    caption that accompanies that printed line number or row marker.
+def caption_excerpt(label: TextLabel, labels: list[TextLabel]) -> str:
+    """The caption printed on the same baseline as `label`.
+
+    See the module docstring's CAPTION EXTRACTION section for why this uses
+    `x >= label.x` with identity-based exclusion of the label itself, rather
+    than a strict `x > label.x`: on this form a line's caption routinely
+    renders at the *exact same x* as its own line-number glyph, and the
+    indentation is year-dependent.
     """
-    same_row = [
-        lbl for lbl in labels if abs(lbl.y - y) < 0.5 and lbl.x > label_x
+    parts = []
+    for other in labels:
+        if other is label:
+            continue  # the label itself, excluded by identity not position
+        if abs(other.y - label.y) >= BASELINE_TOL_PT:
+            continue
+        if other.x < label.x - 0.01:
+            continue
+        stripped = other.text.strip()
+        # Entry-box ornaments: reprinted line numbers, "( )", "▶".
+        if other.x > ENTRY_BOX_X and not re.search(r"[A-Za-z]", stripped):
+            continue
+        parts.append(other)
+    parts.sort(key=lambda p: p.x)
+    text = " ".join("".join(p.text for p in parts).split())
+    text = DOT_LEADER_RE.sub("", text).strip()
+    return text[:CAPTION_MAX_CHARS]
+
+
+def column_header_caption(
+    field: FieldWidget,
+    numeric_labels: list[TextLabel],
+    roman_labels: list[TextLabel],
+    all_labels: list[TextLabel],
+) -> str:
+    """For a line-1 table cell, the column header sitting above its column.
+
+    The header block is the text between the topmost row marker and just
+    above the line-1 label's baseline. The column is chosen by which header
+    spans fall inside THIS field's own /Rect x-range — derived from the
+    field's geometry, never from a hardcoded column boundary.
+    """
+    if not roman_labels or not numeric_labels:
+        return ""
+    top_roman_y = max(lbl.y for lbl in roman_labels)
+    # The numeric label heading this table (nearest numeric label above the
+    # topmost row marker) — derived, not assumed to be "1".
+    heading, _ = nearest_above(top_roman_y, numeric_labels, None)
+    if heading is None:
+        return ""
+    llx, _, urx, _ = field.rect
+    header_spans = [
+        lbl
+        for lbl in all_labels
+        if top_roman_y < lbl.y <= heading.y + 6.0
+        and lbl.x >= LEFT_MARGIN_X
+        and llx <= lbl.x < urx
     ]
-    same_row.sort(key=lambda lbl: lbl.x)
-    text = "".join(lbl.text for lbl in same_row)
-    text = " ".join(text.split())
-    return text[:90]
+    header_spans.sort(key=lambda lbl: (-lbl.y, lbl.x))
+    text = " ".join("".join(lbl.text for lbl in header_spans).split())
+    return text[:CAPTION_MAX_CHARS]
 
 
 def bind_field(
@@ -210,11 +294,13 @@ def bind_field(
         # Bound to a row marker: compose with the numeric line above it.
         parent_num, _ = nearest_above(rom_hit.y, numeric_labels, None)
         line = f"{parent_num.text.strip()}{rom_hit.text.strip()}" if parent_num else rom_hit.text.strip()
-        cap = caption_excerpt(rom_hit.y, all_labels, rom_hit.x)
+        # A row marker has no caption on its own baseline; the table's
+        # captions are its column headers.
+        cap = column_header_caption(field, numeric_labels, roman_labels, all_labels)
         return line, cap
 
     line = num_hit.text.strip()
-    cap = caption_excerpt(num_hit.y, all_labels, num_hit.x)
+    cap = caption_excerpt(num_hit, all_labels)
     return line, cap
 
 
@@ -252,8 +338,38 @@ def render_markdown(results: dict[int, list[dict]]) -> str:
         "`.superpowers/sdd/2026-08-19-f8995-box-mapping/task-1-brief.md` for",
         "the method and its rationale.",
         "",
-        "`Line` is blank for fields that bind to no printed-line label within",
-        "20pt (the header identification fields).",
+        "`Bound line` is blank for fields that bind to no printed-line label",
+        "within 20pt (the header identification fields).",
+        "",
+        "## How the `Caption excerpt` column is derived",
+        "",
+        "So a reader can tell \"no caption exists here\" from \"extraction",
+        "failed here\":",
+        "",
+        "- For a field bound to a **numeric line**, the caption is the text on",
+        "  that line label's own baseline (within 0.6pt) at `x >= the label's",
+        "  x`, excluding the label span itself (by identity, since a caption",
+        "  often renders at the *exact same x* as its line number) and",
+        "  excluding letter-free glyphs at `x > 380` (the reprinted line",
+        "  number and box ornaments beside the entry boxes). Trailing dot",
+        "  leaders are stripped; the text is truncated to 96 characters.",
+        "- For a field bound to a **line-1 table row** (`1i`–`1v`), no caption",
+        "  exists on the row's own baseline — the table's captions are its",
+        "  **column headers**. The caption shown is the header text whose x",
+        "  falls inside that field's own `/Rect` x-range, so the column is",
+        "  derived from the field's geometry.",
+        "- A blank caption therefore means genuinely no printed caption: only",
+        "  the two header identification fields, which bind to no line at all.",
+        "",
+        "Caption indentation is **year-dependent** (line 12's caption is at",
+        "x=40.39 in 2021–2022 but x=64.80 in 2023–2025), which is why the rule",
+        "keys off each label's own x rather than any fixed column.",
+        "",
+        "Note: the literal `(a)` column-header glyph carries no usable text",
+        "position in these templates (pypdf reports it at x=0, y=0), so column",
+        "(a)'s caption below reads as its header words without the `(a)`",
+        "prefix that `(b)` and `(c)` retain. That is a property of the",
+        "template's text encoding, not a truncation.",
         "",
     ]
     for year in sorted(results):
@@ -297,7 +413,11 @@ def main() -> None:
 
     for year, rows in results.items():
         unbound = [r["field"] for r in rows if r["line"] is None]
-        print(f"{year}: {len(rows)} fields, {len(unbound)} unbound: {unbound}")
+        no_caption = [r["field"] for r in rows if not r["caption"]]
+        print(
+            f"{year}: {len(rows)} fields | {len(unbound)} unbound to a line: {unbound}"
+            f" | {len(no_caption)} without a caption: {no_caption}"
+        )
 
 
 if __name__ == "__main__":

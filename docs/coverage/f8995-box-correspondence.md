@@ -8,8 +8,38 @@ own text and widget geometry — never from
 `.superpowers/sdd/2026-08-19-f8995-box-mapping/task-1-brief.md` for
 the method and its rationale.
 
-`Line` is blank for fields that bind to no printed-line label within
-20pt (the header identification fields).
+`Bound line` is blank for fields that bind to no printed-line label
+within 20pt (the header identification fields).
+
+## How the `Caption excerpt` column is derived
+
+So a reader can tell "no caption exists here" from "extraction
+failed here":
+
+- For a field bound to a **numeric line**, the caption is the text on
+  that line label's own baseline (within 0.6pt) at `x >= the label's
+  x`, excluding the label span itself (by identity, since a caption
+  often renders at the *exact same x* as its line number) and
+  excluding letter-free glyphs at `x > 380` (the reprinted line
+  number and box ornaments beside the entry boxes). Trailing dot
+  leaders are stripped; the text is truncated to 96 characters.
+- For a field bound to a **line-1 table row** (`1i`–`1v`), no caption
+  exists on the row's own baseline — the table's captions are its
+  **column headers**. The caption shown is the header text whose x
+  falls inside that field's own `/Rect` x-range, so the column is
+  derived from the field's geometry.
+- A blank caption therefore means genuinely no printed caption: only
+  the two header identification fields, which bind to no line at all.
+
+Caption indentation is **year-dependent** (line 12's caption is at
+x=40.39 in 2021–2022 but x=64.80 in 2023–2025), which is why the rule
+keys off each label's own x rather than any fixed column.
+
+Note: the literal `(a)` column-header glyph carries no usable text
+position in these templates (pypdf reports it at x=0, y=0), so column
+(a)'s caption below reads as its header words without the `(a)`
+prefix that `(b)` and `(c)` retain. That is a property of the
+template's text encoding, not a truncation.
 
 ## 2021
 
@@ -17,37 +47,37 @@ the method and its rationale.
 |---|---|---|---|---|
 | `f1_1[0]` | `topmostSubform[0].Page1[0].f1_1[0]` | 36.00, 671.97, 438.45, 685.60 |  |  |
 | `f1_2[0]` | `topmostSubform[0].Page1[0].f1_2[0]` | 439.20, 671.97, 576.00, 685.97 |  |  |
-| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i |  |
-| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i |  |
-| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i |  |
-| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii |  |
-| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii |  |
-| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii |  |
-| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii |  |
-| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii |  |
-| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii |  |
-| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv |  |
-| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv |  |
-| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv |  |
-| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v |  |
-| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v |  |
-| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v |  |
+| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i | Trade, business, or aggregation name |
+| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i | (b) Taxpayer identification number |
+| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i | (c) Qualified business income or (loss) |
+| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii | Trade, business, or aggregation name |
+| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii | (b) Taxpayer identification number |
+| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii | (c) Qualified business income or (loss) |
+| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii | Trade, business, or aggregation name |
+| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii | (b) Taxpayer identification number |
+| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii | (c) Qualified business income or (loss) |
+| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv | Trade, business, or aggregation name |
+| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv | (b) Taxpayer identification number |
+| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv | (c) Qualified business income or (loss) |
+| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v | Trade, business, or aggregation name |
+| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v | (b) Taxpayer identification number |
+| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v | (c) Qualified business income or (loss) |
 | `f1_18[0]` | `topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]` | 410.40, 419.97, 481.65, 431.97 | 2 | Total qualified business income or (loss). Combine lines 1i through 1v, |
-| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 407.97, 478.40, 419.97 | 3 |  |
-| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 395.97, 481.65, 407.97 | 4 | 4 |
-| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 383.97, 576.00, 395.97 | 5 | 5 |
+| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 407.97, 478.40, 419.97 | 3 | Qualified business net (loss) carryforward from the prior year |
+| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 395.97, 481.65, 407.97 | 4 | Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0- |
+| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 383.97, 576.00, 395.97 | 5 | Qualified business income component. Multiply line 4 by 20% (0.20) |
 | `f1_22[0]` | `topmostSubform[0].Page1[0].f1_22[0]` | 410.40, 359.97, 481.65, 371.97 | 6 | Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) |
-| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 335.97, 478.40, 347.97 | 7 |  |
-| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 311.97, 481.65, 323.97 | 8 |  |
-| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 299.97, 576.00, 311.97 | 9 |  |
-| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 287.97, 576.00, 299.97 | 10 | 10 |
-| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 275.97, 481.65, 287.97 | 11 | 11 |
-| `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 |  |
-| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 |  |
-| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 |  |
-| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 |  |
-| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, |
-| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 |  |
+| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 335.97, 478.40, 347.97 | 7 | Qualified REIT dividends and qualified PTP (loss) carryforward from the prior |
+| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 311.97, 481.65, 323.97 | 8 | Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero |
+| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 299.97, 576.00, 311.97 | 9 | REIT and PTP component. Multiply line 8 by 20% (0.20) |
+| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 287.97, 576.00, 299.97 | 10 | Qualified business income deduction before the income limitation. Add lines 5 and 9 |
+| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 275.97, 481.65, 287.97 | 11 | Taxable income before qualified business income deduction (see instructions) |
+| `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 | Net capital gain (see instructions) |
+| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 | Subtract line 12 from line 11. If zero or less, enter -0- |
+| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 | Income limitation. Multiply line 13 by 20% (0.20) |
+| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this am |
+| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter |
+| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater th |
 
 ## 2022
 
@@ -55,37 +85,37 @@ the method and its rationale.
 |---|---|---|---|---|
 | `f1_1[0]` | `topmostSubform[0].Page1[0].f1_1[0]` | 36.00, 671.97, 438.45, 685.60 |  |  |
 | `f1_2[0]` | `topmostSubform[0].Page1[0].f1_2[0]` | 439.20, 671.97, 576.00, 685.97 |  |  |
-| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i |  |
-| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i |  |
-| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i |  |
-| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii |  |
-| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii |  |
-| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii |  |
-| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii |  |
-| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii |  |
-| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii |  |
-| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv |  |
-| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv |  |
-| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv |  |
-| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v |  |
-| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v |  |
-| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v |  |
+| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i | Trade, business, or aggregation name |
+| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i | (b) Taxpayer identification number |
+| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i | (c) Qualified business income or (loss) |
+| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii | Trade, business, or aggregation name |
+| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii | (b) Taxpayer identification number |
+| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii | (c) Qualified business income or (loss) |
+| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii | Trade, business, or aggregation name |
+| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii | (b) Taxpayer identification number |
+| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii | (c) Qualified business income or (loss) |
+| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv | Trade, business, or aggregation name |
+| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv | (b) Taxpayer identification number |
+| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv | (c) Qualified business income or (loss) |
+| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v | Trade, business, or aggregation name |
+| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v | (b) Taxpayer identification number |
+| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v | (c) Qualified business income or (loss) |
 | `f1_18[0]` | `topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]` | 410.40, 419.97, 481.65, 431.97 | 2 | Total qualified business income or (loss). Combine lines 1i through 1v, |
-| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 407.97, 478.40, 419.97 | 3 |  |
-| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 395.97, 481.65, 407.97 | 4 | 4 |
-| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 383.97, 576.00, 395.97 | 5 | 5 |
+| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 407.97, 478.40, 419.97 | 3 | Qualified business net (loss) carryforward from the prior year |
+| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 395.97, 481.65, 407.97 | 4 | Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0- |
+| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 383.97, 576.00, 395.97 | 5 | Qualified business income component. Multiply line 4 by 20% (0.20) |
 | `f1_22[0]` | `topmostSubform[0].Page1[0].f1_22[0]` | 410.40, 359.97, 481.65, 371.97 | 6 | Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) |
-| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 335.97, 478.40, 347.97 | 7 |  |
-| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 311.97, 481.65, 323.97 | 8 |  |
-| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 299.97, 576.00, 311.97 | 9 |  |
-| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 287.97, 576.00, 299.97 | 10 | 10 |
-| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 275.97, 481.65, 287.97 | 11 | 11 |
-| `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 |  |
-| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 |  |
-| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 |  |
-| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 |  |
-| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, |
-| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 |  |
+| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 335.97, 478.40, 347.97 | 7 | Qualified REIT dividends and qualified PTP (loss) carryforward from the prior |
+| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 311.97, 481.65, 323.97 | 8 | Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero |
+| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 299.97, 576.00, 311.97 | 9 | REIT and PTP component. Multiply line 8 by 20% (0.20) |
+| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 287.97, 576.00, 299.97 | 10 | Qualified business income deduction before the income limitation. Add lines 5 and 9 |
+| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 275.97, 481.65, 287.97 | 11 | Taxable income before qualified business income deduction (see instructions) |
+| `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 | Net capital gain (see instructions) |
+| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 | Subtract line 12 from line 11. If zero or less, enter -0- |
+| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 | Income limitation. Multiply line 13 by 20% (0.20) |
+| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this am |
+| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter |
+| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater th |
 
 ## 2023
 
@@ -93,37 +123,37 @@ the method and its rationale.
 |---|---|---|---|---|
 | `f1_1[0]` | `topmostSubform[0].Page1[0].f1_1[0]` | 36.00, 671.97, 438.45, 685.97 |  |  |
 | `f1_2[0]` | `topmostSubform[0].Page1[0].f1_2[0]` | 440.20, 671.97, 576.00, 685.97 |  |  |
-| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i |  |
-| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i |  |
-| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i |  |
-| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii |  |
-| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii |  |
-| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii |  |
-| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii |  |
-| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii |  |
-| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii |  |
-| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv |  |
-| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv |  |
-| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv |  |
-| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v |  |
-| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v |  |
-| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v |  |
+| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i | Trade, business, or aggregation name |
+| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i | (b) Taxpayer identification number |
+| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i | (c) Qualified business income or (loss) |
+| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii | Trade, business, or aggregation name |
+| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii | (b) Taxpayer identification number |
+| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii | (c) Qualified business income or (loss) |
+| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii | Trade, business, or aggregation name |
+| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii | (b) Taxpayer identification number |
+| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii | (c) Qualified business income or (loss) |
+| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv | Trade, business, or aggregation name |
+| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv | (b) Taxpayer identification number |
+| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv | (c) Qualified business income or (loss) |
+| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v | Trade, business, or aggregation name |
+| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v | (b) Taxpayer identification number |
+| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v | (c) Qualified business income or (loss) |
 | `f1_18[0]` | `topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]` | 410.40, 431.97, 481.65, 443.97 | 2 | Total qualified business income or (loss). Combine lines 1i through 1v, |
-| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 419.97, 478.40, 431.97 | 3 |  |
-| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 | 4 |
-| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | 5 |
+| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 419.97, 478.40, 431.97 | 3 | Qualified business net (loss) carryforward from the prior year |
+| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 | Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0- |
+| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | Qualified business income component. Multiply line 4 by 20% (0.20) |
 | `f1_22[0]` | `topmostSubform[0].Page1[0].Line6_ReadOrder[0].f1_22[0]` | 410.40, 371.97, 481.65, 383.97 | 6 | Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) |
-| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 347.97, 478.40, 359.97 | 7 |  |
-| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 323.97, 481.65, 335.97 | 8 |  |
-| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 |  |
-| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | 10 |
-| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | 11 |
+| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 347.97, 478.40, 359.97 | 7 | Qualified REIT dividends and qualified PTP (loss) carryforward from the prior |
+| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 323.97, 481.65, 335.97 | 8 | Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero |
+| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 | REIT and PTP component. Multiply line 8 by 20% (0.20) |
+| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | Qualified business income deduction before the income limitation. Add lines 5 and 9 |
+| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | Taxable income before qualified business income deduction (see instructions) |
 | `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 | Enter your net capital gain, if any, increased by any qualified dividends |
-| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 |  |
-| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 |  |
-| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 |  |
-| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, |
-| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 |  |
+| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 | Subtract line 12 from line 11. If zero or less, enter -0- |
+| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 | Income limitation. Multiply line 13 by 20% (0.20) |
+| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this am |
+| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter |
+| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater th |
 
 ## 2024
 
@@ -131,37 +161,37 @@ the method and its rationale.
 |---|---|---|---|---|
 | `f1_1[0]` | `topmostSubform[0].Page1[0].f1_1[0]` | 36.00, 671.97, 438.45, 685.97 |  |  |
 | `f1_2[0]` | `topmostSubform[0].Page1[0].f1_2[0]` | 440.20, 671.97, 576.00, 685.97 |  |  |
-| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i |  |
-| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i |  |
-| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i |  |
-| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii |  |
-| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii |  |
-| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii |  |
-| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii |  |
-| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii |  |
-| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii |  |
-| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv |  |
-| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv |  |
-| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv |  |
-| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v |  |
-| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v |  |
-| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v |  |
+| `f1_3[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]` | 65.80, 551.97, 395.25, 575.97 | 1i | Trade, business, or aggregation name |
+| `f1_4[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]` | 396.00, 551.97, 482.40, 563.97 | 1i | (b) Taxpayer identification number |
+| `f1_5[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]` | 482.40, 551.97, 576.00, 563.97 | 1i | (c) Qualified business income or (loss) |
+| `f1_6[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_6[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii | Trade, business, or aggregation name |
+| `f1_7[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_7[0]` | 396.00, 527.97, 482.40, 539.97 | 1ii | (b) Taxpayer identification number |
+| `f1_8[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1B_Row2[0].f1_8[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii | (c) Qualified business income or (loss) |
+| `f1_9[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_9[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii | Trade, business, or aggregation name |
+| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_10[0]` | 396.00, 503.96, 482.40, 515.97 | 1iii | (b) Taxpayer identification number |
+| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1C_Row3[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii | (c) Qualified business income or (loss) |
+| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv | Trade, business, or aggregation name |
+| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_13[0]` | 396.00, 479.96, 482.40, 491.96 | 1iv | (b) Taxpayer identification number |
+| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1D_Row4[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv | (c) Qualified business income or (loss) |
+| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v | Trade, business, or aggregation name |
+| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_16[0]` | 396.00, 455.96, 482.40, 467.96 | 1v | (b) Taxpayer identification number |
+| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Ln1E_Row5[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v | (c) Qualified business income or (loss) |
 | `f1_18[0]` | `topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]` | 410.40, 431.97, 481.65, 443.97 | 2 | Total qualified business income or (loss). Combine lines 1i through 1v, |
-| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 419.97, 478.40, 431.97 | 3 |  |
-| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 | 4 |
-| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | 5 |
+| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 414.40, 419.97, 478.40, 431.97 | 3 | Qualified business net (loss) carryforward from the prior year |
+| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 | Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0- |
+| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | Qualified business income component. Multiply line 4 by 20% (0.20) |
 | `f1_22[0]` | `topmostSubform[0].Page1[0].Line6_ReadOrder[0].f1_22[0]` | 410.40, 371.97, 481.65, 383.97 | 6 | Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) |
-| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 347.97, 478.40, 359.97 | 7 |  |
-| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 323.97, 481.65, 335.97 | 8 |  |
-| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 |  |
-| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | 10 |
-| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | 11 |
+| `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 414.40, 347.97, 478.40, 359.97 | 7 | Qualified REIT dividends and qualified PTP (loss) carryforward from the prior |
+| `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 323.97, 481.65, 335.97 | 8 | Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero |
+| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 | REIT and PTP component. Multiply line 8 by 20% (0.20) |
+| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | Qualified business income deduction before the income limitation. Add lines 5 and 9 |
+| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | Taxable income before qualified business income deduction (see instructions) |
 | `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 | Enter your net capital gain, if any, increased by any qualified dividends |
-| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 |  |
-| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 |  |
-| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 |  |
-| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, |
-| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 |  |
+| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 | Subtract line 12 from line 11. If zero or less, enter -0- |
+| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 | Income limitation. Multiply line 13 by 20% (0.20) |
+| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this am |
+| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 508.00, 203.97, 572.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter |
+| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 508.00, 179.97, 572.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater th |
 
 ## 2025
 
@@ -169,34 +199,34 @@ the method and its rationale.
 |---|---|---|---|---|
 | `f1_01[0]` | `topmostSubform[0].Page1[0].f1_01[0]` | 36.00, 671.97, 438.45, 685.97 |  |  |
 | `f1_02[0]` | `topmostSubform[0].Page1[0].f1_02[0]` | 440.20, 671.97, 576.00, 685.97 |  |  |
-| `f1_03[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_03[0]` | 65.80, 551.97, 395.25, 575.97 | 1i |  |
-| `f1_04[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_04[0]` | 396.75, 551.97, 481.65, 563.97 | 1i |  |
-| `f1_05[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_05[0]` | 482.40, 551.97, 576.00, 563.97 | 1i |  |
-| `f1_06[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_06[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii |  |
-| `f1_07[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_07[0]` | 396.75, 527.97, 481.65, 539.97 | 1ii |  |
-| `f1_08[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_08[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii |  |
-| `f1_09[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_09[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii |  |
-| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_10[0]` | 396.75, 503.96, 481.65, 515.97 | 1iii |  |
-| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii |  |
-| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv |  |
-| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_13[0]` | 396.75, 479.96, 481.65, 491.96 | 1iv |  |
-| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv |  |
-| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v |  |
-| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_16[0]` | 396.75, 455.96, 481.65, 467.96 | 1v |  |
-| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v |  |
+| `f1_03[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_03[0]` | 65.80, 551.97, 395.25, 575.97 | 1i | Trade, business, or aggregation name |
+| `f1_04[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_04[0]` | 396.75, 551.97, 481.65, 563.97 | 1i | (b) Taxpayer identification number |
+| `f1_05[0]` | `topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_05[0]` | 482.40, 551.97, 576.00, 563.97 | 1i | (c) Qualified business income or (loss) |
+| `f1_06[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_06[0]` | 65.80, 527.97, 395.25, 551.97 | 1ii | Trade, business, or aggregation name |
+| `f1_07[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_07[0]` | 396.75, 527.97, 481.65, 539.97 | 1ii | (b) Taxpayer identification number |
+| `f1_08[0]` | `topmostSubform[0].Page1[0].Table[0].Row1ii[0].f1_08[0]` | 482.40, 527.97, 576.00, 539.97 | 1ii | (c) Qualified business income or (loss) |
+| `f1_09[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_09[0]` | 65.80, 503.96, 395.25, 527.97 | 1iii | Trade, business, or aggregation name |
+| `f1_10[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_10[0]` | 396.75, 503.96, 481.65, 515.97 | 1iii | (b) Taxpayer identification number |
+| `f1_11[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iii[0].f1_11[0]` | 482.40, 503.96, 576.00, 515.97 | 1iii | (c) Qualified business income or (loss) |
+| `f1_12[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_12[0]` | 65.80, 479.96, 395.25, 503.96 | 1iv | Trade, business, or aggregation name |
+| `f1_13[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_13[0]` | 396.75, 479.96, 481.65, 491.96 | 1iv | (b) Taxpayer identification number |
+| `f1_14[0]` | `topmostSubform[0].Page1[0].Table[0].Row1iv[0].f1_14[0]` | 482.40, 479.96, 576.00, 491.96 | 1iv | (c) Qualified business income or (loss) |
+| `f1_15[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_15[0]` | 65.80, 455.96, 395.25, 479.96 | 1v | Trade, business, or aggregation name |
+| `f1_16[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_16[0]` | 396.75, 455.96, 481.65, 467.96 | 1v | (b) Taxpayer identification number |
+| `f1_17[0]` | `topmostSubform[0].Page1[0].Table[0].Row1v[0].f1_17[0]` | 482.40, 455.96, 576.00, 467.96 | 1v | (c) Qualified business income or (loss) |
 | `f1_18[0]` | `topmostSubform[0].Page1[0].Line2_ReadOrder[0].f1_18[0]` | 410.40, 431.97, 481.65, 443.97 | 2 | Total qualified business income or (loss). Combine lines 1i through 1v, |
-| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 413.40, 419.97, 479.40, 431.97 | 3 |  |
-| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 |  |
-| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | 5 |
+| `f1_19[0]` | `topmostSubform[0].Page1[0].f1_19[0]` | 413.40, 419.97, 479.40, 431.97 | 3 | Qualified business net (loss) carryforward from the prior year |
+| `f1_20[0]` | `topmostSubform[0].Page1[0].f1_20[0]` | 410.40, 407.97, 481.65, 419.97 | 4 | Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0- |
+| `f1_21[0]` | `topmostSubform[0].Page1[0].f1_21[0]` | 504.00, 395.97, 576.00, 407.97 | 5 | Qualified business income component. Multiply line 4 by 20% (0.20) |
 | `f1_22[0]` | `topmostSubform[0].Page1[0].Line6_ReadOrder[0].f1_22[0]` | 410.40, 371.97, 481.65, 383.97 | 6 | Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) |
 | `f1_23[0]` | `topmostSubform[0].Page1[0].f1_23[0]` | 413.40, 347.97, 479.40, 359.97 | 7 | Qualified REIT dividends and qualified PTP (loss) carryforward from the prior |
 | `f1_24[0]` | `topmostSubform[0].Page1[0].f1_24[0]` | 410.40, 323.97, 481.65, 335.97 | 8 | Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero |
-| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 |  |
-| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | 10 |
-| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | 11 |
+| `f1_25[0]` | `topmostSubform[0].Page1[0].f1_25[0]` | 504.00, 311.97, 576.00, 323.97 | 9 | REIT and PTP component. Multiply line 8 by 20% (0.20) |
+| `f1_26[0]` | `topmostSubform[0].Page1[0].f1_26[0]` | 504.00, 299.97, 576.00, 311.97 | 10 | Qualified business income deduction before the income limitation. Add lines 5 and 9 |
+| `f1_27[0]` | `topmostSubform[0].Page1[0].f1_27[0]` | 410.40, 287.97, 481.65, 299.97 | 11 | Taxable income before qualified business income deduction (see instructions) |
 | `f1_28[0]` | `topmostSubform[0].Page1[0].f1_28[0]` | 410.40, 263.97, 481.65, 275.97 | 12 | Enter your net capital gain, if any, increased by any qualified dividends |
-| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 |  |
-| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 |  |
-| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter t |
-| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 507.00, 203.97, 573.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, |
-| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 507.00, 179.97, 573.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If grea |
+| `f1_29[0]` | `topmostSubform[0].Page1[0].f1_29[0]` | 410.40, 251.97, 481.65, 263.97 | 13 | Subtract line 12 from line 11. If zero or less, enter -0- |
+| `f1_30[0]` | `topmostSubform[0].Page1[0].f1_30[0]` | 504.00, 239.97, 576.00, 251.97 | 14 | Income limitation. Multiply line 13 by 20% (0.20) |
+| `f1_31[0]` | `topmostSubform[0].Page1[0].f1_31[0]` | 504.00, 215.97, 576.00, 227.97 | 15 | Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter this am |
+| `f1_32[0]` | `topmostSubform[0].Page1[0].f1_32[0]` | 507.00, 203.97, 573.00, 215.97 | 16 | Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter |
+| `f1_33[0]` | `topmostSubform[0].Page1[0].f1_33[0]` | 507.00, 179.97, 573.00, 191.97 | 17 | Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater th |
