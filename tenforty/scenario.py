@@ -464,6 +464,15 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             "silently corrected to 0 — it is refused instead."
         )
 
+    if cfg.self_employed_health_insurance_deduction < 0:
+        raise ValueError(
+            "Scenario config field `self_employed_health_insurance_deduction` "
+            "must be >= 0. The filer's stated self-employed health-insurance "
+            "deduction (Schedule 1 line 17) is carried through verbatim "
+            "(never computed or clamped), so a negative value cannot be "
+            "silently corrected to 0 — it is refused instead."
+        )
+
     params = load_federal_params(cfg.year)
     if cfg.charitable_cash_nonitemizer and params.nonitemizer_charitable_cap is None:
         raise ValueError(
