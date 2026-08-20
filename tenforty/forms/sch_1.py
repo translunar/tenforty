@@ -99,12 +99,18 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     hsa_deduction_line_13 = 0
     self_employment_tax_deduction_line_15 = 0
     sep_simple_keogh_line_16 = 0
-    # Hardcoded 0. If this ever becomes nonzero, the SE-health x PTC guard in
-    # forms/f1040_spine.py (at the sch_1_line_17_se_health read) raises
-    # NotImplementedError when a Form 1095-A is present, because the PTC and
-    # the SE-health deduction are circularly dependent and the Rev. Proc.
-    # 2014-41 iterative reconciliation is unmodeled here.
-    self_employed_health_line_17 = 0
+    # Verbatim passthrough of the filer's stated self-employed
+    # health-insurance deduction (input channel; no §162(l) limit math is
+    # applied here — premium caps and S-corp >2%-shareholder rules are out of
+    # scope). Refused at load if negative (see scenario._validate_scenario_config).
+    # When this is nonzero WHILE a Form 1095-A is present, the SE-health x PTC
+    # guard in forms/f1040_spine.py (at the sch_1_line_17_se_health read) raises
+    # NotImplementedError, because the PTC and the SE-health deduction are
+    # circularly dependent and the Rev. Proc. 2014-41 iterative reconciliation
+    # is unmodeled here.
+    self_employed_health_line_17 = (
+        scenario.config.self_employed_health_insurance_deduction
+    )
     penalty_early_withdrawal_line_18 = 0
     alimony_paid_line_19a = 0
     ira_deduction_line_20 = 0
