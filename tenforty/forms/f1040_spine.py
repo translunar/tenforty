@@ -697,9 +697,10 @@ def compute_spine(
     sch_1_line_15_se_tax = sch_1.get("sch_1_line_15_se_tax", 0)
     sch_1_line_17_se_health = sch_1.get("sch_1_line_17_se_health", 0)
     # SE-HEALTH × PTC GUARD.
-    # The self-employed health-insurance deduction (Schedule 1 line 17) is
-    # currently hardcoded 0 at its source — see forms/sch_1.py, the
-    # `self_employed_health_line_17 = 0` assignment. If it ever becomes
+    # The self-employed health-insurance deduction (Schedule 1 line 17) now
+    # reads the input channel at its source — see forms/sch_1.py, which returns
+    # `scenario.config.self_employed_health_insurance_deduction`. Because that
+    # value can be nonzero, this precondition is REACHABLE. When line 17 is
     # nonzero WHILE a Form 1095-A is present, the Premium Tax Credit and the
     # SE-health deduction are mutually dependent (each feeds the other's
     # MAGI / limitation) and must be reconciled by the Rev. Proc. 2014-41
