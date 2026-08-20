@@ -21,7 +21,7 @@ from tenforty.forms.f1040_spine import compute_spine
 from tenforty.forms.sch_ca import compute as sch_ca_compute
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_1 import PdfSch1
-from tenforty.models import CA540Return, Scenario
+from tenforty.models import CA540Return, Form1095A, Form1095AMonth, Scenario
 from tenforty.params.federal import load
 from tenforty.scenario import load_scenario
 from tests.helpers import REPO_ROOT, make_simple_scenario, scope_out_attestation_defaults
@@ -217,6 +217,94 @@ class SeHealthPdfEmitRoundTripTests(unittest.TestCase):
                         read_back.get("/V"), str(_V),
                         f"{year}: line 17 did not round-trip",
                     )
+
+
+class SeHealthPtcGuardTests(unittest.TestCase):
+    """The SE-health × PTC refusal at f1040_spine.py became REACHABLE once the
+    Task-1 input channel let Schedule 1 line 17 go nonzero. When a nonzero
+    SE-health deduction and a Form 1095-A are BOTH present, the Premium Tax
+    Credit and the deduction are circularly dependent (Rev. Proc. 2014-41) and
+    that reconciliation is unmodeled, so the spine must fail closed.
+
+    Line 17 is driven nonzero VIA THE REAL CHANNEL — `sch_1.compute` reads
+    `scenario.config.self_employed_health_insurance_deduction`, then
+    `compute_spine` consumes its output — so these prove the channel reaches the
+    guard, not that a hand-fed dict trips it. A/B/C pin the guard to EXACTLY its
+    two-condition trigger:
+      A  V + 1095-A            -> RAISES (fails if the guard is removed)
+      B  V + no 1095-A         -> flows  (fails if the guard over-fires)
+      C  0 + 1095-A            -> flows  (fails if the guard fires on 1095-A alone)
+    """
+
+    @staticmethod
+    def _empty_1095a() -> Form1095A:
+        # The guard tests `scenario.form_1095a is not None`, so the month
+        # figures are immaterial; a zero-filled 12-month form is a valid,
+        # PRESENT 1095-A.
+        return Form1095A(months=tuple(Form1095AMonth() for _ in range(12)))
+
+    def _compute(self, se_health_value, *, with_1095a):
+        """Drive the real native-spine channel: sch_1.compute -> compute_spine.
+
+        Returns (sch_1_out, spine) so callers can confirm line 17's value came
+        from the channel. Raises out of compute_spine when the guard fires.
+        """
+        params = load(2025)
+        scenario = make_simple_scenario()  # single filer, no 1095-A by default
+        scenario.config.self_employed_health_insurance_deduction = se_health_value
+        if with_1095a:
+            scenario.form_1095a = self._empty_1095a()
+        sch_1_out = form_sch_1.compute(scenario, upstream={})
+        schedule_results = {
+            "sch_1": sch_1_out,
+            "sch_a": {"sch_a_line_17_total": 0},
+        }
+        spine = compute_spine(scenario, params, schedule_results)
+        return sch_1_out, spine
+
+    def test_A_guard_fires_via_real_channel(self):
+        """V + a Form 1095-A present -> NotImplementedError.
+
+        Falsifiable: delete the guard and compute returns normally, so this
+        assertRaises fails. The regex pins the Rev-Proc citation so a reworded
+        raise cannot silently pass."""
+        params = load(2025)
+        scenario = make_simple_scenario()
+        scenario.config.self_employed_health_insurance_deduction = _V
+        scenario.form_1095a = self._empty_1095a()
+        # Line 17 is genuinely nonzero coming OUT of the channel, not hand-fed.
+        sch_1_out = form_sch_1.compute(scenario, upstream={})
+        self.assertEqual(sch_1_out["sch_1_line_17_se_health"], _V)
+        schedule_results = {
+            "sch_1": sch_1_out,
+            "sch_a": {"sch_a_line_17_total": 0},
+        }
+        with self.assertRaisesRegex(NotImplementedError, r"2014-41"):
+            compute_spine(scenario, params, schedule_results)
+
+    def test_B_guard_does_not_over_fire_without_1095a(self):
+        """V but NO Form 1095-A -> no raise, and the deduction flows (AGI down
+        by exactly V). Falsifiable: an over-firing guard (one that dropped the
+        `scenario.form_1095a is not None` condition) would raise here."""
+        sch_1_zero, spine_zero = self._compute(0.0, with_1095a=False)
+        sch_1_v, spine_v = self._compute(_V, with_1095a=False)
+
+        # The field really moved line 17 through the channel.
+        self.assertEqual(sch_1_zero["sch_1_line_17_se_health"], 0)
+        self.assertEqual(sch_1_v["sch_1_line_17_se_health"], _V)
+        # The common case (and Juno's motivating no-1095-A case) is not blocked;
+        # the deduction lowers AGI by exactly V.
+        self.assertEqual(spine_v["agi"], spine_zero["agi"] - _V)
+
+    def test_C_guard_does_not_fire_on_1095a_alone(self):
+        """Line 17 = 0 WITH a Form 1095-A present -> no raise. Falsifiable: a
+        guard that fired on the 1095-A alone (dropping the nonzero-line-17
+        condition) would raise here. Confirms the refusal needs BOTH conditions."""
+        sch_1_out, spine = self._compute(0.0, with_1095a=True)
+        # Precondition: line 17 is genuinely 0 through the channel, and a 1095-A
+        # is present — the exact shape that must NOT trip the guard.
+        self.assertEqual(sch_1_out["sch_1_line_17_se_health"], 0)
+        self.assertIsNotNone(spine)
 
 
 if __name__ == "__main__":
