@@ -45,8 +45,10 @@ Out of scope (explicit, each with a refusal or a note):
 - Multiple 1095-A forms for one year — refusal (v1 accepts exactly one
   policy's monthly rows).
 - SE-health-insurance/PTC iterative interaction (Rev. Proc. 2014-41):
-  the SE-health channel is itself ON HOLD; if a scenario ever claims both,
-  refuse loudly rather than compute either non-iteratively.
+  the SE-health deduction is now a user-input channel (Schedule 1 line 17);
+  when a scenario claims both it and a 1095-A the spine refuses loudly
+  (NotImplementedError) rather than compute either non-iteratively — the
+  Rev. Proc. 2014-41 reconciliation remains unmodeled.
 - California FTB 3849/3895 state-subsidy reconciliation: dead program
   (2020–2021 only), and the user's own 3895 shows zero state subsidy every
   month — nothing to reconcile. CPA-awareness note only.

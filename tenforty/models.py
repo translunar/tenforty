@@ -470,6 +470,12 @@ class TaxReturnConfig:
     # existed) — never silently capped or clamped. The field>cap and
     # itemizer-status guards are compute-time concerns handled elsewhere.
     charitable_cash_nonitemizer: float = 0.0
+    # Filer's stated self-employed health-insurance deduction (Schedule 1
+    # line 17). Verbatim passthrough: carried through exactly as supplied,
+    # never computed, capped, or clamped. A negative value is refused at load
+    # time, not silently set to 0. v1 is an INPUT CHANNEL — the §162(l) limit
+    # math (premium caps, S-corp >2%-shareholder rules) is NOT modeled here.
+    self_employed_health_insurance_deduction: float = 0.0
 
     def __post_init__(self) -> None:
         if isinstance(self.filing_status, str):

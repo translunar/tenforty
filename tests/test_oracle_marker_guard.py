@@ -18,7 +18,14 @@ TESTS_DIR = REPO_ROOT / "tests"
 # Files that reference a soffice/engine entry-point but FULLY MOCK it (no real
 # soffice), so they are legitimately NOT oracle-gated. Keep this list minimal
 # and justified.
-_MOCKED_ENGINE_ALLOWLIST = {"test_oracle_engine.py"}  # patches subprocess.run; no real soffice
+_MOCKED_ENGINE_ALLOWLIST = {
+    "test_oracle_engine.py",  # patches subprocess.run; no real soffice
+    # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
+    # at the top of _compute_1040_via_workbook, before any engine call. The
+    # "fires" test raises there; the "field=0" test mocks orch.engine.compute
+    # with a sentinel side_effect, so no real soffice is ever invoked.
+    "test_se_health_workbook_guard.py",
+}
 
 
 def _has_oracle_mark(obj) -> bool:
