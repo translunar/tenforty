@@ -1015,6 +1015,34 @@ class ReturnOrchestrator:
         Remains reachable as a test-only oracle after the cutover task
         repoints _compute_1040_pipeline at the native spine.
         """
+        # FAIL-CLOSED GUARD — deferred ticket (dd) (the SE-health
+        # workbook-input-wiring ticket in the tenforty series). The native
+        # single-filer spine (Task 1) honors
+        # config.self_employed_health_insurance_deduction (Schedule 1 line 17),
+        # but this XLSX workbook path has NO INPUTS entry for it (the wiring is
+        # deferred under (dd) — a per-year named-range asymmetry makes it unsafe
+        # off the critical path; the ledger holds the recon). Without this guard
+        # a workbook-path return carrying the deduction would compute line 17 as
+        # 0 and silently overstate AGI. Refuse loudly rather than emit a wrong
+        # (too-high) number. There is NO acknowledge-and-proceed (that would
+        # fail-open into a wrong number — the U-1 anti-pattern): the field is
+        # honored ONLY on the native single-filer path, and the message points
+        # the user there.
+        if effective_scenario.config.self_employed_health_insurance_deduction:
+            raise NotImplementedError(
+                "The self-employed health-insurance deduction (Schedule 1 "
+                "line 17) is not wired into the XLSX workbook compute path, so "
+                "a workbook-path return carrying it would silently drop the "
+                "deduction and overstate AGI. There is no acknowledge-and-"
+                "proceed: this deduction is honored only on the NATIVE "
+                "single-filer 1040 spine. A workbook-path scenario (non-single "
+                "or EIC-possible filer) with "
+                "self_employed_health_insurance_deduction set cannot be "
+                "computed until the deferred workbook input wiring (ticket "
+                "(dd)) lands. Use the native single-filer path, which supports "
+                "the field."
+            )
+
         year = effective_scenario.config.year
         spreadsheet = self.spreadsheets_dir / "federal" / str(year) / "1040.xlsx"
         if not spreadsheet.exists():
