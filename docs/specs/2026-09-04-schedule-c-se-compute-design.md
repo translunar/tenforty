@@ -99,3 +99,21 @@ printable line, so the mapping unit adds no compute changes.
   (neuter the branch, watch the test go red).
 - Wage-base coordination gets explicit cases: wages below, straddling,
   and above the base; the <$400 threshold gets a boundary case.
+
+## Errata (2026-09-04 plan review)
+
+- **§1**: `schedule_c_businesses` attaches to `Scenario` (loaded via
+  `_FORM_REGISTRY`), not `TaxReturnConfig` — every received-document list
+  in the codebase lives at Scenario level; the spec's original placement
+  was wrong.
+- **§3**: no new params module — `ss_wage_base` already exists in
+  `FederalParams` for all five years.
+- **Refusals, two additions**: (a) a business whose Schedule C line 31 is
+  **negative** (net loss) refuses — at-risk limitation (line 32), QBI
+  loss netting/carryforward, and excess-business-loss rules are
+  unmodeled, and a silently-floored loss would corrupt both AGI and QBI;
+  (b) **two or more businesses combined with a nonzero SE-health
+  deduction** refuses — §162(l)'s limit is the earned income of the
+  business under which the plan is established, and plan-establishment
+  designation is unmodeled, so the aggregate limit is only lawful in the
+  single-business case.
