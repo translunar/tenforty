@@ -10,12 +10,12 @@ from tenforty.forms import f4868 as form_4868
 from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms import sch_a as form_sch_a
-from tenforty.forms import sch_c as form_sch_c
-from tenforty.forms import sch_se as form_sch_se
 from tenforty.forms import sch_b as form_sch_b
+from tenforty.forms import sch_c as form_sch_c
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
+from tenforty.forms import sch_se as form_sch_se
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8962 as form_f8962
