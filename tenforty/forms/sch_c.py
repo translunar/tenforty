@@ -14,6 +14,31 @@ the unmodeled math, so fail closed rather than silently drop them.
 from tenforty.models import Scenario, ScheduleCBusiness
 from tenforty.rounding import irs_round
 
+# The 12 Part II expense categories (Schedule C lines 8-27a) a P&L export
+# covers. SINGLE SOURCE OF TRUTH: line_28 (below) sums exactly these, and
+# `net_profit_estimate` subtracts exactly these -- keeping the total and the
+# routing-gate estimate from drifting apart (the partial-total failure this
+# tuple prevents from recurring).
+_EXPENSE_FIELDS = (
+    "advertising", "insurance", "legal_professional", "office_expense",
+    "rent_lease", "supplies", "taxes_licenses", "travel", "deductible_meals",
+    "utilities", "wages", "other_expenses",
+)
+
+
+def net_profit_estimate(biz: ScheduleCBusiness) -> float:
+    """Cheap net-profit estimate for the EIC-scope routing gate.
+
+    Returns ``gross_receipts - sum(the 12 Part II expense categories)``. This is
+    a NON-RAISING pre-compute estimate: it has NO refusal guards (no net-loss /
+    unmodeled-feature checks) BECAUSE it runs BEFORE ``compute`` fires those
+    refusals -- the routing gate must be able to estimate income for any input,
+    including one that ``compute`` will later refuse. Uses `_EXPENSE_FIELDS` so
+    the estimate can never drift from the line-28 total.
+    """
+    return biz.gross_receipts - sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
+
+
 _REFUSED_AMOUNT_FIELDS = (
     ("cost_of_goods_sold", "Part III cost of goods sold"),
     ("inventory", "Part III inventory"),
@@ -46,10 +71,7 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
     # refused above, so both are 0 here by construction).
     line_7 = biz.gross_receipts
-    line_28 = (biz.advertising + biz.insurance + biz.legal_professional
-               + biz.office_expense + biz.rent_lease + biz.supplies
-               + biz.taxes_licenses + biz.travel + biz.deductible_meals
-               + biz.utilities + biz.wages + biz.other_expenses)
+    line_28 = sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
     line_29 = line_7 - line_28           # tentative profit
     line_31 = line_29                    # line 30 home office refused -> 0
     if line_31 < 0:

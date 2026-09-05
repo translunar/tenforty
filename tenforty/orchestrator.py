@@ -647,6 +647,17 @@ class ReturnOrchestrator:
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
+            # Schedule C net profit — the income component this filer class lives
+            # on. The per-business max(0, ...) is REDUNDANT-BY-CONSTRUCTION (a
+            # net-loss business is refused upstream in sch_c.compute, so no
+            # negative reaches the native spine), but it is correct to KEEP: this
+            # estimate runs BEFORE those refusals fire (it is a pre-compute gate),
+            # so a loss could appear here. Do NOT "simplify" it into a loss-
+            # subtracting estimate — the clamp keeps the estimate MONOTONICALLY
+            # RISING (like every other component above), so a scenario can only
+            # ever move TOWARD the native spine, never away from it.
+            + sum(max(0.0, form_sch_c.net_profit_estimate(biz))
+                  for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
