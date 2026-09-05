@@ -24,7 +24,35 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     net_cap_gain = float(f1040.get("net_capital_gain", 0))
     threshold = params.qbi_threshold[scenario.config.filing_status.value]
 
-    qbi_total = fanout.qbi_aggregate
+    # Schedule C QBI component (aggregated, computed once — plan D5). Each
+    # sole-proprietor business contributes QBI = net profit less the allocable
+    # §164(f) half-SE-tax deduction and the §162(l) SE-health deduction (both
+    # reduce QBI); because Form 8995 aggregates every component before the 20%
+    # limit, the aggregate Schedule C QBI equals Σ(net profit) − (total
+    # half-SE-tax) − (SE-health), which is what we add here alongside the K-1
+    # fanout's qbi_aggregate.
+    #
+    # The max(0, …) floor is belt-and-suspenders / near-unreachable by
+    # construction: Task 2 (forms/sch_c.py) refuses any business whose line 31
+    # net profit < 0, so sch_c_net ≥ 0, and half_se/se_health are small,
+    # separately-bounded reductions — the base stays ≥ 0 through today's guard
+    # ordering. The floor is a defensive boundary contract on `upstream` (any
+    # caller could hand-populate sch_c/sch_se), NOT live loss-handling; loss
+    # handling is refused upstream in Task 2.
+    #
+    # D5 + D4 — SE-health attribution is safe: subtracting the WHOLE
+    # scenario-level self_employed_health_insurance_deduction from this single
+    # aggregated Schedule C component is correct precisely because Task 7's
+    # §162(l) guard refuses whenever SE-health is nonzero AND there are two or
+    # more businesses. So a nonzero se_health here always attributes to exactly
+    # one business — there is no multi-business allocation to get wrong.
+    sch_c = upstream.get("sch_c", {})
+    sch_se = upstream.get("sch_se", {})
+    sch_c_net = float(sch_c.get("sch_c_line_31_net_profit_total", 0.0))
+    half_se = float(sch_se.get("sch_se_line_13_half_deduction", 0.0))
+    se_health = float(scenario.config.self_employed_health_insurance_deduction)
+    sch_c_qbi = max(0.0, sch_c_net - half_se - se_health)
+    qbi_total = fanout.qbi_aggregate + sch_c_qbi
     # 1040 line 3a TOTAL (1099-DIV + K-1). Previously this read
     # fanout.qualified_dividends_aggregate, which carries ONLY the K-1
     # component — so line 12 omitted every 1099-DIV qualified dividend and
