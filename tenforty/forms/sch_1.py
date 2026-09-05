@@ -35,6 +35,44 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     params = load_federal_params(scenario.config.year)
     sch_e = upstream.get("sch_e", {})
 
+    # §162(l) self-employed health-insurance refusals (team-lead D4 ruling).
+    # §162(l)'s deduction is limited to the EARNED INCOME of the business under
+    # which the health plan is established; plan-establishment designation is
+    # UNMODELED in v1. So the earned-income limit is lawful only with exactly one
+    # Schedule C business, and the multi-business case refuses outright. This
+    # guard is also what makes Task 6's QBI single-business attribution TRUE: a
+    # nonzero SE-health deduction always attributes to exactly one business,
+    # because the multi-business case never reaches QBI. (The SE-health x PTC
+    # guard in forms/f1040_spine.py is a DIFFERENT, orthogonal refusal — keep
+    # both.)
+    businesses = scenario.schedule_c_businesses
+    se_health = scenario.config.self_employed_health_insurance_deduction
+    if businesses and se_health:
+        net = upstream.get("sch_c", {}).get("sch_c_line_31_net_profit_total", 0)
+        half_se = upstream.get("sch_se", {}).get(
+            "sch_se_line_13_half_deduction", 0
+        )
+        if len(businesses) >= 2:
+            raise NotImplementedError(
+                f"Self-employed health-insurance deduction ({se_health:.0f}) is "
+                f"claimed with {len(businesses)} Schedule C businesses. The "
+                f"§162(l) deduction is limited to the earned income of the "
+                f"business under which the plan is ESTABLISHED, and tenforty v1 "
+                f"does not model plan-establishment designation across multiple "
+                f"businesses. File by hand or use a single Schedule C business."
+            )
+        limit = max(0, net - half_se)  # §162(l)(2)(A) earned-income limit
+        if se_health > limit:
+            raise NotImplementedError(
+                f"Self-employed health-insurance deduction ({se_health:.0f}) "
+                f"exceeds the §162(l) earned-income limit ({limit:.0f} = "
+                f"Schedule C net profit {net:.0f} − half-SE-tax deduction "
+                f"{half_se:.0f}). tenforty v1 does not model the split: the "
+                f"allowed portion is limited to the earned income of the "
+                f"business, and the excess moves to Schedule A medical. File by "
+                f"hand or reduce the deduction to the limit."
+            )
+
     refund_total = sum(g.state_tax_refund for g in scenario.form1099_g)
     if not scenario.config.prior_year_itemized or refund_total == 0:
         taxable_refunds_line_1 = 0
