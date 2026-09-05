@@ -4,13 +4,17 @@ Native-Python compute. Aggregates additional-income categories from
 upstream form results (primarily Sch E rental income) and
 adjustment-to-income categories from scenario fields.
 
-V1 scope: line 5 (rental real estate, royalties, partnerships, S corps)
-is the only populated additional-income line. Other Part I categories
-(business income, unemployment, farm income, etc.) and all of Part II
-(adjustments) are zero in v1 — the compute function writes 0 to those
-keys so the PDF fills cleanly. When a future scenario drives one of those
-lines, populate the value here; line 10 and line 26 sums already reference
-the variables by name, so the wiring is a one-line edit.
+V1 scope: line 5 (rental real estate, royalties, partnerships, S corps),
+line 3 (Schedule C business income, from upstream["sch_c"]), and line 15
+(deductible half of self-employment tax, from upstream["sch_se"]) are the
+populated income/adjustment lines from schedule computes. Other Part I
+categories (unemployment/1099-G, farm income, etc.) and the remaining Part II
+adjustments are zero in v1 — the compute function writes 0 to those keys so
+the PDF fills cleanly. With no Schedule C business, upstream["sch_c"] and
+upstream["sch_se"] are empty, so lines 3 and 15 default to 0 and AGI is
+unchanged. When a future scenario drives one of the still-zero lines,
+populate the value here; line 10 and line 26 sums already reference the
+variables by name, so the wiring is a one-line edit.
 """
 
 from tenforty.params.federal import load as load_federal_params
@@ -61,7 +65,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             min(refund_total, recovery_cap, benefit)
         )
     alimony_line_2a = 0
-    business_income_line_3 = 0
+    # Line 3: Schedule C aggregate net profit (Σ line 31), from upstream.
+    # Empty when no business → defaults to 0 (AGI unchanged).
+    business_income_line_3 = upstream.get("sch_c", {}).get(
+        "sch_c_line_31_net_profit_total", 0
+    )
     capital_gain_line_4 = 0
     # Sch 1 line 5: rental real estate, royalties, partnerships, S corps.
     # Sources from both Sch E parts:
@@ -97,7 +105,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     educator_expenses_line_11 = 0
     hsa_deduction_line_13 = 0
-    self_employment_tax_deduction_line_15 = 0
+    # Line 15: deductible half of self-employment tax (Sch SE line 13), from
+    # upstream. Empty when no business → defaults to 0 (AGI unchanged).
+    self_employment_tax_deduction_line_15 = upstream.get("sch_se", {}).get(
+        "sch_se_line_13_half_deduction", 0
+    )
     sep_simple_keogh_line_16 = 0
     # Verbatim passthrough of the filer's stated self-employed
     # health-insurance deduction (input channel; no §162(l) limit math is

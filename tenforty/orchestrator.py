@@ -10,6 +10,8 @@ from tenforty.forms import f4868 as form_4868
 from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms import sch_a as form_sch_a
+from tenforty.forms import sch_c as form_sch_c
+from tenforty.forms import sch_se as form_sch_se
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
@@ -849,9 +851,24 @@ class ReturnOrchestrator:
         sch_e_part_i = form_sch_e.compute(effective_scenario, upstream={})
         sch_e_combined = {**sch_e_part_i, **part_ii_fields}
 
-        # --- Step 4: Sch 1 (needs sch_e) ---
+        # --- Step 3b: Sch C (net profit) then Sch SE (self-employment tax) ---
+        # sch_c is a pure leaf (upstream={}); sch_se consumes sch_c net profit.
+        # Both feed Schedule 1: line 3 (business income) ← sch_c net profit,
+        # line 15 (half-SE-tax deduction) ← sch_se line 13. With no business,
+        # both return {} → the Sch 1 reads default 0 → AGI unchanged.
+        sch_c_results = form_sch_c.compute(effective_scenario, upstream={})
+        sch_se_results = form_sch_se.compute(
+            effective_scenario, upstream={"sch_c": sch_c_results},
+        )
+
+        # --- Step 4: Sch 1 (needs sch_e, sch_c, sch_se) ---
         sch_1_results = form_sch_1.compute(
-            effective_scenario, upstream={"sch_e": sch_e_combined},
+            effective_scenario,
+            upstream={
+                "sch_e": sch_e_combined,
+                "sch_c": sch_c_results,
+                "sch_se": sch_se_results,
+            },
         )
 
         # --- Step 5: Sch D (needs k1_fanout + f8949) ---
@@ -986,8 +1003,10 @@ class ReturnOrchestrator:
         results: dict[str, dict] = {
             "sch_1": sch_1_results,
             "sch_a": sch_a_results,
+            "sch_c": sch_c_results,
             "sch_d": sch_d_results,
             "sch_e": sch_e_combined,
+            "sch_se": sch_se_results,
             "f8959": f8959_results,
             "f8995": f8995_results,
             "f8582": f8582_results,
