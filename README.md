@@ -149,7 +149,7 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 ### Not yet implemented
 
 - **Form 6251** (federal AMT). Not yet modeled. A scenario that would owe AMT will silently underreport — to be addressed by adding the form to the data model and compute pipeline.
-- **Schedule C** (self-employment). Not yet modeled. Self-employment income flows have no representation in the `Scenario` schema.
+- **Schedule C / Schedule SE PDF emission** (sole-proprietor self-employment). The native COMPUTE path is modeled: business net profit flows to Schedule 1 line 3, self-employment tax (Schedule SE) to Schedule 2 line 4 with the deductible half on Schedule 1 line 15, and the QBI component to Form 8995 — `schedule_c_businesses` is on the `Scenario` schema. What remains is PDF EMISSION: emitting a return that has a Schedule C business currently fails closed (raises rather than print a wrong-zero artifact), pending a follow-on mapping unit. Also unmodeled and refused: cost of goods sold / inventory, depreciation, home office, vehicle, depletion, a net loss, and multi-business §162(l) health-insurance allocation.
 - **Form 8962** (Premium Tax Credit). Marketplace health insurance reconciliation.
 - **`.fods` worksheet generator** for user-friendly editing of California-vs-federal divergences (one tab per Sch CA line of additions/subtractions). Worksheet rows currently authored manually in YAML.
 - **Additional state returns** (every state besides California).
