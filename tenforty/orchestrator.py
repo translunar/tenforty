@@ -1254,6 +1254,27 @@ class ReturnOrchestrator:
         are deferred to the caller. The federal EMIT tests are the regression
         guard for this extraction.
         """
+        # Fail closed on the PDF EMIT path for Schedule C returns. This method is
+        # the SHARED chokepoint for both public emit entries (emit_pdfs and
+        # run_amendment_packet); the native COMPUTE path (compute_federal) does
+        # NOT route through here, so the numbers are still produced correctly.
+        # The emit path does not yet thread sch_c/sch_se into the sch_1 / f8959 /
+        # f8995 fill computes (deferred tickets (ee)/(ff)), so an emitted return
+        # would silently disagree with the compute — refuse until the PDF-mapping
+        # follow-on unit lands rather than print a wrong-zero artifact.
+        if scenario.schedule_c_businesses:
+            raise NotImplementedError(
+                "PDF emission is not supported for returns with a Schedule C business. "
+                "tenforty computes Schedule C net profit (Sch 1 line 3), the half-SE-tax "
+                "deduction (line 15), self-employment tax, and the Schedule C QBI component on "
+                "the NATIVE compute path (compute_federal), but the PDF EMIT path does not yet "
+                "thread sch_c/sch_se into the sch_1 / f8959 / f8995 fill computes (deferred "
+                "tickets (ee)/(ff)) — so an emitted 1040 / Schedule 1 / Form 8995 would silently "
+                "disagree with the compute (line 3/15 = 0, QBI omitting the Schedule C "
+                "component). The Schedule C/SE PDF-mapping follow-on unit resolves this. Use "
+                "compute_federal for the numbers; file the PDF by hand until the mapping unit lands."
+            )
+
         year = scenario.config.year
         specs: list[_FederalFormSpec] = []
 
