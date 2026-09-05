@@ -25,6 +25,11 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute
     # with a sentinel side_effect, so no real soffice is ever invoked.
     "test_se_health_workbook_guard.py",
+    # Schedule C / SE workbook-path fail-closed guard: the guard raises at the
+    # top of _compute_1040_via_workbook, before any engine call. The "fires"
+    # test raises there; the "no business" test mocks orch.engine.compute with
+    # a sentinel side_effect, so no real soffice is ever invoked.
+    "test_sch_c_workbook_guard.py",
 }
 
 
