@@ -1043,6 +1043,29 @@ class ReturnOrchestrator:
         Remains reachable as a test-only oracle after the cutover task
         repoints _compute_1040_pipeline at the native spine.
         """
+        # FAIL-CLOSED GUARD — Schedule C / Schedule SE on the workbook path.
+        # The native single-filer spine wires Schedule C (net profit) and
+        # Schedule SE (self-employment tax) into the 1040. This XLSX workbook
+        # path (taken by non-single / EIC-possible filers) does NOT wire them:
+        # a workbook-path return carrying a Schedule C business would silently
+        # emit a 1040 WITHOUT the business income and SE tax, understating both
+        # income and liability. There is NO acknowledge-and-proceed (that would
+        # fail-open into a wrong number — the U-1 anti-pattern): Schedule C / SE
+        # are honored ONLY on the native single-filer spine, and the message
+        # points the user there. Wiring Schedule C into the workbook path is a
+        # deferred follow-on; this task FAILS CLOSED, it does not implement it.
+        if effective_scenario.schedule_c_businesses:
+            raise NotImplementedError(
+                "Schedule C / self-employment income is set on a scenario that "
+                "routes to the workbook (XLSX) compute path (non-single filer "
+                "or EIC-eligible). tenforty has NOT wired Schedule C / Schedule "
+                "SE into the workbook path; they are supported only on the "
+                "NATIVE single-filer 1040 spine. There is no acknowledge-and-"
+                "proceed — the workbook would silently emit a return WITHOUT "
+                "the business income and SE tax. Use a single-filer scenario or "
+                "file by hand."
+            )
+
         # FAIL-CLOSED GUARD — deferred ticket (dd) (the SE-health
         # workbook-input-wiring ticket in the tenforty series). The native
         # single-filer spine (Task 1) honors
