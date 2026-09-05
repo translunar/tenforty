@@ -52,8 +52,14 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_6 = max(0.0, line_4 - line_5)
     line_7 = line_6 * _ADDITIONAL_MEDICARE_RATE
 
-    # Part II — self-employment (v1: zero)
-    line_8 = 0.0
+    # Part II — self-employment. Line 8 is Schedule SE line 6 net earnings
+    # (the additional-Medicare SE base), threaded in via `upstream["sch_se"]`.
+    # Absent a Schedule SE (wages-only scenarios, and the workbook path which
+    # never receives sch_se) the base defaults to 0 — Part II stays zero,
+    # unchanged from the prior wages-only behavior.
+    line_8 = upstream.get("sch_se", {}).get(
+        "sch_se_line_6_total_net_earnings", 0.0
+    )
     line_9 = threshold
     line_10 = line_4
     line_11 = max(0.0, line_9 - line_10)

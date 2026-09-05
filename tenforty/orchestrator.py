@@ -874,8 +874,12 @@ class ReturnOrchestrator:
         # --- Step 5: Sch D (needs k1_fanout + f8949) ---
         sch_d_results = form_sch_d.compute(effective_scenario, upstream=upstream)
 
-        # --- Step 6: F8959 (standalone W-2 wages only) ---
-        f8959_results = form_8959.compute(effective_scenario, upstream={})
+        # --- Step 6: F8959 (W-2 wages + Schedule SE net earnings for Part II) ---
+        # Runs after Step 3b (sch_se_results), so Part II line 8 sees the SE
+        # base. No business → sch_se_results returns {} → Part II stays 0.
+        f8959_results = form_8959.compute(
+            effective_scenario, upstream={"sch_se": sch_se_results},
+        )
 
         # --- Step 7: AGI pre-compute stub (shared preamble) ---
         # F8995 and F8582 need upstream["f1040"]. Build from the SHARED income
