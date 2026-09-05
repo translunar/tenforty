@@ -991,7 +991,12 @@ class ReturnOrchestrator:
         # --- Step 11: F8995 (needs k1_fanout + f1040 stub) ---
         f8995_results = form_f8995.compute(
             effective_scenario,
-            upstream={"k1_fanout": k1_fanout, "f1040": f1040_stub},
+            upstream={
+                "k1_fanout": k1_fanout,
+                "f1040": f1040_stub,
+                "sch_c": sch_c_results,
+                "sch_se": sch_se_results,
+            },
         )
 
         # --- Step 12: F8582 (needs k1_fanout + sch_e + f1040 stub) ---
