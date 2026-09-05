@@ -11,9 +11,11 @@ from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
+from tenforty.forms import sch_c as form_sch_c
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
+from tenforty.forms import sch_se as form_sch_se
 from tenforty.forms import f4562 as form_4562
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8962 as form_f8962
@@ -645,6 +647,17 @@ class ReturnOrchestrator:
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
+            # Schedule C net profit — the income component this filer class lives
+            # on. The per-business max(0, ...) is REDUNDANT-BY-CONSTRUCTION (a
+            # net-loss business is refused upstream in sch_c.compute, so no
+            # negative reaches the native spine), but it is correct to KEEP: this
+            # estimate runs BEFORE those refusals fire (it is a pre-compute gate),
+            # so a loss could appear here. Do NOT "simplify" it into a loss-
+            # subtracting estimate — the clamp keeps the estimate MONOTONICALLY
+            # RISING (like every other component above), so a scenario can only
+            # ever move TOWARD the native spine, never away from it.
+            + sum(max(0.0, form_sch_c.net_profit_estimate(biz))
+                  for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
@@ -849,16 +862,35 @@ class ReturnOrchestrator:
         sch_e_part_i = form_sch_e.compute(effective_scenario, upstream={})
         sch_e_combined = {**sch_e_part_i, **part_ii_fields}
 
-        # --- Step 4: Sch 1 (needs sch_e) ---
+        # --- Step 3b: Sch C (net profit) then Sch SE (self-employment tax) ---
+        # sch_c is a pure leaf (upstream={}); sch_se consumes sch_c net profit.
+        # Both feed Schedule 1: line 3 (business income) ← sch_c net profit,
+        # line 15 (half-SE-tax deduction) ← sch_se line 13. With no business,
+        # both return {} → the Sch 1 reads default 0 → AGI unchanged.
+        sch_c_results = form_sch_c.compute(effective_scenario, upstream={})
+        sch_se_results = form_sch_se.compute(
+            effective_scenario, upstream={"sch_c": sch_c_results},
+        )
+
+        # --- Step 4: Sch 1 (needs sch_e, sch_c, sch_se) ---
         sch_1_results = form_sch_1.compute(
-            effective_scenario, upstream={"sch_e": sch_e_combined},
+            effective_scenario,
+            upstream={
+                "sch_e": sch_e_combined,
+                "sch_c": sch_c_results,
+                "sch_se": sch_se_results,
+            },
         )
 
         # --- Step 5: Sch D (needs k1_fanout + f8949) ---
         sch_d_results = form_sch_d.compute(effective_scenario, upstream=upstream)
 
-        # --- Step 6: F8959 (standalone W-2 wages only) ---
-        f8959_results = form_8959.compute(effective_scenario, upstream={})
+        # --- Step 6: F8959 (W-2 wages + Schedule SE net earnings for Part II) ---
+        # Runs after Step 3b (sch_se_results), so Part II line 8 sees the SE
+        # base. No business → sch_se_results returns {} → Part II stays 0.
+        f8959_results = form_8959.compute(
+            effective_scenario, upstream={"sch_se": sch_se_results},
+        )
 
         # --- Step 7: AGI pre-compute stub (shared preamble) ---
         # F8995 and F8582 need upstream["f1040"]. Build from the SHARED income
@@ -970,7 +1002,12 @@ class ReturnOrchestrator:
         # --- Step 11: F8995 (needs k1_fanout + f1040 stub) ---
         f8995_results = form_f8995.compute(
             effective_scenario,
-            upstream={"k1_fanout": k1_fanout, "f1040": f1040_stub},
+            upstream={
+                "k1_fanout": k1_fanout,
+                "f1040": f1040_stub,
+                "sch_c": sch_c_results,
+                "sch_se": sch_se_results,
+            },
         )
 
         # --- Step 12: F8582 (needs k1_fanout + sch_e + f1040 stub) ---
@@ -986,8 +1023,10 @@ class ReturnOrchestrator:
         results: dict[str, dict] = {
             "sch_1": sch_1_results,
             "sch_a": sch_a_results,
+            "sch_c": sch_c_results,
             "sch_d": sch_d_results,
             "sch_e": sch_e_combined,
+            "sch_se": sch_se_results,
             "f8959": f8959_results,
             "f8995": f8995_results,
             "f8582": f8582_results,
@@ -1015,6 +1054,29 @@ class ReturnOrchestrator:
         Remains reachable as a test-only oracle after the cutover task
         repoints _compute_1040_pipeline at the native spine.
         """
+        # FAIL-CLOSED GUARD — Schedule C / Schedule SE on the workbook path.
+        # The native single-filer spine wires Schedule C (net profit) and
+        # Schedule SE (self-employment tax) into the 1040. This XLSX workbook
+        # path (taken by non-single / EIC-possible filers) does NOT wire them:
+        # a workbook-path return carrying a Schedule C business would silently
+        # emit a 1040 WITHOUT the business income and SE tax, understating both
+        # income and liability. There is NO acknowledge-and-proceed (that would
+        # fail-open into a wrong number — the U-1 anti-pattern): Schedule C / SE
+        # are honored ONLY on the native single-filer spine, and the message
+        # points the user there. Wiring Schedule C into the workbook path is a
+        # deferred follow-on; this task FAILS CLOSED, it does not implement it.
+        if effective_scenario.schedule_c_businesses:
+            raise NotImplementedError(
+                "Schedule C / self-employment income is set on a scenario that "
+                "routes to the workbook (XLSX) compute path (non-single filer "
+                "or EIC-eligible). tenforty has NOT wired Schedule C / Schedule "
+                "SE into the workbook path; they are supported only on the "
+                "NATIVE single-filer 1040 spine. There is no acknowledge-and-"
+                "proceed — the workbook would silently emit a return WITHOUT "
+                "the business income and SE tax. Use a single-filer scenario or "
+                "file by hand."
+            )
+
         # FAIL-CLOSED GUARD — deferred ticket (dd) (the SE-health
         # workbook-input-wiring ticket in the tenforty series). The native
         # single-filer spine (Task 1) honors
@@ -1203,6 +1265,27 @@ class ReturnOrchestrator:
         are deferred to the caller. The federal EMIT tests are the regression
         guard for this extraction.
         """
+        # Fail closed on the PDF EMIT path for Schedule C returns. This method is
+        # the SHARED chokepoint for both public emit entries (emit_pdfs and
+        # run_amendment_packet); the native COMPUTE path (compute_federal) does
+        # NOT route through here, so the numbers are still produced correctly.
+        # The emit path does not yet thread sch_c/sch_se into the sch_1 / f8959 /
+        # f8995 fill computes (deferred tickets (ee)/(ff)), so an emitted return
+        # would silently disagree with the compute — refuse until the PDF-mapping
+        # follow-on unit lands rather than print a wrong-zero artifact.
+        if scenario.schedule_c_businesses:
+            raise NotImplementedError(
+                "PDF emission is not supported for returns with a Schedule C business. "
+                "tenforty computes Schedule C net profit (Sch 1 line 3), the half-SE-tax "
+                "deduction (line 15), self-employment tax, and the Schedule C QBI component on "
+                "the NATIVE compute path (compute_federal), but the PDF EMIT path does not yet "
+                "thread sch_c/sch_se into the sch_1 / f8959 / f8995 fill computes (deferred "
+                "tickets (ee)/(ff)) — so an emitted 1040 / Schedule 1 / Form 8995 would silently "
+                "disagree with the compute (line 3/15 = 0, QBI omitting the Schedule C "
+                "component). The Schedule C/SE PDF-mapping follow-on unit resolves this. Use "
+                "compute_federal for the numbers; file the PDF by hand until the mapping unit lands."
+            )
+
         year = scenario.config.year
         specs: list[_FederalFormSpec] = []
 

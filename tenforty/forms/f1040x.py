@@ -26,9 +26,13 @@ Three-column, SOURCED from spine keys:
   L7  nonrefundable credits   <- nonrefundable_credits (still guarded
                                   out-of-scope below; sourced explicitly so
                                   the printed L8 arithmetic holds)
-  L10 other taxes             <- f8959_tax_total (Sch 2 Part II total other
-                                  taxes; unmodeled Part II components, e.g.
-                                  NIIT/SE tax, remain guarded via other_taxes)
+  L10 other taxes             <- _modeled_other_taxes = f8959_tax_total
+                                  (Additional Medicare) + sch_se_line_12_se_tax
+                                  (SE tax) — the COMPLETE modeled Sch 2 Part II
+                                  total. A filed dict declaring an unaccountable
+                                  other_taxes figure (unmodeled NIIT, etc.) is
+                                  refused by _guard_other_taxes_reconciled, not a
+                                  blanket refusal.
   L12 withholding             <- federal_withheld
   L13 estimated tax payments  <- estimated_tax_payments (OPTIONAL, .get(...,
                                   0.0) on both columns — the federal spine's
@@ -77,9 +81,52 @@ REQUIRED_FILED_KEYS: tuple[str, ...] = (
 _OUT_OF_SCOPE_FILED_KEYS: dict[str, str] = {
     "schedule_1a_deduction": "line 4b (Schedule 1-A tips/overtime/car-loan/seniors)",
     "nonrefundable_credits": "line 7 (nonrefundable credits)",
-    "other_taxes": "line 10 (other taxes)",
     "earned_income_credit": "line 14 (earned income credit)",
 }
+
+# 1040-X line 10 (other taxes) is now SOURCED from the modeled Schedule 2 Part II
+# total (Additional Medicare + SE tax), so ``other_taxes`` is no longer a blanket
+# out-of-scope refusal. Instead, a filed dict that declares its own as-filed
+# ``other_taxes`` total is RECONCILED against tenforty's modeled components — a
+# discrepancy beyond a whole-dollar rounding tolerance refuses (see
+# ``_guard_other_taxes_reconciled``), naming both figures. This lets an amendment
+# that carries SE tax through Column C proceed while still refusing to silently
+# adopt an unaccountable filed other-taxes total (e.g. an unmodeled Form 8960 NIIT).
+_OTHER_TAXES_ROUNDING_TOL = 1.0  # whole-dollar reconciliation tolerance
+
+
+def _modeled_other_taxes(d: dict) -> float:
+    """Schedule 2 Part II total tenforty models: Additional Medicare + SE tax.
+
+    This is the COMPLETE modeled Part II total — Additional Medicare Tax
+    (``f8959_tax_total``, Sch 2 line 11) plus self-employment tax
+    (``sch_se_line_12_se_tax``, Sch 2 line 4) — and NOTHING else. NIIT (Form 8960,
+    Sch 2 line 12) is unmodeled on the native spine; a filed return carrying it is
+    caught by ``_guard_other_taxes_reconciled`` rather than silently absorbed."""
+    return d.get("f8959_tax_total", 0.0) + d.get("sch_se_line_12_se_tax", 0.0)
+
+
+def _guard_other_taxes_reconciled(filed: dict) -> None:
+    """Reconcile a filed dict's declared ``other_taxes`` against tenforty's
+    modeled Schedule 2 Part II components. Absent declaration → nothing to
+    reconcile (legacy filed dict). Present but mismatched beyond a whole-dollar
+    tolerance in EITHER direction (declared above OR below the modeled sum) →
+    refuse, naming both figures. Replaces the former blanket ``other_taxes``
+    out-of-scope refusal."""
+    declared = filed.get("other_taxes")
+    if declared is None:
+        return  # legacy filed dict / nothing declared → nothing to reconcile
+    modeled = _modeled_other_taxes(filed)
+    if abs(declared - modeled) > _OTHER_TAXES_ROUNDING_TOL:
+        raise OutOfScopeAmendmentError(
+            f"Filed return declares other taxes (1040-X line 10) = {declared}, but "
+            f"tenforty's modeled Schedule 2 Part II components (Additional Medicare "
+            f"{filed.get('f8959_tax_total', 0.0)} + self-employment tax "
+            f"{filed.get('sch_se_line_12_se_tax', 0.0)} = {modeled}) do not account "
+            f"for it beyond rounding. An unmodeled Part II item (e.g. Form 8960 NIIT) "
+            f"is present; tenforty cannot faithfully reproduce Column A. Refusing to "
+            f"silently adopt either figure."
+        )
 
 
 def _require_filed_keys(filed: dict) -> None:
@@ -153,6 +200,7 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     """
     _require_filed_keys(filed)
     _guard_out_of_scope(filed)
+    _guard_other_taxes_reconciled(filed)
     _guard_original_overpayment(filed, case)
 
     out: dict = {}
@@ -183,11 +231,14 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     a8 = a6 - a7
     c8 = c6 - c7
     _triple(out, "8", a8, c8)
-    # L10 other taxes = Schedule 2 Part II total (f8959 Additional Medicare
-    # Tax is the modeled component; unmodeled Part II components remain
-    # guarded via the other_taxes filed key).
-    a10 = filed.get("f8959_tax_total", 0.0)
-    c10 = corrected.get("f8959_tax_total", 0.0)
+    # L10 other taxes = Schedule 2 Part II total = Additional Medicare Tax
+    # (f8959_tax_total) + self-employment tax (sch_se_line_12_se_tax), the
+    # COMPLETE modeled Part II total. Sourced from _modeled_other_taxes so it is
+    # provably the total (not a partial); a filed return declaring an
+    # unaccountable other-taxes figure (e.g. unmodeled NIIT) is refused by
+    # _guard_other_taxes_reconciled above rather than a blanket refusal.
+    a10 = _modeled_other_taxes(filed)
+    c10 = _modeled_other_taxes(corrected)
     _triple(out, "10", a10, c10)
     # L11 = L8 + L9(reserved, never filled) + L10 (on-form subtotal).
     a11 = a8 + a10
@@ -243,8 +294,8 @@ def _tail(corrected: dict, case: AmendmentCase, line11_c: float) -> dict:
 
     ``line11_c`` is the COMPUTED column-C L11 value from ``assemble`` (L8c +
     L10c = corrected total_tax + f8962_repayment - nonrefundable_credits +
-    f8959_tax_total), passed in rather than recomputed here so the tail can
-    never drift from the emitted L11.
+    f8959_tax_total + sch_se_line_12_se_tax), passed in rather than recomputed
+    here so the tail can never drift from the emitted L11.
     """
     line16 = 0.0  # amount paid with extension/original/after filing — unsourced
     line17 = irs_round(corrected["total_payments"] + line16)

@@ -156,6 +156,44 @@ class ScheduleK1:
             self.entity_type = EntityType(self.entity_type)
 
 
+@dataclass(frozen=True)
+class ScheduleCBusiness:
+    """Sole-proprietor Schedule C businesses; each is one Schedule C.
+
+    Expense fields are Part II categories a P&L export covers. COGS/inventory,
+    depreciation, home office, vehicle, depletion, returns & allowances, and
+    statutory-employee are UNMODELED -- nonzero refuses at compute (see
+    forms/sch_c.py).
+    """
+    description: str = ""
+    gross_receipts: float = 0.0
+    # Part II expense categories (Schedule C lines 8-27a) a P&L export covers.
+    advertising: float = 0.0
+    insurance: float = 0.0
+    legal_professional: float = 0.0
+    office_expense: float = 0.0
+    rent_lease: float = 0.0
+    supplies: float = 0.0
+    taxes_licenses: float = 0.0
+    travel: float = 0.0
+    deductible_meals: float = 0.0
+    utilities: float = 0.0
+    wages: float = 0.0
+    other_expenses: float = 0.0
+    # UNMODELED features. A nonzero value here is refused at COMPUTE time (Task
+    # 2, forms/sch_c.py) -- there is no correct net profit without the unmodeled
+    # math, so fail closed rather than silently drop the input. This input model
+    # carries them so the refusal has something to see; it does not enforce here.
+    cost_of_goods_sold: float = 0.0
+    inventory: float = 0.0
+    depreciation: float = 0.0
+    home_office: float = 0.0
+    vehicle_expenses: float = 0.0
+    depletion: float = 0.0
+    returns_and_allowances: float = 0.0
+    statutory_employee: bool = False
+
+
 @dataclass
 class Form1099G:
     payer: str
@@ -902,6 +940,7 @@ class Scenario:
     form1098s: list[Form1098] = field(default_factory=list)
     schedule_k1s: list[ScheduleK1] = field(default_factory=list)
     rental_properties: list[RentalProperty] = field(default_factory=list)
+    schedule_c_businesses: list[ScheduleCBusiness] = field(default_factory=list)
     depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
     form_1095a: Form1095A | None = None
