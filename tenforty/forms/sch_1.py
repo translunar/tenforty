@@ -4,13 +4,17 @@ Native-Python compute. Aggregates additional-income categories from
 upstream form results (primarily Sch E rental income) and
 adjustment-to-income categories from scenario fields.
 
-V1 scope: line 5 (rental real estate, royalties, partnerships, S corps)
-is the only populated additional-income line. Other Part I categories
-(business income, unemployment, farm income, etc.) and all of Part II
-(adjustments) are zero in v1 — the compute function writes 0 to those
-keys so the PDF fills cleanly. When a future scenario drives one of those
-lines, populate the value here; line 10 and line 26 sums already reference
-the variables by name, so the wiring is a one-line edit.
+V1 scope: line 5 (rental real estate, royalties, partnerships, S corps),
+line 3 (Schedule C business income, from upstream["sch_c"]), and line 15
+(deductible half of self-employment tax, from upstream["sch_se"]) are the
+populated income/adjustment lines from schedule computes. Other Part I
+categories (unemployment/1099-G, farm income, etc.) and the remaining Part II
+adjustments are zero in v1 — the compute function writes 0 to those keys so
+the PDF fills cleanly. With no Schedule C business, upstream["sch_c"] and
+upstream["sch_se"] are empty, so lines 3 and 15 default to 0 and AGI is
+unchanged. When a future scenario drives one of the still-zero lines,
+populate the value here; line 10 and line 26 sums already reference the
+variables by name, so the wiring is a one-line edit.
 """
 
 from tenforty.params.federal import load as load_federal_params
@@ -30,6 +34,44 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     """
     params = load_federal_params(scenario.config.year)
     sch_e = upstream.get("sch_e", {})
+
+    # §162(l) self-employed health-insurance refusals (team-lead D4 ruling).
+    # §162(l)'s deduction is limited to the EARNED INCOME of the business under
+    # which the health plan is established; plan-establishment designation is
+    # UNMODELED in v1. So the earned-income limit is lawful only with exactly one
+    # Schedule C business, and the multi-business case refuses outright. This
+    # guard is also what makes Task 6's QBI single-business attribution TRUE: a
+    # nonzero SE-health deduction always attributes to exactly one business,
+    # because the multi-business case never reaches QBI. (The SE-health x PTC
+    # guard in forms/f1040_spine.py is a DIFFERENT, orthogonal refusal — keep
+    # both.)
+    businesses = scenario.schedule_c_businesses
+    se_health = scenario.config.self_employed_health_insurance_deduction
+    if businesses and se_health:
+        net = upstream.get("sch_c", {}).get("sch_c_line_31_net_profit_total", 0)
+        half_se = upstream.get("sch_se", {}).get(
+            "sch_se_line_13_half_deduction", 0
+        )
+        if len(businesses) >= 2:
+            raise NotImplementedError(
+                f"Self-employed health-insurance deduction ({se_health:.0f}) is "
+                f"claimed with {len(businesses)} Schedule C businesses. The "
+                f"§162(l) deduction is limited to the earned income of the "
+                f"business under which the plan is ESTABLISHED, and tenforty v1 "
+                f"does not model plan-establishment designation across multiple "
+                f"businesses. File by hand or use a single Schedule C business."
+            )
+        limit = max(0, net - half_se)  # §162(l)(2)(A) earned-income limit
+        if se_health > limit:
+            raise NotImplementedError(
+                f"Self-employed health-insurance deduction ({se_health:.0f}) "
+                f"exceeds the §162(l) earned-income limit ({limit:.0f} = "
+                f"Schedule C net profit {net:.0f} − half-SE-tax deduction "
+                f"{half_se:.0f}). tenforty v1 does not model the split: the "
+                f"allowed portion is limited to the earned income of the "
+                f"business, and the excess moves to Schedule A medical. File by "
+                f"hand or reduce the deduction to the limit."
+            )
 
     refund_total = sum(g.state_tax_refund for g in scenario.form1099_g)
     if not scenario.config.prior_year_itemized or refund_total == 0:
@@ -61,7 +103,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             min(refund_total, recovery_cap, benefit)
         )
     alimony_line_2a = 0
-    business_income_line_3 = 0
+    # Line 3: Schedule C aggregate net profit (Σ line 31), from upstream.
+    # Empty when no business → defaults to 0 (AGI unchanged).
+    business_income_line_3 = upstream.get("sch_c", {}).get(
+        "sch_c_line_31_net_profit_total", 0
+    )
     capital_gain_line_4 = 0
     # Sch 1 line 5: rental real estate, royalties, partnerships, S corps.
     # Sources from both Sch E parts:
@@ -97,7 +143,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     educator_expenses_line_11 = 0
     hsa_deduction_line_13 = 0
-    self_employment_tax_deduction_line_15 = 0
+    # Line 15: deductible half of self-employment tax (Sch SE line 13), from
+    # upstream. Empty when no business → defaults to 0 (AGI unchanged).
+    self_employment_tax_deduction_line_15 = upstream.get("sch_se", {}).get(
+        "sch_se_line_13_half_deduction", 0
+    )
     sep_simple_keogh_line_16 = 0
     # Verbatim passthrough of the filer's stated self-employed
     # health-insurance deduction (input channel; no §162(l) limit math is

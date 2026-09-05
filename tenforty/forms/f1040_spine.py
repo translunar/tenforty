@@ -394,6 +394,7 @@ def compute_spine(
     sch_a = schedule_results.get("sch_a", {})
     sch_e = schedule_results.get("sch_e", {})
     f8959 = schedule_results.get("f8959", {})
+    sch_se = schedule_results.get("sch_se", {})
     f8995 = schedule_results.get("f8995", {})
     f8582 = schedule_results.get("f8582", {})
     # Form 8962 (PTC). Present only when the scenario carries a 1095-A; every
@@ -489,6 +490,30 @@ def compute_spine(
     # Form 8959 line 18 — Additional Medicare Tax.
     # Key: "f8959_line_18" from forms.f8959.compute.
     f8959_tax_total = f8959.get("f8959_line_18", 0)
+
+    # Schedule SE line 12 — self-employment tax (Schedule 2 line 4). Defaults
+    # to 0 when no Schedule C business is present (empty sch_se), so wages-only
+    # scenarios are numerically unperturbed.
+    # Key: "sch_se_line_12_se_tax" from forms.sch_se.compute.
+    se_tax = sch_se.get("sch_se_line_12_se_tax", 0)
+
+    # 1040 line 23 — "Other taxes, including self-employment tax, from
+    # Schedule 2, line 21", i.e. the whole of Schedule 2 PART II. This is a
+    # PROVEN-COMPLETE total of the MODELED Part II components and NOTHING else:
+    #   - Sch 2 line 4  = `se_tax`          (Schedule SE self-employment tax), and
+    #   - Sch 2 line 11 = `f8959_tax_total` (Form 8959 Additional Medicare Tax).
+    # These are the only two Schedule 2 Part II components the native spine
+    # produces. Every other Part II line is structurally absent here: Form 8960
+    # NIIT (Sch 2 line 12) is UNMODELED on the native spine (ticket (s)) — it is
+    # zero by ABSENCE, not by computation, and this key must not be read as a
+    # claim that Part II is complete. The amendment's reconciliation guard
+    # (Task 10) is what catches a filed return whose declared other-taxes
+    # exceeds this modeled sum. This is a compute key only: no PDF line-23
+    # mapping exists yet (deferred to the follow-on emission unit). It does NOT
+    # enter `total_tax` (line 16) or `tax_plus_schedule2` (line 18) — SE tax is
+    # line 23, disjoint from Part I; it joins only the FULL-liability
+    # subtraction inside `overpaid` below.
+    other_taxes = irs_round(f8959_tax_total + se_tax)
 
     # 1040 line 16 — Tax (income tax from the QDCGT/rate-schedule worksheet).
     #
@@ -679,7 +704,7 @@ def compute_spine(
     # second one to be the fragile one: a scenario that clears the NIIT
     # threshold AND overpays would diverge on `overpaid` today.
     overpaid = max(0, irs_round(
-        total_payments - income_tax - f8959_tax_total - f8962_repayment
+        total_payments - income_tax - f8959_tax_total - f8962_repayment - se_tax
     ))
 
     # -----------------------------------------------------------------------
@@ -867,6 +892,12 @@ def compute_spine(
         # Form 8959
         "f8959_tax_total": f8959_tax_total,
         "f8959_required": f8959_required,
+        # Schedule SE self-employment tax (Schedule 2 line 4) + the proven-total
+        # Schedule 2 Part II figure (1040 line 23). See the `other_taxes`
+        # derivation above for the partial-total proof; consumed by the
+        # amendment (Task 10). `total_tax` (line 16) deliberately excludes both.
+        "sch_se_line_12_se_tax": se_tax,
+        "other_taxes": other_taxes,
         # Form 8962 (PTC) — summary keys ALWAYS emitted (0 when no 1095-A),
         # mirroring how f8959_tax_total/f8959_required are always present.
         "f8962_net_ptc": f8962_net_ptc,

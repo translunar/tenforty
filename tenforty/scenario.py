@@ -34,6 +34,7 @@ from tenforty.models import (
     SCorpScopeOuts,
     SCorpShareholder,
     Scenario,
+    ScheduleCBusiness,
     ScheduleK1,
     TaxReturnConfig,
     VoluntaryContribution,
@@ -50,8 +51,24 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
     "rental_properties": (RentalProperty, "rental_properties"),
+    "schedule_c_businesses": (ScheduleCBusiness, "schedule_c_businesses"),
     "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
+
+# Amount fields on ScheduleCBusiness that are carried through verbatim (never
+# computed or clamped): gross receipts, every Part II expense category, and the
+# UNMODELED-feature amount fields. A negative value on any of them is refused at
+# load rather than silently corrected to 0 -- mirroring the estimated-tax and
+# SE-health negative-amount refusals below. `description` (str) and
+# `statutory_employee` (bool) are not amounts and are excluded.
+_SCHEDULE_C_AMOUNT_FIELDS: tuple[str, ...] = (
+    "gross_receipts",
+    "advertising", "insurance", "legal_professional", "office_expense",
+    "rent_lease", "supplies", "taxes_licenses", "travel", "deductible_meals",
+    "utilities", "wages", "other_expenses",
+    "cost_of_goods_sold", "inventory", "depreciation", "home_office",
+    "vehicle_expenses", "depletion", "returns_and_allowances",
+)
 
 # Every top-level YAML key the loader recognizes. The loader is fail-closed:
 # any key outside this set raises rather than being silently dropped (a
@@ -539,6 +556,7 @@ def load_scenario(path: Path) -> Scenario:
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         **form_data)
     _validate_schedule_k1s(scenario)
+    _validate_schedule_c_businesses(scenario)
     _validate_charitable_itemizer(scenario)
     return scenario
 
@@ -577,3 +595,25 @@ def _validate_schedule_k1s(scenario: Scenario) -> None:
                 "Form 1041 K-1 box 1 is interest income — load it into "
                 "`interest_income` instead. See ScheduleK1 docstring."
             )
+
+
+def _validate_schedule_c_businesses(scenario: Scenario) -> None:
+    """Refuse any NEGATIVE per-business Schedule C amount at load.
+
+    Schedule C per-business amounts (gross receipts, every Part II expense
+    category, and the unmodeled-feature amount fields) are carried through
+    verbatim -- never computed or clamped -- so a negative amount cannot be
+    silently corrected to 0; it is refused instead. Mirrors the
+    estimated_tax_payments / self_employed_health_insurance_deduction refusals
+    in `_validate_scenario_config`. `description` (str) and `statutory_employee`
+    (bool) are not amounts and are excluded (see `_SCHEDULE_C_AMOUNT_FIELDS`)."""
+    for idx, biz in enumerate(scenario.schedule_c_businesses):
+        for field_name in _SCHEDULE_C_AMOUNT_FIELDS:
+            if getattr(biz, field_name) < 0:
+                raise ValueError(
+                    f"Schedule C business #{idx} ({biz.description!r}) field "
+                    f"`{field_name}` must be >= 0. Per-business Schedule C "
+                    f"amounts are carried through verbatim (never computed or "
+                    f"clamped), so a negative value cannot be silently "
+                    f"corrected to 0 -- it is refused instead."
+                )
