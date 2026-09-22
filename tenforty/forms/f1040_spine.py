@@ -703,9 +703,34 @@ def compute_spine(
     # Neither reason is "both sides omit NIIT". Ticket (s) should expect the
     # second one to be the fragile one: a scenario that clears the NIIT
     # threshold AND overpays would diverge on `overpaid` today.
-    overpaid = max(0, irs_round(
-        total_payments - income_tax - f8959_tax_total - f8962_repayment - se_tax
-    ))
+    # `settlement_base` is 1040 line 24 (total tax) on the native path:
+    # income_tax (line 16) + f8962_repayment (Sch 2 Part I) + f8959_tax_total +
+    # se_tax (Sch 2 Part II). overpaid and amount_owed are the two mutually
+    # exclusive sides of (total_payments - line 24); emitting BOTH every return
+    # (a printed 0 on the inapplicable side) matches the existing overpaid
+    # convention and fills 1040 line 37, which had no producer before.
+    settlement_base = income_tax + f8959_tax_total + f8962_repayment + se_tax
+    overpaid = max(0, irs_round(total_payments - settlement_base))
+    amount_owed = max(0, irs_round(settlement_base - total_payments))
+
+    # 1040 line 35a — refund. Full-refund default election: the whole
+    # overpayment is refunded (no applied-to-next-year input exists on the
+    # scenario config, so line 36 is left unfilled). If such an input is added
+    # later, split here (35a = overpaid - applied, line 36 = applied).
+    refund = overpaid
+
+    # 1040 lines 19-22 (Tax and Credits chain). The native spine models no
+    # nonrefundable credits: no Child Tax Credit / Credit for Other Dependents
+    # module (line 19) and no Schedule 3 Part I (line 20), so both are 0.
+    # Emitting them (0 where the model computes none) makes the printed chain
+    # complete and footing-consistent: line 21 = 19 + 20; line 22 = line 18 -
+    # line 21 (floored at 0); and line 22 + line 23 (other_taxes) == line 24
+    # (settlement_base). Lines 19/21/22 had no producer before, so line 22
+    # printed blank while line 17 printed an explicit 0 — an inconsistent chain.
+    child_tax_credit = 0   # line 19 (no CTC/ODC module on the native spine)
+    schedule3_credits = 0  # line 20 (no Schedule 3 Part I modeled)
+    total_credits = child_tax_credit + schedule3_credits  # line 21
+    tax_after_credits = max(0, tax_plus_schedule2 - total_credits)  # line 22
 
     # -----------------------------------------------------------------------
     # Schedule 1 per-line breakdown keys (pass-through from sch_1 results)
@@ -841,6 +866,15 @@ def compute_spine(
         # Schedule 2 for an excess-APTC repayment.
         "schedule2_tax": schedule2_tax,
         "tax_plus_schedule2": tax_plus_schedule2,
+        # 1040 lines 19-22 (Tax and Credits chain). Native spine models no
+        # nonrefundable credits, so lines 19/20/21 are 0; line 22 = line 18 -
+        # line 21. Before these keys existed, lines 19/21/22 had no producer
+        # and printed blank, breaking the printed chain (line 17 printed 0
+        # while line 22 was blank). Foots: 16+17=18, 18-21=22, 22+23=24.
+        "child_tax_credit": child_tax_credit,      # line 19
+        "schedule3_credits": schedule3_credits,    # line 20
+        "total_credits": total_credits,            # line 21
+        "tax_after_credits": tax_after_credits,    # line 22
         # Capital gain — oracle key + PDF alias.
         # schd_line16 is the TRUE, uncapped Schedule D line 16 total — the
         # form itself always reports the real net gain/loss, uncapped.
@@ -864,7 +898,9 @@ def compute_spine(
         "estimated_tax_payments": estimated_payments,  # line 26
         "additional_medicare_withheld": addl_medicare_withheld,
         "total_payments": total_payments,
-        "overpaid": overpaid,
+        "overpaid": overpaid,        # line 34
+        "refund": refund,            # line 35a (full-refund default election)
+        "amount_owed": amount_owed,  # line 37 (had no producer before)
         # Schedule 1 line 10 and 26 totals — both short and long-form keys
         "sch_1_line_10": sch_1_line_10,
         "sch_1_line_10_total_additional_income": sch_1_line_10,  # long-form alias
