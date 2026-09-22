@@ -272,6 +272,72 @@ class F1040XAssemblerTests(unittest.TestCase):
         self.assertEqual(out["f1040x_line13_b"], 0.0)
         self.assertEqual(out["f1040x_line13_c"], 0.0)
 
+    def test_line13_column_a_defaults_to_corrected_when_filed_silent(self):
+        """When the amendment does not change estimated payments, a (legacy)
+        filed dict may omit the key while the corrected run carries it. Column
+        A must then equal Column C (B == 0) — estimated payments are a fixed
+        as-filed input, not a computed line. Regression guard for the defect
+        where A defaulted to 0.0 and the whole amount spilled into Column B."""
+        filed = self._filed()  # no estimated_tax_payments key
+        corrected = self._filed(estimated_tax_payments=4000.0)
+        self.assertNotIn("estimated_tax_payments", filed)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line13_a"], 4000.0)
+        self.assertEqual(out["f1040x_line13_c"], 4000.0)
+        self.assertEqual(out["f1040x_line13_b"], 0.0)
+
+    def test_line15_sources_refundable_credits_not_total_payments(self):
+        """Line 15 is 'Total refundable credits' — tenforty's one modeled
+        component is net premium tax credit (f8962_net_ptc). It must NOT be
+        sourced from total_payments (the line-17 quantity); that duplicate
+        mislabel broke line 17's printed 'add lines 12-15, col C' footing."""
+        filed = self._filed(f8962_net_ptc=0.0)
+        corrected = self._filed(f8962_net_ptc=700.0)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line15_a"], 0.0)
+        self.assertEqual(out["f1040x_line15_c"], 700.0)
+        # Not the total_payments (250) that the buggy code emitted here.
+        self.assertNotEqual(out["f1040x_line15_c"], filed["total_payments"])
+
+    def test_line15_zero_when_no_net_ptc(self):
+        """No 1095-A -> net PTC 0 -> line 15 is 0/0/0 (the observed all-years
+        emit), never the total_payments duplicate."""
+        filed = self._filed()
+        corrected = self._filed(agi=1200.0, total_tax=150.0)
+        case = self._case(original_refund_received=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line15_a"], 0.0)
+        self.assertEqual(out["f1040x_line15_b"], 0.0)
+        self.assertEqual(out["f1040x_line15_c"], 0.0)
+
+    def test_line17_foots_over_payments_grid_column_c(self):
+        """Line 17 (total payments) must equal 12c + 13c + 14c + 15c (+ line
+        16, unsourced 0) — the form's printed arithmetic. With line 15 sourced
+        from net PTC (not a duplicate of total_payments), the chain foots."""
+        corrected = self._filed(
+            federal_withheld=3000.0,
+            estimated_tax_payments=1000.0,
+            f8962_net_ptc=200.0,
+            total_payments=4200.0,  # 3000 + 1000 + 200
+            total_tax=100.0,
+        )
+        filed = self._filed(total_payments=4200.0)
+        case = self._case(original_refund_received=4100.0)
+        out = assemble(filed, corrected, case)
+
+        grid_c = (
+            out["f1040x_line12_c"]
+            + out["f1040x_line13_c"]
+            + out.get("f1040x_line14_c", 0)
+            + out["f1040x_line15_c"]
+        )
+        self.assertEqual(grid_c, out["f1040x_line17"])
+
     def test_required_filed_keys_are_the_column_a_sources(self):
         self.assertEqual(
             set(REQUIRED_FILED_KEYS),

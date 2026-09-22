@@ -246,17 +246,29 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     _triple(out, "11", a11, c11)
     # L12 withholding.
     _triple(out, "12", filed["federal_withheld"], corrected["federal_withheld"])
-    # L13 estimated tax payments. OPTIONAL — .get(..., 0.0) on both columns,
-    # mirroring the f8962_repayment pattern above: old filed files predate
-    # this key (they predate the spine wiring the estimated-payments channel).
-    _triple(
-        out,
-        "13",
-        filed.get("estimated_tax_payments", 0.0),
-        corrected.get("estimated_tax_payments", 0.0),
-    )
-    # L15 total payments.
-    _triple(out, "15", filed["total_payments"], corrected["total_payments"])
+    # L13 estimated tax payments. These are a FIXED as-filed payment: the
+    # corrected run's value is config.estimated_tax_payments — the same
+    # taxpayer input the original return carried — so amending income never
+    # changes them. Column A therefore defaults to the CORRECTED value when a
+    # (legacy) filed dict omits the key, yielding A == C and B == 0 (the
+    # amendment-doesn't-change-estimated-payments case). Defaulting A to 0.0
+    # instead was the defect: it forced the whole amount into Column B ("net
+    # change") with Column A blank. A filed dict that explicitly carries a
+    # different original figure still wins (A = filed value, B = C - A).
+    est_c = corrected.get("estimated_tax_payments", 0.0)
+    _triple(out, "13", filed.get("estimated_tax_payments", est_c), est_c)
+    # L15 Total refundable credits (Schedule 3 line 13; Forms 8863/8885/8962).
+    # tenforty models exactly ONE refundable credit that lands here: net
+    # premium tax credit (Form 8962 line 26, `f8962_net_ptc` — the same
+    # component the spine adds into total_payments). This was ERRONEOUSLY
+    # sourced from `total_payments` (the LINE 17 quantity), which both
+    # mislabeled line 15 and broke line 17's printed "add lines 12-15, col C"
+    # footing; line 17 is produced separately in `_tail`. 0 when no 1095-A —
+    # matching the observed all-years emits. filed defaults to 0.0 (net PTC is
+    # income-dependent and genuinely differs by year; a filed dict carrying an
+    # original net PTC wins), mirroring the f8962_repayment optional pattern.
+    _triple(out, "15", filed.get("f8962_net_ptc", 0.0),
+            corrected.get("f8962_net_ptc", 0.0))
 
     # ----- Single-column tail (lines 16-23) -------------------------------
     # Keyed off the COMPUTED L11 column-C value (c8 + c10), not a bare
