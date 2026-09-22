@@ -538,51 +538,66 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "estimated_tax_penalty": "topmostSubform[0].Page2[0].f2_29[0]",
         },
         2024: {
+            # Built by marker-probe: every text field on the 2024 template was
+            # stamped with its own field name (scripts/probe_pdf_fields.py),
+            # rendered, and each marker read against the printed 2024 line
+            # labels via `pdftotext -layout`. The prior 2024 block was authored
+            # against the 2025 form's field layout (2025 added a page-2 AGI
+            # repeat "11b", a line-13b additional-deductions split, and a
+            # refundable line-30 adoption credit — all of which shift 2025's
+            # field numbers). The 2024 form has NONE of those: it uses the
+            # pre-2025 structure, structurally identical to 2023 —
+            #   * Lines 11–15 (AGI, deduction, QBI, add-12+13, taxable income)
+            #     sit on PAGE 1 (f1_56–f1_60), NOT page 2. There is no
+            #     `agi_page2`; page 2 starts at line 16.
+            #   * Line 13 is a single QBI line (no 13a/13b split → no
+            #     `additional_deductions`).
+            #   * Line 30 is "Reserved for future use" (no refundable adoption
+            #     credit → no `adoption_credit_8839`).
+            # 2024 differs from 2023 ONLY by a +1 shift of the page-1 income
+            # f-numbers (2024 added the line-1h "Other earned income" amount
+            # field f1_39). Page-2 f-numbers are IDENTICAL to 2023.
+
             # === Page 1: Header ===
-            # Names and SSNs are on Page1 directly (same field numbers as 2025).
-            "first_name": "topmostSubform[0].Page1[0].f1_01[0]",
-            "last_name": "topmostSubform[0].Page1[0].f1_02[0]",
-            "ssn": "topmostSubform[0].Page1[0].f1_03[0]",
-            "spouse_first_name": "topmostSubform[0].Page1[0].f1_04[0]",
-            "spouse_last_name": "topmostSubform[0].Page1[0].f1_05[0]",
-            "spouse_ssn": "topmostSubform[0].Page1[0].f1_06[0]",
+            "first_name": "topmostSubform[0].Page1[0].f1_04[0]",
+            "last_name": "topmostSubform[0].Page1[0].f1_05[0]",
+            "ssn": "topmostSubform[0].Page1[0].f1_06[0]",
+            "spouse_first_name": "topmostSubform[0].Page1[0].f1_07[0]",
+            "spouse_last_name": "topmostSubform[0].Page1[0].f1_08[0]",
+            "spouse_ssn": "topmostSubform[0].Page1[0].f1_09[0]",
             # Address fields live inside Address_ReadOrder in 2024.
             "address": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_10[0]",
             "apt_no": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_11[0]",
             "city": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_12[0]",
-            "state": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_16[0]",
-            "zip_code": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_17[0]",
+            # State/ZIP are Address_ReadOrder f1_13/f1_14; f1_16/f1_17 are the
+            # foreign province/postal fields (the prior block wrote state/ZIP
+            # into those foreign-address boxes).
+            "state": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_13[0]",
+            "zip_code": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_14[0]",
 
             # === Page 1: Income (Lines 1-11) ===
-            # Lines 1a–1z (wages/salaries section) and 2a/2b/3a sit directly on
-            # Page1 at f1_32–f1_45.
+            # Lines 1a–3b sit directly on Page1 at f1_32–f1_45.
             # Line 1a: Wages, salaries, tips (W-2 box 1)
             "wages": "topmostSubform[0].Page1[0].f1_32[0]",
-            # Lines 1b-1g (f1_33-f1_38 — household_employee_income,
+            # Lines 1b-1h (f1_33-f1_39 — household_employee_income,
             # tip_income, medicaid_waiver, dependent_care_benefits,
-            # adoption_benefits, form_8919_wages) and 1h's amount
-            # (other_earned_income, f1_40): DELIBERATELY UNMAPPED —
-            # compute-dead (no forms/ module emits any of these; W-2 box-1
-            # is the only modeled line-1 component). Retired to kill the
-            # trust-the-name failure class that let a dead `total_w2_income`
-            # mapping print line 1z blank.
-            # Line 1h "type" text field — not a dollar sub-line, out of scope
-            # for this retirement; left mapped (also compute-dead, unchanged).
-            "other_earned_income_type": "topmostSubform[0].Page1[0].f1_39[0]",
+            # adoption_benefits, form_8919_wages, other_earned_income):
+            # DELIBERATELY UNMAPPED — compute-dead (no forms/ module emits
+            # any of these; W-2 box-1 is the only modeled line-1 component).
             # Line 1i: Nontaxable combat pay election
-            "combat_pay_election": "topmostSubform[0].Page1[0].f1_41[0]",
+            "combat_pay_election": "topmostSubform[0].Page1[0].f1_40[0]",
             # Line 1z: Total of 1a through 1h
-            "total_w2_income": "topmostSubform[0].Page1[0].f1_42[0]",
+            "total_w2_income": "topmostSubform[0].Page1[0].f1_41[0]",
             # Line 2a: Tax-exempt interest
-            "tax_exempt_interest": "topmostSubform[0].Page1[0].f1_43[0]",
+            "tax_exempt_interest": "topmostSubform[0].Page1[0].f1_42[0]",
             # Line 2b: Taxable interest
-            "taxable_interest": "topmostSubform[0].Page1[0].f1_44[0]",
+            "taxable_interest": "topmostSubform[0].Page1[0].f1_43[0]",
             # Line 3a: Qualified dividends
-            "qualified_dividends": "topmostSubform[0].Page1[0].f1_45[0]",
-            # Line 3b: Ordinary dividends (outside the Line4a-11 subform)
-            "ordinary_dividends": "topmostSubform[0].Page1[0].f1_57[0]",
+            "qualified_dividends": "topmostSubform[0].Page1[0].f1_44[0]",
+            # Line 3b: Ordinary dividends
+            "ordinary_dividends": "topmostSubform[0].Page1[0].f1_45[0]",
 
-            # Lines 4a-9 live inside Line4a-11_ReadOrder[0].
+            # Lines 4a-11 live inside Line4a-11_ReadOrder[0].
             # Line 4a: IRA distributions
             "ira_distributions": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_46[0]",
             # Line 4b: IRA taxable amount
@@ -591,105 +606,98 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "pensions": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_48[0]",
             # Line 5b: Pensions taxable amount
             "pensions_taxable": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_49[0]",
-            # Line 5c: "Other" explanation (text field)
-            "pensions_other_explanation": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_50[0]",
             # Line 6a: Social security benefits
-            "social_security": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_51[0]",
+            "social_security": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_50[0]",
             # Line 6b: Social security taxable amount
-            "social_security_taxable": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_52[0]",
-            # Line 7a: Capital gain or (loss)
-            "capital_gain_loss": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_53[0]",
-            # Line 7b: Amount for the "includes child's capital gain or (loss)" checkbox
-            "child_capital_gain": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_54[0]",
+            "social_security_taxable": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_51[0]",
+            # Line 7: Capital gain or (loss)
+            "capital_gain_loss": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_52[0]",
             # Line 8: Additional income from Schedule 1, line 10 — the full Sch 1
             # line-10 total (`sch_1_line_10`), not the rental-only `other_income`
             # key (see the 2023 note above; footing fix, all years).
-            "sch_1_line_10": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_55[0]",
+            "sch_1_line_10": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_53[0]",
             # Line 9: Total income
-            "total_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_56[0]",
+            "total_income": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_54[0]",
             # Line 10: Adjustments to income from Schedule 1, line 26
-            "adjustments": "topmostSubform[0].Page1[0].f1_58[0]",
-            # Line 11a: Adjusted gross income
-            "agi": "topmostSubform[0].Page1[0].f1_59[0]",
+            "adjustments": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_55[0]",
+            # Line 11: Adjusted gross income
+            "agi": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].f1_56[0]",
 
-            # === Page 2: Tax and Credits (Lines 11b-24) ===
-            # Page 2 field numbers are identical to 2025.
-            # Line 11b (AGI repeated at top of page 2)
-            "agi_page2": "topmostSubform[0].Page2[0].f2_01[0]",
+            # === Page 1: Deduction & taxable income (Lines 12-15) ===
+            # These are on PAGE 1 in 2024 (f1_57–f1_60), directly on Page1.
             # Line 12: Standard deduction OR itemized deductions — the
-            # deduction actually applied. Reads `applied_deduction` (not
-            # `standard_deduction`, which is 0 when itemizing → would render
-            # line 12 = 0 for itemizers).
-            "applied_deduction": "topmostSubform[0].Page2[0].f2_02[0]",
-            # Line 13a: Qualified business income deduction
-            "qbi_deduction": "topmostSubform[0].Page2[0].f2_03[0]",
-            # Line 13b: Additional deductions from Schedule 1-A
-            "additional_deductions": "topmostSubform[0].Page2[0].f2_04[0]",
-            # Line 14: Add lines 12, 13a, and 13b = deduction (12) + QBI
-            # (13a) + Sch 1-A additional deductions (13b). `total_deductions`
-            # is line 12 ONLY (excludes QBI) — 2022-2025 print it via line 12
-            # (`applied_deduction`, mapped above); line 14 uses the spine's
-            # dedicated `deductions_plus_qbi` key here.
-            "deductions_plus_qbi": "topmostSubform[0].Page2[0].f2_05[0]",
-            # Line 15: Taxable income (line 11b minus line 14)
-            "taxable_income": "topmostSubform[0].Page2[0].f2_06[0]",
+            # deduction actually applied (reads `applied_deduction`, not
+            # `standard_deduction`, which is 0 when itemizing).
+            "applied_deduction": "topmostSubform[0].Page1[0].f1_57[0]",
+            # Line 13: Qualified business income deduction (single line, 2024)
+            "qbi_deduction": "topmostSubform[0].Page1[0].f1_58[0]",
+            # Line 14: Add lines 12 and 13 = deduction (line 12) + QBI (13).
+            # `total_deductions` is line 12 ONLY (excludes QBI); line 14 uses
+            # the spine's dedicated `deductions_plus_qbi` key.
+            "deductions_plus_qbi": "topmostSubform[0].Page1[0].f1_59[0]",
+            # Line 15: Taxable income (line 11 minus line 14)
+            "taxable_income": "topmostSubform[0].Page1[0].f1_60[0]",
+
+            # === Page 2: Tax and Credits (Lines 16-24) ===
+            # Page 2 starts at line 16 in 2024 (no line 11b-15 repeat).
+            # f2_01 is the line-16 "from Form 8814/4972/…" checkbox amount.
             # Line 16: Tax
-            "total_tax": "topmostSubform[0].Page2[0].f2_07[0]",
+            "total_tax": "topmostSubform[0].Page2[0].f2_02[0]",
             # Line 17: Amount from Schedule 2, line 3
-            "schedule2_tax": "topmostSubform[0].Page2[0].f2_08[0]",
+            "schedule2_tax": "topmostSubform[0].Page2[0].f2_03[0]",
             # Line 18: Add lines 16 and 17
-            "tax_plus_schedule2": "topmostSubform[0].Page2[0].f2_09[0]",
+            "tax_plus_schedule2": "topmostSubform[0].Page2[0].f2_04[0]",
             # Line 19: Child tax credit / credit for other dependents
-            "child_tax_credit": "topmostSubform[0].Page2[0].f2_10[0]",
+            "child_tax_credit": "topmostSubform[0].Page2[0].f2_05[0]",
             # Line 20: Amount from Schedule 3, line 8
-            "schedule3_credits": "topmostSubform[0].Page2[0].f2_11[0]",
+            "schedule3_credits": "topmostSubform[0].Page2[0].f2_06[0]",
             # Line 21: Add lines 19 and 20
-            "total_credits": "topmostSubform[0].Page2[0].f2_12[0]",
+            "total_credits": "topmostSubform[0].Page2[0].f2_07[0]",
             # Line 22: Subtract line 21 from line 18
-            "tax_after_credits": "topmostSubform[0].Page2[0].f2_13[0]",
+            "tax_after_credits": "topmostSubform[0].Page2[0].f2_08[0]",
             # Line 23: Other taxes from Schedule 2, line 21
-            "other_taxes": "topmostSubform[0].Page2[0].f2_14[0]",
+            "other_taxes": "topmostSubform[0].Page2[0].f2_09[0]",
             # Line 24: Total tax (add lines 22 and 23). Key renamed from
             # `total_tax_liability` — see the module docstring.
-            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_15[0]",
+            "tax_liability_line24": "topmostSubform[0].Page2[0].f2_10[0]",
 
             # === Page 2: Payments (Lines 25-33) ===
             # Line 25a: Federal income tax withheld from W-2
-            "federal_withheld_w2": "topmostSubform[0].Page2[0].f2_16[0]",
+            "federal_withheld_w2": "topmostSubform[0].Page2[0].f2_11[0]",
             # Line 25b: Federal income tax withheld from 1099
-            "federal_withheld_1099": "topmostSubform[0].Page2[0].f2_17[0]",
+            "federal_withheld_1099": "topmostSubform[0].Page2[0].f2_12[0]",
             # Line 25c: Other forms (see instructions)
-            "federal_withheld_other": "topmostSubform[0].Page2[0].f2_18[0]",
+            "federal_withheld_other": "topmostSubform[0].Page2[0].f2_13[0]",
             # Line 25d: Total (add 25a through 25c)
-            "federal_withheld": "topmostSubform[0].Page2[0].f2_19[0]",
-            # Line 26: Estimated tax payments
-            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_20[0]",
-            # Line 27a: Earned income credit (EIC)
-            "eic": "topmostSubform[0].Page2[0].f2_21[0]",
+            "federal_withheld": "topmostSubform[0].Page2[0].f2_14[0]",
+            # Line 26: Estimated tax payments (2024 est. + 2023 applied)
+            "estimated_tax_payments": "topmostSubform[0].Page2[0].f2_15[0]",
+            # Line 27: Earned income credit (EIC)
+            "eic": "topmostSubform[0].Page2[0].f2_16[0]",
             # Line 28: Additional child tax credit from Schedule 8812
-            "additional_child_tax_credit": "topmostSubform[0].Page2[0].f2_22[0]",
+            "additional_child_tax_credit": "topmostSubform[0].Page2[0].f2_17[0]",
             # Line 29: American opportunity credit from Form 8863
-            "american_opportunity_credit": "topmostSubform[0].Page2[0].f2_23[0]",
-            # Line 30: Refundable adoption credit from Form 8839
-            "adoption_credit_8839": "topmostSubform[0].Page2[0].f2_27[0]",
+            "american_opportunity_credit": "topmostSubform[0].Page2[0].f2_18[0]",
+            # Line 30: Reserved for future use (f2_19, not mapped)
             # Line 31: Amount from Schedule 3, line 15
-            "schedule3_payments": "topmostSubform[0].Page2[0].f2_28[0]",
+            "schedule3_payments": "topmostSubform[0].Page2[0].f2_20[0]",
             # Line 32: Total other payments and refundable credits
-            "total_other_payments": "topmostSubform[0].Page2[0].f2_29[0]",
+            "total_other_payments": "topmostSubform[0].Page2[0].f2_21[0]",
             # Line 33: Total payments (add lines 25d, 26, and 32)
-            "total_payments": "topmostSubform[0].Page2[0].f2_30[0]",
+            "total_payments": "topmostSubform[0].Page2[0].f2_22[0]",
 
             # === Page 2: Refund / Amount You Owe (Lines 34-38) ===
             # Line 34: Overpaid (if line 33 > line 24)
-            "overpaid": "topmostSubform[0].Page2[0].f2_31[0]",
+            "overpaid": "topmostSubform[0].Page2[0].f2_23[0]",
             # Line 35a: Amount of line 34 you want refunded to you
-            "refund": "topmostSubform[0].Page2[0].f2_32[0]",
-            # Line 36: Applied to next year estimated tax
-            "applied_to_next_year": "topmostSubform[0].Page2[0].f2_33[0]",
+            "refund": "topmostSubform[0].Page2[0].f2_24[0]",
+            # f2_25/f2_26 are RoutingNo/AccountNo (lines 35b/35d).
+            # Line 36: Applied to next year (2025) estimated tax
+            "applied_to_next_year": "topmostSubform[0].Page2[0].f2_27[0]",
             # Line 37: Amount you owe (if line 24 > line 33)
-            "amount_owed": "topmostSubform[0].Page2[0].f2_34[0]",
+            "amount_owed": "topmostSubform[0].Page2[0].f2_28[0]",
             # Line 38: Estimated tax penalty
-            "estimated_tax_penalty": "topmostSubform[0].Page2[0].f2_35[0]",
+            "estimated_tax_penalty": "topmostSubform[0].Page2[0].f2_29[0]",
         },
         2025: {
             # === Page 1: Header ===
