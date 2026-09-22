@@ -352,7 +352,7 @@ class Line24KeyNameReconciliationTests(unittest.TestCase):
         2021: "topmostSubform[0].Page2[0].f2_10[0]",
         2022: "topmostSubform[0].Page2[0].f2_10[0]",
         2023: "topmostSubform[0].Page2[0].f2_10[0]",
-        2024: "topmostSubform[0].Page2[0].f2_15[0]",
+        2024: "topmostSubform[0].Page2[0].f2_10[0]",
         2025: "topmostSubform[0].Page2[0].f2_16[0]",
     }
 

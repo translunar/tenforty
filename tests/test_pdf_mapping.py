@@ -112,16 +112,16 @@ class TestPdf1040Basic(unittest.TestCase):
             Pdf1040.get_mapping(1999)
 
     def test_2023_supported_with_probed_relocated_paths(self):
-        # 2023 is a supported year. Its layout differs structurally from
-        # 2024 (not a field-name renumbering you can inherit) — these pins
-        # guard the invisible-shift traps the marker-probe caught:
-        #   * Line 10 (adjustments) is f1_54 — the SAME f-number 2024 uses
-        #     for line 7b child_capital_gain. Inheriting 2024 would have put
-        #     adjustments on the wrong line.
-        #   * Lines 12–15 sit on PAGE 1 in 2023 (2024 moved them to page 2),
-        #     so taxable_income is Page1 f1_59, not Page2.
-        #   * Page 2 starts at line 16: tax is Page2 f2_02 (2024: f2_07).
-        #   * 2023 has no line-11b AGI repeat, so agi_page2 is absent.
+        # 2023 is a supported year. 2023 and 2024 share the pre-2025 layout
+        # (2025 is the outlier: it added a page-2 AGI repeat "11b", a line-13b
+        # split, and a refundable line-30 adoption credit, shifting 2025's
+        # field numbers). These pins guard the shift traps the marker-probe
+        # caught — they must NOT be "corrected" to the 2025 numbering:
+        #   * Line 10 (adjustments) is f1_54, inside Line4a-11_ReadOrder.
+        #   * Lines 12–15 sit on PAGE 1 in 2023/2024 (2025 moved 11b–15 to
+        #     page 2), so taxable_income is Page1 f1_59, not Page2.
+        #   * Page 2 starts at line 16: tax is Page2 f2_02 (2025: f2_07).
+        #   * 2023/2024 have no line-11b AGI repeat, so agi_page2 is absent.
         m = Pdf1040.get_mapping(2023)
         self.assertEqual(
             m["adjustments"],
