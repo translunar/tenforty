@@ -148,6 +148,32 @@ def compute(
     return result, fanout
 
 
+def merge_with_part_i(part_i: dict, part_ii: dict) -> dict:
+    """Combine Schedule E Part I (rental/royalty) with Part II (K-1
+    pass-through) results and emit the form-true line-41 grand total.
+
+    Line 41 is captioned "Total income or (loss). Combine lines 26, 32, 37,
+    39, and 40. Enter the result here and on Schedule 1 (Form 1040), line 5."
+    In tenforty's model lines 37/39/40 are zero or absent, so the grand total
+    is line 26 (``sch_e_line_26_total``) + line 32 (``sch_e_line_41_total_pte``,
+    which equals line 32). This is by construction the SAME quantity
+    ``forms/sch_1.py`` composes into Schedule 1 line 5 — exactly what the
+    caption instructs. The pte-only subtotal key is retained for that Schedule
+    1 composition; only the PDF's line-41 box reads the grand total.
+
+    Previously the mapping bound the pte-only subtotal to the line-41 box (and,
+    2022-2025, to the wrong field entirely — line 39's f2_76), so the emitted
+    line 41 printed a partial on the wrong line while the true line-41 box went
+    blank. Part I scalars win on shared keys (e.g. taxpayer_name), matching the
+    prior ``{**part_i, **part_ii}`` merge order."""
+    merged = {**part_i, **part_ii}
+    merged["sch_e_line_41_total_income"] = irs_round(
+        merged.get("sch_e_line_26_total", 0)
+        + merged.get("sch_e_line_41_total_pte", 0)
+    )
+    return merged
+
+
 def _enforce_scope_gates(scenario: Scenario) -> None:
     """Compute-time scope-out enforcement.
 

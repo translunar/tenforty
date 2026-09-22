@@ -100,4 +100,38 @@ GOLDEN_FIELD_LINES: dict = {
         "sch_1_line_10_total_additional_income": ("f1_38", "10"),
         "sch_1_line_26_total_adjustments": ("f2_30", "26"),
     },
+    # Schedule E page-2 Part II/III totals. Line 41 is the form-true grand
+    # total (line 26 + line 32) bound to the line-41 box; the prior mapping
+    # bound the pte-only subtotal to line 39's field (2022-2025) and line 37
+    # to line 35's field. 2021 uses its own field numbering (f2_61/f2_69).
+    ("federal", "sch_e", 2021): {
+        "sch_e_line_26_total": ("f1_84", "26"),
+        "sch_e_line_32_total_partnership_scorp": ("f2_42", "32"),
+        "sch_e_line_37_total_estate_trust": ("f2_61", "37"),
+        "sch_e_line_41_total_income": ("f2_69", "41"),
+    },
+    ("federal", "sch_e", 2022): {
+        "sch_e_line_26_total": ("f1_84", "26"),
+        "sch_e_line_32_total_partnership_scorp": ("f2_47", "32"),
+        "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
+        "sch_e_line_41_total_income": ("f2_78", "41"),
+    },
+    ("federal", "sch_e", 2023): {
+        "sch_e_line_26_total": ("f1_84", "26"),
+        "sch_e_line_32_total_partnership_scorp": ("f2_47", "32"),
+        "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
+        "sch_e_line_41_total_income": ("f2_78", "41"),
+    },
+    ("federal", "sch_e", 2024): {
+        "sch_e_line_26_total": ("f1_84", "26"),
+        "sch_e_line_32_total_partnership_scorp": ("f2_47", "32"),
+        "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
+        "sch_e_line_41_total_income": ("f2_78", "41"),
+    },
+    ("federal", "sch_e", 2025): {
+        "sch_e_line_26_total": ("f1_84", "26"),
+        "sch_e_line_32_total_partnership_scorp": ("f2_47", "32"),
+        "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
+        "sch_e_line_41_total_income": ("f2_78", "41"),
+    },
 }
