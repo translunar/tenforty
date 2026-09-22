@@ -20,22 +20,27 @@ _SCALARS_2025: dict[str, str] = {
     # Header
     "taxpayer_name": f"{_PAGE1}.f1_01[0]",
     "taxpayer_ssn": f"{_PAGE1}.f1_02[0]",
-    # Part I — Additional Income
-    "sch_1_line_1_taxable_refunds": f"{_PAGE1}.f1_03[0]",
+    # Part I — Additional Income. Marker-probe verified against the 2025
+    # template: f1_03 is the top-of-form "1099-K reported in error" note
+    # field (added 2024), NOT line 1 — line 1 is f1_04. Line 7's amount is
+    # f1_12 (f1_11 is the 2025-only "amount repaid" sub-field). Line 9 (total
+    # other income) is f1_37 and line 10 (additional income total) is f1_38.
+    "sch_1_line_1_taxable_refunds": f"{_PAGE1}.f1_04[0]",
     "sch_1_line_3_business_income": f"{_PAGE1}.f1_07[0]",
     "sch_1_line_4_other_gains": f"{_PAGE1}.f1_08[0]",
     "sch_1_line_5_rental_re_royalty": f"{_PAGE1}.f1_09[0]",
     "sch_1_line_6_farm_income": f"{_PAGE1}.f1_10[0]",
     "sch_1_line_7_unemployment": f"{_PAGE1}.f1_12[0]",
-    "sch_1_line_10_total_additional_income": f"{_PAGE1}.f1_37[0]",
-    # Part II — Adjustments
+    "sch_1_line_10_total_additional_income": f"{_PAGE1}.f1_38[0]",
+    # Part II — Adjustments. Line 25 (total other adjustments) is f2_29 and
+    # line 26 (adjustments-to-income total) is f2_30.
     "sch_1_line_11_educator": f"{_PAGE2}.f2_01[0]",
     "sch_1_line_13_hsa": f"{_PAGE2}.f2_03[0]",
     "sch_1_line_15_se_tax": f"{_PAGE2}.f2_05[0]",
     "sch_1_line_17_se_health": f"{_PAGE2}.f2_07[0]",
     "sch_1_line_20_ira": f"{_PAGE2}.f2_12[0]",
     "sch_1_line_21_student_loan_interest": f"{_PAGE2}.f2_13[0]",
-    "sch_1_line_26_total_adjustments": f"{_PAGE2}.f2_29[0]",
+    "sch_1_line_26_total_adjustments": f"{_PAGE2}.f2_30[0]",
 }
 
 
@@ -45,20 +50,24 @@ class PdfSch1(PdfFormMapping[dict]):
     _MAPPINGS: dict[int, dict] = {
         2025: {"scalars": _SCALARS_2025, "repeaters": {}},
         # 2024 re-issue renamed the root container (topmostSubform[0] ->
-        # form1[0], the opposite direction from Schedule A) and moved two
-        # fields: line 7 (unemployment) nests inside Line8a_ReadOrder, and
-        # line 10's total shifted field number (f1_37 -> f1_33) because of
-        # that nesting. Everything else is unchanged (pinned by
-        # tests/test_mapping_year_identity.py).
+        # form1[0], the opposite direction from Schedule A). Marker-probe
+        # verified against pdfs/federal/2024/f1040s1.pdf: the 2024 template
+        # LACKS the 2025-only line-7 "amount repaid" sub-field (f1_11 on
+        # 2025), so line 7's amount is the flat Page1 f1_11 here — NOT
+        # Line8a_ReadOrder.f1_12 (which is line 8a) and NOT f1_12 (which is
+        # line 8a on 2024). Line 1, 3-6, 10, and Part II lines 11-21 inherit
+        # the corrected 2025 field numbers unchanged. Line 25/26 differ from
+        # 2025 by one field (2024 line 25 = f2_30, line 26 = f2_31; 2025 line
+        # 25 = f2_29, line 26 = f2_30), so line 26 is overridden.
         2024: {
             "scalars": inherit_pdf_fields(
                 _SCALARS_2025,
                 root_swap=("topmostSubform[0]", "form1[0]"),
                 overrides={
                     "sch_1_line_7_unemployment":
-                        "form1[0].Page1[0].Line8a_ReadOrder[0].f1_12[0]",
-                    "sch_1_line_10_total_additional_income":
-                        "form1[0].Page1[0].f1_33[0]",
+                        "form1[0].Page1[0].f1_11[0]",
+                    "sch_1_line_26_total_adjustments":
+                        "form1[0].Page2[0].f2_31[0]",
                 },
             ),
             "repeaters": {},
@@ -77,6 +86,10 @@ class PdfSch1(PdfFormMapping[dict]):
                 _SCALARS_2025,
                 root_swap=("topmostSubform[0]", "form1[0]"),
                 overrides={
+                    # 2023 has NO top-of-form 1099-K field (added 2024), so
+                    # line 1 is f1_03 here, not the corrected base's f1_04.
+                    "sch_1_line_1_taxable_refunds":
+                        "form1[0].Page1[0].f1_03[0]",
                     "sch_1_line_3_business_income":
                         "form1[0].Page1[0].f1_06[0]",
                     "sch_1_line_4_other_gains":

@@ -389,7 +389,10 @@ class EmitPdfsSch1Tests(unittest.TestCase):
             for name, f in (reader.get_fields() or {}).items()
         }
         line_5 = "topmostSubform[0].Page1[0].f1_09[0]"
-        line_10 = "topmostSubform[0].Page1[0].f1_37[0]"
+        # Line 10 (additional-income total) is f1_38 on the 2025 template;
+        # f1_37 is line 9 (total OTHER income). The prior expectation pinned
+        # f1_37 — the shifted-total-onto-line-9 defect this branch fixes.
+        line_10 = "topmostSubform[0].Page1[0].f1_38[0]"
         self.assertEqual(field_values.get(line_5), "8000")
         self.assertEqual(field_values.get(line_10), "8000")
 
