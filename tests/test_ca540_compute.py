@@ -542,6 +542,9 @@ class CaWithholdingTests(unittest.TestCase):
         expected_with_new_key = {
             **expected_pre_change,
             "f540_line71_ca_withholding": 0,
+            # Line 13 — federal AGI carried onto the 540 (== the federal_agi
+            # input); newly emitted so line 13 stops printing blank.
+            "f540_federal_agi": 50_000,
         }
         self.assertEqual(omitted, expected_with_new_key)
 
@@ -598,3 +601,69 @@ class California2024ConstantsTests(unittest.TestCase):
         # "Nonrefundable Renter's Credit Qualification Record" Q2 + Q11
         self.assertEqual(self.params_2024.renter_credit_agi_threshold[FilingStatus.SINGLE.value], 52_421)
         self.assertEqual(self.params_2024.renter_credit_amount[FilingStatus.SINGLE.value], 60)
+
+
+class F540SettlementChainTests(unittest.TestCase):
+    """540 lines 93-100 + 111/115: one internally consistent settlement story
+    per posture, derived from the LINE-78 TOTAL (never the estimated-payments
+    component alone). Guards the defect where line 93/95 read only estimated
+    payments — which collapsed line 95 toward 0 whenever payments arrived via
+    CA withholding, so line 100 (tax due) printed the full tax ignoring
+    payments and lines 97/99 (overpaid) went unfilled."""
+
+    from tenforty.mappings.pdf_f540 import PdfF540
+    _D = PdfF540.get_derivations(2025)
+
+    def _c(self, *, estimated=0.0, withholding=0):
+        return compute(
+            year=2025, filing_status=FilingStatus.SINGLE,
+            federal_agi=50_000, ca_agi=50_000,
+            ca540=CA540Return(estimated_payments=estimated),
+            ca_withholding=withholding,
+        )
+
+    def test_line_93_reads_the_line_78_total_not_just_estimated(self):
+        # Payments arrive ENTIRELY via CA withholding (estimated = 0). Line 93
+        # (payments balance) must reflect them; the old component-only sourcing
+        # returned 0 here.
+        c = self._c(estimated=0.0, withholding=3_000)
+        self.assertEqual(self._D["540_form_3023"](c), 3_000)   # line 93
+        self.assertEqual(self._D["540_form_3025"](c), 3_000)   # line 95
+
+    def test_refund_posture_one_story(self):
+        c = self._c(estimated=5_000)  # payments >> tax
+        line97 = self._D["540_form_3027"](c)   # overpaid tax
+        line99 = self._D["540_form_4004"](c)
+        line100 = self._D["540_form_4005"](c)  # tax due
+        line111 = self._D["540_form_5002"](c)  # amount you owe
+        line115 = self._D["540_form_5007"](c)  # refund
+        self.assertGreater(line97, 0)
+        self.assertEqual(line97, line99)
+        self.assertEqual(line100, 0)
+        self.assertIsNone(line111)
+        self.assertEqual(line115, line97)  # refund foots against overpaid
+
+    def test_owe_posture_one_story(self):
+        c = self._c(estimated=100)  # payments << tax
+        line97 = self._D["540_form_3027"](c)
+        line99 = self._D["540_form_4004"](c)
+        line100 = self._D["540_form_4005"](c)  # tax due
+        line111 = self._D["540_form_5002"](c)  # amount you owe
+        line115 = self._D["540_form_5007"](c)
+        self.assertEqual(line97, 0)
+        self.assertEqual(line99, 0)
+        self.assertGreater(line100, 0)
+        self.assertEqual(line100, line111)  # tax due == amount owed (no vol/penalty)
+        self.assertIsNone(line115)
+
+
+class F540Line13FederalAgiTests(unittest.TestCase):
+    """Line 13 (federal AGI carried from the 1040) is now emitted; it printed
+    blank on every 540 before."""
+
+    def test_federal_agi_emitted(self):
+        c = compute(
+            year=2025, filing_status=FilingStatus.SINGLE,
+            federal_agi=73_210, ca_agi=73_210, ca540=CA540Return(),
+        )
+        self.assertEqual(c["f540_federal_agi"], 73_210)
