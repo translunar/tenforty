@@ -630,6 +630,28 @@ class F540SettlementChainTests(unittest.TestCase):
         self.assertEqual(self._D["540_form_3023"](c), 3_000)   # line 93
         self.assertEqual(self._D["540_form_3025"](c), 3_000)   # line 95
 
+    def test_line_94_use_tax_balance_reads_line_78_total(self):
+        # Withholding-only payments + use tax. Line 94 (use tax MINUS total
+        # payments) must read the LINE-78 total, not the estimated-payments
+        # component: with $3,000 withholding and $100 use tax, line 93 = 2,900
+        # and line 94 = 0. Component-only sourcing wrongly returned 100 (use
+        # tax) while line 93 was 2,900 — the form contradicting itself.
+        c = compute(
+            year=2025, filing_status=FilingStatus.SINGLE,
+            federal_agi=50_000, ca_agi=50_000,
+            ca540=CA540Return(use_tax=100), ca_withholding=3_000,
+        )
+        self.assertEqual(self._D["540_form_3023"](c), 2_900)  # line 93
+        self.assertEqual(self._D["540_form_3024"](c), 0)      # line 94
+        # When use tax EXCEEDS total payments, line 94 fills and line 93 = 0.
+        c2 = compute(
+            year=2025, filing_status=FilingStatus.SINGLE,
+            federal_agi=50_000, ca_agi=50_000,
+            ca540=CA540Return(use_tax=5_000), ca_withholding=200,
+        )
+        self.assertEqual(self._D["540_form_3023"](c2), 0)      # line 93
+        self.assertEqual(self._D["540_form_3024"](c2), 4_800)  # line 94 = 5000-200
+
     def test_refund_posture_one_story(self):
         c = self._c(estimated=5_000)  # payments >> tax
         line97 = self._D["540_form_3027"](c)   # overpaid tax

@@ -270,12 +270,12 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
         + c.get("f540_line76_yctc", 0)
         + c.get("f540_line77_fytc", 0)
     ),
-    # Line 93 = max(0, line 78 − line 91). Line 78 ≈ estimated_payments
-    # in v1 (other [PLANNED] payment lines default 0).
+    # Line 93 = max(0, line 78 − line 91). Line 78 is the TOTAL payments
+    # (_line_78: lines 71-77, incl. CA withholding), not just estimated.
     "540_form_3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
     "540_form_3024": lambda c: max(
-        0, c["f540_use_tax"] - c["f540_estimated_payments"]
+        0, c["f540_use_tax"] - _line_78(c)
     ),
     # Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
     # ([PLANNED]; defaults 0).
@@ -439,7 +439,7 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     "540-3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
     "540-3024": lambda c: max(
-        0, c["f540_use_tax"] - c["f540_estimated_payments"]
+        0, c["f540_use_tax"] - _line_78(c)
     ),
     # Line 95 = max(0, line 93 − line 92).
     "540-3025": lambda c: _line_95(c),
@@ -581,7 +581,7 @@ _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 93 = max(0, line 78 − line 91).
     "3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 = max(0, line 93 − line 92).
     "3025": lambda c: _line_95(c),
     # Line 96 = max(0, line 92 − line 93).
@@ -767,12 +767,12 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
         + c.get("f540_line77_fytc", 0)
     ),
     # Line 93 (box 3016) /TU "If line 78 is more than line 91, subtract line 91
-    # from line 78." = max(0, line 78 − line 91); line78 ≈ est_payments in v1.
-    # (2023: 3023.)
+    # from line 78." = max(0, line 78 − line 91); line 78 is the TOTAL payments
+    # (_line_78: lines 71-77, incl. CA withholding). (2023: 3023.)
     "3016": lambda c: _line_93(c),
     # Line 94 (box 3023) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78). (2023: 3024.)
-    "3023": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3023": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 (box 3017) /TU "Payments after ISR Penalty. If line 93 is more
     # than line 92, subtract line 92 from line 93." = max(0, line 93 − line 92).
     # (2023: 3025.)
@@ -959,7 +959,7 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     "3023": lambda c: _line_93(c),
     # Line 94 (box 3024) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 (box 3025) /TU "If line 93 is more than line 92, subtract line 92
     # from line 93." = max(0, line 93 − line 92).
     "3025": lambda c: _line_95(c),
