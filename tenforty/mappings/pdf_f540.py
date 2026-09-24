@@ -116,6 +116,7 @@ _MAPPING_2025: dict[str, str] = {
     "f540_address_zip":              "540_form_1020",
     "f540_residence_county":         "540_form_1028",
     # Page 2 — Taxable income + tax
+    "f540_federal_agi":              "540_form_2019",  # line 13 (federal AGI)
     "f540_ca_agi":                   "540_form_2023",  # line 17
     "f540_deduction":                "540_form_2024",  # line 18
     "f540_taxable_income":           "540_form_2025",  # line 19
@@ -195,12 +196,33 @@ def _line_64(c: Mapping[str, object]) -> float:
     )
 
 
+def _line_78(c: Mapping[str, object]) -> float:
+    """Line 78 = total payments = sum of lines 71-77 (CA withholding, estimated
+    payments, 592-B/593 withholding, Program 4.0, EITC, YCTC, FYTC). Only
+    line 72 (estimated payments) and line 71 (CA withholding) are modeled in
+    v1; the rest default 0. This is the SINGLE line-78 total; the per-year
+    line-78 boxes and the settlement chain (line 93) both read it, so they
+    cannot disagree."""
+    return (
+        c.get("f540_line71_ca_withholding", 0)
+        + c["f540_estimated_payments"]
+        + c.get("f540_line73_592b_593_withholding", 0)
+        + c.get("f540_line74_program_40_motion_picture", 0)
+        + c.get("f540_line75_eitc", 0)
+        + c.get("f540_line76_yctc", 0)
+        + c.get("f540_line77_fytc", 0)
+    )
+
+
 def _line_93(c: Mapping[str, object]) -> float:
-    """Line 93 = max(0, line 78 − line 91). Line 78 ≈ estimated_payments
-    in v1 (other [PLANNED] payment lines default 0). Called from
-    540_form_3023, 540_form_3025, 540_form_3026, 540_form_3027,
-    540_form_4004, 540_form_4005."""
-    return max(0, c["f540_estimated_payments"] - c["f540_use_tax"])
+    """Line 93 = max(0, line 78 − line 91). Line 91 is use tax
+    (``f540_use_tax``). Line 78 is the TOTAL payments (``_line_78``), NOT the
+    estimated-payments component alone — sourcing only estimated payments
+    understated line 93 whenever payments arrived via CA withholding, which
+    collapsed line 95 toward 0 and made line 100 (tax due) print the full tax
+    ignoring payments while line 97/99 (overpaid) went unfilled. Called from
+    the line-93/95/97/99/100 derivations in every year surface."""
+    return max(0, _line_78(c) - c["f540_use_tax"])
 
 
 def _line_95(c: Mapping[str, object]) -> float:
@@ -248,12 +270,12 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
         + c.get("f540_line76_yctc", 0)
         + c.get("f540_line77_fytc", 0)
     ),
-    # Line 93 = max(0, line 78 − line 91). Line 78 ≈ estimated_payments
-    # in v1 (other [PLANNED] payment lines default 0).
+    # Line 93 = max(0, line 78 − line 91). Line 78 is the TOTAL payments
+    # (_line_78: lines 71-77, incl. CA withholding), not just estimated.
     "540_form_3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
     "540_form_3024": lambda c: max(
-        0, c["f540_use_tax"] - c["f540_estimated_payments"]
+        0, c["f540_use_tax"] - _line_78(c)
     ),
     # Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
     # ([PLANNED]; defaults 0).
@@ -362,6 +384,7 @@ _MAPPING_2024: dict[str, str] = {
     "f540_address_zip":              "540-1020",
     "f540_residence_county":         "540-1028",
     # Page 2 — Taxable income + tax
+    "f540_federal_agi":              "540-2019",  # line 13 (federal AGI)
     "f540_ca_agi":                   "540-2023",  # line 17
     "f540_deduction":                "540-2024",  # line 18
     "f540_taxable_income":           "540-2025",  # line 19
@@ -416,7 +439,7 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     "540-3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
     "540-3024": lambda c: max(
-        0, c["f540_use_tax"] - c["f540_estimated_payments"]
+        0, c["f540_use_tax"] - _line_78(c)
     ),
     # Line 95 = max(0, line 93 − line 92).
     "540-3025": lambda c: _line_95(c),
@@ -496,6 +519,7 @@ _MAPPING_2023: dict[str, str] = {
     "f540_address_zip":              "1020",
     "f540_residence_county":         "1028",
     # Page 2 — Taxable income + tax
+    "f540_federal_agi":              "2019",  # line 13 (federal AGI)
     "f540_ca_agi":                   "2023",  # line 17
     "f540_deduction":                "2024",  # line 18
     "f540_taxable_income":           "2025",  # line 19
@@ -557,7 +581,7 @@ _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 93 = max(0, line 78 − line 91).
     "3023": lambda c: _line_93(c),
     # Line 94 = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 = max(0, line 93 − line 92).
     "3025": lambda c: _line_95(c),
     # Line 96 = max(0, line 92 − line 93).
@@ -650,6 +674,7 @@ _MAPPING_2021: dict[str, str] = {
     "f540_address_zip":              "1020",
     "f540_residence_county":         "Text Field 439",
     # Page 2 — Taxable income + tax
+    "f540_federal_agi":              "2005",  # line 13 (federal AGI)
     "f540_ca_agi":                   "2009",
     "f540_deduction":                "2010",
     "f540_taxable_income":           "2011",
@@ -742,12 +767,12 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
         + c.get("f540_line77_fytc", 0)
     ),
     # Line 93 (box 3016) /TU "If line 78 is more than line 91, subtract line 91
-    # from line 78." = max(0, line 78 − line 91); line78 ≈ est_payments in v1.
-    # (2023: 3023.)
+    # from line 78." = max(0, line 78 − line 91); line 78 is the TOTAL payments
+    # (_line_78: lines 71-77, incl. CA withholding). (2023: 3023.)
     "3016": lambda c: _line_93(c),
     # Line 94 (box 3023) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78). (2023: 3024.)
-    "3023": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3023": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 (box 3017) /TU "Payments after ISR Penalty. If line 93 is more
     # than line 92, subtract line 92 from line 93." = max(0, line 93 − line 92).
     # (2023: 3025.)
@@ -849,6 +874,7 @@ _MAPPING_2022: dict[str, str] = {
     "f540_address_zip":              "1020",
     "f540_residence_county":         "1028",
     # Page 2 — Taxable income + tax
+    "f540_federal_agi":              "2019",  # line 13 (federal AGI)
     "f540_ca_agi":                   "2023",  # line 17
     "f540_deduction":                "2024",  # line 18
     "f540_taxable_income":           "2025",  # line 19
@@ -933,7 +959,7 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     "3023": lambda c: _line_93(c),
     # Line 94 (box 3024) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - c["f540_estimated_payments"]),
+    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
     # Line 95 (box 3025) /TU "If line 93 is more than line 92, subtract line 92
     # from line 93." = max(0, line 93 − line 92).
     "3025": lambda c: _line_95(c),

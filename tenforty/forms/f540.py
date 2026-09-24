@@ -203,6 +203,10 @@ def compute(
     )
 
     return {
+        # Line 13 — federal AGI carried from federal Form 1040 line 11. The
+        # CA return starts from this; it was never emitted, so 540 line 13
+        # printed blank on every emit.
+        "f540_federal_agi": irs_round(federal_agi),
         "f540_ca_agi": irs_round(ca_agi),
         "f540_deduction": irs_round(deduction),
         "f540_taxable_income": irs_round(taxable_income),

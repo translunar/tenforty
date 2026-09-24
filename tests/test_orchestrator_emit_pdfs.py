@@ -10,8 +10,9 @@ from datetime import date
 
 from tenforty.models import (
     DepreciableAsset, FilingStatus, Form1099B, Form1099DIV, Form1099INT,
-    ItemizedDeductions, RentalProperty, Scenario, TaxReturnConfig, W2,
+    ItemizedDeductions, RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
+from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import scope_out_attestation_defaults
 
@@ -332,6 +333,51 @@ class EmitPdfsSchETests(unittest.TestCase):
         self.assertEqual(field_values.get(total_exp), "8000")
         self.assertEqual(field_values.get(income), "10000")
 
+    @unittest.skipUnless(SCH_E_TEMPLATE.exists(), "f1040se.pdf template not found")
+    def test_emitted_sch_e_line_41_is_grand_total_of_line26_plus_line32(self):
+        """Line 41 (total income/(loss)) must print the form-true grand total
+        = line 26 (rental) + line 32 (K-1 pass-through), NOT the pte-only
+        subtotal and NOT on line 39. That grand total is by construction the
+        Schedule 1 line-5 quantity (forms/sch_1.py: line 26 + line 41 pte).
+        Regression guard for the 2022-2025 mis-binding (line 41 -> f2_76/line
+        39, line-41 box blank)."""
+        scenario = make_scenario_with_identity()
+        scenario.rental_properties = [
+            RentalProperty(
+                address="123 Main St", property_type=1,
+                fair_rental_days=365, personal_use_days=0,
+                rents_received=24000.0, mortgage_interest=8000.0,
+                taxes=3000.0, depreciation=5000.0,
+            ),
+        ]  # Part I line 26 = 24000 - 16000 = 8000
+        scenario.schedule_k1s = [
+            ScheduleK1(
+                entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
+                entity_type="s_corp", material_participation=True,
+                ordinary_business_income=50_000.0,
+            ),
+        ]  # Part II line 32 = 50000 (nonpassive)
+        emitted = self.orchestrator.emit_pdfs(
+            scenario, SAMPLE_RESULTS, self.output_dir,
+        )
+        reader = pypdf.PdfReader(str(emitted["sch_e"]))
+        field_values = {
+            name: (f.get("/V") or "")
+            for name, f in (reader.get_fields() or {}).items()
+        }
+        m = PdfSchE.get_mapping(2025)["scalars"]
+
+        def as_int(key):
+            return int(field_values.get(m[key], "") or 0)
+
+        line26 = as_int("sch_e_line_26_total")
+        line32 = as_int("sch_e_line_32_total_partnership_scorp")
+        line41 = as_int("sch_e_line_41_total_income")
+        self.assertEqual(line26, 8000)
+        self.assertEqual(line32, 50000)
+        # Grand total foots and lands in the line-41 box (== Sch 1 line 5).
+        self.assertEqual(line41, line26 + line32)
+
 
 class EmitPdfsSch1Tests(unittest.TestCase):
     def setUp(self):
@@ -389,7 +435,10 @@ class EmitPdfsSch1Tests(unittest.TestCase):
             for name, f in (reader.get_fields() or {}).items()
         }
         line_5 = "topmostSubform[0].Page1[0].f1_09[0]"
-        line_10 = "topmostSubform[0].Page1[0].f1_37[0]"
+        # Line 10 (additional-income total) is f1_38 on the 2025 template;
+        # f1_37 is line 9 (total OTHER income). The prior expectation pinned
+        # f1_37 — the shifted-total-onto-line-9 defect this branch fixes.
+        line_10 = "topmostSubform[0].Page1[0].f1_38[0]"
         self.assertEqual(field_values.get(line_5), "8000")
         self.assertEqual(field_values.get(line_10), "8000")
 

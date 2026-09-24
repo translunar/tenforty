@@ -192,10 +192,14 @@ def _build_fields() -> dict:
             "sch_e_line_32_total_partnership_scorp": f"{_P2}.f2_47[0]",
 
             # ── Part III — Line 37 (estate/trust) — always 0 ────────────────
-            "sch_e_line_37_total_estate_trust": f"{_P2}.f2_68[0]",
+            # f2_70 is line 37; f2_68 is line 35 (was mis-bound there).
+            "sch_e_line_37_total_estate_trust": f"{_P2}.f2_70[0]",
 
-            # ── Line 41 — total pass-through income / (loss) ───────────────
-            "sch_e_line_41_total_pte": f"{_P2}.f2_76[0]",
+            # ── Line 41 — total income/(loss), the form-true grand total
+            # (line 26 + line 32 + 37/39/40) that flows to Schedule 1 line 5.
+            # f2_78 is line 41; f2_76 is line 39 (REMIC), where the pte-only
+            # subtotal was wrongly printed. See sch_e_part_ii.merge_with_part_i.
+            "sch_e_line_41_total_income": f"{_P2}.f2_78[0]",
         },
         "repeaters": {},
     }
@@ -373,7 +377,9 @@ _FIELDS_2021: dict = {
         "sch_e_line_32_total_partnership_scorp":
             "topmostSubform[0].Page2[0].f2_42[0]",
         "sch_e_line_37_total_estate_trust": "topmostSubform[0].Page2[0].f2_61[0]",
-        "sch_e_line_41_total_pte": "topmostSubform[0].Page2[0].f2_69[0]",
+        # Line 41 grand total (line 26 + line 32) -> f2_69 (verified line 41 on
+        # the 2021 template); binds the grand-total key, not the pte subtotal.
+        "sch_e_line_41_total_income": "topmostSubform[0].Page2[0].f2_69[0]",
     },
     "repeaters": {},
 }
