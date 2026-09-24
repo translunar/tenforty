@@ -67,8 +67,8 @@ _REQUIRED_PART_II_SCALARS = (
     "sch_e_line_32_total_partnership_scorp",
     # Line 37 (estate/trust, always 0 in Plan D)
     "sch_e_line_37_total_estate_trust",
-    # Line 41 (total pass-through)
-    "sch_e_line_41_total_pte",
+    # Line 41 (total income/(loss) grand total = line 26 + line 32)
+    "sch_e_line_41_total_income",
 )
 
 

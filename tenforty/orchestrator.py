@@ -858,9 +858,11 @@ class ReturnOrchestrator:
 
         # --- Step 3: Sch E Part I (rental), merged with Part II fields ---
         # Merge so the spine can read both sch_e_line_26_total (Part I) and
-        # sch_e_line_41_total_pte (Part II) from the same "sch_e" slot.
+        # sch_e_line_41_total_pte (Part II) from the same "sch_e" slot; the
+        # helper also emits the line-41 grand total for the PDF line-41 box.
         sch_e_part_i = form_sch_e.compute(effective_scenario, upstream={})
-        sch_e_combined = {**sch_e_part_i, **part_ii_fields}
+        sch_e_combined = form_sch_e_part_ii.merge_with_part_i(
+            sch_e_part_i, part_ii_fields)
 
         # --- Step 3b: Sch C (net profit) then Sch SE (self-employment tax) ---
         # sch_c is a pure leaf (upstream={}); sch_se consumes sch_c net profit.
@@ -1363,8 +1365,10 @@ class ReturnOrchestrator:
         sch_e_values: dict = {}
         if self._should_emit_sch_e(scenario):
             part_i = form_sch_e.compute(scenario, upstream=upstream)
-            # Merge: Part I scalars win for shared keys (e.g. taxpayer_name).
-            merged = {**part_i, **part_ii_fields}
+            # Merge: Part I scalars win for shared keys (e.g. taxpayer_name);
+            # helper also emits sch_e_line_41_total_income (the line-41 grand
+            # total = line 26 + line 32) for the PDF line-41 box.
+            merged = form_sch_e_part_ii.merge_with_part_i(part_i, part_ii_fields)
             # Derive page-2 header fields for the mapping layer without
             # polluting compute outputs with PDF-template structure.
             merged["taxpayer_name_page2"] = merged.get("taxpayer_name")

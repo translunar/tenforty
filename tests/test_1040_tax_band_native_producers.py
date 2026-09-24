@@ -352,7 +352,7 @@ class Line24KeyNameReconciliationTests(unittest.TestCase):
         2021: "topmostSubform[0].Page2[0].f2_10[0]",
         2022: "topmostSubform[0].Page2[0].f2_10[0]",
         2023: "topmostSubform[0].Page2[0].f2_10[0]",
-        2024: "topmostSubform[0].Page2[0].f2_15[0]",
+        2024: "topmostSubform[0].Page2[0].f2_10[0]",
         2025: "topmostSubform[0].Page2[0].f2_16[0]",
     }
 
@@ -375,6 +375,54 @@ class Line24KeyNameReconciliationTests(unittest.TestCase):
                     {self._LINE_24_BOX[year]},
                     set(Pdf1040.get_derivations(year)),
                 )
+
+
+class NativeSettlementChainTests(_NativeComputeCase):
+    """1040 Tax-and-Credits chain (lines 19-24) and settlement (34/35a/37).
+
+    Before these producers landed, lines 19/21/22 and amount_owed (line 37)
+    had no native producer and printed blank while line 17 printed 0 — an
+    internally inconsistent face. Asserts the form-true footing and that the
+    two settlement postures each tell one story."""
+
+    def _foots(self, results: dict):
+        from tenforty.forms.f4868 import total_tax_liability_line_24
+        # 16 + 17 == 18
+        self.assertEqual(
+            results["total_tax"] + results["schedule2_tax"],
+            results["tax_plus_schedule2"],
+        )
+        # 21 == 19 + 20
+        self.assertEqual(
+            results["total_credits"],
+            results["child_tax_credit"] + results["schedule3_credits"],
+        )
+        # 18 - 21 == 22 (no credits modeled -> line 22 == line 18)
+        self.assertEqual(
+            max(0, results["tax_plus_schedule2"] - results["total_credits"]),
+            results["tax_after_credits"],
+        )
+        # 22 + 23 == 24 (the emitted line-24 total)
+        line24 = total_tax_liability_line_24(dict(results))
+        self.assertEqual(
+            results["tax_after_credits"] + results["other_taxes"],
+            irs_round(line24),
+        )
+
+    def test_refund_posture_one_story(self):
+        results = self.orch.compute_federal(_scenario(55_000, 12_000))
+        self._foots(results)
+        self.assertGreater(results["overpaid"], 0)
+        self.assertEqual(results["amount_owed"], 0)
+        # Full-refund default: line 35a == line 34.
+        self.assertEqual(results["refund"], results["overpaid"])
+
+    def test_owe_posture_one_story(self):
+        results = self.orch.compute_federal(_scenario(55_000, 500))
+        self._foots(results)
+        self.assertGreater(results["amount_owed"], 0)
+        self.assertEqual(results["overpaid"], 0)
+        self.assertEqual(results["refund"], 0)
 
 
 if __name__ == "__main__":

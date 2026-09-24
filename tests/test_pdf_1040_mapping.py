@@ -23,7 +23,7 @@ from tenforty.params.federal import load as load_federal_params
 YEAR_CELLS = {
     2022: "topmostSubform[0].Page2[0].f2_15[0]",
     2023: "topmostSubform[0].Page2[0].f2_15[0]",
-    2024: "topmostSubform[0].Page2[0].f2_20[0]",
+    2024: "topmostSubform[0].Page2[0].f2_15[0]",
     2025: "topmostSubform[0].Page2[0].f2_21[0]",
 }
 
