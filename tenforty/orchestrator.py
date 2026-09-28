@@ -1706,6 +1706,10 @@ class ReturnOrchestrator:
         withholding condition applies to W-2G/1099-R, unmodeled). Lives here
         rather than the load/compute attestation registry so compute-only
         scenarios are never burdened; see the source-documents spec.
+
+        Checks w2s[*].pdf, while assembly consumes scenario.source_documents;
+        the two agree only because load_scenario normalizes one from the
+        other (see the Scenario.source_documents field note).
         """
         if scenario.config.acknowledges_no_source_documents:
             return
