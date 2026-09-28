@@ -21,10 +21,14 @@ attaches the real files it is pointed at and never parses their contents.
 
 ## YAML surface
 
-Two channels, split by whether tenforty models the underlying document.
+One channel: the attachment rides on the model entry it evidences. There is
+deliberately **no** free-floating attachment list — a document type tenforty
+doesn't model is income tenforty can't compute, so no packet for such a
+return exists to attach it to. If a document type is ever modeled (1099-R,
+W-2G, 8949 summary statements), its attachment arrives the same way: a `pdf`
+field on that model's entry.
 
-**Modeled documents (W-2 today):** the attachment rides on the model entry it
-evidences. `W2` gains an optional `pdf` field:
+`W2` gains an optional `pdf` field:
 
 ```yaml
 w2s:
@@ -45,46 +49,30 @@ Routing is derived from declared data — no PDF parsing:
   (the existing CA-attribution channel; unattributed withholding W-2s are
   already refused at load for CA returns).
 
-**Unmodeled documents:** a top-level `source_documents:` list for anything
-tenforty has no model for:
+`pdf` names *the evidence document for this W-2*, whatever form it takes —
+normally the employer's Copy B, but a Form 4852 substitute is equally valid
+here when the issuer copy is missing or wrong (tenforty attaches it
+verbatim; the 4852's own preparation is out of scope).
 
-```yaml
-source_documents:
-  - path: "1099-R Broker 2024.pdf"
-    kind: 1099r                      # w2g | 1099r | other
-  - path: "Form 4852 substitute.pdf"
-    kind: other
-    packets: [federal, california]   # optional; default [federal]
-```
-
-- `kind` is required: `w2g`, `1099r`, or `other`. `kind: w2` is **rejected**
-  here — W-2s must ride on their `w2s` entry so routing and validation stay
-  data-driven.
-- `packets` defaults to `[federal]`. Adding `california` is the user's
-  explicit statement that the document shows CA withholding; tenforty cannot
-  verify this and does not try. Declaring `california` when the scenario has
-  no `ca540` is a load error.
-- If tenforty later models a document type (e.g. 1099-R), its attachment
-  migrates to the model-entry channel and the kind is retired from this list.
-
-Both channels resolve `path`/`pdf` relative to the scenario YAML's directory,
-so real scenarios point into the user's document folders and no personal file
-ever needs to live near the repo.
+Paths resolve relative to the scenario YAML's directory, so real scenarios
+point into the user's document folders and no personal file ever needs to
+live near the repo.
 
 ## Models and loading
 
 - `W2` gains `pdf: str | None = None` (loader-resolved to an absolute `Path`
   on the loaded object).
 - New frozen dataclass `SourceDocument` in `models.py`: `path: Path`,
-  `kind: str` (`"w2g" | "1099r" | "other"`), `packets: tuple[str, ...]`.
-  W-2 attachments are normalized into `SourceDocument(kind="w2")` records
-  internally at load, so packet assembly consumes one uniform channel.
-- `Scenario` gains `source_documents: list[SourceDocument]`
-  (default empty) carrying the normalized union of both channels.
+  `kind: str` (only `"w2"` today; future models add kinds), `packets:
+  tuple[str, ...]`. W-2 `pdf` fields are normalized into these records at
+  load — with packets derived from the routing rules above — so packet
+  assembly consumes one uniform, already-routed channel and needs no model
+  knowledge.
+- `Scenario` gains `source_documents: list[SourceDocument]` (default empty)
+  carrying the normalized records.
 - `load_scenario` validation, fail closed with a clear message naming the
-  offending entry: path exists; file opens under `pypdf` and has ≥ 1 page;
-  `kind` in the allowed set; `packets` values in `{federal, california}`;
-  `california` only when `ca540` is present.
+  offending W-2 entry: path exists; file opens under `pypdf` and has
+  ≥ 1 page.
 
 ## Packet assembly
 
@@ -95,15 +83,12 @@ untouched.
 
 **Placement:** within each packet, source documents are inserted immediately
 after the main form's pages (1040 / 540) and before the first schedule —
-mirroring the "Attach Form(s) W-2 here" staple point on page 1. Order within
-the block: `w2` (in `w2s` declaration order), then `w2g`, `1099r`, `other`
-(each in declaration order).
+mirroring the "Attach Form(s) W-2 here" staple point on page 1. Within the
+block, documents appear in `w2s` declaration order; future kinds append
+after `w2` in a fixed kind order.
 
 **Manifest:** each attachment contributes a line per packet it joins:
-filename, kind, page count, packet name. Documents attached against the
-grain (any `other`, or a `california` routing on an unmodeled kind) carry a
-note that tenforty did not verify the attachment rule — a warning, never a
-block.
+filename, kind, page count, packet name.
 
 **Compute-only years:** packets cannot be assembled at all; if source
 documents are declared, the existing "attachment emit unavailable" note in
@@ -141,16 +126,13 @@ temp directories — no real documents in or near the repo. All tests subclass
 - placement: attachment block lands between main-form pages and first
   schedule; intra-block kind ordering; declaration-order stability
 - routing: W-2 pdf → federal always; → california iff CA withholding
-  attributed and `ca540` present; `source_documents` default `[federal]`;
-  explicit `california` honored
-- load failures: missing file, non-PDF file, zero-page PDF, `kind: w2` in
-  `source_documents`, `california` without `ca540` — each refused with the
-  entry named
+  attributed and `ca540` present; no CA routing without CA withholding
+- load failures: missing file, non-PDF file, zero-page PDF — each refused
+  with the W-2 entry named
 - gate: refusal fires (withholding W-2, no pdf, no flag); flag clears it;
   CA-withholding variant fires for CA returns; compute-only scenarios
   unaffected
-- manifest: attachment lines present with filename/kind/pages/packet;
-  unverified-rule note on `other`
+- manifest: attachment lines present with filename/kind/pages/packet
 - partition invariant: unchanged behavior for emitted keys with attachments
   present
 
@@ -158,8 +140,12 @@ temp directories — no real documents in or near the repo. All tests subclass
 
 - Appending a copy of the assembled federal return behind the 540 (FTB
   federal-copy rule) — user assembles manually; candidate follow-on.
-- Generating W-2/1099 facsimiles or Form 4852 support.
+- Generating W-2/1099 facsimiles, or preparing Form 4852 (an existing 4852
+  PDF may be attached via a W-2's `pdf` field).
 - Parsing attachment contents for any purpose.
-- Modeling 1099-R / W-2G data (their attachments use the unmodeled channel).
+- Any attachment channel for unmodeled document types (1099-R, W-2G,
+  brokerage statements). Income tenforty can't model can't be computed, so
+  no packet exists to attach evidence to; if such a type is modeled later,
+  its attachment arrives as a `pdf` field on that model, like the W-2.
 - Entity (1120-S) and extension (4868) packets — no attachment rules needed
   there today.
