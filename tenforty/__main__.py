@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import TextIO
 
+import pypdf
+
 from tenforty import pdf_packet
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.rounding import irs_round
@@ -64,7 +66,8 @@ def _which_applied(standard: float, schedule_a: float, applied: float) -> str:
 
 
 def _assemble_packets_and_prune(
-    emitted: dict, output_dir: Path, year: int
+    emitted: dict, output_dir: Path, year: int,
+    source_documents=(),
 ) -> tuple[dict, list[Path]]:
     """Assemble combined packet(s) from loose emitted PDFs, then remove the
     loose form files that went into a packet (combined-only).
@@ -72,9 +75,12 @@ def _assemble_packets_and_prune(
     Files claimed by no packet are retained: the standalone Form 4868
     (a separate filing) and any defensively-unclassified key. Returns
     ``(combined, retained)`` where ``combined`` maps packet name → packet PDF
-    path and ``retained`` lists the loose files kept on disk.
+    path and ``retained`` lists the loose files kept on disk. Source
+    documents are spliced in by pdf_packet; loose-file pruning only ever
+    touches emitted form files.
     """
-    combined = pdf_packet.assemble_all(emitted, output_dir, year)
+    combined = pdf_packet.assemble_all(
+        emitted, output_dir, year, source_documents=source_documents)
     retained: list[Path] = []
     for key, path in emitted.items():
         if pdf_packet.classify_key(key) in (None, "standalone"):
@@ -84,7 +90,8 @@ def _assemble_packets_and_prune(
     return combined, retained
 
 
-def _print_packets(combined: dict, retained: list[Path]) -> None:
+def _print_packets(combined: dict, retained: list[Path],
+                    source_documents=()) -> None:
     print()
     print("=== Assembled return packet(s) ===")
     for name, path in combined.items():
@@ -94,6 +101,16 @@ def _print_packets(combined: dict, retained: list[Path]) -> None:
         print("=== Standalone files (filed separately) ===")
         for path in retained:
             print(f"  {path}")
+    if source_documents:
+        print()
+        print("=== Attached source documents ===")
+        for doc in source_documents:
+            pages = len(pypdf.PdfReader(str(doc.path)).pages)
+            dests = ", ".join(
+                name for name in doc.packets if name in combined)
+            if dests:
+                print(f"  {doc.path.name} ({doc.kind}, {pages} page(s)) "
+                      f"-> {dests}")
 
 
 def _route_argv(argv: list[str]) -> list[str]:
@@ -196,8 +213,9 @@ def _run_federal(args: argparse.Namespace) -> int:
 
     if emitted is not None:
         combined, retained = _assemble_packets_and_prune(
-            emitted, args.output_dir, scenario.config.year)
-        _print_packets(combined, retained)
+            emitted, args.output_dir, scenario.config.year,
+            scenario.source_documents)
+        _print_packets(combined, retained, scenario.source_documents)
 
     return 0
 
@@ -237,8 +255,9 @@ def _run_ca(args: argparse.Namespace) -> int:
     )
 
     combined, retained = _assemble_packets_and_prune(
-        emitted, args.output_dir, scenario.config.year)
-    _print_packets(combined, retained)
+        emitted, args.output_dir, scenario.config.year,
+        scenario.source_documents)
+    _print_packets(combined, retained, scenario.source_documents)
     return 0
 
 

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import Enum
+from pathlib import Path
 from types import MappingProxyType
 from typing import Mapping
 
@@ -25,6 +26,14 @@ class W2:
     # Deliberately NOT normalized/coerced (no lowercasing) -- loud refusal on
     # garbage input rather than silent correction.
     state: str | None = None
+    # Path to this W-2's evidence document — normally the employer-issued
+    # Copy B PDF, or a Form 4852 substitute when the issuer copy is missing.
+    # Resolved relative to the scenario YAML's directory at load. Optional at
+    # the schema layer BY DESIGN: compute-only scenarios never produce filing
+    # packets and must not carry attachment paths. The mandatory-ness lives
+    # at the packet-emit gate (acknowledges_no_source_documents) — do not
+    # tighten this field.
+    pdf: str | None = None
 
     def __post_init__(self) -> None:
         if self.state is not None and (
@@ -37,6 +46,21 @@ class W2:
                 f"W2.state must be None or a 2-letter uppercase state code "
                 f"(e.g. 'CA'), got {self.state!r}."
             )
+
+
+@dataclass(frozen=True)
+class SourceDocument:
+    """A real issued document (W-2 Copy B today) spliced into filing packets.
+
+    Normalized at load from `W2.pdf`: `path` is resolved+validated,
+    `packets` is derived from the W-2's own declared data (see
+    scenario._load_source_documents). tenforty never parses the document's
+    contents — this record exists purely for packet assembly.
+    """
+
+    path: Path
+    kind: str  # only "w2" this round; future modeled types add kinds
+    packets: tuple[str, ...]  # pdf_packet packet names
 
 
 @dataclass
@@ -477,6 +501,11 @@ class TaxReturnConfig:
     acknowledges_no_other_state_tax_credit: bool | None = None
     acknowledges_no_railroad_retirement_benefits: bool | None = None
     acknowledges_no_paid_family_leave_benefits: bool | None = None
+    # Emit-time gate, NOT a load/compute attestation: packet emission refuses
+    # when any W-2 lacks `pdf` (IRS Copy B attaches for EVERY W-2, not only
+    # withholding-bearing ones) unless this is true. None/False at load and
+    # compute is always fine — compute-only scenarios are never gated.
+    acknowledges_no_source_documents: bool | None = None
     # Factual input (not an attestation): drives 1099-G state-refund
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
@@ -946,6 +975,11 @@ class Scenario:
     form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None
+    # Kept in sync with w2s[*].pdf ONLY by load_scenario's normalization.
+    # Programmatic callers that set W2.pdf directly must also populate this
+    # list (via scenario._load_source_documents) or the emit gate will pass
+    # while packet assembly splices nothing.
+    source_documents: list[SourceDocument] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         # CA-withholding channel, schema layer (state-attribution ruling):
