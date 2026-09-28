@@ -90,8 +90,9 @@ mirroring the "Attach Form(s) W-2 here" staple point on page 1. Within the
 block, documents appear in `w2s` declaration order; future kinds append
 after `w2` in a fixed kind order.
 
-**Manifest:** each attachment contributes a line per packet it joins:
-filename, kind, page count, packet name.
+**Manifest:** each attachment contributes one console line — filename,
+kind, page count, and the comma-joined names of the packets it joined
+(only packets actually assembled).
 
 **Compute-only years:** packets cannot be assembled at all, so neither the
 splice nor the gate ever runs there; declared source documents are simply
