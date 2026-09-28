@@ -100,11 +100,17 @@ what compute-only already imposes.
 New `TaxReturnConfig` flag `acknowledges_no_source_documents: bool = False`,
 named in the existing `acknowledges_*` family.
 
-**Trigger:** at packet-emit time, any `W2` with `federal_tax_withheld > 0`
-and no `pdf` — or, for a CA return, any W-2 with CA-attributed
-`state_tax_withheld > 0` and no `pdf`. When triggered and the flag is not
-set, packet emission **refuses** with an error naming each employer whose
-W-2 is missing and the flag that overrides.
+**Trigger:** at packet-emit time, **any** `W2` with no `pdf`. The IRS
+attachment rule for W-2s is not withholding-conditional — Copy B attaches
+for every W-2 (the withholding condition applies to W-2G/1099-R, which are
+out of scope). When triggered and the flag is not set, packet emission
+**refuses** with an error naming each employer whose W-2 is missing and the
+flag that overrides.
+
+`pdf` stays optional at the schema layer precisely because this gate exists:
+compute-only scenarios must load and compute without attachment paths, and
+the mandatory-ness is enforced at the moment a filing packet is actually
+produced.
 
 This gate deliberately lives at emit, not in the load/compute `Attestation`
 registry: compute-only scenarios (the entire synthetic test corpus, comps
@@ -114,8 +120,8 @@ is held to the attachment standard. Existing emit-path tests set the flag
 (one line per fixture) or attach synthetic PDFs.
 
 Per the attestation-audit norm, the refusal must be *proved able to fire*: a
-test constructs a withholding W-2 with no `pdf`, runs the emit path, and
-asserts the refusal — not merely that the flag exists.
+test constructs a W-2 with no `pdf` (including a zero-withholding one), runs
+the emit path, and asserts the refusal — not merely that the flag exists.
 
 ## Testing
 
@@ -129,9 +135,8 @@ temp directories — no real documents in or near the repo. All tests subclass
   attributed and `ca540` present; no CA routing without CA withholding
 - load failures: missing file, non-PDF file, zero-page PDF — each refused
   with the W-2 entry named
-- gate: refusal fires (withholding W-2, no pdf, no flag); flag clears it;
-  CA-withholding variant fires for CA returns; compute-only scenarios
-  unaffected
+- gate: refusal fires for any W-2 without pdf, including zero-withholding;
+  flag clears it; compute-only scenarios unaffected
 - manifest: attachment lines present with filename/kind/pages/packet
 - partition invariant: unchanged behavior for emitted keys with attachments
   present
