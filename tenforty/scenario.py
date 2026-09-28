@@ -1,6 +1,7 @@
 import datetime
 from pathlib import Path
 
+import pypdf
 import yaml
 
 from tenforty.attestations import validate_load_time
@@ -36,6 +37,7 @@ from tenforty.models import (
     Scenario,
     ScheduleCBusiness,
     ScheduleK1,
+    SourceDocument,
     TaxReturnConfig,
     VoluntaryContribution,
     W2,
@@ -518,6 +520,46 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
         )
 
 
+def _load_source_documents(
+    w2s: list[W2], base_dir: Path
+) -> list[SourceDocument]:
+    """Normalize `W2.pdf` declarations into routed SourceDocument records.
+
+    Routing is a pure function of the W-2's own declared data: federal
+    always; california iff CA-attributed state withholding exists. Never
+    keyed on ca540 presence — the CA CLI path loads its YAML separately,
+    and a california routing is inert unless CA forms are emitted.
+
+    Fails closed naming the employer: missing file, unopenable PDF, or
+    zero pages. Contents are never parsed.
+    """
+    docs: list[SourceDocument] = []
+    for w2 in w2s:
+        if not w2.pdf:
+            continue
+        raw = Path(w2.pdf).expanduser()
+        resolved = raw if raw.is_absolute() else (base_dir / raw).resolve()
+        if not resolved.exists():
+            raise ValueError(
+                f"Source document for W-2 '{w2.employer}' not found: "
+                f"{w2.pdf!r} (resolved to {resolved})")
+        try:
+            num_pages = len(pypdf.PdfReader(str(resolved)).pages)
+        except Exception as e:
+            raise ValueError(
+                f"Source document for W-2 '{w2.employer}' is not a readable "
+                f"PDF: {resolved} ({e})") from e
+        if num_pages < 1:
+            raise ValueError(
+                f"Source document for W-2 '{w2.employer}' has no pages: "
+                f"{resolved}")
+        packets: tuple[str, ...] = ("federal_individual",)
+        if w2.state == "CA" and w2.state_tax_withheld > 0:
+            packets = ("federal_individual", "california")
+        docs.append(SourceDocument(path=resolved, kind="w2", packets=packets))
+    return docs
+
+
 def load_scenario(path: Path) -> Scenario:
     """Load a tax scenario from a YAML file."""
     if not path.exists():
@@ -551,9 +593,11 @@ def load_scenario(path: Path) -> Scenario:
     itemized_deductions = (
         ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)
     form_1095a = _load_form_1095a(data.get("form_1095a"), config)
+    source_documents = _load_source_documents(form_data["w2s"], path.parent)
     scenario = Scenario(
         config=config, s_corp_return=s_corp_return, ca540=ca540,
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
+        source_documents=source_documents,
         **form_data)
     _validate_schedule_k1s(scenario)
     _validate_schedule_c_businesses(scenario)
