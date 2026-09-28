@@ -53,6 +53,12 @@ def _make_ca_v1_smoke_scenario() -> Scenario:
             address_city="Los Angeles",
             address_state="CA",
             address_zip="90001",
+            # Emit-time source-document gate (Task 3): downstream tests
+            # compose W-2s onto this scenario (e.g. _make_ca_withholding_
+            # scenario) with no `pdf` field. Setting the attestation here
+            # keeps the shared config's flag intact through
+            # dataclasses.replace(base, w2s=[...]) call sites.
+            acknowledges_no_source_documents=True,
             **attestations,
         ),
         ca540=CA540Return(),
