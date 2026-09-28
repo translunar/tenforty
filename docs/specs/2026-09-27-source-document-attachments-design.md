@@ -44,10 +44,13 @@ w2s:
 Routing is derived from declared data — no PDF parsing:
 
 - every W-2 `pdf` joins the **federal_individual** packet;
-- it also joins the **california** packet iff the scenario has a `ca540`
-  return and that W-2 has `state == "CA"` and `state_tax_withheld > 0`
-  (the existing CA-attribution channel; unattributed withholding W-2s are
-  already refused at load for CA returns).
+- it also joins the **california** packet iff that W-2 has `state == "CA"`
+  and `state_tax_withheld > 0` (the existing CA-attribution channel;
+  unattributed withholding W-2s are already refused at load for CA returns).
+  The routing is derived from the W-2's own data, not from whether a CA
+  return is present — a `california` routing is simply inert when no CA
+  forms are emitted, since a packet only assembles when it has at least one
+  emitted member.
 
 `pdf` names *the evidence document for this W-2*, whatever form it takes —
 normally the employer's Copy B, but a Form 4852 substitute is equally valid
@@ -90,10 +93,9 @@ after `w2` in a fixed kind order.
 **Manifest:** each attachment contributes a line per packet it joins:
 filename, kind, page count, packet name.
 
-**Compute-only years:** packets cannot be assembled at all; if source
-documents are declared, the existing "attachment emit unavailable" note in
-the manifest also lists them as declared-but-unassembled. No refusal beyond
-what compute-only already imposes.
+**Compute-only years:** packets cannot be assembled at all, so neither the
+splice nor the gate ever runs there; declared source documents are simply
+unused. No refusal beyond what compute-only already imposes.
 
 ## Warn + attest gate (emit-time, not load-time)
 
@@ -154,3 +156,8 @@ temp directories — no real documents in or near the repo. All tests subclass
   its attachment arrives as a `pdf` field on that model, like the W-2.
 - Entity (1120-S) and extension (4868) packets — no attachment rules needed
   there today.
+- Amendment (1040-X) packets: the amendment pipeline has its own packet
+  manifest and its own "attachments" concept (changed forms), and paper
+  1040-X filings also want W-2 copies — a follow-on once this lands in the
+  regular emit path. To avoid collision with that existing term, this
+  feature is named "source documents" throughout the code.
