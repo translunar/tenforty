@@ -206,6 +206,10 @@ def _scenario(year: int, *, form_1095a=None) -> Scenario:
             filing_status="single",
             birthdate="1990-06-15",
             state="TX",
+            # Emit-time source-document gate (Task 3):
+            # test_end_to_end_2024_emit_writes_f8962_with_4c_on drives
+            # run_full_return with a W-2 carrying no `pdf`.
+            acknowledges_no_source_documents=True,
             **scope_out_attestation_defaults(),
         ),
         w2s=[
