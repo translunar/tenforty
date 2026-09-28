@@ -12,6 +12,7 @@ from pathlib import Path
 import pypdf
 
 from tenforty import pdf_packet
+from tenforty.models import SourceDocument
 
 
 def _make_pdf(path: Path, num_pages: int) -> Path:
@@ -171,6 +172,121 @@ class AssembleAllTests(unittest.TestCase):
             emitted = {"f540": _make_pdf(d / "f540_2025.pdf", 2)}
             combined = pdf_packet.assemble_all(emitted, d, 2025)
             self.assertEqual(set(combined), {"california"})
+
+
+class SourceDocumentSplicingTests(unittest.TestCase):
+    """Source documents splice in immediately after the main form."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = Path(self._tmp.name)
+
+    def _emit(self, key: str, pages: int) -> Path:
+        return _make_pdf(self.base / f"{key}.pdf", pages)
+
+    def _doc(self, name: str, pages: int, packets: tuple) -> SourceDocument:
+        return SourceDocument(
+            path=_make_pdf(self.base / name, pages), kind="w2",
+            packets=packets)
+
+    def test_docs_splice_after_main_form_before_first_schedule(self):
+        emitted = {
+            "1040": self._emit("1040", 2),
+            "sch_1": self._emit("sch_1", 1),
+        }
+        doc = self._doc("w2.pdf", 1, ("federal_individual",))
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=[doc])
+        # 1040 (2 pages) + w2 (1 page) + sch_1 (1 page) = 4 pages
+        reader = pypdf.PdfReader(str(combined["federal_individual"]))
+        self.assertEqual(len(reader.pages), 4)
+
+    def test_doc_page_lands_between_main_form_and_schedules(self):
+        emitted = {
+            "1040": self._emit("1040", 2),
+            "sch_1": self._emit("sch_1", 1),
+        }
+        # Distinctive page size marks the source doc's page.
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        doc_path = self.base / "w2.pdf"
+        with open(doc_path, "wb") as f:
+            writer.write(f)
+        writer.close()
+        doc = SourceDocument(
+            path=doc_path, kind="w2", packets=("federal_individual",))
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=[doc])
+        reader = pypdf.PdfReader(str(combined["federal_individual"]))
+        widths = [float(p.mediabox.width) for p in reader.pages]
+        self.assertEqual(widths, [72.0, 72.0, 100.0, 72.0])
+
+    def test_california_routing_honored(self):
+        emitted = {
+            "1040": self._emit("1040", 1),
+            "f540": self._emit("f540", 1),
+            "sch_ca": self._emit("sch_ca", 1),
+        }
+        doc = self._doc("w2.pdf", 1, ("federal_individual", "california"))
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=[doc])
+        fed = pypdf.PdfReader(str(combined["federal_individual"]))
+        ca = pypdf.PdfReader(str(combined["california"]))
+        self.assertEqual(len(fed.pages), 2)   # 1040 + w2
+        self.assertEqual(len(ca.pages), 3)    # 540 + w2 + sch_ca
+
+    def test_federal_only_doc_stays_out_of_california(self):
+        emitted = {
+            "1040": self._emit("1040", 1),
+            "f540": self._emit("f540", 1),
+        }
+        doc = self._doc("w2.pdf", 1, ("federal_individual",))
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=[doc])
+        self.assertEqual(
+            len(pypdf.PdfReader(str(combined["california"])).pages), 1)
+
+    def test_docs_alone_do_not_create_a_packet(self):
+        # A california-routed doc with no CA forms emitted is inert.
+        emitted = {"1040": self._emit("1040", 1)}
+        doc = self._doc("w2.pdf", 1, ("federal_individual", "california"))
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=[doc])
+        self.assertNotIn("california", combined)
+
+    def test_multiple_docs_keep_declaration_order(self):
+        emitted = {"1040": self._emit("1040", 1)}
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        with open(self.base / "first.pdf", "wb") as f:
+            writer.write(f)
+        writer.close()
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=200, height=200)
+        with open(self.base / "second.pdf", "wb") as f:
+            writer.write(f)
+        writer.close()
+        docs = [
+            SourceDocument(path=self.base / "first.pdf", kind="w2",
+                           packets=("federal_individual",)),
+            SourceDocument(path=self.base / "second.pdf", kind="w2",
+                           packets=("federal_individual",)),
+        ]
+        combined = pdf_packet.assemble_all(
+            emitted, self.base, 2024, source_documents=docs)
+        reader = pypdf.PdfReader(str(combined["federal_individual"]))
+        widths = [float(p.mediabox.width) for p in reader.pages]
+        self.assertEqual(widths, [72.0, 100.0, 200.0])
+
+    def test_no_docs_default_is_unchanged_behavior(self):
+        emitted = {
+            "1040": self._emit("1040", 1),
+            "sch_1": self._emit("sch_1", 1),
+        }
+        combined = pdf_packet.assemble_all(emitted, self.base, 2024)
+        reader = pypdf.PdfReader(str(combined["federal_individual"]))
+        self.assertEqual(len(reader.pages), 2)
 
 
 if __name__ == "__main__":

@@ -27,10 +27,13 @@ Two design choices keep this robust as forms/shareholders are added:
 """
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pypdf
+
+from tenforty.models import SourceDocument
 
 
 @dataclass(frozen=True)
@@ -108,6 +111,21 @@ PACKETS: tuple[Packet, ...] = (FEDERAL_INDIVIDUAL, FEDERAL_CORPORATE, CALIFORNIA
 # standalone loose PDF rather than being folded into the 1040 packet.
 STANDALONE_KEYS: frozenset[str] = frozenset({"4868"})
 
+# Source documents (the taxpayer's real issued PDFs — W-2 Copy B today)
+# splice in immediately after the main form's pages, mirroring the
+# "Attach Form(s) W-2 here" staple point on 1040 page 1. Within the block,
+# kinds appear in this fixed order; within a kind, declaration order.
+SOURCE_DOCUMENT_KIND_ORDER: tuple[str, ...] = ("w2",)
+
+
+def _source_docs_for(
+    packet: Packet, source_documents: Sequence[SourceDocument]
+) -> list[SourceDocument]:
+    """Documents routed to ``packet``, kind-ordered then declaration-ordered."""
+    routed = [d for d in source_documents if packet.name in d.packets]
+    return sorted(
+        routed, key=lambda d: SOURCE_DOCUMENT_KIND_ORDER.index(d.kind))
+
 
 def _family_pattern(prefix: str) -> re.Pattern[str]:
     return re.compile(rf"^{re.escape(prefix)}_(\d+)$")
@@ -166,9 +184,17 @@ def assemble_packet(paths: list[Path], output_path: Path) -> Path:
 
 
 def assemble_all(
-    emitted: dict[str, Path], output_dir: Path, year: int
+    emitted: dict[str, Path],
+    output_dir: Path,
+    year: int,
+    source_documents: Sequence[SourceDocument] = (),
 ) -> dict[str, Path]:
     """Assemble every packet that has at least one member present in ``emitted``.
+
+    ``source_documents`` are spliced in immediately after the packet's main
+    form (its first declared member) when that form is present, else at the
+    front. Documents never create a packet on their own — a packet with no
+    emitted members is skipped even if documents route to it.
 
     Returns ``{packet_name: combined_pdf_path}``. Packets with no present
     members are skipped (e.g. ``federal_corporate`` for a return with no
@@ -179,6 +205,12 @@ def assemble_all(
         paths = ordered_members(emitted, packet)
         if not paths:
             continue
+        docs = _source_docs_for(packet, source_documents)
+        if docs:
+            insert_at = 1 if packet.members[0].key in emitted else 0
+            paths = (paths[:insert_at]
+                     + [d.path for d in docs]
+                     + paths[insert_at:])
         output_path = output_dir / packet.filename_template.format(year=year)
         assemble_packet(paths, output_path)
         combined[packet.name] = output_path
