@@ -975,6 +975,10 @@ class Scenario:
     form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None
+    # Kept in sync with w2s[*].pdf ONLY by load_scenario's normalization.
+    # Programmatic callers that set W2.pdf directly must also populate this
+    # list (via scenario._load_source_documents) or the emit gate will pass
+    # while packet assembly splices nothing.
     source_documents: list[SourceDocument] = field(default_factory=list)
 
     def __post_init__(self) -> None:
