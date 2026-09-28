@@ -1698,6 +1698,26 @@ class ReturnOrchestrator:
             emitted[f"f100s_k1_{i}"] = k1_output
         return emitted
 
+    def _refuse_missing_source_documents(self, scenario: Scenario) -> None:
+        """Emit-time gate: every W-2 needs its Copy B PDF, or an attestation.
+
+        Fires for EVERY W-2 lacking `pdf` — the IRS attachment rule is not
+        withholding-conditional (Copy B attaches for every W-2; the
+        withholding condition applies to W-2G/1099-R, unmodeled). Lives here
+        rather than the load/compute attestation registry so compute-only
+        scenarios are never burdened; see the source-documents spec.
+        """
+        if scenario.config.acknowledges_no_source_documents:
+            return
+        missing = [w2.employer for w2 in scenario.w2s if not w2.pdf]
+        if missing:
+            raise ValueError(
+                "Filing-packet emit requires a source document (Copy B PDF) "
+                f"for every W-2; missing for: {', '.join(missing)}. Add a "
+                "`pdf:` field to each w2s entry, or set "
+                "`acknowledges_no_source_documents: true` under config to "
+                "emit without them.")
+
     def run_full_return(
         self,
         scenario: Scenario,
@@ -1719,6 +1739,7 @@ class ReturnOrchestrator:
         Returns a tuple of (results, emitted) where results is the merged
         1040+corp output dict and emitted maps form names to PDF paths.
         """
+        self._refuse_missing_source_documents(scenario)
         effective_scenario, corp_results = self._build_effective_scenario(scenario)
         results_1040 = self._compute_1040_pipeline(effective_scenario)
         results = {**corp_results, **results_1040}
@@ -1785,6 +1806,7 @@ class ReturnOrchestrator:
         compute dict (with header keys) and ``ca_pdfs`` maps form basename
         to PDF path.
         """
+        self._refuse_missing_source_documents(scenario)
         # 1. Load CA YAML (envelope: top-level ca540: required, federal_context: optional).
         with open(ca_yaml_path) as f:
             ca_yaml = yaml.safe_load(f) or {}

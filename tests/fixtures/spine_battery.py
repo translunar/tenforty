@@ -36,6 +36,13 @@ def _battery_config(year: int, **overrides) -> TaxReturnConfig:
     # prior_year_itemized=False so the state-refund tax-benefit-rule
     # short-circuits cleanly in all battery scenarios.
     defaults["prior_year_itemized"] = False
+    # Emit-time source-document gate (Task 3): the battery's W-2s carry no
+    # `pdf`, and this shared config feeds both compute-only AND full-emit
+    # tests (the latter are oracle-tier and invisible to the fast suite) —
+    # setting the attestation here is harmless for compute-only callers
+    # (compute never consults the flag) and is what keeps the emit-path
+    # battery tests from tripping the gate.
+    defaults["acknowledges_no_source_documents"] = True
     merged = {**defaults, **overrides}
     return TaxReturnConfig(
         year=year,
