@@ -19,6 +19,7 @@ where those live.
 | `k1_reference.py` | Schedule K-1 (1120-S, 1065, 1041) → Sch E Part II, Sch B, Sch D, QBI (Form 8995), passive flag (Form 8582) | Implemented against team-lead's `ScheduleK1` schema (2026-04-15). |
 | `f100s_reference.py` | CA Form 100S franchise/income tax (rate, $800 minimum-tax floor, first-taxable-year rule, loss handling) and Schedule K-1 (100S) pro-rata share | **Substitute acceptance oracle** for the S-corp family, which has NO third-party workbook (spec §7 layer 6 — penny-parity-vs-workbook is not available). Hand-coded from FTB Form 100S booklets / R&TC under oracle isolation (no imports from `tenforty`), cross-checked by `tests/test_f100s_oracle_battery.py`. |
 | `f8962_reference.py` | Form 8962 Premium Tax Credit (lines 1–29: FPL %, applicable figure, monthly grid, net PTC / excess-APTC repayment) for 2021–2025 | Independent cross-check for the PTC compute, which the third-party 1040 workbook does not model. Hand-coded from the five years' official IRS Form 8962 instructions under oracle isolation (only the `Form1095A` input schema imported from `tenforty`); third independent transcription of the FPL / applicable-figure / repayment tables; cross-checked by `tests/test_f8962_oracle_battery.py`. |
+| `f1120s_reference.py` | Federal Form 1120-S for 2021–2025: page 1 ordinary-business-income chain, tax-and-payments block, Schedule K totals + line 18 reconciliation, per-shareholder Schedule K-1 pro-rata allocation (fractional ownership), §199A Statement A quantities (box 17 code V) | Hand-coded from each year's official IRS Form 1120-S, Schedule K-1 (1120-S) and their instructions under oracle isolation (duck-typed inputs; **no** import from `tenforty`). Self-tested by `tests/test_f1120s_reference.py`. No production-comparison battery yet — that is a separate, non-isolated task. Eight open FLAGs below. |
 
 Planned (future PRs, not part of this branch):
 
@@ -96,6 +97,76 @@ Planned (future PRs, not part of this branch):
   1041). Form 1118 / 1116 territory.
 - **AMT preferences** (box 15 on 1120-S, box 17 on 1065, box 12 on 1041).
   Form 6251.
+
+## Form 1120-S oracle scope
+
+`f1120s_reference.py` mirrors the `f1120s_*` output-key surface. Sources: the
+form faces and instructions at `https://www.irs.gov/pub/irs-prior/` —
+`f1120s--YEAR.pdf`, `i1120s--YEAR.pdf`, `f1120ssk--YEAR.pdf`,
+`i1120ssk--YEAR.pdf` for 2021–2025.
+
+Year drift it encodes (`PAGE1_LINES`): the 2023 revision added page 1 line 19
+(energy efficient commercial buildings deduction), moving ordinary business
+income from line 21 to line 22 and the tax/payment lines from 22–27 to 23–28,
+and added line 24d (elective payment election amount). Schedule K line 12a was
+split into cash/noncash contributions in 2024, so line 18 subtracts "11 through
+12e" from 2024 and "11 through 12d" before.
+
+### Out of scope (deliberate)
+
+- Separately stated Schedule K items: `SCorpReturn` has no inputs for them, so
+  the top-level entry point reports them as 0.0. `schedule_k()` accepts them as
+  an optional mapping so the line 18 arithmetic is real.
+- Mid-year ownership changes (per-share, per-day weighting; §1377(a)(2)
+  election). The caller supplies an already-weighted item G percentage.
+- Computing the §1375 / §1374 taxes, Form 4255 amounts (credit recapture;
+  from 2024 also "certain other amounts from Form 4255") and Forms 8697 / 8866
+  look-back interest (the latter three have no input at all).
+- §643(g) trust estimated-tax payments, which the instructions include in
+  total payments (line 23d / 24z) as a write-in. No input field exists.
+- Page 1 line 19 (2023+), Schedules L / M-1 / M-2 / M-3, Form 1125-A / 1125-E
+  detail.
+- The instructions' QBI flowchart: default QBI is Schedule K line 1.
+
+### FLAGs awaiting team-lead adjudication
+
+1. **§453 interest is not an entity-level tax.** The input schema says
+   `interest_on_453_deferred` passes "through to Form 1120-S line 22". The
+   instructions list only Form 4255 amounts and Form 8697 / 8866 look-back
+   interest as additions to line 22c / 23c, and make §453(l)(3) / §453A(c)
+   interest a shareholder liability reported on K-1 box 17 codes M / N. The
+   oracle reports the amount but **excludes it from `f1120s_total_tax`**.
+2. **`refundable_credits` has no labelled line.** Treated as line 24d for
+   2023–2025; the 2021–2022 forms have no such line, so a nonzero amount there
+   raises `NotImplementedError`.
+3. **`estimated_tax_penalty` and `credited_to_next_year` have no input
+   field.** Keyword arguments defaulting to 0.0.
+4. **`AccountingMethod` is not in the schema excerpt.** Matched by the
+   member's lower-cased `value` or `name` against "cash" / "accrual"; anything
+   else is "other".
+5. **Aggregate Schedule K keys.** `sch_k_charitable_contributions` (12a, or
+   12a + 12b from 2024), `sch_k_low_income_housing_credit` (13a + 13b),
+   `sch_k_amt_items` (15a–15f) name groups of lines.
+   `sch_k_foreign_transactions` has no amount line on the 2021+ form (line 14
+   is a checkbox); it is treated as information-only and does **not** enter
+   line 18. Line 16f (foreign taxes), which does, has no output key.
+6. **`section_199a is None`.** Read as "no Statement A": each allocation
+   carries `"section_199a": None` rather than a default-QBI statement.
+7. **Shape of `f1120s_sch_k1_allocations`.** Unspecified by the key list; the
+   oracle returns a list of per-shareholder dicts (see `k1_allocations`).
+8. **Ownership percentages must total 100.** The oracle raises `ValueError`
+   when they do not (tolerance 0.001 point) or when any is outside (0, 100].
+   The tolerance is an oracle-chosen constant with no IRS source: thirds to
+   four decimals (99.9999) pass, thirds to two decimals (99.99) are rejected.
+   Inside the tolerance shares are not re-normalised, so the residual is
+   assigned to nobody.
+
+Fixture note: `tests/test_f1120s_reference.py` keeps every amount a $50
+multiple except `TestNoRoundingAtEntityLevel`, which carries synthetic cents by
+team-lead ruling so that an added `round()` at entity level fails a test.
+
+Label note: the schema docstring calls the allocation percentage "Schedule K-1
+Part II box D"; on every 2021–2025 Schedule K-1 it is item G.
 
 ## Citation lineage
 
