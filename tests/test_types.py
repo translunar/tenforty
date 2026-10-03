@@ -22,7 +22,7 @@ class TestUpstreamState(unittest.TestCase):
         expected = {
             "f1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
             "sch_e_part_ii", "f4562", "f8582", "f8949", "f8959",
-            "f8995", "k1_fanout",
+            "f8995", "k1_fanout", "sch_c", "sch_se",
         }
         self.assertEqual(expected, set(hints))
 
