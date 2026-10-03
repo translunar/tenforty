@@ -809,6 +809,21 @@ class ReturnOrchestrator:
         f8949_result = schedule_results.get("f8949", {})
         return {**f8949_result, **spine_result}
 
+    def _compute_sch_c_and_se(self, scenario: Scenario) -> tuple[dict, dict]:
+        """Schedule C (net profit) then Schedule SE (self-employment tax).
+
+        ONE implementation of this wiring, shared by the native compute path
+        (_compute_native_schedules) and the PDF emit path
+        (_federal_individual_emit_specs), so the two cannot hand their
+        consumers different upstream: sch_c is a pure leaf (upstream={}),
+        sch_se consumes sch_c's net profit. With no business both are {}.
+        """
+        sch_c_results = form_sch_c.compute(scenario, upstream={})
+        sch_se_results = form_sch_se.compute(
+            scenario, upstream={"sch_c": sch_c_results},
+        )
+        return sch_c_results, sch_se_results
+
     def _compute_native_schedules(
         self, effective_scenario: Scenario,
     ) -> tuple[dict[str, dict], K1FanoutData]:
@@ -869,10 +884,8 @@ class ReturnOrchestrator:
         # Both feed Schedule 1: line 3 (business income) ← sch_c net profit,
         # line 15 (half-SE-tax deduction) ← sch_se line 13. With no business,
         # both return {} → the Sch 1 reads default 0 → AGI unchanged.
-        sch_c_results = form_sch_c.compute(effective_scenario, upstream={})
-        sch_se_results = form_sch_se.compute(
-            effective_scenario, upstream={"sch_c": sch_c_results},
-        )
+        sch_c_results, sch_se_results = self._compute_sch_c_and_se(
+            effective_scenario)
 
         # --- Step 4: Sch 1 (needs sch_e, sch_c, sch_se) ---
         sch_1_results = form_sch_1.compute(
@@ -1304,6 +1317,13 @@ class ReturnOrchestrator:
             k1_fanout = K1FanoutData.empty()
 
         upstream: UpstreamState = {"f1040": results, "k1_fanout": k1_fanout}
+        # Schedule C / Schedule SE upstream — the same helper the native
+        # compute path uses, so the Schedule 1 (lines 3 and 15), Form 8959
+        # (Part II) and Form 8995 (Schedule C QBI component) fill computes
+        # below receive exactly what the native computes received.
+        sch_c_results, sch_se_results = self._compute_sch_c_and_se(scenario)
+        upstream["sch_c"] = sch_c_results
+        upstream["sch_se"] = sch_se_results
 
         if self._should_compute_8949(scenario):
             upstream["f8949"] = form_f8949.compute(scenario, upstream)
