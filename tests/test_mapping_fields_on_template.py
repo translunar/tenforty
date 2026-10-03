@@ -19,8 +19,10 @@ def _years_for(jurisdiction: str, form: str) -> tuple[int, ...]:
         return year_manifest.SCORP_FEDERAL_YEARS
     if form in year_manifest.CA_SCORP_FORMS:
         return year_manifest.CA_SCORP_YEARS
-    return (year_manifest.FEDERAL_YEARS if jurisdiction == "federal"
-            else year_manifest.CALIFORNIA_YEARS)
+    if jurisdiction == "federal":
+        return tuple(y for y in year_manifest.FEDERAL_YEARS
+                     if year_manifest.form_supported_in_year(form, y))
+    return year_manifest.CALIFORNIA_YEARS
 
 
 class CatalogShapeTests(unittest.TestCase):
