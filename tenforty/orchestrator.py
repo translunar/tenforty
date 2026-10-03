@@ -9,6 +9,7 @@ from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
 from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_1 as form_sch_1
+from tenforty.forms import sch_2 as form_sch_2
 from tenforty.forms import sch_a as form_sch_a
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_c as form_sch_c
@@ -43,6 +44,7 @@ from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
 from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.mappings.pdf_sch_1 import PdfSch1
+from tenforty.mappings.pdf_sch_2 import PdfSch2
 from tenforty.mappings.pdf_sch_a import PdfSchA
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_4562 import Pdf4562
@@ -1418,6 +1420,14 @@ class ReturnOrchestrator:
                 ),
             ))
 
+        if self._should_emit_sch_2(scenario, results):
+            specs.append(_FederalFormSpec(
+                name="sch_2", template=_fed("f1040s2.pdf"),
+                output_name=f"f1040s2_{year}.pdf", kind="flat",
+                mapping=PdfSch2.get_mapping(year),
+                values=form_sch_2.compute(scenario, upstream=upstream),
+            ))
+
         if self._should_emit_4562(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
                 name="f4562", template=_fed("f4562.pdf"),
@@ -2472,6 +2482,43 @@ class ReturnOrchestrator:
         threshold = thresholds[scenario.config.filing_status]
         medicare_wages = sum(w.medicare_wages for w in scenario.w2s)
         return medicare_wages > threshold
+
+    def _should_emit_sch_2(self, scenario: Scenario, results: dict) -> bool:
+        """Emit Schedule 2 when the year is in the Schedule C family's year
+        range, the return was computed on the NATIVE path, AND any modeled
+        component is nonzero: the excess-APTC repayment (Part I),
+        self-employment tax (line 4), or Additional Medicare Tax (line 11).
+
+        This fires for returns with no Schedule C business too. A 2022-2025
+        native-path return whose 1040 line 17 or line 23 is nonzero must
+        attach Schedule 2; before this gate existed those packets printed the
+        totals with no detail schedule.
+
+        TWO DELIBERATE ABSTENTIONS, both keeping the legacy convention of
+        totals on the 1040 with no detail schedule:
+
+        - TY2021 (year-coverage policy: new features floor at TY2022).
+        - WORKBOOK-PATH returns (non-single or EIC-possible filers). The
+          workbook's 1040 line 17 can include the alternative minimum tax and
+          its line 24 can include the net investment income tax; forms/sch_2
+          models neither. A Schedule 2 built from the modeled components
+          would total LESS than the 1040 it is attached to -- an internally
+          inconsistent packet, which is worse than no detail schedule. The
+          discriminator is the workbook-harvested `tax_liability_line24` key,
+          which the native spine never publishes (see forms/f4868.py).
+          Lifting this needs the native spine to model those taxes, or the
+          workbook's Schedule 2 lines to be harvested.
+        """
+        from tenforty import years as year_manifest
+        if scenario.config.year not in year_manifest.SCHEDULE_C_FAMILY_YEARS:
+            return False
+        if "tax_liability_line24" in results:
+            return False
+        return any(
+            results.get(key)
+            for key in ("f8962_repayment", "sch_se_line_12_se_tax",
+                        "f8959_tax_total")
+        )
 
     def _should_emit_8962(self, scenario: Scenario) -> bool:
         """Emit Form 8962 (PTC) iff the scenario carries a Form 1095-A block

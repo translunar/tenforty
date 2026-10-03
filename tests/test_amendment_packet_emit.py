@@ -596,6 +596,9 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         by_name = {mf.filename: mf for mf in manifest.mailed_files}
         self.assertIn("f8962_2024.pdf", by_name)
         self.assertEqual(by_name["f8962_2024.pdf"].reason, "changed")
+        # Schedule 2 carries the repayment on line 1a, so it changes with it.
+        self.assertIn("f1040s2_2024.pdf", by_name)
+        self.assertEqual(by_name["f1040s2_2024.pdf"].reason, "changed")
 
         # A+B=C on the modeled Sch 2 lines.
         corrected_fed = self.orch.compute_federal(amended)
