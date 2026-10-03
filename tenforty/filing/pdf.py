@@ -37,6 +37,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str] | None = None,
     ) -> dict[str, str]:
         """Resolve a flat ``field_mapping`` (+ optional aggregations, derivations,
         checkbox_states) into the ``{pdf_field_path: rendered_str}`` dict that
@@ -47,6 +48,13 @@ class PdfFiller:
         PDF — the changed-forms selector compares these payloads across the
         as-filed and corrected runs. ``fill`` delegates to this method, so the
         payload is by construction identical to what would be rendered.
+
+        ``field_formats`` maps a COMPUTE KEY (in ``field_mapping``) to a Python
+        format spec (e.g. ``".4f"``) that replaces the whole-dollar default for
+        that one numeric field — for rates such as Form 8962 line 7 (0.0850)
+        that would otherwise round to "0". Applies only to the 1:1 pass, only
+        to non-bool numerics; every field not named keeps the whole-dollar
+        default.
         """
         pdf_fields: dict[str, str] = {}
 
@@ -55,6 +63,11 @@ class PdfFiller:
                 v = values[result_key]
                 if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
                     pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
+                elif (
+                    field_formats and result_key in field_formats
+                    and isinstance(v, (int, float)) and not isinstance(v, bool)
+                ):
+                    pdf_fields[pdf_field_name] = format(v, field_formats[result_key])
                 else:
                     pdf_fields[pdf_field_name] = PdfFiller._render_scalar(v)
 
@@ -89,6 +102,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
@@ -114,6 +128,10 @@ class PdfFiller:
                 When a bool-valued key is listed here, the on-state from this
                 dict is written for True; "/Off" is written for False.
 
+            field_formats: Maps compute key → Python format spec overriding the
+                whole-dollar default for that numeric field (see
+                ``resolve_fields``).
+
         Returns:
             Path to the filled PDF.
         """
@@ -125,6 +143,7 @@ class PdfFiller:
             aggregations=aggregations,
             derivations=derivations,
             checkbox_states=checkbox_states,
+            field_formats=field_formats,
         )
 
         for page in writer.pages:

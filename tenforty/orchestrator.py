@@ -331,6 +331,8 @@ class _FederalFormSpec:
     # specs ignore these.
     checkbox_states: dict = dataclasses.field(default_factory=dict)
     derivations: dict = dataclasses.field(default_factory=dict)
+    # compute key -> format spec overriding the whole-dollar render (rates).
+    field_formats: dict = dataclasses.field(default_factory=dict)
 
 
 # Standing caveat (spec §4): the changed-forms selector compares two
@@ -1515,6 +1517,7 @@ class ReturnOrchestrator:
                 values=results,
                 checkbox_states=PdfF8962.get_checkbox_states(year),
                 derivations=PdfF8962.get_derivations(year),
+                field_formats=PdfF8962.get_field_formats(year),
             ))
 
         # Form 8995 is required whenever the QBI deduction is claimed,
@@ -1568,6 +1571,7 @@ class ReturnOrchestrator:
                 field_mapping=spec.mapping, values=spec.values,
                 checkbox_states=spec.checkbox_states or None,
                 derivations=spec.derivations or None,
+                field_formats=spec.field_formats or None,
             )
         else:
             filler.fill_with_repeaters(
@@ -1587,6 +1591,7 @@ class ReturnOrchestrator:
                 spec.mapping, spec.values,
                 checkbox_states=spec.checkbox_states or None,
                 derivations=spec.derivations or None,
+                field_formats=spec.field_formats or None,
             )
         return PdfFiller._expand_repeaters(spec.mapping, spec.values)
 

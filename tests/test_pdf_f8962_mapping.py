@@ -282,5 +282,82 @@ class ShouldEmit8962Tests(unittest.TestCase):
             self.assertNotEqual(read[_UI_BOX], "/1")
 
 
+_LINE_7 = f"{_ROOT}.f1_9[0]"          # applicable figure (a decimal, not dollars)
+
+
+class Line7DecimalFormatTests(unittest.TestCase):
+    """The renderer rounds numerics to whole dollars; the applicable figure
+    (line 7, e.g. 0.0850) is a 4-decimal RATE, so it needs a per-field format
+    override or it prints "0" and line 3 x line 7 = line 8a cannot foot."""
+
+    # Synthetic figures that foot: 127649 * 0.085 = 10850.165 -> 10850.
+    _VALUES = {
+        "f8962_line_3": 127_649,
+        "f8962_line_7": 0.085,
+        "f8962_line_8a": 10_850,
+    }
+
+    @staticmethod
+    def _fill_with_formats(year: int, values: dict, out: Path) -> Path:
+        mapping = PdfF8962.get_mapping(year)["scalars"]
+        PdfFiller().fill(
+            template_path=_template(year),
+            output_path=out,
+            field_mapping=mapping,
+            values=values,
+            field_formats=PdfF8962.get_field_formats(year) or None,
+        )
+        return out
+
+    def test_fill_and_read_back_shows_four_decimals_every_year(self):
+        for year in _YEARS:
+            with self.subTest(year=year), tempfile.TemporaryDirectory() as tmp:
+                out = self._fill_with_formats(
+                    year, self._VALUES, Path(tmp) / "f8962.pdf")
+                read = _read_fields(out)
+                self.assertEqual(read[_LINE_7], "0.0850")
+                # Neighbouring dollar lines keep the whole-dollar default.
+                self.assertEqual(read[f"{_ROOT}.f1_6[0]"], "127649")
+                self.assertEqual(read[f"{_ROOT}.f1_10[0]"], "10850")
+
+    def test_override_leaves_ordinary_dollar_fields_untouched(self):
+        """Pin: with the override mechanism engaged, every OTHER field renders
+        byte-identically to the no-override render (whole dollars)."""
+        year = 2025
+        mapping = PdfF8962.get_mapping(year)["scalars"]
+        values = {**_capped_values(), "f8962_line_7": 0.085,
+                  "f8962_line_3": 30_000.5}  # a fractional dollar value too
+        plain = PdfFiller.resolve_fields(mapping, values)
+        formatted = PdfFiller.resolve_fields(
+            mapping, values, field_formats=PdfF8962.get_field_formats(year))
+        changed = {k for k in plain if plain[k] != formatted[k]}
+        self.assertEqual(changed, {mapping["f8962_line_7"]})
+        # Reachability of the negative space: the fractional dollar value DID
+        # pass through the whole-dollar renderer (so an override that leaked
+        # onto dollar fields would have shown up as a changed key).
+        self.assertEqual(formatted[mapping["f8962_line_3"]], "30001")
+
+    def test_declared_overrides_are_exactly_line_7_and_are_mapped_keys(self):
+        for year in _YEARS:
+            with self.subTest(year=year):
+                formats = PdfF8962.get_field_formats(year)
+                self.assertEqual(set(formats), {"f8962_line_7"})
+                self.assertLessEqual(
+                    set(formats), set(PdfF8962.get_mapping(year)["scalars"]))
+
+    def test_emit_spec_carries_formats_and_payload_prints_decimal(self):
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets", work_dir=Path("."))
+        block = Form1095A(months=_months(premium=500, slcsp=500, aptc=400))
+        scenario = _scenario(2024, form_1095a=block)
+        results = orch.compute_federal(scenario)
+        specs = orch._federal_individual_emit_specs(scenario, results)
+        (spec,) = [sp for sp in specs if sp.name == "8962"]
+        payload = orch._federal_spec_payload(spec)
+        line_7 = results["f8962_line_7"]
+        self.assertGreater(line_7, 0)
+        self.assertEqual(payload[_LINE_7], f"{line_7:.4f}")
+
+
 if __name__ == "__main__":
     unittest.main()
