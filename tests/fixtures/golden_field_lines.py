@@ -166,4 +166,35 @@ GOLDEN_FIELD_LINES: dict = {
         "sch_2_line_11_additional_medicare_tax": ("f1_22", "11"),
         "sch_2_line_21_total_other_taxes": ("f2_24", "21"),
     },
+    # Schedule SE. 2022 zero-pads the first nine leaves (f1_06); 2023+ do not
+    # (f1_6). Line 7 is a read-only pre-printed field and is not mapped.
+    ("federal", "sch_se", 2022): {
+        "sch_se_line_2_net_profit": ("f1_05", "2"),
+        "sch_se_line_3_net_profit": ("f1_06", "3"),
+        "sch_se_line_4a_net_earnings": ("f1_07", "4a"),
+        "sch_se_line_4c_net_earnings": ("f1_09", "4c"),
+        "sch_se_line_6_total_net_earnings": ("f1_12", "6"),
+        "sch_se_line_8d_wages_subject_to_ss": ("f1_17", "8d"),
+        "sch_se_line_9_ss_earnings_remaining": ("f1_18", "9"),
+        "sch_se_line_10_ss_portion": ("f1_19", "10"),
+        "sch_se_line_11_medicare_portion": ("f1_20", "11"),
+        "sch_se_line_12_se_tax": ("f1_21", "12"),
+        "sch_se_line_13_half_deduction": ("f1_22", "13"),
+    },
+    **{
+        ("federal", "sch_se", year): {
+            "sch_se_line_2_net_profit": ("f1_5", "2"),
+            "sch_se_line_3_net_profit": ("f1_6", "3"),
+            "sch_se_line_4a_net_earnings": ("f1_7", "4a"),
+            "sch_se_line_4c_net_earnings": ("f1_9", "4c"),
+            "sch_se_line_6_total_net_earnings": ("f1_12", "6"),
+            "sch_se_line_8d_wages_subject_to_ss": ("f1_17", "8d"),
+            "sch_se_line_9_ss_earnings_remaining": ("f1_18", "9"),
+            "sch_se_line_10_ss_portion": ("f1_19", "10"),
+            "sch_se_line_11_medicare_portion": ("f1_20", "11"),
+            "sch_se_line_12_se_tax": ("f1_21", "12"),
+            "sch_se_line_13_half_deduction": ("f1_22", "13"),
+        }
+        for year in (2023, 2024, 2025)
+    },
 }
