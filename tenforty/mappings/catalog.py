@@ -27,6 +27,7 @@ from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.mappings.pdf_sch_e import PdfSchE
+from tenforty.mappings.pdf_sch_se import PdfSchSe
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "sch_b"): FormEntry(PdfSchB, "f1040sb"),
     ("federal", "sch_d"): FormEntry(PdfSchD, "f1040sd"),
     ("federal", "sch_e"): FormEntry(PdfSchE, "f1040se"),
+    ("federal", "sch_se"): FormEntry(PdfSchSe, "f1040sse"),
     ("federal", "4562"): FormEntry(Pdf4562, "f4562"),
     ("federal", "4868"): FormEntry(Pdf4868, "f4868"),
     ("federal", "8959"): FormEntry(Pdf8959, "f8959"),

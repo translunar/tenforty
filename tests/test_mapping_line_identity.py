@@ -110,7 +110,7 @@ class GoldenLineIdentityProbeTests(unittest.TestCase):
                 capture_output=True, text=True,
             ).stdout
         line_tok = re.compile(r"^\(?(\d{1,2}[a-z]?)$")
-        mark = re.compile(r"\b(f[12]_\d{2})\b")
+        mark = re.compile(r"\b(f[12]_\d{1,2})\b")
         out: dict[str, set[str]] = {}
         for row in txt.splitlines():
             toks = row.split()
