@@ -78,7 +78,15 @@ _LINES_24_29: dict[str, str] = {
 
 # Base scalars — IDENTICAL field paths across 2021-2025 for every mapped
 # line (verified per-year in the probe tables). Only 2021 adds the UI box.
-_SCALARS_BASE: dict[str, str] = {**_PART_I, **_MONTHLY, **_LINES_24_29}
+# Header — "Name shown on your return" (f1_1) and "Your social security
+# number" (f1_2): same rects on every year's template, render-confirmed on 2025.
+_HEADER: dict[str, str] = {
+    "taxpayer_name": f"{_ROOT}.f1_1[0]",
+    "taxpayer_ssn":  f"{_ROOT}.f1_2[0]",
+}
+
+_SCALARS_BASE: dict[str, str] = {
+    **_HEADER, **_PART_I, **_MONTHLY, **_LINES_24_29}
 
 # 2021 (ARPA year) also maps the unemployment Box A at c1_1[0].
 _SCALARS_2021: dict[str, str] = {

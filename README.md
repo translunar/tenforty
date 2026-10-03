@@ -156,6 +156,11 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 - **Additional state returns** (every state besides California).
 - **FreeFileFillableForms automation** (Playwright-driven submission pipeline).
 
+### Limitations
+
+- **Schedule C features refused (not modeled).** A scenario that uses cost of goods sold / inventory, depreciation, home office, vehicle expenses, depletion, a net loss, or a multi-business §162(l) self-employed health-insurance allocation is refused rather than computed or printed wrong. Schedule C and Schedule SE PDF emission covers tax years 2022+; earlier years compute natively but must be filed by hand.
+- **Digital-assets question (Form 1040).** Set `digital_assets: true` or `false` in the scenario `config` to answer the 1040's digital-assets question (2021: the virtual-currency question). It is optional for compute-only runs, but emitting a 1040 PDF for tax year 2022 or later with the field unset is refused — tenforty will not print a signed return with that box blank. The 1040 header (name, SSN, spouse, address) and the filing-status and line-7 "Schedule D not required" boxes are filled from the config and the return.
+
 ## License
 
 MIT

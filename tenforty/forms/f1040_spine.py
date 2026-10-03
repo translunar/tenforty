@@ -47,7 +47,9 @@ CA consumers are unaffected.
 from dataclasses import dataclass
 
 from tenforty.forms.f1040_tax import qdcgt_tax
-from tenforty.models import FilingStatus, K1FanoutData, Scenario
+from tenforty.models import (
+    FilingStatus, K1FanoutData, Scenario, TaxReturnConfig,
+)
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -361,6 +363,40 @@ def resolve_deductions(
         charitable_nonitemizer=charitable_nonitemizer,
         taxable_income_before_qbi=taxable_income_before_qbi,
     )
+
+
+def _ssn_digits(ssn: str) -> str:
+    """Digits only. The 1040's SSN cells are 9-character comb fields
+    (/MaxLen 9) — a hyphenated "000-00-0000" is silently truncated to its
+    first nine characters when printed — whereas the schedules' SSN cells
+    take eleven and are fed the hyphenated ``taxpayer_ssn`` instead."""
+    return "".join(ch for ch in ssn if ch.isdigit())
+
+
+def header_values(config: TaxReturnConfig) -> dict[str, str]:
+    """The Form 1040 header block — name, SSN, spouse, address — as result keys.
+
+    Keys are the ones ``mappings/pdf_1040.py`` already maps (first_name,
+    last_name, ssn, spouse_*, address, city, state, zip_code) plus the
+    ``taxpayer_name`` / ``taxpayer_ssn`` pair every other form's header uses
+    (Form 8962 reads the latter straight off this dict). Shared by the native
+    spine and the workbook fallback in the orchestrator so the header cannot
+    depend on which pipeline computed the return. ``apt_no`` has no config
+    field and stays blank.
+    """
+    return {
+        **config.pdf_header(),
+        "first_name": config.first_name,
+        "last_name": config.last_name,
+        "ssn": _ssn_digits(config.ssn),
+        "spouse_first_name": config.spouse_first_name,
+        "spouse_last_name": config.spouse_last_name,
+        "spouse_ssn": _ssn_digits(config.spouse_ssn),
+        "address": config.address,
+        "city": config.address_city,
+        "state": config.address_state,
+        "zip_code": config.address_zip,
+    }
 
 
 def compute_spine(
@@ -799,6 +835,8 @@ def compute_spine(
     # -----------------------------------------------------------------------
 
     return {
+        # Page 1 header block (name, SSN, spouse, address) — config-derived.
+        **header_values(scenario.config),
         # Page 1 income lines — oracle/OUTPUTS[2025] key names
         "wages": wages,
         # Line 1z — Total of lines 1a-1h. Equals `wages` because W-2 box-1

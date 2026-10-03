@@ -393,6 +393,14 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # Form 1040 digital-assets question (2021: virtual currency). None means
+    # UNANSWERED. Unlike the scope-out attestations below it is NOT required at
+    # load time and NOT required by the native compute path (a compute-only
+    # run never prints the question); it is required at PDF EMIT time for tax
+    # year 2022 onward, where the orchestrator refuses an unanswered question
+    # rather than print a signed return with the box left blank. True/False
+    # check the form's Yes/No box.
+    digital_assets: bool | None = None
     # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
     # and load_scenario raises; True → raises NotImplementedError; False → OK.
     has_foreign_accounts: bool | None = None
