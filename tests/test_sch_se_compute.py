@@ -11,6 +11,7 @@ import unittest
 
 from tenforty.forms import sch_se
 from tenforty.models import Scenario, W2
+from tenforty.rounding import irs_round
 from tests.helpers import make_simple_scenario
 
 _RATE_SS, _RATE_MED, _NE = 0.124, 0.029, 0.9235
@@ -47,7 +48,7 @@ class SchSeStructureTests(unittest.TestCase):
         out = sch_se.compute(scn, up)
         self.assertEqual(
             out["sch_se_line_13_half_deduction"],
-            round(out["sch_se_line_12_se_tax"] / 2),
+            irs_round(out["sch_se_line_12_se_tax"] / 2),
         )
 
     def test_medicare_is_uncapped_29_percent_of_net_earnings(self):
@@ -99,6 +100,47 @@ class SchSeStructureTests(unittest.TestCase):
     def test_empty_returns_empty(self):
         scn, _ = _scn(0.0)
         self.assertEqual(sch_se.compute(scn, {"sch_c": {}}), {})
+
+    def test_printed_line_12_is_the_sum_of_printed_lines_10_and_11(self):
+        # Net profit 4,100: lines 10 and 11 BOTH carry a fractional part of
+        # .5 or more, so rounding each and then adding gives a different
+        # whole-dollar figure than adding first and rounding once. The printed
+        # form must foot, so line 12 is the sum of the printed lines.
+        scn, up = _scn(4_100.0)
+        out = sch_se.compute(scn, up)
+        net_earnings = 4_100.0 * _NE
+        ss_exact = net_earnings * _RATE_SS
+        medicare_exact = net_earnings * _RATE_MED
+        self.assertGreaterEqual(ss_exact % 1, 0.5)
+        self.assertGreaterEqual(medicare_exact % 1, 0.5)
+        # The case is discriminating: the two compositions differ here.
+        self.assertNotEqual(
+            irs_round(ss_exact + medicare_exact),
+            irs_round(ss_exact) + irs_round(medicare_exact))
+        self.assertEqual(
+            out["sch_se_line_12_se_tax"],
+            out["sch_se_line_10_ss_portion"]
+            + out["sch_se_line_11_medicare_portion"])
+
+    def test_line_13_is_half_of_the_printed_line_12(self):
+        scn, up = _scn(4_100.0)
+        out = sch_se.compute(scn, up)
+        self.assertEqual(
+            out["sch_se_line_13_half_deduction"],
+            irs_round(out["sch_se_line_12_se_tax"] * 0.5))
+
+    def test_printed_lines_foot_across_a_range_of_profits(self):
+        for net_profit in range(500, 60_000, 137):
+            with self.subTest(net_profit=net_profit):
+                scn, up = _scn(float(net_profit), ss_wages=150_000.0)
+                out = sch_se.compute(scn, up)
+                self.assertEqual(
+                    out["sch_se_line_12_se_tax"],
+                    out["sch_se_line_10_ss_portion"]
+                    + out["sch_se_line_11_medicare_portion"])
+                self.assertEqual(
+                    out["sch_se_line_13_half_deduction"],
+                    irs_round(out["sch_se_line_12_se_tax"] * 0.5))
 
 
 if __name__ == "__main__":
