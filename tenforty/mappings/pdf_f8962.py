@@ -24,7 +24,8 @@ Two checkboxes are handled outside the scalar value pass:
   writes the XFA appearance state for True / ``/Off`` for False. For
   2022-2025 ``c1_1[0]`` is instead the MFS-exception box (ON ``/1``), which
   tenforty (single-filer only) NEVER checks — so it is left entirely
-  unmapped those years and ``get_checkbox_states`` is empty.
+  unmapped those years. ``get_checkbox_states`` also carries the line 9 / line 10
+Yes-No boxes (all years; see ``_LINE_9_10_BOXES``).
 
 - **Poverty-table box 4c — hardwired ON, ALL years.** The CA filer always
   uses the "Other 48 states and DC" poverty table, so box 4c
@@ -43,9 +44,8 @@ from tenforty.mappings.registry import PdfFormMapping
 
 _ROOT = "topmostSubform[0].Page1[0]"
 
-# Part I — annual/monthly contribution amount. Line 2b (dependents' MAGI)
-# and line 11 (annual-calc row) are deliberately unmapped: the compute
-# emits neither (single-filer, monthly-grid-only scope).
+# Part I — annual/monthly contribution amount. Line 2b (dependents' MAGI) is
+# deliberately unmapped: the compute does not emit it (single-filer scope).
 _PART_I: dict[str, str] = {
     "f8962_line_1":  f"{_ROOT}.f1_3[0]",   # tax family size
     "f8962_line_2a": f"{_ROOT}.f1_4[0]",   # modified AGI
@@ -55,6 +55,28 @@ _PART_I: dict[str, str] = {
     "f8962_line_7":  f"{_ROOT}.f1_9[0]",   # applicable figure
     "f8962_line_8a": f"{_ROOT}.f1_10[0]",  # annual contribution amount
     "f8962_line_8b": f"{_ROOT}.f1_11[0]",  # monthly contribution amount
+}
+
+# Line 11 — annual totals row (Part2Table1), columns (a)-(f). Filled only when
+# the annual calculation is mandatory (see forms/f8962.py, line-10 rule).
+_LINE_11: dict[str, str] = {
+    f"f8962_line_11_{letter}": f"{_ROOT}.Part2Table1[0].BodyRow1[0].f1_{13 + i}[0]"
+    for i, letter in enumerate("abcdef")
+}
+
+# Lines 9 / 10 checkboxes (same paths and on-states in every year 2021-2025,
+# probe-verified against each template's /_States_ and widget geometry):
+# c1_4 = line 9 (Yes [0] ON /1, No [1] ON /2); c1_5 = line 10 (Yes [0] ON /1,
+# No [1] ON /2). Bool compute keys routed through checkbox_states.
+_LINE_9_10_BOXES: dict[str, str] = {
+    "f8962_line_9_no":   f"{_ROOT}.c1_4[1]",
+    "f8962_line_10_yes": f"{_ROOT}.c1_5[0]",
+    "f8962_line_10_no":  f"{_ROOT}.c1_5[1]",
+}
+_LINE_9_10_STATES: dict[str, str] = {
+    "f8962_line_9_no": "/2",
+    "f8962_line_10_yes": "/1",
+    "f8962_line_10_no": "/2",
 }
 
 # Monthly grid — lines 12-23 (Jan..Dec = row 1..12), columns a-f. For month
@@ -86,7 +108,8 @@ _HEADER: dict[str, str] = {
 }
 
 _SCALARS_BASE: dict[str, str] = {
-    **_HEADER, **_PART_I, **_MONTHLY, **_LINES_24_29}
+    **_HEADER, **_PART_I, **_LINE_11, **_LINE_9_10_BOXES, **_MONTHLY,
+    **_LINES_24_29}
 
 # 2021 (ARPA year) also maps the unemployment Box A at c1_1[0].
 _SCALARS_2021: dict[str, str] = {
@@ -119,11 +142,11 @@ _FIELD_FORMATS: dict[str, str] = {
 # checkbox (the 4c poverty-table box is a constant handled by
 # get_derivations, not a bool), so its dict is empty.
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: {"f8962_ui_box_checked": "/2"},
-    2022: {},
-    2023: {},
-    2024: {},
-    2025: {},
+    2021: {"f8962_ui_box_checked": "/2", **_LINE_9_10_STATES},
+    2022: dict(_LINE_9_10_STATES),
+    2023: dict(_LINE_9_10_STATES),
+    2024: dict(_LINE_9_10_STATES),
+    2025: dict(_LINE_9_10_STATES),
 }
 
 

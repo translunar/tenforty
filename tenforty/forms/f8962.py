@@ -155,8 +155,10 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
         "f8962_line_8b": line_8b,
     }
 
-    line_24 = 0
-    line_25 = 0
+    # Per-month cells (a)-(f), computed from each month's own 1095-A data —
+    # never by dividing annual totals by 12. A month with no coverage (all
+    # three figures zero) has no row: its cells stay BLANK, not 0.
+    month_rows: dict[int, tuple[int, ...]] = {}
     for n, month in enumerate(block.months, start=1):
         premium, slcsp, aptc = astuple(month)
         if premium == 0 and slcsp == 0 and aptc == 0:
@@ -167,10 +169,55 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
         cell_d = irs_round(max(0, slcsp - line_8b))
         cell_e = irs_round(min(premium, max(0, slcsp - line_8b)))
         cell_f = irs_round(aptc)
-        for letter, value in zip(_MONTH_CELLS, (cell_a, cell_b, cell_c, cell_d, cell_e, cell_f)):
-            result[f"f8962_month_{n}_{letter}"] = value
-        line_24 += cell_e
-        line_25 += cell_f
+        month_rows[n] = (cell_a, cell_b, cell_c, cell_d, cell_e, cell_f)
+
+    # Line 10 rule (i8962 (2024), Line 10 — imperative: "Check 'Yes' and
+    # continue to line 11 if all of the following apply ... Otherwise, check
+    # 'No' and continue to lines 12 through 23"), so the ANNUAL calculation is
+    # MANDATORY when eligible. Eligibility, per the instructions' own heading
+    # ("no changes on Form 1095-A, Part III, column A or B"):
+    #   1. enrolled in the plan all 12 months — an ENROLLED month is one with
+    #      an enrollment premium (column A) > 0;
+    #   2. column A identical every month;
+    #   3. column B (SLCSP) identical every month.
+    # APTC (column C) sameness is deliberately NOT a condition.
+    month_triples = [astuple(m) for m in block.months]
+    annual_allowed = (
+        len(month_triples) == 12
+        and all(t[0] > 0 for t in month_triples)
+        and len({t[0] for t in month_triples}) == 1
+        and len({t[1] for t in month_triples}) == 1
+    )
+
+    # Line 9 ("allocating policy amounts with another taxpayer, or using the
+    # alternative calculation for year of marriage?") is always "No": tenforty
+    # has no input that could express either situation, so No is correct for
+    # every scenario it can compute. (Yes would route to Part IV / Part V.)
+    result["f8962_line_9_no"] = True
+
+    if annual_allowed:
+        # Line 11 (annual totals) from the annual sums; (c) is line 8a.
+        # Sums of the whole-dollar-rounded 1095-A figures (the instructions
+        # round each 1095-A amount before entering it).
+        a_tot = sum(irs_round(t[0]) for t in month_triples)
+        b_tot = sum(irs_round(t[1]) for t in month_triples)
+        f_tot = sum(irs_round(t[2]) for t in month_triples)
+        d_tot = irs_round(max(0, b_tot - line_8a))
+        e_tot = irs_round(min(a_tot, d_tot))
+        for letter, value in zip(
+            _MONTH_CELLS, (a_tot, b_tot, line_8a, d_tot, e_tot, f_tot)
+        ):
+            result[f"f8962_line_11_{letter}"] = value
+        result["f8962_line_10_yes"] = True
+        line_24 = e_tot  # line 24 = 11(e)
+        line_25 = f_tot  # line 25 = 11(f)
+    else:
+        result["f8962_line_10_no"] = True
+        for n, cells in month_rows.items():
+            for letter, value in zip(_MONTH_CELLS, cells):
+                result[f"f8962_month_{n}_{letter}"] = value
+        line_24 = sum(c[4] for c in month_rows.values())  # sum of 12(e)-23(e)
+        line_25 = sum(c[5] for c in month_rows.values())  # sum of 12(f)-23(f)
 
     result["f8962_line_24"] = line_24
     result["f8962_line_25"] = line_25
