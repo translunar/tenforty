@@ -67,7 +67,7 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
             "sch_se_line_13_half_deduction": 0,
         }
     line_7 = float(params.ss_wage_base)            # OASDI wage base
-    ss_wages = sum(w.ss_wages for w in scenario.w2s)  # line 8a/8d
+    ss_wages = sum(w.ss_wages for w in scenario.w2s)  # line 8a (8b/8c unmodeled) -> 8d
     line_9 = max(0.0, line_7 - ss_wages)           # SS earnings still taxable
     line_10 = irs_round(min(line_6, line_9) * _SS_RATE)   # SS portion
     line_11 = irs_round(line_6 * _MEDICARE_RATE)          # Medicare (uncapped)
@@ -80,6 +80,7 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         "sch_se_line_4c_net_earnings": irs_round(line_4c),
         "sch_se_line_6_total_net_earnings": irs_round(line_6),
         "sch_se_line_7_ss_wage_base": irs_round(line_7),
+        "sch_se_line_8a_ss_wages_and_tips": irs_round(ss_wages),
         "sch_se_line_8d_wages_subject_to_ss": irs_round(ss_wages),
         "sch_se_line_9_ss_earnings_remaining": irs_round(line_9),
         "sch_se_line_10_ss_portion": line_10,

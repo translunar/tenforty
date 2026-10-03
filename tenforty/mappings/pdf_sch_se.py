@@ -11,7 +11,9 @@ arithmetic is complete -- EXCEPT line 7
 READ-ONLY with the year's wage base pre-printed, so there is nothing to fill.
 
 2022 zero-pads the first nine field leaves (f1_01..f1_09); 2023-2025 do not
-(f1_1..f1_9). Leaves f1_10 and above are identical in all four years.
+(f1_1..f1_9). Leaves f1_10 and above are identical in all four years. The 8a field is
+nested under Line8a_ReadOrder[0] in all four years; 8b/8c are unmodeled
+(blank).
 """
 from tenforty.mappings.registry import PdfFormMapping, inherit_pdf_fields
 
@@ -25,6 +27,8 @@ _FIELDS_2023_2025: dict[str, str] = {
     "sch_se_line_4a_net_earnings": f"{_P1}.f1_7[0]",
     "sch_se_line_4c_net_earnings": f"{_P1}.f1_9[0]",
     "sch_se_line_6_total_net_earnings": f"{_P1}.f1_12[0]",
+    "sch_se_line_8a_ss_wages_and_tips":
+        f"{_P1}.Line8a_ReadOrder[0].f1_14[0]",
     "sch_se_line_8d_wages_subject_to_ss": f"{_P1}.f1_17[0]",
     "sch_se_line_9_ss_earnings_remaining": f"{_P1}.f1_18[0]",
     "sch_se_line_10_ss_portion": f"{_P1}.f1_19[0]",
