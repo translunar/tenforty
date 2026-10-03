@@ -190,6 +190,9 @@ class ScheduleCBusiness:
     forms/sch_c.py).
     """
     description: str = ""
+    # Schedule C line B: the 6-digit principal business or professional
+    # activity code. Printed verbatim; blank prints nothing.
+    business_code: str = ""
     gross_receipts: float = 0.0
     # Part II expense categories (Schedule C lines 8-27a) a P&L export covers.
     advertising: float = 0.0
