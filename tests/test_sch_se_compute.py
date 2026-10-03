@@ -153,6 +153,23 @@ class SchSeStructureTests(unittest.TestCase):
                                  out["sch_se_line_4c_net_earnings"])
                 self.assertGreater(out["sch_se_line_2_net_profit"], 0)
 
+    def test_line_8a_prints_beside_8d_and_mirrors_its_presence(self):
+        # 8b/8c are unmodeled, so the printed 8d is exactly 8a.
+        for ss_wages in (50_000.0, 0.0):
+            with self.subTest(ss_wages=ss_wages):
+                scn, up = _scn(4_100.0, ss_wages=ss_wages)
+                out = sch_se.compute(scn, up)
+                self.assertEqual(out["sch_se_line_8a_ss_wages_and_tips"],
+                                 int(ss_wages))
+                self.assertEqual(out["sch_se_line_8a_ss_wages_and_tips"],
+                                 out["sch_se_line_8d_wages_subject_to_ss"])
+        scn, up = _scn(350.0, ss_wages=50_000.0)     # under the $400 line
+        out = sch_se.compute(scn, up)
+        self.assertNotIn("sch_se_line_8a_ss_wages_and_tips", out)
+        self.assertNotIn("sch_se_line_8d_wages_subject_to_ss", out)
+        self.assertNotIn("sch_se_line_8b_unreported_tips", out)
+        self.assertNotIn("sch_se_line_8c_form_8919_wages", out)
+
 
 if __name__ == "__main__":
     unittest.main()
