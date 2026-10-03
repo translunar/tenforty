@@ -845,3 +845,28 @@ class TestRemovedAttestation(unittest.TestCase):
             hasattr(sch_d_module, "EightFortyNineRequired"),
             "EightFortyNineRequired should be deleted; 8949 is implemented.",
         )
+
+
+class ScheduleCBusinessCodeTests(unittest.TestCase):
+    def test_business_code_defaults_blank(self):
+        from tenforty.models import ScheduleCBusiness
+        self.assertEqual(ScheduleCBusiness().business_code, "")
+
+    def test_business_code_loads_from_yaml(self):
+        import tempfile
+        from pathlib import Path
+        import yaml
+        from tenforty.scenario import load_scenario
+        from tests.helpers import FIXTURES_DIR
+        data = yaml.safe_load((FIXTURES_DIR / "simple_w2.yaml").read_text())
+        data["schedule_c_businesses"] = [{
+            "description": "Synthetic Consulting",
+            "business_code": "541990",
+            "gross_receipts": 1000.0,
+        }]
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "scn.yaml"
+            path.write_text(yaml.safe_dump(data))
+            scenario = load_scenario(path)
+        self.assertEqual(
+            scenario.schedule_c_businesses[0].business_code, "541990")
