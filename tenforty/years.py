@@ -47,7 +47,7 @@ WORKBOOK_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 FEDERAL_FORMS: tuple[str, ...] = (
     "1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
     "4562", "4868", "8959", "f8582", "f8949", "f8995", "f8962", "sch_2",
-    "sch_se",
+    "sch_se", "sch_c",
 )
 
 # Compute-only federal form set: the individual-return family, EXCLUDING the
@@ -74,6 +74,7 @@ NEW_FEATURE_FLOOR_YEAR: int = 2022
 POLICY_YEAR_FLOORS: dict[str, int] = {
     "sch_2": NEW_FEATURE_FLOOR_YEAR,
     "sch_se": NEW_FEATURE_FLOOR_YEAR,
+    "sch_c": NEW_FEATURE_FLOOR_YEAR,
 }
 
 

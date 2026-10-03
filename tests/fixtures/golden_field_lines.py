@@ -197,4 +197,33 @@ GOLDEN_FIELD_LINES: dict = {
         }
         for year in (2023, 2024, 2025)
     },
+    # Schedule C money lines. "Other expenses (from line 48)" is line 27a
+    # through 2024 and line 27b in 2025 -- same field, relabelled.
+    **{
+        ("federal", "sch_c", year): {
+            "sch_c_line_1_gross_receipts": ("f1_10", "1"),
+            "sch_c_line_3_net_receipts": ("f1_12", "3"),
+            "sch_c_line_5_gross_profit": ("f1_14", "5"),
+            "sch_c_line_7_gross_income": ("f1_16", "7"),
+            "sch_c_expense_advertising": ("f1_17", "8"),
+            "sch_c_expense_insurance": ("f1_24", "15"),
+            "sch_c_expense_legal_professional": ("f1_27", "17"),
+            "sch_c_expense_office_expense": ("f1_28", "18"),
+            "sch_c_expense_rent_lease": ("f1_31", "20b"),
+            "sch_c_expense_supplies": ("f1_33", "22"),
+            "sch_c_expense_taxes_licenses": ("f1_34", "23"),
+            "sch_c_expense_travel": ("f1_35", "24a"),
+            "sch_c_expense_deductible_meals": ("f1_36", "24b"),
+            "sch_c_expense_utilities": ("f1_37", "25"),
+            "sch_c_expense_wages": ("f1_38", "26"),
+            "sch_c_expense_other_expenses": ("f1_39", other_expenses_line),
+            "sch_c_line_28_total_expenses": ("f1_41", "28"),
+            "sch_c_line_29_tentative_profit": ("f1_42", "29"),
+            "sch_c_line_31_net_profit": ("f1_46", "31"),
+            "sch_c_line_48_total_other_expenses": ("f2_33", "48"),
+        }
+        for year, other_expenses_line in (
+            (2022, "27a"), (2023, "27a"), (2024, "27a"), (2025, "27b"),
+        )
+    },
 }
