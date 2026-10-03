@@ -68,6 +68,9 @@ SUPPORTED_YEARS = (2021, 2022, 2023, 2024, 2025)
 #   "5 Other income (loss) (see instructions--attach statement)" /
 #   "6 Total income (loss). Add lines 3 through 5" /
 #   "7 Compensation of officers" ... "19 Other deductions (attach statement)" /
+#   (line 14 reads "Depreciation not claimed on Form 1125-A or elsewhere on
+#    return" in 2021 and "Depreciation from Form 4562 not claimed on Form
+#    1125-A or elsewhere on return" from 2022; same line, same number) /
 #   "20 Total deductions. Add lines 7 through 19" /
 #   "21 Ordinary business income (loss). Subtract line 20 from line 6" /
 #   "22a Excess net passive income or LIFO recapture tax" /
@@ -123,7 +126,9 @@ _LINES_2021_2022 = {
 
 # SOURCE: Form 1120-S (2023), (2024), (2025), page 1:
 #   lines 1a-18 as above (2023+ prints 1a/1b/1c on one row: "1a Gross receipts
-#   or sales / b Less returns and allowances / c Balance"), then
+#   or sales / b Less returns and allowances / c Balance"; line 4 reads
+#   "Net gain (loss) from Form 4797, Part II, line 17" on the 2024 and 2025
+#   faces), then
 #   "19 Energy efficient commercial buildings deduction (attach Form 7205)" /
 #   "20 Other deductions (attach statement)" /
 #   "21 Total deductions. Add lines 7 through 20" /
@@ -137,7 +142,8 @@ _LINES_2021_2022 = {
 #   "c Credit for federal tax paid on fuels (attach Form 4136)" /
 #   "d Elective payment election amount from Form 3800" /
 #   "z Add lines 24a through 24d" /
-#   "25 Estimated tax penalty" /
+#   "25 Estimated tax penalty (see instructions). Check if Form 2220 is
+#    attached" /
 #   "26 Amount owed. If line 24z is smaller than the total of lines 23c and
 #    25, enter amount owed" /
 #   "27 Overpayment. If line 24z is larger than the total of lines 23c and 25,
@@ -299,15 +305,24 @@ def tax_and_payments(
     ``interest_on_453_deferred`` is passed "through to Form 1120-S line 22".
     The IRS instructions do not support adding it to the entity's tax line.
     The only "additional taxes" the instructions list for line 22c/23c are
-    Form 4255 recapture and look-back interest from Forms 8697 and 8866. For
-    section 453/453A the instructions put the liability on the SHAREHOLDER:
+    Form 4255 amounts and look-back interest from Forms 8697 and 8866. (Form
+    4255: investment credit recapture in 2021-2023; from 2024 the form is
+    retitled "Certain Credit Recapture, Excessive Payments, and Penalties" and
+    the instructions add "In addition, certain other amounts from Form 4255
+    should be reported directly on line 23c.") None of these has an input, so
+    none is computed here. For section 453/453A the instructions put the
+    liability on the SHAREHOLDER:
       Instructions for Form 1120-S (2021-2025), Schedule K-1 box 17,
       "Section 453(l)(3) information (code M) ... each shareholder's tax
       liability must be increased by the shareholder's pro rata share of the
       interest on tax attributable to the installment payments received during
-      the tax year." and "Section 453A(c) information (code N). Supply any
-      information ... a shareholder [needs] to figure the interest due under
-      section 453A(c)."
+      the tax year."
+      Instructions for Form 1120-S (2021, 2022): "Section 453A(c) information
+      (code N). Supply any information needed by a shareholder to figure the
+      interest due under section 453A(c)."
+      Instructions for Form 1120-S (2023-2025): "Section 453A(c) information
+      (code N). Supply any information shareholders need to figure the
+      interest charge under section 453A(c)."
     INTERPRETATION USED: ``f1120s_interest_on_453_deferred`` is reported as a
     passthrough of the input but is EXCLUDED from ``f1120s_total_tax``.
 
@@ -316,6 +331,14 @@ def tax_and_payments(
     quoted at the line maps above. Line 23a / 24a is a single form line
     combining estimated tax payments and the prior-year overpayment credited;
     the output surface reports the two components separately.
+
+    OUT OF SCOPE: section 643(g) trust payments. Instructions for Form 1120-S
+    (2021, 2022) "Line 23d" / (2023-2025) "Line 24z": "If the corporation is
+    the beneficiary of a trust, and the trust makes a section 643(g) election
+    to credit its estimated tax payments to its beneficiaries, include the
+    corporation's share of the payment in the total for line 23d [24z]." The
+    input schema has no field for this write-in, so the oracle's total
+    payments omits it.
 
     FLAG-2 (refundable credits): ``SCorpPayments.refundable_credits`` has no
     labelled form line. INTERPRETATION USED: for 2023-2025 it is line 24d,
@@ -461,7 +484,9 @@ def schedule_b(answers: Any) -> dict[str, Any]:
 #   * ``sch_k_charitable_contributions`` -- line 12a (2021-2023); 12a + 12b
 #     (2024-2025). Enters line 18.
 #   * ``sch_k_foreign_transactions`` -- from 2021 on, Schedule K line 14 is a
-#     checkbox ("Attach Schedule K-2 ... check this box"), not an amount.
+#     checkbox ("Attach Schedule K-2 ... check this box"), not an amount
+#     (2025: 14a, plus a second checkbox 14b "Check this box if you qualified
+#     for an exception to filing Schedule K-2 (Form 1120-S)").
 #     INTERPRETATION USED: treated as an information-only amount that does
 #     NOT enter line 18. Line 18's "16f Foreign taxes paid or accrued" has no
 #     output key; it is a separate ``foreign_taxes_paid_or_accrued`` argument.
@@ -572,7 +597,10 @@ def section_199a_totals(
     Qualified items of income, gain, deduction, and loss; W-2 wages;
     Unadjusted basis immediately after acquisition (UBIA) of qualified
     property; ..."
-    SOURCE: same, "Specific Instructions for Statement A" -- "the amount
+    SOURCE: same, under the run-in heading "Statement A--QBI Pass-Through
+    Entity Reporting. QBI or qualified PTP items." (2021-2024; the 2025
+    instructions title the section "Specific Instructions for Statement
+    A--QBI Pass-Through Entity Reporting") -- "the amount
     reported on the 'Ordinary business income (loss)' line of this statement
     should reflect the attributable portion of qualified items of income,
     gain, deduction, and loss for each trade or business included in the
@@ -610,7 +638,13 @@ def section_199a_totals(
 # Schedule K-1 pro-rata allocation
 # ---------------------------------------------------------------------------
 # Tolerance on "ownership percentages total 100", in percentage points. Wide
-# enough for thirds entered to four decimals (33.3333 x 3 = 99.9999).
+# enough for thirds entered to four decimals (33.3333 x 3 = 99.9999) but not
+# two decimals (33.33 x 3 = 99.99, rejected).
+# NO IRS SOURCE: this is an oracle-chosen constant (FLAG-8), not a figure from
+# any form or instruction. Within the tolerance the shares are NOT
+# re-normalised: percentages totalling 99.9999 allocate 99.9999% of each
+# Schedule K amount and the residual is assigned to nobody. A production side
+# that plugs the residual to one shareholder will differ by up to $1 per $1M.
 OWNERSHIP_TOTAL_TOLERANCE = 0.001
 
 
@@ -756,7 +790,7 @@ def reference_f1120s(
     out["f1120s_sch_k1_allocations"] = k1_allocations(
         sch_k,
         scorp.shareholders,
-        section_199a_totals(obi, getattr(scorp, "section_199a", None)),
+        section_199a_totals(obi, scorp.section_199a),
     )
     return out
 
