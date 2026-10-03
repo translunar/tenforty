@@ -165,11 +165,16 @@ others — no interaction changes.
 
 ## Non-goals
 
-- **Amendment-packet selector support for the new keys.** The shared
-  chokepoint means a 1040-X run with Schedule C present computes
-  correctly, but teaching the amendment selector to choose the new
-  forms as "changed" is deferred — no real scenario requires it (the
-  only live Schedule C years, 2024/2025, are original filings).
+- **Amendment-flow verification for the new forms.** No selector work
+  is needed: the changed-forms selector is payload-generic over
+  whatever specs the shared chokepoint produces, so a 1040-X run whose
+  corrected return adds or changes a Schedule C automatically selects
+  and renders the new forms once they exist (and a TY2021 amendment
+  hits the same year-floor refusal). What is deferred is verification
+  only — oracle-tier amendment acceptance for a Schedule C amendment,
+  and confirming the amendment packet family claims the new output
+  files — because no real scenario requires it (the only live
+  Schedule C years, 2024/2025, are original filings).
 - Multi-year extension back to TY2021 (policy floor).
 - The unmodeled Schedule C features (COGS, depreciation, home office,
   vehicle, losses, statutory employees) — refusals stand.
