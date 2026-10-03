@@ -146,6 +146,9 @@ def make_simple_scenario() -> Scenario:
             filing_status="single",
             birthdate="1990-06-15",
             state="CA",
+            # Answered so emit tests do not hit the 1040 digital-assets
+            # refusal; refusal tests override it to None.
+            digital_assets=False,
             **scope_out_attestation_defaults(),
         ),
         w2s=[

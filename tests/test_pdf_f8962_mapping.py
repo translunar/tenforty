@@ -202,6 +202,7 @@ def _scenario(year: int, *, form_1095a=None) -> Scenario:
     wages = 40_000
     return Scenario(
         config=TaxReturnConfig(
+            digital_assets=False,
             year=year,
             filing_status="single",
             birthdate="1990-06-15",

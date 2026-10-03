@@ -43,6 +43,9 @@ def _battery_config(year: int, **overrides) -> TaxReturnConfig:
     # (compute never consults the flag) and is what keeps the emit-path
     # battery tests from tripping the gate.
     defaults["acknowledges_no_source_documents"] = True
+    # Answered so emit-path battery tests clear the 1040 digital-assets
+    # refusal (compute never reads it).
+    defaults["digital_assets"] = False
     merged = {**defaults, **overrides}
     return TaxReturnConfig(
         year=year,

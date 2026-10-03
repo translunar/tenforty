@@ -104,6 +104,7 @@ def _build_eic_eligible_qbi_scenario(k1_qbi_amount: float) -> Scenario:
         defaults[name] = True
     defaults["prior_year_itemized"] = False
     cfg = TaxReturnConfig(
+        digital_assets=False,
         year=2025,
         filing_status=FilingStatus.SINGLE,
         birthdate="1980-01-01",

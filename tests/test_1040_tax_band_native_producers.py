@@ -41,6 +41,7 @@ def _scenario(wages: float, withheld: float, form_1095a=None) -> Scenario:
     routes to the native spine rather than the workbook fallback."""
     return Scenario(
         config=TaxReturnConfig(
+            digital_assets=False,
             year=YEAR,
             filing_status="single",
             birthdate="1990-06-15",
