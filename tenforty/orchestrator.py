@@ -1682,6 +1682,7 @@ class ReturnOrchestrator:
                 values=flat_values,
                 field_mapping=k1_mapping,
                 checkbox_states=k1_checkbox or None,
+                field_formats=PdfF1120SK1.get_field_formats(year),
             )
             emitted[f"1120s_k1_{i}"] = k1_output
 

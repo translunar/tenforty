@@ -37,7 +37,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
-        field_formats: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str | Callable[[float], str]] | None = None,
     ) -> dict[str, str]:
         """Resolve a flat ``field_mapping`` (+ optional aggregations, derivations,
         checkbox_states) into the ``{pdf_field_path: rendered_str}`` dict that
@@ -50,7 +50,8 @@ class PdfFiller:
         payload is by construction identical to what would be rendered.
 
         ``field_formats`` maps a COMPUTE KEY (in ``field_mapping``) to a Python
-        format spec (e.g. ``".4f"``) that replaces the whole-dollar default for
+        format spec (e.g. ``".4f"``) — or a ``float -> str`` callable such as
+        ``mappings.registry.trim_decimal`` — that replaces the whole-dollar default for
         that one numeric field — for rates such as Form 8962 line 7 (0.0850)
         that would otherwise round to "0". Applies only to the 1:1 pass, only
         to non-bool numerics; every field not named keeps the whole-dollar
@@ -67,7 +68,10 @@ class PdfFiller:
                     field_formats and result_key in field_formats
                     and isinstance(v, (int, float)) and not isinstance(v, bool)
                 ):
-                    pdf_fields[pdf_field_name] = format(v, field_formats[result_key])
+                    fmt = field_formats[result_key]
+                    pdf_fields[pdf_field_name] = (
+                        fmt(v) if callable(fmt) else format(v, fmt)
+                    )
                 else:
                     pdf_fields[pdf_field_name] = PdfFiller._render_scalar(v)
 
@@ -102,7 +106,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
-        field_formats: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str | Callable[[float], str]] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
