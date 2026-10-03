@@ -5,6 +5,7 @@ partition invariant (every emitted key is claimed by exactly one packet or
 is the standalone 4868 exception), and pypdf concatenation. No tax math.
 """
 
+import ast
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,7 @@ import pypdf
 
 from tenforty import pdf_packet
 from tenforty.models import SourceDocument
+from tests.helpers import REPO_ROOT
 
 
 def _make_pdf(path: Path, num_pages: int) -> Path:
@@ -97,6 +99,7 @@ class PartitionInvariantTests(unittest.TestCase):
         # Federal individual
         "1040", "sch_1", "sch_a", "sch_b", "sch_d", "f8949", "sch_e",
         "f8995", "8959", "f8582", "f4562",
+        "sch_2", "sch_se", "sch_c_1", "sch_c_2", "8962",
         # Federal corporate
         "1120s", "1120s_k1_0", "1120s_k1_1", "1120s_k1_2",
         "1120s_k1_qbi_stmt_1",
@@ -287,6 +290,113 @@ class SourceDocumentSplicingTests(unittest.TestCase):
         combined = pdf_packet.assemble_all(emitted, self.base, 2024)
         reader = pypdf.PdfReader(str(combined["federal_individual"]))
         self.assertEqual(len(reader.pages), 2)
+
+
+def _federal_emit_spec_names() -> set[str]:
+    """Every emit-spec name `_federal_individual_emit_specs` can produce,
+    read from the orchestrator's SOURCE: the `name=` argument of each
+    `_FederalFormSpec(...)` call. An f-string name (the indexed Schedule C
+    family) is sampled with "1" in each placeholder, e.g. "sch_c_1"."""
+    source = (REPO_ROOT / "tenforty" / "orchestrator.py").read_text()
+    names: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if not (isinstance(node, ast.Call)
+                and getattr(node.func, "id", None) == "_FederalFormSpec"):
+            continue
+        for keyword in node.keywords:
+            if keyword.arg != "name":
+                continue
+            value = keyword.value
+            if isinstance(value, ast.Constant):
+                names.add(value.value)
+            elif isinstance(value, ast.JoinedStr):
+                names.add("".join(
+                    part.value if isinstance(part, ast.Constant) else "1"
+                    for part in value.values))
+            else:
+                raise AssertionError(
+                    "emit-spec name is neither a literal nor an f-string; "
+                    "teach _federal_emit_spec_names how to sample it")
+    return names
+
+
+class EmitSpecNamesAreClaimedTests(unittest.TestCase):
+    """The partition invariant over the keys the orchestrator REALLY emits,
+    not a hand-kept list. Form 8962 was emitted under a key no packet
+    claimed and the hand-kept list never noticed."""
+
+    def test_enumeration_sees_the_real_specs(self):
+        names = _federal_emit_spec_names()
+        for expected in ("1040", "4868", "sch_1", "8959", "8962", "f8995"):
+            self.assertIn(expected, names)
+
+    def test_every_federal_emit_spec_name_is_claimed(self):
+        for name in sorted(_federal_emit_spec_names()):
+            with self.subTest(name=name):
+                self.assertIn(
+                    pdf_packet.classify_key(name),
+                    ("federal_individual", "standalone"),
+                    f"emit spec {name!r} is claimed by no packet",
+                )
+
+    def test_form_8962_sorts_after_8959_and_lands_in_the_packet(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            emitted = {
+                "8962": _make_pdf(d / "f8962_2024.pdf", 2),
+                "f8582": _make_pdf(d / "f8582_2024.pdf", 1),
+                "1040": _make_pdf(d / "f1040_2024.pdf", 2),
+                "8959": _make_pdf(d / "f8959_2024.pdf", 1),
+            }
+            names = [p.name for p in pdf_packet.ordered_members(
+                emitted, pdf_packet.FEDERAL_INDIVIDUAL)]
+            self.assertEqual(names, [
+                "f1040_2024.pdf", "f8959_2024.pdf", "f8962_2024.pdf",
+                "f8582_2024.pdf"])
+            combined = pdf_packet.assemble_all(emitted, d, 2024)
+            reader = pypdf.PdfReader(str(combined["federal_individual"]))
+            self.assertEqual(len(reader.pages), 6)
+
+
+class ScheduleCFamilyPacketTests(unittest.TestCase):
+    def test_new_keys_are_claimed_by_federal_individual(self):
+        for key in ("sch_2", "sch_se", "sch_c_1", "sch_c_12"):
+            with self.subTest(key=key):
+                self.assertEqual(
+                    pdf_packet.classify_key(key), "federal_individual")
+
+    def test_bare_sch_c_and_california_sch_ca_are_not_in_the_family(self):
+        # Schedule C keys are always indexed; "sch_ca" is California's.
+        self.assertIsNone(pdf_packet.classify_key("sch_c"))
+        self.assertEqual(pdf_packet.classify_key("sch_ca"), "california")
+
+    def test_attachment_sequence_order(self):
+        emitted = {
+            "sch_se": Path("/x/sch_se.pdf"),
+            "f8995": Path("/x/f8995.pdf"),
+            "sch_c_2": Path("/x/sch_c_2.pdf"),
+            "sch_d": Path("/x/sch_d.pdf"),
+            "sch_2": Path("/x/sch_2.pdf"),
+            "sch_e": Path("/x/sch_e.pdf"),
+            "sch_c_1": Path("/x/sch_c_1.pdf"),
+            "sch_b": Path("/x/sch_b.pdf"),
+            "sch_1": Path("/x/sch_1.pdf"),
+            "1040": Path("/x/1040.pdf"),
+            "sch_a": Path("/x/sch_a.pdf"),
+        }
+        names = [p.name for p in pdf_packet.ordered_members(
+            emitted, pdf_packet.FEDERAL_INDIVIDUAL)]
+        self.assertEqual(names, [
+            "1040.pdf", "sch_1.pdf", "sch_2.pdf", "sch_a.pdf", "sch_b.pdf",
+            "sch_c_1.pdf", "sch_c_2.pdf", "sch_d.pdf", "sch_e.pdf",
+            "sch_se.pdf", "f8995.pdf",
+        ])
+
+    def test_ten_or_more_businesses_sort_numerically(self):
+        emitted = {f"sch_c_{i}": Path(f"/x/c{i}.pdf") for i in (10, 2, 1, 11)}
+        names = [p.name for p in pdf_packet.ordered_members(
+            emitted, pdf_packet.FEDERAL_INDIVIDUAL)]
+        self.assertEqual(names, ["c1.pdf", "c2.pdf", "c10.pdf", "c11.pdf"])
 
 
 if __name__ == "__main__":
