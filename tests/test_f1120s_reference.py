@@ -515,8 +515,24 @@ class TestScheduleK(unittest.TestCase):
 
 
 class TestSection199ATotals(unittest.TestCase):
-    def test_none_means_no_statement(self):
-        self.assertIsNone(oracle.section_199a_totals(DEFAULT_OBI, None))
+    def test_none_means_default_statement(self):
+        # ADJUDICATED 2026-10-03: supersedes FLAG-6 ("None = no Statement A").
+        self.assertEqual(
+            oracle.section_199a_totals(DEFAULT_OBI, None),
+            {"qbi": DEFAULT_OBI, "w2_wages": 0.0, "ubia": 0.0})
+
+    def test_top_level_none_gives_default_statement_per_holder(self):
+        for year in ALL_YEARS:
+            with self.subTest(year=year):
+                out = oracle.reference_f1120s(year, make_scorp(
+                    shareholders=[make_holder("A", 60.0),
+                                  make_holder("B", 40.0)]))
+                obi = out["f1120s_ordinary_business_income"]
+                a, b = out["f1120s_sch_k1_allocations"]
+                self.assertAlmostEqual(a["section_199a"]["qbi"], obi * 0.6)
+                self.assertAlmostEqual(b["section_199a"]["qbi"], obi * 0.4)
+                self.assertEqual(a["section_199a"]["w2_wages"], 0.0)
+                self.assertEqual(b["section_199a"]["ubia"], 0.0)
 
     def test_default_qbi_is_ordinary_business_income(self):
         info = SimpleNamespace(qbi_override=None, w2_wages=140_000.0, ubia=60_000.0)
@@ -829,10 +845,14 @@ class TestReferenceF1120S(unittest.TestCase):
         with self.assertRaises(AttributeError):
             oracle.reference_f1120s(2024, scorp)
 
-    def test_missing_199a_info_yields_no_statement(self):
+    def test_missing_199a_info_yields_default_statement(self):
+        # ADJUDICATED 2026-10-03: supersedes FLAG-6.
         out = oracle.reference_f1120s(2022, make_scorp())
         (record,) = out["f1120s_sch_k1_allocations"]
-        self.assertIsNone(record["section_199a"])
+        self.assertEqual(
+            record["section_199a"],
+            {"qbi": out["f1120s_ordinary_business_income"],
+             "w2_wages": 0.0, "ubia": 0.0})
 
     def test_amounts_are_unrounded_floats(self):
         scorp = make_scorp(

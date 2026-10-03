@@ -3,9 +3,10 @@
 Drives `tenforty.forms.f1120s.compute` and the air-gapped reference
 `tests/oracles/f1120s_reference.py` over the same synthetic scenarios and
 compares every numeric output key. The oracle reports UNROUNDED amounts;
-production rounds each line to whole dollars. Per tests/oracles/README.md
-rule 3, the comparison applies production's `irs_round` to the ORACLE side at
-the boundary; tolerance is never added.
+production prints whole dollars and computes each arithmetic line from its
+printed operands. Per tests/oracles/README.md rule 3 the boundary rounds the
+oracle's COMPONENTS with `irs_round` (see `printed_scorp`) and lets the oracle
+combine them; tolerance is never added. There are no known divergences.
 
 Interface notes honoured here (not divergences):
   * refundable_credits is only meaningful 2023+ (oracle raises 2021-2022).
@@ -19,6 +20,7 @@ point.
 """
 
 import unittest
+from types import SimpleNamespace
 
 from tenforty.forms import f1120s
 from tenforty.models import SCorp199AInfo
@@ -188,26 +190,29 @@ SCENARIOS = {
 
 _SCALAR_KEYS_SKIP = {"f1120s_sch_k1_allocations"}
 
-# Recorded production-vs-oracle DIVERGENCES (see the expectedFailure tests
-# below; each is compared strictly there, never loosened). The main
-# comparisons skip exactly these so the rest of the surface stays enforced.
-#  D1: Sch K line 18 -- production emits the v1 zero placeholder; oracle = line 1.
-#  D2: line 21 / Sch K line 1 / K-1 box 1 -- production computes line 6(rounded)
-#      minus line 20(raw) then rounds; oracle rounds the raw difference.
-#  D3: line 26 overpayment -- production subtracts rounded line 22c from RAW
-#      line 23 sum then rounds; oracle rounds the raw difference.
-D1_KEY = "f1120s_sch_k_income_loss_reconciliation"
-D2_SCENARIO = "cents_loss"
-D2_KEYS = {"f1120s_ordinary_business_income",
-           "f1120s_sch_k_ordinary_business_income"}
-D3_SCENARIO = "cents_overpayment"
-D3_KEY = "f1120s_overpayment"
 
 
-def _known_divergence(scenario, key):
-    return (key == D1_KEY
-            or (scenario == D2_SCENARIO and key in D2_KEYS)
-            or (scenario == D3_SCENARIO and key == D3_KEY))
+def printed_scorp(r):
+    """Oracle-side boundary (README rule 3, printed-chain convention): round
+    every raw COMPONENT to whole dollars with production's `irs_round`, then
+    let the unrounded oracle combine them. Equivalent to rounding the
+    oracle's raw components and combining (irs_round(700.50) -
+    irs_round(100.40) = 601), never irs_round(raw difference)."""
+    def rounded(obj):
+        return SimpleNamespace(**{
+            k: irs_round(v) if isinstance(v, float) else v
+            for k, v in vars(obj).items()})
+    return SimpleNamespace(
+        income=rounded(r.income), deductions=rounded(r.deductions),
+        scope_outs=rounded(r.scope_outs), payments=rounded(r.payments),
+        schedule_b_answers=r.schedule_b_answers,
+        shareholders=r.shareholders, section_199a=(
+            None if r.section_199a is None else SimpleNamespace(
+                qbi_override=(None if r.section_199a.qbi_override is None
+                              else irs_round(r.section_199a.qbi_override)),
+                w2_wages=irs_round(r.section_199a.w2_wages),
+                ubia=irs_round(r.section_199a.ubia))),
+    )
 
 
 def build(year, spec):
@@ -245,10 +250,10 @@ class F1120SOracleBattery(unittest.TestCase):
             for name, spec in SCENARIOS.items():
                 s = build(year, spec)
                 got = f1120s.compute(s, upstream={})
-                want = oracle.reference_f1120s(year, s.s_corp_return)
+                want = oracle.reference_f1120s(
+                    year, printed_scorp(s.s_corp_return))
                 for key in sorted(want):
-                    if key in _SCALAR_KEYS_SKIP \
-                            or _known_divergence(name, key):
+                    if key in _SCALAR_KEYS_SKIP:
                         continue
                     with self.subTest(year=year, scenario=name, key=key):
                         self.assertIn(key, got)
@@ -263,12 +268,11 @@ class F1120SOracleBattery(unittest.TestCase):
                 s = build(year, spec)
                 got = f1120s.compute(s, upstream={})["f1120s_sch_k1_allocations"]
                 want = oracle.reference_f1120s(
-                    year, s.s_corp_return)["f1120s_sch_k1_allocations"]
+                    year, printed_scorp(s.s_corp_return)
+                )["f1120s_sch_k1_allocations"]
                 with self.subTest(year=year, scenario=name, part="count"):
                     self.assertEqual(len(got), len(want))
                 for i, (g, w) in enumerate(zip(got, want)):
-                    if name == D2_SCENARIO:
-                        continue  # D2: box 1 inherits the line 21 divergence
                     with self.subTest(year=year, scenario=name, holder=i):
                         self.assertEqual(g.shareholder.name, w["name"])
                         self.assertEqual(g.ownership_percentage,
@@ -277,70 +281,18 @@ class F1120SOracleBattery(unittest.TestCase):
                             irs_round(g.box_1_ordinary_business_income),
                             irs_round(w["ordinary_business_income"]))
                         sec = w["section_199a"]
-                        if sec is None:
-                            continue  # see test_no_statement_a_*
-                        else:
-                            self.assertEqual(g.box_17v_qbi,
-                                             irs_round(sec["qbi"]))
-                            self.assertEqual(g.box_17v_w2_wages,
-                                             irs_round(sec["w2_wages"]))
-                            self.assertEqual(g.box_17v_ubia,
-                                             irs_round(sec["ubia"]))
-
-    @unittest.expectedFailure
-    def test_no_statement_a_when_section_199a_is_none(self):
-        """DIVERGENCE (oracle FLAG-6): with section_199a None the oracle
-        reports NO Statement A (``section_199a: None``); production emits
-        box 17V QBI = the holder's share of Sch K line 1 (default-QBI
-        statement, zero wages/UBIA). Recorded, not reshaped; awaiting
-        team-lead adjudication."""
-        for year in YEARS:
-            for name, spec in SCENARIOS.items():
-                if "s199a" in spec:
-                    continue
-                s = build(year, spec)
-                got = f1120s.compute(s, upstream={})["f1120s_sch_k1_allocations"]
-                for g in got:
-                    with self.subTest(year=year, scenario=name):
-                        self.assertEqual(
-                            (g.box_17v_qbi, g.box_17v_w2_wages,
-                             g.box_17v_ubia), (0, 0, 0))
-
-    def _strict_scalar(self, key, scenarios):
-        for year in YEARS:
-            for name in scenarios:
-                s = build(year, SCENARIOS[name])
-                got = f1120s.compute(s, upstream={})[key]
-                want = irs_round(oracle.reference_f1120s(
-                    year, s.s_corp_return)[key])
-                with self.subTest(year=year, scenario=name, key=key):
-                    self.assertEqual(got, want)
-
-    @unittest.expectedFailure
-    def test_d1_line_18_reconciliation_matches_oracle(self):
-        """DIVERGENCE D1: production emits 0 for Sch K line 18; oracle (no
-        separately stated items) reports line 18 == line 1."""
-        self._strict_scalar(D1_KEY, SCENARIOS)
-
-    @unittest.expectedFailure
-    def test_d2_line_21_from_rounded_line_6_matches_oracle(self):
-        """DIVERGENCE D2: cents_loss -- production line 21 = -2501
-        (round(1000.40) - round(3500.80)); oracle round(-2500.40) = -2500."""
-        for key in sorted(D2_KEYS):
-            self._strict_scalar(key, [D2_SCENARIO])
-
-    @unittest.expectedFailure
-    def test_d3_line_26_overpayment_matches_oracle(self):
-        """DIVERGENCE D3: cents_overpayment -- production 601
-        (701 - 100 from rounded lines); oracle round(700.50 - 100.40) = 600."""
-        self._strict_scalar(D3_KEY, [D3_SCENARIO])
+                        self.assertEqual(g.box_17v_qbi, irs_round(sec["qbi"]))
+                        self.assertEqual(g.box_17v_w2_wages,
+                                         irs_round(sec["w2_wages"]))
+                        self.assertEqual(g.box_17v_ubia,
+                                         irs_round(sec["ubia"]))
 
     def test_line_18_equals_line_1_at_top_level(self):
         for year in YEARS:
             for name, spec in SCENARIOS.items():
                 with self.subTest(year=year, scenario=name):
                     out = oracle.reference_f1120s(
-                        year, build(year, spec).s_corp_return)
+                        year, printed_scorp(build(year, spec).s_corp_return))
                     self.assertEqual(
                         out["f1120s_sch_k_income_loss_reconciliation"],
                         out["f1120s_sch_k_ordinary_business_income"])
