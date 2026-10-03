@@ -1169,7 +1169,14 @@ class ReturnOrchestrator:
             if raw.get(_ptc_key) is None:
                 raw[_ptc_key] = 0
 
-        return form_1040.compute(raw_1040=raw, upstream={})
+        # The workbook knows nothing of the 1040 header block; add it from
+        # config so the printed header cannot depend on which pipeline
+        # computed the return (the native spine emits the same block).
+        from tenforty.forms import f1040_spine
+        return {
+            **f1040_spine.header_values(effective_scenario.config),
+            **form_1040.compute(raw_1040=raw, upstream={}),
+        }
 
     def compute_federal(self, scenario: Scenario) -> dict[str, object]:
         """Compute the federal return (1120-S waterfall + 1040 + schedules).
@@ -1312,6 +1319,22 @@ class ReturnOrchestrator:
             )
 
         year = scenario.config.year
+        # Digital-assets question (Form 1040, TY2022+). An unanswered question
+        # cannot be printed as a blank on a return that gets signed, so emit
+        # refuses; the native COMPUTE path never asks (no PDF, no question).
+        # 2021's virtual-currency wording is the same field but pre-dates the
+        # refusal: answered -> box checked, unanswered -> left blank.
+        if year >= 2022 and scenario.config.digital_assets is None:
+            raise ValueError(
+                "Form 1040 PDF emission needs the digital-assets question "
+                f"answered for tax year {year}: set `digital_assets` in the "
+                "scenario config to true or false ('At any time during "
+                f"{year}, did you: (a) receive (as a reward, award, or payment "
+                "for property or services); or (b) sell, exchange, or "
+                "otherwise dispose of a digital asset (or a financial "
+                "interest in a digital asset)?'). It is left unanswered "
+                "(null) in this scenario."
+            )
         specs: list[_FederalFormSpec] = []
 
         def _fed(basename: str) -> Path:
@@ -1342,7 +1365,10 @@ class ReturnOrchestrator:
         specs.append(_FederalFormSpec(
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
-            mapping=Pdf1040.get_mapping(year), values=results,
+            mapping=Pdf1040.get_mapping(year),
+            values={**results, **self._form_1040_checkbox_values(
+                scenario, results)},
+            checkbox_states=Pdf1040.get_checkbox_states(year),
             # 1040 line 24 (total tax) is filled by a derivation rather than a
             # result key: no key fills it on the native path, and the single
             # shared implementation of the arithmetic lives in forms/f4868.py.
@@ -2473,6 +2499,41 @@ class ReturnOrchestrator:
             f8949_result.get(f"f8949_box_{box.value}_total_proceeds", 0)
             for box in BoxLetter
         )
+
+    def _form_1040_checkbox_values(
+        self, scenario: Scenario, results: dict,
+    ) -> dict[str, bool]:
+        """The Form 1040's bool checkbox keys, derived from the scenario.
+
+        Filing status: exactly one box. Line 7 "Schedule D not required":
+        checked when line 7 carries an amount but no Schedule D is attached --
+        read off the SAME gate (`_should_emit_sch_d`) that decides whether a
+        Schedule D is emitted, so the box and the attachment cannot disagree.
+        Digital assets: Yes/No from the config; neither box when unanswered
+        (reachable only for 2021, see the refusal in
+        `_federal_individual_emit_specs`).
+        """
+        status = scenario.config.filing_status
+        keys = {
+            FilingStatus.SINGLE: "single",
+            FilingStatus.MARRIED_JOINTLY: "mfj",
+            FilingStatus.MARRIED_SEPARATELY: "mfs",
+            FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
+            FilingStatus.QUALIFYING_WIDOW: "qss",
+        }
+        values: dict[str, bool] = {
+            f"filing_status_{suffix}": status is fs
+            for fs, suffix in keys.items()
+        }
+        values["sch_d_not_required"] = (
+            bool(results.get("capital_gain_loss"))
+            and not self._should_emit_sch_d(scenario)
+        )
+        answer = scenario.config.digital_assets
+        if answer is not None:
+            values["digital_assets_yes"] = answer
+            values["digital_assets_no"] = not answer
+        return values
 
     def _should_emit_sch_d(self, scenario: Scenario) -> bool:
         """Emit Sch D whenever any 1099-B transactions exist in the scenario."""
