@@ -4,7 +4,9 @@ These pin the hand-coded oracle in ``tests/oracles/f1120s_reference.py``
 against expected values worked by hand from the IRS form faces. They do NOT
 compare against any production compute -- that battery is a separate task.
 
-All scenarios are fully synthetic; every input amount is divisible by $50.
+All scenarios are fully synthetic; every input amount is divisible by $50,
+with ONE documented exception: ``TestNoRoundingAtEntityLevel`` carries cents
+(team-lead ruling) to pin the charter's no-rounding rule.
 Inputs are plain stand-in objects with the S-corp input schema's attribute
 names (the oracle is duck-typed and imports nothing from ``tenforty``).
 """
@@ -553,7 +555,6 @@ class TestProRataShare(unittest.TestCase):
         share = oracle.pro_rata_share(100_050.0, 33.3333)
         self.assertAlmostEqual(share, 33_349.96665, places=6)
         self.assertNotEqual(share, round(share, 2))
-        self.assertNotEqual(share, round(share))
 
     def test_loss_allocates_with_its_sign(self):
         self.assertEqual(oracle.pro_rata_share(-40_000.0, 25.0), -10_000.0)
@@ -650,6 +651,42 @@ class TestK1Allocations(unittest.TestCase):
         self.assertAlmostEqual(
             records[2]["ordinary_business_income"], 30_000.06, places=6)
 
+    def test_total_just_inside_tolerance_accepted(self):
+        # 3 x 33.3333 = 99.9999 and 3 x 33.3336 = 100.0008: both within the
+        # 0.001-point tolerance, on either side of 100.
+        for pct in (33.3333, 33.3336):
+            with self.subTest(pct=pct):
+                self.assertLess(
+                    abs(3 * pct - 100.0), oracle.OWNERSHIP_TOTAL_TOLERANCE)
+                records = oracle.k1_allocations(
+                    self._sch_k(90_000.0),
+                    [make_holder(f"Shareholder {i}", pct) for i in range(3)],
+                    None)
+                self.assertEqual(len(records), 3)
+
+    def test_total_just_outside_tolerance_rejected(self):
+        # 3 x 33.33 = 99.99 and 3 x 33.34 = 100.02: two-decimal thirds are a
+        # deliberate rejection (FLAG-8), on either side of 100.
+        for pct in (33.33, 33.34, 33.3327, 33.334):
+            with self.subTest(pct=pct):
+                self.assertGreater(
+                    abs(3 * pct - 100.0), oracle.OWNERSHIP_TOTAL_TOLERANCE)
+                with self.assertRaises(ValueError):
+                    oracle.k1_allocations(
+                        self._sch_k(90_000.0),
+                        [make_holder(f"Shareholder {i}", pct) for i in range(3)],
+                        None)
+
+    def test_shares_within_tolerance_are_not_renormalised(self):
+        records = oracle.k1_allocations(
+            self._sch_k(90_000.0),
+            [make_holder(f"Shareholder {i}", 33.3333) for i in range(3)],
+            None)
+        # 3 x 29,999.97 = 89,999.91: the 0.0001% residual goes to nobody.
+        self.assertAlmostEqual(
+            sum(r["ordinary_business_income"] for r in records),
+            89_999.91, places=6)
+
     def test_percentages_not_totalling_100_rejected(self):
         # FLAG-8.
         for pcts in ((60.0, 30.0), (60.0, 50.0), (99.0,)):
@@ -713,7 +750,6 @@ class TestReferenceF1120S(unittest.TestCase):
     }
 
     def test_key_surface_is_exactly_the_output_key_list(self):
-        self.assertEqual(len(self.EXPECTED_KEYS), 65)
         for year in ALL_YEARS:
             with self.subTest(year=year):
                 out = oracle.reference_f1120s(year, make_scorp())
@@ -785,6 +821,14 @@ class TestReferenceF1120S(unittest.TestCase):
         self.assertEqual(record["ordinary_business_income"], DEFAULT_OBI)
         self.assertEqual(record["section_199a"]["qbi"], 100_000.0)
 
+    def test_section_199a_attribute_is_required_like_every_other_field(self):
+        # None means "no statement"; an ABSENT attribute is a malformed input
+        # and must not be silently read as None.
+        scorp = make_scorp()
+        del scorp.section_199a
+        with self.assertRaises(AttributeError):
+            oracle.reference_f1120s(2024, scorp)
+
     def test_missing_199a_info_yields_no_statement(self):
         out = oracle.reference_f1120s(2022, make_scorp())
         (record,) = out["f1120s_sch_k1_allocations"]
@@ -799,6 +843,119 @@ class TestReferenceF1120S(unittest.TestCase):
         self.assertIsInstance(out["f1120s_ordinary_business_income"], float)
         self.assertAlmostEqual(share, 40_166.6265, places=6)
         self.assertNotEqual(share, round(share, 2))
+
+
+class TestNoRoundingAtEntityLevel(unittest.TestCase):
+    """Pins charter rule 3 ("no rounding inside the oracle") at entity level.
+
+    DELIBERATE EXCEPTION to the $50-multiple fixture convention (team-lead
+    ruling): on $50-multiple inputs every entity-level amount is a whole
+    dollar, so rounding is the identity and an added ``round()`` anywhere in
+    the page 1 / Schedule K / payments chain would go undetected. This one
+    scenario carries obviously synthetic cents so each surface has a
+    fractional expected value. Every cents part is below .50 and the cents do
+    not cancel, so rounding any single input, any line, or any total changes
+    an asserted value. Do not copy these amounts into other fixtures.
+    """
+
+    def setUp(self):
+        self.income = make_income(
+            gross_receipts=50_000.37,
+            returns_and_allowances=1_000.12,
+            cogs_aggregate=10_000.11,
+            net_gain_loss_4797=500.26,
+            other_income=250.19,
+        )
+        # Whole dollars total 22,700; cents total 323 -> 22,703.23.
+        self.deductions = make_deductions(
+            compensation_of_officers=10_000.41,
+            salaries_wages=5_000.33,
+            repairs_maintenance=300.09,
+            bad_debts=100.13,
+            rents=2_400.27,
+            taxes_licenses=900.31,
+            interest=200.17,
+            depreciation=1_200.43,
+            depletion=50.07,
+            advertising=400.21,
+            pension_profit_sharing_plans=600.39,
+            employee_benefits=500.23,
+            other_deductions=1_050.19,
+        )
+        self.payments = make_payments(
+            estimated_tax_payments=1_000.17,
+            prior_year_overpayment_credited=200.19,
+            tax_deposited_with_7004=300.23,
+            credit_for_federal_excise_tax=50.11,
+            refundable_credits=25.13,
+        )
+        self.scope_outs = make_scope_outs(built_in_gains_tax=2_000.29)
+
+    def test_page1_income_keeps_cents(self):
+        out = oracle.page1_income(2024, self.income)
+        self.assertEqual(out["f1120s_gross_receipts"], 50_000.37)
+        self.assertEqual(out["f1120s_returns_and_allowances"], 1_000.12)
+        self.assertEqual(out["f1120s_cost_of_goods_sold"], 10_000.11)
+        self.assertEqual(out["f1120s_net_gain_loss_4797"], 500.26)
+        self.assertEqual(out["f1120s_other_income"], 250.19)
+        self.assertAlmostEqual(out["f1120s_net_receipts"], 49_000.25, places=6)
+        self.assertAlmostEqual(out["f1120s_gross_profit"], 39_000.14, places=6)
+        self.assertAlmostEqual(out["f1120s_total_income"], 39_750.59, places=6)
+
+    def test_deduction_lines_and_total_keep_cents(self):
+        out = oracle.page1_deductions(2024, self.deductions)
+        self.assertEqual(out["f1120s_compensation_of_officers"], 10_000.41)
+        self.assertEqual(out["f1120s_depletion"], 50.07)
+        self.assertEqual(out["f1120s_other_deductions"], 1_050.19)
+        self.assertAlmostEqual(
+            out["f1120s_total_deductions"], 22_703.23, places=6)
+
+    def test_ordinary_business_income_keeps_cents(self):
+        self.assertAlmostEqual(
+            oracle.ordinary_business_income(39_750.59, 22_703.23),
+            17_047.36, places=6)
+
+    def test_schedule_k_line_18_keeps_cents(self):
+        out = oracle.schedule_k(
+            2024, 17_047.36, {"interest_income": 100.27},
+            foreign_taxes_paid_or_accrued=10.12)
+        self.assertEqual(out["f1120s_sch_k_ordinary_business_income"], 17_047.36)
+        self.assertAlmostEqual(
+            out["f1120s_sch_k_income_loss_reconciliation"], 17_137.51, places=6)
+
+    def test_total_payments_and_balance_keep_cents(self):
+        out = oracle.tax_and_payments(
+            2024, self.scope_outs, self.payments, estimated_tax_penalty=10.14)
+        self.assertEqual(out["f1120s_total_tax"], 2_000.29)
+        self.assertAlmostEqual(out["f1120s_total_payments"], 1_575.83, places=6)
+        self.assertAlmostEqual(out["f1120s_amount_owed"], 434.60, places=6)
+
+    def test_overpayment_keeps_cents(self):
+        out = oracle.tax_and_payments(
+            2024, make_scope_outs(built_in_gains_tax=1_000.29), self.payments)
+        self.assertAlmostEqual(out["f1120s_overpayment"], 575.54, places=6)
+
+    def test_end_to_end_keeps_cents(self):
+        scorp = make_scorp(
+            income=self.income, deductions=self.deductions,
+            payments=self.payments, scope_outs=self.scope_outs,
+            section_199a=SimpleNamespace(
+                qbi_override=None, w2_wages=15_000.74, ubia=0.0))
+        out = oracle.reference_f1120s(2024, scorp)
+        self.assertAlmostEqual(
+            out["f1120s_ordinary_business_income"], 17_047.36, places=6)
+        self.assertAlmostEqual(
+            out["f1120s_sch_k_ordinary_business_income"], 17_047.36, places=6)
+        self.assertAlmostEqual(
+            out["f1120s_sch_k_income_loss_reconciliation"], 17_047.36, places=6)
+        self.assertAlmostEqual(out["f1120s_total_payments"], 1_575.83, places=6)
+        self.assertAlmostEqual(out["f1120s_amount_owed"], 424.46, places=6)
+        (record,) = out["f1120s_sch_k1_allocations"]
+        self.assertAlmostEqual(
+            record["ordinary_business_income"], 17_047.36, places=6)
+        self.assertAlmostEqual(record["section_199a"]["qbi"], 17_047.36, places=6)
+        self.assertAlmostEqual(
+            record["section_199a"]["w2_wages"], 15_000.74, places=6)
 
 
 if __name__ == "__main__":

@@ -119,8 +119,11 @@ split into cash/noncash contributions in 2024, so line 18 subtracts "11 through
   an optional mapping so the line 18 arithmetic is real.
 - Mid-year ownership changes (per-share, per-day weighting; §1377(a)(2)
   election). The caller supplies an already-weighted item G percentage.
-- Computing the §1375 / §1374 taxes, Form 4255 recapture and Forms 8697 / 8866
+- Computing the §1375 / §1374 taxes, Form 4255 amounts (credit recapture;
+  from 2024 also "certain other amounts from Form 4255") and Forms 8697 / 8866
   look-back interest (the latter three have no input at all).
+- §643(g) trust estimated-tax payments, which the instructions include in
+  total payments (line 23d / 24z) as a write-in. No input field exists.
 - Page 1 line 19 (2023+), Schedules L / M-1 / M-2 / M-3, Form 1125-A / 1125-E
   detail.
 - The instructions' QBI flowchart: default QBI is Schedule K line 1.
@@ -129,7 +132,7 @@ split into cash/noncash contributions in 2024, so line 18 subtracts "11 through
 
 1. **§453 interest is not an entity-level tax.** The input schema says
    `interest_on_453_deferred` passes "through to Form 1120-S line 22". The
-   instructions list only Form 4255 recapture and Form 8697 / 8866 look-back
+   instructions list only Form 4255 amounts and Form 8697 / 8866 look-back
    interest as additions to line 22c / 23c, and make §453(l)(3) / §453A(c)
    interest a shareholder liability reported on K-1 box 17 codes M / N. The
    oracle reports the amount but **excludes it from `f1120s_total_tax`**.
@@ -153,6 +156,14 @@ split into cash/noncash contributions in 2024, so line 18 subtracts "11 through
    oracle returns a list of per-shareholder dicts (see `k1_allocations`).
 8. **Ownership percentages must total 100.** The oracle raises `ValueError`
    when they do not (tolerance 0.001 point) or when any is outside (0, 100].
+   The tolerance is an oracle-chosen constant with no IRS source: thirds to
+   four decimals (99.9999) pass, thirds to two decimals (99.99) are rejected.
+   Inside the tolerance shares are not re-normalised, so the residual is
+   assigned to nobody.
+
+Fixture note: `tests/test_f1120s_reference.py` keeps every amount a $50
+multiple except `TestNoRoundingAtEntityLevel`, which carries synthetic cents by
+team-lead ruling so that an added `round()` at entity level fails a test.
 
 Label note: the schema docstring calls the allocation percentage "Schedule K-1
 Part II box D"; on every 2021–2025 Schedule K-1 it is item G.
