@@ -4,8 +4,9 @@ Computes main form lines 1-28, Schedule B pass-through, Schedule K totals,
 and per-shareholder Schedule K-1 allocations from a Scenario whose
 `s_corp_return` is set.
 
-Scope follows Sub-plan 2: §1375, §1374, §453 interest are scope-outs
-(caller supplies amounts); Sch L, M-1, M-2, M-3 are out of scope (gated
+Scope follows Sub-plan 2: §1375 and §1374 are scope-outs (caller supplies
+amounts); §453 interest is a fail-closed scope-out (shareholder-level, K-1
+box 17 codes M/N; nonzero raises NotImplementedError); Sch L, M-1, M-2, M-3 are out of scope (gated
 by attestations); Sch D (corporate) and 1125-A/E detail are out of scope.
 
 Caller contract: `compute(scenario, upstream)` runs both the load-time
@@ -122,16 +123,31 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
 
 
 def _compute_total_tax(r: SCorpReturn) -> dict:
-    """Form 1120-S Total Tax (line 22). §1375 / §1374 / §453 interest
-    are scope-outs (caller-supplied)."""
+    """Form 1120-S Total Tax (line 22c / 23c from 2023).
+
+    §1375 / §1374 amounts are scope-outs (caller-supplied) and are summed.
+
+    §453(l)(3) / §453A(c) interest is ALSO a scope-out, but a fail-closed
+    one: the IRS instructions make it a SHAREHOLDER liability reported on
+    Schedule K-1 box 17 codes M/N, and it never appears in the entity's
+    additional-taxes list. tenforty does not model K-1 box 17 M/N, so a
+    nonzero amount raises rather than silently misstating entity tax.
+    The output key is kept and always reports 0.
+    """
+    if r.scope_outs.interest_on_453_deferred != 0:
+        raise NotImplementedError(
+            "interest_on_453_deferred is nonzero, but §453(l)(3)/§453A(c) "
+            "interest is a shareholder-level liability (Schedule K-1 box 17 "
+            "codes M/N), not entity tax on Form 1120-S line 22c/23c. "
+            "tenforty does not model it, so this return cannot be produced."
+        )
     line_22a = r.scope_outs.net_passive_income_tax
     line_22b = r.scope_outs.built_in_gains_tax
-    line_22c = r.scope_outs.interest_on_453_deferred
     return {
         "f1120s_net_passive_income_tax": irs_round(line_22a),
         "f1120s_built_in_gains_tax": irs_round(line_22b),
-        "f1120s_interest_on_453_deferred": irs_round(line_22c),
-        "f1120s_total_tax": irs_round(line_22a + line_22b + line_22c),
+        "f1120s_interest_on_453_deferred": irs_round(0.0),
+        "f1120s_total_tax": irs_round(line_22a + line_22b),
     }
 
 

@@ -110,24 +110,36 @@ class DeductionsSectionTests(unittest.TestCase):
 
 
 class TotalTaxTests(unittest.TestCase):
-    def test_line_22_is_sum_of_scope_out_amounts(self):
-        """IRS line 22 (total tax) = line 22a + 22b + 22c.
+    def test_line_22_is_sum_of_1375_and_1374_scope_out_amounts(self):
+        """IRS line 22c = line 22a + 22b.
 
-        All three are scope-out values supplied by the caller; tenforty v1
-        does not compute §1375, §1374, or §453 interest itself. The v1
-        fixture's `acknowledges_no_section_137{4,5}_tax = True` defaults
-        affirm the scope-out posture; supplying a nonzero scope_outs value
-        is then accepted (gate fires only when ack=False AND nonzero).
+        Both are scope-out values supplied by the caller; tenforty v1 does
+        not compute §1375 or §1374 tax itself. The v1 fixture's
+        `acknowledges_no_section_137{4,5}_tax = True` defaults affirm the
+        scope-out posture; supplying a nonzero scope_outs value is then
+        accepted (gate fires only when ack=False AND nonzero).
         """
         s = _make_v1_scenario()
         s.s_corp_return.scope_outs.net_passive_income_tax = 1000.0
         s.s_corp_return.scope_outs.built_in_gains_tax = 500.0
-        s.s_corp_return.scope_outs.interest_on_453_deferred = 50.0
         out = f1120s.compute(s, upstream={})
         self.assertEqual(out["f1120s_net_passive_income_tax"], 1000.0)
         self.assertEqual(out["f1120s_built_in_gains_tax"], 500.0)
-        self.assertEqual(out["f1120s_interest_on_453_deferred"], 50.0)
-        self.assertEqual(out["f1120s_total_tax"], 1550.0)
+        self.assertEqual(out["f1120s_interest_on_453_deferred"], 0)
+        self.assertEqual(out["f1120s_total_tax"], 1500.0)
+
+    def test_nonzero_453_interest_is_refused(self):
+        """§453(l)(3)/§453A(c) interest is a SHAREHOLDER liability (K-1 box 17
+        codes M/N), never part of entity line 22c; tenforty does not model it,
+        so a nonzero amount must fail closed rather than misstate entity tax.
+        """
+        for amount in (50.0, -50.0, 0.4):
+            with self.subTest(amount=amount):
+                s = _make_v1_scenario()
+                s.s_corp_return.scope_outs.interest_on_453_deferred = amount
+                with self.assertRaises(NotImplementedError) as cm:
+                    f1120s.compute(s, upstream={})
+                self.assertIn("box 17", str(cm.exception))
 
     def test_line_22_is_zero_when_all_scope_out_amounts_zero(self):
         s = _make_v1_scenario()

@@ -697,10 +697,12 @@ class SCorpDeductions:
 class SCorpScopeOuts:
     """Caller-supplied tax amounts that tenforty does not compute.
 
-    Covers §1375 net passive income tax, §1374 built-in gains tax, and
-    §453/§453A interest on deferred tax. Tenforty's v1 has no compute
-    path for these; the caller supplies amounts directly and the compute
-    layer passes them through to Form 1120-S line 22.
+    Covers §1375 net passive income tax and §1374 built-in gains tax,
+    which the caller supplies and the compute layer sums into Form 1120-S
+    line 22c. `interest_on_453_deferred` is a fail-closed scope-out:
+    §453(l)(3)/§453A(c) interest is a shareholder-level liability
+    (Schedule K-1 box 17 codes M/N), so a nonzero value raises
+    NotImplementedError in the 1120-S compute.
     """
     net_passive_income_tax: float = 0.0
     built_in_gains_tax: float = 0.0
