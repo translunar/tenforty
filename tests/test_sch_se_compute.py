@@ -142,6 +142,17 @@ class SchSeStructureTests(unittest.TestCase):
                     out["sch_se_line_13_half_deduction"],
                     irs_round(out["sch_se_line_12_se_tax"] * 0.5))
 
+    def test_lines_2_and_4a_are_printed_alongside_3_and_4c(self):
+        for net_profit in (350.0, 4_100.0):   # under and over the $400 line
+            with self.subTest(net_profit=net_profit):
+                scn, up = _scn(net_profit)
+                out = sch_se.compute(scn, up)
+                self.assertEqual(out["sch_se_line_2_net_profit"],
+                                 out["sch_se_line_3_net_profit"])
+                self.assertEqual(out["sch_se_line_4a_net_earnings"],
+                                 out["sch_se_line_4c_net_earnings"])
+                self.assertGreater(out["sch_se_line_2_net_profit"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

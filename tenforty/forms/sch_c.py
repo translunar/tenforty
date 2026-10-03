@@ -82,8 +82,16 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
             f"(Form 8995), and the §461(l) excess-business-loss limitation -- none "
             f"modeled in tenforty v1. This return cannot be produced by v1."
         )
+    # Lines 1, 3 and 5 are printed explicitly so the form's own chain is
+    # complete. They all equal line 7 BY CONSTRUCTION: line 2 (returns and
+    # allowances) and line 4 (cost of goods sold) are refused above, and
+    # line 6 (other income) has no input channel.
+    gross = irs_round(line_7)
     return {
-        "sch_c_line_7_gross_income": irs_round(line_7),
+        "sch_c_line_1_gross_receipts": gross,
+        "sch_c_line_3_net_receipts": gross,
+        "sch_c_line_5_gross_profit": gross,
+        "sch_c_line_7_gross_income": gross,
         "sch_c_line_28_total_expenses": irs_round(line_28),
         "sch_c_line_29_tentative_profit": irs_round(line_29),
         "sch_c_line_31_net_profit": irs_round(line_31),

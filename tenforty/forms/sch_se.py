@@ -49,12 +49,18 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         return {}
     params = load_federal_params(scenario.config.year)
 
+    # Lines 2 and 4a are printed explicitly so the form's chain is complete.
+    # Line 2 is the Schedule C net profit; line 3 combines it with the farm
+    # lines (1a, 1b), which are unmodeled, so line 3 = line 2. Line 4a is
+    # line 3 x 92.35%; line 4b (optional methods) is unmodeled, so 4c = 4a.
     line_3 = net_profit
     line_4c = line_3 * _NET_EARNINGS_PCT           # net earnings from SE
     line_6 = line_4c                               # + church income (0 in v1)
     if line_6 < _MIN_NET_EARNINGS:
         return {
+            "sch_se_line_2_net_profit": irs_round(line_3),
             "sch_se_line_3_net_profit": irs_round(line_3),
+            "sch_se_line_4a_net_earnings": irs_round(line_4c),
             "sch_se_line_4c_net_earnings": irs_round(line_4c),
             "sch_se_line_6_total_net_earnings": irs_round(line_6),
             "sch_se_line_12_se_tax": 0,
@@ -68,7 +74,9 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
     line_12 = line_10 + line_11        # SE tax: sum of the PRINTED lines
     line_13 = irs_round(line_12 * 0.5)  # deductible half of the printed line 12
     return {
+        "sch_se_line_2_net_profit": irs_round(line_3),
         "sch_se_line_3_net_profit": irs_round(line_3),
+        "sch_se_line_4a_net_earnings": irs_round(line_4c),
         "sch_se_line_4c_net_earnings": irs_round(line_4c),
         "sch_se_line_6_total_net_earnings": irs_round(line_6),
         "sch_se_line_7_ss_wage_base": irs_round(line_7),
