@@ -46,7 +46,7 @@ WORKBOOK_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 # Names match the mappings/pdf_<name>.py module basenames.
 FEDERAL_FORMS: tuple[str, ...] = (
     "1040", "sch_1", "sch_a", "sch_b", "sch_d", "sch_e",
-    "4562", "4868", "8959", "f8582", "f8949", "f8995", "f8962",
+    "4562", "4868", "8959", "f8582", "f8949", "f8995", "f8962", "sch_2",
 )
 
 # Compute-only federal form set: the individual-return family, EXCLUDING the
@@ -57,6 +57,35 @@ FEDERAL_FORMS: tuple[str, ...] = (
 # the full set once the S-corp SCORP_FORMS split lands on that workstream.
 FEDERAL_COMPUTE_ONLY_FORMS: tuple[str, ...] = tuple(
     f for f in FEDERAL_FORMS if f not in ("f1120s", "f1120s_k1")
+)
+
+# Policy year floors. STANDING DECISION (2026-10-03): new tenforty features
+# floor at tax year 2022; earlier years are maintained for bug fixes only. A
+# form listed here is supported from its floor year onward and is NOT owed a
+# pack for earlier years. That is permanent policy, which is why it lives
+# here and not in mappings.catalog.KNOWN_GAPS (that list means "work owed").
+# The completeness and fields-on-template gates skip a floored form's
+# below-floor years via form_supported_in_year, and PolicyYearFloorTests
+# asserts that no template or mapping exists below a floor -- so a floor can
+# neither hide a missing pack nor mask a stray one. Every future feature that
+# adds a form registers it here.
+NEW_FEATURE_FLOOR_YEAR: int = 2022
+POLICY_YEAR_FLOORS: dict[str, int] = {
+    "sch_2": NEW_FEATURE_FLOOR_YEAR,
+}
+
+
+def form_supported_in_year(form: str, year: int) -> bool:
+    """False only when `form` has a policy floor above `year`."""
+    floor = POLICY_YEAR_FLOORS.get(form)
+    return floor is None or year >= floor
+
+
+# Emit years for the Schedule C family (Schedule C, Schedule SE, Schedule 2):
+# a TY2021 Schedule C return refuses at emit and a TY2021 return never emits
+# Schedule 2.
+SCHEDULE_C_FAMILY_YEARS: tuple[int, ...] = tuple(
+    y for y in FEDERAL_YEARS if y >= NEW_FEATURE_FLOOR_YEAR
 )
 
 CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540")

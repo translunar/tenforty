@@ -134,4 +134,36 @@ GOLDEN_FIELD_LINES: dict = {
         "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
         "sch_e_line_41_total_income": ("f2_78", "41"),
     },
+    # Schedule 2. Part I was renumbered in 2024: the excess-APTC repayment
+    # moved from line 2 to line 1a (with a new 1z subtotal).
+    ("federal", "sch_2", 2022): {
+        "sch_2_line_2_excess_aptc_repayment": ("f1_04", "2"),
+        "sch_2_line_3_part_i_total": ("f1_05", "3"),
+        "sch_2_line_4_se_tax": ("f1_06", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_13", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2023): {
+        "sch_2_line_2_excess_aptc_repayment": ("f1_04", "2"),
+        "sch_2_line_3_part_i_total": ("f1_05", "3"),
+        "sch_2_line_4_se_tax": ("f1_06", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_13", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2024): {
+        "sch_2_line_1a_excess_aptc_repayment": ("f1_03", "1a"),
+        "sch_2_line_1z_total_additions": ("f1_11", "1z"),
+        "sch_2_line_3_part_i_total": ("f1_13", "3"),
+        "sch_2_line_4_se_tax": ("f1_14", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_21", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2025): {
+        "sch_2_line_1a_excess_aptc_repayment": ("f1_03", "1a"),
+        "sch_2_line_1z_total_additions": ("f1_11", "1z"),
+        "sch_2_line_3_part_i_total": ("f1_13", "3"),
+        "sch_2_line_4_se_tax": ("f1_15", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_22", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_24", "21"),
+    },
 }
