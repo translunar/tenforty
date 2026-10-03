@@ -78,3 +78,12 @@ def inherit_pdf_fields(
                 f"inherit_pdf_fields overrides for unknown keys: {sorted(unknown)}")
         derived.update(overrides)
     return derived
+
+
+def trim_decimal(value: float) -> str:
+    """Render ``value`` to at most 4 decimal places, trimming trailing zeros
+    (and a bare "."), so whole numbers print unchanged: 100.0 -> "100",
+    33.333 -> "33.333". For percentage fields where whole values are the
+    common case but fractions must not be dollar-rounded away."""
+    text = f"{value:.4f}".rstrip("0").rstrip(".")
+    return "0" if text in ("", "-0") else text
