@@ -150,8 +150,13 @@ split into cash/noncash contributions in 2024, so line 18 subtracts "11 through
    `sch_k_foreign_transactions` has no amount line on the 2021+ form (line 14
    is a checkbox); it is treated as information-only and does **not** enter
    line 18. Line 16f (foreign taxes), which does, has no output key.
-6. **`section_199a is None`.** Read as "no Statement A": each allocation
-   carries `"section_199a": None` rather than a default-QBI statement.
+6. **`section_199a is None`.** ADJUDICATED 2026-10-03 (team-lead): yields the
+   default Statement A (QBI = Schedule K line 1, W-2 wages 0, UBIA 0), because
+   Statement A (K-1 box 17 code V) is mandatory for a trade-or-business S
+   corporation and the schema documents that default. Supersedes the earlier
+   "no Statement A" reading. The default W-2 wages of 0 is conservative, not
+   derived: it can only understate (never overstate) the shareholder's §199A
+   deduction.
 7. **Shape of `f1120s_sch_k1_allocations`.** Unspecified by the key list; the
    oracle returns a list of per-shareholder dicts (see `k1_allocations`).
 8. **Ownership percentages must total 100.** The oracle raises `ValueError`
