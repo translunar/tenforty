@@ -123,6 +123,7 @@ def _make_v1_scenario(
         ]
     return Scenario(
         config=TaxReturnConfig(
+            digital_assets=False,
             year=2025, filing_status=FilingStatus.SINGLE,
             # YYYY-MM-DD, matching every other birthdate in the repo.
             # `oracle/flattener.py` splits this on "-" and assigns

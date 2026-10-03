@@ -31,6 +31,7 @@ F8959_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f8959.pdf"
 def make_scenario_with_identity() -> Scenario:
     return Scenario(
         config=TaxReturnConfig(
+            digital_assets=False,
             year=2025,
             filing_status=FilingStatus.SINGLE,
             birthdate="1990-01-01",
@@ -620,6 +621,7 @@ class TestEmit8949Pdf(unittest.TestCase):
     def _make_8949_scenario(self, basis_reported_to_irs: bool) -> Scenario:
         return Scenario(
             config=TaxReturnConfig(
+                digital_assets=False,
                 year=2025, filing_status=FilingStatus.SINGLE,
                 birthdate="1990-01-01", state="TX",
                 first_name="Sam", last_name="Doe",

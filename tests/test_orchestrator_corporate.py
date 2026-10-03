@@ -423,6 +423,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
         attestations = {**scope_out_attestation_defaults(), **_scorp_attestation_defaults()}
         scenario = Scenario(
             config=TaxReturnConfig(
+                digital_assets=False,
                 year=2025, filing_status=FilingStatus.SINGLE,
                 birthdate="01-01-1980", state="EX",
                 first_name="Taxpayer", last_name="A", ssn="000-00-0000",
