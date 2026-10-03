@@ -77,3 +77,73 @@ class SchCPrintedChainTests(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertEqual(lines[key], 9_000)
                 self.assertEqual(lines[key], lines["sch_c_line_7_gross_income"])
+
+
+class SchCEmitValuesTests(unittest.TestCase):
+    def _scn(self, **biz_kwargs):
+        from tenforty.models import ScheduleCBusiness, Scenario
+        from tests.helpers import make_simple_scenario
+        base = make_simple_scenario()
+        return Scenario(config=base.config, w2s=base.w2s,
+                        schedule_c_businesses=[ScheduleCBusiness(**biz_kwargs)])
+
+    def _values(self, scn, index=0):
+        from tenforty.forms import sch_c
+        lines = sch_c.compute(scn, upstream={})["sch_c_businesses"][index]
+        return sch_c.emit_values(scn, index, lines)
+
+    def test_header_description_code_and_line_values(self):
+        scn = self._scn(description="Synthetic Consulting",
+                        business_code="541990", gross_receipts=9000.0,
+                        supplies=1000.0)
+        v = self._values(scn)
+        self.assertEqual(v["sch_c_line_a_description"], "Synthetic Consulting")
+        self.assertEqual(v["sch_c_line_b_business_code"], "541990")
+        self.assertEqual(v["sch_c_line_7_gross_income"], 9000)
+        self.assertEqual(v["sch_c_line_28_total_expenses"], 1000)
+        self.assertEqual(v["sch_c_line_31_net_profit"], 8000)
+        self.assertIn("taxpayer_name", v)
+        self.assertIn("taxpayer_ssn", v)
+
+    def test_only_nonzero_expenses_are_present(self):
+        from tenforty.forms import sch_c
+        scn = self._scn(description="x", gross_receipts=9000.0,
+                        supplies=1000.0, travel=250.0)
+        v = self._values(scn)
+        self.assertEqual(v["sch_c_expense_supplies"], 1000.0)
+        self.assertEqual(v["sch_c_expense_travel"], 250.0)
+        present = {k for k in v if k.startswith("sch_c_expense_")}
+        self.assertEqual(present,
+                         {"sch_c_expense_supplies", "sch_c_expense_travel"})
+        self.assertEqual(len(sch_c._EXPENSE_FIELDS), 12)
+
+    def test_line_48_mirrors_other_expenses_only_when_nonzero(self):
+        with_other = self._values(self._scn(
+            description="x", gross_receipts=9000.0, other_expenses=640.0))
+        self.assertEqual(with_other["sch_c_line_48_total_other_expenses"], 640.0)
+        self.assertEqual(with_other["sch_c_expense_other_expenses"], 640.0)
+        without = self._values(self._scn(description="x", gross_receipts=9000.0))
+        self.assertNotIn("sch_c_line_48_total_other_expenses", without)
+
+    def test_blank_description_and_code_are_absent(self):
+        v = self._values(self._scn(gross_receipts=100.0))
+        self.assertNotIn("sch_c_line_a_description", v)
+        self.assertNotIn("sch_c_line_b_business_code", v)
+
+    def test_integer_business_code_prints_its_digits(self):
+        # An unquoted YAML code loads as an int.
+        v = self._values(self._scn(description="x", business_code=541990,
+                                   gross_receipts=100.0))
+        self.assertEqual(v["sch_c_line_b_business_code"], "541990")
+
+    def test_index_selects_the_business(self):
+        from tenforty.models import ScheduleCBusiness, Scenario
+        from tests.helpers import make_simple_scenario
+        base = make_simple_scenario()
+        scn = Scenario(config=base.config, w2s=base.w2s, schedule_c_businesses=[
+            ScheduleCBusiness(description="First", gross_receipts=100.0),
+            ScheduleCBusiness(description="Second", gross_receipts=200.0),
+        ])
+        self.assertEqual(
+            self._values(scn, 1)["sch_c_line_a_description"], "Second")
+        self.assertEqual(self._values(scn, 1)["sch_c_line_7_gross_income"], 200)

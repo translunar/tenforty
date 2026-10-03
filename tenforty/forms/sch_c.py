@@ -108,3 +108,34 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         "sch_c_businesses": per_business,
         "sch_c_line_31_net_profit_total": irs_round(total),
     }
+
+
+def emit_values(scenario: Scenario, index: int, line_values: dict) -> dict:
+    """PDF value dict for ONE Schedule C (business `index`, 0-based).
+
+    Header + line A/B + the Part II expense amounts + Part V line 48 + this
+    business's computed lines (`line_values` is `compute(...)["sch_c_businesses"][index]`).
+
+    Blank text and zero expense amounts are OMITTED so the box prints blank
+    rather than a literal 0. Expense amounts are passed through unrounded; the
+    PDF filler applies the whole-dollar rounding at render.
+    """
+    biz = scenario.schedule_c_businesses[index]
+    out: dict = {**scenario.config.pdf_header()}
+    description = str(biz.description).strip()
+    if description:
+        out["sch_c_line_a_description"] = description
+    code = str(biz.business_code).strip()
+    if code:
+        out["sch_c_line_b_business_code"] = code
+    for field_name in _EXPENSE_FIELDS:
+        amount = getattr(biz, field_name)
+        if amount:
+            out[f"sch_c_expense_{field_name}"] = amount
+    # Part V line 48 is the total the "Other expenses (from line 48)" line
+    # carries forward, so it prints the same amount. The itemization rows
+    # above line 48 are left blank for hand-completion.
+    if biz.other_expenses:
+        out["sch_c_line_48_total_other_expenses"] = biz.other_expenses
+    out.update(line_values)
+    return out
