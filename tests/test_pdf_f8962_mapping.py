@@ -359,5 +359,188 @@ class Line7DecimalFormatTests(unittest.TestCase):
         self.assertEqual(payload[_LINE_7], f"{line_7:.4f}")
 
 
+class PartTwoPresentationTests(unittest.TestCase):
+    """Lines 9 / 10 checkboxes, line 11 annual row, rows 12-23 monthly rows.
+
+    i8962 (2024) Line 10: annual (line 11) is MANDATORY when enrolled all 12
+    months (premium > 0) with identical col A and col B; otherwise "No" and the
+    monthly rows are filled. Line 9 is always "No". Synthetic figures."""
+
+    @staticmethod
+    def _compute(months, year=2024, magi=30_000):
+        from tenforty.forms import f8962 as form_f8962
+        from tenforty.params import f8962 as params_f8962
+        blk = Form1095A(months=tuple(
+            Form1095AMonth(*m) if m else Form1095AMonth() for m in months))
+        return form_f8962.compute(blk, magi, year, params_f8962.load(year))
+
+    @staticmethod
+    def _field_name(widget) -> str:
+        parts = []
+        node = widget
+        while node is not None:
+            node = node.get_object()
+            if "/T" in node:
+                parts.append(str(node["/T"]))
+            node = node.get("/Parent")
+        return ".".join(reversed(parts))
+
+    def _fill_read(self, year, results, tmp):
+        """Fill via the orchestrator's exact inputs; return ({name: /V},
+        {name: widget /AS})."""
+        out = Path(tmp) / "f8962.pdf"
+        PdfFiller().fill(
+            template_path=_template(year), output_path=out,
+            field_mapping=PdfF8962.get_mapping(year)["scalars"],
+            values=results,
+            checkbox_states=PdfF8962.get_checkbox_states(year) or None,
+            derivations=PdfF8962.get_derivations(year) or None,
+            field_formats=PdfF8962.get_field_formats(year) or None,
+        )
+        reader = PdfReader(str(out))
+        values = _read_fields(out)
+        as_states = {}
+        for page in reader.pages:
+            for annot in page.get("/Annots", []):
+                w = annot.get_object()
+                if "/AS" in w:
+                    as_states[self._field_name(w)] = str(w["/AS"])
+        return values, as_states
+
+    def _p(self, name):  # full path under Page1
+        return f"{_ROOT}.{name}"
+
+    def _assert_boxes(self, as_states, *, line10):
+        no9 = self._p("c1_4[1]"); yes9 = self._p("c1_4[0]")
+        yes10 = self._p("c1_5[0]"); no10 = self._p("c1_5[1]")
+        self.assertEqual(as_states[no9], "/2")
+        self.assertEqual(as_states[yes9], "/Off")
+        if line10 == "yes":
+            self.assertEqual(as_states[yes10], "/1")
+            self.assertEqual(as_states[no10], "/Off")
+        else:
+            self.assertEqual(as_states[no10], "/2")
+            self.assertEqual(as_states[yes10], "/Off")
+
+    @staticmethod
+    def _row_cell(year, n, letter):
+        return PdfF8962.get_mapping(year)["scalars"][f"f8962_month_{n}_{letter}"]
+
+    def test_full_year_identical_uses_annual_line_11(self):
+        months = [(900.0, 850.0, 500.0)] * 12
+        for year in _YEARS:
+            with self.subTest(year=year), tempfile.TemporaryDirectory() as tmp:
+                r = self._compute(months, year)
+                values, as_states = self._fill_read(year, r, tmp)
+                self._assert_boxes(as_states, line10="yes")
+                sc = PdfF8962.get_mapping(year)["scalars"]
+                cells = [values[sc[f"f8962_line_11_{c}"]] for c in "abcdef"]
+                self.assertEqual(cells[0], "10800")   # 12 * 900
+                self.assertEqual(cells[1], "10200")   # 12 * 850
+                self.assertEqual(cells[2], str(r["f8962_line_8a"]))
+                self.assertEqual(
+                    cells[3], str(max(0, 10_200 - r["f8962_line_8a"])))
+                self.assertEqual(cells[4], str(r["f8962_line_24"]))  # 11(e)
+                self.assertEqual(cells[5], "6000")    # 12 * 500 = 11(f)
+                self.assertEqual(values[sc["f8962_line_25"]], cells[5])
+                self.assertEqual(values[sc["f8962_line_24"]], cells[4])
+                # rows 12-23 all blank
+                for n in range(1, 13):
+                    for c in "abcdef":
+                        self.assertEqual(values[self._row_cell(year, n, c)], "")
+
+    def test_aptc_variation_alone_does_not_block_annual(self):
+        months = [(900.0, 850.0, 500.0 + 10 * i) for i in range(12)]
+        r = self._compute(months)
+        self.assertTrue(r["f8962_line_10_yes"])
+        self.assertEqual(r["f8962_line_11_f"], sum(500 + 10 * i for i in range(12)))
+
+    def test_full_year_varying_premium_stays_monthly(self):
+        months = [(900.0, 850.0, 500.0)] * 6 + [(950.0, 850.0, 500.0)] * 6
+        for year in _YEARS:
+            with self.subTest(year=year), tempfile.TemporaryDirectory() as tmp:
+                r = self._compute(months, year)
+                values, as_states = self._fill_read(year, r, tmp)
+                self._assert_boxes(as_states, line10="no")
+                sc = PdfF8962.get_mapping(year)["scalars"]
+                for c in "abcdef":
+                    self.assertEqual(values[sc[f"f8962_line_11_{c}"]], "")
+                for n in range(1, 13):
+                    self.assertNotEqual(values[self._row_cell(year, n, "a")], "")
+                self.assertEqual(
+                    int(values[sc["f8962_line_24"]]),
+                    sum(int(values[self._row_cell(year, n, "e")])
+                        for n in range(1, 13)))
+
+    def test_varying_slcsp_stays_monthly(self):
+        months = [(900.0, 850.0, 500.0)] * 11 + [(900.0, 860.0, 500.0)]
+        self.assertTrue(self._compute(months)["f8962_line_10_no"])
+
+    def test_unenrolled_month_blocks_annual_even_if_other_figures_identical(self):
+        # Month 12: premium 0 (not enrolled) though SLCSP matches.
+        months = [(900.0, 850.0, 500.0)] * 11 + [(0.0, 850.0, 0.0)]
+        r = self._compute(months)
+        self.assertTrue(r["f8962_line_10_no"])
+        self.assertNotIn("f8962_line_10_yes", r)
+
+    def test_zero_premium_all_year_is_not_enrolled_so_not_annual(self):
+        # Identical (0, slcsp, 0) every month: identical col A and B, but no
+        # enrollment premium -> not "enrolled" -> annual is NOT allowed.
+        r = self._compute([(0.0, 850.0, 0.0)] * 12)
+        self.assertTrue(r["f8962_line_10_no"])
+        self.assertNotIn("f8962_line_11_a", r)
+
+    def test_partial_year_jan_to_apr_monthly_rows_and_footing(self):
+        months = [(800.0, 760.0, 450.0)] * 4 + [None] * 8
+        for year in _YEARS:
+            with self.subTest(year=year), tempfile.TemporaryDirectory() as tmp:
+                r = self._compute(months, year)
+                values, as_states = self._fill_read(year, r, tmp)
+                self._assert_boxes(as_states, line10="no")
+                sc = PdfF8962.get_mapping(year)["scalars"]
+                for c in "abcdef":
+                    self.assertEqual(values[sc[f"f8962_line_11_{c}"]], "")
+                for n in range(1, 5):                      # rows 12-15 filled
+                    for c in "abcdef":
+                        self.assertNotEqual(
+                            values[self._row_cell(year, n, c)], "")
+                for n in range(5, 13):                     # rows 16-23 blank
+                    for c in "abcdef":
+                        self.assertEqual(
+                            values[self._row_cell(year, n, c)], "")
+                col_e = sum(int(values[self._row_cell(year, n, "e")]) for n in range(1, 5))
+                col_f = sum(int(values[self._row_cell(year, n, "f")]) for n in range(1, 5))
+                self.assertEqual(int(values[sc["f8962_line_24"]]), col_e)
+                self.assertEqual(int(values[sc["f8962_line_25"]]), col_f)
+                self.assertEqual(col_f, 4 * 450)
+
+    def test_box_and_line_11_widgets_sit_on_their_printed_lines(self):
+        """Geometry cross-check of the probed paths (not derived from the
+        mapping's own comments): widgets bind to the printed line labels."""
+        for year in _YEARS:
+            with self.subTest(year=year):
+                page = PdfReader(str(_template(year))).pages[0]
+                labels = {}
+                def visit(text, cm, tm, fd, fs):
+                    t = text.strip()
+                    if t in ("9", "10", "11") and tm[4] < 50:
+                        labels[t] = tm[5]
+                page.extract_text(visitor_text=visit)
+                lly = {}
+                for annot in page.get("/Annots", []):
+                    w = annot.get_object()
+                    lly[self._field_name(w)] = float(w["/Rect"][1])
+                for box, label in (("c1_4[0]", "9"), ("c1_4[1]", "9"),
+                                   ("c1_5[0]", "10"), ("c1_5[1]", "10")):
+                    y = lly[self._p(box)]
+                    self.assertLess(y, labels[label])
+                    self.assertGreaterEqual(y, labels[label] - 30, box)
+                # line 9 boxes sit above line 10's label; line 10's above 11's.
+                self.assertGreaterEqual(lly[self._p("c1_4[1]")], labels["10"])
+                self.assertGreaterEqual(lly[self._p("c1_5[1]")], labels["11"])
+                row11 = lly[self._p("Part2Table1[0].BodyRow1[0].f1_13[0]")]
+                self.assertLess(abs(row11 + 2 - labels["11"]), 6)
+
+
 if __name__ == "__main__":
     unittest.main()
