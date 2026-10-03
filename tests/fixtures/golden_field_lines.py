@@ -21,6 +21,7 @@ row, since a naive leftmost/nearest-label parser mis-associates those rows."""
 
 GOLDEN_FIELD_LINES: dict = {
     ("federal", "1040", 2021): {
+        "adjustments": ("f1_42", "10"),
         "agi": ("f1_43", "11"),
         "taxable_income": ("f1_49", "15"),
         "total_tax": ("f2_02", "16"),
@@ -31,6 +32,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_30", "37"),
     },
     ("federal", "1040", 2022): {
+        "adjustments": ("f1_51", "10"),
         "agi": ("f1_52", "11"),
         "taxable_income": ("f1_56", "15"),
         "total_tax": ("f2_02", "16"),
@@ -41,6 +43,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2023): {
+        "adjustments": ("f1_54", "10"),
         "agi": ("f1_55", "11"),
         "taxable_income": ("f1_59", "15"),
         "total_tax": ("f2_02", "16"),
@@ -51,6 +54,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2024): {
+        "adjustments": ("f1_55", "10"),
         "agi": ("f1_56", "11"),
         "taxable_income": ("f1_60", "15"),
         "total_tax": ("f2_02", "16"),
@@ -61,6 +65,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2025): {
+        "adjustments": ("f1_74", "10"),
         "agi": ("f1_75", "11a"),
         "taxable_income": ("f2_06", "15"),
         "total_tax": ("f2_08", "16"),
