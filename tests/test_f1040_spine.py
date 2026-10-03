@@ -176,3 +176,58 @@ class QdcgtNetCapitalGainBugTests(unittest.TestCase):
             {**schedule_results, "sch_a": {"sch_a_line_17_total": 0}},
         )
         self.assertEqual(out["net_capital_gain"], 1_200)
+
+
+class Line10AdjustmentsPrintTests(unittest.TestCase):
+    """1040 line 10 must print so page 1's line 9 - line 10 = line 11 foots.
+
+    The mapping carried an "adjustments" entry for every year, but the spine
+    never emitted the key, so line 10 stayed blank while 9 and 11 printed.
+    Zero convention follows lines 9 and 11: always emitted, printed as 0.
+    """
+
+    @staticmethod
+    def _filled_line_10(year, values):
+        import tempfile
+        from pathlib import Path
+        from pypdf import PdfReader
+        from tenforty.filing.pdf import PdfFiller
+        from tenforty.mappings.pdf_1040 import Pdf1040
+        from tests.helpers import REPO_ROOT
+        mapping = Pdf1040.get_mapping(year)
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "f1040.pdf"
+            PdfFiller().fill(
+                REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040.pdf",
+                out, mapping, values=values,
+                checkbox_states=Pdf1040.get_checkbox_states(year))
+            fields = PdfReader(str(out)).get_fields()
+            return {k: str(fields[mapping[k]].get("/V"))
+                    for k in ("total_income", "adjustments", "agi")}
+
+    def test_nonzero_adjustments_print_and_foot(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                out = compute_spine(
+                    make_simple_scenario(), load(year),
+                    {"sch_1": {"sch_1_line_26_total_adjustments": 158},
+                     "sch_a": {"sch_a_line_17_total": 0}})
+                self.assertEqual(out["adjustments"], 158)
+                self.assertEqual(
+                    out["total_income"] - out["adjustments"], out["agi"])
+                printed = self._filled_line_10(year, out)
+                self.assertEqual(printed["adjustments"], "158")
+                self.assertEqual(
+                    int(printed["total_income"]) - int(printed["adjustments"]),
+                    int(printed["agi"]))
+
+    def test_no_schedule_1_prints_zero_like_its_neighbors(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                out = compute_spine(
+                    make_simple_scenario(), load(year),
+                    {"sch_a": {"sch_a_line_17_total": 0}})
+                self.assertEqual(out["adjustments"], 0)
+                printed = self._filled_line_10(year, out)
+                self.assertEqual(printed["adjustments"], "0")
+                self.assertEqual(printed["total_income"], printed["agi"])

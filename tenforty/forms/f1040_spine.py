@@ -871,6 +871,9 @@ def compute_spine(
         # AGI
         "agi": agi,
         "agi_page2": agi,
+        # 1040 line 10 (Sch 1 line 26): the pdf_1040 "adjustments" mapping had
+        # no producer, so line 10 printed blank between lines 9 and 11.
+        "adjustments": sch_1_line_26,
         "magi": magi,
         # Deductions
         "standard_deduction": standard_deduction_amount,
