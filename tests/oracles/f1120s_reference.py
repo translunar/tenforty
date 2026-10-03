@@ -587,8 +587,8 @@ def schedule_k(
 # ---------------------------------------------------------------------------
 def section_199a_totals(
     ordinary_business_income_amount: float, section_199a: Any | None
-) -> dict[str, float] | None:
-    """Entity-level Statement A quantities, or None when no statement is made.
+) -> dict[str, float]:
+    """Entity-level Statement A quantities (default statement when ``section_199a`` is None).
 
     SOURCE: Instructions for Form 1120-S (2021-2025), Schedule K-1 box 17,
     "Section 199A information (code V) ... S corporations are required to
@@ -613,14 +613,35 @@ def section_199a_totals(
     not re-run the instructions' QBI flowchart; a caller whose line 1 contains
     non-qualified items must supply ``qbi_override``.
 
-    FLAG-6 (``section_199a is None``): the schema does not say whether a
-    missing ``SCorp199AInfo`` means "no Statement A" or "Statement A with
-    default QBI and zero wages/UBIA". INTERPRETATION USED: no statement --
-    this function returns None and each K-1 allocation carries
-    ``"section_199a": None``.
+    ADJUDICATED 2026-10-03 (team-lead): ``section_199a is None`` yields the
+    DEFAULT Statement A -- QBI = ordinary business income (Schedule K line 1),
+    W-2 wages 0, UBIA 0. This SUPERSEDES the earlier FLAG-6 reading ("None = no
+    Statement A"), which was wrong for a trade-or-business S corporation:
+      * Instructions for Form 1120-S and for Schedule K-1 (Form 1120-S)
+        (2021-2025), box 17 code V and Statement A: reporting section 199A
+        information to shareholders is mandatory for an S corporation engaged
+        in a trade or business, so a Statement A always exists.
+      * The input schema documents the default: ``SCorp199AInfo`` absent means
+        QBI is the shareholder's pro-rata share of Schedule K line 1, with
+        W-2 wages and UBIA of zero.
+      * Treas. Reg. section 1.199A-6(b)(3) presumes items an S corporation
+        omits to be ZERO, so failing to produce the statement would destroy
+        the shareholder's deduction -- the strongest reason None must yield
+        a statement.
+    This function therefore never returns None.
+
+    CAVEAT: the default W-2 wages of 0 is CONSERVATIVE, not derived. An S
+    corporation that pays wages (nonzero salaries_wages /
+    compensation_of_officers) generally reports entity-paid W-2 wages on
+    Statement A for the shareholders' section 199A wage limitation, and
+    understating them can only shrink (never overstate) the shareholder's
+    deduction. Section 199A's W-2-wage definition is not simply the
+    deduction lines, which is why the default is not auto-populated from
+    them.
     """
     if section_199a is None:
-        return None
+        return {"qbi": float(ordinary_business_income_amount),
+                "w2_wages": 0.0, "ubia": 0.0}
     override = section_199a.qbi_override
     qbi = (
         float(ordinary_business_income_amount)
@@ -690,7 +711,7 @@ def k1_allocations(
     input order) of dicts with
         "name", "ssn_or_ein", "ownership_percentage"   -- passthroughs
         one key per ``SCH_K_ITEMS`` name                -- pro-rata share
-        "section_199a": None | {"qbi", "w2_wages", "ubia"}  -- pro-rata share
+        "section_199a": {"qbi", "w2_wages", "ubia"}  -- pro-rata share
     The comparison author should adapt key names, not arithmetic.
 
     Every Schedule K item is allocated by the same item G percentage

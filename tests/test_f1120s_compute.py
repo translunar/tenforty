@@ -263,7 +263,7 @@ class ScheduleKTotalsTests(unittest.TestCase):
             out["f1120s_ordinary_business_income"],
         )
 
-    def test_sch_k_lines_2_through_18_present_and_zero_for_v1_profile(self):
+    def test_sch_k_lines_2_through_17_present_and_zero_for_v1_profile(self):
         s = _make_v1_scenario()
         out = f1120s.compute(s, upstream={})
         for line_number_field in (
@@ -283,7 +283,6 @@ class ScheduleKTotalsTests(unittest.TestCase):
             "f1120s_sch_k_amt_items",
             "f1120s_sch_k_tax_exempt_interest",
             "f1120s_sch_k_investment_income",
-            "f1120s_sch_k_income_loss_reconciliation",
         ):
             self.assertEqual(out[line_number_field], 0.0,
                              f"{line_number_field} should be 0.0")
@@ -379,3 +378,65 @@ class ScheduleK1AllocationTests(unittest.TestCase):
         self.assertEqual(k1.entity.ein, "00-0000000")
         self.assertEqual(k1.entity.address.street, "1 Example Ave")
         self.assertEqual(k1.entity.address.zip_code, "00000")
+
+
+class ScheduleKLine18Tests(unittest.TestCase):
+    def test_line_18_reconciles_to_ordinary_business_income(self):
+        """Sch K line 18 = combine(lines 1-10) - (lines 11-12d, 16f); with no
+        separately stated items modeled it equals line 1 (here 70,000)."""
+        s = _make_v1_scenario()
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_sch_k_ordinary_business_income"], 70000)
+        self.assertEqual(out["f1120s_sch_k_income_loss_reconciliation"], 70000)
+
+    def test_line_18_negative_loss(self):
+        s = _make_v1_scenario(gross_receipts=10000.0)
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_sch_k_income_loss_reconciliation"], -20000)
+
+    def test_line_18_subtracts_deduction_items_and_adds_income_items(self):
+        sch_k = f1120s._compute_schedule_k({"f1120s_ordinary_business_income": 1000})
+        sch_k["f1120s_sch_k_interest_income"] = 200
+        sch_k["f1120s_sch_k_section_179_deduction"] = 50
+        sch_k["f1120s_sch_k_charitable_contributions"] = 30
+        self.assertEqual(f1120s._schedule_k_line_18(sch_k), 1120)
+
+
+class PrintedChainRoundingTests(unittest.TestCase):
+    """Every arithmetic line computes from its PRINTED (whole-dollar)
+    operands, so the form's visible math foots."""
+
+    def test_line_21_is_printed_line_6_minus_printed_line_20(self):
+        s = _make_v1_scenario(gross_receipts=1000.40)
+        s.s_corp_return.deductions.compensation_of_officers = 3000.60
+        s.s_corp_return.deductions.rents = 500.20
+        out = f1120s.compute(s, upstream={})
+        # printed: income 1000; deductions 3001 + 500 = 3501; line 21 = -2501
+        self.assertEqual(out["f1120s_total_deductions"], 3501)
+        self.assertEqual(out["f1120s_ordinary_business_income"], -2501)
+        self.assertEqual(
+            out["f1120s_ordinary_business_income"],
+            out["f1120s_total_income"] - out["f1120s_total_deductions"])
+
+    def test_line_20_and_6_are_sums_of_printed_lines(self):
+        s = _make_v1_scenario(gross_receipts=100.4)
+        d = s.s_corp_return.deductions
+        d.compensation_of_officers = 10.4
+        d.salaries_wages = 10.4
+        d.rents = 10.4
+        s.s_corp_return.income.other_income = 0.4
+        s.s_corp_return.income.net_gain_loss_4797 = 0.4
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_total_deductions"], 30)
+        self.assertEqual(out["f1120s_total_income"], 100)  # 100+0+0, not 101
+        self.assertEqual(out["f1120s_ordinary_business_income"], 70)
+
+    def test_payments_total_and_balance_from_printed_lines(self):
+        s = _make_v1_scenario()
+        s.s_corp_return.scope_outs.net_passive_income_tax = 100.4
+        p = s.s_corp_return.payments
+        p.estimated_tax_payments = 300.4
+        p.tax_deposited_with_7004 = 400.4
+        out = f1120s.compute(s, upstream={})
+        self.assertEqual(out["f1120s_total_payments"], 700)  # 300 + 400
+        self.assertEqual(out["f1120s_overpayment"], 600)
