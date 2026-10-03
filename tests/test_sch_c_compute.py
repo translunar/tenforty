@@ -60,3 +60,20 @@ class SchCNetLossRefusalTests(unittest.TestCase):
                                 supplies=10_000.0)
         out = sch_c.compute(_scn(biz), upstream={})
         self.assertEqual(out["sch_c_line_31_net_profit_total"], 0)
+
+
+class SchCPrintedChainTests(unittest.TestCase):
+    def test_lines_1_3_and_5_carry_the_gross_receipts(self):
+        from tenforty.forms import sch_c
+        from tenforty.models import ScheduleCBusiness, Scenario
+        from tests.helpers import make_simple_scenario
+        base = make_simple_scenario()
+        scn = Scenario(config=base.config, w2s=base.w2s, schedule_c_businesses=[
+            ScheduleCBusiness(description="x", gross_receipts=9_000.4,
+                              supplies=1_000.0)])
+        lines = sch_c.compute(scn, upstream={})["sch_c_businesses"][0]
+        for key in ("sch_c_line_1_gross_receipts", "sch_c_line_3_net_receipts",
+                    "sch_c_line_5_gross_profit"):
+            with self.subTest(key=key):
+                self.assertEqual(lines[key], 9_000)
+                self.assertEqual(lines[key], lines["sch_c_line_7_gross_income"])
