@@ -106,6 +106,14 @@ _DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
     _POVERTY_TABLE_4C_PATH: lambda _values: "/3",
 }
 
+# Per-field render-format overrides (compute key -> Python format spec). The
+# fill-time renderer rounds every numeric to whole dollars; line 7 is the
+# applicable figure, a 4-decimal RATE (e.g. 0.0850), which would print "0" and
+# leave line 3 x line 7 = line 8a unfootable. Uniform across all five years.
+_FIELD_FORMATS: dict[str, str] = {
+    "f8962_line_7": ".4f",
+}
+
 # Checkbox on-states, year-keyed. Only 2021 (ARPA) maps the unemployment Box
 # A bool key, with its own /2 on-token; every other year has no bool-mapped
 # checkbox (the 4c poverty-table box is a constant handled by
@@ -157,3 +165,14 @@ class PdfF8962(PdfFormMapping[dict]):
             raise ValueError(
                 f"No {cls._FORM_NAME} derivations for year {year}")
         return _DERIVATIONS
+
+    @classmethod
+    def get_field_formats(cls, year: int) -> dict[str, str]:
+        """Compute key -> Python format spec replacing the whole-dollar render.
+
+        Sole entry, all years: ``f8962_line_7`` (applicable figure) as 4
+        decimals. Every other field keeps the whole-dollar default."""
+        if year not in cls._MAPPINGS:
+            raise ValueError(
+                f"No {cls._FORM_NAME} field formats for year {year}")
+        return _FIELD_FORMATS
