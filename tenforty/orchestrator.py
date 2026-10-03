@@ -46,6 +46,8 @@ from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_2 import PdfSch2
 from tenforty.mappings.pdf_sch_a import PdfSchA
+from tenforty.mappings.pdf_sch_c import PdfSchC
+from tenforty.mappings.pdf_sch_se import PdfSchSe
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.mappings.pdf_8959 import Pdf8959
@@ -1282,25 +1284,31 @@ class ReturnOrchestrator:
         are deferred to the caller. The federal EMIT tests are the regression
         guard for this extraction.
         """
-        # Fail closed on the PDF EMIT path for Schedule C returns. This method is
-        # the SHARED chokepoint for both public emit entries (emit_pdfs and
-        # run_amendment_packet); the native COMPUTE path (compute_federal) does
-        # NOT route through here, so the numbers are still produced correctly.
-        # The emit path does not yet thread sch_c/sch_se into the sch_1 / f8959 /
-        # f8995 fill computes (deferred tickets (ee)/(ff)), so an emitted return
-        # would silently disagree with the compute — refuse until the PDF-mapping
-        # follow-on unit lands rather than print a wrong-zero artifact.
-        if scenario.schedule_c_businesses:
+        # Year floor for Schedule C returns. This method is the SHARED
+        # chokepoint for both public emit entries (emit_pdfs and
+        # run_amendment_packet). Schedule C / Schedule SE / Schedule 2 have
+        # templates and mappings for years.SCHEDULE_C_FAMILY_YEARS only
+        # (year-coverage policy: new features floor at TY2022), so an earlier
+        # year refuses here with the policy named, rather than failing later
+        # on a missing mapping. Native compute is not year-restricted. The
+        # compute layer's own refusals (unmodeled Schedule C features, a net
+        # loss) are the real guards for everything else and fire below, in
+        # _compute_sch_c_and_se, before any PDF is rendered.
+        from tenforty import years as year_manifest
+        if (scenario.schedule_c_businesses
+                and scenario.config.year
+                not in year_manifest.SCHEDULE_C_FAMILY_YEARS):
             raise NotImplementedError(
-                "PDF emission is not supported for returns with a Schedule C business. "
-                "tenforty computes Schedule C net profit (Sch 1 line 3), the half-SE-tax "
-                "deduction (line 15), self-employment tax, and the Schedule C QBI component on "
-                "the NATIVE compute path (compute_federal), but the PDF EMIT path does not yet "
-                "thread sch_c/sch_se into the sch_1 / f8959 / f8995 fill computes (deferred "
-                "tickets (ee)/(ff)) — so an emitted 1040 / Schedule 1 / Form 8995 would silently "
-                "disagree with the compute (line 3/15 = 0, QBI omitting the Schedule C "
-                "component). The Schedule C/SE PDF-mapping follow-on unit resolves this. Use "
-                "compute_federal for the numbers; file the PDF by hand until the mapping unit lands."
+                "PDF emission for a return with a Schedule C business is "
+                "supported for tax years "
+                f"{year_manifest.describe(year_manifest.SCHEDULE_C_FAMILY_YEARS)} "
+                f"only; this return is tax year {scenario.config.year}. "
+                "tenforty's year-coverage policy floors new features at tax "
+                "year 2022 (earlier years are maintained for bug fixes only), "
+                "so there is no Schedule C, Schedule SE or Schedule 2 "
+                "template or mapping for this year. The native compute path "
+                "(compute_federal) still produces the numbers; file the PDF "
+                "by hand."
             )
 
         year = scenario.config.year
@@ -1428,6 +1436,30 @@ class ReturnOrchestrator:
                 values=form_sch_2.compute(scenario, upstream=upstream),
             ))
 
+        # Schedule C — one PDF per business, ALWAYS indexed (sch_c_1,
+        # sch_c_2, ...) so a single-business return needs no special case.
+        for number, line_values in enumerate(
+            sch_c_results.get("sch_c_businesses", []), start=1,
+        ):
+            specs.append(_FederalFormSpec(
+                name=f"sch_c_{number}", template=_fed("f1040sc.pdf"),
+                output_name=f"f1040sc_{number}_{year}.pdf", kind="flat",
+                mapping=PdfSchC.get_mapping(year),
+                values=form_sch_c.emit_values(
+                    scenario, number - 1, line_values),
+                derivations=PdfSchC.get_derivations(year),
+            ))
+
+        # Schedule SE — one form however many businesses (sch_se.compute
+        # aggregates them).
+        if self._should_emit_sch_se(sch_se_results):
+            specs.append(_FederalFormSpec(
+                name="sch_se", template=_fed("f1040sse.pdf"),
+                output_name=f"f1040sse_{year}.pdf", kind="flat",
+                mapping=PdfSchSe.get_mapping(year),
+                values={**scenario.config.pdf_header(), **sch_se_results},
+            ))
+
         if self._should_emit_4562(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
                 name="f4562", template=_fed("f4562.pdf"),
@@ -1459,12 +1491,26 @@ class ReturnOrchestrator:
                 derivations=PdfF8962.get_derivations(year),
             ))
 
-        if self._should_emit_8995(scenario):
+        # Form 8995 is required whenever the QBI deduction is claimed,
+        # whatever its source (K-1 or Schedule C). ONE compute feeds both the
+        # gate and the fill, so they cannot disagree. The compute is skipped
+        # when the return has no QBI source at all: the deduction is then
+        # zero by construction, and f8995.compute's strict upstream reads are
+        # not exercised for returns that never needed the form.
+        has_qbi_source = (
+            any(k1.qbi_amount for k1 in scenario.schedule_k1s)
+            or bool(scenario.schedule_c_businesses)
+        )
+        f8995_values = (
+            form_f8995.compute(scenario, upstream=upstream)
+            if has_qbi_source else {}
+        )
+        if self._should_emit_8995(f8995_values):
             specs.append(_FederalFormSpec(
                 name="f8995", template=_fed("f8995.pdf"),
                 output_name=f"f8995_{year}.pdf", kind="flat",
                 mapping=PdfF8995.get_mapping(year)["scalars"],
-                values=form_f8995.compute(scenario, upstream=upstream),
+                values=f8995_values,
             ))
 
         if self._should_emit_8582(scenario, upstream):
@@ -2444,9 +2490,21 @@ class ReturnOrchestrator:
         """Emit Form 4562 whenever the scenario has any depreciable asset."""
         return bool(scenario.depreciable_assets)
 
-    def _should_emit_8995(self, scenario: Scenario) -> bool:
-        """Emit Form 8995 whenever any K-1 carries QBI."""
-        return any(k1.qbi_amount for k1 in scenario.schedule_k1s)
+    def _should_emit_8995(self, f8995_values: dict) -> bool:
+        """Emit Form 8995 when the computed form claims a QBI deduction
+        (line 15) OR reports a loss carryforward (line 16).
+
+        Takes the SAME values dict the fill renders, so the gate and the
+        printed form cannot disagree, and it is source-agnostic: a deduction
+        from Schedule C alone attaches the form exactly as a K-1's does. The
+        carryforward leg keeps a QBI-loss year filing the form (zero
+        deduction, nonzero line 16). An empty dict -- no QBI source -- emits
+        nothing.
+        """
+        return bool(
+            f8995_values.get("f8995_line_15_qbi_deduction")
+            or f8995_values.get("f8995_line_16_qbi_loss_carryforward")
+        )
 
     def _should_emit_8582(
         self, scenario: Scenario, upstream: UpstreamState,
@@ -2519,6 +2577,12 @@ class ReturnOrchestrator:
             for key in ("f8962_repayment", "sch_se_line_12_se_tax",
                         "f8959_tax_total")
         )
+
+    def _should_emit_sch_se(self, sch_se_results: dict) -> bool:
+        """Emit Schedule SE only when self-employment tax is actually due —
+        the IRS attachment rule. Net earnings under $400 compute a zero line
+        12 and attach no form; no business yields {}."""
+        return bool(sch_se_results.get("sch_se_line_12_se_tax"))
 
     def _should_emit_8962(self, scenario: Scenario) -> bool:
         """Emit Form 8962 (PTC) iff the scenario carries a Form 1095-A block
