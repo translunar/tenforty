@@ -3,7 +3,7 @@
 import unittest
 
 from tenforty.forms import f8995
-from tenforty.models import K1FanoutData, ScheduleK1
+from tenforty.models import K1FanoutData, ScheduleCBusiness, ScheduleK1
 
 from tests.helpers import make_k1_scenario
 
@@ -231,6 +231,100 @@ class F8995QbiLossZeroFloorTests(unittest.TestCase):
         self.assertEqual(out["f8995_line_3_component"], 4_000)
         self.assertEqual(out["f8995_line_15_qbi_deduction"], 4_000)
         self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], 0)
+
+
+class F8995CombineLinesAndLine1RowTests(unittest.TestCase):
+    """Form lines 3, 4, 7, 8 (the combine lines) and the line-1i name/TIN
+    columns are EMITTED, under keys named by their TRUE FORM line numbers (the
+    older keys are one tier off; ticket (cc))."""
+
+    @staticmethod
+    def _sch_c_upstream(net_profit, taxable_income=100_000.0):
+        return {
+            "f1040": {
+                "taxable_income_before_qbi_deduction": taxable_income,
+                "net_capital_gain": 0.0,
+                "qualified_dividends": 0.0,
+            },
+            "k1_fanout": K1FanoutData.empty(),
+            "sch_c": {
+                "sch_c_businesses": [
+                    {"sch_c_line_31_net_profit": net_profit},
+                ],
+                "sch_c_line_31_net_profit_total": net_profit,
+            },
+            "sch_se": {"sch_se_line_13_half_deduction": 0.0},
+        }
+
+    def _sch_c_scenario(self):
+        s = make_k1_scenario()
+        s.config.ssn = "000-00-1111"  # synthetic
+        s.schedule_c_businesses = [
+            ScheduleCBusiness(description="Synthetic Widgets"),
+        ]
+        return s
+
+    def test_combine_lines_emitted_for_k1_profit_year(self):
+        s, upstream = _scenario_with_qbi(qbi=20_000.0)
+        out = f8995.compute(s, upstream=upstream)
+        # Form line 4 = combine(2, 3) = 20_000 + 0; the printed line 5 (20% of
+        # the printed line 4) must foot against it.
+        self.assertEqual(out["f8995_line_3_prior_qbi_loss_carryforward"], 0)
+        self.assertEqual(out["f8995_line_4_total_qbi"], 20_000)
+        self.assertEqual(
+            out["f8995_line_3_component"],  # FORM line 5
+            round(0.20 * out["f8995_line_4_total_qbi"]),
+        )
+        self.assertEqual(out["f8995_line_7_prior_reit_ptp_loss_carryforward"], 0)
+        self.assertEqual(out["f8995_line_8_total_reit_ptp"], 0)
+
+    def test_form_line_4_floored_at_zero_in_loss_year(self):
+        s, upstream = _scenario_with_qbi(qbi=-30_000.0)
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_2_total_qbi"], -30_000)  # unfloored
+        self.assertEqual(out["f8995_line_4_total_qbi"], 0)        # "enter -0-"
+
+    def test_k1_row_1i_name_and_tin(self):
+        s, upstream = _scenario_with_qbi(qbi=20_000.0)
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_1i_name"], "Fake S-Corp Inc")
+        self.assertEqual(out["f8995_line_1i_tin"], "00-0000000")
+
+    def test_sch_c_row_1i_uses_description_and_taxpayer_ssn(self):
+        s = self._sch_c_scenario()
+        out = f8995.compute(s, upstream=self._sch_c_upstream(50_000.0))
+        self.assertEqual(out["f8995_line_1_qbi"], 50_000)
+        self.assertEqual(out["f8995_line_1i_name"], "Synthetic Widgets")
+        # Sch C instructions: the proprietor's SSN, never an LLC EIN.
+        self.assertEqual(out["f8995_line_1i_tin"], "000-00-1111")
+
+    def test_mixed_sources_first_source_is_schedule_c(self):
+        """v1 single-row approximation: with Sch C AND K-1 QBI, row 1i carries
+        the FIRST source (Schedule C, filing order) — not a concatenation."""
+        s = self._sch_c_scenario()
+        s.schedule_k1s = [ScheduleK1(
+            entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            qbi_amount=10_000.0,
+        )]
+        upstream = self._sch_c_upstream(50_000.0)
+        upstream["k1_fanout"] = K1FanoutData(
+            sch_b_interest_additions=(), sch_b_dividend_additions=(),
+            sch_d_short_term_additions=(), sch_d_long_term_additions=(),
+            qbi_aggregate=10_000.0, qualified_dividends_aggregate=0.0,
+            passive_activities=(),
+        )
+        out = f8995.compute(s, upstream=upstream)
+        self.assertEqual(out["f8995_line_1_qbi"], 60_000)
+        self.assertEqual(out["f8995_line_1i_name"], "Synthetic Widgets")
+        self.assertEqual(out["f8995_line_1i_tin"], "000-00-1111")
+
+    def test_no_qbi_source_leaves_row_1i_text_absent(self):
+        s, upstream = _scenario_with_qbi(qbi=0.0)
+        s.schedule_k1s = []
+        out = f8995.compute(s, upstream=upstream)
+        self.assertNotIn("f8995_line_1i_name", out)
+        self.assertNotIn("f8995_line_1i_tin", out)
 
 
 if __name__ == "__main__":
