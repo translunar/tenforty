@@ -163,18 +163,47 @@ The source-document emit gate (every W-2 needs `pdf:` or the
 acknowledges flag) applies to Schedule C scenarios exactly as to all
 others — no interaction changes.
 
+## Component 8 — independent verification battery (air-gapped)
+
+Schedule C has no workbook oracle and cannot get one cheaply: the XLSX
+path refuses `schedule_c_businesses` (unwired; fail-closed), so the
+penny-parity gate (`tests/fixtures/spine_battery.py`) cannot check it.
+Without a countermeasure, the native spine would be both the computer
+and the checker of Schedule C — every expected value same-author
+arithmetic.
+
+Countermeasure: a battery of synthetic Schedule C scenarios whose
+expected per-line values (Schedule C, Schedule SE, Schedule 2, and the
+affected Schedule 1 / 1040 lines) are hand-derived by an **air-gapped
+deriver** working only from the IRS form instructions for each year
+2022–2025 — never from tenforty source, tests, or the implementation
+plan. Scenario coverage targets the trap cases:
+
+- multi-business aggregation;
+- SS wage-base coordination: W-2 Social Security wages that partially
+  consume, fully consume, or leave untouched the per-year wage base;
+- the below-$400 net-earnings threshold (no SE tax, no Schedule SE);
+- QBI interaction (half-SE-tax deduction reduces the QBI base);
+- Schedule 2 composition with and without APTC repayment and
+  Additional Medicare Tax.
+
+The derivations land as fast-tier fixtures asserting native compute
+equals the derived values per line, for every supported year — the
+Schedule C analog of the penny-parity gate. Standard oracle-isolation
+discipline applies: neutral derivation briefs (no tax-law priors, no
+implementation hints), derivation outputs delivered only to the
+team-lead, any mismatch is a STOP-and-reconcile at team-lead level,
+and implementers never see the derivation work (nor the deriver the
+implementation).
+
 ## Non-goals
 
-- **Amendment-flow verification for the new forms.** No selector work
-  is needed: the changed-forms selector is payload-generic over
-  whatever specs the shared chokepoint produces, so a 1040-X run whose
-  corrected return adds or changes a Schedule C automatically selects
-  and renders the new forms once they exist (and a TY2021 amendment
-  hits the same year-floor refusal). What is deferred is verification
-  only — oracle-tier amendment acceptance for a Schedule C amendment,
-  and confirming the amendment packet family claims the new output
-  files — because no real scenario requires it (the only live
-  Schedule C years, 2024/2025, are original filings).
+- (Removed 2026-10-03: the Schedule C amendment e2e test is now IN
+  scope — see Testing. No selector work is needed: the changed-forms
+  selector is payload-generic over whatever specs the shared chokepoint
+  produces, amendment packets build their mailed-files list in the same
+  generic loop without touching `classify_key`, and a TY2021 amendment
+  hits the same year-floor refusal.)
 - Multi-year extension back to TY2021 (policy floor).
 - The unmodeled Schedule C features (COGS, depreciation, home office,
   vehicle, losses, statutory employees) — refusals stand.
@@ -198,6 +227,15 @@ suite invocation is exactly
 - **Threading regression (fast where possible, oracle for fills):**
   emitted Schedule 1 line 3/15, 8959, 8995 values equal native compute;
   Schedule CA business-income passthrough correct.
+- **Amendment e2e (fast-tier, native, no soffice):** following the
+  established twin-scenario pattern in
+  `tests/test_amendment_packet_emit.py` — an amended run that adds or
+  changes a Schedule C business selects and renders
+  `sch_c_1`/`sch_se`/`sch_2` (plus the changed Schedule 1), with
+  pypdf readback of distinctive values.
+- **Independent battery (Component 8, fast-tier):** native compute
+  equals the air-gapped hand-derived per-line values for every battery
+  scenario × every supported year.
 - **Oracle tier (team-lead's soffice lane only):** end-to-end packet
   for a synthetic multi-business Schedule C scenario — packet contains
   the indexed Schedule C PDFs, SE, and Schedule 2 in attachment-sequence
