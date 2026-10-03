@@ -46,10 +46,12 @@ CA consumers are unaffected.
 
 from dataclasses import dataclass
 
+from tenforty.forms import f8962 as form_f8962
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import (
     FilingStatus, K1FanoutData, Scenario, TaxReturnConfig,
 )
+from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -782,26 +784,48 @@ def compute_spine(
     sch_1_line_13_hsa = sch_1.get("sch_1_line_13_hsa", 0)
     sch_1_line_15_se_tax = sch_1.get("sch_1_line_15_se_tax", 0)
     sch_1_line_17_se_health = sch_1.get("sch_1_line_17_se_health", 0)
-    # SE-HEALTH × PTC GUARD.
-    # The self-employed health-insurance deduction (Schedule 1 line 17) now
-    # reads the input channel at its source — see forms/sch_1.py, which returns
-    # `scenario.config.self_employed_health_insurance_deduction`. Because that
-    # value can be nonzero, this precondition is REACHABLE. When line 17 is
+    # SE-HEALTH × PTC GUARD (carve-out: provably non-circular case admitted).
+    # The self-employed health-insurance deduction (Schedule 1 line 17) reads
+    # the input channel at its source — see forms/sch_1.py. When line 17 is
     # nonzero WHILE a Form 1095-A is present, the Premium Tax Credit and the
-    # SE-health deduction are mutually dependent (each feeds the other's
-    # MAGI / limitation) and must be reconciled by the Rev. Proc. 2014-41
-    # iterative (or simplified) method, which is UNMODELED here. Fail closed
-    # rather than emit a silently wrong deduction/credit.
+    # deduction are mutually dependent (the deduction lowers MAGI, which raises
+    # PTC; PTC reduces the premiums the deduction may cover) and must be
+    # reconciled by the Rev. Proc. 2014-41 iterative (or simplified) method,
+    # which is UNMODELED here.
+    #
+    # CARVE-OUT. The loop needs PTC to be able to move. PTC is non-increasing
+    # in MAGI, and the lowest MAGI the iteration could ever visit is the one
+    # reached when the deduction takes its maximum — the FULL annual 1095-A
+    # premiums (or line 17 itself if the input exceeds them: the channel
+    # carries it verbatim). So we probe Form 8962 at that lowest MAGI. If the
+    # probe's total premium tax credit (line 24) is exactly 0, then PTC is 0 at
+    # EVERY MAGI at or above it, which covers every point the iteration could
+    # visit: the deduction cannot change the credit, nothing feeds back, and the
+    # deduction is a plain passthrough with the real 8962 computed as usual.
+    # Any nonzero probe PTC keeps the refusal below — fail closed.
     # Pointer (other direction): the Form 8962 wiring that this guards lives in
     # orchestrator._compute_native_schedules Step 7b, and the f8962_net_ptc /
     # f8962_repayment payment seams are above in this function.
     if sch_1_line_17_se_health and scenario.form_1095a is not None:
-        raise NotImplementedError(
-            "Self-employed health-insurance deduction (Schedule 1 line 17) is "
-            "nonzero together with a Form 1095-A. The Premium Tax Credit and "
-            "the SE-health deduction are circularly dependent (Rev. Proc. "
-            "2014-41); that iterative reconciliation is not implemented."
+        _block = scenario.form_1095a
+        _total_premiums = sum(m.premium for m in _block.months)
+        _probe_magi = (
+            agi + _block.tax_exempt_interest
+            - max(0, _total_premiums - sch_1_line_17_se_health)
         )
+        _year = scenario.config.year
+        _probe = form_f8962.compute(
+            block=_block, magi=_probe_magi, year=_year,
+            params=params_f8962.load(_year),
+        )
+        if _probe["f8962_line_24"] != 0:
+            raise NotImplementedError(
+                "Self-employed health-insurance deduction (Schedule 1 line 17) "
+                "is nonzero together with a Form 1095-A. The Premium Tax Credit "
+                "and the SE-health deduction are circularly dependent (Rev. "
+                "Proc. 2014-41); that iterative reconciliation is not "
+                "implemented."
+            )
     sch_1_line_20_ira = sch_1.get("sch_1_line_20_ira", 0)
     sch_1_line_21_student_loan_interest = sch_1.get(
         "sch_1_line_21_student_loan_interest", 0
