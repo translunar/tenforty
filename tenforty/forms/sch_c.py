@@ -136,6 +136,22 @@ def emit_values(scenario: Scenario, index: int, line_values: dict) -> dict:
     # carries forward, so it prints the same amount. The itemization rows
     # above line 48 are left blank for hand-completion.
     if biz.other_expenses:
+        # Emit-time refusal (NOT compute): the figure is computable, but the
+        # filed paper requires Part V to itemize what line 48 totals.
+        item = str(biz.other_expenses_description).strip()
+        if not item:
+            raise ValueError(
+                f"Schedule C business {index + 1} ({description or 'unnamed'!r}) "
+                f"has other_expenses of {biz.other_expenses} but no "
+                "`other_expenses_description`: Part V must itemize the line 48 "
+                "total on the filed form. Set `other_expenses_description` on "
+                "that business (e.g. 'Software subscriptions')."
+            )
         out["sch_c_line_48_total_other_expenses"] = biz.other_expenses
+        # Part V, row 1 = the whole amount (single-aggregate v1: ONE row;
+        # multi-row itemization is out of scope), so the total's addend is
+        # visible on the paper.
+        out["sch_c_part_v_row_1_description"] = item
+        out["sch_c_part_v_row_1_amount"] = biz.other_expenses
     out.update(line_values)
     return out

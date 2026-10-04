@@ -25,6 +25,9 @@ from tenforty.amendment import OutOfScopeAmendmentError
 from tenforty.forms import f1040x as form_f1040x
 from tenforty.forms import schedule_x as form_schedule_x
 from tenforty.mappings.pdf_f1040x import PdfF1040X
+from tenforty.mappings.pdf_sch_2 import PdfSch2
+from tenforty.mappings.pdf_sch_c import PdfSchC
+from tenforty.mappings.pdf_sch_se import PdfSchSe
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.models import (
     AmendmentCase,
@@ -34,6 +37,7 @@ from tenforty.models import (
     Form1095AMonth,
     Form1099INT,
     Scenario,
+    ScheduleCBusiness,
     ScheduleK1,
     TaxReturnConfig,
     W2,
@@ -616,6 +620,80 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(
             int(float(_read_v(f1040x_pdf, xmap["f1040x_line11_c"]))),
             round(expected_x["f1040x_line11_c"]))
+
+    def test_adding_a_schedule_c_business_selects_and_renders_its_forms(self):
+        """Twin scenarios differing ONLY in a Schedule C business: the
+        amendment selects Sch C / SE / 2 / 8995 as new (Sch 1 changed) and
+        the filled PDFs carry the corrected figures."""
+        original = build_canonical_wage_investment_rental(2024)
+        amended = dataclasses.replace(
+            original,
+            config=dataclasses.replace(
+                original.config, acknowledges_qbi_below_threshold=True),
+            schedule_c_businesses=[ScheduleCBusiness(
+                description="Synthetic Consulting", business_code="541990",
+                gross_receipts=60_000.0, supplies=4_000.0)])
+        filed_path, _ = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2024, explanation="Added omitted self-employment income.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        out = self.tmp / "packet"
+
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        for name in ("f1040sc_1_2024.pdf", "f1040sse_2024.pdf",
+                     "f1040s2_2024.pdf", "f8995_2024.pdf"):
+            self.assertIn(name, by_name)
+            self.assertEqual(by_name[name].reason, "new", msg=name)
+        self.assertIn("f1040s1_2024.pdf", by_name)
+        self.assertEqual(by_name["f1040s1_2024.pdf"].reason, "changed")
+
+        corrected = self.orch.compute_federal(amended)
+        self.assertGreater(corrected["sch_se_line_12_se_tax"], 0)
+        c_map = PdfSchC.get_mapping(2024)
+        se_map = PdfSchSe.get_mapping(2024)
+        s2_map = PdfSch2.get_mapping(2024)
+        self.assertEqual(
+            int(float(_read_v(out / "f1040sc_1_2024.pdf",
+                              c_map["sch_c_line_31_net_profit"]))),
+            round(corrected["sch_1_line_3_business_income"]))
+        self.assertEqual(
+            _read_v(out / "f1040sc_1_2024.pdf",
+                    c_map["sch_c_line_a_description"]),
+            "Synthetic Consulting")
+        self.assertEqual(
+            int(float(_read_v(out / "f1040sse_2024.pdf",
+                              se_map["sch_se_line_12_se_tax"]))),
+            round(corrected["sch_se_line_12_se_tax"]))
+        self.assertEqual(
+            int(float(_read_v(out / "f1040s2_2024.pdf",
+                              s2_map["sch_2_line_4_se_tax"]))),
+            round(corrected["sch_se_line_12_se_tax"]))
+
+    def test_ty2021_schedule_c_amendment_hits_the_year_floor(self):
+        original = build_canonical_wage_investment_rental(2021)
+        amended = dataclasses.replace(
+            original,
+            config=dataclasses.replace(
+                original.config, acknowledges_qbi_below_threshold=True),
+            schedule_c_businesses=[ScheduleCBusiness(
+                description="Synthetic Consulting",
+                gross_receipts=60_000.0, supplies=4_000.0)])
+        filed_path, _ = self._write_federal_filed(original)
+        ca_filed_path = self.tmp / "unused_ca.yaml"
+        ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=2021, explanation="Added omitted self-employment income.",
+            original_refund_received=0.0, original_refund_applied=0.0)
+        with self.assertRaises(NotImplementedError) as cm:
+            self.orch.run_amendment_packet(
+                original, amended, case, filed_path, ca_filed_path,
+                self.tmp / "packet")
+        self.assertIn("2022, 2023, 2024, 2025", str(cm.exception))
 
     def test_ruling2_out_of_scope_guard_propagates(self):
         """A filed-values file carrying a nonzero out-of-scope guard key
