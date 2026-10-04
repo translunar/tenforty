@@ -29,8 +29,6 @@ F540_BLANK_BY_DESIGN = [
     (r"Additional information|Principal Business Activity|PBA|Private Mailbox|Apartment number",
      "no input for additional info / PBA code / PMB / apartment number"),
     (r"Foreign (country|province|postal)", "foreign address: scenario address is domestic"),
-    (r"Principal Residence\. Enter your county",
-     "NEEDS INPUT: the scenario has no county field (reported; not invented)"),
     (r"same as your principal/physical residence|Street address \(number and street\) \(If foreign|"
      r"^City\.$|^State\. Enter two letter|^Zip code\. $|Zip code\. *$",
      "principal-residence address block: only required when it differs from the mailing address"),
@@ -142,6 +140,19 @@ class CAFormCompletenessTests(unittest.TestCase):
         dead = [F540_BLANK_BY_DESIGN[i][0] for i in range(len(F540_BLANK_BY_DESIGN))
                 if i not in all_used]
         self.assertEqual(dead, [], "dead blank-by-design rules (match no blank cell in any year)")
+
+    def test_f540_county_cell_is_filled_from_config_every_year(self):
+        # config.county is the input; the emit helper sets "Synthetic County".
+        # Read the filled value back off the emitted PDF's county cell.
+        from tests._blank_by_design import template_fields
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cells = {n: i for n, i in
+                         template_fields(self.emits[year][0]["f540"]).items()
+                         if "Enter your county" in i["tu"]}
+                self.assertEqual(len(cells), 1, cells)
+                self.assertEqual(
+                    next(iter(cells.values()))["value"], "Synthetic County")
 
     def test_sch_d_540_every_blank_cell_is_documented_and_filled_set_is_pinned(self):
         for year in CA_YEARS:

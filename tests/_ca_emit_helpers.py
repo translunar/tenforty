@@ -23,7 +23,7 @@ def make_ca_scenario(year: int, filing_status: FilingStatus = FilingStatus.SINGL
     base = _make_ca_withholding_scenario(state_tax_withheld)
     config = dataclasses.replace(
         base.config, year=year, filing_status=filing_status,
-        dependents=list(dependents),
+        dependents=list(dependents), county="Synthetic County",
     )
     kwargs = {"config": config, "ca540": None}
     if w2s is not None:
