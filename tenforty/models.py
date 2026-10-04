@@ -207,6 +207,11 @@ class ScheduleCBusiness:
     utilities: float = 0.0
     wages: float = 0.0
     other_expenses: float = 0.0
+    # Schedule C Part V itemization: ONE aggregate row (description + amount ==
+    # `other_expenses`). Required at EMIT when other_expenses is nonzero (the
+    # paper form needs it); compute does not look at it. Multi-row
+    # itemization is out of scope for v1.
+    other_expenses_description: str = ""
     # UNMODELED features. A nonzero value here is refused at COMPUTE time (Task
     # 2, forms/sch_c.py) -- there is no correct net profit without the unmodeled
     # math, so fail closed rather than silently drop the input. This input model

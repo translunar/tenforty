@@ -31,7 +31,7 @@ fence everything else.
 LEFT BLANK for hand-completion: business name (C), EIN (D), address (E), the
 "started this year" box (H), the Form 1099 questions (I, J), the unmodeled
 Part I lines 2, 4 and 6, Parts III and IV, and the Part V itemization rows
-(only its line 48 total is filled).
+2-9 (row 1 itemizes the line 48 total).
 
 The proprietor-name field sits inside a Pg1Header subform in 2022-2023 and
 directly on Page1 from 2024.
@@ -68,8 +68,14 @@ _FIELDS_2022_2023: dict[str, str] = {
     "sch_c_line_28_total_expenses": f"{_P1}.f1_41[0]",
     "sch_c_line_29_tentative_profit": f"{_P1}.f1_42[0]",
     "sch_c_line_31_net_profit": f"{_P1}.f1_46[0]",
-    # Part V line 48 (page 2): the other-expenses total. The itemization
-    # rows above it are left blank for hand-completion.
+    # Part V (page 2): row 1 itemizes the line 48 total (single-aggregate v1;
+    # rows 2-9 stay blank — multi-row itemization is out of scope). Same
+    # paths in every year 2022-2025 (probe-verified: wide description box
+    # left, narrow amount box right, top row of the table).
+    "sch_c_part_v_row_1_description":
+        "topmostSubform[0].Page2[0].PartVTable[0].Item1[0].f2_15[0]",
+    "sch_c_part_v_row_1_amount":
+        "topmostSubform[0].Page2[0].PartVTable[0].Item1[0].f2_16[0]",
     "sch_c_line_48_total_other_expenses":
         "topmostSubform[0].Page2[0].f2_33[0]",
 }

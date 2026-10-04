@@ -54,7 +54,8 @@ _TWO = [
                       gross_receipts=31_000.0, supplies=1_000.0),
     ScheduleCBusiness(description="Synthetic Crafts",
                       gross_receipts=14_500.0, utilities=500.0,
-                      other_expenses=1_000.0),
+                      other_expenses=1_000.0,
+                      other_expenses_description="Synthetic booth fees"),
 ]
 
 

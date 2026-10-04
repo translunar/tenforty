@@ -119,11 +119,16 @@ class SchCEmitValuesTests(unittest.TestCase):
 
     def test_line_48_mirrors_other_expenses_only_when_nonzero(self):
         with_other = self._values(self._scn(
-            description="x", gross_receipts=9000.0, other_expenses=640.0))
+            description="x", gross_receipts=9000.0, other_expenses=640.0,
+            other_expenses_description="Synthetic fees"))
         self.assertEqual(with_other["sch_c_line_48_total_other_expenses"], 640.0)
+        self.assertEqual(with_other["sch_c_part_v_row_1_amount"], 640.0)
+        self.assertEqual(
+            with_other["sch_c_part_v_row_1_description"], "Synthetic fees")
         self.assertEqual(with_other["sch_c_expense_other_expenses"], 640.0)
         without = self._values(self._scn(description="x", gross_receipts=9000.0))
         self.assertNotIn("sch_c_line_48_total_other_expenses", without)
+        self.assertNotIn("sch_c_part_v_row_1_amount", without)
 
     def test_blank_description_and_code_are_absent(self):
         v = self._values(self._scn(gross_receipts=100.0))
