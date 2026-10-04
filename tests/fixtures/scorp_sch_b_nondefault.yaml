@@ -82,9 +82,21 @@ s_corp_return:
     business_activity_code: "541990"
     business_activity_description: Services
     product_or_service: Consulting
-    any_c_corp_subsidiaries: true
-    has_any_foreign_shareholders: true
-    owns_foreign_entity: true
+    shareholder_disregarded_entity_trust_estate_or_nominee: false
+    owns_20pct_stock_of_any_corporation: false
+    owns_20pct_interest_in_partnership_or_trust: false
+    restricted_stock_outstanding: false
+    stock_options_or_warrants_outstanding: false
+    filed_form_8918: true
+    issued_oid_debt_instruments: false
+    section_163j_election: true
+    form_8990_conditions_met: false
+    receipts_and_assets_under_250k: true
+    nonshareholder_debt_canceled: false
+    qsub_election_terminated: true
+    payments_requiring_1099s: false
+    qualified_opportunity_fund: false
+    digital_asset_transactions: false
   shareholders:
     - name: "Taxpayer A"
       ssn_or_ein: "000-00-0000"

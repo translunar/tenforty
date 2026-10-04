@@ -49,9 +49,7 @@ def _make_scorp_return() -> SCorpReturn:
             business_activity_code="541990",
             business_activity_description="Services",
             product_or_service="Consulting",
-            any_c_corp_subsidiaries=False,
-            has_any_foreign_shareholders=False,
-            owns_foreign_entity=False,
+            **SCH_B_ALL_NO_ANSWERS,
         ),
         shareholders=[
             SCorpShareholder(
@@ -62,6 +60,44 @@ def _make_scorp_return() -> SCorpReturn:
             ),
         ],
     )
+
+
+# Every Schedule B question stated, in the one all-printable truth assignment:
+# every Yes/No answer No, line 7 clear, EXCEPT line 11 (receipts and assets both
+# under $250,000) which is Yes. Line 14b is unanswerable when 14a is No, so it
+# stays None; line 16 (2023+) is stated False here and `set_tax_year` adjusts it
+# to None when a test moves the scenario to 2021/2022 (that question does not
+# exist on those forms). Synthetic.
+SCH_B_ALL_NO_ANSWERS: dict = dict(
+    shareholder_disregarded_entity_trust_estate_or_nominee=False,
+    owns_20pct_stock_of_any_corporation=False,
+    owns_20pct_interest_in_partnership_or_trust=False,
+    restricted_stock_outstanding=False,
+    stock_options_or_warrants_outstanding=False,
+    filed_form_8918=False,
+    issued_oid_debt_instruments=False,
+    section_163j_election=False,
+    form_8990_conditions_met=False,
+    receipts_and_assets_under_250k=True,
+    nonshareholder_debt_canceled=False,
+    qsub_election_terminated=False,
+    payments_requiring_1099s=False,
+    filed_required_1099s=None,
+    qualified_opportunity_fund=False,
+    digital_asset_transactions=False,
+)
+
+
+def set_tax_year(scenario, year: int):
+    """Move a fixture scenario to ``year`` (mutating ``config.year``) AND keep
+    Schedule B line 16 legal for that year: stated False for 2023+, None for
+    2021/2022 (the question is not on those forms, so emit refuses a stated
+    answer). Returns the scenario."""
+    scenario.config.year = year
+    if scenario.s_corp_return is not None:
+        scenario.s_corp_return.schedule_b_answers.digital_asset_transactions = (
+            False if year >= 2023 else None)
+    return scenario
 
 
 def _scorp_attestation_defaults() -> dict[str, bool]:
@@ -170,9 +206,7 @@ def _make_v1_scenario(
                 business_activity_code="541990",
                 business_activity_description="Services",
                 product_or_service="Consulting",
-                any_c_corp_subsidiaries=False,
-                has_any_foreign_shareholders=False,
-                owns_foreign_entity=False,
+                **SCH_B_ALL_NO_ANSWERS,
             ),
             shareholders=shareholders,
             section_199a=section_199a,

@@ -1647,6 +1647,10 @@ class ReturnOrchestrator:
         year = scenario.config.year
         filler = PdfFiller()
         amended = scenario.s_corp_return.amended_return
+        # Schedule B must be fully answered before anything is printed: an
+        # unstated question would leave its boxes blank on a return that gets
+        # signed. Compute never asks; emit refuses (all gaps listed at once).
+        form_f1120s.check_schedule_b_for_emit(scenario)
 
         # Main 1120-S + Sch B + Sch K.
         main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"

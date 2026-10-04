@@ -1,6 +1,7 @@
 """Integration test: Schedule B checkbox cells render correctly for non-default answers.
 
-Loads scorp_sch_b_nondefault.yaml (accrual accounting + three "Yes" Sch B answers),
+Loads scorp_sch_b_nondefault.yaml (accrual accounting + three printable "Yes" Sch B
+answers: line 6 Form 8918, line 9 section 163(j) election, line 13 QSub termination),
 renders the full return via ReturnOrchestrator.run_full_return, then reads back the
 f1120s_2025.pdf with pypdf and asserts that the True-valued checkboxes have the correct
 /V state.
@@ -74,20 +75,27 @@ class SchBCheckboxRenderTests(unittest.TestCase):
         v = self._v("topmostSubform[0].Page2[0].c2_1[2]")
         self.assertNotEqual(v, "/3", f"other checkbox /V was {v!r}; expected NOT '/3'")
 
-    # has_any_foreign_shareholders = True  →  c2_2[0] state is /1
-    def test_has_any_foreign_shareholders_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_2[0]")
-        self.assertEqual(v, "/1", f"has_any_foreign_shareholders /V was {v!r}; expected '/1'")
+    # filed_form_8918 = True (line 6)  ->  Yes box c2_7[0] is /1, No box clear
+    def test_filed_form_8918_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_7[0]")
+        self.assertEqual(v, "/1", f"filed_form_8918 Yes /V was {v!r}; expected '/1'")
+        no = self._v("topmostSubform[0].Page2[0].c2_7[1]")
+        self.assertNotEqual(no, "/2", f"filed_form_8918 No /V was {no!r}")
 
-    # any_c_corp_subsidiaries = True  →  c2_3[0] state is /1
-    def test_any_c_corp_subsidiaries_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_3[0]")
-        self.assertEqual(v, "/1", f"any_c_corp_subsidiaries /V was {v!r}; expected '/1'")
+    # section_163j_election = True (line 9)  ->  Yes box c2_9[0] is /1
+    def test_section_163j_election_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_9[0]")
+        self.assertEqual(v, "/1", f"section_163j_election Yes /V was {v!r}; expected '/1'")
 
-    # owns_foreign_entity = True  →  c2_4[0] state is /1
-    def test_owns_foreign_entity_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_4[0]")
-        self.assertEqual(v, "/1", f"owns_foreign_entity /V was {v!r}; expected '/1'")
+    # qsub_election_terminated = True (line 13)  ->  Yes box c3_2[0] is /1
+    def test_qsub_election_terminated_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page3[0].c3_2[0]")
+        self.assertEqual(v, "/1", f"qsub_election_terminated Yes /V was {v!r}; expected '/1'")
+
+    # an answered No (line 3) marks the No box, on-state /2
+    def test_line_3_no_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_2[1]")
+        self.assertEqual(v, "/2", f"line 3 No /V was {v!r}; expected '/2'")
 
 
 class SchBCheckboxRender2021Tests(unittest.TestCase):
@@ -104,6 +112,8 @@ class SchBCheckboxRender2021Tests(unittest.TestCase):
         cls._tmp = tempfile.TemporaryDirectory()
         scenario = load_scenario(FIXTURES_DIR / "scorp_sch_b_nondefault.yaml")
         scenario.config.year = 2021
+        # Line 16 (digital assets) is not on the 2021 form: leave it unstated.
+        scenario.s_corp_return.schedule_b_answers.digital_asset_transactions = None
         orch = ReturnOrchestrator(
             spreadsheets_dir=Path("spreadsheets"),
             work_dir=Path(cls._tmp.name),
@@ -141,17 +151,24 @@ class SchBCheckboxRender2021Tests(unittest.TestCase):
         v = self._v("topmostSubform[0].Page2[0].c2_1[2]")
         self.assertNotEqual(v, "/3", f"other checkbox /V was {v!r}; expected NOT '/3'")
 
-    # has_any_foreign_shareholders = True  →  c2_2[0] state is /1
-    def test_has_any_foreign_shareholders_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_2[0]")
-        self.assertEqual(v, "/1", f"has_any_foreign_shareholders /V was {v!r}; expected '/1'")
+    # filed_form_8918 = True (line 6)  ->  Yes box c2_07[0] is /1, No box clear
+    def test_filed_form_8918_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_07[0]")
+        self.assertEqual(v, "/1", f"filed_form_8918 Yes /V was {v!r}; expected '/1'")
+        no = self._v("topmostSubform[0].Page2[0].c2_07[1]")
+        self.assertNotEqual(no, "/2", f"filed_form_8918 No /V was {no!r}")
 
-    # any_c_corp_subsidiaries = True  →  c2_3[0] state is /1
-    def test_any_c_corp_subsidiaries_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_3[0]")
-        self.assertEqual(v, "/1", f"any_c_corp_subsidiaries /V was {v!r}; expected '/1'")
+    # section_163j_election = True (line 9)  ->  Yes box c2_09[0] is /1
+    def test_section_163j_election_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_09[0]")
+        self.assertEqual(v, "/1", f"section_163j_election Yes /V was {v!r}; expected '/1'")
 
-    # owns_foreign_entity = True  →  c2_4[0] state is /1
-    def test_owns_foreign_entity_checkbox_is_checked(self):
-        v = self._v("topmostSubform[0].Page2[0].c2_4[0]")
-        self.assertEqual(v, "/1", f"owns_foreign_entity /V was {v!r}; expected '/1'")
+    # qsub_election_terminated = True (line 13)  ->  Yes box c3_2[0] is /1
+    def test_qsub_election_terminated_yes_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page3[0].c3_2[0]")
+        self.assertEqual(v, "/1", f"qsub_election_terminated Yes /V was {v!r}; expected '/1'")
+
+    # an answered No (line 3) marks the No box, on-state /2
+    def test_line_3_no_box_is_checked(self):
+        v = self._v("topmostSubform[0].Page2[0].c2_2[1]")
+        self.assertEqual(v, "/2", f"line 3 No /V was {v!r}; expected '/2'")

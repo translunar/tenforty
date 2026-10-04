@@ -18,7 +18,7 @@ from pypdf import PdfReader
 
 from tenforty import years
 from tenforty.orchestrator import ReturnOrchestrator
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 
 
 def _read_v(pdf_path: Path, field_path: str) -> str:
@@ -97,6 +97,8 @@ class K1Box17EmitTests(unittest.TestCase):
                     scenario,
                     config=dataclasses.replace(scenario.config, year=year),
                 )
+                # Line 16 exists on the 2023+ forms only; keep it legal per year.
+                set_tax_year(scenario, year)
                 out_dir = Path(self._tmp.name) / f"out_{year}"
                 _corp, emitted = self.orch.run_full_federal_scorp_return(
                     scenario, out_dir)
