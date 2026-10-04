@@ -456,10 +456,29 @@ def schedule_b(answers: Any) -> dict[str, Any]:
         "f1120s_sch_b_business_activity_description":
             answers.business_activity_description,
         "f1120s_sch_b_product_or_service": answers.product_or_service,
-        "f1120s_sch_b_any_c_corp_subsidiaries": answers.any_c_corp_subsidiaries,
-        "f1120s_sch_b_has_any_foreign_shareholders":
-            answers.has_any_foreign_shareholders,
-        "f1120s_sch_b_owns_foreign_entity": answers.owns_foreign_entity,
+        # SOURCE: Form 1120-S (2021-2025), Schedule B lines 3, 4a and 4b.
+        # Each question has independent Yes and No checkboxes; a stated
+        # answer marks exactly one, and an unstated answer (None) marks
+        # neither. Field names follow the printed question text: line 3
+        # asks whether any shareholder was a disregarded entity, trust,
+        # estate, or nominee; 4a asks about owning 20%/50% of the stock
+        # of any (foreign or domestic) corporation; 4b asks about a
+        # 20%/50% interest in any partnership or a trust's beneficial
+        # interest.
+        "f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee":
+            answers.shareholder_disregarded_entity_trust_estate_or_nominee
+            is True,
+        "f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee_no":
+            answers.shareholder_disregarded_entity_trust_estate_or_nominee
+            is False,
+        "f1120s_sch_b_owns_20pct_stock_of_any_corporation":
+            answers.owns_20pct_stock_of_any_corporation is True,
+        "f1120s_sch_b_owns_20pct_stock_of_any_corporation_no":
+            answers.owns_20pct_stock_of_any_corporation is False,
+        "f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust":
+            answers.owns_20pct_interest_in_partnership_or_trust is True,
+        "f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust_no":
+            answers.owns_20pct_interest_in_partnership_or_trust is False,
     }
 
 
