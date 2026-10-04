@@ -62,7 +62,10 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
             "sch_se_line_3_net_profit": irs_round(line_3),
             "sch_se_line_4a_net_earnings": irs_round(line_4c),
             "sch_se_line_4c_net_earnings": irs_round(line_4c),
-            "sch_se_line_6_total_net_earnings": irs_round(line_6),
+            # Line 4c's own instruction: "If less than $400... you don't owe
+            # self-employment tax" -- the filer stops, so line 6 is NOT
+            # emitted (adjudicated 2026-10-04). Lines 12/13 stay literal 0
+            # (ruling R9).
             "sch_se_line_12_se_tax": 0,
             "sch_se_line_13_half_deduction": 0,
         }
