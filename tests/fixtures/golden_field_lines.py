@@ -21,6 +21,7 @@ row, since a naive leftmost/nearest-label parser mis-associates those rows."""
 
 GOLDEN_FIELD_LINES: dict = {
     ("federal", "1040", 2021): {
+        "adjustments": ("f1_42", "10"),
         "agi": ("f1_43", "11"),
         "taxable_income": ("f1_49", "15"),
         "total_tax": ("f2_02", "16"),
@@ -31,6 +32,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_30", "37"),
     },
     ("federal", "1040", 2022): {
+        "adjustments": ("f1_51", "10"),
         "agi": ("f1_52", "11"),
         "taxable_income": ("f1_56", "15"),
         "total_tax": ("f2_02", "16"),
@@ -41,6 +43,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2023): {
+        "adjustments": ("f1_54", "10"),
         "agi": ("f1_55", "11"),
         "taxable_income": ("f1_59", "15"),
         "total_tax": ("f2_02", "16"),
@@ -51,6 +54,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2024): {
+        "adjustments": ("f1_55", "10"),
         "agi": ("f1_56", "11"),
         "taxable_income": ("f1_60", "15"),
         "total_tax": ("f2_02", "16"),
@@ -61,6 +65,7 @@ GOLDEN_FIELD_LINES: dict = {
         "amount_owed": ("f2_28", "37"),
     },
     ("federal", "1040", 2025): {
+        "adjustments": ("f1_74", "10"),
         "agi": ("f1_75", "11a"),
         "taxable_income": ("f2_06", "15"),
         "total_tax": ("f2_08", "16"),
@@ -133,5 +138,99 @@ GOLDEN_FIELD_LINES: dict = {
         "sch_e_line_32_total_partnership_scorp": ("f2_47", "32"),
         "sch_e_line_37_total_estate_trust": ("f2_70", "37"),
         "sch_e_line_41_total_income": ("f2_78", "41"),
+    },
+    # Schedule 2. Part I was renumbered in 2024: the excess-APTC repayment
+    # moved from line 2 to line 1a (with a new 1z subtotal).
+    ("federal", "sch_2", 2022): {
+        "sch_2_line_2_excess_aptc_repayment": ("f1_04", "2"),
+        "sch_2_line_3_part_i_total": ("f1_05", "3"),
+        "sch_2_line_4_se_tax": ("f1_06", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_13", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2023): {
+        "sch_2_line_2_excess_aptc_repayment": ("f1_04", "2"),
+        "sch_2_line_3_part_i_total": ("f1_05", "3"),
+        "sch_2_line_4_se_tax": ("f1_06", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_13", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2024): {
+        "sch_2_line_1a_excess_aptc_repayment": ("f1_03", "1a"),
+        "sch_2_line_1z_total_additions": ("f1_11", "1z"),
+        "sch_2_line_3_part_i_total": ("f1_13", "3"),
+        "sch_2_line_4_se_tax": ("f1_14", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_21", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_25", "21"),
+    },
+    ("federal", "sch_2", 2025): {
+        "sch_2_line_1a_excess_aptc_repayment": ("f1_03", "1a"),
+        "sch_2_line_1z_total_additions": ("f1_11", "1z"),
+        "sch_2_line_3_part_i_total": ("f1_13", "3"),
+        "sch_2_line_4_se_tax": ("f1_15", "4"),
+        "sch_2_line_11_additional_medicare_tax": ("f1_22", "11"),
+        "sch_2_line_21_total_other_taxes": ("f2_24", "21"),
+    },
+    # Schedule SE. 2022 zero-pads the first nine leaves (f1_06); 2023+ do not
+    # (f1_6). Line 7 is a read-only pre-printed field and is not mapped.
+    ("federal", "sch_se", 2022): {
+        "sch_se_line_2_net_profit": ("f1_05", "2"),
+        "sch_se_line_3_net_profit": ("f1_06", "3"),
+        "sch_se_line_4a_net_earnings": ("f1_07", "4a"),
+        "sch_se_line_4c_net_earnings": ("f1_09", "4c"),
+        "sch_se_line_6_total_net_earnings": ("f1_12", "6"),
+        "sch_se_line_8a_ss_wages_and_tips": ("f1_14", "8a"),
+        "sch_se_line_8d_wages_subject_to_ss": ("f1_17", "8d"),
+        "sch_se_line_9_ss_earnings_remaining": ("f1_18", "9"),
+        "sch_se_line_10_ss_portion": ("f1_19", "10"),
+        "sch_se_line_11_medicare_portion": ("f1_20", "11"),
+        "sch_se_line_12_se_tax": ("f1_21", "12"),
+        "sch_se_line_13_half_deduction": ("f1_22", "13"),
+    },
+    **{
+        ("federal", "sch_se", year): {
+            "sch_se_line_2_net_profit": ("f1_5", "2"),
+            "sch_se_line_3_net_profit": ("f1_6", "3"),
+            "sch_se_line_4a_net_earnings": ("f1_7", "4a"),
+            "sch_se_line_4c_net_earnings": ("f1_9", "4c"),
+            "sch_se_line_6_total_net_earnings": ("f1_12", "6"),
+            "sch_se_line_8a_ss_wages_and_tips": ("f1_14", "8a"),
+            "sch_se_line_8d_wages_subject_to_ss": ("f1_17", "8d"),
+            "sch_se_line_9_ss_earnings_remaining": ("f1_18", "9"),
+            "sch_se_line_10_ss_portion": ("f1_19", "10"),
+            "sch_se_line_11_medicare_portion": ("f1_20", "11"),
+            "sch_se_line_12_se_tax": ("f1_21", "12"),
+            "sch_se_line_13_half_deduction": ("f1_22", "13"),
+        }
+        for year in (2023, 2024, 2025)
+    },
+    # Schedule C money lines. "Other expenses (from line 48)" is line 27a
+    # through 2024 and line 27b in 2025 -- same field, relabelled.
+    **{
+        ("federal", "sch_c", year): {
+            "sch_c_line_1_gross_receipts": ("f1_10", "1"),
+            "sch_c_line_3_net_receipts": ("f1_12", "3"),
+            "sch_c_line_5_gross_profit": ("f1_14", "5"),
+            "sch_c_line_7_gross_income": ("f1_16", "7"),
+            "sch_c_expense_advertising": ("f1_17", "8"),
+            "sch_c_expense_insurance": ("f1_24", "15"),
+            "sch_c_expense_legal_professional": ("f1_27", "17"),
+            "sch_c_expense_office_expense": ("f1_28", "18"),
+            "sch_c_expense_rent_lease": ("f1_31", "20b"),
+            "sch_c_expense_supplies": ("f1_33", "22"),
+            "sch_c_expense_taxes_licenses": ("f1_34", "23"),
+            "sch_c_expense_travel": ("f1_35", "24a"),
+            "sch_c_expense_deductible_meals": ("f1_36", "24b"),
+            "sch_c_expense_utilities": ("f1_37", "25"),
+            "sch_c_expense_wages": ("f1_38", "26"),
+            "sch_c_expense_other_expenses": ("f1_39", other_expenses_line),
+            "sch_c_line_28_total_expenses": ("f1_41", "28"),
+            "sch_c_line_29_tentative_profit": ("f1_42", "29"),
+            "sch_c_line_31_net_profit": ("f1_46", "31"),
+            "sch_c_line_48_total_other_expenses": ("f2_33", "48"),
+        }
+        for year, other_expenses_line in (
+            (2022, "27a"), (2023, "27a"), (2024, "27a"), (2025, "27b"),
+        )
     },
 }

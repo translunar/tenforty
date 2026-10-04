@@ -948,6 +948,10 @@ class F1040(FormMapping):
             "total_deductions": "TotalDeductions",
             "f8995_line_15_oracle": "QBID",
             "net_capital_gain": "NetCapitalGain",
+            # 1040 line 3a (qualified dividends). Form 8995 line 12 needs the
+            # authoritative total on the workbook-routed emit path; the
+            # `Qualified_Dividends` named range exists in every year workbook.
+            "qualified_dividends": "Qualified_Dividends",
             "_qbi_deduction_1040": "QBID_1040",
             # Form 8582 line 11: 2024 has no F8582_Line11 named range. Cell
             # AE43 on '8582' holds the line 11 total (same formula as 2025,
@@ -1074,6 +1078,10 @@ class F1040(FormMapping):
             # Form 8995 line 12: net capital gain (qualified dividends +
             # net LTCG) as computed on the worksheet.
             "net_capital_gain": "NetCapitalGain",
+            # 1040 line 3a (qualified dividends). Form 8995 line 12 needs the
+            # authoritative total on the workbook-routed emit path; the
+            # `Qualified_Dividends` named range exists in every year workbook.
+            "qualified_dividends": "Qualified_Dividends",
             # QBI deduction as entered on 1040 line 13 (= QBID). Used in
             # f1040.compute to derive taxable_income_before_qbi_deduction
             # (no single named range exists for the pre-QBI figure).

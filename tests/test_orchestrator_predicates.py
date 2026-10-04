@@ -190,16 +190,16 @@ class OrchestratorPredicateTests(unittest.TestCase):
         scenario = make_simple_scenario()
         self.assertFalse(self.orchestrator._should_emit_4562(scenario, {}))
 
-    def test_should_emit_8995_requires_qbi(self) -> None:
-        s = make_k1_scenario()
-        s.schedule_k1s = [ScheduleK1(
-            entity_name="Fake S-Corp Inc", entity_ein="00-0000000",
-            entity_type="s_corp", material_participation=True,
-            ordinary_business_income=50_000.0, qbi_amount=0.0,
-        )]
-        self.assertFalse(self.orchestrator._should_emit_8995(s))
-        s.schedule_k1s[0].qbi_amount = 50_000.0
-        self.assertTrue(self.orchestrator._should_emit_8995(s))
+    def test_should_emit_8995_follows_the_computed_form(self) -> None:
+        emit = self.orchestrator._should_emit_8995
+        self.assertFalse(emit({}))
+        self.assertFalse(emit({"f8995_line_15_qbi_deduction": 0,
+                               "f8995_line_16_qbi_loss_carryforward": 0}))
+        self.assertTrue(emit({"f8995_line_15_qbi_deduction": 1_200,
+                              "f8995_line_16_qbi_loss_carryforward": 0}))
+        # A loss year: no deduction, but the carryforward must be reported.
+        self.assertTrue(emit({"f8995_line_15_qbi_deduction": 0,
+                              "f8995_line_16_qbi_loss_carryforward": -30_000}))
 
     def test_should_emit_4562_true_when_any_asset_present(self) -> None:
         scenario = make_simple_scenario()

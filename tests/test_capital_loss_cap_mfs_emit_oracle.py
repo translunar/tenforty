@@ -145,6 +145,8 @@ def _mfs_scenario() -> Scenario:
     """
     kwargs = scope_out_attestation_defaults()
     kwargs["prior_year_itemized"] = False
+    # Emit-time 1040 digital-assets question (TY2022+) must be answered.
+    kwargs["digital_assets"] = False
     config = TaxReturnConfig(
         year=YEAR,
         filing_status="married_separately",

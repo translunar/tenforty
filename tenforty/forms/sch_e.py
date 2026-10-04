@@ -49,18 +49,20 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     rp = scenario.rental_properties[0]
     result.update(_property_a_fields(rp))
 
+    # printed-chain ruling (SE line 12 lineage), 2026-10-04: line 26 is
+    # arithmetic over printed line 21 (single property in v1), so it is the
+    # printed-chain total -- NOT the workbook's cents-carried figure rounded
+    # independently, which can differ by $1 from what the page's own lines
+    # sum to. The oracle value is kept only as a cross-check.
     local_total = result["sch_e_property_a_income_loss"]
     line_26_oracle = f1040.get("sche_line26")
-    if line_26_oracle is not None:
-        result["sch_e_line_26_total"] = irs_round(line_26_oracle)
-        if result["sch_e_line_26_total"] != local_total:
-            log.warning(
-                "Sch E line 26 oracle total %s diverges from locally-summed "
-                "single-property line 21 %s; using oracle value.",
-                result["sch_e_line_26_total"], local_total,
-            )
-    else:
-        result["sch_e_line_26_total"] = local_total
+    if line_26_oracle is not None and irs_round(line_26_oracle) != local_total:
+        log.warning(
+            "Sch E line 26 oracle total %s diverges from the printed-chain "
+            "line 21 %s; using the printed-chain value.",
+            irs_round(line_26_oracle), local_total,
+        )
+    result["sch_e_line_26_total"] = local_total
     return result
 
 
@@ -72,16 +74,18 @@ def _property_a_fields(rp: RentalProperty) -> dict:
         "sch_e_property_a_personal_use_days": rp.personal_use_days,
         "sch_e_property_a_rents": irs_round(rp.rents_received),
     }
-    total_expenses = 0.0
+    # printed-chain ruling (SE line 12 lineage), 2026-10-04: lines 5-19 are
+    # entries (rounded individually); line 20 sums the ROUNDED lines and
+    # line 21 = rounded line 3 rents - printed line 20, so the page foots.
+    total_expenses = 0
     for attr, key in _EXPENSE_FIELDS:
-        value = getattr(rp, attr)
-        rounded = irs_round(value)
+        rounded = irs_round(getattr(rp, attr))
         if rounded:
             fields[key] = rounded
-        total_expenses += value
-    fields["sch_e_property_a_total_expenses"] = irs_round(total_expenses)
+        total_expenses += rounded
+    fields["sch_e_property_a_total_expenses"] = total_expenses
     fields["sch_e_property_a_income_loss"] = (
-        irs_round(rp.rents_received) - irs_round(total_expenses)
+        irs_round(rp.rents_received) - total_expenses
     )
     return fields
 

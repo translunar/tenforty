@@ -137,15 +137,18 @@ def total_tax_liability_line_24(f1040: dict) -> float | None:
         the argument for harvesting.
 
     What is NOT a silent gap:
-      - Self-employment tax. There is no Schedule C surface at all
-        (`sch_1.py` hardcodes `business_income_line_3 = 0` and
-        `self_employment_tax_deduction_line_15 = 0`), and partnership SE
-        earnings are gated by the `acknowledges_no_partnership_se_earnings`
-        attestation, which genuinely raises: its `triggered_when` is
-        `_has_partnership_se_earnings` (a real predicate, not the load-time
-        `_never` sentinel), so `attestations.enforce_compute_time` raises
-        NotImplementedError when a partnership K-1 carries nonzero SE earnings
-        and the attestation is False.
+      - Self-employment tax. It IS composed in: the spine computes Schedule SE
+        (`sch_se_line_12_se_tax`) from the Schedule C businesses and folds it
+        into Schedule 2 Part II, published as `other_taxes` (1040 LINE 23 =
+        Form 8959 tax + SE tax). This function reads that spine total rather
+        than recomputing SE tax. (An earlier version of this paragraph said
+        there was no Schedule C surface and omitted Part II, leaving line 24
+        short of line 22 + line 23 on every Schedule C return — a stale guard
+        claim, made false when Schedule C landed.) Partnership SE earnings
+        remain gated by the `acknowledges_no_partnership_se_earnings`
+        attestation, whose `triggered_when` is a real predicate, so
+        `attestations.enforce_compute_time` raises NotImplementedError when a
+        partnership K-1 carries nonzero SE earnings and it is False.
       - Nonrefundable credits. The native spine models NONE — no Schedule 3
         Part I, no child tax credit, no line 19/20/21 producer anywhere — so
         `nonrefundable_credits` reads 0 on that path and line 22 reduces to
@@ -187,9 +190,16 @@ def total_tax_liability_line_24(f1040: dict) -> float | None:
         schedule_2_part_i=f1040.get("schedule2_tax") or 0,
         # 1040 line 21. No producer emits this today; see the docstring.
         nonrefundable_credits=f1040.get("nonrefundable_credits") or 0,
-        # Schedule 2 Part II: Form 8959 Additional Medicare Tax. NIIT, the
-        # other modeled-by-the-workbook Part II component, is unmodeled here.
-        schedule_2_part_ii=f1040.get("f8959_tax_total") or 0,
+        # Schedule 2 Part II — 1040 LINE 23, THE TOTAL: the spine's
+        # `other_taxes` (Form 8959 Additional Medicare Tax + Schedule SE tax).
+        # NIIT, the other Part II component the workbook models, is unmodeled
+        # on this path. Falls back to the 8959 component alone ONLY for a
+        # hand-built dict that lacks the spine total (the spine always
+        # publishes `other_taxes`).
+        schedule_2_part_ii=(
+            f1040["other_taxes"] if f1040.get("other_taxes") is not None
+            else (f1040.get("f8959_tax_total") or 0)
+        ),
     )
 
 

@@ -1,9 +1,101 @@
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
+import re
+
 from pypdf import PdfReader, PdfWriter
+from pypdf.generic import (
+    ArrayObject,
+    DecodedStreamObject,
+    DictionaryObject,
+    FloatObject,
+    NameObject,
+    TextStringObject,
+)
 
 from tenforty.rounding import irs_round
+
+# Operators that put ink on the page. A button on-state appearance stream
+# containing none of these (and no non-empty text-show) draws nothing.
+_PAINT_OPS = re.compile(rb"(?<![A-Za-z0-9_])(S|s|f|F|f\*|B|b|B\*|b\*|Do|sh|BI)(?![A-Za-z0-9_*])")
+_NONEMPTY_TEXT_SHOW = re.compile(rb"\(\s*[^)\s][^)]*\)\s*(Tj|'|\")|\[[^\]]*\(\s*[^)\s][^\]]*\]\s*TJ")
+
+
+def _stream_paints(data: bytes) -> bool:
+    """True iff an appearance-stream content string would put ink on the page."""
+    return bool(_PAINT_OPS.search(data) or _NONEMPTY_TEXT_SHOW.search(data))
+
+
+def _field_type(widget) -> str | None:
+    node = widget
+    while node is not None:
+        if "/FT" in node:
+            return node["/FT"]
+        parent = node.get("/Parent")
+        node = parent.get_object() if parent is not None else None
+    return None
+
+
+def _x_mark_stream(writer: PdfWriter, rect) -> DecodedStreamObject:
+    """A Form XObject drawing an X across a widget-sized box (widget space)."""
+    x0, y0, x1, y1 = (float(v) for v in rect)
+    w, h = abs(x1 - x0), abs(y1 - y0)
+    m = max(1.5, min(w, h) * 0.2)
+    content = (
+        f"q 0 0 0 RG {max(1.0, min(w, h) * 0.1):.2f} w "
+        f"{m:.2f} {m:.2f} m {w - m:.2f} {h - m:.2f} l S "
+        f"{m:.2f} {h - m:.2f} m {w - m:.2f} {m:.2f} l S Q"
+    ).encode()
+    stream = DecodedStreamObject()
+    stream.set_data(content)
+    stream.update({
+        NameObject("/Type"): NameObject("/XObject"),
+        NameObject("/Subtype"): NameObject("/Form"),
+        NameObject("/BBox"): ArrayObject([FloatObject(0), FloatObject(0),
+                                          FloatObject(w), FloatObject(h)]),
+    })
+    return stream
+
+
+def ensure_button_marks_visible(writer: PdfWriter) -> None:
+    """Make every checked checkbox / radio widget render, in every viewer.
+
+    Two independent defects leave a checked box blank on paper:
+
+    1. pypdf writes a radio group's parent ``/V`` as a TEXT string
+       (``(/1 . Single.)``) instead of the NAME the spec requires
+       (``/1#20.#20Single.``); poppler then draws no mark although each kid's
+       ``/AS`` is right. Coerced to a name here.
+    2. A template whose on-state appearance stream paints nothing (empty
+       content, or a text-show of an empty string) or is absent draws nothing
+       even when ``/AS`` selects it. An X is drawn into the widget rect so
+       the mark survives printing. Streams that already paint (the IRS
+       templates, the FTB check glyph) are left untouched.
+    """
+    for page in writer.pages:
+        for annot in page.get("/Annots", []) or []:
+            w = annot.get_object()
+            if w.get("/Subtype") != "/Widget" or _field_type(w) != "/Btn":
+                continue
+            for holder in (w, w["/Parent"].get_object() if "/Parent" in w else None):
+                if holder is not None and isinstance(holder.get("/V"), TextStringObject):
+                    text = str(holder["/V"])
+                    if text.startswith("/"):
+                        holder[NameObject("/V")] = NameObject(text)
+            state = w.get("/AS")
+            if state is None or state == "/Off":
+                continue
+            ap = w.get("/AP")
+            normal = ap.get("/N") if ap is not None else None
+            existing = normal.get(state) if normal is not None else None
+            if existing is not None and _stream_paints(existing.get_object().get_data()):
+                continue
+            mark = writer._add_object(_x_mark_stream(writer, w["/Rect"]))
+            if ap is None:
+                w[NameObject("/AP")] = ap = DictionaryObject()
+            if normal is None:
+                ap[NameObject("/N")] = normal = DictionaryObject()
+            normal[NameObject(str(state))] = mark
 
 
 class PdfFiller:
@@ -37,6 +129,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str | Callable[[float], str]] | None = None,
     ) -> dict[str, str]:
         """Resolve a flat ``field_mapping`` (+ optional aggregations, derivations,
         checkbox_states) into the ``{pdf_field_path: rendered_str}`` dict that
@@ -47,6 +140,14 @@ class PdfFiller:
         PDF — the changed-forms selector compares these payloads across the
         as-filed and corrected runs. ``fill`` delegates to this method, so the
         payload is by construction identical to what would be rendered.
+
+        ``field_formats`` maps a COMPUTE KEY (in ``field_mapping``) to a Python
+        format spec (e.g. ``".4f"``) — or a ``float -> str`` callable such as
+        ``mappings.registry.trim_decimal`` — that replaces the whole-dollar default for
+        that one numeric field — for rates such as Form 8962 line 7 (0.0850)
+        that would otherwise round to "0". Applies only to the 1:1 pass, only
+        to non-bool numerics; every field not named keeps the whole-dollar
+        default.
         """
         pdf_fields: dict[str, str] = {}
 
@@ -55,6 +156,14 @@ class PdfFiller:
                 v = values[result_key]
                 if checkbox_states and result_key in checkbox_states and isinstance(v, bool):
                     pdf_fields[pdf_field_name] = checkbox_states[result_key] if v else "/Off"
+                elif (
+                    field_formats and result_key in field_formats
+                    and isinstance(v, (int, float)) and not isinstance(v, bool)
+                ):
+                    fmt = field_formats[result_key]
+                    pdf_fields[pdf_field_name] = (
+                        fmt(v) if callable(fmt) else format(v, fmt)
+                    )
                 else:
                     pdf_fields[pdf_field_name] = PdfFiller._render_scalar(v)
 
@@ -89,6 +198,7 @@ class PdfFiller:
         aggregations: Mapping[str, tuple[str, ...]] | None = None,
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
+        field_formats: Mapping[str, str | Callable[[float], str]] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
@@ -114,6 +224,10 @@ class PdfFiller:
                 When a bool-valued key is listed here, the on-state from this
                 dict is written for True; "/Off" is written for False.
 
+            field_formats: Maps compute key → Python format spec overriding the
+                whole-dollar default for that numeric field (see
+                ``resolve_fields``).
+
         Returns:
             Path to the filled PDF.
         """
@@ -125,10 +239,12 @@ class PdfFiller:
             aggregations=aggregations,
             derivations=derivations,
             checkbox_states=checkbox_states,
+            field_formats=field_formats,
         )
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)
+        ensure_button_marks_visible(writer)
 
         with open(output_path, "wb") as f:
             writer.write(f)
@@ -187,6 +303,7 @@ class PdfFiller:
         pdf_fields = self._expand_repeaters(mapping, values)
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)
+        ensure_button_marks_visible(writer)
         with open(output_path, "wb") as f:
             writer.write(f)
         return output_path

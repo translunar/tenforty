@@ -1,6 +1,6 @@
 """PDF field mapping for IRS Schedule K-1 (Form 1120-S), 2023–2025."""
 
-from tenforty.mappings.registry import PdfFormMapping
+from tenforty.mappings.registry import PdfFormMapping, trim_decimal
 
 
 # 2024 and 2025 Schedule K-1 (1120-S) PDFs share an identical field tree
@@ -83,6 +83,11 @@ _FIELDS_2023: dict[str, str] = {
 }
 
 
+# Item G is a 0-100 percentage that may be fractional (33.333); the default
+# whole-dollar renderer would print "33". Trimmed decimals keep 100 -> "100".
+_FIELD_FORMATS = {"ownership_percentage": trim_decimal}
+
+
 class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Schedule K-1 (Form 1120-S).
 
@@ -95,6 +100,13 @@ class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
     _MAPPINGS: dict[int, dict[str, str]] = {
         2023: _FIELDS_2023, 2024: _FIELDS, 2025: _FIELDS,
     }
+
+    @classmethod
+    def get_field_formats(cls, year: int) -> dict:
+        """Compute key -> render override (see ``PdfFiller.resolve_fields``)."""
+        if year not in cls._MAPPINGS:
+            raise ValueError(f"No {cls._FORM_NAME} field formats for year {year}")
+        return _FIELD_FORMATS
 
     @classmethod
     def get_amended_mark(cls, year: int) -> tuple[str, str]:

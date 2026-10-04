@@ -132,6 +132,23 @@ _F8995_EXPECTED = {
         16,
         "Total qualified business (loss) carryforward",
     ),
+    # Combine lines. These keys are named by their TRUE FORM line.
+    "f8995_line_3_prior_qbi_loss_carryforward": (
+        3,
+        "Qualified business net (loss) carryforward from the prior year",
+    ),
+    "f8995_line_4_total_qbi": (
+        4,
+        "Total qualified business income. Combine lines 2 and 3",
+    ),
+    "f8995_line_7_prior_reit_ptp_loss_carryforward": (
+        7,
+        "qualified PTP (loss) carryforward",
+    ),
+    "f8995_line_8_total_reit_ptp": (
+        8,
+        "Total qualified REIT dividends and PTP income",
+    ),
 }
 
 # Scalar keys that are deliberately NOT line-placement-tested, each for a stated
@@ -142,6 +159,8 @@ _F8995_EXEMPT_KEYS = frozenset(
         "taxpayer_name",     # header field ("Name(s) shown on return"), not a numbered line
         "taxpayer_ssn",      # header field (taxpayer id number), not a numbered line
         "f8995_line_1_qbi",  # line-1 TABLE cell (row i, col c); binds to "1i", not a plain numeric line
+        "f8995_line_1i_name",  # line-1 TABLE cell (row i, col a); pinned by F8995Line1RowColumnTests
+        "f8995_line_1i_tin",   # line-1 TABLE cell (row i, col b); pinned by F8995Line1RowColumnTests
     }
 )
 
@@ -255,6 +274,121 @@ class F8995PlacementByCaptionTests(unittest.TestCase):
                         f"placement-tested (_F8995_EXPECTED) nor exempt "
                         f"(_F8995_EXEMPT_KEYS)",
                     )
+
+
+# Fields deliberately left BLANK on the template, keyed by the printed-line
+# label the probe binds them to. Each entry needs a reason; the enumeration test
+# fails if a template field is neither mapped nor on a listed line, AND if a
+# listed line has no unmapped field (so this list cannot go stale).
+_F8995_BLANK_BY_DESIGN_LINES = {
+    "1ii": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
+    "1iii": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
+    "1iv": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
+    "1v": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
+    "17": "total REIT/PTP loss carryforward: v1 models no REIT/PTP income "
+          "(form line 6 is a constant 0), so there is nothing to carry forward",
+}
+
+
+@unittest.skipUnless(
+    all(
+        (REPO_ROOT / f"pdfs/federal/{year}/f8995.pdf").exists()
+        for year in _F8995_YEARS
+    ),
+    "Form 8995 templates for 2021–2025 not all present",
+)
+class F8995FullTemplateEnumerationTests(unittest.TestCase):
+    """Every fillable field on each year's template is either mapped or on an
+    explicit blank-by-design line — an unmapped line can no longer be added
+    (or left) silently."""
+
+    def test_every_fillable_field_is_mapped_or_blank_by_design(self):
+        for year in _F8995_YEARS:
+            reader = PdfReader(str(REPO_ROOT / f"pdfs/federal/{year}/f8995.pdf"))
+            fillable = {
+                name for name, fld in (reader.get_fields() or {}).items()
+                if fld.get("/FT") == "/Tx"
+            }
+            line_of = {r["full_path"]: r["line"] for r in _probe.probe_year(year)}
+            mapped = set(PdfF8995.get_mapping(year)["scalars"].values())
+            # Every mapped path must exist on the template.
+            self.assertEqual(mapped - fillable, set(), f"{year}: stale mapping paths")
+            unmapped = fillable - mapped
+            lines_hit = set()
+            for path in sorted(unmapped):
+                with self.subTest(year=year, field=path):
+                    line = line_of.get(path)
+                    self.assertIn(
+                        line, _F8995_BLANK_BY_DESIGN_LINES,
+                        f"{year}: {path} (printed line {line!r}) is neither "
+                        f"mapped nor blank-by-design",
+                    )
+                    lines_hit.add(line)
+            with self.subTest(year=year, check="blank list not stale"):
+                self.assertEqual(
+                    lines_hit, set(_F8995_BLANK_BY_DESIGN_LINES),
+                    f"{year}: blank-by-design lines with no unmapped field",
+                )
+
+
+@unittest.skipUnless(
+    all(
+        (REPO_ROOT / f"pdfs/federal/{year}/f8995.pdf").exists()
+        for year in _F8995_YEARS
+    ),
+    "Form 8995 templates for 2021–2025 not all present",
+)
+class F8995Line1RowColumnTests(unittest.TestCase):
+    """Row 1i col (a) = name and col (b) = TIN land on the right column."""
+
+    def test_row_1i_name_and_tin_columns(self):
+        for year in _F8995_YEARS:
+            scalars = PdfF8995.get_mapping(year)["scalars"]
+            by_path = {r["full_path"]: r for r in _probe.probe_year(year)}
+            for key, fragment in (
+                ("f8995_line_1i_name", "trade, business, or aggregation name"),
+                ("f8995_line_1i_tin", "taxpayer identification number"),
+            ):
+                with self.subTest(year=year, key=key):
+                    self.assertIn(key, scalars)
+                    row = by_path[scalars[key]]
+                    self.assertEqual(row["line"], "1i")
+                    self.assertIn(fragment, row["caption"].lower())
+
+
+class F8995CombineLinesRoundTripTests(unittest.TestCase):
+    """Real compute output -> fill -> read back, per year: the printed form
+    foots (line 4 visible, line 5 = 20% of it) and row 1i carries name/TIN."""
+
+    def test_printed_lines_foot_and_row_1i_filled(self):
+        from tests.test_f8995_compute import _scenario_with_qbi
+        from tenforty.forms import f8995 as form_f8995
+
+        for year in _F8995_YEARS:
+            with self.subTest(year=year):
+                s, upstream = _scenario_with_qbi(qbi=20_000.0)
+                s.config.year = year
+                out = form_f8995.compute(s, upstream=upstream)
+                scalars = PdfF8995.get_mapping(year)["scalars"]
+                with tempfile.TemporaryDirectory() as tmp:
+                    dest = Path(tmp) / "f8995.pdf"
+                    PdfFiller().fill(
+                        template_path=REPO_ROOT / f"pdfs/federal/{year}/f8995.pdf",
+                        output_path=dest, field_mapping=scalars, values=out,
+                    )
+                    read = {
+                        n: (f.get("/V") or "")
+                        for n, f in (PdfReader(str(dest)).get_fields() or {}).items()
+                    }
+                def v(key):
+                    return read[scalars[key]]
+                self.assertEqual(v("f8995_line_3_prior_qbi_loss_carryforward"), "0")
+                self.assertEqual(v("f8995_line_4_total_qbi"), "20000")
+                self.assertEqual(v("f8995_line_3_component"), "4000")  # form line 5
+                self.assertEqual(v("f8995_line_7_prior_reit_ptp_loss_carryforward"), "0")
+                self.assertEqual(v("f8995_line_8_total_reit_ptp"), "0")
+                self.assertEqual(v("f8995_line_1i_name"), "Fake S-Corp Inc")
+                self.assertEqual(v("f8995_line_1i_tin"), "00-0000000")
 
 
 if __name__ == "__main__":

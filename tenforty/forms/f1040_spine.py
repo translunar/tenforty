@@ -46,8 +46,12 @@ CA consumers are unaffected.
 
 from dataclasses import dataclass
 
+from tenforty.forms import f8962 as form_f8962
 from tenforty.forms.f1040_tax import qdcgt_tax
-from tenforty.models import FilingStatus, K1FanoutData, Scenario
+from tenforty.models import (
+    FilingStatus, K1FanoutData, Scenario, TaxReturnConfig,
+)
+from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -307,6 +311,8 @@ class DeductionResolution:
     standard_deduction_applied: bool
     charitable_nonitemizer: int
     taxable_income_before_qbi: int
+    # 1040 line 11 minus line 12 with NO zero floor (Form 8995 line 11).
+    taxable_income_before_qbi_unfloored: int = 0
 
 
 def resolve_deductions(
@@ -351,7 +357,8 @@ def resolve_deductions(
         charitable_nonitemizer = irs_round(field)
         total_deductions += charitable_nonitemizer
 
-    taxable_income_before_qbi = max(0, irs_round(agi - total_deductions))
+    taxable_income_before_qbi_unfloored = irs_round(agi - total_deductions)
+    taxable_income_before_qbi = max(0, taxable_income_before_qbi_unfloored)
 
     return DeductionResolution(
         schedule_a_total=schedule_a_total,
@@ -360,7 +367,42 @@ def resolve_deductions(
         standard_deduction_applied=standard_deduction_applied,
         charitable_nonitemizer=charitable_nonitemizer,
         taxable_income_before_qbi=taxable_income_before_qbi,
+        taxable_income_before_qbi_unfloored=taxable_income_before_qbi_unfloored,
     )
+
+
+def _ssn_digits(ssn: str) -> str:
+    """Digits only. The 1040's SSN cells are 9-character comb fields
+    (/MaxLen 9) — a hyphenated "000-00-0000" is silently truncated to its
+    first nine characters when printed — whereas the schedules' SSN cells
+    take eleven and are fed the hyphenated ``taxpayer_ssn`` instead."""
+    return "".join(ch for ch in ssn if ch.isdigit())
+
+
+def header_values(config: TaxReturnConfig) -> dict[str, str]:
+    """The Form 1040 header block — name, SSN, spouse, address — as result keys.
+
+    Keys are the ones ``mappings/pdf_1040.py`` already maps (first_name,
+    last_name, ssn, spouse_*, address, city, state, zip_code) plus the
+    ``taxpayer_name`` / ``taxpayer_ssn`` pair every other form's header uses
+    (Form 8962 reads the latter straight off this dict). Shared by the native
+    spine and the workbook fallback in the orchestrator so the header cannot
+    depend on which pipeline computed the return. ``apt_no`` has no config
+    field and stays blank.
+    """
+    return {
+        **config.pdf_header(),
+        "first_name": config.first_name,
+        "last_name": config.last_name,
+        "ssn": _ssn_digits(config.ssn),
+        "spouse_first_name": config.spouse_first_name,
+        "spouse_last_name": config.spouse_last_name,
+        "spouse_ssn": _ssn_digits(config.spouse_ssn),
+        "address": config.address,
+        "city": config.address_city,
+        "state": config.address_state,
+        "zip_code": config.address_zip,
+    }
 
 
 def compute_spine(
@@ -746,26 +788,48 @@ def compute_spine(
     sch_1_line_13_hsa = sch_1.get("sch_1_line_13_hsa", 0)
     sch_1_line_15_se_tax = sch_1.get("sch_1_line_15_se_tax", 0)
     sch_1_line_17_se_health = sch_1.get("sch_1_line_17_se_health", 0)
-    # SE-HEALTH × PTC GUARD.
-    # The self-employed health-insurance deduction (Schedule 1 line 17) now
-    # reads the input channel at its source — see forms/sch_1.py, which returns
-    # `scenario.config.self_employed_health_insurance_deduction`. Because that
-    # value can be nonzero, this precondition is REACHABLE. When line 17 is
+    # SE-HEALTH × PTC GUARD (carve-out: provably non-circular case admitted).
+    # The self-employed health-insurance deduction (Schedule 1 line 17) reads
+    # the input channel at its source — see forms/sch_1.py. When line 17 is
     # nonzero WHILE a Form 1095-A is present, the Premium Tax Credit and the
-    # SE-health deduction are mutually dependent (each feeds the other's
-    # MAGI / limitation) and must be reconciled by the Rev. Proc. 2014-41
-    # iterative (or simplified) method, which is UNMODELED here. Fail closed
-    # rather than emit a silently wrong deduction/credit.
+    # deduction are mutually dependent (the deduction lowers MAGI, which raises
+    # PTC; PTC reduces the premiums the deduction may cover) and must be
+    # reconciled by the Rev. Proc. 2014-41 iterative (or simplified) method,
+    # which is UNMODELED here.
+    #
+    # CARVE-OUT. The loop needs PTC to be able to move. PTC is non-increasing
+    # in MAGI, and the lowest MAGI the iteration could ever visit is the one
+    # reached when the deduction takes its maximum — the FULL annual 1095-A
+    # premiums (or line 17 itself if the input exceeds them: the channel
+    # carries it verbatim). So we probe Form 8962 at that lowest MAGI. If the
+    # probe's total premium tax credit (line 24) is exactly 0, then PTC is 0 at
+    # EVERY MAGI at or above it, which covers every point the iteration could
+    # visit: the deduction cannot change the credit, nothing feeds back, and the
+    # deduction is a plain passthrough with the real 8962 computed as usual.
+    # Any nonzero probe PTC keeps the refusal below — fail closed.
     # Pointer (other direction): the Form 8962 wiring that this guards lives in
     # orchestrator._compute_native_schedules Step 7b, and the f8962_net_ptc /
     # f8962_repayment payment seams are above in this function.
     if sch_1_line_17_se_health and scenario.form_1095a is not None:
-        raise NotImplementedError(
-            "Self-employed health-insurance deduction (Schedule 1 line 17) is "
-            "nonzero together with a Form 1095-A. The Premium Tax Credit and "
-            "the SE-health deduction are circularly dependent (Rev. Proc. "
-            "2014-41); that iterative reconciliation is not implemented."
+        _block = scenario.form_1095a
+        _total_premiums = sum(m.premium for m in _block.months)
+        _probe_magi = (
+            agi + _block.tax_exempt_interest
+            - max(0, _total_premiums - sch_1_line_17_se_health)
         )
+        _year = scenario.config.year
+        _probe = form_f8962.compute(
+            block=_block, magi=_probe_magi, year=_year,
+            params=params_f8962.load(_year),
+        )
+        if _probe["f8962_line_24"] != 0:
+            raise NotImplementedError(
+                "Self-employed health-insurance deduction (Schedule 1 line 17) "
+                "is nonzero together with a Form 1095-A. The Premium Tax Credit "
+                "and the SE-health deduction are circularly dependent (Rev. "
+                "Proc. 2014-41); that iterative reconciliation is not "
+                "implemented."
+            )
     sch_1_line_20_ira = sch_1.get("sch_1_line_20_ira", 0)
     sch_1_line_21_student_loan_interest = sch_1.get(
         "sch_1_line_21_student_loan_interest", 0
@@ -799,6 +863,8 @@ def compute_spine(
     # -----------------------------------------------------------------------
 
     return {
+        # Page 1 header block (name, SSN, spouse, address) — config-derived.
+        **header_values(scenario.config),
         # Page 1 income lines — oracle/OUTPUTS[2025] key names
         "wages": wages,
         # Line 1z — Total of lines 1a-1h. Equals `wages` because W-2 box-1
@@ -833,6 +899,9 @@ def compute_spine(
         # AGI
         "agi": agi,
         "agi_page2": agi,
+        # 1040 line 10 (Sch 1 line 26): the pdf_1040 "adjustments" mapping had
+        # no producer, so line 10 printed blank between lines 9 and 11.
+        "adjustments": sch_1_line_26,
         "magi": magi,
         # Deductions
         "standard_deduction": standard_deduction_amount,

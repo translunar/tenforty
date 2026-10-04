@@ -41,7 +41,8 @@ class FederalCompletenessTests(unittest.TestCase):
             for (juris, form), entry in sorted(CATALOG.items()):
                 if (juris != "federal"
                         or form in year_manifest.SCORP_FORMS
-                        or (juris, form, year) in KNOWN_GAPS):
+                        or (juris, form, year) in KNOWN_GAPS
+                        or not year_manifest.form_supported_in_year(form, year)):
                     continue
                 with self.subTest(year=year, form=form, piece="template"):
                     template = (_PDFS / juris / str(year)
@@ -271,7 +272,12 @@ class DerivationsSurfaceCompletenessTests(unittest.TestCase):
 
     @staticmethod
     def _supported_years(juris, form, years):
-        return [y for y in years if (juris, form, y) not in KNOWN_GAPS]
+        return [
+            y for y in years
+            if (juris, form, y) not in KNOWN_GAPS
+            and (juris != "federal"
+                 or year_manifest.form_supported_in_year(form, y))
+        ]
 
     def test_derivations_surface_complete(self):
         for juris_scope, years, skip_scorp in self._SCOPES:
@@ -334,3 +340,38 @@ class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):
             with self.subTest(form=form):
                 with self.assertRaises(ValueError):
                     entry.mapping_cls.get_mapping(_PROBE_UNSUPPORTED_YEAR)
+
+
+class PolicyYearFloorTests(unittest.TestCase):
+    """A policy floor is PERMANENT (years.POLICY_YEAR_FLOORS), unlike a
+    KNOWN_GAPS entry, which is work owed. The gates above skip a floored
+    form's below-floor years; this class makes that skip safe in both
+    directions: a floor may only name a real catalogued form, and nothing
+    may exist below it."""
+
+    def test_floored_forms_are_catalogued_federal_forms(self):
+        for form, floor in year_manifest.POLICY_YEAR_FLOORS.items():
+            with self.subTest(form=form):
+                self.assertIn(("federal", form), CATALOG)
+                self.assertIn(form, year_manifest.FEDERAL_FORMS)
+                self.assertIn(floor, year_manifest.FEDERAL_YEARS)
+
+    def test_no_template_or_mapping_exists_below_a_floor(self):
+        for form, floor in year_manifest.POLICY_YEAR_FLOORS.items():
+            entry = CATALOG[("federal", form)]
+            for year in year_manifest.FEDERAL_YEARS:
+                if year >= floor:
+                    continue
+                with self.subTest(form=form, year=year):
+                    with self.assertRaises(ValueError):
+                        entry.mapping_cls.get_mapping(year)
+                    self.assertFalse(
+                        (_PDFS / "federal" / str(year)
+                         / f"{entry.template_stem}.pdf").exists())
+
+    def test_a_floored_year_is_never_also_a_known_gap(self):
+        for juris, form, year in KNOWN_GAPS:
+            with self.subTest(form=form, year=year):
+                self.assertFalse(
+                    juris == "federal"
+                    and not year_manifest.form_supported_in_year(form, year))

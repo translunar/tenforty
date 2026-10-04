@@ -29,23 +29,29 @@ def _block(months, ui=False):
 class F8962ComputeTests(unittest.TestCase):
     def test_full_year_net_ptc(self):
         # MAGI 25,000 → 250% → figure .04 → 8a=1000, 8b=83.
-        # Per month: d = max(0, 300−83) = 217; e = min(premium 250, 217)
-        # = 217; aptc (f) = 200.
+        # ANNUAL method (i8962 (2024) Line 10: mandatory when 12 months
+        # enrolled with identical col A and col B — team-lead ruling
+        # 2026-10-03; previously pinned by the monthly method, 12*217=2604):
+        # 11(a)=12*250=3000, 11(b)=12*300=3600, 11(c)=8a=1000,
+        # 11(d)=max(0,3600−1000)=2600, 11(e)=min(3000,2600)=2600,
+        # 11(f)=12*200=2400. Line 24=11(e), line 25=11(f), line 26=200.
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
         r = compute(b, 25_000.0, 2024, _params())
         self.assertEqual(r["f8962_line_5"], 250)
         self.assertEqual(r["f8962_line_8b"], 83)
-        self.assertEqual(r["f8962_line_24"], 12 * 217)
-        self.assertEqual(r["f8962_line_25"], 12 * 200)
-        self.assertEqual(r["f8962_line_26_net_ptc"], 12 * 17)
+        self.assertEqual(r["f8962_line_24"], 2600)
+        self.assertEqual(r["f8962_line_25"], 2400)
+        self.assertEqual(r["f8962_line_26_net_ptc"], 200)
         self.assertEqual(r["f8962_line_29_repayment"], 0)
 
     def test_repayment_capped_below_400(self):
-        # MAGI 25,000 → 250%: cap band (300, 900). APTC 300/mo vs e=217/mo
-        # → line 27 = 996 → capped at 900.
+        # MAGI 25,000 → 250%: cap band (300, 900), 8a=1000. ANNUAL method
+        # (mandatory here, see test_full_year_net_ptc; previously the monthly
+        # 996): 11(e) = min(3000, max(0, 3600−1000)) = 2600, 11(f) = 12*300 =
+        # 3600 → line 27 = 3600 − 2600 = 1000 → capped at 900.
         b = _block({i: (250.0, 300.0, 300.0) for i in range(12)})
         r = compute(b, 25_000.0, 2024, _params())
-        self.assertEqual(r["f8962_line_27"], 996)
+        self.assertEqual(r["f8962_line_27"], 1000)
         self.assertEqual(r["f8962_line_28"], 900)
         self.assertEqual(r["f8962_line_29_repayment"], 900)
         self.assertEqual(r["f8962_line_26_net_ptc"], 0)

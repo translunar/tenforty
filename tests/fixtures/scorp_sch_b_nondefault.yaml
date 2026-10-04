@@ -7,6 +7,7 @@ config:
   last_name: A
   ssn: "000-00-0000"
   has_foreign_accounts: false
+  digital_assets: false
   acknowledges_no_wash_sale_adjustments: false
   acknowledges_no_other_basis_adjustments: false
   acknowledges_no_28_rate_gain: false

@@ -1,13 +1,15 @@
 """PDF field mapping for IRS Form 8995 (QBI Deduction Simplified Computation).
 
-Scalars only in v1. Line 1 per-entity rows are unmapped (the compute layer
-returns a single summed ``f8995_line_1_qbi`` rather than per-row tuples).
+Scalars only in v1. Line 1 is a SINGLE-ROW approximation: row i carries the
+aggregate QBI in col (c) and the FIRST QBI source's name / TIN in cols (a) / (b)
+(``f8995_line_1i_name`` / ``f8995_line_1i_tin``); rows ii-v are blank by design
+(per-row tuples are out of scope).
 
 Field names enumerated from ``pdfs/federal/2025/f8995.pdf``:
 
   f1_01  Name
   f1_02  SSN
-  f1_03..f1_17  Line 1 table (5 rows × 3 cols: name, EIN, QBI) — unmapped v1
+  f1_03..f1_17  Line 1 table (5 rows × 3 cols: name, TIN, QBI) — v1 maps row i only; rows ii-v blank by design
   f1_18  Line 2 — Total qualified business income or (loss). Combine lines 1i through 1v…
   f1_19  Line 3 — Qualified business net (loss) carryforward from the prior year
   f1_20  Line 4 — Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-
@@ -36,11 +38,21 @@ derived from the compute layer's ARITHMETIC — ``line_6 = line_3 + line_5``;
 captions, NOT from the key names. A future reader must NOT re-trust the names;
 the key rename is deferred ticket (cc).
 
+The keys for form lines 1i(a)/(b), 3, 4, 7, 8 are NEW and are named by their TRUE
+FORM line numbers (not one tier off); only the four older keys flagged in bold
+above carry a misleading name.
+
   compute key                            | FORM line | printed caption (abbrev)
   ---------------------------------------|-----------|-------------------------
+  f8995_line_1i_name                     |  **1i(a)**| Trade, business, or aggregation name (first QBI source)
+  f8995_line_1i_tin                      |  **1i(b)**| Taxpayer identification number (Sch C: taxpayer SSN)
   f8995_line_2_total_qbi                 |     2     | Total qualified business income or (loss)
+  f8995_line_3_prior_qbi_loss_carryforward |   3     | Qualified business net (loss) carryforward from the prior year
+  f8995_line_4_total_qbi                 |     4     | Total qualified business income. Combine lines 2 and 3 (floored at 0)
   f8995_line_3_component                 |   **5**   | Qualified business income component. Multiply line 4 by 20%
   f8995_line_4_reit_ptp                  |   **6**   | Qualified REIT dividends and PTP income
+  f8995_line_7_prior_reit_ptp_loss_carryforward | 7  | Qualified REIT dividends and PTP (loss) carryforward from the prior year
+  f8995_line_8_total_reit_ptp            |     8     | Total qualified REIT dividends and PTP income. Combine lines 6 and 7 (floored at 0)
   f8995_line_5_reit_ptp_component        |   **9**   | REIT and PTP component. Multiply line 8 by 20%
   f8995_line_6_total_before_limit        |  **10**   | QBI deduction before the income limitation. Add lines 5 and 9
   f8995_line_11_taxable_income           |    11     | Taxable income before QBI deduction
@@ -66,6 +78,9 @@ class PdfF8995(PdfFormMapping[dict]):
                 # Line 1 table row: 2024 uses Ln1A_Row1 subform (vs Row1i in 2025).
                 # Col c (QBI amount) is the 3rd field (f1_5) in the 3-column row.
                 "f8995_line_1_qbi": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]",
+                # Row i cols a/b: first QBI source's name / TIN (single-row v1).
+                "f8995_line_1i_name": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]",
+                "f8995_line_1i_tin": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]",
                 # Line 2: total QBI — 2024 uses ReadOrderSubForm[0] (vs Line2_ReadOrder in 2025).
                 "f8995_line_2_total_qbi": "topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]",
                 # Keys repointed to their arithmetic-correct FORM lines (names
@@ -76,6 +91,11 @@ class PdfF8995(PdfFormMapping[dict]):
                 "f8995_line_5_reit_ptp_component": "topmostSubform[0].Page1[0].f1_25[0]",  # FORM line 9 (f1_25, direct)
                 "f8995_line_6_total_before_limit": "topmostSubform[0].Page1[0].f1_26[0]",  # FORM line 10 (f1_26, DIRECT — carries no wrapper to its new home)
                 # Lines 11–15: same direct paths as 2025.
+                # FORM lines 3, 4, 7, 8 (combine lines; direct fields in all years).
+                "f8995_line_3_prior_qbi_loss_carryforward": "topmostSubform[0].Page1[0].f1_19[0]",
+                "f8995_line_4_total_qbi": "topmostSubform[0].Page1[0].f1_20[0]",
+                "f8995_line_7_prior_reit_ptp_loss_carryforward": "topmostSubform[0].Page1[0].f1_23[0]",
+                "f8995_line_8_total_reit_ptp": "topmostSubform[0].Page1[0].f1_24[0]",
                 "f8995_line_11_taxable_income": "topmostSubform[0].Page1[0].f1_27[0]",
                 "f8995_line_12_net_capital_gain": "topmostSubform[0].Page1[0].f1_28[0]",
                 "f8995_line_13_subtract": "topmostSubform[0].Page1[0].f1_29[0]",
@@ -93,6 +113,9 @@ class PdfF8995(PdfFormMapping[dict]):
                 # v1 maps the summed line-1 total to the first table cell (col c of row i)
                 # as a single-entity approximation; per-row tuples are out of scope.
                 "f8995_line_1_qbi": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_05[0]",
+                # Row i cols a/b: first QBI source's name / TIN (single-row v1).
+                "f8995_line_1i_name": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_03[0]",
+                "f8995_line_1i_tin": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_04[0]",
                 # Line 2: total QBI
                 "f8995_line_2_total_qbi": "topmostSubform[0].Page1[0].Line2_ReadOrder[0].f1_18[0]",
                 # Keys repointed to their arithmetic-correct FORM lines (names
@@ -108,6 +131,11 @@ class PdfF8995(PdfFormMapping[dict]):
                 # named line_6); f1_26 is a DIRECT field — no wrapper travels here.
                 "f8995_line_6_total_before_limit": "topmostSubform[0].Page1[0].f1_26[0]",
                 # Line 11: taxable income
+                # FORM lines 3, 4, 7, 8 (combine lines; direct fields in all years).
+                "f8995_line_3_prior_qbi_loss_carryforward": "topmostSubform[0].Page1[0].f1_19[0]",
+                "f8995_line_4_total_qbi": "topmostSubform[0].Page1[0].f1_20[0]",
+                "f8995_line_7_prior_reit_ptp_loss_carryforward": "topmostSubform[0].Page1[0].f1_23[0]",
+                "f8995_line_8_total_reit_ptp": "topmostSubform[0].Page1[0].f1_24[0]",
                 "f8995_line_11_taxable_income": "topmostSubform[0].Page1[0].f1_27[0]",
                 # Line 12: net capital gain
                 "f8995_line_12_net_capital_gain": "topmostSubform[0].Page1[0].f1_28[0]",
