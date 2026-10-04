@@ -372,6 +372,15 @@ def assert_4868_fills_correctly(
         work_dir=Path(tempfile.mkdtemp()),
     )
 
+    # emit_pdfs refuses an unanswered 1040 digital-assets question (TY2022+).
+    # This helper only reads the 4868 back, so answer it on a COPY of the
+    # config (shared YAML fixtures stay unanswered; the caller's config is
+    # not mutated). Only fills when unanswered.
+    import dataclasses
+
+    if config_with_personal.digital_assets is None:
+        config_with_personal = dataclasses.replace(
+            config_with_personal, digital_assets=False)
     scenario = Scenario(config=config_with_personal, w2s=[])
     year = config_with_personal.year
 
