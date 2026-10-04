@@ -274,6 +274,14 @@ class TestF1040TotalTaxLiabilityLine24(unittest.TestCase):
         2025: ("1040", "AL104"),
     }
 
+    def test_native_composition_includes_nonzero_schedule_2_part_ii(self):
+        """Native line 24 = line 22 + the spine's Schedule 2 Part II total
+        (`other_taxes`: 8959 + SE tax). Synthetic figures."""
+        from tenforty.forms.f4868 import total_tax_liability_line_24
+        f1040 = {"total_tax": 18_000, "schedule2_tax": 0,
+                 "nonrefundable_credits": 0, "other_taxes": 3_300}
+        self.assertEqual(total_tax_liability_line_24(f1040), 21_300)
+
     def test_mapped_to_the_name_on_every_year(self):
         for year in self.YEARS:
             with self.subTest(year=year):
