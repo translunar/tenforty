@@ -2,9 +2,10 @@
 
 Smoke test for the CA-PDF emit helper. Exercises the helper end-to-end
 with a hand-assembled `ca_results` dict (manual stand-in for the T17
-compute pipeline) and asserts that all three CA-state PDFs (Form 540,
-Schedule CA, Schedule D 540) land on disk with non-trivial size and
-under the expected dict keys.
+compute pipeline) and asserts that the CA-state PDFs (Form 540 and
+Schedule CA; Schedule D 540 only when there is a CA capital-gain
+adjustment) land on disk with non-trivial size and under the expected
+dict keys.
 
 PDF-content correctness (which compute key lands in which widget) is
 owned by the per-form mapping tests already on disk
@@ -19,6 +20,8 @@ from pathlib import Path
 
 from tenforty.models import FilingStatus, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
+from tests._ca_emit_helpers import (
+    CA_YEARS, emit_ca, emit_ca_with_sch_d_adjustment, make_ca_scenario)
 from tests._ca_fixtures import _make_ca_v1_smoke_scenario, _write_ca_yaml
 
 
@@ -152,12 +155,16 @@ def _build_minimal_ca_results(scenario: Scenario) -> dict:
         # attestation; consumed directly by line 8 mapping and by the
         # line 10 / line 11 derivations.
         "sch_d_540_net_capital_gain": 0,
+        # No CA adjustment: read by the emit step to decide whether
+        # Schedule D (540) is required at all.
+        "sch_d_540_total_subtractions": 0,
+        "sch_d_540_total_additions": 0,
     }
     return {**header, **f540_numeric, **sch_ca_numeric, **sch_d_540_numeric}
 
 
 class EmitCaPdfsInternalTests(unittest.TestCase):
-    def test_emits_all_three_ca_pdfs(self):
+    def test_emits_f540_and_sch_ca_and_omits_sch_d_540_without_adjustment(self):
         scenario = _make_ca_v1_smoke_scenario()
         # T17 will be responsible for merging header keys (taxpayer name/SSN)
         # into the compute results dict before calling _emit_ca_pdfs_internal.
@@ -175,7 +182,9 @@ class EmitCaPdfsInternalTests(unittest.TestCase):
             output_dir=output_dir,
         )
 
-        self.assertEqual(set(emitted.keys()), {"f540", "sch_ca", "sch_d_540"})
+        # Was the three-form trio; Schedule D (540) is omitted when CA gains
+        # equal federal gains (the hand-built results carry no adjustment).
+        self.assertEqual(set(emitted.keys()), {"f540", "sch_ca"})
         for path in emitted.values():
             self.assertTrue(path.exists(), f"PDF not written: {path}")
             self.assertGreater(path.stat().st_size, 1_000)
@@ -220,7 +229,8 @@ class RunFullCaliforniaReturnTests(unittest.TestCase):
         )
 
         self.assertIn("f540_total_liability", ca_results)
-        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca", "sch_d_540"})
+        # Was the three-form trio; no CA capital-gain adjustment -> no Sch D (540).
+        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca"})
         for path in ca_pdfs.values():
             self.assertTrue(path.exists(), f"PDF not written: {path}")
             self.assertGreater(path.stat().st_size, 1_000)
@@ -268,6 +278,73 @@ class RunFullCaliforniaReturnTests(unittest.TestCase):
             scenario, Path("/nonexistent"), {}
         )
         self.assertIsNone(result)
+
+
+SCH_D_540_TITLE = "California Capital Gain or Loss Adjustment"
+
+
+def _pages_with_sch_d_540_title(pdf_path) -> int:
+    from pypdf import PdfReader
+    return sum(
+        SCH_D_540_TITLE.lower() in " ".join((page.extract_text() or "").split()).lower()
+        for page in PdfReader(str(pdf_path)).pages)
+
+
+def _page_count(pdf_path) -> int:
+    from pypdf import PdfReader
+    return len(PdfReader(str(pdf_path)).pages)
+
+
+class SchD540OmittedWithoutAdjustmentTests(unittest.TestCase):
+    """Schedule D (540) instructions, every year 2021-2025: "Do not complete
+    this schedule if all of your California gains (losses) are the same as your
+    federal gains (losses)." With no CA adjustment the schedule is not part of
+    the packet; with one it is."""
+
+    def _assemble(self, pdfs, year):
+        from tenforty import pdf_packet
+        out = Path(tempfile.mkdtemp())
+        return pdf_packet.assemble_all(pdfs, out, year)["california"]
+
+    def test_page_instrument_sees_the_schedule_on_its_template_only(self):
+        # Reachable negative space: the title marker is found on the Sch D (540)
+        # template and on neither of the other two CA forms.
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                root = REPO_ROOT / "pdfs" / "california" / str(year)
+                self.assertGreaterEqual(_pages_with_sch_d_540_title(root / "sch_d_540.pdf"), 1)
+                self.assertEqual(_pages_with_sch_d_540_title(root / "f540.pdf"), 0)
+                self.assertEqual(_pages_with_sch_d_540_title(root / "sch_ca.pdf"), 0)
+
+    def test_no_adjustment_packet_has_f540_and_sch_ca_but_no_sch_d_540(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                results, pdfs = emit_ca(make_ca_scenario(year))
+                self.assertEqual(results["sch_d_540_total_subtractions"], 0)
+                self.assertEqual(results["sch_d_540_total_additions"], 0)
+                # The packet emitted at all: both required forms are present.
+                self.assertEqual(set(pdfs), {"f540", "sch_ca"})
+                for path in pdfs.values():
+                    self.assertTrue(path.exists(), path)
+                self.assertEqual(
+                    list(pdfs["f540"].parent.glob("sch_d_540*")), [],
+                    "a Schedule D (540) file was written to the output directory")
+                combined = self._assemble(pdfs, year)
+                self.assertEqual(
+                    _page_count(combined),
+                    _page_count(pdfs["f540"]) + _page_count(pdfs["sch_ca"]))
+                self.assertEqual(_pages_with_sch_d_540_title(combined), 0)
+
+    def test_schedule_comes_back_when_there_is_a_ca_adjustment(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                _, pdfs = emit_ca_with_sch_d_adjustment(make_ca_scenario(year))
+                self.assertEqual(set(pdfs), {"f540", "sch_ca", "sch_d_540"})
+                combined = self._assemble(pdfs, year)
+                self.assertEqual(
+                    _page_count(combined),
+                    sum(_page_count(p) for p in pdfs.values()))
+                self.assertGreaterEqual(_pages_with_sch_d_540_title(combined), 1)
 
 
 if __name__ == "__main__":

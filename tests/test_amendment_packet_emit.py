@@ -221,6 +221,12 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(by_name["f1040sb_2024.pdf"].reason, "changed")
         self.assertEqual(
             by_name["f540_amended_2024.pdf"].reason, "complete amended return")
+        # Schedule CA mails with the amended 540; Schedule D (540) does not —
+        # no CA capital-gain adjustment, so it is neither written nor listed.
+        self.assertEqual(by_name["sch_ca_2024.pdf"].reason, "complete amended return")
+        self.assertTrue((out / "sch_ca_2024.pdf").exists())
+        self.assertNotIn("sch_d_540_2024.pdf", by_name)
+        self.assertFalse((out / "sch_d_540_2024.pdf").exists())
         self.assertEqual(by_name["schedule_x_2024.pdf"].reason, "amendment form")
         # No compute-only notes on a full-emit year.
         self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
@@ -397,6 +403,12 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(by_name["f1040sb_2021.pdf"].reason, "changed")
         self.assertEqual(
             by_name["f540_amended_2021.pdf"].reason, "complete amended return")
+        # Schedule CA mails with the amended 540; Schedule D (540) does not —
+        # no CA capital-gain adjustment, so it is neither written nor listed.
+        self.assertEqual(by_name["sch_ca_2021.pdf"].reason, "complete amended return")
+        self.assertTrue((out / "sch_ca_2021.pdf").exists())
+        self.assertNotIn("sch_d_540_2021.pdf", by_name)
+        self.assertFalse((out / "sch_d_540_2021.pdf").exists())
         self.assertEqual(by_name["schedule_x_2021.pdf"].reason, "amendment form")
         # No compute-only notes: the CA attachment is really emitted, not
         # stubbed — the MISSING-attachment note is ABSENT.
@@ -463,6 +475,12 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(by_name["f1040sb_2022.pdf"].reason, "changed")
         self.assertEqual(
             by_name["f540_amended_2022.pdf"].reason, "complete amended return")
+        # Schedule CA mails with the amended 540; Schedule D (540) does not —
+        # no CA capital-gain adjustment, so it is neither written nor listed.
+        self.assertEqual(by_name["sch_ca_2022.pdf"].reason, "complete amended return")
+        self.assertTrue((out / "sch_ca_2022.pdf").exists())
+        self.assertNotIn("sch_d_540_2022.pdf", by_name)
+        self.assertFalse((out / "sch_d_540_2022.pdf").exists())
         self.assertEqual(by_name["schedule_x_2022.pdf"].reason, "amendment form")
         # No compute-only notes: the CA attachment is really emitted, not
         # stubbed — the MISSING-attachment note is ABSENT.

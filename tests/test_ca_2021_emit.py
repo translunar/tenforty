@@ -2,7 +2,7 @@
 
 Proves the whole 2021 CA path end-to-end: synthetic CA-resident scenario
 with year=2021 → run_full_california_return → the 2021 CA packet
-(f540 + sch_ca + sch_d_540) emits with non-trivial size onto the 2021
+(f540 + sch_ca; no sch_d_540 without a CA adjustment) emits with non-trivial size onto the 2021
 templates.
 
 Ports tests/test_ca_2023_emit.py with year overridden to 2021 via
@@ -46,7 +46,9 @@ class CA2021EmitTests(unittest.TestCase):
             output_dir=output_dir,
         )
         self.assertIn("f540_total_liability", ca_results)
-        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca", "sch_d_540"})
+        # Was the three-form trio; Schedule D (540) is omitted when CA gains
+        # equal federal gains (this scenario has no CA adjustment).
+        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca"})
         for basename, path in ca_pdfs.items():
             self.assertTrue(path.exists(), f"PDF not written: {path}")
             self.assertGreater(path.stat().st_size, 1_000)

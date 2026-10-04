@@ -65,3 +65,40 @@ class SchD540DivergenceTests(unittest.TestCase):
         self.assertEqual(result["sch_d_540_net_capital_gain"], 8_300)
         self.assertEqual(result["sch_d_540_total_subtractions"], 2_500)
         self.assertEqual(result["sch_d_540_total_additions"], 800)
+
+
+class SchD540IsRequiredTests(unittest.TestCase):
+    """The schedule's instructions: "Do not complete this schedule if all of
+    your California gains (losses) are the same as your federal gains (losses)."
+    """
+
+    def test_not_required_when_california_equals_federal(self):
+        from tenforty.forms import sch_d_540
+        for net in (0.0, 4_000.0, -3_000.0):
+            with self.subTest(net=net):
+                result = sch_d_540_compute(federal_results={"schd_line16": net})
+                self.assertIs(sch_d_540.is_required(result), False)
+
+    def test_required_when_there_is_a_subtraction_or_an_addition(self):
+        from tenforty.forms import sch_d_540
+        for direction in (DivergenceDirection.SUBTRACTION, DivergenceDirection.ADDITION):
+            with self.subTest(direction=direction):
+                result = sch_d_540_compute(
+                    federal_results={"schd_line16": 4_000.0},
+                    worksheet_adjustments=[_adj(direction, 250.0)])
+                self.assertIs(sch_d_540.is_required(result), True)
+
+    def test_required_when_offsetting_adjustments_leave_the_net_unchanged(self):
+        from tenforty.forms import sch_d_540
+        result = sch_d_540_compute(
+            federal_results={"schd_line16": 4_000.0},
+            worksheet_adjustments=[_adj(DivergenceDirection.SUBTRACTION, 250.0),
+                                   _adj(DivergenceDirection.ADDITION, 250.0)])
+        self.assertEqual(result["sch_d_540_net_capital_gain"],
+                         result["sch_d_540_federal_net"])
+        self.assertIs(sch_d_540.is_required(result), True)
+
+    def test_missing_adjustment_keys_are_loud_not_treated_as_zero(self):
+        from tenforty.forms import sch_d_540
+        with self.assertRaises(KeyError):
+            sch_d_540.is_required({"sch_d_540_net_capital_gain": 0})

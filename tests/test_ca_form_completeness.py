@@ -13,7 +13,8 @@ blank-by-design.
 import unittest
 
 from tests._blank_by_design import classify, unfilled
-from tests._ca_emit_helpers import CA_YEARS, emit_ca, make_ca_scenario
+from tests._ca_emit_helpers import (
+    CA_YEARS, emit_ca, emit_ca_with_sch_d_adjustment, make_ca_scenario)
 
 SCENARIOS = (dict(), dict(state_tax_withheld=0.0))   # refund, amount owed
 
@@ -136,6 +137,12 @@ class CAFormCompletenessTests(unittest.TestCase):
         cls.emits = {}
         for year in CA_YEARS:
             cls.emits[year] = [emit_ca(make_ca_scenario(year, **kw))[1] for kw in SCENARIOS]
+        # Schedule D (540) is omitted from the scenarios above (no CA capital-
+        # gain adjustment), so its cells are inspected on emits that carry one.
+        cls.sch_d_emits = {
+            year: [emit_ca_with_sch_d_adjustment(make_ca_scenario(year, **kw))[1]
+                   for kw in SCENARIOS]
+            for year in CA_YEARS}
 
     def _blank_cells(self, year: int, basename: str) -> dict[str, dict]:
         per_scenario = [unfilled(pdfs[basename]) for pdfs in self.emits[year]]
@@ -193,13 +200,16 @@ class CAFormCompletenessTests(unittest.TestCase):
     def test_sch_d_540_every_blank_cell_is_documented_and_filled_set_is_pinned(self):
         for year in CA_YEARS:
             with self.subTest(year=year):
-                blank = self._blank_cells(year, "sch_d_540")
+                self.assertNotIn("sch_d_540", self.emits[year][0])
+                per_scenario = [unfilled(pdfs["sch_d_540"]) for pdfs in self.sch_d_emits[year]]
+                blank = {n: i for n, i in per_scenario[0].items()
+                         if all(n in r for r in per_scenario[1:])}
                 bad, used = classify(blank, SCH_D_540_BLANK_BY_DESIGN)
                 self.assertEqual(bad, [])
                 # the filled cells are exactly the mapped ones (header + totals), nothing stray
                 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
                 from tests._blank_by_design import template_fields
-                filled = {n for n, i in template_fields(self.emits[year][0]["sch_d_540"]).items()
+                filled = {n for n, i in template_fields(self.sch_d_emits[year][0]["sch_d_540"]).items()
                           if i["value"] is not None}
                 mapped = set(PdfSchD540.get_mapping(year).values()) | set(
                     PdfSchD540.get_derivations(year))

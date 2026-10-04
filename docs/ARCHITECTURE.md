@@ -157,7 +157,7 @@ The federal YAML and CA YAML are kept as separate files so the user can edit CA 
 4. `sch_d_540.compute(federal_results, config)` — federal pass-through, gated by attestation.
 5. `f540.compute(...)` — CA tax + credits + final liability.
 6. Header-merge taxpayer name/SSN into result dict.
-7. `_emit_ca_pdfs_internal` fills the three CA PDFs.
+7. `_emit_ca_pdfs_internal` fills Form 540 and Schedule CA, plus Schedule D (540) only when CA capital gains differ from federal (`sch_d_540.is_required`).
 
 ### Sch CA generic kernel
 

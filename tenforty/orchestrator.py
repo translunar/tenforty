@@ -87,7 +87,8 @@ _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 # CA-state PDF emit table: (basename, mapping_class). Drives the
 # uniform fill loop in `_emit_ca_pdfs_internal` — each entry produces
 # `<basename>_<year>.pdf` from the year-keyed mapping/aggregations/
-# derivations/checkbox_states on the mapping class.
+# derivations/checkbox_states on the mapping class. `sch_d_540` is
+# conditional: it is skipped unless `form_sch_d_540.is_required`.
 _CA_FORMS_BY_BASENAME: tuple[tuple[str, type], ...] = (
     ("f540", PdfF540),
     ("sch_ca", PdfSchCa),
@@ -1703,8 +1704,8 @@ class ReturnOrchestrator:
         ca_results: dict,
         output_dir: Path,
     ) -> dict[str, Path]:
-        """Render the three CA-state PDFs (f540, sch_ca, sch_d_540) from
-        a CA compute results dict.
+        """Render the CA-state PDFs (f540, sch_ca and, when required,
+        sch_d_540) from a CA compute results dict.
 
         Mechanical helper: consumes ``ca_results`` as-is and writes PDFs.
         Does NOT mutate, merge, or augment ``ca_results`` — callers
@@ -1713,8 +1714,13 @@ class ReturnOrchestrator:
         ``sch_ca_taxpayer_ssn``, ``sch_d_540_taxpayer_name``, etc.) are
         present in the dict before invocation.
 
-        Returns a dict with exactly the keys ``{"f540", "sch_ca",
-        "sch_d_540"}`` mapping to the filled PDF paths.
+        Schedule D (540) is rendered only when California capital gains
+        differ from federal (``form_sch_d_540.is_required``); its instructions
+        say not to complete it otherwise, so it is omitted — no file is
+        written and the key is absent from the result.
+
+        Returns a dict mapping ``"f540"`` and ``"sch_ca"`` (always) and
+        ``"sch_d_540"`` (only when required) to the filled PDF paths.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
@@ -1722,6 +1728,8 @@ class ReturnOrchestrator:
 
         emitted: dict[str, Path] = {}
         for basename, mapping_cls in _CA_FORMS_BY_BASENAME:
+            if basename == "sch_d_540" and not form_sch_d_540.is_required(ca_results):
+                continue
             template = _PDFS_ROOT / "california" / str(year) / f"{basename}.pdf"
             output_path = output_dir / f"{basename}_{year}.pdf"
             filler.fill(
@@ -2191,10 +2199,11 @@ class ReturnOrchestrator:
                     f"sch_ca_{year}.pdf",
                     "California Schedule CA (amended)",
                     "complete amended return"))
-                mailed.append(MailedFile(
-                    f"sch_d_540_{year}.pdf",
-                    "California Schedule D-540 (amended)",
-                    "complete amended return"))
+                if "sch_d_540" in ca_pdfs:
+                    mailed.append(MailedFile(
+                        f"sch_d_540_{year}.pdf",
+                        "California Schedule D-540 (amended)",
+                        "complete amended return"))
             else:
                 caveats.append(_CA_COMPUTE_ONLY_NOTE)
 

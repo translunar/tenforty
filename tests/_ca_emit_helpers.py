@@ -41,3 +41,21 @@ def emit_ca(scenario, out_dir: Path | None = None):
         spreadsheets_dir=REPO_ROOT / "spreadsheets", work_dir=out_dir / "work")
     return orch.run_full_california_return(
         scenario=scenario, ca_yaml_path=ca_yaml, output_dir=out_dir)
+
+
+def emit_ca_with_sch_d_adjustment(scenario, subtraction: int = 100):
+    """Emit the CA forms for ``scenario`` as if its Schedule D (540) carried a
+    (synthetic) CA subtraction, so the schedule is required and renders. No
+    scenario input reaches the adjustment in v1, so the computed results are
+    adjusted here and handed to the emit step directly."""
+    results, _ = emit_ca(scenario)
+    adjusted = {
+        **results,
+        "sch_d_540_total_subtractions": subtraction,
+        "sch_d_540_net_capital_gain":
+            results["sch_d_540_net_capital_gain"] - subtraction,
+    }
+    out_dir = Path(tempfile.mkdtemp())
+    orch = ReturnOrchestrator(
+        spreadsheets_dir=REPO_ROOT / "spreadsheets", work_dir=out_dir / "work")
+    return adjusted, orch._emit_ca_pdfs_internal(scenario, adjusted, out_dir)

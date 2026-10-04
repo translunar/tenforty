@@ -13,7 +13,8 @@ Three packets are defined:
 - ``federal_corporate`` — Form 1120-S + one Schedule K-1 per shareholder + one
   §199A Statement A per shareholder. An 1120-S is a separate filing from the
   1040, so it is never folded into the individual packet.
-- ``california`` — Form 540 + Schedule CA (540) + Schedule D (540).
+- ``california`` — Form 540 + Schedule CA (540) + Schedule D (540) when the
+  return requires it (emitted only when CA capital gains differ from federal).
 
 Two design choices keep this robust as forms/shareholders are added:
 - **Key-family membership.** A member is either an exact emitted-key
@@ -99,6 +100,7 @@ FEDERAL_CORPORATE = Packet(
 )
 
 # California — Form 540 followed by its supporting schedules (FTB order).
+# Schedule D (540) is emitted only when required, so it is often absent.
 CALIFORNIA = Packet(
     name="california",
     filename_template="f540_{year}_complete.pdf",

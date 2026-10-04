@@ -2,7 +2,7 @@
 
 Proves the whole 2024 CA path end-to-end: synthetic CA-resident scenario
 with year=2024 → run_full_california_return → the 2024 CA packet
-(f540 + sch_ca + sch_d_540) emits with non-trivial size.
+(f540 + sch_ca; no sch_d_540 without a CA adjustment) emits with non-trivial size.
 
 Mirrors the proven 2025 happy-path test
 tests/test_orchestrator_california.py::RunFullCaliforniaReturnTests.test_full_pipeline_renders_state_pdfs
@@ -43,7 +43,9 @@ class CA2024EmitTests(unittest.TestCase):
             output_dir=output_dir,
         )
         self.assertIn("f540_total_liability", ca_results)
-        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca", "sch_d_540"})
+        # Was the three-form trio; Schedule D (540) is omitted when CA gains
+        # equal federal gains (this scenario has no CA adjustment).
+        self.assertEqual(set(ca_pdfs.keys()), {"f540", "sch_ca"})
         for basename, path in ca_pdfs.items():
             self.assertTrue(path.exists(), f"PDF not written: {path}")
             self.assertGreater(path.stat().st_size, 1_000)
