@@ -24,7 +24,7 @@ def make_ca_scenario(year: int, filing_status: FilingStatus = FilingStatus.SINGL
     config = dataclasses.replace(
         base.config, year=year, filing_status=filing_status,
         dependents=list(dependents), county="Synthetic County",
-        middle_initial="Q",
+        middle_initial="Q", address_is_principal_residence=True,
     )
     kwargs = {"config": config, "ca540": None}
     if w2s is not None:

@@ -246,10 +246,11 @@ def presentation_keys(
 ) -> dict[str, object]:
     """Non-money / presentation values for the Form 540 face, from the scenario.
 
-    Header identity, date of birth, the line 7 / line 10 exemption count-and-
-    amount boxes, line 11 and line 12. Values here are SCENARIO-derived (not
-    compute outputs); the orchestrator merges them into the CA results dict and
-    ``pdf_f540`` places them.
+    Header identity, date of birth, the "address is the same as your principal
+    residence" box (only when the scenario states it), the line 7 / line 10
+    exemption count-and-amount boxes, line 11 and line 12. Values here are
+    SCENARIO-derived (not compute outputs); the orchestrator merges them into
+    the CA results dict and ``pdf_f540`` places them.
 
     * Line 7 amount = count x per-person credit, where the per-person credit is
       the year's ``exemption_credit[filing_status]`` split over the count (the
@@ -293,6 +294,9 @@ def presentation_keys(
         out["f540_spouse_first_name"] = config.spouse_first_name
         out["f540_spouse_last_name"] = config.spouse_last_name
         out["f540_spouse_ssn"] = config.spouse_ssn
+    if config.address_is_principal_residence:
+        # The box's on-state on every year's template (see pdf_f540).
+        out["f540_address_is_residence_checkbox"] = "/Yes"
     if dependents:
         out["f540_line10_count"] = dependents
         out["f540_line10_amount"] = dependent_total
