@@ -204,9 +204,9 @@ class ScheduleBPassthroughTests(unittest.TestCase):
         sb.business_activity_code = "999999"
         sb.business_activity_description = "Other services"
         sb.product_or_service = "Consulting services"
-        sb.any_c_corp_subsidiaries = False
-        sb.has_any_foreign_shareholders = False
-        sb.owns_foreign_entity = False
+        sb.shareholder_disregarded_entity_trust_estate_or_nominee = False
+        sb.owns_20pct_stock_of_any_corporation = False
+        sb.owns_20pct_interest_in_partnership_or_trust = False
         out = f1120s.compute(s, upstream={})
         # accounting_method explodes into three exclusive booleans for
         # PDF checkbox fill.
@@ -222,9 +222,12 @@ class ScheduleBPassthroughTests(unittest.TestCase):
             out["f1120s_sch_b_product_or_service"],
             "Consulting services",
         )
-        self.assertFalse(out["f1120s_sch_b_any_c_corp_subsidiaries"])
-        self.assertFalse(out["f1120s_sch_b_has_any_foreign_shareholders"])
-        self.assertFalse(out["f1120s_sch_b_owns_foreign_entity"])
+        # Each stated No answer: Yes key False, No key True.
+        for field in ("shareholder_disregarded_entity_trust_estate_or_nominee",
+                      "owns_20pct_stock_of_any_corporation",
+                      "owns_20pct_interest_in_partnership_or_trust"):
+            self.assertIs(out[f"f1120s_sch_b_{field}"], False, field)
+            self.assertIs(out[f"f1120s_sch_b_{field}_no"], True, field)
 
     def test_accounting_method_cash_explodes_correctly(self):
         s = _make_v1_scenario()

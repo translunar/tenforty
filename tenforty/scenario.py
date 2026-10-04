@@ -105,15 +105,72 @@ def _load_address(data: dict) -> Address:
     )
 
 
+# The three pre-redesign Schedule B booleans. Their names did not match the
+# questions they were wired to (line 3, 4a, 4b), so they are REMOVED rather than
+# aliased: a scenario that still carries one must fail loudly, never be ignored.
+_RETIRED_SCHEDULE_B_KEYS: dict[str, str] = {
+    "has_any_foreign_shareholders":
+        "shareholder_disregarded_entity_trust_estate_or_nominee (line 3)",
+    "any_c_corp_subsidiaries":
+        "owns_20pct_stock_of_any_corporation (line 4a)",
+    "owns_foreign_entity":
+        "owns_20pct_interest_in_partnership_or_trust (line 4b)",
+}
+
+# Optional Yes/No answer fields (None/absent = unstated), by dataclass name.
+_SCHEDULE_B_BOOL_FIELDS: tuple[str, ...] = (
+    "shareholder_disregarded_entity_trust_estate_or_nominee",
+    "owns_20pct_stock_of_any_corporation",
+    "owns_20pct_interest_in_partnership_or_trust",
+    "restricted_stock_outstanding",
+    "stock_options_or_warrants_outstanding",
+    "filed_form_8918",
+    "issued_oid_debt_instruments",
+    "section_163j_election",
+    "form_8990_conditions_met",
+    "receipts_and_assets_under_250k",
+    "nonshareholder_debt_canceled",
+    "qsub_election_terminated",
+    "payments_requiring_1099s",
+    "filed_required_1099s",
+    "qualified_opportunity_fund",
+    "digital_asset_transactions",
+)
+
+
 def _load_schedule_b_answers(data: dict) -> SCorpScheduleBAnswers:
+    retired = sorted(k for k in _RETIRED_SCHEDULE_B_KEYS if k in data)
+    if retired:
+        raise ValueError(
+            "s_corp_return.schedule_b_answers carries retired key(s) "
+            + ", ".join(retired) + ". Those three booleans were wired to "
+            "Schedule B lines 3, 4a and 4b under names that did not match the "
+            "questions, so they no longer exist. Replace: "
+            + "; ".join(f"{k} -> {_RETIRED_SCHEDULE_B_KEYS[k]}"
+                        for k in retired) + ".")
+    answers: dict[str, object] = {}
+    for name in _SCHEDULE_B_BOOL_FIELDS:
+        value = data.get(name)
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(
+                f"s_corp_return.schedule_b_answers.{name} must be true, false, "
+                f"or null (unstated); got {value!r}")
+        answers[name] = value
+    built_in_gain = data.get("net_unrealized_built_in_gain")
+    if built_in_gain is not None:
+        if isinstance(built_in_gain, bool) or not isinstance(
+                built_in_gain, (int, float)):
+            raise ValueError(
+                "s_corp_return.schedule_b_answers.net_unrealized_built_in_gain "
+                f"must be a number or null (blank); got {built_in_gain!r}")
+        built_in_gain = float(built_in_gain)
     return SCorpScheduleBAnswers(
         accounting_method=AccountingMethod(data["accounting_method"]),
         business_activity_code=data["business_activity_code"],
         business_activity_description=data["business_activity_description"],
         product_or_service=data["product_or_service"],
-        any_c_corp_subsidiaries=data["any_c_corp_subsidiaries"],
-        has_any_foreign_shareholders=data["has_any_foreign_shareholders"],
-        owns_foreign_entity=data["owns_foreign_entity"],
+        net_unrealized_built_in_gain=built_in_gain,
+        **answers,
     )
 
 

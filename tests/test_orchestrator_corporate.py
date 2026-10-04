@@ -31,7 +31,9 @@ from tenforty.orchestrator import (
     _make_k1_from_1120s_allocation,
 )
 
-from tests._scorp_fixtures import _make_v1_scenario, _scorp_attestation_defaults
+from tests._scorp_fixtures import (
+    SCH_B_ALL_NO_ANSWERS, _make_v1_scenario, _scorp_attestation_defaults,
+)
 from tests.helpers import scope_out_attestation_defaults
 
 # The INDIVIDUAL-return emit specs run alongside the corporate ones, and Form
@@ -463,9 +465,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
                     business_activity_code="541990",
                     business_activity_description="Services",
                     product_or_service="Consulting",
-                    any_c_corp_subsidiaries=False,
-                    has_any_foreign_shareholders=False,
-                    owns_foreign_entity=False,
+                    **SCH_B_ALL_NO_ANSWERS,
                 ),
                 shareholders=[
                     SCorpShareholder(

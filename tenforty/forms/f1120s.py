@@ -18,7 +18,9 @@ silently produce wrong output. This makes `compute` safe to call as a
 library function in addition to its primary use through the orchestrator.
 """
 
-from tenforty.attestations import enforce_compute_time, validate_load_time
+from tenforty.attestations import (
+    _has_scorp_large_balance_sheet, enforce_compute_time, validate_load_time,
+)
 from tenforty.models import (
     AccountingMethod, K1Allocation, K1AllocationEntity,
     K1AllocationShareholder, Scenario, SCorpReturn,
@@ -174,6 +176,51 @@ def _compute_payments_and_balance(r: SCorpReturn, total_tax: dict) -> dict:
     }
 
 
+# Schedule B Yes/No questions, in form order: (answer field, form line, what a
+# True answer would require that tenforty does not model — "" when True prints).
+# Each field yields TWO compute keys, ``f1120s_sch_b_<field>`` (the Yes box) and
+# ``f1120s_sch_b_<field>_no`` (the No box); line 7 is a single box, so it has the
+# Yes key only. A pair is marked only when the answer is stated: unstated (None)
+# leaves both boxes clear.
+_SCH_B_YES_NO: tuple[tuple[str, str, str], ...] = (
+    ("shareholder_disregarded_entity_trust_estate_or_nominee", "3",
+     "Schedule B-1 (Information on Certain Shareholders of an S Corporation)"),
+    ("owns_20pct_stock_of_any_corporation", "4a",
+     "the line 4a (i)-(v) detail table (corporation name, EIN, country, "
+     "percentage, QSub election date)"),
+    ("owns_20pct_interest_in_partnership_or_trust", "4b",
+     "the line 4b (i)-(v) detail table (entity name, EIN, type, country, "
+     "maximum percentage)"),
+    ("restricted_stock_outstanding", "5a",
+     "the line 5a (i)-(ii) share-count amounts"),
+    ("stock_options_or_warrants_outstanding", "5b",
+     "the line 5b (i)-(ii) share-count amounts"),
+    ("filed_form_8918", "6", ""),
+    ("section_163j_election", "9", ""),
+    ("form_8990_conditions_met", "10",
+     "Form 8990 (Limitation on Business Interest Expense)"),
+    ("receipts_and_assets_under_250k", "11", ""),
+    ("nonshareholder_debt_canceled", "12",
+     "the line 12 principal-reduction amount"),
+    ("qsub_election_terminated", "13", ""),
+    ("payments_requiring_1099s", "14a", ""),
+    ("filed_required_1099s", "14b", ""),
+    ("qualified_opportunity_fund", "15",
+     "Form 8996 (Qualified Opportunity Fund) and its line 15 amount"),
+    ("digital_asset_transactions", "16", ""),
+)
+
+# Line 11's False answer means Schedules L and M-1 are REQUIRED; neither is
+# modeled, so False refuses (True is the only printable answer).
+_SCH_L_M1_REFUSAL = (
+    "Schedule B line 11 is stated false: the corporation does not satisfy both "
+    "the under-$250,000 total-receipts and total-assets conditions, so Schedule "
+    "L (balance sheet) and Schedule M-1 are required. tenforty does not model "
+    "Schedule L or M-1; this return cannot be completed automatically. File by "
+    "hand."
+)
+
+
 def _compute_schedule_b(r: SCorpReturn) -> dict:
     """Form 1120-S Schedule B Yes/No + text answers (pass-through).
 
@@ -183,9 +230,15 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
     form's Question 1 has three exclusive checkboxes — a single enum
     field would require a converter at the PDF-fill boundary; emitting
     three booleans here keeps the boundary trivial.
+
+    Each other question yields a Yes key and a No key (see ``_SCH_B_YES_NO``).
+    A ``True`` answer that stands for an unmodeled attachment, or a ``False``
+    line 11 (Schedules L / M-1 required), raises ``NotImplementedError`` —
+    the compute path refuses what the form would then require us to attach. An
+    unstated (None) answer never raises here; emit refuses it separately.
     """
     sb = r.schedule_b_answers
-    return {
+    out: dict = {
         "f1120s_sch_b_accounting_method_cash":
             sb.accounting_method == AccountingMethod.CASH,
         "f1120s_sch_b_accounting_method_accrual":
@@ -196,11 +249,100 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
         "f1120s_sch_b_business_activity_description":
             sb.business_activity_description,
         "f1120s_sch_b_product_or_service": sb.product_or_service,
-        "f1120s_sch_b_any_c_corp_subsidiaries": sb.any_c_corp_subsidiaries,
-        "f1120s_sch_b_has_any_foreign_shareholders":
-            sb.has_any_foreign_shareholders,
-        "f1120s_sch_b_owns_foreign_entity": sb.owns_foreign_entity,
     }
+    for field, line, attachment in _SCH_B_YES_NO:
+        answer = getattr(sb, field)
+        if answer is True and attachment:
+            raise NotImplementedError(
+                f"Schedule B line {line} (`{field}`) is stated true, which "
+                f"requires {attachment}; tenforty does not model it, so this "
+                "return cannot be completed automatically. File by hand, or "
+                "set the answer to false if it is in fact No.")
+        if answer is False and field == "receipts_and_assets_under_250k":
+            raise NotImplementedError(_SCH_L_M1_REFUSAL)
+        out[f"f1120s_sch_b_{field}"] = answer is True
+        out[f"f1120s_sch_b_{field}_no"] = answer is False
+    # Line 7: a single "check this box" cell (no No box); stated False = clear.
+    out["f1120s_sch_b_issued_oid_debt_instruments"] = (
+        sb.issued_oid_debt_instruments is True)
+    # Line 8: dollar amount; omitted (blank) unless stated.
+    if sb.net_unrealized_built_in_gain is not None:
+        out["f1120s_sch_b_net_unrealized_built_in_gain"] = irs_round(
+            sb.net_unrealized_built_in_gain)
+    return out
+
+
+def check_schedule_b_for_emit(scenario: Scenario) -> None:
+    """Refuse to print Schedule B with an unstated or unanswerable question.
+
+    Called at PDF EMIT (the compute path never needs the answers). Gathers every
+    problem and raises ONE ``ValueError`` listing all of them, so a scenario is
+    fixed in one pass:
+
+    * every Yes/No answer and line 7 must be stated (None is refused), except
+      line 14b, which is required only when line 14a is Yes, and line 16, which
+      is required for tax year 2023 and later;
+    * line 14b stated while 14a is No is refused (the form does not ask it);
+    * line 16 stated for 2021 / 2022 is refused (that question is not on those
+      forms);
+    * line 11 stated true while the numbers say receipts or total assets reach
+      $250,000 is refused as inconsistent. The test is the SAME function the
+      Schedule L / M-1 attestation gate uses (``_has_scorp_large_balance_sheet``)
+      so the two can never disagree about which side of the threshold a return
+      is on.
+    """
+    r = scenario.s_corp_return
+    if r is None:
+        return
+    year = scenario.config.year
+    sb = r.schedule_b_answers
+    missing: list[str] = []
+    problems: list[str] = []
+
+    def stated(field):
+        return getattr(sb, field) is not None
+
+    for field, line, _attachment in _SCH_B_YES_NO:
+        if field == "filed_required_1099s":
+            if sb.payments_requiring_1099s is True and not stated(field):
+                missing.append(f"{field} (line 14b: required because line 14a "
+                               "is Yes)")
+            elif sb.payments_requiring_1099s is not True and stated(field):
+                problems.append(
+                    f"`{field}` (line 14b) is stated but line 14a is not Yes; "
+                    "the form asks 14b only when 14a is Yes, so leave it null")
+            continue
+        if field == "digital_asset_transactions":
+            if year >= 2023 and not stated(field):
+                missing.append(f"{field} (line 16)")
+            elif year < 2023 and stated(field):
+                problems.append(
+                    f"`{field}` (line 16) is stated, but the {year} Form "
+                    "1120-S has no line 16 (digital assets) — leave it null")
+            continue
+        if not stated(field):
+            missing.append(f"{field} (line {line})")
+    if sb.issued_oid_debt_instruments is None:
+        missing.append("issued_oid_debt_instruments (line 7)")
+    if (sb.receipts_and_assets_under_250k is True
+            and _has_scorp_large_balance_sheet(scenario)):
+        problems.append(
+            "`receipts_and_assets_under_250k` (line 11) is stated true, but "
+            "s_corp_return.income.gross_receipts or total_assets is $250,000 "
+            "or more — the answer cannot be Yes; fix the answer or the "
+            "figures")
+    if missing or problems:
+        parts = []
+        if missing:
+            parts.append(
+                "Form 1120-S PDF emission needs every Schedule B question "
+                f"answered for tax year {year}; unstated: "
+                + "; ".join(missing)
+                + ". Set each to true or false in "
+                "s_corp_return.schedule_b_answers (it is null in this "
+                "scenario).")
+        parts.extend(problems)
+        raise ValueError(" ".join(parts))
 
 
 # Schedule K lines 1-10 (income, far-right column) and lines 11-12d (+16f)

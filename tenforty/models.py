@@ -677,18 +677,76 @@ class SCorpShareholder:
 
 @dataclass
 class SCorpScheduleBAnswers:
-    """Schedule B Yes/No answers and entity-description fields for Form 1120-S.
+    """Schedule B answers and entity-description fields for Form 1120-S.
 
     ``business_activity_code`` is a six-digit NAICS code (e.g. "541990").
     It is passed verbatim to the PDF fill layer; no validation is performed here.
+
+    Every Yes/No question on the form has its own field, named for the question
+    it answers (the line number is in the comment). ``None`` means UNSTATED:
+    the compute path never needs an answer, but PDF EMIT refuses an unstated
+    answer rather than print a signed return with the question's boxes blank
+    (see ``f1120s.check_schedule_b_for_emit``, which lists every missing field
+    at once). ``True`` / ``False`` mark the form's Yes / No box.
+
+    Several answers stand for an attachment tenforty does not model; a ``True``
+    for those raises ``NotImplementedError`` at compute (Schedule B-1, the
+    line 4a/4b detail tables, the line 5a/5b share counts, Form 8990, Form 8996,
+    the line 12 amount). Line 11 ``False`` raises for the same reason (Schedules
+    L and M-1). Line 14b exists to be answered only when line 14a is Yes; line 16
+    (digital assets) exists on the 2023 and later forms only.
     """
     accounting_method: AccountingMethod
     business_activity_code: str
     business_activity_description: str
     product_or_service: str
-    any_c_corp_subsidiaries: bool
-    has_any_foreign_shareholders: bool
-    owns_foreign_entity: bool
+    # Line 3: any shareholder a disregarded entity, a trust, an estate, or a
+    # nominee or similar person?
+    shareholder_disregarded_entity_trust_estate_or_nominee: bool | None = None
+    # Line 4a: owns directly 20% or more, or indirectly 50% or more, of the
+    # total stock of any foreign or domestic corporation?
+    owns_20pct_stock_of_any_corporation: bool | None = None
+    # Line 4b: owns directly 20% or more, or indirectly 50% or more, of the
+    # profit, loss, or capital of any foreign or domestic partnership, or of the
+    # beneficial interest of a trust?
+    owns_20pct_interest_in_partnership_or_trust: bool | None = None
+    # Line 5a: any outstanding shares of restricted stock?
+    restricted_stock_outstanding: bool | None = None
+    # Line 5b: any outstanding stock options, warrants, or similar instruments?
+    stock_options_or_warrants_outstanding: bool | None = None
+    # Line 6: filed, or required to file, Form 8918 (material advisor
+    # disclosure)?
+    filed_form_8918: bool | None = None
+    # Line 7: the single box "issued publicly offered debt instruments with
+    # original issue discount" (checked = True; a stated False leaves it clear).
+    issued_oid_debt_instruments: bool | None = None
+    # Line 8: net unrealized built-in gain (dollars). None leaves the line blank.
+    net_unrealized_built_in_gain: float | None = None
+    # Line 9: election under section 163(j) for any real property trade or
+    # business or farming business in effect during the year?
+    section_163j_election: bool | None = None
+    # Line 10 (10a-10c share one Yes/No pair): satisfies one or more of the
+    # Form 8990 business-interest-expense conditions?
+    form_8990_conditions_met: bool | None = None
+    # Line 11 (11a and 11b share one pair): total receipts AND total assets both
+    # under $250,000?
+    receipts_and_assets_under_250k: bool | None = None
+    # Line 12: non-shareholder debt canceled, forgiven, or terms modified to
+    # reduce principal?
+    nonshareholder_debt_canceled: bool | None = None
+    # Line 13: a qualified subchapter S subsidiary election terminated or revoked?
+    qsub_election_terminated: bool | None = None
+    # Line 14a: made payments that would require filing Form(s) 1099?
+    payments_requiring_1099s: bool | None = None
+    # Line 14b: filed, or will file, the required Form(s) 1099? Answered only
+    # when 14a is Yes; must be None when 14a is No.
+    filed_required_1099s: bool | None = None
+    # Line 15: Qualified Opportunity Fund (2021-2024: attaching Form 8996 to
+    # certify; 2025: intends to self-certify).
+    qualified_opportunity_fund: bool | None = None
+    # Line 16 (2023 and later forms only): received or disposed of a digital
+    # asset during the year? Must be None for 2021 and 2022.
+    digital_asset_transactions: bool | None = None
 
 
 @dataclass

@@ -27,7 +27,7 @@ from pypdf import PdfReader
 from tenforty import years
 from tenforty.orchestrator import ReturnOrchestrator
 from tests._pdf_pixels import dark_pixels_in_rect, widget_rect
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 
 _P1 = "topmostSubform[0].Page1[0]."
 _NAME_BLOCK_2021_2024 = _P1 + "CalendarYear-TypePrint_ReadOrder[0]."
@@ -103,7 +103,7 @@ class _EmitBase(unittest.TestCase):
 
     def _emit(self, year, shareholder_pcts=None):
         s = _make_v1_scenario(shareholder_pcts=shareholder_pcts)
-        s.config.year = year
+        set_tax_year(s, year)
         out = Path(self._tmp.name) / f"fed_{year}"
         self.orch.run_full_federal_scorp_return(s, out)
         return out / f"f1120s_{year}.pdf"
