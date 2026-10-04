@@ -257,7 +257,9 @@ def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
         "rrb_tier_1_2_amount": ca540.rrb_tier_1_2_amount,
         "pfl_amount": ca540.pfl_amount,
         "voluntary_contributions": [
-            {"name": v.name, "amount": v.amount}
+            # Same keys the CA YAML loader reads, so the snapshot's list can
+            # be pasted back into a `ca540:` block.
+            {"fund_code": v.fund_code, "amount": v.amount}
             for v in ca540.voluntary_contributions
         ],
         "divergences": [

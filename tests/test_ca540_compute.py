@@ -866,6 +866,27 @@ class F540AmountDueLinesTests(unittest.TestCase):
                     self._face(year, withholding=1_000, interest_and_penalties=0)[112], 0)
                 self.assertIsNone(self._face(year, withholding=1_000)[112])
 
+    def test_line_99_subtracts_line_98_under_the_years_own_key(self):
+        # Line 98 is "Amount of line 97 you want applied to your <year+1>
+        # estimated tax"; nothing produces it yet, so the key is supplied here.
+        from tenforty.mappings.pdf_f540 import PdfF540
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                values = compute(
+                    year=year, filing_status=FilingStatus.SINGLE,
+                    federal_agi=80_000, ca_agi=80_000, ca540=CA540Return(),
+                    ca_withholding=self._tax(year) + 100)
+                line_99 = PdfF540.get_derivations(year)[self._cell(year, 99)]
+                self.assertEqual(line_99(values), 100)
+                applied = {**values, f"f540_line98_applied_to_{year + 1}_estimated": 30}
+                self.assertEqual(line_99(applied), 100 - 30)
+                # A key named for any other year is not this form's line 98.
+                for other in self.YEARS:
+                    if other != year:
+                        stray = {**values,
+                                 f"f540_line98_applied_to_{other + 1}_estimated": 30}
+                        self.assertEqual(line_99(stray), 100, other)
+
     def test_total_liability_does_not_change_with_line_112(self):
         # f540_total_liability is the tax position (Schedule X reads it); line
         # 112 is interest and penalties and stays out of it.
@@ -877,6 +898,135 @@ class F540AmountDueLinesTests(unittest.TestCase):
         self.assertEqual(with_112["f540_total_liability"], base["f540_total_liability"])
         self.assertEqual(with_112["f540_interest_and_penalties"], 25)
         self.assertIsNone(base["f540_interest_and_penalties"])
+
+
+class F540NonrefundableCreditClampTests(unittest.TestCase):
+    """The 540's credits are nonrefundable. The form face, every year 2021-2025:
+    line 33 "Subtract line 32 from line 31. If less than zero, enter 0." and
+    line 48 "Subtract line 47 from line 35. If less than zero, enter 0."
+    ``f540_total_liability`` must follow the same two clamps, so a credit larger
+    than the tax never turns into an overpayment. Synthetic filers only."""
+
+    YEARS = (2021, 2022, 2023, 2024, 2025)
+
+    def _compute(self, year, agi, *, withholding=0, renter=False, **ca540):
+        return compute(
+            year=year, filing_status=FilingStatus.SINGLE,
+            federal_agi=agi, ca_agi=agi, ca540=CA540Return(**ca540),
+            ca_withholding=withholding, renter_credit_eligible=renter)
+
+    def test_exemption_credit_larger_than_the_tax_is_not_an_overpayment(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                r = self._compute(year, 8_000)
+                # The premise: the credit really does exceed the tax here.
+                self.assertGreater(r["f540_ca_tax"], 0)
+                self.assertGreater(r["f540_exemption_credit"], r["f540_ca_tax"])
+                self.assertEqual(r["f540_total_liability"], 0)
+
+    def test_only_payments_come_back_when_the_exemption_credit_exceeds_the_tax(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                r = self._compute(year, 8_000, withholding=500)
+                self.assertEqual(r["f540_total_liability"], -500)
+
+    def test_renter_credit_larger_than_line_35_is_not_an_overpayment(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                # Tax a little above the exemption credit, renter credit above
+                # what is left: line 48 clamps to zero.
+                agi = next(
+                    a for a in range(15_000, 40_000, 100)
+                    if 0 < (self._compute(year, a)["f540_ca_tax"]
+                            - self._compute(year, a)["f540_exemption_credit"]) < 40)
+                r = self._compute(year, agi, renter=True)
+                left = r["f540_ca_tax"] - r["f540_exemption_credit"]
+                self.assertGreater(r["f540_renter_credit"], left)   # premise
+                self.assertEqual(r["f540_total_liability"], 0)
+
+    def _line_33(self, year, agi):
+        r = self._compute(year, agi)
+        return r["f540_ca_tax"] - r["f540_exemption_credit"]
+
+    def test_ptet_credit_beyond_what_line_48_absorbs_refuses(self):
+        # Unlike the exemption and renter credits, an unused PTET credit
+        # carries forward (FTB 3804-CR). No carryover is modeled, so the excess
+        # is refused rather than clamped away.
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                room = self._line_33(year, 80_000)
+                self.assertGreater(room, 1_000)                       # premise
+                with self.assertRaises(NotImplementedError) as ctx:
+                    self._compute(year, 80_000, ptet_credit=room + 1)
+                msg = str(ctx.exception)
+                self.assertIn("FTB 3804-CR", msg)
+                self.assertIn("carryover", msg)
+                self.assertIn("ptet_credit", msg)
+
+    def test_ptet_credit_that_line_48_fully_absorbs_computes(self):
+        # Control just under the boundary: the whole credit is used, nothing to
+        # carry, so it computes — to exactly zero tax.
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                room = self._line_33(year, 80_000)
+                r = self._compute(year, 80_000, ptet_credit=room)
+                self.assertEqual(r["f540_ptet_credit"], room)
+                self.assertEqual(r["f540_total_liability"], 0)
+
+    def test_ptet_credit_crowded_out_by_the_renter_credit_refuses(self):
+        # Line 47 holds both credits; when together they exceed line 35 some
+        # credit goes unused, and with a PTET credit present that is a
+        # carryover question.
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                agi = 35_000
+                room = self._line_33(year, agi)
+                renter = self._compute(year, agi, renter=True)["f540_renter_credit"]
+                self.assertGreater(renter, 0)                         # premise
+                self.assertGreater(room, renter)                      # premise
+                with self.assertRaises(NotImplementedError):
+                    self._compute(year, agi, renter=True, ptet_credit=room - renter + 1)
+                ok = self._compute(year, agi, renter=True, ptet_credit=room - renter)
+                self.assertEqual(ok["f540_total_liability"], 0)
+
+    def test_credits_smaller_than_the_tax_are_unchanged(self):
+        # Control: where no clamp bites, the liability is tax less credits.
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                r = self._compute(year, 80_000, ptet_credit=200)
+                self.assertEqual(
+                    r["f540_total_liability"],
+                    r["f540_ca_tax"] - r["f540_exemption_credit"] - 200)
+
+    def test_total_liability_agrees_with_the_printed_amount_due_or_refund(self):
+        # One story: a positive liability is printed line 114, a negative one
+        # is minus printed line 115 (line 112 left at zero), across credit-
+        # exceeds-tax, balance-due and refund postures.
+        from tenforty.mappings.pdf_f540 import PdfF540
+        cells = F540AmountDueLinesTests
+        grid = [
+            dict(agi=8_000), dict(agi=8_000, withholding=500),
+            dict(agi=12_000, renter=True), dict(agi=20_000, renter=True, withholding=40),
+            dict(agi=80_000), dict(agi=80_000, withholding=9_000),
+            dict(agi=80_000, ptet_credit=200),
+            dict(agi=80_000, ptet_credit=1_000, withholding=3_000),
+            dict(agi=80_000, estimated_tax_penalty=40),
+            dict(agi=80_000, use_tax=75, withholding=20),
+            dict(agi=8_000, voluntary_contributions=[
+                VoluntaryContribution(fund_code="WLD", amount=50.0)]),
+        ]
+        for year in self.YEARS:
+            d = PdfF540.get_derivations(year)
+            for case in grid:
+                with self.subTest(year=year, case={k: v for k, v in case.items()
+                                                   if k != "voluntary_contributions"}):
+                    r = self._compute(
+                        year, case["agi"],
+                        **{k: v for k, v in case.items() if k != "agi"})
+                    due = d[cells._cell(year, 114)](r)
+                    refund = d[cells._cell(year, 115)](r)
+                    printed = due if due is not None else -(refund or 0)
+                    self.assertEqual(r["f540_total_liability"], printed)
 
 
 class F540Line13FederalAgiTests(unittest.TestCase):
