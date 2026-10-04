@@ -2045,6 +2045,8 @@ class ReturnOrchestrator:
             "sch_ca_taxpayer_ssn": scenario.config.ssn,
             "sch_d_540_taxpayer_name": scenario.config.full_name,
             "sch_d_540_taxpayer_ssn": scenario.config.ssn,
+            **form_f540.presentation_keys(
+                scenario.config, scenario.w2s, scenario.config.year),
         }
         return {
             **sch_ca_results,

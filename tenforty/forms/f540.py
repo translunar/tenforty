@@ -10,7 +10,9 @@ the AGI phaseout (when federal AGI exceeds the per-year threshold)
 is gated in the final-liability compute, not here.
 """
 
+import datetime
 import math
+from collections.abc import Mapping, Sequence
 
 from tenforty.models import CA540Return, FilingStatus
 from tenforty.params import california as ca_params
@@ -223,3 +225,81 @@ def compute(
         "f540_total_liability": irs_round(final),
         "f540_filing_status": filing_status,
     }
+
+
+# Form 540 line 7 "Personal": enter 1 in the box for filing status 1, 3 or 4
+# (Single, MFS, HOH) and 2 for filing status 2 or 5 (MFJ, QSS). Line 6 ("someone
+# can claim you") reduces this, but that box is not modeled, so it stays unset.
+_PERSONAL_EXEMPTION_COUNT: dict[FilingStatus, int] = {
+    FilingStatus.SINGLE: 1,
+    FilingStatus.MARRIED_SEPARATELY: 1,
+    FilingStatus.HEAD_OF_HOUSEHOLD: 1,
+    FilingStatus.MARRIED_JOINTLY: 2,
+    FilingStatus.QUALIFYING_WIDOW: 2,
+}
+
+
+def presentation_keys(
+    config,
+    w2s: Sequence,
+    year: int,
+) -> dict[str, object]:
+    """Non-money / presentation values for the Form 540 face, from the scenario.
+
+    Header identity, date of birth, the line 7 / line 10 exemption count-and-
+    amount boxes, line 11 and line 12. Values here are SCENARIO-derived (not
+    compute outputs); the orchestrator merges them into the CA results dict and
+    ``pdf_f540`` places them.
+
+    * Line 7 amount = count x per-person credit, where the per-person credit is
+      the year's ``exemption_credit[filing_status]`` split over the count (the
+      param table already stores the MFJ/QSS figure as 2 x the single figure).
+    * Line 10 = number of dependents x the year's dependent exemption amount;
+      omitted entirely at zero (blank-by-design). Lines 8 and 9 (blind / senior)
+      are not modeled and stay blank.
+    * Line 11 = line 7 + line 8 + line 9 + line 10, so it equals
+      ``f540_exemption_credit`` (line 32) by construction.
+    * Line 12 = the sum of W-2 box 16 (``W2.state_wages``) across all W-2s, per
+      the 540 instruction "State wages from your federal Form(s) W-2, box 16".
+      Printed only when the return has W-2s. (The CA compute does not aggregate
+      box 16 anywhere else — only the test oracle takes it as an input.)
+    """
+    params = ca_params.load(year)
+    fs = config.filing_status
+    count = _PERSONAL_EXEMPTION_COUNT[fs]
+    personal_total = compute_exemption_credit(year, fs)
+    if personal_total % count:
+        raise ValueError(
+            f"{year} exemption credit {personal_total} for {fs.value} is not a "
+            f"multiple of the personal-exemption count {count}")
+    dependents = len(config.dependents)
+    dependent_total = params.dependent_exemption_amount * dependents
+
+    out: dict[str, object] = {
+        "f540_taxpayer_first_name": config.first_name,
+        "f540_taxpayer_last_name": config.last_name,
+        "f540_taxpayer_dob": _mm_dd_yyyy(config.birthdate),
+        "f540_address_street": config.address,
+        "f540_address_city": config.address_city,
+        "f540_address_state": config.address_state,
+        "f540_address_zip": config.address_zip,
+        "f540_line7_count": count,
+        "f540_line7_amount": personal_total,
+        "f540_line11_exemption_amount": personal_total + dependent_total,
+    }
+    if config.spouse_first_name or config.spouse_last_name:
+        out["f540_spouse_first_name"] = config.spouse_first_name
+        out["f540_spouse_last_name"] = config.spouse_last_name
+        out["f540_spouse_ssn"] = config.spouse_ssn
+    if dependents:
+        out["f540_line10_count"] = dependents
+        out["f540_line10_amount"] = dependent_total
+    if w2s:
+        out["f540_line12_state_wages"] = irs_round(sum(w.state_wages for w in w2s))
+    # Drop empty identity strings so a missing field stays blank, never "".
+    return {k: v for k, v in out.items() if v != ""}
+
+
+def _mm_dd_yyyy(iso_date: str) -> str:
+    """ISO ``YYYY-MM-DD`` -> the form's ``mm/dd/yyyy``. Loud on any other shape."""
+    return datetime.date.fromisoformat(iso_date).strftime("%m/%d/%Y")
