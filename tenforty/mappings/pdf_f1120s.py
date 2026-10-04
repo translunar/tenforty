@@ -404,6 +404,24 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
         return _CHECKBOX_STATES_BY_YEAR[year]
 
     @classmethod
+    def get_entity_header_fields(cls, year: int) -> dict[str, str]:
+        """Entity-identity key -> page-1 header text cell (name/address block and
+        items A, D, E, F, I).
+
+        ADDITIVE and independent of the compute-key registries above: these
+        keys are NOT ``f1120s.compute`` outputs. Like the CA 100S entity
+        identity, their values are injected at emit time from ``SCorpReturn``
+        (see ``_entity_header_values`` in the orchestrator), so they live
+        outside the compute-key partition (``_MAPPING_<year>`` /
+        ``_AGGREGATIONS_<year>`` / ``_SUPPRESSED_<year>``). Every path was
+        certified per year by a marker-probe render of that year's own template
+        (each cell filled with its own label, page rendered, label read against
+        the printed item caption), not inferred from field numbering."""
+        if year not in _ENTITY_HEADER_BY_YEAR:
+            raise ValueError(f"No Form 1120-S entity header cells for year {year}")
+        return _ENTITY_HEADER_BY_YEAR[year]
+
+    @classmethod
     def get_amended_mark(cls, year: int) -> tuple[str, str]:
         """(field_path, ON-state) for box H(4) "Amended return" (§4a).
 
@@ -612,4 +630,50 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
     2021: _CHECKBOX_STATES_2024,
     2022: _CHECKBOX_STATES_2024,
     2023: _CHECKBOX_STATES_2024, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+}
+
+
+# ── Page-1 entity header identity cells ──────────────────────────────────────
+# 2021-2024 share one layout: the address block is name / street / ONE combined
+# "City or town, state or province, country, and ZIP" cell, item A sits in the
+# ABC subform (f1_7), and items D/E/F/I are f1_9..f1_12. 2025 splits the address
+# into city / state / country / ZIP cells (the country cell is left blank: a
+# domestic return) and shifts items A and D/E/F/I to f1_11 and f1_13..f1_16.
+_P1 = "topmostSubform[0].Page1[0]."
+_ENTITY_HEADER_2021_2024: dict[str, str] = {
+    "f1120s_entity_s_election_date":
+        _P1 + "ABC[0].f1_7[0]",
+    "f1120s_entity_name":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_4[0]",
+    "f1120s_entity_street":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_5[0]",
+    "f1120s_entity_city_state_zip":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_6[0]",
+    "f1120s_entity_ein":               _P1 + "f1_9[0]",
+    "f1120s_entity_date_incorporated": _P1 + "f1_10[0]",
+    "f1120s_entity_total_assets":      _P1 + "f1_11[0]",
+    "f1120s_entity_shareholder_count": _P1 + "f1_12[0]",
+}
+_ENTITY_HEADER_2025: dict[str, str] = {
+    "f1120s_entity_s_election_date":
+        _P1 + "ABC[0].f1_11[0]",
+    "f1120s_entity_name":
+        _P1 + "Date_Name_ReadOrder[0].f1_4[0]",
+    "f1120s_entity_street":
+        _P1 + "Date_Name_ReadOrder[0].f1_5[0]",
+    "f1120s_entity_city":
+        _P1 + "Date_Name_ReadOrder[0].f1_7[0]",
+    "f1120s_entity_state":
+        _P1 + "Date_Name_ReadOrder[0].f1_8[0]",
+    "f1120s_entity_zip":
+        _P1 + "Date_Name_ReadOrder[0].f1_10[0]",
+    "f1120s_entity_ein":               _P1 + "f1_13[0]",
+    "f1120s_entity_date_incorporated": _P1 + "f1_14[0]",
+    "f1120s_entity_total_assets":      _P1 + "f1_15[0]",
+    "f1120s_entity_shareholder_count": _P1 + "f1_16[0]",
+}
+_ENTITY_HEADER_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: _ENTITY_HEADER_2021_2024, 2022: _ENTITY_HEADER_2021_2024,
+    2023: _ENTITY_HEADER_2021_2024, 2024: _ENTITY_HEADER_2021_2024,
+    2025: _ENTITY_HEADER_2025,
 }
