@@ -192,6 +192,37 @@ def _flatten_k1_party(
     return flat
 
 
+def _format_mmddyyyy(d) -> str:
+    """A date as the IRS printed-form convention MM/DD/YYYY (2020-01-01 ->
+    "01/01/2020"), for the 1120-S header items A and E."""
+    return d.strftime("%m/%d/%Y")
+
+
+def _entity_header_values(r) -> dict:
+    """Entity identity values for the Form 1120-S page-1 header block, keyed by
+    the ``f1120s_entity_*`` names ``PdfF1120S.get_entity_header_fields`` maps.
+
+    Injected at emit from the SCorpReturn (like the CA 100S identity block),
+    not produced by ``f1120s.compute``. A superset is returned: the 2021-2024
+    forms print one combined "City, ST ZIP" cell while 2025 splits city / state
+    / ZIP, and each year's mapping consumes only the keys it has a cell for."""
+    a = r.address
+    return {
+        "f1120s_entity_name": r.name,
+        "f1120s_entity_street": a.street,
+        "f1120s_entity_city_state_zip": f"{a.city}, {a.state} {a.zip_code}",
+        "f1120s_entity_city": a.city,
+        "f1120s_entity_state": a.state,
+        "f1120s_entity_zip": a.zip_code,
+        "f1120s_entity_ein": r.ein,
+        "f1120s_entity_s_election_date":
+            _format_mmddyyyy(r.s_election_effective_date),
+        "f1120s_entity_date_incorporated": _format_mmddyyyy(r.date_incorporated),
+        "f1120s_entity_total_assets": r.total_assets,
+        "f1120s_entity_shareholder_count": len(r.shareholders),
+    }
+
+
 def _format_rate_percent(rate: float) -> str:
     """Franchise-tax rate as the Form 100S line-21 percentage box prints it:
     0.015 -> "1.5"."""
@@ -1625,12 +1656,18 @@ class ReturnOrchestrator:
         # not amended nothing is added, so the box stays /Off.
         main_mapping = PdfF1120S.get_mapping(year)
         main_checkbox = PdfF1120S.get_checkbox_states(year)
-        main_values: dict = results
+        # Page-1 header identity block (name/address, items A/D/E/F/I): injected
+        # from the SCorpReturn, additive to the compute results (mirrors the CA
+        # 100S entity identity at _emit_ca_scorp_pdfs_internal).
+        header_cells = PdfF1120S.get_entity_header_fields(year)
+        main_mapping = {**main_mapping, **header_cells}
+        main_values: dict = {
+            **results, **_entity_header_values(scenario.s_corp_return)}
         if amended:
             m_path, m_on = PdfF1120S.get_amended_mark(year)
             main_mapping = {**main_mapping, "f1120s_amended_return": m_path}
             main_checkbox = {**main_checkbox, "f1120s_amended_return": m_on}
-            main_values = {**results, "f1120s_amended_return": True}
+            main_values = {**main_values, "f1120s_amended_return": True}
         # Pass the full results dict — aggregation and derivation lambdas
         # reference keys that are NOT in _MAPPING_<year>, so filtering to
         # mapping keys alone would silently drop those inputs.
