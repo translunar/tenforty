@@ -143,17 +143,16 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # fields-on-template + emit gates now cover 2022.
 })
 
-# Forms that legitimately carry NO get_derivations in ANY year — Schedule CA's
-# adjustments are all direct-mapped; a form here is exempt from the
+# Forms that legitimately carry NO get_derivations in ANY year — EMPTY since
+# Schedule CA grew its section-total derivations (lines 1z/9a/10/25/26 + the
+# line 1a Col A mirror; see pdf_sch_ca._install_sch_ca_totals). A form here is exempt from the
 # derivations-surface completeness check (test_derivations_surface_complete).
 # The check otherwise requires that a form carrying derivations in ANY supported
 # non-gapped year carries them in EVERY such year; a genuinely derivation-free
 # form has no anchor year and would pass trivially, but is listed explicitly so
 # the intent is reviewed — and the gate re-guards each entry, reddening if a
 # listed form ever grows a derivation.
-ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset({
-    ("california", "sch_ca"),
-})
+ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
