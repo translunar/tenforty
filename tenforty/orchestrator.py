@@ -1851,6 +1851,7 @@ class ReturnOrchestrator:
             "f100s_entity_fein": r.ein,
             "f100s_entity_street": r.address.street,
             "f100s_entity_city": r.address.city,
+            "f100s_entity_state": r.address.state,
             "f100s_entity_zip": r.address.zip_code,
             "f100s_tax_rate": rate,
             # f100s_entity_ca_corp_number: no model source in v1 -> left blank.

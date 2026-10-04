@@ -13,7 +13,7 @@ So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED` (2024-2025) are built
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
-The six f100s_entity_* keys carry the corporation's identity onto Side 1; their
+The seven f100s_entity_* keys carry the corporation's identity onto Side 1; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
@@ -48,6 +48,7 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_fein":                    "1005",  # Side 1 FEIN
     "f100s_entity_street":                  "1008",  # Side 1 Street address
     "f100s_entity_city":                    "1010",  # Side 1 City
+    "f100s_entity_state":                   "1011",  # Side 1 State (between City 1010 and ZIP 1012; marker-probe certified 2021-2025)
     "f100s_entity_zip":                     "1012",  # Side 1 ZIP code
 }
 _MAPPING_BARE: dict[str, str] = dict(_SUFFIX)                              # 2021-2023
