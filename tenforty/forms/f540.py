@@ -121,7 +121,7 @@ def compute(
     ca_itemized: int | None = None,
     renter_credit_eligible: bool = False,
     ca_withholding: int = 0,
-) -> dict[str, int | FilingStatus]:
+) -> dict[str, int | FilingStatus | None]:
     """California Form 540 final-liability compute.
 
     Pipeline: AGI phaseout gate → deduction selection → taxable income →
@@ -167,6 +167,12 @@ def compute(
     estimated_payments = int(ca540.estimated_payments)
     use_tax = int(ca540.use_tax)
     estimated_tax_penalty = int(ca540.estimated_tax_penalty)
+    # Line 112: carried verbatim, stays None when unstated (the emit step
+    # decides whether unstated is acceptable). Deliberately NOT part of
+    # f540_total_liability, which is the tax position.
+    interest_and_penalties = (
+        None if ca540.interest_and_penalties is None
+        else int(ca540.interest_and_penalties))
     ptet_credit = int(ca540.ptet_credit)
 
     std_ded = compute_standard_deduction(year, filing_status)
@@ -220,6 +226,9 @@ def compute(
         "f540_voluntary_contributions": irs_round(voluntary_total),
         "f540_use_tax": irs_round(use_tax),
         "f540_estimated_tax_penalty": irs_round(estimated_tax_penalty),
+        "f540_interest_and_penalties": (
+            None if interest_and_penalties is None
+            else irs_round(interest_and_penalties)),
         "f540_estimated_payments": irs_round(estimated_payments),
         "f540_line71_ca_withholding": irs_round(ca_withholding),
         "f540_total_liability": irs_round(final),

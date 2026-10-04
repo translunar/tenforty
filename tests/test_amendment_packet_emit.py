@@ -65,11 +65,13 @@ _REVISION = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
 def _with_ca(scenario):
     """CA-resident twin of a battery scenario: flip every CA scope-out True,
     state full-year health care coverage (required to emit the 540) and attach
-    an empty CA540Return so the CA pipeline runs."""
+    a CA540Return that states line 112 as 0 (filed and paid on time — required
+    to emit a balance-due 540) so the CA pipeline runs."""
     cfg = dataclasses.replace(
         scenario.config, full_year_health_care_coverage=True,
         **{k: True for k in CA_SCOPE_OUT_FIELDS})
-    return dataclasses.replace(scenario, config=cfg, ca540=CA540Return())
+    return dataclasses.replace(
+        scenario, config=cfg, ca540=CA540Return(interest_and_penalties=0.0))
 
 
 def _bump_interest(scenario, amount):
@@ -306,6 +308,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         reviewed_entry = resolve_divergence_id(year, reviewed_id)
 
         ca540 = CA540Return(
+            interest_and_penalties=0.0,
             rrb_tier_1_2_amount=5_000.0,
             divergences=[user_div],
             reviewed_divergence_ids=(reviewed_id,),

@@ -545,6 +545,8 @@ class CaWithholdingTests(unittest.TestCase):
             # Line 13 — federal AGI carried onto the 540 (== the federal_agi
             # input); newly emitted so line 13 stops printing blank.
             "f540_federal_agi": 50_000,
+            # Line 112 — unstated by default (None); never part of the liability.
+            "f540_interest_and_penalties": None,
         }
         self.assertEqual(omitted, expected_with_new_key)
 
@@ -677,6 +679,204 @@ class F540SettlementChainTests(unittest.TestCase):
         self.assertGreater(line100, 0)
         self.assertEqual(line100, line111)  # tax due == amount owed (no vol/penalty)
         self.assertIsNone(line115)
+
+
+class F540AmountDueLinesTests(unittest.TestCase):
+    """540 lines 111 / 112 / 113 / 114 / 115, every supported year, per the FTB
+    booklet (the text for lines 111, 114 and 115 is identical 2021-2025):
+
+    * Line 111: no amount on line 99 -> line 94 + 96 + 100 + 110. An amount on
+      line 99 and line 110 more than it -> line 110 - line 99.
+    * Line 114: an amount on line 111 -> line 111 + 112 + 113. Otherwise, when
+      line 110 + 112 + 113 is more than line 99 -> that sum - line 99.
+    * Line 115: no line 110/112/113 -> line 99; their sum less than line 99 ->
+      line 99 - the sum.
+
+    Cells are located by the template's own tooltips (not the mapping's cell
+    tables) and read through the same resolve step the PDF fill uses. All
+    figures are synthetic; expectations are relations between printed lines.
+    """
+
+    YEARS = (2021, 2022, 2023, 2024, 2025)
+    _LINE_TOOLTIP = {
+        94: r"Line 94 ?\. Use Tax balance",
+        99: r"Line 99\. Overpaid tax available",
+        100: r"Line 100\. Tax due",
+        111: r"Line 111\. Amount You Owe",
+        112: r"Line 112\. Interest, late return",
+        113: r"Line 113\. Underpayment of estimated tax",
+        114: r"Line 114\. Total amount due",
+        115: r"Line 115\. Refund or no amount due",
+    }
+    _cells: dict = {}
+
+    @classmethod
+    def _cell(cls, year: int, line: int) -> str:
+        if year not in cls._cells:
+            import re
+            from pathlib import Path
+            from pypdf import PdfReader
+            pdf = (Path(__file__).parent.parent / "pdfs" / "california"
+                   / str(year) / "f540.pdf")
+            found = {}
+            for name, f in PdfReader(str(pdf)).get_fields().items():
+                if f.get("/FT") != "/Tx":
+                    continue
+                tu = " ".join(str(f.get("/TU")).split())
+                for n, pattern in cls._LINE_TOOLTIP.items():
+                    if re.search(pattern, tu):
+                        assert n not in found, (year, n, found[n], name)
+                        found[n] = name
+            assert set(found) == set(cls._LINE_TOOLTIP), (year, found)
+            cls._cells[year] = found
+        return cls._cells[year][line]
+
+    def _face(self, year: int, *, withholding: int = 0, agi: int = 80_000, **ca540):
+        """{line: printed int or None (blank)} for the amount-due block."""
+        from tenforty.filing.pdf import PdfFiller
+        from tenforty.mappings.pdf_f540 import PdfF540
+        values = compute(
+            year=year, filing_status=FilingStatus.SINGLE,
+            federal_agi=agi, ca_agi=agi,
+            ca540=CA540Return(**ca540), ca_withholding=withholding)
+        resolved = PdfFiller.resolve_fields(
+            PdfF540.get_mapping(year), values,
+            aggregations=PdfF540.get_aggregations(year),
+            derivations=PdfF540.get_derivations(year),
+            checkbox_states=PdfF540.get_checkbox_states(year))
+        out = {}
+        for line in self._LINE_TOOLTIP:
+            raw = resolved.get(self._cell(year, line))
+            out[line] = None if raw is None else int(raw.replace(",", ""))
+        return out
+
+    def _tax(self, year: int) -> int:
+        """The return's total tax, read off the form: line 100 with no payments."""
+        tax = self._face(year)[100]
+        self.assertGreater(tax, 1_000)
+        return tax
+
+    def test_balance_due_without_penalties(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=1_000)
+                self.assertEqual(f[99], 0)
+                self.assertEqual(f[100], self._tax(year) - 1_000)
+                self.assertEqual(f[111], f[100])
+                self.assertEqual(f[114], f[111])
+                self.assertIsNone(f[115])
+
+    def test_line_113_penalty_is_in_line_114_and_not_in_line_111(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=1_000, estimated_tax_penalty=40)
+                self.assertEqual(f[113], 40)
+                self.assertEqual(f[111], f[100])            # the penalty is NOT here
+                self.assertEqual(f[114], f[111] + 40)       # it is added here, once
+                self.assertIsNone(f[115])
+
+    def test_use_tax_balance_and_contributions_are_in_line_111(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(
+                    year, withholding=200, use_tax=500,
+                    voluntary_contributions=[
+                        VoluntaryContribution(fund_code="WLD", amount=50.0)])
+                self.assertEqual(f[94], 300)                # use tax 500 - payments 200
+                self.assertEqual(f[100], self._tax(year))   # no payments left for tax
+                self.assertEqual(f[111], f[94] + f[100] + 50)
+                self.assertEqual(f[114], f[111])
+
+    def test_overpaid_but_penalty_exceeds_it_lands_on_line_114_only(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=self._tax(year) + 30,
+                               estimated_tax_penalty=40)
+                self.assertEqual(f[99], 30)
+                self.assertIsNone(f[111])                   # line 110 is not more than 99
+                self.assertEqual(f[114], 40 - 30)
+                self.assertIsNone(f[115])
+
+    def test_overpaid_but_contribution_exceeds_it(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(
+                    year, withholding=self._tax(year) + 30,
+                    voluntary_contributions=[
+                        VoluntaryContribution(fund_code="WLD", amount=50.0)])
+                self.assertEqual(f[99], 30)
+                self.assertEqual(f[111], 50 - 30)
+                self.assertEqual(f[114], f[111])
+                self.assertIsNone(f[115])
+
+    def test_overpaid_more_than_the_penalty_is_a_reduced_refund(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=self._tax(year) + 100,
+                               estimated_tax_penalty=40)
+                self.assertEqual(f[99], 100)
+                self.assertEqual(f[115], 100 - 40)
+                self.assertIsNone(f[111])
+                self.assertIsNone(f[114])
+
+    def test_pure_refund(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=self._tax(year) + 100)
+                self.assertEqual(f[115], 100)
+                self.assertEqual(f[115], f[99])
+                self.assertIsNone(f[111])
+                self.assertIsNone(f[112])
+                self.assertIsNone(f[114])
+
+    def test_overpayment_exactly_absorbed_prints_no_amount_due(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=self._tax(year) + 40,
+                               estimated_tax_penalty=40)
+                self.assertEqual(f[115], 0)
+                self.assertIsNone(f[111])
+                self.assertIsNone(f[114])
+
+    def test_line_112_prints_and_enters_line_114(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                f = self._face(year, withholding=1_000, estimated_tax_penalty=40,
+                               interest_and_penalties=25)
+                self.assertEqual(f[112], 25)
+                self.assertEqual(f[111], f[100])
+                self.assertEqual(f[114], f[111] + 25 + 40)
+
+    def test_line_112_reduces_a_refund_and_can_exceed_it(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                tax = self._tax(year)
+                f = self._face(year, withholding=tax + 100, interest_and_penalties=25)
+                self.assertEqual(f[115], 100 - 25)
+                self.assertIsNone(f[114])
+                g = self._face(year, withholding=tax + 10, interest_and_penalties=25)
+                self.assertEqual(g[114], 25 - 10)
+                self.assertIsNone(g[111])
+                self.assertIsNone(g[115])
+
+    def test_stated_zero_line_112_prints_zero_and_unstated_stays_blank(self):
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    self._face(year, withholding=1_000, interest_and_penalties=0)[112], 0)
+                self.assertIsNone(self._face(year, withholding=1_000)[112])
+
+    def test_total_liability_does_not_change_with_line_112(self):
+        # f540_total_liability is the tax position (Schedule X reads it); line
+        # 112 is interest and penalties and stays out of it.
+        base = compute(year=2025, filing_status=FilingStatus.SINGLE,
+                       federal_agi=80_000, ca_agi=80_000, ca540=CA540Return())
+        with_112 = compute(year=2025, filing_status=FilingStatus.SINGLE,
+                           federal_agi=80_000, ca_agi=80_000,
+                           ca540=CA540Return(interest_and_penalties=25))
+        self.assertEqual(with_112["f540_total_liability"], base["f540_total_liability"])
+        self.assertEqual(with_112["f540_interest_and_penalties"], 25)
+        self.assertIsNone(base["f540_interest_and_penalties"])
 
 
 class F540Line13FederalAgiTests(unittest.TestCase):

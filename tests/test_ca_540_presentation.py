@@ -214,6 +214,115 @@ class FullYearCoverageRefusalTests(unittest.TestCase):
                 self.assertNotIn("f540_full_year_coverage_checkbox", results)
 
 
+def _line_cell(year: int, tooltip_pattern: str) -> str:
+    """The one /Tx cell on the year's 540 template whose tooltip matches."""
+    import re
+    pdf = Path(__file__).parent.parent / "pdfs" / "california" / str(year) / "f540.pdf"
+    hits = [name for name, f in PdfReader(str(pdf)).get_fields().items()
+            if f.get("/FT") == "/Tx"
+            and re.search(tooltip_pattern, " ".join(str(f.get("/TU")).split()))]
+    assert len(hits) == 1, (year, tooltip_pattern, hits)
+    return hits[0]
+
+
+LINE_100 = r"Line 100\. Tax due"
+LINE_111 = r"Line 111\. Amount You Owe"
+LINE_112 = r"Line 112\. Interest, late return"
+LINE_113 = r"Line 113\. Underpayment of estimated tax"
+LINE_114 = r"Line 114\. Total amount due"
+LINE_115 = r"Line 115\. Refund or no amount due"
+
+
+class TotalAmountDueEmitTests(unittest.TestCase):
+    """Lines 111-115 on the emitted 540 (scenario -> compute -> fill), and the
+    emit-time refusal of an unstated line 112 outside the pure-refund branch.
+    Cells are found by the template's own tooltips. Synthetic amounts only."""
+
+    def _emit(self, year, *, withheld, **ca540):
+        out = Path(tempfile.mkdtemp())
+        _, pdfs = emit_ca(
+            make_ca_scenario(year, state_tax_withheld=withheld), out, ca540=ca540)
+        v = field_values(pdfs["f540"])
+        read = lambda pattern: (  # noqa: E731
+            None if _line_cell(year, pattern) not in v
+            else int(v[_line_cell(year, pattern)].replace(",", "")))
+        return pdfs["f540"], read
+
+    def test_balance_due_prints_lines_111_to_114_and_inks_114(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                pdf, read = self._emit(
+                    year, withheld=0.0,
+                    estimated_tax_penalty=40, interest_and_penalties=25)
+                self.assertGreater(read(LINE_100), 0)
+                self.assertEqual(read(LINE_111), read(LINE_100))
+                self.assertEqual(read(LINE_112), 25)
+                self.assertEqual(read(LINE_113), 40)
+                self.assertEqual(read(LINE_114), read(LINE_111) + 25 + 40)
+                self.assertIsNone(read(LINE_115))
+                page, rect = widget_rect(pdf, _line_cell(year, LINE_114))
+                self.assertGreater(
+                    dark_pixels_in_rect(pdf, page, rect, inset=1.0), 8)
+
+    def test_balance_due_with_line_112_unstated_refuses(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                out = Path(tempfile.mkdtemp())
+                with self.assertRaises(ValueError) as ctx:
+                    emit_ca(make_ca_scenario(year, state_tax_withheld=0.0), out,
+                            ca540={"interest_and_penalties": None})
+                msg = str(ctx.exception)
+                self.assertIn("interest_and_penalties", msg)
+                self.assertIn("line 112", msg)
+                self.assertIn(str(year), msg)
+                self.assertEqual(list(out.glob("*.pdf")), [])
+
+    def test_pure_refund_may_leave_line_112_unstated(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                _, read = self._emit(year, withheld=4_000.0,
+                                     interest_and_penalties=None)
+                self.assertGreater(read(LINE_115), 0)
+                self.assertIsNone(read(LINE_111))
+                self.assertIsNone(read(LINE_112))
+                self.assertIsNone(read(LINE_114))
+
+    def test_refund_with_a_line_113_penalty_and_line_112_unstated_refuses(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                with self.assertRaises(ValueError) as ctx:
+                    emit_ca(make_ca_scenario(year, state_tax_withheld=4_000.0),
+                            ca540={"interest_and_penalties": None,
+                                   "estimated_tax_penalty": 40})
+                self.assertIn("interest_and_penalties", str(ctx.exception))
+
+    def test_refund_with_a_contribution_and_line_112_unstated_refuses(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                with self.assertRaises(ValueError) as ctx:
+                    emit_ca(make_ca_scenario(year, state_tax_withheld=4_000.0),
+                            ca540={"interest_and_penalties": None,
+                                   "voluntary_contributions": [
+                                       {"fund_code": "WLD", "amount": 50.0}]})
+                self.assertIn("interest_and_penalties", str(ctx.exception))
+
+    def test_refund_with_a_penalty_emits_once_line_112_is_stated(self):
+        # Control for the refusal above: same return, line 112 stated as 0.
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                _, plain = self._emit(year, withheld=4_000.0)
+                _, read = self._emit(year, withheld=4_000.0, estimated_tax_penalty=40)
+                self.assertEqual(read(LINE_115), plain(LINE_115) - 40)
+                self.assertEqual(read(LINE_112), 0)
+                self.assertIsNone(read(LINE_114))
+
+    def test_negative_line_112_is_refused_at_load(self):
+        with self.assertRaises(ValueError) as ctx:
+            emit_ca(make_ca_scenario(2025, state_tax_withheld=0.0),
+                    ca540={"interest_and_penalties": -5})
+        self.assertIn("negative", str(ctx.exception))
+
+
 class Line15Tests(unittest.TestCase):
     def test_negative_line_15_is_in_parentheses(self):
         self.assertEqual(

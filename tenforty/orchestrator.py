@@ -61,6 +61,7 @@ from tenforty.filing.statement_199a import render_199a_statement_a
 from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
+from tenforty.mappings.pdf_f540 import interest_and_penalties_must_be_stated
 from tenforty.mappings.pdf_f1040x import PdfF1040X
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
@@ -220,6 +221,7 @@ def _ca540_to_yaml_dict(ca540: CA540Return) -> dict:
         "estimated_payments": ca540.estimated_payments,
         "use_tax": ca540.use_tax,
         "estimated_tax_penalty": ca540.estimated_tax_penalty,
+        "interest_and_penalties": ca540.interest_and_penalties,
         "ptet_credit": ca540.ptet_credit,
         "rrb_tier_1_2_amount": ca540.rrb_tier_1_2_amount,
         "pfl_amount": ca540.pfl_amount,
@@ -1736,6 +1738,25 @@ class ReturnOrchestrator:
                 "true or false (Form 540 line 92: 'If you and your household "
                 "had full-year health care coverage, check the box'). It is "
                 "left unanswered (null) in this scenario."
+            )
+        # Line 112 (interest and penalties). Unstated is fine on a pure refund
+        # return, which never reads the line; on any other return it enters
+        # the total amount due (line 114) or reduces the refund (line 115), so
+        # emit refuses rather than count an unstated amount as zero. The CA
+        # COMPUTE path never asks.
+        if (ca_results["f540_interest_and_penalties"] is None
+                and interest_and_penalties_must_be_stated(
+                    year, ca_results)):
+            raise ValueError(
+                "Form 540 PDF emission needs `interest_and_penalties` stated "
+                f"in the CA YAML `ca540:` block for tax year {year}: this "
+                "return shows an amount you owe (line 111) or carries a "
+                "voluntary contribution (line 110) or an underpayment penalty "
+                "(line 113), so line 112 (interest, late return penalties, "
+                "and late payment penalties) enters the total amount due on "
+                "line 114 or reduces the refund on line 115. Set it to 0 if "
+                "the return is filed and paid on time, or to the amount owed. "
+                "It is left unstated (null) here."
             )
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()

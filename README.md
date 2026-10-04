@@ -133,7 +133,7 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 - Form 1120-S (S-corp return + per-shareholder Schedule K-1 fan-out)
 
 **California:**
-- Form 540 (CA individual return + tax + credits + final liability)
+- Form 540 (CA individual return + tax + credits + final liability); lines 111–115 (amount you owe, interest and penalties, underpayment penalty, total amount due, refund) follow the booklet arithmetic, with line 112 a stated input (`interest_and_penalties` in the CA YAML, required unless the return is a pure refund)
 - Schedule CA (540) (federal-vs-CA divergence kernel: auto-derived divergences + named `CA540Return` fields + multi-row worksheet rows)
 - Schedule D (540) (capital gains, federal pass-through gated by attestation; omitted from the packet when CA gains equal federal gains, per the schedule's instructions)
 - 13 year-bounded CA-specific scope-out attestations (AMT, §1202 QSBS, §1031 like-kind, kiddie tax, lump-sum distributions, RRB, PFL, etc.)

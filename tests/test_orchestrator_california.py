@@ -84,6 +84,9 @@ def _build_minimal_ca_results(scenario: Scenario) -> dict:
         "f540_voluntary_contributions": 0,
         # Page 5 — estimated tax penalty.
         "f540_estimated_tax_penalty": 0,
+        # Line 112, stated 0; the emit step reads this key to decide whether
+        # an unstated value must be refused.
+        "f540_interest_and_penalties": 0,
         # Consumed by derivations (sign-split + RB lookup).
         "f540_total_liability": 0,
         "f540_filing_status": FilingStatus.SINGLE,

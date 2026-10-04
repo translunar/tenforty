@@ -75,11 +75,9 @@ F540_BLANK_BY_DESIGN = [
      "refuses instead of printing a blank penalty)"),
     (r"Line 98\.", "line 98 carryover to next-year estimated tax: not modeled"),
     (r"Code \d+\.|Contributions\. Code", "voluntary-contribution fund lines: only the line-110 total is modeled"),
-    (r"Line 112\.|Interest and Penalties", "line 112 interest/penalties: not modeled"),
     (r"Line 113\. Underpayment of estimated tax\. Check the box",
-     "FTB 5805 / 5805F attachment boxes: no Form 5805 modeled"),
-    (r"Line 114\.", "KNOWN GAP (reported): line 114 total amount due has no compute key; line 111 "
-     "already carries the balance due, so summing 111+112+113 here would need a semantics decision"),
+     "FTB 5805 / 5805F attachment boxes: no Form 5805 modeled (documented limitation in "
+     "pdf_f540; line 113 itself is a stated amount and prints)"),
     (r"Line 116|Line 117|direct deposit|remaining amount of my refund|Account type",
      "direct deposit: no bank-account input (deliberately never in the scenario)"),
     (r"Voter information|Organ Donor|Health Care Coverage Information|Spouse / R D P \(if joint|"

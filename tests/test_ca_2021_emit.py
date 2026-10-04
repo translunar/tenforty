@@ -87,7 +87,10 @@ class CAWithholdingOrchestratorEmitTests(unittest.TestCase):
         scenario = dataclasses.replace(base, w2s=[w2], ca540=None)
         tmp_dir = Path(tempfile.mkdtemp())
         ca_yaml_path = _write_ca_yaml(
-            {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0}}, tmp_dir=tmp_dir,
+            # interest_and_penalties stated 0: this W-2 leaves a balance due,
+            # and a balance-due emit refuses an unstated line 112.
+            {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0,
+                       "interest_and_penalties": 0.0}}, tmp_dir=tmp_dir,
         )
         output_dir = Path(tempfile.mkdtemp())
         orch = ReturnOrchestrator(
