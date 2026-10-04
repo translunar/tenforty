@@ -12,7 +12,7 @@ from tenforty import years
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.orchestrator import ReturnOrchestrator
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 from tests.helpers import REPO_ROOT
 
 
@@ -49,7 +49,7 @@ class OwnershipFormatFillTests(unittest.TestCase):
 class OwnershipFormatEmitTests(unittest.TestCase):
     def _emit_value(self, year: int, pct: float) -> str:
         s = _make_v1_scenario()
-        s.config.year = year
+        set_tax_year(s, year)
         s.s_corp_return.shareholders[0].ownership_percentage = pct
         with tempfile.TemporaryDirectory() as tmp:
             orch = ReturnOrchestrator(

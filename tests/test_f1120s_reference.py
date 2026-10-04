@@ -79,10 +79,17 @@ def make_answers(method="cash"):
         business_activity_code="541990",
         business_activity_description="Consulting",
         product_or_service="Services",
-        any_c_corp_subsidiaries=False,
-        has_any_foreign_shareholders=False,
-        owns_foreign_entity=True,
+        shareholder_disregarded_entity_trust_estate_or_nominee=False,
+        owns_20pct_stock_of_any_corporation=False,
+        owns_20pct_interest_in_partnership_or_trust=True,
     )
+
+
+def make_answers_with(**overrides):
+    base = make_answers()
+    for k, v in overrides.items():
+        setattr(base, k, v)
+    return base
 
 
 def make_holder(name, pct):
@@ -431,9 +438,30 @@ class TestScheduleB(unittest.TestCase):
         self.assertEqual(
             out["f1120s_sch_b_business_activity_description"], "Consulting")
         self.assertEqual(out["f1120s_sch_b_product_or_service"], "Services")
-        self.assertIs(out["f1120s_sch_b_any_c_corp_subsidiaries"], False)
-        self.assertIs(out["f1120s_sch_b_has_any_foreign_shareholders"], False)
-        self.assertIs(out["f1120s_sch_b_owns_foreign_entity"], True)
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_stock_of_any_corporation"], False)
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_stock_of_any_corporation_no"], True)
+        self.assertIs(
+            out["f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee"],
+            False)
+        self.assertIs(
+            out["f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee_no"],
+            True)
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust"],
+            True)
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust_no"],
+            False)
+
+    def test_unstated_answer_marks_neither_box(self):
+        out = oracle.schedule_b(
+            make_answers_with(owns_20pct_stock_of_any_corporation=None))
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_stock_of_any_corporation"], False)
+        self.assertIs(
+            out["f1120s_sch_b_owns_20pct_stock_of_any_corporation_no"], False)
 
 
 class TestScheduleK(unittest.TestCase):
@@ -741,11 +769,15 @@ class TestReferenceF1120S(unittest.TestCase):
         "f1120s_sch_b_accounting_method_accrual",
         "f1120s_sch_b_accounting_method_cash",
         "f1120s_sch_b_accounting_method_other",
-        "f1120s_sch_b_any_c_corp_subsidiaries",
         "f1120s_sch_b_business_activity_code",
         "f1120s_sch_b_business_activity_description",
-        "f1120s_sch_b_has_any_foreign_shareholders",
-        "f1120s_sch_b_owns_foreign_entity", "f1120s_sch_b_product_or_service",
+        "f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust",
+        "f1120s_sch_b_owns_20pct_interest_in_partnership_or_trust_no",
+        "f1120s_sch_b_owns_20pct_stock_of_any_corporation",
+        "f1120s_sch_b_owns_20pct_stock_of_any_corporation_no",
+        "f1120s_sch_b_product_or_service",
+        "f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee",
+        "f1120s_sch_b_shareholder_disregarded_entity_trust_estate_or_nominee_no",
         "f1120s_sch_k_amt_items", "f1120s_sch_k_charitable_contributions",
         "f1120s_sch_k_foreign_transactions",
         "f1120s_sch_k_income_loss_reconciliation",

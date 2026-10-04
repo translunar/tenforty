@@ -19,7 +19,7 @@ from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.models import SCorpCAInputs
 from tenforty.orchestrator import ReturnOrchestrator
-from tests._scorp_fixtures import _make_v1_scenario
+from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 
 
 def _with_ca(scenario, first_year=False):
@@ -58,7 +58,7 @@ class CaScorpPacketEmitTests(unittest.TestCase):
             with self.subTest(year=year):
                 s = _with_ca(_make_v1_scenario(
                     gross_receipts=100000.0, compensation_of_officers=30000.0))
-                s.config.year = year
+                set_tax_year(s, year)
                 out_dir = Path(self._tmp.name) / f"out_{year}"
                 results, emitted = self.orch.run_full_california_scorp_return(
                     s, out_dir)
@@ -136,7 +136,7 @@ class CaScorpPacketEmitTests(unittest.TestCase):
         # which does NOT run the individual 1040 pipeline.
         s = _make_v1_scenario(
             gross_receipts=100000.0, compensation_of_officers=30000.0)
-        s.config.year = 2021
+        set_tax_year(s, 2021)
         out_dir = Path(self._tmp.name) / "federal_2021"
         corp, emitted = self.orch.run_full_federal_scorp_return(s, out_dir)
 
