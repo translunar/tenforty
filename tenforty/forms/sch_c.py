@@ -70,8 +70,14 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
     _guard_unmodeled(biz, idx)
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
     # refused above, so both are 0 here by construction).
-    line_7 = biz.gross_receipts
-    line_28 = sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
+    #
+    # printed-chain ruling (SE line 12 lineage), 2026-10-04: lines 3/5/7/28/
+    # 29/31 are arithmetic over OTHER printed lines, so they compute from the
+    # whole-dollar-ROUNDED operands and the filed page foots. Entry lines
+    # (line 1, each expense category 8-27b) round individually.
+    line_1 = irs_round(biz.gross_receipts)
+    line_7 = line_1
+    line_28 = sum(irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
     line_29 = line_7 - line_28           # tentative profit
     line_31 = line_29                    # line 30 home office refused -> 0
     if line_31 < 0:
@@ -86,15 +92,15 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
     # complete. They all equal line 7 BY CONSTRUCTION: line 2 (returns and
     # allowances) and line 4 (cost of goods sold) are refused above, and
     # line 6 (other income) has no input channel.
-    gross = irs_round(line_7)
+    gross = line_7
     return {
         "sch_c_line_1_gross_receipts": gross,
         "sch_c_line_3_net_receipts": gross,
         "sch_c_line_5_gross_profit": gross,
         "sch_c_line_7_gross_income": gross,
-        "sch_c_line_28_total_expenses": irs_round(line_28),
-        "sch_c_line_29_tentative_profit": irs_round(line_29),
-        "sch_c_line_31_net_profit": irs_round(line_31),
+        "sch_c_line_28_total_expenses": line_28,
+        "sch_c_line_29_tentative_profit": line_29,
+        "sch_c_line_31_net_profit": line_31,
     }
 
 

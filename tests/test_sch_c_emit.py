@@ -299,5 +299,39 @@ class SchCEmitTests(unittest.TestCase):
         self.assertEqual(printed, 75_000)
 
 
+class SchCPrintedChainTests(unittest.TestCase):
+    """printed-chain ruling (SE line 12 lineage), 2026-10-04: lines 28/29/31
+    compute from the whole-dollar-rounded printed operands so the page foots."""
+
+    def test_chain_foots_with_cent_valued_inputs(self):
+        # Cents chain: 2239.61 - 16.15 = 2223.46 -> 2223 (old, did not foot:
+        # printed 2,240 - 16 = 2,224). Printed chain: 2240 - 16 = 2224.
+        biz = ScheduleCBusiness(
+            description="Synthetic Consulting", gross_receipts=2239.61,
+            other_expenses=16.15, other_expenses_description="Software")
+        scn = _scenario()
+        scn.schedule_c_businesses = [biz]
+        line = form_sch_c.compute(scn, {})["sch_c_businesses"][0]
+        self.assertEqual(line["sch_c_line_7_gross_income"], 2240)
+        self.assertEqual(line["sch_c_line_28_total_expenses"], 16)
+        self.assertEqual(line["sch_c_line_29_tentative_profit"], 2224)
+        self.assertEqual(line["sch_c_line_31_net_profit"], 2224)
+        self.assertEqual(
+            line["sch_c_line_29_tentative_profit"],
+            line["sch_c_line_7_gross_income"]
+            - line["sch_c_line_28_total_expenses"])
+
+    def test_line_28_sums_rounded_categories(self):
+        # 10.40 + 10.40 + 10.40 = 31.20 -> old 31; printed 10+10+10 = 30.
+        biz = ScheduleCBusiness(
+            description="Synthetic Consulting", gross_receipts=1000.0,
+            advertising=10.40, supplies=10.40, utilities=10.40)
+        scn = _scenario()
+        scn.schedule_c_businesses = [biz]
+        line = form_sch_c.compute(scn, {})["sch_c_businesses"][0]
+        self.assertEqual(line["sch_c_line_28_total_expenses"], 30)
+        self.assertEqual(line["sch_c_line_31_net_profit"], 970)
+
+
 if __name__ == "__main__":
     unittest.main()
