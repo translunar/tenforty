@@ -283,6 +283,7 @@ def presentation_keys(
         "f540_address_city": config.address_city,
         "f540_address_state": config.address_state,
         "f540_address_zip": config.address_zip,
+        "f540_residence_county": config.county,
         "f540_line7_count": count,
         "f540_line7_amount": personal_total,
         "f540_line11_exemption_amount": personal_total + dependent_total,

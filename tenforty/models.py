@@ -398,6 +398,9 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # CA Form 540 Side 1 "county at time of filing" (principal residence).
+    # Free text; blank stays blank on the form (not a gate).
+    county: str = ""
     # Form 1040 digital-assets question (2021: virtual currency). None means
     # UNANSWERED. Unlike the scope-out attestations below it is NOT required at
     # load time and NOT required by the native compute path (a compute-only
