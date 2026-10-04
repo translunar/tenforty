@@ -325,11 +325,12 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
         template = root / "pdfs" / "california" / "2021" / "f540.pdf"
         cls.fields = PdfReader(str(template)).get_fields() or {}
 
-    def test_2021_derivations_count_is_35(self):
+    def test_2021_derivations_count_is_36(self):
         # 22 form-internal derivations + 13 presentation derivations (lines
         # 14/15/16, 4 per-page name + 4 per-page SSN headers, use-tax and
-        # third-party-designee radios).
-        self.assertEqual(len(self.derivations), 22 + 13)
+        # third-party-designee radios) + 1: line 114 (total amount due) is now
+        # derived. (Was 35; lines 111 and 115 were already counted.)
+        self.assertEqual(len(self.derivations), 22 + 13 + 1)
 
     def test_2021_every_derivation_target_is_a_real_2021_field(self):
         for path in self.derivations:
@@ -391,12 +392,28 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
         self.assertEqual(d["3018"](c), 2149)          # line 97 = 4960 - 2811
         self.assertEqual(d["3021"](c), 0)             # line 100 tax due = 0
 
-    def test_2021_sign_split_refund_and_owe(self):
+    def test_2021_amount_owed_and_refund_cells(self):
+        # Was a sign-split of f540_total_liability fed a one-key dict. Lines
+        # 111 / 114 / 115 are now derived from the form's own lines, so they
+        # need a full compute result (the arithmetic itself is pinned for every
+        # year in tests/test_ca540_compute.py::F540AmountDueLinesTests).
+        from tenforty.forms import f540
+        from tenforty.models import CA540Return
         d = self.derivations
-        self.assertEqual(d["5003"]({"f540_total_liability": 1234}), 1234)   # owe
-        self.assertIsNone(d["5003"]({"f540_total_liability": -1234}))       # no owe
-        self.assertEqual(d["5009"]({"f540_total_liability": -1234}), 1234)  # refund
-        self.assertIsNone(d["5009"]({"f540_total_liability": 1234}))        # no refund
+
+        def values(withholding):
+            return f540.compute(
+                year=2021, filing_status=FilingStatus.SINGLE, federal_agi=80_000,
+                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding)
+
+        owing = values(0)
+        self.assertGreater(d["5003"](owing), 0)                 # line 111
+        self.assertEqual(d["5008"](owing), d["5003"](owing))   # line 114
+        self.assertIsNone(d["5009"](owing))                  # no refund
+        refunding = values(20_000)
+        self.assertGreater(d["5009"](refunding), 0)          # line 115
+        self.assertIsNone(d["5003"](refunding))                 # nothing owed
+        self.assertIsNone(d["5008"](refunding))
 
 
 class PdfF540FilledEmit2022Tests(unittest.TestCase):
@@ -491,10 +508,11 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
         template = root / "pdfs" / "california" / "2022" / "f540.pdf"
         cls.fields = PdfReader(str(template)).get_fields() or {}
 
-    def test_2022_derivations_count_is_29(self):
+    def test_2022_derivations_count_is_30(self):
         # 22 form-internal derivations + 7 presentation derivations (lines
-        # 14/15/16, one name + one SSN page header, use-tax and designee radios).
-        self.assertEqual(len(self.derivations), 22 + 7)
+        # 14/15/16, one name + one SSN page header, use-tax and designee radios)
+        # + 1: line 114 (total amount due) is now derived. (Was 29.)
+        self.assertEqual(len(self.derivations), 22 + 7 + 1)
 
     def test_2022_every_derivation_target_is_a_real_2022_field(self):
         for path in self.derivations:
@@ -553,9 +571,25 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
         self.assertEqual(d["3027"](c), 2160)          # line 97 = 4960 - 2800
         self.assertEqual(d["4005"](c), 0)             # line 100 tax due = 0
 
-    def test_2022_sign_split_refund_and_owe(self):
+    def test_2022_amount_owed_and_refund_cells(self):
+        # Was a sign-split of f540_total_liability fed a one-key dict. Lines
+        # 111 / 114 / 115 are now derived from the form's own lines, so they
+        # need a full compute result (the arithmetic itself is pinned for every
+        # year in tests/test_ca540_compute.py::F540AmountDueLinesTests).
+        from tenforty.forms import f540
+        from tenforty.models import CA540Return
         d = self.derivations
-        self.assertEqual(d["4027"]({"f540_total_liability": 1234}), 1234)   # owe
-        self.assertIsNone(d["4027"]({"f540_total_liability": -1234}))       # no owe
-        self.assertEqual(d["5008"]({"f540_total_liability": -1234}), 1234)  # refund
-        self.assertIsNone(d["5008"]({"f540_total_liability": 1234}))        # no refund
+
+        def values(withholding):
+            return f540.compute(
+                year=2022, filing_status=FilingStatus.SINGLE, federal_agi=80_000,
+                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding)
+
+        owing = values(0)
+        self.assertGreater(d["4027"](owing), 0)                 # line 111
+        self.assertEqual(d["5007"](owing), d["4027"](owing))   # line 114
+        self.assertIsNone(d["5008"](owing))                  # no refund
+        refunding = values(20_000)
+        self.assertGreater(d["5008"](refunding), 0)          # line 115
+        self.assertIsNone(d["4027"](refunding))                 # nothing owed
+        self.assertIsNone(d["5007"](refunding))

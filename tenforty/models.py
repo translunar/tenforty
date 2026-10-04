@@ -912,6 +912,14 @@ class CA540Return:
     estimated_payments: float = 0.0  # 540 line 71 (Form 540-ES quarterly)
     use_tax: float = 0.0  # 540 line 91 (use tax owed on out-of-state purchases)
     estimated_tax_penalty: float = 0.0  # 540 line 113 (FTB 5805 result)
+    # 540 line 112 (interest, late-return and late-payment penalties). None
+    # means UNSTATED; an explicit 0 states the return is filed and paid on
+    # time; a positive amount prints on line 112 and enters line 114 / 115.
+    # Not required by the compute path. At CA PDF EMIT time the orchestrator
+    # refuses an unstated value on any return that is not a pure refund (an
+    # amount on line 111, or anything on line 110 or 113), where a silent 0
+    # would understate the total amount due.
+    interest_and_penalties: float | None = None
     ptet_credit: float = 0.0  # 540 line 50 (Sub-plan 4 wires this; default $0)
     # Federal compute lumps RRB Tier 1/2 into 1040 line 5b (pensions_taxable)
     # without separating it; the taxpayer supplies the RRB-only amount here

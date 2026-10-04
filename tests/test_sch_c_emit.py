@@ -286,7 +286,7 @@ class SchCEmitTests(unittest.TestCase):
     def test_schedule_ca_business_income_column_a_equals_native(self):
         scn = _scenario(businesses=_ONE)
         scn = dataclasses.replace(
-            scn, ca540=CA540Return(),
+            scn, ca540=CA540Return(interest_and_penalties=0.0),
             config=dataclasses.replace(
                 scn.config, full_year_health_care_coverage=True,
                 **{k: True for k in CA_SCOPE_OUT_FIELDS}))

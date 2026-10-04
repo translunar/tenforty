@@ -11,8 +11,8 @@ Mirrors the five-registry design from `pdf_f1120s.py`:
   rather than pure +/- of compute keys.
 - `_DERIVATIONS_2025` — PDF cells whose value is computed from compute
   outputs at fill time. Includes (a) form-internal arithmetic per the
-  probe artifact, (b) the sign-split flow for `f540_total_liability`
-  → owe (`540_form_5002`) / refund (`540_form_5007`), (c) the verbose
+  probe artifact, (b) lines 111 / 114 / 115 (amount you owe, total amount
+  due, refund — installed for every year by `_install_amount_due`), (c) the verbose
   filing-status radio group (`540_form_1036 RB`), and (d) the two
   tax-source checkboxes on line 31 (Tax Table vs Rate Schedule).
 - `_SUPPRESSED_2025` — extended semantics from SP2: compute keys with
@@ -296,16 +296,6 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
     # Line 100 = max(0, line 64 − line 95). The "tax due" branch.
     "540_form_4005": lambda c: max(0, _line_64(c) - _line_95(c)),
-    # Line 111 (owe) — sign-split branch of f540_total_liability.
-    # Returns the value when positive (owed); None otherwise (skipped).
-    "540_form_5002": lambda c: (
-        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
-    ),
-    # Line 115 (refund) — sign-split branch of f540_total_liability.
-    # Returns the absolute value when negative (refund due); None otherwise.
-    "540_form_5007": lambda c: (
-        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
-    ),
 }
 
 
@@ -317,8 +307,8 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
 # flow, enum-typed dispatch). The partition test treats both subsets as
 # ownership; derivation lambdas may read them.
 _SUPPRESSED_2025: frozenset[str] = frozenset({
-    # Consumed-by-derivation only (sign-split: 540_form_5002 owe /
-    # 540_form_5007 refund).
+    # No PDF cell: the net tax position (Schedule X reads it). Lines 111 /
+    # 114 / 115 are derived from the form's own lines — see _AMOUNT_DUE_CELLS.
     "f540_total_liability",
     # Consumed-by-derivation only (filing-status RB lookup via
     # _FILING_STATUS_RB_STATES).
@@ -457,19 +447,11 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
     # Line 100 = max(0, line 64 − line 95).
     "540-4005": lambda c: max(0, _line_64(c) - _line_95(c)),
-    # Line 111 (owe) — sign-split branch of f540_total_liability.
-    "540-5002": lambda c: (
-        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
-    ),
-    # Line 115 (refund) — sign-split branch of f540_total_liability.
-    "540-5007": lambda c: (
-        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
-    ),
 }
 
 
 _SUPPRESSED_2024: frozenset[str] = frozenset({
-    # Consumed-by-derivation only (sign-split: 540-5002 owe / 540-5007 refund).
+    # No PDF cell: the net tax position (see _AMOUNT_DUE_CELLS for 111-115).
     "f540_total_liability",
     # Consumed-by-derivation only (filing-status RB lookup via
     # _FILING_STATUS_RB_STATES_2024).
@@ -595,16 +577,6 @@ _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
     # Line 100 = max(0, line 64 − line 95).
     "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
-    # Line 111 (owe) — sign-split branch of f540_total_liability
-    # (cell 4027, SHIFTED from 2024/2025's 5002).
-    "4027": lambda c: (
-        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
-    ),
-    # Line 115 (refund) — sign-split branch of f540_total_liability
-    # (cell 5008, SHIFTED from 2024/2025's 5007).
-    "5008": lambda c: (
-        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
-    ),
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2023 so the
@@ -618,7 +590,7 @@ del _status, _cb
 
 
 _SUPPRESSED_2023: frozenset[str] = frozenset({
-    # Consumed-by-derivation only (sign-split: 4027 owe / 5008 refund).
+    # No PDF cell: the net tax position (see _AMOUNT_DUE_CELLS for 111-115).
     "f540_total_liability",
     # Consumed-by-derivation only (filing-status checkboxes via
     # _FILING_STATUS_CB_2023).
@@ -794,16 +766,6 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 100 (box 3021) /TU "Tax due. If line 95 is less than line 65,
     # subtract line 95 from line 65." = max(0, line 65 − line 95). (2023: 4005.)
     "3021": lambda c: max(0, _total_tax_2021(c) - _line_95(c)),
-    # Line 111 (box 5003, "Amount You Owe") — sign-split owe branch of
-    # f540_total_liability; value when positive, else None (skipped). (2023: 4027.)
-    "5003": lambda c: (
-        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
-    ),
-    # Line 115 (box 5009, "Refund or no amount due") — sign-split refund branch
-    # of f540_total_liability; abs value when negative, else None. (2023: 5008.)
-    "5009": lambda c: (
-        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
-    ),
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2021 so the
@@ -819,8 +781,9 @@ del _status, _cb
 
 
 # Compute keys with no direct PDF cell on the 2021 pack — consumed by the
-# ported derivations above (sign-split refund/owe, filing-status checkboxes,
-# line-47 vs compute() total-credits divergence, PTET). Owned here for the
+# ported derivations above (filing-status checkboxes, line-47 vs compute()
+# total-credits divergence, PTET) or, for f540_total_liability, printed
+# nowhere (lines 111-115: see _AMOUNT_DUE_CELLS). Owned here for the
 # partition invariant, exactly as on 2023-2025.
 _SUPPRESSED_2021: frozenset[str] = frozenset({
     "f540_total_liability",
@@ -979,16 +942,6 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 100 (box 4005) /TU "Tax due. If line 95 is less than line 64, subtract
     # line 95 from line 64." = max(0, line 64 − line 95). References line 64.
     "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
-    # Line 111 (box 4027, "Amount You Owe") — sign-split owe branch of
-    # f540_total_liability; value when positive, else None (skipped).
-    "4027": lambda c: (
-        c["f540_total_liability"] if c["f540_total_liability"] > 0 else None
-    ),
-    # Line 115 (box 5008, "Refund or no amount due") — sign-split refund branch of
-    # f540_total_liability; abs value when negative, else None.
-    "5008": lambda c: (
-        -c["f540_total_liability"] if c["f540_total_liability"] < 0 else None
-    ),
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2022 so the coverage
@@ -1003,8 +956,9 @@ del _status, _cb
 
 
 # Compute keys with no direct PDF cell on the 2022 pack — consumed by the ported
-# derivations above (sign-split refund/owe, filing-status checkboxes, line-47 vs
-# compute() total-credits divergence, PTET). Owned here for the partition
+# derivations above (filing-status checkboxes, line-47 vs compute()
+# total-credits divergence, PTET) or, for f540_total_liability, printed nowhere
+# (lines 111-115: see _AMOUNT_DUE_CELLS). Owned here for the partition
 # invariant, exactly as on 2021/2023-2025.
 _SUPPRESSED_2022: frozenset[str] = frozenset({
     "f540_total_liability",
@@ -1147,6 +1101,105 @@ def _install_presentation(year, mapping, derivations):
     derivations[designee_radio] = lambda c, tok=designee_no: tok
 
 
+# AMOUNT YOU OWE / TOTAL AMOUNT DUE / REFUND (lines 111-115).
+#
+# The FTB booklet text for lines 111, 114 and 115 is identical 2021-2025, so
+# one set of helpers serves every year; only the cells differ:
+#  * Line 111 "Amount You Owe": "If you do not have an amount on line 99, add
+#    the amount on line 94, line 96, line 100, and line 110, if any ... If you
+#    have an amount on line 99 and the amount on line 110 is more than line 99,
+#    subtract line 99 from line 110". Line 113 is NOT part of line 111.
+#  * Line 112 "Interest and Penalties": a stated input
+#    (``f540_interest_and_penalties``); blank when unstated.
+#  * Line 113: the stated FTB 5805 result (``f540_estimated_tax_penalty``),
+#    mapped directly per year. LIMITATION: the "FTB 5805 / 5805F is attached"
+#    boxes beside it are not mapped and are never checked.
+#  * Line 114 "Total Amount Due": "Is there an amount on line 111? Yes: Add
+#    line 111, line 112, and line 113." Otherwise, from the line 115
+#    instruction: when line 110 + 112 + 113 is "more than line 99, subtract
+#    line 99 from the sum ... and enter the result on line 114".
+#  * Line 115 "Refund or No Amount Due": line 99 when nothing is reported on
+#    lines 110/112/113; else line 99 minus their sum when the sum is not more.
+#
+# Lines 94, 96, 99 and 100 are read through the year's OWN printed-cell
+# derivations, so these lines cannot disagree with the cells above them.
+# ``f540_total_liability`` is no longer printed anywhere: it nets line 113 into
+# the tax position, which is why it overstated line 111 by the penalty.
+_AMOUNT_DUE_CELLS = {
+    # year: (line 94, line 96, line 99, line 100, line 111, line 112, line 114, line 115)
+    2021: ("3023", "3024", "3020", "3021", "5003", "5004", "5008", "5009"),
+    2022: ("3024", "3026", "4004", "4005", "4027", "5003", "5007", "5008"),
+    2023: ("3024", "3026", "4004", "4005", "4027", "5003", "5007", "5008"),
+    2024: ("540-3024", "540-3026", "540-4004", "540-4005",
+           "540-5002", "540-5003", "540-5006", "540-5007"),
+    2025: ("540_form_3024", "540_form_3026", "540_form_4004", "540_form_4005",
+           "540_form_5002", "540_form_5003", "540_form_5006", "540_form_5007"),
+}
+
+
+def _lines_110_112_113(c: Mapping[str, object]) -> tuple[float, float, float]:
+    """(line 110, line 112, line 113). An unstated line 112 counts as 0 here;
+    whether it MAY be unstated is ``interest_and_penalties_must_be_stated``."""
+    return (
+        c["f540_voluntary_contributions"],
+        c.get("f540_interest_and_penalties") or 0,
+        c["f540_estimated_tax_penalty"],
+    )
+
+
+def _line_111(year: int, c: Mapping[str, object]) -> float | None:
+    """Line 111, or None when the line is blank."""
+    l94, l96, l99, l100 = (_DERIVATIONS_BY_YEAR[year][cell](c)
+                           for cell in _AMOUNT_DUE_CELLS[year][:4])
+    l110 = c["f540_voluntary_contributions"]
+    if l99 > 0:
+        return l110 - l99 if l110 > l99 else None
+    owed = l94 + l96 + l100 + l110
+    return owed if owed > 0 else None
+
+
+def _line_114(year: int, c: Mapping[str, object]) -> float | None:
+    """Line 114, or None when the line is blank."""
+    l110, l112, l113 = _lines_110_112_113(c)
+    l111 = _line_111(year, c)
+    if l111 is not None:
+        return l111 + l112 + l113
+    l99 = _DERIVATIONS_BY_YEAR[year][_AMOUNT_DUE_CELLS[year][2]](c)
+    excess = l110 + l112 + l113 - l99
+    return excess if excess > 0 else None
+
+
+def _line_115(year: int, c: Mapping[str, object]) -> float | None:
+    """Line 115, or None when the line is blank (an amount is due instead, or
+    there is no overpayment to refund)."""
+    if _line_114(year, c) is not None:
+        return None
+    l99 = _DERIVATIONS_BY_YEAR[year][_AMOUNT_DUE_CELLS[year][2]](c)
+    if l99 <= 0:
+        return None
+    return l99 - sum(_lines_110_112_113(c))
+
+
+def interest_and_penalties_must_be_stated(year: int, c: Mapping[str, object]) -> bool:
+    """Whether line 112 may NOT be left unstated on this return.
+
+    A pure refund return (nothing on lines 110, 112 or 113, no amount on line
+    111) takes the line 115 "No" branch and never reads line 112. Any other
+    return carries line 112 into line 114 or line 115, so an unstated value
+    there would silently count as zero.
+    """
+    l110, _, l113 = _lines_110_112_113(c)
+    return _line_111(year, c) is not None or l110 != 0 or l113 != 0
+
+
+def _install_amount_due(year, mapping, derivations):
+    _, _, _, _, l111, l112, l114, l115 = _AMOUNT_DUE_CELLS[year]
+    mapping["f540_interest_and_penalties"] = l112
+    derivations[l111] = lambda c, y=year: _line_111(y, c)
+    derivations[l114] = lambda c, y=year: _line_114(y, c)
+    derivations[l115] = lambda c, y=year: _line_115(y, c)
+
+
 for _y, _m, _d in (
     (2021, _MAPPING_2021, _DERIVATIONS_2021),
     (2022, _MAPPING_2022, _DERIVATIONS_2022),
@@ -1155,6 +1208,7 @@ for _y, _m, _d in (
     (2025, _MAPPING_2025, _DERIVATIONS_2025),
 ):
     _install_presentation(_y, _m, _d)
+    _install_amount_due(_y, _m, _d)
 
 
 PdfF540._MAPPINGS = {

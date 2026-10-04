@@ -322,6 +322,17 @@ def _load_ca540(data: dict | None, year: int) -> CA540Return | None:
     for rid in reviewed_ids:
         resolve_divergence_id(year, rid)
 
+    interest_and_penalties = data.get("interest_and_penalties")
+    if interest_and_penalties is not None:
+        interest_and_penalties = float(interest_and_penalties)
+        if interest_and_penalties < 0:
+            raise ValueError(
+                "ca540 `interest_and_penalties` (Form 540 line 112) is "
+                f"negative ({interest_and_penalties}). The amount is carried "
+                "onto the form verbatim, so a negative value cannot be "
+                "silently corrected to 0 — state 0 (filed and paid on time) "
+                "or the amount owed.")
+
     return CA540Return(
         voluntary_contributions=[
             _load_voluntary_contribution(vc)
@@ -330,6 +341,7 @@ def _load_ca540(data: dict | None, year: int) -> CA540Return | None:
         estimated_payments=float(data.get("estimated_payments", 0.0)),
         use_tax=float(data.get("use_tax", 0.0)),
         estimated_tax_penalty=float(data.get("estimated_tax_penalty", 0.0)),
+        interest_and_penalties=interest_and_penalties,
         ptet_credit=float(data.get("ptet_credit", 0.0)),
         rrb_tier_1_2_amount=(
             float(data["rrb_tier_1_2_amount"])

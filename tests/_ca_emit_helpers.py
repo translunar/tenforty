@@ -33,11 +33,18 @@ def make_ca_scenario(year: int, filing_status: FilingStatus = FilingStatus.SINGL
     return dataclasses.replace(base, **kwargs)
 
 
-def emit_ca(scenario, out_dir: Path | None = None):
-    """Run the CA pipeline; returns (ca_results, {basename: Path})."""
+def emit_ca(scenario, out_dir: Path | None = None, *, ca540: dict | None = None):
+    """Run the CA pipeline; returns (ca_results, {basename: Path}).
+
+    ``ca540`` overrides keys of the CA YAML ``ca540:`` block. By default the
+    block states ``interest_and_penalties: 0`` (filed and paid on time), which
+    a balance-due emit requires; pass ``{"interest_and_penalties": None}`` to
+    leave it unstated."""
     out_dir = Path(out_dir) if out_dir else Path(tempfile.mkdtemp())
     ca_yaml = _write_ca_yaml(
-        {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0}}, tmp_dir=out_dir)
+        {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0,
+                   "interest_and_penalties": 0.0, **(ca540 or {})}},
+        tmp_dir=out_dir)
     orch = ReturnOrchestrator(
         spreadsheets_dir=REPO_ROOT / "spreadsheets", work_dir=out_dir / "work")
     return orch.run_full_california_return(
