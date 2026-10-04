@@ -193,9 +193,41 @@ def compute(
 
     total_credits = exemption + renters + ptet_credit
 
+    # The credits are NONREFUNDABLE, and the liability follows the form's own
+    # two clamps (wording verified identical on all five years' forms and
+    # booklets, 2021-2025):
+    #   line 33: "Subtract line 32 from line 31. If less than zero, enter 0."
+    #   line 48: "Subtract line 47 from line 35. If less than zero, enter 0."
+    # Line 35 == line 33 here (line 34 is not modeled); line 47 is the renter
+    # credit plus the PTET credit. A single unclamped `tax − credits` let a
+    # credit larger than the tax surface as a phantom overpayment in
+    # f540_total_liability (which Schedule X reads), while the printed lines —
+    # clamped in mappings/pdf_f540 — showed zero.
+    line_33 = max(0, ca_tax - exemption)
+    line_47 = renters + ptet_credit
+    # The exemption and renter credits are use-or-lose, so the clamp is the
+    # whole story for them. An unused PTET credit instead CARRIES FORWARD (form
+    # FTB 3804-CR), and no credit carryover is modeled: clamping it away would
+    # leave next year's return wrong with no warning. Refuse instead. The
+    # refusal is deliberately broader than "PTET alone exceeds the tax": any
+    # unused line 47 credit while a PTET credit is present, because which of
+    # the two credits is used first is not modeled either.
+    if ptet_credit > 0 and line_47 > line_33:
+        raise NotImplementedError(
+            f"`ptet_credit` ({ptet_credit}) cannot be fully used in {year}: "
+            f"line 47 credits ({line_47} = renter's credit {renters} + PTET "
+            f"credit {ptet_credit}) exceed the tax they can offset (Form 540 "
+            f"line 35, {line_33}). The unused pass-through entity elective tax "
+            "credit is a carryover to later years, figured on form FTB "
+            "3804-CR, and tenforty does not model credit carryovers — "
+            "clamping it to the tax would silently drop the carryover. File "
+            "by hand, or enter only the PTET credit used this year and track "
+            "the FTB 3804-CR carryover yourself."
+        )
+    line_48 = max(0, line_33 - line_47)
+
     final = (
-        ca_tax
-        - total_credits
+        line_48
         + voluntary_total      # voluntary contributions ADD to liability
         + use_tax
         + estimated_tax_penalty
