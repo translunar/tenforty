@@ -70,8 +70,14 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
     _guard_unmodeled(biz, idx)
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
     # refused above, so both are 0 here by construction).
-    line_7 = biz.gross_receipts
-    line_28 = sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
+    #
+    # printed-chain ruling (SE line 12 lineage), 2026-10-04: lines 3/5/7/28/
+    # 29/31 are arithmetic over OTHER printed lines, so they compute from the
+    # whole-dollar-ROUNDED operands and the filed page foots. Entry lines
+    # (line 1, each expense category 8-27b) round individually.
+    line_1 = irs_round(biz.gross_receipts)
+    line_7 = line_1
+    line_28 = sum(irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
     line_29 = line_7 - line_28           # tentative profit
     line_31 = line_29                    # line 30 home office refused -> 0
     if line_31 < 0:
@@ -82,11 +88,19 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
             f"(Form 8995), and the §461(l) excess-business-loss limitation -- none "
             f"modeled in tenforty v1. This return cannot be produced by v1."
         )
+    # Lines 1, 3 and 5 are printed explicitly so the form's own chain is
+    # complete. They all equal line 7 BY CONSTRUCTION: line 2 (returns and
+    # allowances) and line 4 (cost of goods sold) are refused above, and
+    # line 6 (other income) has no input channel.
+    gross = line_7
     return {
-        "sch_c_line_7_gross_income": irs_round(line_7),
-        "sch_c_line_28_total_expenses": irs_round(line_28),
-        "sch_c_line_29_tentative_profit": irs_round(line_29),
-        "sch_c_line_31_net_profit": irs_round(line_31),
+        "sch_c_line_1_gross_receipts": gross,
+        "sch_c_line_3_net_receipts": gross,
+        "sch_c_line_5_gross_profit": gross,
+        "sch_c_line_7_gross_income": gross,
+        "sch_c_line_28_total_expenses": line_28,
+        "sch_c_line_29_tentative_profit": line_29,
+        "sch_c_line_31_net_profit": line_31,
     }
 
 
@@ -100,3 +114,50 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         "sch_c_businesses": per_business,
         "sch_c_line_31_net_profit_total": irs_round(total),
     }
+
+
+def emit_values(scenario: Scenario, index: int, line_values: dict) -> dict:
+    """PDF value dict for ONE Schedule C (business `index`, 0-based).
+
+    Header + line A/B + the Part II expense amounts + Part V line 48 + this
+    business's computed lines (`line_values` is `compute(...)["sch_c_businesses"][index]`).
+
+    Blank text and zero expense amounts are OMITTED so the box prints blank
+    rather than a literal 0. Expense amounts are passed through unrounded; the
+    PDF filler applies the whole-dollar rounding at render.
+    """
+    biz = scenario.schedule_c_businesses[index]
+    out: dict = {**scenario.config.pdf_header()}
+    description = str(biz.description).strip()
+    if description:
+        out["sch_c_line_a_description"] = description
+    code = str(biz.business_code).strip()
+    if code:
+        out["sch_c_line_b_business_code"] = code
+    for field_name in _EXPENSE_FIELDS:
+        amount = getattr(biz, field_name)
+        if amount:
+            out[f"sch_c_expense_{field_name}"] = amount
+    # Part V line 48 is the total the "Other expenses (from line 48)" line
+    # carries forward, so it prints the same amount. The itemization rows
+    # above line 48 are left blank for hand-completion.
+    if biz.other_expenses:
+        # Emit-time refusal (NOT compute): the figure is computable, but the
+        # filed paper requires Part V to itemize what line 48 totals.
+        item = str(biz.other_expenses_description).strip()
+        if not item:
+            raise ValueError(
+                f"Schedule C business {index + 1} ({description or 'unnamed'!r}) "
+                f"has other_expenses of {biz.other_expenses} but no "
+                "`other_expenses_description`: Part V must itemize the line 48 "
+                "total on the filed form. Set `other_expenses_description` on "
+                "that business (e.g. 'Software subscriptions')."
+            )
+        out["sch_c_line_48_total_other_expenses"] = biz.other_expenses
+        # Part V, row 1 = the whole amount (single-aggregate v1: ONE row;
+        # multi-row itemization is out of scope), so the total's addend is
+        # visible on the paper.
+        out["sch_c_part_v_row_1_description"] = item
+        out["sch_c_part_v_row_1_amount"] = biz.other_expenses
+    out.update(line_values)
+    return out

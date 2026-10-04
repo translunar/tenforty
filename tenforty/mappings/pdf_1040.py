@@ -52,6 +52,66 @@ def _derive_line_24(values: Mapping[str, object]) -> object:
     return total_tax_liability_line_24(dict(values))
 
 
+# Checkbox on-states, year-keyed (probe-verified against each year's committed
+# f1040.pdf). The filing-status tokens are NOT positional from 2023 on: the
+# 2023/2024 templates number their five boxes in a different order than they
+# sit on the page (HOH is /2), so the token table is per-year data, never a
+# formula. Each box is its own /Btn field; "off" is written for the unchosen.
+
+_CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: {
+        "filing_status_single": "/1",
+        "filing_status_mfj": "/2",
+        "filing_status_mfs": "/3",
+        "filing_status_hoh": "/4",
+        "filing_status_qss": "/5",
+        "sch_d_not_required": "/1",
+        "digital_assets_yes": "/1",
+        "digital_assets_no": "/2",
+    },
+    2022: {
+        "filing_status_single": "/1",
+        "filing_status_mfj": "/2",
+        "filing_status_mfs": "/3",
+        "filing_status_hoh": "/4",
+        "filing_status_qss": "/5",
+        "sch_d_not_required": "/1",
+        "digital_assets_yes": "/1",
+        "digital_assets_no": "/2",
+    },
+    2023: {
+        "filing_status_single": "/1",
+        "filing_status_mfj": "/3",
+        "filing_status_mfs": "/4",
+        "filing_status_hoh": "/2",
+        "filing_status_qss": "/5",
+        "sch_d_not_required": "/1",
+        "digital_assets_yes": "/1",
+        "digital_assets_no": "/2",
+    },
+    2024: {
+        "filing_status_single": "/1",
+        "filing_status_mfj": "/3",
+        "filing_status_mfs": "/4",
+        "filing_status_hoh": "/2",
+        "filing_status_qss": "/5",
+        "sch_d_not_required": "/1",
+        "digital_assets_yes": "/1",
+        "digital_assets_no": "/2",
+    },
+    2025: {
+        "filing_status_single": "/1",
+        "filing_status_mfj": "/2",
+        "filing_status_mfs": "/3",
+        "filing_status_hoh": "/4",
+        "filing_status_qss": "/5",
+        "sch_d_not_required": "/1",
+        "digital_assets_yes": "/1",
+        "digital_assets_no": "/2",
+    },
+}
+
+
 class Pdf1040(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for IRS Form 1040."""
 
@@ -97,6 +157,15 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "city": "topmostSubform[0].Page1[0].Address[0].f1_10[0]",
             "state": "topmostSubform[0].Page1[0].Address[0].f1_11[0]",
             "zip_code": "topmostSubform[0].Page1[0].Address[0].f1_12[0]",
+            # Checkboxes (key -> /Btn field; on-tokens in _CHECKBOX_STATES_BY_YEAR).
+            "filing_status_single": "topmostSubform[0].Page1[0].FilingStatus[0].c1_01[0]",
+            "filing_status_mfj": "topmostSubform[0].Page1[0].FilingStatus[0].c1_01[1]",
+            "filing_status_mfs": "topmostSubform[0].Page1[0].FilingStatus[0].c1_01[2]",
+            "filing_status_hoh": "topmostSubform[0].Page1[0].FilingStatus[0].c1_01[3]",
+            "filing_status_qss": "topmostSubform[0].Page1[0].FilingStatus[0].c1_01[4]",
+            "sch_d_not_required": "topmostSubform[0].Page1[0].Lines1-11_ReadOrder[0].c1_21[0]",
+            "digital_assets_yes": "topmostSubform[0].Page1[0].c1_04[0]",
+            "digital_assets_no": "topmostSubform[0].Page1[0].c1_04[1]",
 
             # === Page 1: Income (Lines 1-11) — all nest in Lines1-11_ReadOrder[0] ===
             # Line 1: Wages, salaries, tips — SINGLE box in 2021 (no 1a-1z).
@@ -250,6 +319,15 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "city": "topmostSubform[0].Page1[0].Address[0].f1_10[0]",
             "state": "topmostSubform[0].Page1[0].Address[0].f1_11[0]",
             "zip_code": "topmostSubform[0].Page1[0].Address[0].f1_12[0]",
+            # Checkboxes (key -> /Btn field; on-tokens in _CHECKBOX_STATES_BY_YEAR).
+            "filing_status_single": "topmostSubform[0].Page1[0].c1_01[0]",
+            "filing_status_mfj": "topmostSubform[0].Page1[0].c1_01[1]",
+            "filing_status_mfs": "topmostSubform[0].Page1[0].c1_01[2]",
+            "filing_status_hoh": "topmostSubform[0].Page1[0].c1_01[3]",
+            "filing_status_qss": "topmostSubform[0].Page1[0].c1_01[4]",
+            "sch_d_not_required": "topmostSubform[0].Page1[0].Lines4a-11_ReadOrder[0].c1_22[0]",
+            "digital_assets_yes": "topmostSubform[0].Page1[0].c1_04[0]",
+            "digital_assets_no": "topmostSubform[0].Page1[0].c1_04[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a-3b sit directly on Page1 at f1_28-f1_41.
@@ -408,6 +486,15 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "city": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_12[0]",
             "state": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_13[0]",
             "zip_code": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_14[0]",
+            # Checkboxes (key -> /Btn field; on-tokens in _CHECKBOX_STATES_BY_YEAR).
+            "filing_status_single": "topmostSubform[0].Page1[0].c1_3[0]",
+            "filing_status_mfj": "topmostSubform[0].Page1[0].c1_3[2]",
+            "filing_status_mfs": "topmostSubform[0].Page1[0].c1_3[3]",
+            "filing_status_hoh": "topmostSubform[0].Page1[0].c1_3[1]",
+            "filing_status_qss": "topmostSubform[0].Page1[0].c1_3[4]",
+            "sch_d_not_required": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].c1_22[0]",
+            "digital_assets_yes": "topmostSubform[0].Page1[0].c1_4[0]",
+            "digital_assets_no": "topmostSubform[0].Page1[0].c1_4[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_31–f1_44.
@@ -574,6 +661,15 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # into those foreign-address boxes).
             "state": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_13[0]",
             "zip_code": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_14[0]",
+            # Checkboxes (key -> /Btn field; on-tokens in _CHECKBOX_STATES_BY_YEAR).
+            "filing_status_single": "topmostSubform[0].Page1[0].FilingStatus_ReadOrder[0].c1_3[0]",
+            "filing_status_mfj": "topmostSubform[0].Page1[0].FilingStatus_ReadOrder[0].c1_3[1]",
+            "filing_status_mfs": "topmostSubform[0].Page1[0].FilingStatus_ReadOrder[0].c1_3[2]",
+            "filing_status_hoh": "topmostSubform[0].Page1[0].c1_3[0]",
+            "filing_status_qss": "topmostSubform[0].Page1[0].c1_3[1]",
+            "sch_d_not_required": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].c1_23[0]",
+            "digital_assets_yes": "topmostSubform[0].Page1[0].c1_5[0]",
+            "digital_assets_no": "topmostSubform[0].Page1[0].c1_5[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_32–f1_45.
@@ -701,17 +797,29 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
         },
         2025: {
             # === Page 1: Header ===
-            "first_name": "topmostSubform[0].Page1[0].f1_01[0]",
-            "last_name": "topmostSubform[0].Page1[0].f1_02[0]",
-            "ssn": "topmostSubform[0].Page1[0].f1_03[0]",
-            "spouse_first_name": "topmostSubform[0].Page1[0].f1_04[0]",
-            "spouse_last_name": "topmostSubform[0].Page1[0].f1_05[0]",
-            "spouse_ssn": "topmostSubform[0].Page1[0].f1_06[0]",
-            "address": "topmostSubform[0].Page1[0].f1_07[0]",
-            "apt_no": "topmostSubform[0].Page1[0].f1_08[0]",
-            "city": "topmostSubform[0].Page1[0].f1_09[0]",
-            "state": "topmostSubform[0].Page1[0].f1_10[0]",
-            "zip_code": "topmostSubform[0].Page1[0].f1_11[0]",
+            # Re-probed 2025 (render-verified): f1_01..f1_03 are the "tax year
+            # beginning / ending / 20__" fields, f1_04 combat zone, f1_05..f1_10
+            # the deceased-date fields — the identity block starts at f1_14.
+            "first_name": "topmostSubform[0].Page1[0].f1_14[0]",
+            "last_name": "topmostSubform[0].Page1[0].f1_15[0]",
+            "ssn": "topmostSubform[0].Page1[0].f1_16[0]",
+            "spouse_first_name": "topmostSubform[0].Page1[0].f1_17[0]",
+            "spouse_last_name": "topmostSubform[0].Page1[0].f1_18[0]",
+            "spouse_ssn": "topmostSubform[0].Page1[0].f1_19[0]",
+            "address": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_20[0]",
+            "apt_no": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_21[0]",
+            "city": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_22[0]",
+            "state": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_23[0]",
+            "zip_code": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_24[0]",
+            # Checkboxes (key -> /Btn field; on-tokens in _CHECKBOX_STATES_BY_YEAR).
+            "filing_status_single": "topmostSubform[0].Page1[0].Checkbox_ReadOrder[0].c1_8[0]",
+            "filing_status_mfj": "topmostSubform[0].Page1[0].Checkbox_ReadOrder[0].c1_8[1]",
+            "filing_status_mfs": "topmostSubform[0].Page1[0].Checkbox_ReadOrder[0].c1_8[2]",
+            "filing_status_hoh": "topmostSubform[0].Page1[0].c1_8[0]",
+            "filing_status_qss": "topmostSubform[0].Page1[0].c1_8[1]",
+            "sch_d_not_required": "topmostSubform[0].Page1[0].c1_43[0]",
+            "digital_assets_yes": "topmostSubform[0].Page1[0].c1_10[0]",
+            "digital_assets_no": "topmostSubform[0].Page1[0].c1_10[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Line 1a: Wages, salaries, tips (W-2 box 1)
@@ -850,6 +958,16 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "estimated_tax_penalty": "topmostSubform[0].Page2[0].f2_36[0]",
         },
     }
+
+    @classmethod
+    def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        """Compute key -> PDF "on" appearance state for the 1040's bool
+        checkbox keys (filing status, line 7 "Schedule D not required", the
+        digital-assets Yes/No pair). Year-keyed data, no year dispatch."""
+        if year not in cls._MAPPINGS:
+            raise ValueError(
+                f"No {cls._FORM_NAME} checkbox states for year {year}")
+        return _CHECKBOX_STATES_BY_YEAR[year]
 
     @classmethod
     def get_derivations(

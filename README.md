@@ -115,6 +115,8 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 **Federal 1040 spine:**
 - Form 1040 (W-2, 1099-INT, 1099-DIV with capital gain distributions, 1099-G unemployment + state refunds, 1099-B with capital gain transactions, 1098 mortgage/property tax)
 - Schedule 1 (additional income + adjustments, with per-line breakdowns)
+- Schedule 2 (additional taxes: excess-APTC repayment, self-employment tax, Additional Medicare Tax) — tax years 2022+
+- Schedule C (sole-proprietor profit, one form per business) and Schedule SE (self-employment tax) — compute for every year, PDF emit for tax years 2022+
 - Schedule A (itemized deductions, including OBBBA SALT cap)
 - Schedule B (interest + dividend reporting)
 - Schedule D (capital gains)
@@ -149,11 +151,15 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 ### Not yet implemented
 
 - **Form 6251** (federal AMT). Not yet modeled. A scenario that would owe AMT will silently underreport — to be addressed by adding the form to the data model and compute pipeline.
-- **Schedule C / Schedule SE PDF emission** (sole-proprietor self-employment). The native COMPUTE path is modeled: business net profit flows to Schedule 1 line 3, self-employment tax (Schedule SE) to Schedule 2 line 4 with the deductible half on Schedule 1 line 15, and the QBI component to Form 8995 — `schedule_c_businesses` is on the `Scenario` schema. What remains is PDF EMISSION: emitting a return that has a Schedule C business currently fails closed (raises rather than print a wrong-zero artifact), pending a follow-on mapping unit. Also unmodeled and refused: cost of goods sold / inventory, depreciation, home office, vehicle, depletion, a net loss, and multi-business §162(l) health-insurance allocation.
 - **Form 8962** (Premium Tax Credit). Marketplace health insurance reconciliation.
 - **`.fods` worksheet generator** for user-friendly editing of California-vs-federal divergences (one tab per Sch CA line of additions/subtractions). Worksheet rows currently authored manually in YAML.
 - **Additional state returns** (every state besides California).
 - **FreeFileFillableForms automation** (Playwright-driven submission pipeline).
+
+### Limitations
+
+- **Schedule C features refused (not modeled).** A scenario that uses cost of goods sold / inventory, depreciation, home office, vehicle expenses, depletion, a net loss, or a multi-business §162(l) self-employed health-insurance allocation is refused rather than computed or printed wrong. Schedule C and Schedule SE PDF emission covers tax years 2022+; earlier years compute natively but must be filed by hand.
+- **Digital-assets question (Form 1040).** Set `digital_assets: true` or `false` in the scenario `config` to answer the 1040's digital-assets question (2021: the virtual-currency question). It is optional for compute-only runs, but emitting a 1040 PDF for tax year 2022 or later with the field unset is refused — tenforty will not print a signed return with that box blank. The 1040 header (name, SSN, spouse, address) and the filing-status and line-7 "Schedule D not required" boxes are filled from the config and the return.
 
 ## License
 

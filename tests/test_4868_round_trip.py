@@ -57,6 +57,7 @@ class TestBalanceDueSingle(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp())
         self._orchestrator = _make_orchestrator(self._tmp)
         config = TaxReturnConfig(
+            digital_assets=False,
             year=2025,
             filing_status=FilingStatus.SINGLE,
             birthdate="1990-01-01",
@@ -121,6 +122,7 @@ class TestRefundCase(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp())
         self._orchestrator = _make_orchestrator(self._tmp)
         config = TaxReturnConfig(
+            digital_assets=False,
             year=2025,
             filing_status=FilingStatus.SINGLE,
             birthdate="1985-06-15",
@@ -172,6 +174,7 @@ class TestMFJSpouseSSN(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp())
         self._orchestrator = _make_orchestrator(self._tmp)
         config = TaxReturnConfig(
+            digital_assets=False,
             year=2025,
             filing_status=FilingStatus.MARRIED_JOINTLY,
             birthdate="1982-03-10",
@@ -225,6 +228,7 @@ class TestSingleFilerSpouseFieldsBlank(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp())
         self._orchestrator = _make_orchestrator(self._tmp)
         config = TaxReturnConfig(
+            digital_assets=False,
             year=2025,
             filing_status=FilingStatus.SINGLE,
             birthdate="1995-11-20",

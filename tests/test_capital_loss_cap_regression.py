@@ -61,6 +61,7 @@ def _config(filing_status: str = "single", **overrides) -> TaxReturnConfig:
     kw["prior_year_itemized"] = False
     kw.update(overrides)
     return TaxReturnConfig(
+        digital_assets=False,
         year=YEAR, filing_status=filing_status,
         birthdate="1985-04-20", state="CA",
         first_name="Taxpayer", last_name="Regress", ssn="000-00-0000",

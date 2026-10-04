@@ -9,6 +9,7 @@ CPA's domain and out of scope.
 Mirrors the estimated-tax-payments and non-itemizer-charitable channels.
 """
 
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
@@ -16,12 +17,14 @@ from pathlib import Path
 import yaml
 from pypdf import PdfReader
 
+from tenforty.forms import f8962 as form_f8962
 from tenforty.forms import sch_1 as form_sch_1
 from tenforty.forms.f1040_spine import compute_spine
 from tenforty.forms.sch_ca import compute as sch_ca_compute
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.models import CA540Return, Form1095A, Form1095AMonth, Scenario
+from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import load
 from tenforty.scenario import load_scenario
 from tests.helpers import REPO_ROOT, make_simple_scenario, scope_out_attestation_defaults
@@ -262,25 +265,88 @@ class SeHealthPtcGuardTests(unittest.TestCase):
         spine = compute_spine(scenario, params, schedule_results)
         return sch_1_out, spine
 
-    def test_A_guard_fires_via_real_channel(self):
-        """V + a Form 1095-A present -> NotImplementedError.
+    @staticmethod
+    def _subsidized_1095a() -> Form1095A:
+        # Synthetic: $600/mo premium and benchmark, $400/mo APTC all year.
+        return Form1095A(
+            months=tuple(
+                Form1095AMonth(premium=600.0, slcsp=600.0, aptc=400.0)
+                for _ in range(12)
+            )
+        )
 
-        Falsifiable: delete the guard and compute returns normally, so this
-        assertRaises fails. The regex pins the Rev-Proc citation so a reworded
-        raise cannot silently pass."""
+    def _compute_with_wages(self, wages, se_health_value):
         params = load(2025)
         scenario = make_simple_scenario()
-        scenario.config.self_employed_health_insurance_deduction = _V
-        scenario.form_1095a = self._empty_1095a()
-        # Line 17 is genuinely nonzero coming OUT of the channel, not hand-fed.
+        scenario.w2s = [dataclasses.replace(
+            scenario.w2s[0], wages=wages, ss_wages=wages, medicare_wages=wages,
+        )]
+        scenario.config.self_employed_health_insurance_deduction = se_health_value
+        scenario.form_1095a = self._subsidized_1095a()
         sch_1_out = form_sch_1.compute(scenario, upstream={})
-        self.assertEqual(sch_1_out["sch_1_line_17_se_health"], _V)
         schedule_results = {
             "sch_1": sch_1_out,
             "sch_a": {"sch_a_line_17_total": 0},
         }
+        return sch_1_out, scenario, params, schedule_results
+
+    def test_A_guard_fires_via_real_channel(self):
+        """V + a Form 1095-A present AND a probe PTC that is nonzero (low
+        income, subsidy range) -> NotImplementedError.
+
+        Falsifiable: delete the guard and compute returns normally, so this
+        assertRaises fails. The regex pins the Rev-Proc citation so a reworded
+        raise cannot silently pass."""
+        sch_1_out, scenario, params, schedule_results = (
+            self._compute_with_wages(30_000, _V)
+        )
+        # Line 17 is genuinely nonzero coming OUT of the channel, not hand-fed.
+        self.assertEqual(sch_1_out["sch_1_line_17_se_health"], _V)
         with self.assertRaisesRegex(NotImplementedError, r"2014-41"):
             compute_spine(scenario, params, schedule_results)
+
+    @staticmethod
+    def _spine_with_real_8962(scenario, params, schedule_results):
+        """Mirror the orchestrator: AGI from a first spine pass, the real Form
+        8962 computed at MAGI = AGI + tax-exempt interest, then the spine again
+        with the 8962 result wired in."""
+        agi = compute_spine(scenario, params, schedule_results)["agi"]
+        block = scenario.form_1095a
+        f8962 = form_f8962.compute(
+            block=block, magi=agi + block.tax_exempt_interest,
+            year=scenario.config.year,
+            params=params_f8962.load(scenario.config.year),
+        )
+        return compute_spine(
+            scenario, params, {**schedule_results, "f8962": f8962}
+        )
+
+    def test_A2_carve_out_admits_high_income_with_1095a(self):
+        """High income + 1095-A + nonzero SE-health -> admitted: even at the
+        lowest reachable MAGI (full premiums deducted) household income is far
+        above 400% FPL, so PTC is 0 everywhere and nothing is circular. The
+        deduction passes through to line 17 / AGI, and the real 8962 (computed
+        as usual) is unchanged by it."""
+        wages = 150_000
+        sch_1_out, scenario, params, schedule_results = (
+            self._compute_with_wages(wages, _V)
+        )
+        # Reference: same scenario, deduction 0 (always admitted).
+        _, scenario0, _, schedule_results0 = self._compute_with_wages(wages, 0.0)
+        spine = self._spine_with_real_8962(scenario, params, schedule_results)
+        spine0 = self._spine_with_real_8962(
+            scenario0, params, schedule_results0
+        )
+        self.assertEqual(sch_1_out["sch_1_line_17_se_health"], _V)
+        self.assertEqual(spine["sch_1_line_17_se_health"], _V)
+        self.assertEqual(spine["agi"], spine0["agi"] - _V)
+        # 8962: no PTC; the full APTC (12 * 400) is repaid, uncapped over 400%.
+        self.assertEqual(spine["f8962_line_24"], 0)
+        self.assertEqual(spine["f8962_net_ptc"], 0)
+        self.assertEqual(spine["f8962_repayment"], 4_800)
+        # The deduction does not move the 8962 at all (no feedback).
+        self.assertEqual(spine["f8962_repayment"], spine0["f8962_repayment"])
+        self.assertEqual(spine["f8962_net_ptc"], spine0["f8962_net_ptc"])
 
     def test_B_guard_does_not_over_fire_without_1095a(self):
         """V but NO Form 1095-A -> no raise, and the deduction flows (AGI down

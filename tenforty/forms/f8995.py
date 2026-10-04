@@ -122,6 +122,41 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     line_5 = 0
     line_6 = line_3 + line_5
 
+    # FORM lines 3, 4, 7, 8 (the combine lines). The compute keys above are one
+    # tier off their printed lines (ticket (cc)), so these NEW values are keyed
+    # by their TRUE form line numbers (see the seam table in
+    # mappings/pdf_f8995.py).
+    #   form 3: prior-year QBI (loss) carryforward IN. NO input channel exists
+    #           for it yet (see the line-16 note above), so v1 prints 0.
+    #   form 4: combine(form 2, form 3), "If zero or less, enter -0-".
+    #   form 7: prior-year REIT/PTP (loss) carryforward IN — likewise 0.
+    #   form 8: combine(form 6, form 7), floored at 0 — form 6 is `line_4` above.
+    form_line_3 = 0
+    form_line_4 = max(0, line_2 + form_line_3)
+    form_line_7 = 0
+    form_line_8 = max(0, line_4 + form_line_7)
+
+    # Form line 1, row i, columns (a) name and (b) TIN. v1 single-row
+    # approximation (same as column (c), which carries the AGGREGATE of every
+    # QBI source): the FIRST source's identity is printed. Multi-row (1ii-1v,
+    # one row per source) is OUT OF SCOPE — deliberately no concatenation of
+    # names/TINs into one cell. Source order is filing order: Schedule C
+    # businesses (with nonzero net profit) first, then K-1s with nonzero QBI.
+    #   Schedule C QBI: business description + the TAXPAYER'S SSN (Sch C
+    #     instructions: never an LLC EIN).
+    #   K-1 QBI: entity_name + entity_ein.
+    row_1i = None
+    per_business = sch_c.get("sch_c_businesses", [])
+    for biz, biz_result in zip(scenario.schedule_c_businesses, per_business):
+        if biz_result.get("sch_c_line_31_net_profit"):
+            row_1i = (str(biz.description), str(scenario.config.ssn))
+            break
+    if row_1i is None:
+        for k1 in scenario.schedule_k1s:
+            if k1.qbi_amount:
+                row_1i = (str(k1.entity_name), str(k1.entity_ein))
+                break
+
     # IRS Form 8995 line 16: "Total qualified business (loss) carryforward.
     # Combine lines 2 and 3. If greater than zero, enter -0-." This is the
     # mirror image of the floored_qbi floor above: whatever the floor
@@ -136,7 +171,12 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     # forms/f8582.py's `per_activity_carryforwards`.
     line_16_qbi_loss_carryforward = min(0, combined_qbi)
 
-    line_11 = irs_round(taxable_income)
+    # i8995 (2024), Line 11: "...line 11, minus... line 12", no floor;
+    # adjudicated 2026-10-04. The zero floor belongs to line 13's "If zero or
+    # less, enter -0-" (applied below). Producers that only supply the
+    # floored figure (workbook path, direct callers) fall back to it.
+    line_11 = irs_round(float(f1040.get(
+        "taxable_income_before_qbi_deduction_unfloored", taxable_income)))
     # max(0, ...) is a boundary contract on `upstream`, not a redundant guard:
     # `upstream` is a public dict any caller can populate, and today's
     # producers (both the compute path's `_preamble.net_capital_gain` and the
@@ -152,7 +192,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     line_15 = min(line_6, line_14)
 
-    return {
+    out = {
         **scenario.config.pdf_header(),
         "f8995_line_1_qbi": line_1,
         "f8995_line_2_total_qbi": line_2,
@@ -167,3 +207,11 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "f8995_line_15_qbi_deduction": line_15,
         "f8995_line_16_qbi_loss_carryforward": line_16_qbi_loss_carryforward,
     }
+    # Keys named by TRUE FORM line (not the tier-off names above).
+    out["f8995_line_3_prior_qbi_loss_carryforward"] = form_line_3
+    out["f8995_line_4_total_qbi"] = form_line_4
+    out["f8995_line_7_prior_reit_ptp_loss_carryforward"] = form_line_7
+    out["f8995_line_8_total_reit_ptp"] = form_line_8
+    if row_1i is not None:
+        out["f8995_line_1i_name"], out["f8995_line_1i_tin"] = row_1i
+    return out

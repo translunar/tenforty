@@ -14,15 +14,23 @@ is the anti-pattern; adding a field only to refuse it would be fabrication).
 Partnership self-employment earnings are refused elsewhere via the always-on
 acknowledges_no_partnership_se_earnings attestation (models.py).
 
-ROUNDING CONVENTION (load-bearing — matches the oracle and forms/f8959.py):
-carry ALL intermediate line values UNROUNDED and apply irs_round ONLY at emit,
-mirroring the IRS whole-dollar rule "if you have to add two or more amounts to
-figure the amount on a line, include cents when adding and only round off the
-total." Concretely: line_10/line_11 stay unrounded; line_12 = line_10 + line_11
-(unrounded) then emit irs_round(line_12); line_13 = line_12 * 0.5 (from the
-UNROUNDED line_12) then emit irs_round(line_13). Rounding line 10/11 before
-summing, or halving a pre-rounded line 12, diverges from the hand-derived
-oracle by $1.
+ROUNDING CONVENTION (load-bearing) -- THE ROUNDING ELECTION. A filer may
+either carry cents throughout and round only the final figure, or round every
+line to whole dollars. tenforty prints every line in whole dollars: it has
+ELECTED rounding. Under that election the printed form must add its own
+printed lines. So lines 10 and 11 are each rounded; line 12 is the SUM OF
+THOSE ROUNDED lines ("Add lines 10 and 11"); and line 13 is half of that line
+12, rounded ("Multiply line 12 by 50%").
+
+The other reading -- sum the unrounded portions, round once -- is the
+NON-rounding filer's figure. It can differ by $1, and printing it beside
+whole-dollar lines 10 and 11 makes the form's visible addition wrong. Worked
+on the two cases pinned in tests/test_sch_se_oracle.py: case A's portions are
+10,306.26 and 2,410.335, so the non-rounding reading gives round(12,716.595)
+= 12,717 while the printed lines give 10,306 + 2,410 = 12,716; case B gives
+4,985 against 4,984 the same way. The printed-lines figure is the one this
+module emits. Lines 2 through 9 are single amounts, products or differences
+and are rounded independently at emit.
 """
 from tenforty.models import Scenario
 from tenforty.params.federal import load as load_federal_params
@@ -41,33 +49,45 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         return {}
     params = load_federal_params(scenario.config.year)
 
+    # Lines 2 and 4a are printed explicitly so the form's chain is complete.
+    # Line 2 is the Schedule C net profit; line 3 combines it with the farm
+    # lines (1a, 1b), which are unmodeled, so line 3 = line 2. Line 4a is
+    # line 3 x 92.35%; line 4b (optional methods) is unmodeled, so 4c = 4a.
     line_3 = net_profit
     line_4c = line_3 * _NET_EARNINGS_PCT           # net earnings from SE
     line_6 = line_4c                               # + church income (0 in v1)
     if line_6 < _MIN_NET_EARNINGS:
         return {
+            "sch_se_line_2_net_profit": irs_round(line_3),
             "sch_se_line_3_net_profit": irs_round(line_3),
+            "sch_se_line_4a_net_earnings": irs_round(line_4c),
             "sch_se_line_4c_net_earnings": irs_round(line_4c),
-            "sch_se_line_6_total_net_earnings": irs_round(line_6),
+            # Line 4c's own instruction: "If less than $400... you don't owe
+            # self-employment tax" -- the filer stops, so line 6 is NOT
+            # emitted (adjudicated 2026-10-04). Lines 12/13 stay literal 0
+            # (ruling R9).
             "sch_se_line_12_se_tax": 0,
             "sch_se_line_13_half_deduction": 0,
         }
     line_7 = float(params.ss_wage_base)            # OASDI wage base
-    ss_wages = sum(w.ss_wages for w in scenario.w2s)  # line 8a/8d
+    ss_wages = sum(w.ss_wages for w in scenario.w2s)  # line 8a (8b/8c unmodeled) -> 8d
     line_9 = max(0.0, line_7 - ss_wages)           # SS earnings still taxable
-    line_10 = min(line_6, line_9) * _SS_RATE       # SS portion (unrounded)
-    line_11 = line_6 * _MEDICARE_RATE              # Medicare portion (uncapped)
-    line_12 = line_10 + line_11                    # SE tax (unrounded sum)
-    line_13 = line_12 * 0.5                        # deductible half (unrounded)
+    line_10 = irs_round(min(line_6, line_9) * _SS_RATE)   # SS portion
+    line_11 = irs_round(line_6 * _MEDICARE_RATE)          # Medicare (uncapped)
+    line_12 = line_10 + line_11        # SE tax: sum of the PRINTED lines
+    line_13 = irs_round(line_12 * 0.5)  # deductible half of the printed line 12
     return {
+        "sch_se_line_2_net_profit": irs_round(line_3),
         "sch_se_line_3_net_profit": irs_round(line_3),
+        "sch_se_line_4a_net_earnings": irs_round(line_4c),
         "sch_se_line_4c_net_earnings": irs_round(line_4c),
         "sch_se_line_6_total_net_earnings": irs_round(line_6),
         "sch_se_line_7_ss_wage_base": irs_round(line_7),
+        "sch_se_line_8a_ss_wages_and_tips": irs_round(ss_wages),
         "sch_se_line_8d_wages_subject_to_ss": irs_round(ss_wages),
         "sch_se_line_9_ss_earnings_remaining": irs_round(line_9),
-        "sch_se_line_10_ss_portion": irs_round(line_10),
-        "sch_se_line_11_medicare_portion": irs_round(line_11),
-        "sch_se_line_12_se_tax": irs_round(line_12),
-        "sch_se_line_13_half_deduction": irs_round(line_13),
+        "sch_se_line_10_ss_portion": line_10,
+        "sch_se_line_11_medicare_portion": line_11,
+        "sch_se_line_12_se_tax": line_12,
+        "sch_se_line_13_half_deduction": line_13,
     }

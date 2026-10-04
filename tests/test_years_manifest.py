@@ -72,6 +72,21 @@ class YearManifestTests(unittest.TestCase):
         self.assertIn("f8962", year_manifest.FEDERAL_FORMS)
         self.assertIn("f8962", year_manifest.FEDERAL_COMPUTE_ONLY_FORMS)
 
+    def test_schedule_c_family_floor_is_2022(self):
+        # Year-coverage policy (2026-10-03): new features floor at TY2022.
+        self.assertEqual(year_manifest.SCHEDULE_C_FAMILY_YEARS,
+                         (2022, 2023, 2024, 2025))
+        self.assertTrue(set(year_manifest.SCHEDULE_C_FAMILY_YEARS)
+                        <= set(year_manifest.FEDERAL_YEARS))
+
+    def test_policy_year_floor_registry(self):
+        self.assertEqual(year_manifest.NEW_FEATURE_FLOOR_YEAR, 2022)
+        self.assertEqual(year_manifest.POLICY_YEAR_FLOORS["sch_2"], 2022)
+        self.assertFalse(year_manifest.form_supported_in_year("sch_2", 2021))
+        self.assertTrue(year_manifest.form_supported_in_year("sch_2", 2022))
+        # A form with no floor is supported in every year.
+        self.assertTrue(year_manifest.form_supported_in_year("1040", 2021))
+
 
 class ScorpTiersTests(unittest.TestCase):
     def test_scorp_federal_years_declared(self):

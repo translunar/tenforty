@@ -74,6 +74,74 @@ def magi_for_pct(pct, year):
     return round(pct / 100 * load(year).fpl_single_48)
 
 
+# ---------------------------------------------------------------------------
+# ADJUDICATION (2026-10-03, team-lead ruling): i8962 (2024), Line 10 is
+# imperative -- "Check 'Yes' and continue to line 11 if all of the following
+# apply ... Otherwise, check 'No' and continue to lines 12 through 23." The
+# ANNUAL calculation (line 11; line 24 = 11(e), line 25 = 11(f)) is therefore
+# MANDATORY when the filer is eligible: enrolled all 12 months (enrolled =
+# column-A premium > 0), column A identical every month, column B (SLCSP)
+# identical every month. APTC (column C) sameness is NOT a condition. The prior
+# pins in this battery encoded the MONTHLY method (the hand-coded reference
+# oracle in tests/oracles/f8962_reference.py sums per-month results) for
+# scenarios where the annual method is mandatory; for exactly those scenarios
+# the expected lines 24-27/29 are now derived below by the annual method from
+# the ORACLE's own line 8a / line 28. The oracle itself is untouched. Each
+# adopted pin is audited: |annual - monthly| <= 11 (the line-8a/12 rounding
+# remainder across 12 months); a larger move means something else is wrong.
+# ---------------------------------------------------------------------------
+ANNUAL_PIN_TOLERANCE = 11
+
+
+def annual_eligible(blk) -> bool:
+    """i8962 (2024) Line 10 predicate, written from the instructions."""
+    ms = blk.months
+    return (
+        len(ms) == 12
+        and all(m.premium > 0 for m in ms)
+        and len({m.premium for m in ms}) == 1
+        and len({m.slcsp for m in ms}) == 1
+    )
+
+
+def annual_expected(blk, r) -> dict:
+    """Expected annual-method outputs keyed by the ORACLE's key names."""
+    a = sum(_round_half_up(m.premium) for m in blk.months)
+    b = sum(_round_half_up(m.slcsp) for m in blk.months)
+    f = sum(_round_half_up(m.aptc) for m in blk.months)
+    c = r["line8a_annual_contribution"]
+    d = max(0, b - c)
+    e = min(a, d)
+    line27 = max(0, f - e)
+    cap = r["line28_repayment_limitation"]
+    return {
+        "line24_total_ptc": e,
+        "line25_total_aptc": f,
+        "line26_net_ptc": max(0, e - f),
+        "line27_excess_aptc": line27,
+        "line29_excess_aptc_repayment": min(line27, cap) if cap is not None else line27,
+        "_line11": (a, b, c, d, e, f),
+    }
+
+
+def _round_half_up(x) -> int:
+    from decimal import Decimal, ROUND_HALF_UP
+    return int(Decimal(str(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def expected_for(blk, r, oracle_key):
+    """Oracle value, replaced by the annual-method value when mandatory."""
+    if annual_eligible(blk):
+        ann = annual_expected(blk, r)
+        if oracle_key in ann:
+            if oracle_key == "line24_total_ptc":
+                assert abs(ann[oracle_key] - r[oracle_key]) <= ANNUAL_PIN_TOLERANCE, (
+                    f"annual pin moved {r[oracle_key]} -> {ann[oracle_key]} "
+                    f"(> {ANNUAL_PIN_TOLERANCE}): investigate, do not adopt")
+            return ann[oracle_key]
+    return r.get(oracle_key)
+
+
 class _DiffMixin:
     """Shared compute-vs-oracle reconciliation, usable under mutation too."""
 
@@ -89,9 +157,18 @@ class _DiffMixin:
         for ck, rk in SCALAR_RECON:
             self.assertEqual(
                 c.get(ck),
-                r.get(rk),
+                expected_for(blk, r, rk),
                 msg=f"year={year} magi={magi} scalar {ck}<->{rk}",
             )
+
+        if annual_eligible(blk):
+            # Annual presentation: line 10 Yes, line 11 filled, rows 12-23 blank.
+            self.assertTrue(c["f8962_line_10_yes"])
+            self.assertNotIn("f8962_line_10_no", c)
+            for letter, value in zip("abcdef", annual_expected(blk, r)["_line11"]):
+                self.assertEqual(c[f"f8962_line_11_{letter}"], value)
+            self.assertFalse(any(k.startswith("f8962_month_") for k in c))
+            return c, r
 
         # Compare a month's cells ONLY when compute emitted that month.
         for n in range(1, 13):
@@ -282,11 +359,19 @@ class InvariantTests(_DiffMixin, unittest.TestCase):
                 c = compute(blk, magi, year, load(year))
 
                 emitted = self._emitted_months(c)
-                sum_e = sum(c[f"f8962_month_{n}_e"] for n in emitted)
-                sum_a = sum(c[f"f8962_month_{n}_a"] for n in emitted)
-                sum_f = sum(c[f"f8962_month_{n}_f"] for n in emitted)
+                if annual_eligible(blk):
+                    # Annual presentation: line 24 = 11(e), line 25 = 11(f).
+                    self.assertEqual(emitted, [])
+                    sum_e, sum_a, sum_f = (
+                        c["f8962_line_11_e"], c["f8962_line_11_a"],
+                        c["f8962_line_11_f"])
+                else:
+                    sum_e = sum(c[f"f8962_month_{n}_e"] for n in emitted)
+                    sum_a = sum(c[f"f8962_month_{n}_a"] for n in emitted)
+                    sum_f = sum(c[f"f8962_month_{n}_f"] for n in emitted)
 
                 # PTC <= premium each month, and in aggregate.
+                self.assertLessEqual(sum_e, sum_a)
                 for n in emitted:
                     self.assertLessEqual(
                         c[f"f8962_month_{n}_e"], c[f"f8962_month_{n}_a"],
@@ -441,7 +526,8 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
         r = reference_f8962(blk, magi, year)  # oracle keeps the original block
         with self.assertRaises(AssertionError):
             for ck, rk in SCALAR_RECON:
-                self.assertEqual(c.get(ck), r.get(rk), msg=f"{ck}<->{rk}")
+                self.assertEqual(
+                    c.get(ck), expected_for(blk, r, rk), msg=f"{ck}<->{rk}")
 
         # Restore: unperturbed block reconciles again.
         self.reconcile(blk, magi, year, params=params)

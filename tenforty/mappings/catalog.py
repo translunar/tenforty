@@ -20,12 +20,15 @@ from tenforty.mappings.pdf_f8949 import PdfF8949
 from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_sch_1 import PdfSch1
+from tenforty.mappings.pdf_sch_2 import PdfSch2
 from tenforty.mappings.pdf_sch_a import PdfSchA
 from tenforty.mappings.pdf_sch_b import PdfSchB
+from tenforty.mappings.pdf_sch_c import PdfSchC
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d import PdfSchD
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
 from tenforty.mappings.pdf_sch_e import PdfSchE
+from tenforty.mappings.pdf_sch_se import PdfSchSe
 
 
 @dataclass(frozen=True)
@@ -37,10 +40,13 @@ class FormEntry:
 CATALOG: dict[tuple[str, str], FormEntry] = {
     ("federal", "1040"): FormEntry(Pdf1040, "f1040"),
     ("federal", "sch_1"): FormEntry(PdfSch1, "f1040s1"),
+    ("federal", "sch_2"): FormEntry(PdfSch2, "f1040s2"),
     ("federal", "sch_a"): FormEntry(PdfSchA, "f1040sa"),
     ("federal", "sch_b"): FormEntry(PdfSchB, "f1040sb"),
+    ("federal", "sch_c"): FormEntry(PdfSchC, "f1040sc"),
     ("federal", "sch_d"): FormEntry(PdfSchD, "f1040sd"),
     ("federal", "sch_e"): FormEntry(PdfSchE, "f1040se"),
+    ("federal", "sch_se"): FormEntry(PdfSchSe, "f1040sse"),
     ("federal", "4562"): FormEntry(Pdf4562, "f4562"),
     ("federal", "4868"): FormEntry(Pdf4868, "f4868"),
     ("federal", "8959"): FormEntry(Pdf8959, "f8959"),
@@ -137,17 +143,16 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
     # fields-on-template + emit gates now cover 2022.
 })
 
-# Forms that legitimately carry NO get_derivations in ANY year — Schedule CA's
-# adjustments are all direct-mapped; a form here is exempt from the
+# Forms that legitimately carry NO get_derivations in ANY year — EMPTY since
+# Schedule CA grew its section-total derivations (lines 1z/9a/10/25/26 + the
+# line 1a Col A mirror; see pdf_sch_ca._install_sch_ca_totals). A form here is exempt from the
 # derivations-surface completeness check (test_derivations_surface_complete).
 # The check otherwise requires that a form carrying derivations in ANY supported
 # non-gapped year carries them in EVERY such year; a genuinely derivation-free
 # form has no anchor year and would pass trivially, but is listed explicitly so
 # the intent is reviewed — and the gate re-guards each entry, reddening if a
 # listed form ever grows a derivation.
-ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset({
-    ("california", "sch_ca"),
-})
+ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset()
 
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:

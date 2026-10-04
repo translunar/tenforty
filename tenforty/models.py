@@ -190,6 +190,9 @@ class ScheduleCBusiness:
     forms/sch_c.py).
     """
     description: str = ""
+    # Schedule C line B: the 6-digit principal business or professional
+    # activity code. Printed verbatim; blank prints nothing.
+    business_code: str = ""
     gross_receipts: float = 0.0
     # Part II expense categories (Schedule C lines 8-27a) a P&L export covers.
     advertising: float = 0.0
@@ -204,6 +207,11 @@ class ScheduleCBusiness:
     utilities: float = 0.0
     wages: float = 0.0
     other_expenses: float = 0.0
+    # Schedule C Part V itemization: ONE aggregate row (description + amount ==
+    # `other_expenses`). Required at EMIT when other_expenses is nonzero (the
+    # paper form needs it); compute does not look at it. Multi-row
+    # itemization is out of scope for v1.
+    other_expenses_description: str = ""
     # UNMODELED features. A nonzero value here is refused at COMPUTE time (Task
     # 2, forms/sch_c.py) -- there is no correct net profit without the unmodeled
     # math, so fail closed rather than silently drop the input. This input model
@@ -390,6 +398,17 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # CA Form 540 Side 1 "county at time of filing" (principal residence).
+    # Free text; blank stays blank on the form (not a gate).
+    county: str = ""
+    # Form 1040 digital-assets question (2021: virtual currency). None means
+    # UNANSWERED. Unlike the scope-out attestations below it is NOT required at
+    # load time and NOT required by the native compute path (a compute-only
+    # run never prints the question); it is required at PDF EMIT time for tax
+    # year 2022 onward, where the orchestrator refuses an unanswered question
+    # rather than print a signed return with the box left blank. True/False
+    # check the form's Yes/No box.
+    digital_assets: bool | None = None
     # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
     # and load_scenario raises; True → raises NotImplementedError; False → OK.
     has_foreign_accounts: bool | None = None

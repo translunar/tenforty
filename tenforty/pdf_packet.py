@@ -59,22 +59,27 @@ class Packet:
 
 
 # Federal individual — members in IRS attachment-sequence order:
-#   1040 (main), Sch 1 (01), Sch A (07), Sch B (08), Sch D (12),
-#   Form 8949 (12A), Sch E (13), Form 8995 (55), Form 8959 (71),
-#   Form 8582 (88), Form 4562 (179).
+#   1040 (main), Sch 1 (01), Sch 2 (02), Sch A (07), Sch B (08), Sch C (09,
+#   one per business), Sch D (12), Form 8949 (12A), Sch E (13), Sch SE (17),
+#   Form 8995 (55), Form 8959 (71), Form 8962 (73), Form 8582 (88),
+#   Form 4562 (179).
 FEDERAL_INDIVIDUAL = Packet(
     name="federal_individual",
     filename_template="f1040_{year}_complete.pdf",
     members=(
         PacketMember("1040"),
         PacketMember("sch_1"),
+        PacketMember("sch_2"),
         PacketMember("sch_a"),
         PacketMember("sch_b"),
+        PacketMember("sch_c", family=True),
         PacketMember("sch_d"),
         PacketMember("f8949"),
         PacketMember("sch_e"),
+        PacketMember("sch_se"),
         PacketMember("f8995"),
         PacketMember("8959"),
+        PacketMember("8962"),
         PacketMember("f8582"),
         PacketMember("f4562"),
     ),
