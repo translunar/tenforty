@@ -670,6 +670,30 @@ class TestTaxReturnConfigFullName(unittest.TestCase):
         cfg = self._config(first_name="Taxpayer")
         self.assertEqual(cfg.full_name, "Taxpayer")
 
+    def test_middle_initial_sits_between_first_and_last(self) -> None:
+        cfg = self._config(first_name="Taxpayer", middle_initial="Q", last_name="A")
+        self.assertEqual(cfg.full_name, "Taxpayer Q A")
+
+    def test_empty_middle_initial_leaves_no_double_space(self) -> None:
+        for mi in ("", "   "):
+            with self.subTest(mi=mi):
+                cfg = self._config(first_name="Taxpayer", middle_initial=mi, last_name="A")
+                self.assertEqual(cfg.full_name, "Taxpayer A")
+
+    def test_middle_initial_is_stripped_and_joins_whichever_parts_exist(self) -> None:
+        self.assertEqual(
+            self._config(first_name=" Taxpayer ", middle_initial=" Q ", last_name=" A ").full_name,
+            "Taxpayer Q A")
+        self.assertEqual(
+            self._config(first_name="Taxpayer", middle_initial="Q").full_name, "Taxpayer Q")
+        self.assertEqual(
+            self._config(middle_initial="Q", last_name="A").full_name, "Q A")
+
+    def test_spouse_middle_initial_defaults_blank_and_is_not_in_full_name(self) -> None:
+        self.assertEqual(self._config().spouse_middle_initial, "")
+        cfg = self._config(first_name="Taxpayer", last_name="A", spouse_middle_initial="Z")
+        self.assertEqual(cfg.full_name, "Taxpayer A")
+
 
 class TestTaxReturnConfigPdfHeader(unittest.TestCase):
     def _config(self, **kw) -> "TaxReturnConfig":

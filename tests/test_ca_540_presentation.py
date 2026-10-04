@@ -103,7 +103,7 @@ class Emitted540Tests(unittest.TestCase):
             with self.subTest(year=year):
                 prefix, _, _, _, _, names, ssns = _YEAR_PRESENTATION[year][:7]
                 for f in names:
-                    self.assertEqual(v[prefix + f], "Smoke Test")
+                    self.assertEqual(v[prefix + f], "Smoke Q Test")
                 for f in ssns:
                     self.assertEqual(v[prefix + f], "000-00-0000")
 
@@ -211,6 +211,19 @@ class PresentationKeysTests(unittest.TestCase):
                     num_dependents=2)
                 self.assertEqual(keys["f540_line11_exemption_amount"],
                                  compute["f540_exemption_credit"])
+
+    def test_middle_initial_emitted_when_set_and_absent_when_empty(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                base = make_ca_scenario(year).config
+                cfg = dataclasses.replace(base, middle_initial="Z")
+                keys = form_f540.presentation_keys(cfg, [], year)
+                self.assertEqual(keys["f540_taxpayer_middle_initial"], "Z")
+                self.assertEqual(keys["f540_taxpayer_first_name"], "Smoke")
+                # Control: the same call with the initial blanked drops the key.
+                blank = dataclasses.replace(base, middle_initial="")
+                self.assertNotIn("f540_taxpayer_middle_initial",
+                                 form_f540.presentation_keys(blank, [], year))
 
     def test_dob_must_be_iso(self):
         cfg = dataclasses.replace(make_ca_scenario(2024).config, birthdate="01/01/1980")

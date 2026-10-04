@@ -379,6 +379,12 @@ def _ssn_digits(ssn: str) -> str:
     return "".join(ch for ch in ssn if ch.isdigit())
 
 
+def _first_and_middle(first_name: str, middle_initial: str) -> str:
+    """The 1040's "first name and middle initial" box: one space between the
+    two, the bare first name when there is no initial."""
+    return f"{first_name.strip()} {middle_initial.strip()}".strip()
+
+
 def header_values(config: TaxReturnConfig) -> dict[str, str]:
     """The Form 1040 header block — name, SSN, spouse, address — as result keys.
 
@@ -387,15 +393,18 @@ def header_values(config: TaxReturnConfig) -> dict[str, str]:
     ``taxpayer_name`` / ``taxpayer_ssn`` pair every other form's header uses
     (Form 8962 reads the latter straight off this dict). Shared by the native
     spine and the workbook fallback in the orchestrator so the header cannot
-    depend on which pipeline computed the return. ``apt_no`` has no config
-    field and stays blank.
+    depend on which pipeline computed the return. ``first_name`` and
+    ``spouse_first_name`` carry the middle initial too, as the form's box is
+    "first name and middle initial". ``apt_no`` has no config field and stays
+    blank.
     """
     return {
         **config.pdf_header(),
-        "first_name": config.first_name,
+        "first_name": _first_and_middle(config.first_name, config.middle_initial),
         "last_name": config.last_name,
         "ssn": _ssn_digits(config.ssn),
-        "spouse_first_name": config.spouse_first_name,
+        "spouse_first_name": _first_and_middle(
+            config.spouse_first_name, config.spouse_middle_initial),
         "spouse_last_name": config.spouse_last_name,
         "spouse_ssn": _ssn_digits(config.spouse_ssn),
         "address": config.address,
