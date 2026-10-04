@@ -23,7 +23,10 @@ class PdfSchCMappingTests(unittest.TestCase):
             for field_name in sch_c._EXPENSE_FIELDS:
                 with self.subTest(year=year, field=field_name):
                     self.assertIn(f"sch_c_expense_{field_name}", mapping)
-            self.assertEqual(len(mapping), 24)
+            # 24 + Part V row 1 (description, amount).
+            self.assertEqual(len(mapping), 26)
+            self.assertIn("sch_c_part_v_row_1_description", mapping)
+            self.assertIn("sch_c_part_v_row_1_amount", mapping)
             for key in ("sch_c_line_1_gross_receipts",
                         "sch_c_line_3_net_receipts",
                         "sch_c_line_5_gross_profit",
