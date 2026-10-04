@@ -62,6 +62,16 @@ _EXPECTED_COMPUTE_KEYS = frozenset({
 })
 
 
+
+def _expected_total_derivation_fields(year: int) -> set[str]:
+    """The cells that are DERIVED (section totals + the 1a Col A mirror): 1z Col B/C,
+    9a / 25 Col A-C, 10 / 26 Col A-C, and 1a Col A where the year has line 1a.
+    (2022 shares 2023's tables.)"""
+    t = getattr(pdf_sch_ca, f"_TOTAL_CELLS_{2023 if year == 2022 else year}")
+    wanted = ["1zB", "1zC", *(f"{n}{c}" for n in ("9a", "10", "25", "26") for c in "ABC"), "1aA"]
+    return {t[k] for k in wanted if k in t}
+
+
 class PdfSchCaMappingTests(unittest.TestCase):
     def test_2025_get_mapping_returns_dict(self):
         mapping = pdf_sch_ca.PdfSchCa.get_mapping(2025)
@@ -73,9 +83,10 @@ class PdfSchCaMappingTests(unittest.TestCase):
         # receives a sum of multiple compute keys at fill time.
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2025), {})
 
-    def test_2025_get_derivations_is_empty(self):
-        # No within-form arithmetic wired in v1.
-        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2025), {})
+    def test_2025_get_derivations_are_the_section_totals(self):
+        self.assertEqual(
+            set(pdf_sch_ca.PdfSchCa.get_derivations(2025)),
+            _expected_total_derivation_fields(2025))
 
     def test_2025_get_checkbox_states_is_empty(self):
         # The single /Btn widget on the form is out-of-scope for v1.
@@ -208,9 +219,10 @@ class PdfSchCaMappingTests(unittest.TestCase):
         # receives a sum of multiple compute keys at fill time.
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2024), {})
 
-    def test_2024_get_derivations_is_empty(self):
-        # No within-form arithmetic wired in v1.
-        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2024), {})
+    def test_2024_get_derivations_are_the_section_totals(self):
+        self.assertEqual(
+            set(pdf_sch_ca.PdfSchCa.get_derivations(2024)),
+            _expected_total_derivation_fields(2024))
 
     def test_2024_get_checkbox_states_is_empty(self):
         # The single /Btn widget on the 2024 form is out-of-scope for v1.
@@ -304,7 +316,9 @@ class PdfSchCaMappingTests(unittest.TestCase):
 
     def test_2023_registries_empty_where_expected(self):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2023), {})
-        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2023), {})
+        self.assertEqual(
+            set(pdf_sch_ca.PdfSchCa.get_derivations(2023)),
+            _expected_total_derivation_fields(2023))
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2023), {})
 
     def test_2023_partition_invariant(self):
@@ -376,7 +390,9 @@ class PdfSchCaMappingTests(unittest.TestCase):
 
     def test_2022_registries_empty_where_expected(self):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2022), {})
-        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2022), {})
+        self.assertEqual(
+            set(pdf_sch_ca.PdfSchCa.get_derivations(2022)),
+            _expected_total_derivation_fields(2022))
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2022), {})
 
     def test_2022_partition_invariant(self):
@@ -423,7 +439,9 @@ class PdfSchCaMappingTests(unittest.TestCase):
 
     def test_2021_registries_empty_where_expected(self):
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_aggregations(2021), {})
-        self.assertEqual(pdf_sch_ca.PdfSchCa.get_derivations(2021), {})
+        self.assertEqual(
+            set(pdf_sch_ca.PdfSchCa.get_derivations(2021)),
+            _expected_total_derivation_fields(2021))
         self.assertEqual(pdf_sch_ca.PdfSchCa.get_checkbox_states(2021), {})
 
     def test_2021_partition_invariant(self):

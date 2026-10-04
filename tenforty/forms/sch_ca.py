@@ -64,6 +64,19 @@ _FEDERAL_TO_SCH_CA_COL_A_MAP: dict[str, str] = {
 }
 
 
+# Part I Section A prints the federal 1040 "a" line next to each "b" line
+# (2a tax-exempt interest, 3a qualified dividends, 4a IRA distributions, 5a
+# pensions and annuities, 6a social security benefits). Informational memo cells
+# — they feed no total — mirroring the federal 1040 figures.
+_FEDERAL_MEMO_MAP: dict[str, str] = {
+    "tax_exempt_interest": "sch_ca_memo_line_2a_tax_exempt_interest",
+    "qualified_dividends": "sch_ca_memo_line_3a_qualified_dividends",
+    "ira_distributions":   "sch_ca_memo_line_4a_ira_distributions",
+    "pensions":            "sch_ca_memo_line_5a_pensions",
+    "social_security":     "sch_ca_memo_line_6a_social_security",
+}
+
+
 def _normalize_line(sch_ca_line: str) -> str:
     """Convert 'Part I §B 8z' style to 'part_i_b_8z' for compute key suffix."""
     return (sch_ca_line.lower()
@@ -112,6 +125,11 @@ def compute(ca540, federal_results: dict, year: int) -> dict:
         if amount:
             key = f"sch_ca_line_{_normalize_line(sch_ca_line)}_col_a"
             out[key] = irs_round(amount)
+
+    for fed_key, memo_key in _FEDERAL_MEMO_MAP.items():
+        amount = federal_results.get(fed_key, 0.0)
+        if amount:
+            out[memo_key] = irs_round(amount)
 
     # ── BUG #11: Section-C sign inversion (found 2026-07-19 via the CA
     #    divergence content-audit §C-frame check). ────────────────────────────

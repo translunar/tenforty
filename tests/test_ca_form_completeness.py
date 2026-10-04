@@ -91,6 +91,35 @@ F540_BLANK_BY_DESIGN = [
 ]
 
 
+# ── Schedule CA (540) ───────────────────────────────────────────────────────
+SCH_CA_BLANK_BY_DESIGN = [
+    (r"^\[Part II\]",
+     "KNOWN GAP (reported): Part Two (itemized-deduction adjustments) is not placed on the page. "
+     "The compute emits only CA-adjusted line totals (compute_part_ii_itemized), not the "
+     "Col A / B / C splits the form prints, and Part II catalog rows have no placed cells"),
+    (r"Column A\. Federal Amounts|Column A\.? *$|Federal Amounts\.",
+     "Col A for a line with no federal source in the compute (federal 1b-1i, 2a alimony, 8a-8v, "
+     "12/14/16/18/19a/23/24x, 25): blank, as the federal 1040 is blank there"),
+    (r"Column [BC]\. (Subtractions|Additions)",
+     "Col B / Col C for a line no catalog row posts to (every catalog-reachable cell is placed and "
+     "proven by test_ca_sch_ca_completeness)"),
+    (r"Check the box if you did NOT itemize for federal but will itemize",
+     "elective CA-only itemization box: v1 itemizes for CA iff the federal return itemized (not modeled)"),
+    (r"Enter type of|List type|Specify|Date of original divorce|Recipient|Reserved for future use|"
+     r"Enter date",
+     "free-text write-ins / dates / recipient identity: no scenario input"),
+]
+
+
+# ── Schedule D (540) ────────────────────────────────────────────────────────
+SCH_D_540_BLANK_BY_DESIGN = [
+    (r".", "KNOWN GAP (reported): Sch D (540) is a pass-through of the federal Schedule D net "
+           "(sch_d_540.compute); only the identity header and the net-capital-gain total cells are "
+           "placed. The line-by-line federal / CA columns (1a-16, Part II QSBS/QOZ adjustments) have "
+           "no compute keys and are not placed."),
+]
+
+
 class CAFormCompletenessTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -113,6 +142,43 @@ class CAFormCompletenessTests(unittest.TestCase):
         dead = [F540_BLANK_BY_DESIGN[i][0] for i in range(len(F540_BLANK_BY_DESIGN))
                 if i not in all_used]
         self.assertEqual(dead, [], "dead blank-by-design rules (match no blank cell in any year)")
+
+    def test_sch_d_540_every_blank_cell_is_documented_and_filled_set_is_pinned(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                blank = self._blank_cells(year, "sch_d_540")
+                bad, used = classify(blank, SCH_D_540_BLANK_BY_DESIGN)
+                self.assertEqual(bad, [])
+                # the filled cells are exactly the mapped ones (header + totals), nothing stray
+                from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
+                from tests._blank_by_design import template_fields
+                filled = {n for n, i in template_fields(self.emits[year][0]["sch_d_540"]).items()
+                          if i["value"] is not None}
+                mapped = set(PdfSchD540.get_mapping(year).values()) | set(
+                    PdfSchD540.get_derivations(year))
+                self.assertLessEqual(filled, mapped)
+                self.assertGreaterEqual(len(filled), 2)
+
+    def test_sch_ca_every_blank_cell_is_documented(self):
+        """Blank = unfilled in the baseline emit AND in the rich all-catalog fill."""
+        from tests.test_ca_sch_ca_completeness import FEDERAL, fill_sch_ca, rich_ca540
+        import tempfile
+        from pathlib import Path
+        used_all = set()
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                ca540, _ = rich_ca540(year)
+                rich_pdf = fill_sch_ca(year, ca540, FEDERAL,
+                                       Path(tempfile.mkdtemp()) / "rich.pdf")
+                rich_blank = unfilled(rich_pdf)
+                blank = {n: i for n, i in self._blank_cells(year, "sch_ca").items()
+                         if n in rich_blank}
+                bad, used = classify(blank, SCH_CA_BLANK_BY_DESIGN)
+                used_all |= used
+                self.assertEqual(bad, [], f"{year}: unclassified blank Sch CA cells")
+        dead = [SCH_CA_BLANK_BY_DESIGN[i][0] for i in range(len(SCH_CA_BLANK_BY_DESIGN))
+                if i not in used_all]
+        self.assertEqual(dead, [])
 
 
 if __name__ == "__main__":
