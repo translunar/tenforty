@@ -126,6 +126,15 @@ class Emitted540Tests(unittest.TestCase):
                 page, rect = widget_rect(pdf, cell)
                 self.assertGreater(dark_pixels_in_rect(pdf, page, rect), 15, cell)
 
+    def test_full_year_coverage_box_is_checked_and_prints_ink(self):
+        # make_ca_scenario sets full_year_health_care_coverage=True.
+        for year, (_, pdf, v) in self.emits.items():
+            with self.subTest(year=year):
+                cell = field_for(year, "f540_full_year_coverage_checkbox")
+                self.assertEqual(v.get(cell), "/Yes")
+                page, rect = widget_rect(pdf, cell)
+                self.assertGreater(dark_pixels_in_rect(pdf, page, rect), 15, cell)
+
     def test_line71_ca_withholding_prints(self):
         for year, (results, _, v) in self.emits.items():
             with self.subTest(year=year):
@@ -149,6 +158,60 @@ class Emitted540Tests(unittest.TestCase):
                 for radio, token in (_YEAR_PRESENTATION[year][7], _YEAR_PRESENTATION[year][8]):
                     page, rect = widget_rect(pdf, radio, token)
                     self.assertGreater(dark_pixels_in_rect(pdf, page, rect), 15, radio)
+
+
+class FullYearCoverageRefusalTests(unittest.TestCase):
+    """The 540's full-year health-care-coverage box is an always-required
+    attestation for a CA emit: unstated refuses at EMIT time (never at compute
+    time); a coverage gap refuses because FTB 3853 is not modeled."""
+
+    def _scenario(self, year: int, answer):
+        scn = make_ca_scenario(year)
+        return dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, full_year_health_care_coverage=answer))
+
+    def test_emit_refuses_unstated_coverage_every_year(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                out = Path(tempfile.mkdtemp())
+                with self.assertRaises(ValueError) as ctx:
+                    emit_ca(self._scenario(year, None), out)
+                msg = str(ctx.exception)
+                self.assertIn("full_year_health_care_coverage", msg)
+                self.assertIn("health care coverage", msg)
+                self.assertIn(str(year), msg)
+                # Refused before anything was written.
+                self.assertEqual(list(out.glob("*.pdf")), [])
+
+    def test_emit_refuses_a_coverage_gap_every_year(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                out = Path(tempfile.mkdtemp())
+                with self.assertRaises(NotImplementedError) as ctx:
+                    emit_ca(self._scenario(year, False), out)
+                self.assertIn("FTB 3853", str(ctx.exception))
+                self.assertEqual(list(out.glob("*.pdf")), [])
+
+    def test_stated_coverage_emits(self):
+        # Control for the two refusals above: the same call succeeds when True.
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                _, pdfs = emit_ca(self._scenario(year, True))
+                self.assertTrue(pdfs["f540"].exists())
+
+    def test_compute_path_does_not_require_the_attestation(self):
+        from tenforty.orchestrator import ReturnOrchestrator
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                scn = self._scenario(year, None)
+                work = Path(tempfile.mkdtemp())
+                orch = ReturnOrchestrator(
+                    spreadsheets_dir=Path(__file__).parent.parent / "spreadsheets",
+                    work_dir=work / "work")
+                results = orch._compute_ca_results(
+                    scn, CA540Return(), orch.compute_federal(scn))
+                self.assertIn("f540_total_liability", results)
+                self.assertNotIn("f540_full_year_coverage_checkbox", results)
 
 
 class Line15Tests(unittest.TestCase):
@@ -263,6 +326,55 @@ class PresentationKeysTests(unittest.TestCase):
         cfg = TaxReturnConfig(year=2025, filing_status=FilingStatus.SINGLE,
                               birthdate="1980-01-01", state="CA")
         self.assertIs(cfg.address_is_principal_residence, False)
+
+    def test_full_year_coverage_box_emitted_when_true(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cfg = dataclasses.replace(
+                    make_ca_scenario(year).config, full_year_health_care_coverage=True)
+                self.assertEqual(
+                    form_f540.presentation_keys(cfg, [], year)[
+                        "f540_full_year_coverage_checkbox"], "/Yes")
+
+    def test_unstated_coverage_emits_no_box_and_does_not_refuse_here(self):
+        # None is refused at EMIT time by the orchestrator, not in the forms layer.
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cfg = dataclasses.replace(
+                    make_ca_scenario(year).config, full_year_health_care_coverage=None)
+                keys = form_f540.presentation_keys(cfg, [], year)
+                self.assertNotIn("f540_full_year_coverage_checkbox", keys)
+                self.assertEqual(keys["f540_taxpayer_first_name"], "Smoke")
+
+    def test_coverage_gap_refuses_naming_the_unmodeled_form(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cfg = dataclasses.replace(
+                    make_ca_scenario(year).config, full_year_health_care_coverage=False)
+                with self.assertRaises(NotImplementedError) as ctx:
+                    form_f540.presentation_keys(cfg, [], year)
+                msg = str(ctx.exception)
+                self.assertIn("FTB 3853", msg)
+                self.assertIn("full_year_health_care_coverage", msg)
+                self.assertIn("Individual Shared Responsibility", msg)
+
+    def test_full_year_coverage_box_is_mapped_to_the_template_checkbox_every_year(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cell = field_for(year, "f540_full_year_coverage_checkbox")
+                pdf = Path(__file__).parent.parent / "pdfs" / "california" / str(year) / "f540.pdf"
+                field = PdfReader(str(pdf)).get_fields()[cell]
+                self.assertEqual(field.get("/FT"), "/Btn")
+                self.assertIn("had full-year health care coverage, check the box",
+                              str(field.get("/TU")))
+                # The emitted on-value must be the template's own export value.
+                self.assertIn("/Yes", field["/_States_"])
+
+    def test_full_year_coverage_defaults_unstated(self):
+        from tenforty.models import TaxReturnConfig
+        cfg = TaxReturnConfig(year=2025, filing_status=FilingStatus.SINGLE,
+                              birthdate="1980-01-01", state="CA")
+        self.assertIsNone(cfg.full_year_health_care_coverage)
 
     def test_dob_must_be_iso(self):
         cfg = dataclasses.replace(make_ca_scenario(2024).config, birthdate="01/01/1980")

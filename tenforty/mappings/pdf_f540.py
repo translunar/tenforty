@@ -1106,11 +1106,25 @@ _RESIDENCE_SAME_BOX = {
 }
 
 
+# Line 92 "If you and your household had full-year health care coverage, check
+# the box." Full field names (2021's box is numbered differently). ON-state
+# /Yes per each box's OWN /_States_ (['/Yes', '/Off']) in every year;
+# ``forms.f540.presentation_keys`` supplies that state string.
+_FULL_YEAR_COVERAGE_BOX = {
+    2021: "3016 CB",
+    2022: "3021 CB",
+    2023: "3021 CB",
+    2024: "540-3021 CB",
+    2025: "540_form_3021 CB",
+}
+
+
 def _install_presentation(year, mapping, derivations):
     (prefix, l7, l10, l11, l12, name_fields, ssn_fields,
      (use_tax_radio, no_use_tax), (designee_radio, designee_no)) = _YEAR_PRESENTATION[year]
     mapping.update({key: prefix + num for key, num in _HEADER_NUMBERS.items()})
     mapping["f540_address_is_residence_checkbox"] = _RESIDENCE_SAME_BOX[year]
+    mapping["f540_full_year_coverage_checkbox"] = _FULL_YEAR_COVERAGE_BOX[year]
     mapping.update({
         "f540_line7_count": prefix + l7[0],
         "f540_line7_amount": prefix + l7[1],

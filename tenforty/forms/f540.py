@@ -247,7 +247,9 @@ def presentation_keys(
     """Non-money / presentation values for the Form 540 face, from the scenario.
 
     Header identity, date of birth, the "address is the same as your principal
-    residence" box (only when the scenario states it), the line 7 / line 10
+    residence" box (only when the scenario states it), the line 92 full-year
+    health-care-coverage box (a stated coverage gap raises: FTB 3853 is not
+    modeled), the line 7 / line 10
     exemption count-and-amount boxes, line 11 and line 12. Values here are
     SCENARIO-derived (not compute outputs); the orchestrator merges them into
     the CA results dict and ``pdf_f540`` places them.
@@ -294,6 +296,21 @@ def presentation_keys(
         out["f540_spouse_first_name"] = config.spouse_first_name
         out["f540_spouse_last_name"] = config.spouse_last_name
         out["f540_spouse_ssn"] = config.spouse_ssn
+    if config.full_year_health_care_coverage is False:
+        raise NotImplementedError(
+            "`full_year_health_care_coverage` is false: the household did not "
+            f"have full-year health care coverage in {year}, so the return owes "
+            "an Individual Shared Responsibility penalty (Form 540 line 92) or "
+            "an exemption from it, both figured on form FTB 3853. tenforty does "
+            "not model FTB 3853, and printing line 92 blank would understate "
+            "the tax. File by hand, or set the flag to true if every household "
+            "member in fact had qualifying coverage for the whole year."
+        )
+    if config.full_year_health_care_coverage:
+        # Line 92 box; its on-state on every year's template (see pdf_f540).
+        # Unstated (None) emits nothing here — the orchestrator refuses it at
+        # PDF-emit time.
+        out["f540_full_year_coverage_checkbox"] = "/Yes"
     if config.address_is_principal_residence:
         # The box's on-state on every year's template (see pdf_f540).
         out["f540_address_is_residence_checkbox"] = "/Yes"

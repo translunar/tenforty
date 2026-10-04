@@ -418,6 +418,15 @@ class TaxReturnConfig:
     # rather than print a signed return with the box left blank. True/False
     # check the form's Yes/No box.
     digital_assets: bool | None = None
+    # CA Form 540 line 92 "you and your household had full-year health care
+    # coverage" box (the individual-mandate attestation). None means UNSTATED.
+    # Like digital_assets it is NOT required at load time or by the compute
+    # path; it is required at CA PDF EMIT time, where the orchestrator refuses
+    # an unstated answer rather than print a signed 540 with the box blank and
+    # no penalty. True checks the box. False is a coverage gap: the Individual
+    # Shared Responsibility penalty (FTB 3853) is not modeled, so the CA
+    # forms layer raises NotImplementedError instead of assuming a 0 penalty.
+    full_year_health_care_coverage: bool | None = None
     # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
     # and load_scenario raises; True → raises NotImplementedError; False → OK.
     has_foreign_accounts: bool | None = None

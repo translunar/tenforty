@@ -59,6 +59,8 @@ def _make_ca_v1_smoke_scenario() -> Scenario:
             # keeps the shared config's flag intact through
             # dataclasses.replace(base, w2s=[...]) call sites.
             acknowledges_no_source_documents=True,
+            # CA emit-time attestation (Form 540 line 92 box): unstated refuses.
+            full_year_health_care_coverage=True,
             **attestations,
         ),
         ca540=CA540Return(),
