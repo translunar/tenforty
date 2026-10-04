@@ -71,12 +71,45 @@ class SCorpScheduleBAnswersTests(unittest.TestCase):
             business_activity_code="541990",
             business_activity_description="Services",
             product_or_service="Consulting",
-            any_c_corp_subsidiaries=False,
-            has_any_foreign_shareholders=False,
-            owns_foreign_entity=False,
+            shareholder_disregarded_entity_trust_estate_or_nominee=False,
+            owns_20pct_stock_of_any_corporation=False,
+            owns_20pct_interest_in_partnership_or_trust=False,
         )
         self.assertEqual(sb.accounting_method, AccountingMethod.CASH)
         self.assertEqual(sb.business_activity_code, "541990")
+        self.assertIs(sb.owns_20pct_stock_of_any_corporation, False)
+
+    def test_every_question_answer_defaults_to_unstated(self):
+        sb = SCorpScheduleBAnswers(
+            accounting_method=AccountingMethod.CASH,
+            business_activity_code="541990",
+            business_activity_description="Services",
+            product_or_service="Consulting",
+        )
+        for name in (
+            "shareholder_disregarded_entity_trust_estate_or_nominee",
+            "owns_20pct_stock_of_any_corporation",
+            "owns_20pct_interest_in_partnership_or_trust",
+            "restricted_stock_outstanding", "stock_options_or_warrants_outstanding",
+            "filed_form_8918", "issued_oid_debt_instruments",
+            "net_unrealized_built_in_gain", "section_163j_election",
+            "form_8990_conditions_met", "receipts_and_assets_under_250k",
+            "nonshareholder_debt_canceled", "qsub_election_terminated",
+            "payments_requiring_1099s", "filed_required_1099s",
+            "qualified_opportunity_fund", "digital_asset_transactions",
+        ):
+            self.assertIsNone(getattr(sb, name), name)
+
+    def test_retired_boolean_names_are_gone(self):
+        sb = SCorpScheduleBAnswers(
+            accounting_method=AccountingMethod.CASH,
+            business_activity_code="541990",
+            business_activity_description="Services",
+            product_or_service="Consulting",
+        )
+        for old in ("has_any_foreign_shareholders", "any_c_corp_subsidiaries",
+                    "owns_foreign_entity"):
+            self.assertFalse(hasattr(sb, old), old)
 
     def test_accounting_method_accepts_all_three_values(self):
         for m in (AccountingMethod.CASH, AccountingMethod.ACCRUAL,
@@ -86,9 +119,7 @@ class SCorpScheduleBAnswersTests(unittest.TestCase):
                 business_activity_code="541990",
                 business_activity_description="Services",
                 product_or_service="Consulting",
-                any_c_corp_subsidiaries=False,
-                has_any_foreign_shareholders=False,
-                owns_foreign_entity=False,
+                shareholder_disregarded_entity_trust_estate_or_nominee=False,
             )
             self.assertEqual(sb.accounting_method, m)
 

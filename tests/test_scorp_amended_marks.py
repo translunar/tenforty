@@ -29,7 +29,10 @@ from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.models import SCorpCAInputs
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
-from tests._scorp_fixtures import _make_v1_scenario, _scorp_attestation_defaults
+from tests._scorp_fixtures import (
+    SCH_B_ALL_NO_ANSWERS, _make_v1_scenario, _scorp_attestation_defaults,
+    set_tax_year,
+)
 from tests.helpers import scope_out_attestation_defaults
 
 
@@ -90,9 +93,7 @@ def _scenario_yaml_dict(amended=None, extra_scorp=None):
                                "business_activity_code": "541990",
                                "business_activity_description": "Services",
                                "product_or_service": "Consulting",
-                               "any_c_corp_subsidiaries": False,
-                               "has_any_foreign_shareholders": False,
-                               "owns_foreign_entity": False},
+                               **SCH_B_ALL_NO_ANSWERS},
         "shareholders": [{"name": "Taxpayer A", "ssn_or_ein": "000-00-0000",
                           "address": addr, "ownership_percentage": 100.0}],
     }
@@ -117,7 +118,7 @@ class FederalAmendedMarkTests(unittest.TestCase):
 
     def _emit(self, year, amended):
         s = _make_v1_scenario()
-        s.config.year = year
+        set_tax_year(s, year)
         s.s_corp_return.amended_return = amended
         out = Path(self._tmp.name) / f"fed_{year}_{amended}"
         self.orch.run_full_federal_scorp_return(s, out)
@@ -161,7 +162,7 @@ class CaK1AmendedMarkTests(unittest.TestCase):
 
     def _emit(self, year, amended):
         s = _with_ca(_make_v1_scenario())
-        s.config.year = year
+        set_tax_year(s, year)
         s.s_corp_return.amended_return = amended
         out = Path(self._tmp.name) / f"ca_{year}_{amended}"
         self.orch.run_full_california_scorp_return(s, out)

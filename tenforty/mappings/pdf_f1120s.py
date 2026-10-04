@@ -24,6 +24,73 @@ from collections.abc import Callable, Mapping
 from tenforty.mappings.registry import PdfFormMapping
 
 
+# ── Schedule B answer cells (shared by every year) ───────────────────────────
+# One Yes box ([0], on-state "/1") and one No box ([1], on-state "/2") per
+# question. The cell GROUP names are the only per-year difference: 2021 and 2022
+# zero-pad the page-2 groups for lines 5a-9 (c2_05 ... c2_09); 2023-2025 do not.
+# Page-3 groups (c3_1 ... c3_6) are spelled the same every year; line 16
+# (digital assets, c3_6) exists on the 2023-2025 forms only. Every group name and
+# its row was certified against each year's own template (widget Rect matched to
+# the printed question), never inferred from numbering.
+# (answer field, page, group name for 2021/2022, group name for 2023-2025)
+_SCH_B_PAIR_CELLS: tuple[tuple[str, int, str, str], ...] = (
+    ("shareholder_disregarded_entity_trust_estate_or_nominee", 2, "c2_2", "c2_2"),
+    ("owns_20pct_stock_of_any_corporation", 2, "c2_3", "c2_3"),
+    ("owns_20pct_interest_in_partnership_or_trust", 2, "c2_4", "c2_4"),
+    ("restricted_stock_outstanding", 2, "c2_05", "c2_5"),
+    ("stock_options_or_warrants_outstanding", 2, "c2_06", "c2_6"),
+    ("filed_form_8918", 2, "c2_07", "c2_7"),
+    ("section_163j_election", 2, "c2_09", "c2_9"),
+    ("form_8990_conditions_met", 2, "c2_10", "c2_10"),
+    ("receipts_and_assets_under_250k", 2, "c2_11", "c2_11"),
+    ("nonshareholder_debt_canceled", 3, "c3_1", "c3_1"),
+    ("qsub_election_terminated", 3, "c3_2", "c3_2"),
+    ("payments_requiring_1099s", 3, "c3_3", "c3_3"),
+    ("filed_required_1099s", 3, "c3_4", "c3_4"),
+    ("qualified_opportunity_fund", 3, "c3_5", "c3_5"),
+)
+_SCH_B_Q16_FIELD = "digital_asset_transactions"  # page 3, c3_6, 2023+ only
+_SCH_B_Q7_FIELD = "issued_oid_debt_instruments"  # single box, no No cell
+_SCH_B_Q7_GROUP = ("c2_08", "c2_8")              # (2021/2022, 2023-2025)
+_SCH_B_Q8_AMOUNT_FIELD = "net_unrealized_built_in_gain"  # line 8 dollar cell
+_SCH_B_Q8_CELL = "topmostSubform[0].Page2[0].f2_48[0]"
+
+
+def _sch_b_answer_cells(
+    padded_groups: bool, has_q16: bool,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """(compute-key -> PDF path, compute-key -> on-state) for the Schedule B
+    answer cells of one year. ``padded_groups`` selects the 2021/2022 spelling;
+    ``has_q16`` adds line 16 (2023+). Yes keys are ``f1120s_sch_b_<field>``
+    (on-state "/1"); No keys append ``_no`` (on-state "/2")."""
+    mapping: dict[str, str] = {}
+    states: dict[str, str] = {}
+
+    def add(field, page, group, with_no=True):
+        base = f"topmostSubform[0].Page{page}[0].{group}"
+        mapping[f"f1120s_sch_b_{field}"] = f"{base}[0]"
+        states[f"f1120s_sch_b_{field}"] = "/1"
+        if with_no:
+            mapping[f"f1120s_sch_b_{field}_no"] = f"{base}[1]"
+            states[f"f1120s_sch_b_{field}_no"] = "/2"
+
+    for field, page, padded, plain in _SCH_B_PAIR_CELLS:
+        add(field, page, padded if padded_groups else plain)
+    add(_SCH_B_Q7_FIELD, 2, _SCH_B_Q7_GROUP[0 if padded_groups else 1],
+        with_no=False)
+    if has_q16:
+        add(_SCH_B_Q16_FIELD, 3, "c3_6")
+    mapping[f"f1120s_sch_b_{_SCH_B_Q8_AMOUNT_FIELD}"] = _SCH_B_Q8_CELL
+    return mapping, states
+
+
+_SCH_B_MAPPING_2021_2022, _SCH_B_STATES_2021_2022 = _sch_b_answer_cells(True, False)
+_SCH_B_MAPPING_2023_ON, _SCH_B_STATES_2023_ON = _sch_b_answer_cells(False, True)
+# Compute keys with no cell on the 2021/2022 forms (line 16 does not exist).
+_SCH_B_Q16_KEYS = frozenset({
+    f"f1120s_sch_b_{_SCH_B_Q16_FIELD}", f"f1120s_sch_b_{_SCH_B_Q16_FIELD}_no"})
+
+
 # ── 2025 registries ──────────────────────────────────────────────────────────
 #
 # Direct 1:1 mappings — most compute keys go here.
@@ -78,10 +145,9 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_sch_b_business_activity_code":        "topmostSubform[0].Page1[0].ABC[0].f1_12[0]",
     "f1120s_sch_b_business_activity_description": "topmostSubform[0].Page2[0].f2_2[0]",
     "f1120s_sch_b_product_or_service":            "topmostSubform[0].Page2[0].f2_3[0]",
-    # Schedule B — yes/no questions. Only Yes-side checkbox paths are mapped.
-    "f1120s_sch_b_has_any_foreign_shareholders": "topmostSubform[0].Page2[0].c2_2[0]",
-    "f1120s_sch_b_any_c_corp_subsidiaries":      "topmostSubform[0].Page2[0].c2_3[0]",
-    "f1120s_sch_b_owns_foreign_entity":          "topmostSubform[0].Page2[0].c2_4[0]",
+    # Schedule B — every question's Yes ([0]) and No ([1]) cells, line 7's box and
+    # line 8's amount (see _sch_b_answer_cells).
+    **_SCH_B_MAPPING_2023_ON,
     # Schedule K — income/loss items
     "f1120s_sch_k_ordinary_business_income":    "topmostSubform[0].Page3[0].f3_3[0]",
     "f1120s_sch_k_net_rental_real_estate":      "topmostSubform[0].Page3[0].f3_4[0]",
@@ -187,10 +253,8 @@ _MAPPING_2024: dict[str, str] = {
     "f1120s_sch_b_business_activity_code":        "topmostSubform[0].Page1[0].ABC[0].f1_8[0]",
     "f1120s_sch_b_business_activity_description": "topmostSubform[0].Page2[0].f2_2[0]",
     "f1120s_sch_b_product_or_service":            "topmostSubform[0].Page2[0].f2_3[0]",
-    # Schedule B — yes/no questions (Yes-side only; same paths as 2025)
-    "f1120s_sch_b_has_any_foreign_shareholders": "topmostSubform[0].Page2[0].c2_2[0]",
-    "f1120s_sch_b_any_c_corp_subsidiaries":      "topmostSubform[0].Page2[0].c2_3[0]",
-    "f1120s_sch_b_owns_foreign_entity":          "topmostSubform[0].Page2[0].c2_4[0]",
+    # Schedule B — every question's Yes/No cells (same cells as 2025)
+    **_SCH_B_MAPPING_2023_ON,
     # Schedule K — income/loss items (identical paths to 2025)
     "f1120s_sch_k_ordinary_business_income":    "topmostSubform[0].Page3[0].f3_3[0]",
     "f1120s_sch_k_net_rental_real_estate":      "topmostSubform[0].Page3[0].f3_4[0]",
@@ -297,9 +361,7 @@ _MAPPING_2022: dict[str, str] = {
     "f1120s_sch_b_business_activity_code": "topmostSubform[0].Page1[0].ABC[0].f1_8[0]",
     "f1120s_sch_b_business_activity_description": "topmostSubform[0].Page2[0].f2_2[0]",
     "f1120s_sch_b_product_or_service": "topmostSubform[0].Page2[0].f2_3[0]",
-    "f1120s_sch_b_has_any_foreign_shareholders": "topmostSubform[0].Page2[0].c2_2[0]",
-    "f1120s_sch_b_any_c_corp_subsidiaries": "topmostSubform[0].Page2[0].c2_3[0]",
-    "f1120s_sch_b_owns_foreign_entity": "topmostSubform[0].Page2[0].c2_4[0]",
+    **_SCH_B_MAPPING_2021_2022,
     # Schedule K (pages 3-4) — byte-identical to 2023.
     "f1120s_sch_k_ordinary_business_income": "topmostSubform[0].Page3[0].f3_3[0]",
     "f1120s_sch_k_net_rental_real_estate": "topmostSubform[0].Page3[0].f3_4[0]",
@@ -404,6 +466,24 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
         return _CHECKBOX_STATES_BY_YEAR[year]
 
     @classmethod
+    def get_entity_header_fields(cls, year: int) -> dict[str, str]:
+        """Entity-identity key -> page-1 header text cell (name/address block and
+        items A, D, E, F, I).
+
+        ADDITIVE and independent of the compute-key registries above: these
+        keys are NOT ``f1120s.compute`` outputs. Like the CA 100S entity
+        identity, their values are injected at emit time from ``SCorpReturn``
+        (see ``_entity_header_values`` in the orchestrator), so they live
+        outside the compute-key partition (``_MAPPING_<year>`` /
+        ``_AGGREGATIONS_<year>`` / ``_SUPPRESSED_<year>``). Every path was
+        certified per year by a marker-probe render of that year's own template
+        (each cell filled with its own label, page rendered, label read against
+        the printed item caption), not inferred from field numbering."""
+        if year not in _ENTITY_HEADER_BY_YEAR:
+            raise ValueError(f"No Form 1120-S entity header cells for year {year}")
+        return _ENTITY_HEADER_BY_YEAR[year]
+
+    @classmethod
     def get_amended_mark(cls, year: int) -> tuple[str, str]:
         """(field_path, ON-state) for box H(4) "Amended return" (§4a).
 
@@ -477,15 +557,13 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
 # the 2025 form template.
 #
 # Accounting method is a radio group: [0]=Cash(/1), [1]=Accrual(/2),
-# [2]=Other(/3). The yes/no questions each have a single checkbox whose on
-# state is always "/1".
+# [2]=Other(/3). Each Schedule B yes/no question is a separate Yes box ([0], on
+# state "/1") and No box ([1], on state "/2"); see _sch_b_answer_cells.
 _CHECKBOX_STATES_2025: dict[str, str] = {
     "f1120s_sch_b_accounting_method_cash":    "/1",
     "f1120s_sch_b_accounting_method_accrual": "/2",
     "f1120s_sch_b_accounting_method_other":   "/3",
-    "f1120s_sch_b_has_any_foreign_shareholders": "/1",
-    "f1120s_sch_b_any_c_corp_subsidiaries":      "/1",
-    "f1120s_sch_b_owns_foreign_entity":          "/1",
+    **_SCH_B_STATES_2023_ON,
 }
 
 
@@ -532,17 +610,16 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
 #
 # The 2024 form uses the same XFA state names as 2025: the accounting method
 # radio group uses "/1" (cash), "/2" (accrual), "/3" (other), and each
-# yes/no question uses "/1" for the Yes checkbox. Verified against the
+# yes/no question uses "/1" for its Yes box and "/2" for its No box (see
+# _sch_b_answer_cells). Verified against the
 # "/_States_" lists from pypdf.get_fields() on pdfs/federal/2024/f1120s.pdf:
 #   c2_1[0]: ['/1', '/Off']  c2_1[1]: ['/2', '/Off']  c2_1[2]: ['/3', '/Off']
-#   c2_2[0]: ['/1', '/Off']  c2_3[0]: ['/1', '/Off']  c2_4[0]: ['/1', '/Off']
+#   c2_2[0]: ['/1', '/Off']  c2_2[1]: ['/2', '/Off']  (and every pair likewise)
 _CHECKBOX_STATES_2024: dict[str, str] = {
     "f1120s_sch_b_accounting_method_cash":    "/1",
     "f1120s_sch_b_accounting_method_accrual": "/2",
     "f1120s_sch_b_accounting_method_other":   "/3",
-    "f1120s_sch_b_has_any_foreign_shareholders": "/1",
-    "f1120s_sch_b_any_c_corp_subsidiaries":      "/1",
-    "f1120s_sch_b_owns_foreign_entity":          "/1",
+    **_SCH_B_STATES_2023_ON,
 }
 
 
@@ -585,7 +662,8 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
         c["f1120s_overpayment"] - c["f1120s_credited_to_next_year"]
     ),
 }
-_SUPPRESSED_2022: frozenset[str] = frozenset({"f1120s_refundable_credits"})
+_SUPPRESSED_2022: frozenset[str] = frozenset(
+    {"f1120s_refundable_credits"} | _SCH_B_Q16_KEYS)
 
 
 # 2021 inherits every 2022 tax-and-payments registry verbatim: the 2021 and
@@ -608,8 +686,62 @@ _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
     2022: _SUPPRESSED_2022,
     2023: _SUPPRESSED_2024, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
+# 2021/2022: same accounting-method states, but the Schedule B answer cells use
+# the zero-padded group names and have no line 16 (so no line 16 on-state).
+_CHECKBOX_STATES_2022: dict[str, str] = {
+    "f1120s_sch_b_accounting_method_cash":    "/1",
+    "f1120s_sch_b_accounting_method_accrual": "/2",
+    "f1120s_sch_b_accounting_method_other":   "/3",
+    **_SCH_B_STATES_2021_2022,
+}
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: _CHECKBOX_STATES_2024,
-    2022: _CHECKBOX_STATES_2024,
+    2021: _CHECKBOX_STATES_2022,
+    2022: _CHECKBOX_STATES_2022,
     2023: _CHECKBOX_STATES_2024, 2024: _CHECKBOX_STATES_2024, 2025: _CHECKBOX_STATES_2025,
+}
+
+
+# ── Page-1 entity header identity cells ──────────────────────────────────────
+# 2021-2024 share one layout: the address block is name / street / ONE combined
+# "City or town, state or province, country, and ZIP" cell, item A sits in the
+# ABC subform (f1_7), and items D/E/F/I are f1_9..f1_12. 2025 splits the address
+# into city / state / country / ZIP cells (the country cell is left blank: a
+# domestic return) and shifts items A and D/E/F/I to f1_11 and f1_13..f1_16.
+_P1 = "topmostSubform[0].Page1[0]."
+_ENTITY_HEADER_2021_2024: dict[str, str] = {
+    "f1120s_entity_s_election_date":
+        _P1 + "ABC[0].f1_7[0]",
+    "f1120s_entity_name":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_4[0]",
+    "f1120s_entity_street":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_5[0]",
+    "f1120s_entity_city_state_zip":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_6[0]",
+    "f1120s_entity_ein":               _P1 + "f1_9[0]",
+    "f1120s_entity_date_incorporated": _P1 + "f1_10[0]",
+    "f1120s_entity_total_assets":      _P1 + "f1_11[0]",
+    "f1120s_entity_shareholder_count": _P1 + "f1_12[0]",
+}
+_ENTITY_HEADER_2025: dict[str, str] = {
+    "f1120s_entity_s_election_date":
+        _P1 + "ABC[0].f1_11[0]",
+    "f1120s_entity_name":
+        _P1 + "Date_Name_ReadOrder[0].f1_4[0]",
+    "f1120s_entity_street":
+        _P1 + "Date_Name_ReadOrder[0].f1_5[0]",
+    "f1120s_entity_city":
+        _P1 + "Date_Name_ReadOrder[0].f1_7[0]",
+    "f1120s_entity_state":
+        _P1 + "Date_Name_ReadOrder[0].f1_8[0]",
+    "f1120s_entity_zip":
+        _P1 + "Date_Name_ReadOrder[0].f1_10[0]",
+    "f1120s_entity_ein":               _P1 + "f1_13[0]",
+    "f1120s_entity_date_incorporated": _P1 + "f1_14[0]",
+    "f1120s_entity_total_assets":      _P1 + "f1_15[0]",
+    "f1120s_entity_shareholder_count": _P1 + "f1_16[0]",
+}
+_ENTITY_HEADER_BY_YEAR: dict[int, dict[str, str]] = {
+    2021: _ENTITY_HEADER_2021_2024, 2022: _ENTITY_HEADER_2021_2024,
+    2023: _ENTITY_HEADER_2021_2024, 2024: _ENTITY_HEADER_2021_2024,
+    2025: _ENTITY_HEADER_2025,
 }
