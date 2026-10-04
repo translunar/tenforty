@@ -440,10 +440,12 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
     # Line 97 = max(0, line 95 − line 64).
     "540-3027": lambda c: max(0, _line_95(c) - _line_64(c)),
-    # Line 99 = line 97 − line 98.
+    # Line 99 = line 97 − line 98. The 2024 form's line 98 is the amount
+    # "applied to your 2025 estimated tax", so the key is named for 2025 (it
+    # was the 2025 pack's 2026 key, copied over). Nothing produces it yet.
     "540-4004": lambda c: (
         max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2026_estimated", 0)
+        - c.get("f540_line98_applied_to_2025_estimated", 0)
     ),
     # Line 100 = max(0, line 64 − line 95).
     "540-4005": lambda c: max(0, _line_64(c) - _line_95(c)),
@@ -570,10 +572,12 @@ _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     "3026": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
     # Line 97 = max(0, line 95 − line 64).
     "3027": lambda c: max(0, _line_95(c) - _line_64(c)),
-    # Line 99 = line 97 − line 98.
+    # Line 99 = line 97 − line 98. The 2023 form's line 98 is the amount
+    # "applied to your 2024 estimated tax", so the key is named for 2024 (it
+    # was the 2025 pack's 2026 key, copied over). Nothing produces it yet.
     "4004": lambda c: (
         max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2026_estimated", 0)
+        - c.get("f540_line98_applied_to_2024_estimated", 0)
     ),
     # Line 100 = max(0, line 64 − line 95).
     "4005": lambda c: max(0, _line_64(c) - _line_95(c)),

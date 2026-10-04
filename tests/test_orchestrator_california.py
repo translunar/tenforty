@@ -350,5 +350,70 @@ class SchD540OmittedWithoutAdjustmentTests(unittest.TestCase):
                 self.assertGreaterEqual(_pages_with_sch_d_540_title(combined), 1)
 
 
+class ResolvedSnapshotTests(unittest.TestCase):
+    """The ``<basename>.ca-resolved.yaml`` review snapshot written when a CA
+    run is given the federal YAML path. Synthetic amounts only."""
+
+    def test_serializer_carries_a_voluntary_contribution(self):
+        from tenforty.models import CA540Return, VoluntaryContribution
+        from tenforty.orchestrator import _ca540_to_yaml_dict
+        got = _ca540_to_yaml_dict(CA540Return(voluntary_contributions=[
+            VoluntaryContribution(fund_code="WLD", amount=50.0)]))
+        self.assertEqual(
+            got["voluntary_contributions"], [{"fund_code": "WLD", "amount": 50.0}])
+
+    def test_snapshot_is_written_for_a_return_with_a_contribution(self):
+        import yaml
+        from tenforty.scenario import _load_ca540
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                out = Path(tempfile.mkdtemp())
+                block = {
+                    "estimated_payments": 0.0, "use_tax": 0.0,
+                    "interest_and_penalties": 0.0,
+                    "voluntary_contributions": [
+                        {"fund_code": "WLD", "amount": 50.0}],
+                }
+                ca_yaml = _write_ca_yaml({"ca540": block}, tmp_dir=out)
+                orch = ReturnOrchestrator(
+                    spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                    work_dir=out / "work")
+                results, pdfs = orch.run_full_california_return(
+                    scenario=make_ca_scenario(year), ca_yaml_path=ca_yaml,
+                    output_dir=out, federal_yaml_path=out / "synthetic_return.yaml")
+                # The return itself emitted, and carries the contribution.
+                self.assertTrue(pdfs["f540"].exists())
+                self.assertEqual(results["f540_voluntary_contributions"], 50)
+                snapshot = yaml.safe_load(
+                    (out / "synthetic_return.ca-resolved.yaml").read_text())
+                self.assertEqual(
+                    snapshot["ca540"]["voluntary_contributions"],
+                    [{"fund_code": "WLD", "amount": 50.0}])
+                # The snapshot's contribution entries are in the loader's own
+                # shape: they load back to the same contributions.
+                reloaded = _load_ca540(
+                    {"voluntary_contributions":
+                        snapshot["ca540"]["voluntary_contributions"]}, year)
+                self.assertEqual(
+                    [(v.fund_code, v.amount) for v in reloaded.voluntary_contributions],
+                    [("WLD", 50.0)])
+
+    def test_snapshot_is_written_without_contributions(self):
+        # Control: the snapshot path already worked when there was nothing to
+        # serialize in the contributions list.
+        import yaml
+        out = Path(tempfile.mkdtemp())
+        ca_yaml = _write_ca_yaml(
+            {"ca540": {"estimated_payments": 0.0, "use_tax": 0.0}}, tmp_dir=out)
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets", work_dir=out / "work")
+        orch.run_full_california_return(
+            scenario=make_ca_scenario(2025), ca_yaml_path=ca_yaml,
+            output_dir=out, federal_yaml_path=out / "synthetic_return.yaml")
+        snapshot = yaml.safe_load(
+            (out / "synthetic_return.ca-resolved.yaml").read_text())
+        self.assertEqual(snapshot["ca540"]["voluntary_contributions"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
