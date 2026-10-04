@@ -514,10 +514,24 @@ def build_ptc_net_credit(year: int) -> Scenario:
     premium/SLCSP/APTC steady at $600/$550/$300 a month — the $300 APTC
     under-collects relative to the entitled credit at that FPL%, so line
     26 (net PTC) is positive and line 29 (repayment) is 0.
+
+    ONE month's enrollment premium (December) is $601, not $600, ON PURPOSE:
+    it makes the scenario annual-INELIGIBLE (column A not identical every
+    month), so the native spine and the vendor workbook both compute the
+    MONTHLY method. Adjudicated 2026-10-04: i8962 (2024) Line 10 MANDATES the
+    annual calculation when all 12 months are identical, the native spine
+    follows that, and the vendor workbook computes monthly regardless
+    (non-conforming) -- a $4-class rounding divergence. Parity must keep
+    testing the monthly arithmetic where the workbook lives; the annual
+    path is covered by the hand-coded f8962 oracle battery (re-baselined
+    2026-10-03). Do NOT "clean up" to identical months --
+    tests/test_spine_battery_parameterization.py pins this.
     """
     fpl = f8962_params.load(year).fpl_single_48
     wages = round(2.50 * fpl)
-    months = _ptc_months({n: (600.0, 550.0, 300.0) for n in range(1, 13)})
+    by_month = {n: (600.0, 550.0, 300.0) for n in range(1, 13)}
+    by_month[12] = (601.0, 550.0, 300.0)  # annual-ineligible; see docstring
+    months = _ptc_months(by_month)
     return Scenario(
         config=_battery_config(year),
         w2s=[
