@@ -213,6 +213,21 @@ class PTCBatteryRegimeSelfCheckTests(unittest.TestCase):
                 results = self.orch.compute_federal(build())
                 self.assertGreater(results["f8962_line_26_net_ptc"], 0)
 
+    def test_ptc_net_credit_is_annual_ineligible_every_year(self):
+        # Parity fixture guard (adjudicated 2026-10-04): i8962 (2024) Line 10
+        # mandates the ANNUAL method when the 1095-A is all-12-months with
+        # identical column A/B. The vendor workbook computes monthly
+        # regardless, so this scenario must FAIL the eligibility predicate in
+        # forms/f8962.py (Line 10 -> "No") or the native/workbook divergence
+        # silently returns. A "cleanup" to identical months trips this test.
+        for year in _PTC_YEARS:
+            with self.subTest(year=year):
+                build = dict(battery_for(year))["ptc_net_credit"]
+                results = self.orch.compute_federal(build())
+                self.assertTrue(results.get("f8962_line_10_no"))
+                self.assertFalse(results.get("f8962_line_10_yes", False))
+                self.assertNotIn("f8962_line_11_a", results)
+
     def test_ptc_capped_repayment_hits_the_200_300_band_cap_every_year(self):
         for year in _PTC_YEARS:
             with self.subTest(year=year):
