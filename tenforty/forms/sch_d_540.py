@@ -34,3 +34,18 @@ def compute(
         "sch_d_540_total_subtractions": irs_round(subs),
         "sch_d_540_total_additions": irs_round(adds),
     }
+
+
+def is_required(results: dict) -> bool:
+    """Whether Schedule D (540) belongs in the return at all.
+
+    The schedule's own instructions (2021-2025): "Do not complete this schedule
+    if all of your California gains (losses) are the same as your federal gains
+    (losses)." California differs from federal exactly when ``compute`` applied
+    an adjustment, so the test is on the two adjustment totals, not on the net
+    (offsetting adjustments leave the net unchanged yet still differ line by
+    line). Reads the keys strictly: a results dict without them is a caller
+    error, never a silent "not required".
+    """
+    return bool(results["sch_d_540_total_subtractions"]
+                or results["sch_d_540_total_additions"])

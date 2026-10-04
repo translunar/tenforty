@@ -135,7 +135,7 @@ Round-trip PDF verification confirms the chain end-to-end: scenario → compute 
 **California:**
 - Form 540 (CA individual return + tax + credits + final liability)
 - Schedule CA (540) (federal-vs-CA divergence kernel: auto-derived divergences + named `CA540Return` fields + multi-row worksheet rows)
-- Schedule D (540) (capital gains, federal pass-through gated by attestation)
+- Schedule D (540) (capital gains, federal pass-through gated by attestation; omitted from the packet when CA gains equal federal gains, per the schedule's instructions)
 - 13 year-bounded CA-specific scope-out attestations (AMT, §1202 QSBS, §1031 like-kind, kiddie tax, lump-sum distributions, RRB, PFL, etc.)
 
 **PDF emit + verification:**
