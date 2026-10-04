@@ -208,10 +208,17 @@ def compute(
     # The exemption and renter credits are use-or-lose, so the clamp is the
     # whole story for them. An unused PTET credit instead CARRIES FORWARD (form
     # FTB 3804-CR), and no credit carryover is modeled: clamping it away would
-    # leave next year's return wrong with no warning. Refuse instead. The
-    # refusal is deliberately broader than "PTET alone exceeds the tax": any
-    # unused line 47 credit while a PTET credit is present, because which of
-    # the two credits is used first is not modeled either.
+    # leave next year's return wrong with no warning. Refuse instead.
+    #
+    # BOUNDARY: "a PTET credit is present AND line 47 exceeds line 35". The
+    # order in which the renter and PTET credits are applied (R&TC §17039) has
+    # NOT been verified from an authoritative source, so the broad side is
+    # chosen. If the renter credit is applied first, this boundary is EXACT:
+    # the unused PTET credit, PTET − min(PTET, max(0, line 35 − renter)), is
+    # positive precisely when PTET > 0 and renter + PTET > line 35. Only if
+    # the PTET credit were applied first would it refuse some returns whose
+    # PTET credit is in fact fully used. So it is either exact or safely
+    # conservative; narrow it only if the §17039 order is pinned from source.
     if ptet_credit > 0 and line_47 > line_33:
         raise NotImplementedError(
             f"`ptet_credit` ({ptet_credit}) cannot be fully used in {year}: "
