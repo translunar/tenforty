@@ -1722,8 +1722,22 @@ class ReturnOrchestrator:
         Returns a dict mapping ``"f540"`` and ``"sch_ca"`` (always) and
         ``"sch_d_540"`` (only when required) to the filled PDF paths.
         """
-        output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
+        # Full-year health-care-coverage attestation (Form 540 line 92). An
+        # unstated answer cannot be printed as a blank box on a return that
+        # gets signed — it would read as "no coverage" with no penalty — so
+        # emit refuses; the CA COMPUTE path never asks. (A stated coverage gap
+        # is refused earlier, in forms.f540.presentation_keys.)
+        if scenario.config.full_year_health_care_coverage is None:
+            raise ValueError(
+                "Form 540 PDF emission needs the full-year health care "
+                f"coverage question answered for tax year {year}: set "
+                "`full_year_health_care_coverage` in the scenario config to "
+                "true or false (Form 540 line 92: 'If you and your household "
+                "had full-year health care coverage, check the box'). It is "
+                "left unanswered (null) in this scenario."
+            )
+        output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
 
         emitted: dict[str, Path] = {}

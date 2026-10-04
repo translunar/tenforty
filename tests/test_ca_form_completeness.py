@@ -69,7 +69,10 @@ F540_BLANK_BY_DESIGN = [
     (r"Line 61\.|Line 62\.|Line 63\.", "other taxes lines 61-63: not modeled"),
     (r"Line 73\.|Line 74\.|Line 75\.|Line 76\.|Line 77\.",
      "payment lines 73-77 (592-B/593, Prog 4.0, EITC, YCTC, FYTC): not modeled; blank means zero"),
-    (r"Line 92\.|Individual Shared Responsibility", "ISR penalty / full-year coverage box: not modeled"),
+    (r"^(\[Part II\] )?Line 9[256] ?\. (Payments after )?Individual Shared Responsibility",
+     "ISR penalty amount lines 92 / 95 / 96: the penalty (FTB 3853) is not modeled; blank means "
+     "zero, which holds because the full-year coverage box on line 92 is checked (a coverage gap "
+     "refuses instead of printing a blank penalty)"),
     (r"Line 98\.", "line 98 carryover to next-year estimated tax: not modeled"),
     (r"Code \d+\.|Contributions\. Code", "voluntary-contribution fund lines: only the line-110 total is modeled"),
     (r"Line 112\.|Interest and Penalties", "line 112 interest/penalties: not modeled"),
@@ -172,6 +175,19 @@ class CAFormCompletenessTests(unittest.TestCase):
                 self.assertEqual(len(cells), 1, cells)
                 self.assertEqual(
                     next(iter(cells.values()))["value"], "Synthetic County")
+
+    def test_f540_full_year_coverage_box_is_checked_every_year(self):
+        # config.full_year_health_care_coverage is the input; the emit helper
+        # sets it True, so the box is marked rather than waived as blank.
+        from tenforty.mappings.pdf_f540 import PdfF540
+        from tests._blank_by_design import template_fields
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cell = PdfF540.get_mapping(year)["f540_full_year_coverage_checkbox"]
+                for pdfs in self.emits[year]:
+                    info = template_fields(pdfs["f540"])[cell]
+                    self.assertIn("had full-year health care coverage, check the box", info["tu"])
+                    self.assertEqual(info["value"], "/Yes")
 
     def test_f540_residence_same_box_is_checked_every_year(self):
         # config.address_is_principal_residence is the input; the emit helper

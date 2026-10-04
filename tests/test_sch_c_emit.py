@@ -288,7 +288,8 @@ class SchCEmitTests(unittest.TestCase):
         scn = dataclasses.replace(
             scn, ca540=CA540Return(),
             config=dataclasses.replace(
-                scn.config, **{k: True for k in CA_SCOPE_OUT_FIELDS}))
+                scn.config, full_year_health_care_coverage=True,
+                **{k: True for k in CA_SCOPE_OUT_FIELDS}))
         fed = self.orch.compute_federal(scn)
         ca = self.orch._compute_ca_results(scn, scn.ca540, fed)
         ca_pdfs = self.orch._emit_ca_pdfs_internal(scn, ca, self.tmp / "ca")

@@ -63,10 +63,12 @@ _REVISION = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
 
 
 def _with_ca(scenario):
-    """CA-resident twin of a battery scenario: flip every CA scope-out True and
-    attach an empty CA540Return so the CA pipeline runs."""
+    """CA-resident twin of a battery scenario: flip every CA scope-out True,
+    state full-year health care coverage (required to emit the 540) and attach
+    an empty CA540Return so the CA pipeline runs."""
     cfg = dataclasses.replace(
-        scenario.config, **{k: True for k in CA_SCOPE_OUT_FIELDS})
+        scenario.config, full_year_health_care_coverage=True,
+        **{k: True for k in CA_SCOPE_OUT_FIELDS})
     return dataclasses.replace(scenario, config=cfg, ca540=CA540Return())
 
 
