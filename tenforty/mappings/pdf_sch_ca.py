@@ -40,6 +40,7 @@ flat names rather than the IRS XFA `topmostSubform[0].PageN[0]....`
 form).
 """
 
+import re
 from collections.abc import Callable, Mapping
 
 from tenforty.mappings.registry import PdfFormMapping
@@ -634,8 +635,7 @@ _MAPPING_2021: dict[str, str] = {
 _AGGREGATIONS_2021: dict[str, tuple[str, ...]] = {}
 
 
-# Zero-derivation form (allowlisted in catalog.ZERO_DERIVATION_FORMS): no
-# within-form arithmetic in any year. Inherits the empty class default.
+# Section-total derivations are installed below (_install_sch_ca_totals).
 _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {}
 
 
@@ -663,6 +663,344 @@ PdfSchCa._MAPPINGS[2021] = _MAPPING_2021
 
 # Year-keyed dispatch tables for the four registries above — replaces
 # `if year == <literal>` branching with membership-gated dict lookup.
+# ── Catalog-routed Col B / Col C cells and the section-total cells ──────────
+#
+# Every Part I line the divergence catalog can post to has a Col B (subtractions)
+# and/or Col C (additions) compute key. Until now only the lines with a federal
+# Col A source were placed on the form, so a divergence on (say) line 1a, 8c or
+# 24j was added into line 27 yet printed NOWHERE — the page did not foot against
+# its visible addends. These tables place every catalog-reachable Part I cell, and
+# the section totals (1z, 9a, 10, 25, 26) are DERIVED from the same keys so line
+# 10 - line 26 = line 27 holds on the page by construction.
+#
+# Field numbers were generated from each template's /TU tooltips
+# (tests/_schca_tooltips.py) restricted to Part I, and are re-verified against
+# those tooltips by tests/test_ca_sch_ca_completeness.py.
+#
+# Catalog (line, column) pairs whose column has NO widget on the template (the
+# catalog allows a direction the form does not print) are owned in SUPPRESSED:
+# 2021 Part I §B 8e additions (+ the pre-existing column omissions such as §C 13
+# additions). Their amounts still reach line 27 via the kernel totals.
+
+_CATALOG_CELLS_2021: dict[str, str] = {'sch_ca_line_part_i_b_2a_additions': '1034',
+     'sch_ca_line_part_i_b_8a_additions': '1051',
+     'sch_ca_line_part_i_b_8b_subtractions': '1053',
+     'sch_ca_line_part_i_b_8c_additions': '1057',
+     'sch_ca_line_part_i_b_8d_additions': '1059',
+     'sch_ca_line_part_i_b_8e_subtractions': '1061',
+     'sch_ca_line_part_i_b_8m_subtractions': '2014',
+     'sch_ca_line_part_i_b_8n_subtractions': '2017',
+     'sch_ca_line_part_i_b_8o_additions': '2021',
+     'sch_ca_line_part_i_b_9b1_subtractions': '2033',
+     'sch_ca_line_part_i_b_9b2_subtractions': '2036',
+     'sch_ca_line_part_i_b_9b3_subtractions': '2039',
+     'sch_ca_line_part_i_b_9b4_subtractions': '2042',
+     'sch_ca_line_part_i_c_12_additions': '2052',
+     'sch_ca_line_part_i_c_12_subtractions': '2051',
+     'sch_ca_line_part_i_c_14_additions': '2058',
+     'sch_ca_line_part_i_c_19a_additions': '3006',
+     'sch_ca_line_part_i_c_24b_additions': '3028',
+     'sch_ca_line_part_i_c_24b_subtractions': '3027',
+     'sch_ca_line_part_i_c_24c_subtractions': '3030',
+     'sch_ca_line_part_i_c_24d_subtractions': '3033',
+     'sch_ca_line_part_i_c_24f_additions': '3040',
+     'sch_ca_line_part_i_c_24f_subtractions': '3039',
+     'sch_ca_line_part_i_c_24g_additions': '3043',
+     'sch_ca_line_part_i_c_24g_subtractions': '3042',
+     'sch_ca_line_part_i_c_24i_subtractions': '3048',
+     'sch_ca_line_part_i_c_24j_subtractions': '3051'}
+
+_TOTAL_CELLS_2021: dict[str, str] = {'1zA': '1003',
+     '1zB': '1004',
+     '1zC': '1005',
+     '9aA': '2029',
+     '9aB': '2030',
+     '9aC': '2031',
+     '10A': '2044',
+     '10B': '2045',
+     '10C': '2046',
+     '25A': '3059',
+     '25B': '3060',
+     '25C': '3061',
+     '26A': '3062',
+     '26B': '3063',
+     '26C': '3064'}
+
+_CATALOG_CELLS_2023: dict[str, str] = {'sch_ca_line_part_i_a_1a_additions': '1004',
+     'sch_ca_line_part_i_a_1a_subtractions': '1003',
+     'sch_ca_line_part_i_a_1d_subtractions': '1012',
+     'sch_ca_line_part_i_a_1h_additions': '1025',
+     'sch_ca_line_part_i_a_1h_subtractions': '1024',
+     'sch_ca_line_part_i_a_1i_additions': '1026',
+     'sch_ca_line_part_i_b_2a_additions': '1055',
+     'sch_ca_line_part_i_b_8a_additions': '2002',
+     'sch_ca_line_part_i_b_8b_subtractions': '2004',
+     'sch_ca_line_part_i_b_8c_additions': '2007',
+     'sch_ca_line_part_i_b_8c_subtractions': '2006',
+     'sch_ca_line_part_i_b_8d_additions': '2009',
+     'sch_ca_line_part_i_b_8e_additions': '2011',
+     'sch_ca_line_part_i_b_8f_subtractions': '2013',
+     'sch_ca_line_part_i_b_8k_additions': '2019',
+     'sch_ca_line_part_i_b_8n_subtractions': '2023',
+     'sch_ca_line_part_i_b_8o_subtractions': '2025',
+     'sch_ca_line_part_i_b_8p_additions': '2028',
+     'sch_ca_line_part_i_b_8p_subtractions': '2027',
+     'sch_ca_line_part_i_b_9b1_subtractions': '3004',
+     'sch_ca_line_part_i_b_9b2_subtractions': '3005',
+     'sch_ca_line_part_i_b_9b3_subtractions': '3006',
+     'sch_ca_line_part_i_c_12_additions': '3014',
+     'sch_ca_line_part_i_c_12_subtractions': '3013',
+     'sch_ca_line_part_i_c_14_additions': '3018',
+     'sch_ca_line_part_i_c_19a_additions': '3026',
+     'sch_ca_line_part_i_c_24b_additions': '4004',
+     'sch_ca_line_part_i_c_24b_subtractions': '4003',
+     'sch_ca_line_part_i_c_24c_subtractions': '4006',
+     'sch_ca_line_part_i_c_24d_subtractions': '4008',
+     'sch_ca_line_part_i_c_24f_additions': '4012',
+     'sch_ca_line_part_i_c_24f_subtractions': '4011',
+     'sch_ca_line_part_i_c_24g_additions': '4015',
+     'sch_ca_line_part_i_c_24g_subtractions': '4014',
+     'sch_ca_line_part_i_c_24i_subtractions': '4018',
+     'sch_ca_line_part_i_c_24j_subtractions': '4020'}
+
+_TOTAL_CELLS_2023: dict[str, str] = {'1aA': '1002',
+     '1aB': '1003',
+     '1aC': '1004',
+     '1zA': '1027',
+     '1zB': '1028',
+     '1zC': '1029',
+     '9aA': '3001',
+     '9aB': '3002',
+     '9aC': '3003',
+     '10A': '3007',
+     '10B': '3008',
+     '10C': '3009',
+     '25A': '4026',
+     '25B': '4027',
+     '25C': '4028',
+     '26A': '4029',
+     '26B': '4030',
+     '26C': '4031'}
+
+_CATALOG_CELLS_2024: dict[str, str] = {'sch_ca_line_part_i_a_1a_additions': '540ca_form - 1004',
+     'sch_ca_line_part_i_a_1a_subtractions': '540ca_form - 1003',
+     'sch_ca_line_part_i_a_1d_subtractions': '540ca_form - 1012',
+     'sch_ca_line_part_i_a_1h_additions': '540ca_form - 1025',
+     'sch_ca_line_part_i_a_1h_subtractions': '540ca_form - 1024',
+     'sch_ca_line_part_i_a_1i_additions': '540ca_form - 1026',
+     'sch_ca_line_part_i_b_2a_additions': '540ca_form - 1055',
+     'sch_ca_line_part_i_b_8a_additions': '540ca_form - 2002',
+     'sch_ca_line_part_i_b_8b_subtractions': '540ca_form - 2004',
+     'sch_ca_line_part_i_b_8c_additions': '540ca_form - 2007',
+     'sch_ca_line_part_i_b_8d_additions': '540ca_form - 2009',
+     'sch_ca_line_part_i_b_8e_additions': '540ca_form - 2011',
+     'sch_ca_line_part_i_b_8f_subtractions': '540ca_form - 2013',
+     'sch_ca_line_part_i_b_8k_additions': '540ca_form - 2019',
+     'sch_ca_line_part_i_b_8n_subtractions': '540ca_form - 2023',
+     'sch_ca_line_part_i_b_8o_subtractions': '540ca_form - 2025',
+     'sch_ca_line_part_i_b_8p_additions': '540ca_form - 2028',
+     'sch_ca_line_part_i_b_8p_subtractions': '540ca_form - 2027',
+     'sch_ca_line_part_i_b_9b1_subtractions': '540ca_form - 3004',
+     'sch_ca_line_part_i_b_9b2_subtractions': '540ca_form - 3005',
+     'sch_ca_line_part_i_b_9b3_subtractions': '540ca_form - 3006',
+     'sch_ca_line_part_i_c_12_additions': '540ca_form - 3014',
+     'sch_ca_line_part_i_c_12_subtractions': '540ca_form - 3013',
+     'sch_ca_line_part_i_c_14_additions': '540ca_form - 3018',
+     'sch_ca_line_part_i_c_19a_additions': '540ca_form - 3026',
+     'sch_ca_line_part_i_c_24b_additions': '540ca_form - 4004',
+     'sch_ca_line_part_i_c_24b_subtractions': '540ca_form - 4003',
+     'sch_ca_line_part_i_c_24c_subtractions': '540ca_form - 4006',
+     'sch_ca_line_part_i_c_24d_subtractions': '540ca_form - 4008',
+     'sch_ca_line_part_i_c_24f_additions': '540ca_form - 4012',
+     'sch_ca_line_part_i_c_24f_subtractions': '540ca_form - 4011',
+     'sch_ca_line_part_i_c_24g_additions': '540ca_form - 4015',
+     'sch_ca_line_part_i_c_24g_subtractions': '540ca_form - 4014',
+     'sch_ca_line_part_i_c_24i_subtractions': '540ca_form - 4018',
+     'sch_ca_line_part_i_c_24j_subtractions': '540ca_form - 4020'}
+
+_TOTAL_CELLS_2024: dict[str, str] = {'1aA': '540ca_form - 1002',
+     '1aB': '540ca_form - 1003',
+     '1aC': '540ca_form - 1004',
+     '1zA': '540ca_form - 1027',
+     '1zB': '540ca_form - 1028',
+     '1zC': '540ca_form - 1029',
+     '9aA': '540ca_form - 3001',
+     '9aB': '540ca_form - 3002',
+     '9aC': '540ca_form - 3003',
+     '10A': '540ca_form - 3007',
+     '10B': '540ca_form - 3008',
+     '10C': '540ca_form - 3009',
+     '25A': '540ca_form - 4026',
+     '25B': '540ca_form - 4027',
+     '25C': '540ca_form - 4028',
+     '26A': '540ca_form - 4029',
+     '26B': '540ca_form - 4030',
+     '26C': '540ca_form - 4031'}
+
+_CATALOG_CELLS_2025: dict[str, str] = {'sch_ca_line_part_i_a_1a_additions': '540ca_form - 1004',
+     'sch_ca_line_part_i_a_1a_subtractions': '540ca_form - 1003',
+     'sch_ca_line_part_i_a_1d_subtractions': '540ca_form - 1012',
+     'sch_ca_line_part_i_a_1h_additions': '540ca_form - 1025',
+     'sch_ca_line_part_i_a_1h_subtractions': '540ca_form - 1024',
+     'sch_ca_line_part_i_a_1i_additions': '540ca_form - 1026',
+     'sch_ca_line_part_i_b_2a_additions': '540ca_form - 1055',
+     'sch_ca_line_part_i_b_8a_additions': '540ca_form - 2002',
+     'sch_ca_line_part_i_b_8c_additions': '540ca_form - 2007',
+     'sch_ca_line_part_i_b_8d_additions': '540ca_form - 2009',
+     'sch_ca_line_part_i_b_8e_additions': '540ca_form - 2011',
+     'sch_ca_line_part_i_b_8f_subtractions': '540ca_form - 2013',
+     'sch_ca_line_part_i_b_8k_additions': '540ca_form - 2019',
+     'sch_ca_line_part_i_b_8n_subtractions': '540ca_form - 2023',
+     'sch_ca_line_part_i_b_8o_subtractions': '540ca_form - 2025',
+     'sch_ca_line_part_i_b_8p_additions': '540ca_form - 2028',
+     'sch_ca_line_part_i_b_8p_subtractions': '540ca_form - 2027',
+     'sch_ca_line_part_i_b_9b1_subtractions': '540ca_form - 3004B',
+     'sch_ca_line_part_i_b_9b2_subtractions': '540ca_form - 3005B',
+     'sch_ca_line_part_i_b_9b3_subtractions': '540ca_form - 3006B',
+     'sch_ca_line_part_i_c_12_subtractions': '540ca_form - 3013',
+     'sch_ca_line_part_i_c_19a_additions': '540ca_form - 3026',
+     'sch_ca_line_part_i_c_24b_additions': '540ca_form - 4004',
+     'sch_ca_line_part_i_c_24b_subtractions': '540ca_form - 4003',
+     'sch_ca_line_part_i_c_24d_subtractions': '540ca_form - 4008',
+     'sch_ca_line_part_i_c_24f_additions': '540ca_form - 4012',
+     'sch_ca_line_part_i_c_24f_subtractions': '540ca_form - 4011',
+     'sch_ca_line_part_i_c_24g_additions': '540ca_form - 4015',
+     'sch_ca_line_part_i_c_24g_subtractions': '540ca_form - 4014',
+     'sch_ca_line_part_i_c_24i_subtractions': '540ca_form - 4018',
+     'sch_ca_line_part_i_c_24j_subtractions': '540ca_form - 4020',
+    'sch_ca_line_part_i_b_8b_subtractions': '540ca_form - 2004',
+    'sch_ca_line_part_i_c_12_additions': '540ca_form - 3014',
+    'sch_ca_line_part_i_c_14_additions': '540ca_form - 3018'}
+
+_TOTAL_CELLS_2025: dict[str, str] = {'1aA': '540ca_form - 1002',
+     '1aB': '540ca_form - 1003',
+     '1aC': '540ca_form - 1004',
+     '1zA': '540ca_form - 1027',
+     '1zB': '540ca_form - 1028',
+     '1zC': '540ca_form - 1029',
+     '9aA': '540ca_form - 3001',
+     '9aB': '540ca_form - 3002',
+     '9aC': '540ca_form - 3003',
+     '10A': '540ca_form - 3007',
+     '10B': '540ca_form - 3008',
+     '10C': '540ca_form - 3009',
+     '25A': '540ca_form - 4026',
+     '25B': '540ca_form - 4027',
+     '25C': '540ca_form - 4028',
+     '26A': '540ca_form - 4029',
+     '26B': '540ca_form - 4030',
+     '26C': '540ca_form - 4031'}
+
+
+_SUFFIX = {"A": "col_a", "B": "subtractions", "C": "additions"}
+
+# Section membership by compute-key pattern (key = sch_ca_line_<pattern>_<suffix>).
+# Line 1 block: 2022+ lines 1a-1i and the 1z subtotal; 2021's single un-lettered line 1.
+_LINE_1_BLOCK = r"part_i_(a_1[a-z]|line_1)"
+_SECTION_A_REST = r"part_i_a_(2|3|4|5b|6|7)"
+_SECTION_B_MAIN = r"part_i_b_(1|2a|3|4|5|6|7)"
+_LINE_8_BLOCK = r"part_i_b_8[a-z]"           # -> line 9a
+_LINE_9B_BLOCK = r"part_i_b_9b\d"            # Col B only, joins line 10 Col B
+_SECTION_C_MAIN = r"part_i_c_(1[1-8]|19a|2[0-3])"
+_LINE_24_BLOCK = r"part_i_c_24[a-z]"         # -> line 25
+_LINE_26_OWN = r"part_i_line_26"             # the §179A row posts at line 26 itself
+
+
+def _install_sch_ca_totals(year, mapping, derivations, suppressed,
+                           catalog_cells, total_cells):
+    """Place every catalog-routed Part I cell and derive the section totals from
+    the same compute keys, so line 10 - line 26 = line 27 on the printed page."""
+    mapping.update(catalog_cells)
+    universe = set(mapping) | set(suppressed)
+
+    def keys(pattern, col):
+        rx = re.compile(rf"sch_ca_line_({pattern})_{_SUFFIX[col]}")
+        return sorted(k for k in universe if rx.fullmatch(k))
+
+    def total(c, groups, col):
+        return sum(c.get(k, 0) for g in groups for k in keys(g, col))
+
+    def any_present(c, groups, col):
+        return any(k in c for g in groups for k in keys(g, col))
+
+    def put(token, col, groups, *, always):
+        field = total_cells.get(token + col)
+        if field is None:
+            return
+        if always:
+            derivations[field] = lambda c, g=groups, col=col: total(c, g, col)
+        else:
+            derivations[field] = (
+                lambda c, g=groups, col=col:
+                total(c, g, col) if any_present(c, g, col) else None)
+
+    for col in "ABC":
+        if col != "A":   # 1z Col A is the 1:1 federal passthrough (wages)
+            put("1z", col, (_LINE_1_BLOCK,), always=False)
+        put("9a", col, (_LINE_8_BLOCK,), always=False)
+        put("25", col, (_LINE_24_BLOCK,), always=False)
+        line10 = (_LINE_1_BLOCK, _SECTION_A_REST, _SECTION_B_MAIN, _LINE_8_BLOCK)
+        if col == "B":
+            line10 += (_LINE_9B_BLOCK,)
+        put("10", col, line10, always=True)
+        put("26", col, (_SECTION_C_MAIN, _LINE_24_BLOCK, _LINE_26_OWN), always=True)
+
+    # Line 1a Col A mirrors its federal counterpart (Form 1040 line 1a = W-2 wages,
+    # which is also what feeds the 1z subtotal; 1b-1i have no federal source and
+    # stay blank, as on the federal 1040).
+    if "1aA" in total_cells:
+        derivations[total_cells["1aA"]] = (
+            lambda c: c.get("sch_ca_line_part_i_a_1z_col_a"))
+
+
+
+# Section A memo cells (federal 1040 lines 2a/3a/4a/5a/6a). Tooltip-verified:
+# each tooltip ends "Line N a." (see tests/test_ca_sch_ca_completeness.py).
+_MEMO_KEYS = ("sch_ca_memo_line_2a_tax_exempt_interest",
+              "sch_ca_memo_line_3a_qualified_dividends",
+              "sch_ca_memo_line_4a_ira_distributions",
+              "sch_ca_memo_line_5a_pensions",
+              "sch_ca_memo_line_6a_social_security")
+_MEMO_FIELDS = {
+    2021: ("1006", "1010", "1014", "1018", "1022"),
+    2023: ("1030", "1034", "1038", "1042", "1046"),
+    2024: tuple(f"540ca_form - {n}" for n in (1030, 1034, 1038, 1042, 1046)),
+    2025: tuple(f"540ca_form - {n}" for n in (1030, 1034, 1038, 1042, 1046)),
+}
+for _y, _m in ((2021, _MAPPING_2021), (2023, _MAPPING_2023),
+               (2024, _MAPPING_2024), (2025, _MAPPING_2025)):
+    _m.update(dict(zip(_MEMO_KEYS, _MEMO_FIELDS[_y])))
+
+# Keys the catalog can post that have no cell of their own: (a) the §179A row posts
+# AT line 26 (its amount is folded into the derived line-26 cell), (b) catalog
+# directions the template prints no column for (see the note above).
+_LINE_26_KEYS = frozenset({
+    "sch_ca_line_part_i_line_26_subtractions",
+    "sch_ca_line_part_i_line_26_additions",
+})
+_SUPPRESSED_2021 = _SUPPRESSED_2021 | _LINE_26_KEYS | {
+    "sch_ca_line_part_i_b_8e_additions",
+    # 2021 prints one un-lettered line 1; the catalog's "Part I line 1" rows share
+    # its Col B / Col C cells with the "1z" keys, so they are folded into the one
+    # derived cell (a second 1:1 mapping onto the same field would be a duplicate path).
+    "sch_ca_line_part_i_line_1_subtractions",
+    "sch_ca_line_part_i_line_1_additions"}
+_SUPPRESSED_2023 = _SUPPRESSED_2023 | _LINE_26_KEYS
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_SUPPRESSED_2024 = _SUPPRESSED_2024 | _LINE_26_KEYS
+_SUPPRESSED_2025 = _SUPPRESSED_2025 | _LINE_26_KEYS
+
+_install_sch_ca_totals(2021, _MAPPING_2021, _DERIVATIONS_2021, _SUPPRESSED_2021,
+                       _CATALOG_CELLS_2021, _TOTAL_CELLS_2021)
+# 2022 shares 2023's mapping / derivation / suppression objects (identical field tree).
+_install_sch_ca_totals(2023, _MAPPING_2023, _DERIVATIONS_2023, _SUPPRESSED_2023,
+                       _CATALOG_CELLS_2023, _TOTAL_CELLS_2023)
+_install_sch_ca_totals(2024, _MAPPING_2024, _DERIVATIONS_2024, _SUPPRESSED_2024,
+                       _CATALOG_CELLS_2024, _TOTAL_CELLS_2024)
+_install_sch_ca_totals(2025, _MAPPING_2025, _DERIVATIONS_2025, _SUPPRESSED_2025,
+                       _CATALOG_CELLS_2025, _TOTAL_CELLS_2025)
+
+
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {
     2021: _AGGREGATIONS_2021, 2022: _AGGREGATIONS_2022,
     2023: _AGGREGATIONS_2023, 2024: _AGGREGATIONS_2024, 2025: _AGGREGATIONS_2025,
