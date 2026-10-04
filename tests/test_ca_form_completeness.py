@@ -20,7 +20,17 @@ SCENARIOS = (dict(), dict(state_tax_withheld=0.0))   # refund, amount owed
 # ── Form 540 ────────────────────────────────────────────────────────────────
 F540_BLANK_BY_DESIGN = [
     # Identity: no model input for these.
-    (r"Middle Initial|Suffix", "no middle-initial / suffix input in the scenario"),
+    (r"Suffix", "no name-suffix input in the scenario"),
+    # BLIND SPOT: this pattern cannot tell the spouse's cell from the taxpayer's
+    # (identical bare tooltip on 2021-2023, and it also matches the taxpayer's
+    # "Middle Initial." on 2024-2025), so it would waive a blank TAXPAYER cell
+    # too. test_f540_middle_initial_cell_is_filled_from_config_every_year is
+    # the load-bearing guard for that cell; do not remove it while this rule stands.
+    (r"^Middle Initial\.?$",
+     "spouse middle initial on the 2021-2023 templates, whose tooltip is the same bare 'Middle "
+     "Initial' as the taxpayer's cell: single-filer scenario. The taxpayer's cell is fed from "
+     "config.middle_initial and proven filled by "
+     "test_f540_middle_initial_cell_is_filled_from_config_every_year"),
     (r"Spouse.*(SSN|S S N)|spouse.*first name|Spouse's.*Last name|Spouse.*Middle|Spouse.*Suffix",
      "spouse identity: single-filer scenario (fed from config.spouse_* when present; MFJ/MFS cannot "
      "emit through the workbook)"),
@@ -153,6 +163,17 @@ class CAFormCompletenessTests(unittest.TestCase):
                 self.assertEqual(len(cells), 1, cells)
                 self.assertEqual(
                     next(iter(cells.values()))["value"], "Synthetic County")
+
+    def test_f540_middle_initial_cell_is_filled_from_config_every_year(self):
+        # config.middle_initial is the input; the emit helper sets "Q".
+        from tenforty.mappings.pdf_f540 import PdfF540
+        from tests._blank_by_design import template_fields
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cell = PdfF540.get_mapping(year)["f540_taxpayer_middle_initial"]
+                for pdfs in self.emits[year]:
+                    self.assertEqual(
+                        template_fields(pdfs["f540"])[cell]["value"], "Q")
 
     def test_sch_d_540_every_blank_cell_is_documented_and_filled_set_is_pinned(self):
         for year in CA_YEARS:

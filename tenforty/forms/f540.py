@@ -277,6 +277,7 @@ def presentation_keys(
 
     out: dict[str, object] = {
         "f540_taxpayer_first_name": config.first_name,
+        "f540_taxpayer_middle_initial": config.middle_initial,
         "f540_taxpayer_last_name": config.last_name,
         "f540_taxpayer_dob": _mm_dd_yyyy(config.birthdate),
         "f540_address_street": config.address,

@@ -390,9 +390,13 @@ class TaxReturnConfig:
     dependents: list[str] = field(default_factory=list)
     first_name: str = ""
     last_name: str = ""
+    # Middle initial: printed after the first name wherever a form shows the
+    # name. Blank stays blank on the form (not a gate).
+    middle_initial: str = ""
     ssn: str = ""
     spouse_first_name: str = ""
     spouse_last_name: str = ""
+    spouse_middle_initial: str = ""
     spouse_ssn: str = ""
     address: str = ""
     address_city: str = ""
@@ -569,12 +573,12 @@ class TaxReturnConfig:
 
     @property
     def full_name(self) -> str:
-        """Single source of 'First Last' formatting consumed by every form's
-        PDF-header emission. Stripped at each half so trailing whitespace in
-        one field doesn't leave a stray space when the other is empty."""
-        first = self.first_name.strip()
-        last = self.last_name.strip()
-        return f"{first} {last}".strip()
+        """Single source of 'First M Last' formatting consumed by every form's
+        PDF-header emission. Stripped at each part so trailing whitespace in
+        one field doesn't leave a stray space when another is empty (a blank
+        middle initial gives 'First Last', never a double space)."""
+        parts = (self.first_name, self.middle_initial, self.last_name)
+        return " ".join(p.strip() for p in parts if p.strip())
 
     def pdf_header(self) -> Mapping[str, str]:
         return MappingProxyType({

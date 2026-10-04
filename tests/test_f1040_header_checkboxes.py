@@ -129,6 +129,35 @@ class HeaderKeyTests(unittest.TestCase):
             "state": "TX", "zip_code": "00001",
         })
 
+    def test_first_name_box_carries_first_name_and_middle_initial(self):
+        # The 1040 box is labeled "first name and middle initial".
+        got = f1040_spine.header_values(self._config(
+            middle_initial="Q", spouse_middle_initial="Z"))
+        self.assertEqual(got["first_name"], "Pat Q")
+        self.assertEqual(got["spouse_first_name"], "Sam Z")
+        self.assertEqual(got["last_name"], "Example")
+        self.assertEqual(got["spouse_last_name"], "Example")
+        self.assertEqual(got["taxpayer_name"], "Pat Q Example")
+
+    def test_blank_middle_initial_leaves_the_bare_first_name(self):
+        got = f1040_spine.header_values(self._config(
+            middle_initial="  ", spouse_middle_initial=""))
+        self.assertEqual(got["first_name"], "Pat")
+        self.assertEqual(got["spouse_first_name"], "Sam")
+
+    def test_yaml_loader_reads_the_middle_initials(self):
+        base = REPO_ROOT / "tests" / "fixtures" / "simple_w2.yaml"
+        self.assertEqual(load_scenario(base).config.middle_initial, "")
+        self.assertEqual(load_scenario(base).config.spouse_middle_initial, "")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scn.yaml"
+            path.write_text(base.read_text().replace(
+                "config:\n",
+                "config:\n  middle_initial: Q\n  spouse_middle_initial: Z\n", 1))
+            cfg = load_scenario(path).config
+        self.assertEqual(cfg.middle_initial, "Q")
+        self.assertEqual(cfg.spouse_middle_initial, "Z")
+
     def test_unset_config_gives_blank_strings_not_missing_keys(self):
         cfg = TaxReturnConfig(
             year=2025, filing_status=FilingStatus.SINGLE,
