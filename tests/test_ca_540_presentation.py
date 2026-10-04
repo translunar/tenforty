@@ -117,6 +117,15 @@ class Emitted540Tests(unittest.TestCase):
                 self.assertEqual(int(l13) - int(v[l14]), int(v[l15]))
                 self.assertEqual(int(v[l15]) + int(v[l16]), int(l17))
 
+    def test_residence_same_box_is_checked_and_prints_ink(self):
+        # make_ca_scenario sets address_is_principal_residence=True.
+        for year, (_, pdf, v) in self.emits.items():
+            with self.subTest(year=year):
+                cell = field_for(year, "f540_address_is_residence_checkbox")
+                self.assertEqual(v.get(cell), "/Yes")
+                page, rect = widget_rect(pdf, cell)
+                self.assertGreater(dark_pixels_in_rect(pdf, page, rect), 15, cell)
+
     def test_line71_ca_withholding_prints(self):
         for year, (results, _, v) in self.emits.items():
             with self.subTest(year=year):
@@ -224,6 +233,36 @@ class PresentationKeysTests(unittest.TestCase):
                 blank = dataclasses.replace(base, middle_initial="")
                 self.assertNotIn("f540_taxpayer_middle_initial",
                                  form_f540.presentation_keys(blank, [], year))
+
+    def test_residence_same_box_emitted_when_true_and_absent_when_false(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                base = make_ca_scenario(year).config
+                checked = dataclasses.replace(base, address_is_principal_residence=True)
+                self.assertEqual(
+                    form_f540.presentation_keys(checked, [], year)[
+                        "f540_address_is_residence_checkbox"], "/Yes")
+                # Control: False means "unstated" -> no key, box left unchecked.
+                unstated = dataclasses.replace(base, address_is_principal_residence=False)
+                self.assertNotIn("f540_address_is_residence_checkbox",
+                                 form_f540.presentation_keys(unstated, [], year))
+
+    def test_residence_same_box_is_mapped_to_the_template_checkbox_every_year(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cell = field_for(year, "f540_address_is_residence_checkbox")
+                pdf = Path(__file__).parent.parent / "pdfs" / "california" / str(year) / "f540.pdf"
+                field = PdfReader(str(pdf)).get_fields()[cell]
+                self.assertEqual(field.get("/FT"), "/Btn")
+                self.assertIn("same as your principal/physical residence", str(field.get("/TU")))
+                # The emitted on-value must be the template's own export value.
+                self.assertIn("/Yes", field["/_States_"])
+
+    def test_residence_same_flag_defaults_false(self):
+        from tenforty.models import TaxReturnConfig
+        cfg = TaxReturnConfig(year=2025, filing_status=FilingStatus.SINGLE,
+                              birthdate="1980-01-01", state="CA")
+        self.assertIs(cfg.address_is_principal_residence, False)
 
     def test_dob_must_be_iso(self):
         cfg = dataclasses.replace(make_ca_scenario(2024).config, birthdate="01/01/1980")

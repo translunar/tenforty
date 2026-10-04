@@ -39,9 +39,11 @@ F540_BLANK_BY_DESIGN = [
     (r"Additional information|Principal Business Activity|PBA|Private Mailbox|Apartment number",
      "no input for additional info / PBA code / PMB / apartment number"),
     (r"Foreign (country|province|postal)", "foreign address: scenario address is domestic"),
-    (r"same as your principal/physical residence|Street address \(number and street\) \(If foreign|"
+    (r"Street address \(number and street\) \(If foreign|"
      r"^City\.$|^State\. Enter two letter|^Zip code\. $|Zip code\. *$",
-     "principal-residence address block: only required when it differs from the mailing address"),
+     "principal-residence address block: blank because the 'same as your principal/physical "
+     "residence' box is checked (config.address_is_principal_residence); the separate "
+     "physical-residence address is not modeled"),
     (r"AMENDED return", "original return (amended returns use the amended-packet path)"),
     (r"Fiscal year filers", "calendar-year filer"),
     (r"California filing status is different from your federal", "no CA-vs-federal filing-status override input"),
@@ -163,6 +165,19 @@ class CAFormCompletenessTests(unittest.TestCase):
                 self.assertEqual(len(cells), 1, cells)
                 self.assertEqual(
                     next(iter(cells.values()))["value"], "Synthetic County")
+
+    def test_f540_residence_same_box_is_checked_every_year(self):
+        # config.address_is_principal_residence is the input; the emit helper
+        # sets it True, so the box is marked rather than waived as blank.
+        from tenforty.mappings.pdf_f540 import PdfF540
+        from tests._blank_by_design import template_fields
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                cell = PdfF540.get_mapping(year)["f540_address_is_residence_checkbox"]
+                for pdfs in self.emits[year]:
+                    info = template_fields(pdfs["f540"])[cell]
+                    self.assertIn("same as your principal/physical residence", info["tu"])
+                    self.assertEqual(info["value"], "/Yes")
 
     def test_f540_middle_initial_cell_is_filled_from_config_every_year(self):
         # config.middle_initial is the input; the emit helper sets "Q".

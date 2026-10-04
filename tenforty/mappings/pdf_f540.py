@@ -1092,10 +1092,25 @@ _HEADER_NUMBERS = {
 }
 
 
+# Side 1 "If your address above is the same as your principal/physical
+# residence address at the time of filing, check this box." Full field names
+# (2021's is unnumbered). ON-state /Yes per each box's OWN /_States_
+# (['/Yes', '/Off']) in every year; ``forms.f540.presentation_keys`` supplies
+# that state string, and only when the scenario states it.
+_RESIDENCE_SAME_BOX = {
+    2021: "Text Field 439 CB 1",
+    2022: "1029 CB",
+    2023: "1029 CB",
+    2024: "540-1029 CB",
+    2025: "540_form_1029 CB",
+}
+
+
 def _install_presentation(year, mapping, derivations):
     (prefix, l7, l10, l11, l12, name_fields, ssn_fields,
      (use_tax_radio, no_use_tax), (designee_radio, designee_no)) = _YEAR_PRESENTATION[year]
     mapping.update({key: prefix + num for key, num in _HEADER_NUMBERS.items()})
+    mapping["f540_address_is_residence_checkbox"] = _RESIDENCE_SAME_BOX[year]
     mapping.update({
         "f540_line7_count": prefix + l7[0],
         "f540_line7_amount": prefix + l7[1],

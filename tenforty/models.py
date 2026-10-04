@@ -402,6 +402,11 @@ class TaxReturnConfig:
     address_city: str = ""
     address_state: str = ""
     address_zip: str = ""
+    # CA Form 540 Side 1 "address above is the same as your principal/physical
+    # residence address at the time of filing" box. False means UNSTATED: the
+    # box is simply left unchecked (the separate physical-residence address
+    # block is not modeled, so it cannot be filled either way).
+    address_is_principal_residence: bool = False
     # CA Form 540 Side 1 "county at time of filing" (principal residence).
     # Free text; blank stays blank on the form (not a gate).
     county: str = ""
