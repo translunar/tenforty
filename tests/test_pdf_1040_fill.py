@@ -43,6 +43,7 @@ def _build_synthetic_scenario() -> Scenario:
             address_city="Testville",
             address_state="TX",
             address_zip="00001",
+            digital_assets=False,  # emit refuses an unanswered question
             acknowledges_no_540nr_filing=False,
             acknowledges_no_ca_amt_preferences=False,
             acknowledges_no_ca_nol_carryover=False,
@@ -229,6 +230,7 @@ def _build_oracle_routed_qbi_scenario() -> Scenario:
     ):
         defaults[name] = True
     defaults["prior_year_itemized"] = False
+    defaults["digital_assets"] = False  # emit refuses an unanswered question
     return Scenario(
         config=TaxReturnConfig(
             year=2025,
