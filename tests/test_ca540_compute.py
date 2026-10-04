@@ -866,6 +866,27 @@ class F540AmountDueLinesTests(unittest.TestCase):
                     self._face(year, withholding=1_000, interest_and_penalties=0)[112], 0)
                 self.assertIsNone(self._face(year, withholding=1_000)[112])
 
+    def test_line_99_subtracts_line_98_under_the_years_own_key(self):
+        # Line 98 is "Amount of line 97 you want applied to your <year+1>
+        # estimated tax"; nothing produces it yet, so the key is supplied here.
+        from tenforty.mappings.pdf_f540 import PdfF540
+        for year in self.YEARS:
+            with self.subTest(year=year):
+                values = compute(
+                    year=year, filing_status=FilingStatus.SINGLE,
+                    federal_agi=80_000, ca_agi=80_000, ca540=CA540Return(),
+                    ca_withholding=self._tax(year) + 100)
+                line_99 = PdfF540.get_derivations(year)[self._cell(year, 99)]
+                self.assertEqual(line_99(values), 100)
+                applied = {**values, f"f540_line98_applied_to_{year + 1}_estimated": 30}
+                self.assertEqual(line_99(applied), 100 - 30)
+                # A key named for any other year is not this form's line 98.
+                for other in self.YEARS:
+                    if other != year:
+                        stray = {**values,
+                                 f"f540_line98_applied_to_{other + 1}_estimated": 30}
+                        self.assertEqual(line_99(stray), 100, other)
+
     def test_total_liability_does_not_change_with_line_112(self):
         # f540_total_liability is the tax position (Schedule X reads it); line
         # 112 is interest and penalties and stays out of it.
