@@ -18,8 +18,9 @@ CA_YEARS = (2021, 2022, 2023, 2024, 2025)
 
 
 def make_ca_scenario(year: int, filing_status: FilingStatus = FilingStatus.SINGLE,
-                     *, dependents: tuple[str, ...] = (), w2s: list | None = None):
-    base = _make_ca_withholding_scenario()
+                     *, dependents: tuple[str, ...] = (), w2s: list | None = None,
+                     state_tax_withheld: float = 4_000.0):
+    base = _make_ca_withholding_scenario(state_tax_withheld)
     config = dataclasses.replace(
         base.config, year=year, filing_status=filing_status,
         dependents=list(dependents),

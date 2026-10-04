@@ -1017,6 +1017,117 @@ _SUPPRESSED_2022: frozenset[str] = frozenset({
 _CHECKBOX_STATES_2022: dict[str, str] = {}
 
 
+# ── Presentation layer (all years): header identity, DOB, exemptions, state ──
+# ── wages, use-tax and third-party-designee boxes, per-page name/SSN ────────
+#
+# Field numbers below were read from each year's template /TU tooltips and
+# confirmed by rendering the filled page (tests/test_ca_540_presentation.py).
+# Values come from ``forms.f540.presentation_keys`` (scenario-derived) and the
+# compute results; nothing here is computed.
+#
+# EXPLICIT ZERO / "NO" BOXES (per the 540 instructions):
+#  * Line 91 "Use Tax. Do not leave blank" / "If the amount due is zero, you
+#    must check the applicable box to indicate that you either owe no use tax,
+#    or you paid your use tax obligation directly to [CDTFA]" (2025 Form 540
+#    booklet, line 91). Line 91 therefore always prints (an explicit 0 via the
+#    f540_use_tax mapping) and, when it is zero, the "No use tax is owed" box
+#    is checked. The "paid directly to CDTFA" alternative has no input field in
+#    the model, so it is never selected.
+#  * Third-party designee: the model has no designee, so "No" is checked.
+#
+# Radio on-state tokens differ per year (the 2021-2023 and 2025 templates use
+# opaque "/0" and "/1"; 2024 uses the literal labels). Which token is which was
+# established by widget GEOMETRY and render (the "No use tax" box is the LEFT
+# box; designee "No" is the RIGHT box) and is pinned by a geometry test.
+
+_YEAR_PRESENTATION = {
+    # year: (text-field prefix, line7 box/amt, line10 box/amt, line11, line12,
+    #        per-page name fields, per-page SSN fields, use-tax radio + "no use
+    #        tax" token, designee radio + "No" token)
+    2021: ("", ("1038", "1039"), ("1056", "1057"), "2003", "2004",
+           ("2001", "3001", "4001", "5001"), ("2002", "3002", "4002", "5002"),
+           ("3015 RB", "/0"), ("5025 RB", "/1")),
+    2022: ("", ("1045", "1046"), ("2015", "2016"), "2017", "2018",
+           ("2001",), ("2002",), ("3020 RB", "/0"), ("5025 RB", "/1")),
+    2023: ("", ("1045", "1046"), ("2015", "2016"), "2017", "2018",
+           ("2001",), ("2002",), ("3020 RB", "/0"), ("6008 RB", "/1")),
+    2024: ("540-", ("1041", "1042"), ("2015", "2016"), "2017", "2018",
+           ("2001",), ("2002",),
+           ("540-3020 RB", "/No use tax is owed."), ("540-6008 RB", "/No")),
+    2025: ("540_form_", ("1041", "1042"), ("2015", "2016"), "2017", "2018",
+           ("2001",), ("2002",),
+           ("540_form_3020 RB", "/0"), ("540_form_6008 RB", "/1")),
+}
+
+# Header fields are numbered identically (1003/1005/1015/1018-1020/1024) in every
+# year; only the prefix differs. (Same for the SSN already mapped at 1007.)
+# Lines 14 / 15 / 16 (Sch CA line 27 col B / "13 - 14" / col C) and line 71
+# (CA withholding) sit at the same numbers in 2022-2025; 2021 is renumbered.
+# Line 78 and line 17 already print the downstream figures, so leaving these
+# blank made page 2 / page 3 not foot on the page.
+_ADJUSTMENT_LINES = {
+    2021: ("2006", "2007", "2008", "3007"),
+    2022: ("2020", "2021", "2022", "3011"),
+    2023: ("2020", "2021", "2022", "3011"),
+    2024: ("2020", "2021", "2022", "3011"),
+    2025: ("2020", "2021", "2022", "3011"),
+}
+
+
+def _line_15(c: Mapping[str, object]) -> str:
+    """Line 15 = line 13 - line 14; the form says a negative result is entered
+    in parentheses."""
+    v = c["f540_federal_agi"] - c["sch_ca_total_subtractions"]
+    return f"({abs(v)})" if v < 0 else str(v)
+
+
+_HEADER_NUMBERS = {
+    "f540_taxpayer_first_name": "1003",
+    "f540_taxpayer_last_name": "1005",
+    "f540_taxpayer_dob": "1024",
+    "f540_address_street": "1015",
+    "f540_address_city": "1018",
+    "f540_address_state": "1019",
+    "f540_address_zip": "1020",
+}
+
+
+def _install_presentation(year, mapping, derivations):
+    (prefix, l7, l10, l11, l12, name_fields, ssn_fields,
+     (use_tax_radio, no_use_tax), (designee_radio, designee_no)) = _YEAR_PRESENTATION[year]
+    mapping.update({key: prefix + num for key, num in _HEADER_NUMBERS.items()})
+    mapping.update({
+        "f540_line7_count": prefix + l7[0],
+        "f540_line7_amount": prefix + l7[1],
+        "f540_line10_count": prefix + l10[0],
+        "f540_line10_amount": prefix + l10[1],
+        "f540_line11_exemption_amount": prefix + l11,
+        "f540_line12_state_wages": prefix + l12,
+    })
+    l14, l15, l16, l71 = _ADJUSTMENT_LINES[year]
+    mapping["f540_line71_ca_withholding"] = prefix + l71
+    derivations[prefix + l14] = lambda c: c["sch_ca_total_subtractions"]
+    derivations[prefix + l15] = _line_15
+    derivations[prefix + l16] = lambda c: c["sch_ca_total_additions"]
+    for field in name_fields:
+        derivations[prefix + field] = lambda c: c.get("f540_taxpayer_name")
+    for field in ssn_fields:
+        derivations[prefix + field] = lambda c: c.get("f540_taxpayer_ssn")
+    derivations[use_tax_radio] = (
+        lambda c, tok=no_use_tax: tok if c["f540_use_tax"] == 0 else None)
+    derivations[designee_radio] = lambda c, tok=designee_no: tok
+
+
+for _y, _m, _d in (
+    (2021, _MAPPING_2021, _DERIVATIONS_2021),
+    (2022, _MAPPING_2022, _DERIVATIONS_2022),
+    (2023, _MAPPING_2023, _DERIVATIONS_2023),
+    (2024, _MAPPING_2024, _DERIVATIONS_2024),
+    (2025, _MAPPING_2025, _DERIVATIONS_2025),
+):
+    _install_presentation(_y, _m, _d)
+
+
 PdfF540._MAPPINGS = {
     2021: _MAPPING_2021,
     2022: _MAPPING_2022,
