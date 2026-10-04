@@ -311,6 +311,8 @@ class DeductionResolution:
     standard_deduction_applied: bool
     charitable_nonitemizer: int
     taxable_income_before_qbi: int
+    # 1040 line 11 minus line 12 with NO zero floor (Form 8995 line 11).
+    taxable_income_before_qbi_unfloored: int = 0
 
 
 def resolve_deductions(
@@ -355,7 +357,8 @@ def resolve_deductions(
         charitable_nonitemizer = irs_round(field)
         total_deductions += charitable_nonitemizer
 
-    taxable_income_before_qbi = max(0, irs_round(agi - total_deductions))
+    taxable_income_before_qbi_unfloored = irs_round(agi - total_deductions)
+    taxable_income_before_qbi = max(0, taxable_income_before_qbi_unfloored)
 
     return DeductionResolution(
         schedule_a_total=schedule_a_total,
@@ -364,6 +367,7 @@ def resolve_deductions(
         standard_deduction_applied=standard_deduction_applied,
         charitable_nonitemizer=charitable_nonitemizer,
         taxable_income_before_qbi=taxable_income_before_qbi,
+        taxable_income_before_qbi_unfloored=taxable_income_before_qbi_unfloored,
     )
 
 

@@ -171,7 +171,12 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     # forms/f8582.py's `per_activity_carryforwards`.
     line_16_qbi_loss_carryforward = min(0, combined_qbi)
 
-    line_11 = irs_round(taxable_income)
+    # i8995 (2024), Line 11: "...line 11, minus... line 12", no floor;
+    # adjudicated 2026-10-04. The zero floor belongs to line 13's "If zero or
+    # less, enter -0-" (applied below). Producers that only supply the
+    # floored figure (workbook path, direct callers) fall back to it.
+    line_11 = irs_round(float(f1040.get(
+        "taxable_income_before_qbi_deduction_unfloored", taxable_income)))
     # max(0, ...) is a boundary contract on `upstream`, not a redundant guard:
     # `upstream` is a public dict any caller can populate, and today's
     # producers (both the compute path's `_preamble.net_capital_gain` and the

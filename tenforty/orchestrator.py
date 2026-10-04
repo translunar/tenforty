@@ -979,6 +979,11 @@ class ReturnOrchestrator:
         f1040_stub["taxable_income_before_qbi_deduction"] = (
             _ded.taxable_income_before_qbi
         )
+        # Unfloored companion for Form 8995 line 11 only (the floored value
+        # above keeps feeding the threshold/income-limit gates).
+        f1040_stub["taxable_income_before_qbi_deduction_unfloored"] = (
+            _ded.taxable_income_before_qbi_unfloored
+        )
 
         # --- Step 10: Form 8962 (Premium Tax Credit) ---
         # Computed here because it consumes AGI (now known from the shared
