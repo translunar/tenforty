@@ -11,6 +11,7 @@ from tenforty.ca_divergences import (
 )
 from tenforty.params.federal import load as load_federal_params
 from tenforty.models import (
+    validate_sche_1099_answers,
     AccountingMethod,
     Address,
     CA540Return,
@@ -655,6 +656,7 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     recovery) are validated separately because they depend on other config
     values, not on a trigger-predicate over the full scenario."""
     validate_load_time(cfg)
+    validate_sche_1099_answers(cfg)
 
     # has_foreign_accounts=True is an immediate NotImplementedError regardless
     # of trigger predicate — there is no scenario context that makes a foreign
