@@ -98,6 +98,17 @@ def compute(scenario, upstream) -> dict:
         "f100s_net_income_after_adjustments": net_income_line,   # Side 2 L14
         "f100s_net_income_for_state_purposes": net_income_line,  # Side 2 L15
     }
+    # Side 6 Schedule K, line 1 and the line 19 reconciliation total (v1: the
+    # only pro-rata item is ordinary business income). (b) federal, (d) CA law
+    # (= the whole-dollar net income the tax uses), (c) the adjustment, defined
+    # as d - b so the row foots on the page ("Combine column (b) and column
+    # (c)"). Line 19 = line 1 here (no other Schedule K items to combine).
+    k_federal = irs_round(federal_income)
+    k_adjustment = net_income_line - k_federal
+    for line in ("line1", "line19"):
+        out[f"f100s_sch_k_{line}_federal"] = k_federal
+        out[f"f100s_sch_k_{line}_ca_adjustment"] = k_adjustment
+        out[f"f100s_sch_k_{line}_ca_total"] = net_income_line
     # Side 4 Schedule F mirrors federal 1120-S page 1: every line is the federal
     # compute's own figure passed through (never recomputed here), so line 22
     # equals Side 1 line 1 by construction. Schedule F lines 14a/14b and 19a/19b
