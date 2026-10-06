@@ -229,7 +229,10 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "state_tax_deducted_federally", "depreciation_adjustment",
     "apportionment_ca_only", "under_irs_audit", "information_returns_filed",
     "state_of_incorporation", "country_of_incorporation",
-    "corporation_number",
+    "corporation_number", "max_shareholders", "date_business_began_in_ca",
+    "water_edge_basis", "includes_qsubs", "included_reportable_transaction",
+    "filed_federal_schedule_m3", "ftb_3544_attached",
+    "inactive_business",
 })
 
 
@@ -299,6 +302,23 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("information_returns_filed")),
         state_of_incorporation=_load_state_abbreviation(
             data.get("state_of_incorporation")),
+        max_shareholders=_load_positive_int(
+            data.get("max_shareholders"), "max_shareholders"),
+        date_business_began_in_ca=_load_optional_date(
+            data.get("date_business_began_in_ca"), "date_business_began_in_ca"),
+        water_edge_basis=_load_optional_bool(
+            data.get("water_edge_basis"), "water_edge_basis"),
+        includes_qsubs=_load_optional_bool(
+            data.get("includes_qsubs"), "includes_qsubs"),
+        included_reportable_transaction=_load_optional_bool(
+            data.get("included_reportable_transaction"),
+            "included_reportable_transaction"),
+        filed_federal_schedule_m3=_load_optional_bool(
+            data.get("filed_federal_schedule_m3"), "filed_federal_schedule_m3"),
+        ftb_3544_attached=_load_optional_bool(
+            data.get("ftb_3544_attached"), "ftb_3544_attached"),
+        inactive_business=_load_optional_bool(
+            data.get("inactive_business"), "inactive_business"),
         corporation_number=_load_corporation_number(
             data.get("corporation_number")),
         country_of_incorporation=_load_optional_text(
@@ -364,6 +384,27 @@ def _load_ca_entity_type(value) -> str | None:
             "s_corp_return.shareholders[].ca_entity_type must be one of "
             f"{list(CA_K1_ENTITY_TYPES)} or null (unstated); got {value!r}")
     return value
+
+
+def _load_positive_int(value, name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(
+            f"s_corp_return.ca.{name} must be a positive whole number or null "
+            f"(unstated); got {value!r}")
+    return value
+
+
+def _load_optional_date(value, name: str):
+    if value is None:
+        return None
+    try:
+        return _coerce_date(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"s_corp_return.ca.{name} must be an ISO date (YYYY-MM-DD) or "
+            f"null (unstated); got {value!r}") from None
 
 
 def _load_corporation_number(value) -> str | None:

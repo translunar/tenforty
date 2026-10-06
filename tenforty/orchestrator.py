@@ -1877,6 +1877,16 @@ class ReturnOrchestrator:
                 _format_mmddyyyy(r.date_incorporated),
             "f100s_entity_s_election_date":
                 _format_mmddyyyy(r.s_election_effective_date),
+            "f100s_entity_activity_code":
+                r.schedule_b_answers.business_activity_code,
+            "f100s_entity_business_activity":
+                r.schedule_b_answers.business_activity_description,
+            "f100s_entity_product_or_service":
+                r.schedule_b_answers.product_or_service,
+            "f100s_entity_max_shareholders": r.ca.max_shareholders,
+            "f100s_entity_date_began_in_ca":
+                None if r.ca.date_business_began_in_ca is None
+                else _format_mmddyyyy(r.ca.date_business_began_in_ca),
             "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
             "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             "f100s_entity_ca_corp_number": r.ca.corporation_number,
@@ -1887,24 +1897,47 @@ class ReturnOrchestrator:
         # (additive, like the amended marks), so a Yes/No/N-A group can never
         # carry two marks. A year with no certified cells refuses a stated
         # answer rather than dropping it.
-        stated_q = {"under_irs_audit": r.ca.under_irs_audit,
-                    "information_returns_filed": r.ca.information_returns_filed}
+        stated_q = {
+            "under_irs_audit": r.ca.under_irs_audit,
+            "information_returns_filed": r.ca.information_returns_filed,
+            "water_edge_basis": r.ca.water_edge_basis,
+            "includes_qsubs": r.ca.includes_qsubs,
+            "included_reportable_transaction":
+                r.ca.included_reportable_transaction,
+            "filed_federal_schedule_m3": r.ca.filed_federal_schedule_m3,
+            "ftb_3544_attached": r.ca.ftb_3544_attached,
+            "inactive_business": r.ca.inactive_business,
+        }
         if any(a is not None for a in stated_q.values()):
             if year < 2022:
                 raise ValueError(
                     f"California Form 100S Schedule Q answers are supported "
                     f"for tax years 2022 and later; tax year {year} cannot "
-                    "print them. Remove under_irs_audit / "
-                    "information_returns_filed from s_corp_return.ca.")
-            q_cells = PdfF100S.get_schedule_q_cells(year)
-            for question, answer in stated_q.items():
-                if answer is None:
-                    continue
-                q_path, q_on = q_cells[question][answer]
-                key = f"f100s_q_{question}"
-                f100s_mapping = {**f100s_mapping, key: q_path}
-                f100s_checkbox[key] = q_on
-                f100s_values[key] = True
+                    "print them. Remove the stated Schedule Q answers "
+                    f"({', '.join(k for k, a in stated_q.items() if a is not None)}) "
+                    "from s_corp_return.ca.")
+        q_cells = PdfF100S.get_schedule_q_cells(year)
+        # Question P is DERIVED: v1 supports only 100% California
+        # apportionment (gated at load), so Schedule R is never used -> No.
+        chosen_q = {**{k: a for k, a in stated_q.items() if a is not None},
+                    "apportioning_with_schedule_r":
+                        not r.ca.apportionment_ca_only}
+        for question, answer in chosen_q.items():
+            if question not in q_cells:
+                raise ValueError(
+                    f"California Form 100S {year} has no {question!r} "
+                    "question; remove it from s_corp_return.ca.")
+            q_path, q_on = q_cells[question][answer]
+            key = f"f100s_q_{question}"
+            f100s_mapping = {**f100s_mapping, key: q_path}
+            f100s_checkbox[key] = q_on
+            f100s_values[key] = True
+        # Question L accounting method (from the federal Schedule B answer).
+        l_path, l_on = PdfF100S.get_accounting_method_cells(year)[
+            r.schedule_b_answers.accounting_method.value]
+        f100s_mapping = {**f100s_mapping, "f100s_q_accounting_method": l_path}
+        f100s_checkbox["f100s_q_accounting_method"] = l_on
+        f100s_values["f100s_q_accounting_method"] = True
         f100s_template = _PDFS_ROOT / "california" / str(year) / "f100s.pdf"
         f100s_output = output_dir / f"f100s_{year}.pdf"
         filler.fill(template_path=f100s_template, output_path=f100s_output,
