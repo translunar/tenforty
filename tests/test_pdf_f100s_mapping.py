@@ -35,6 +35,16 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "f100s_total_additions", "f100s_total_state_deductions",
     "f100s_net_income_after_adjustments",
     "f100s_net_income_for_state_purposes", "f100s_total_amount_due",
+    "f100s_sch_f_gross_receipts", "f100s_sch_f_returns_allowances",
+    "f100s_sch_f_net_receipts", "f100s_sch_f_cogs", "f100s_sch_f_gross_profit",
+    "f100s_sch_f_net_gain_loss", "f100s_sch_f_other_income",
+    "f100s_sch_f_total_income", "f100s_sch_f_officer_comp",
+    "f100s_sch_f_salaries_wages", "f100s_sch_f_repairs",
+    "f100s_sch_f_bad_debts", "f100s_sch_f_rents", "f100s_sch_f_taxes",
+    "f100s_sch_f_interest", "f100s_sch_f_depreciation_balance",
+    "f100s_sch_f_depletion", "f100s_sch_f_advertising", "f100s_sch_f_pension",
+    "f100s_sch_f_employee_benefits", "f100s_sch_f_other_deductions",
+    "f100s_sch_f_total_deductions", "f100s_sch_f_ordinary_income",
 })
 
 # Distinctive synthetic fill values: financial = distinct multiples of 50 under

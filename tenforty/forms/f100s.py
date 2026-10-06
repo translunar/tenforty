@@ -13,6 +13,34 @@ from tenforty.params import ca_scorp
 from tenforty.rounding import irs_round
 
 
+# Schedule F compute key -> federal 1120-S compute key (page 1 line mirror).
+_SCHEDULE_F_FROM_FEDERAL: dict[str, str] = {
+    "f100s_sch_f_gross_receipts": "f1120s_gross_receipts",              # 1a
+    "f100s_sch_f_returns_allowances": "f1120s_returns_and_allowances",  # 1b
+    "f100s_sch_f_net_receipts": "f1120s_net_receipts",                  # 1c
+    "f100s_sch_f_cogs": "f1120s_cost_of_goods_sold",                    # 2
+    "f100s_sch_f_gross_profit": "f1120s_gross_profit",                  # 3
+    "f100s_sch_f_net_gain_loss": "f1120s_net_gain_loss_4797",           # 4
+    "f100s_sch_f_other_income": "f1120s_other_income",                  # 5
+    "f100s_sch_f_total_income": "f1120s_total_income",                  # 6
+    "f100s_sch_f_officer_comp": "f1120s_compensation_of_officers",      # 7
+    "f100s_sch_f_salaries_wages": "f1120s_salaries_wages",              # 8
+    "f100s_sch_f_repairs": "f1120s_repairs_maintenance",                # 9
+    "f100s_sch_f_bad_debts": "f1120s_bad_debts",                        # 10
+    "f100s_sch_f_rents": "f1120s_rents",                                # 11
+    "f100s_sch_f_taxes": "f1120s_taxes_licenses",                       # 12
+    "f100s_sch_f_interest": "f1120s_interest",                          # 13
+    "f100s_sch_f_depreciation_balance": "f1120s_depreciation",          # 14c
+    "f100s_sch_f_depletion": "f1120s_depletion",                        # 15
+    "f100s_sch_f_advertising": "f1120s_advertising",                    # 16
+    "f100s_sch_f_pension": "f1120s_pension_profit_sharing",             # 17
+    "f100s_sch_f_employee_benefits": "f1120s_employee_benefits",        # 18
+    "f100s_sch_f_other_deductions": "f1120s_other_deductions",          # 20
+    "f100s_sch_f_total_deductions": "f1120s_total_deductions",          # 21
+    "f100s_sch_f_ordinary_income": "f1120s_ordinary_business_income",   # 22
+}
+
+
 def compute(scenario, upstream) -> dict:
     r = scenario.s_corp_return
     ca = r.ca
@@ -70,6 +98,15 @@ def compute(scenario, upstream) -> dict:
         "f100s_net_income_after_adjustments": net_income_line,   # Side 2 L14
         "f100s_net_income_for_state_purposes": net_income_line,  # Side 2 L15
     }
+    # Side 4 Schedule F mirrors federal 1120-S page 1: every line is the federal
+    # compute's own figure passed through (never recomputed here), so line 22
+    # equals Side 1 line 1 by construction. Schedule F lines 14a/14b and 19a/19b
+    # have no scenario source and are not emitted.
+    # (Present only when the upstream federal dict carries the line: the full
+    # federal compute always does; narrow unit-test upstreams may not.)
+    for sch_f_key, fed_key in _SCHEDULE_F_FROM_FEDERAL.items():
+        if fed_key in fed:
+            out[sch_f_key] = irs_round(fed[fed_key])
     # Side 2 L45 = L39 + L40 + L42 + L44a - L41 (L39 use tax, L42 credited
     # forward and L44a penalties are out of v1 scope = 0). A negative result
     # (an overpayment) is NOT emitted: no FTB instruction in the repo says how a
