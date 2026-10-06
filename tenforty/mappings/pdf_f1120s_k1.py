@@ -19,8 +19,17 @@ _FIELDS: dict[str, str] = {
     # Field F1: Shareholder's name, address, city, state, and ZIP code —
     # same combined multi-line text area as field B above.
     "shareholder_name_and_address": "topmostSubform[0].Page1[0].LeftCol[0].f1_12[0]",
+    # Field C: IRS Center where corporation filed return (Part I)
+    "k1_irs_center":            "topmostSubform[0].Page1[0].LeftCol[0].f1_08[0]",
     # Field G: Current year allocation percentage
     "ownership_percentage":     "topmostSubform[0].Page1[0].LeftCol[0].f1_16[0]",
+    # Field H: Shareholder's number of shares (beginning / end of tax year) and
+    # Field I: Loans from shareholder (beginning / end). Certified by printed
+    # caption beside each widget Rect on the 2024 and 2025 templates.
+    "k1_shares_beginning":      "topmostSubform[0].Page1[0].LeftCol[0].f1_17[0]",
+    "k1_shares_end":            "topmostSubform[0].Page1[0].LeftCol[0].f1_18[0]",
+    "k1_loans_beginning":       "topmostSubform[0].Page1[0].LeftCol[0].f1_19[0]",
+    "k1_loans_end":             "topmostSubform[0].Page1[0].LeftCol[0].f1_20[0]",
     # Part III — Shareholder's Share of Current Year Income, Deductions,
     #             Credits, and Other Items
     # Line 1: Ordinary business income (loss)
@@ -62,8 +71,18 @@ _FIELDS_2023: dict[str, str] = {
     "shareholder_ssn_or_ein":   "topmostSubform[0].Page1[0].LeftCol[0].f1_11[0]",
     # Part II — Field F: Shareholder's name/address (combined multi-line text)
     "shareholder_name_and_address": "topmostSubform[0].Page1[0].LeftCol[0].f1_12[0]",
+    # Part I — Field C: IRS Center where corporation filed return
+    "k1_irs_center":            "topmostSubform[0].Page1[0].LeftCol[0].f1_08[0]",
     # Part II — Field G: Current year allocation percentage (2023: f1_13)
     "ownership_percentage":     "topmostSubform[0].Page1[0].LeftCol[0].f1_13[0]",
+    # Part II — Field H shares / Field I loans (beginning, end). On 2021-2023
+    # these sit at f1_14..f1_17; the 2024-era f1_17..f1_20 paths also EXIST on
+    # these templates but land at different printed items (position, not
+    # existence, distinguishes them).
+    "k1_shares_beginning":      "topmostSubform[0].Page1[0].LeftCol[0].f1_14[0]",
+    "k1_shares_end":            "topmostSubform[0].Page1[0].LeftCol[0].f1_15[0]",
+    "k1_loans_beginning":       "topmostSubform[0].Page1[0].LeftCol[0].f1_16[0]",
+    "k1_loans_end":             "topmostSubform[0].Page1[0].LeftCol[0].f1_17[0]",
     # Part III — Line 1: Ordinary business income (loss) (2023: f1_18)
     "box_1_ordinary_business_income": (
         "topmostSubform[0].Page1[0].RightCol[0].Lines1-12[0].f1_18[0]"
@@ -85,7 +104,13 @@ _FIELDS_2023: dict[str, str] = {
 
 # Item G is a 0-100 percentage that may be fractional (33.333); the default
 # whole-dollar renderer would print "33". Trimmed decimals keep 100 -> "100".
-_FIELD_FORMATS = {"ownership_percentage": trim_decimal}
+# Shares may be fractional too (item H), so they share the trimmed-decimal
+# renderer; loans stay whole-dollar (the form prints the "$").
+_FIELD_FORMATS = {
+    "ownership_percentage": trim_decimal,
+    "k1_shares_beginning": trim_decimal,
+    "k1_shares_end": trim_decimal,
+}
 
 
 class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
@@ -124,11 +149,30 @@ class PdfF1120SK1(PdfFormMapping[dict[str, str]]):
                 f"No Schedule K-1 (1120-S) amended mark for year {year}")
         return _AMENDED_MARK_BY_YEAR[year]
 
+    @classmethod
+    def get_final_mark(cls, year: int) -> tuple[str, str]:
+        """(field_path, ON-state) for the "Final K-1" checkbox (top of the
+        form, beside "Amended K-1"). Same additive pattern as
+        ``get_amended_mark``: independent of the ``_MAPPINGS`` registry; the
+        orchestrator merges it per shareholder only when that shareholder is
+        flagged final. Certified by the printed "Final" caption beside the
+        c1_01 widget on every year's template; ON '/1', identical 2021-2025.
+        """
+        if year not in _FINAL_MARK_BY_YEAR:
+            raise ValueError(
+                f"No Schedule K-1 (1120-S) final mark for year {year}")
+        return _FINAL_MARK_BY_YEAR[year]
+
 
 _AMENDED_MARK_K1: tuple[str, str] = (
     "topmostSubform[0].Page1[0].c1_02[0]", "/1")
 _AMENDED_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
     y: _AMENDED_MARK_K1 for y in (2021, 2022, 2023, 2024, 2025)
+}
+_FINAL_MARK_K1: tuple[str, str] = (
+    "topmostSubform[0].Page1[0].c1_01[0]", "/1")
+_FINAL_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
+    y: _FINAL_MARK_K1 for y in (2021, 2022, 2023, 2024, 2025)
 }
 
 # 2022's Schedule K-1 field tree is byte-identical to 2023's (verified widget-level:

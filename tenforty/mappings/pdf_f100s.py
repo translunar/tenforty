@@ -13,7 +13,7 @@ So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED` (2024-2025) are built
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
-The seven f100s_entity_* keys carry the corporation's identity onto Side 1; their
+The eight f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Question F's date incorporated) onto the form; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
@@ -50,9 +50,68 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_city":                    "1010",  # Side 1 City
     "f100s_entity_state":                   "1011",  # Side 1 State (between City 1010 and ZIP 1012; marker-probe certified 2021-2025)
     "f100s_entity_zip":                     "1012",  # Side 1 ZIP code
+    "f100s_entity_date_incorporated":       "3006",  # Side 3 Sch Q Question F Date incorporated (emit-injected; same number every year 2022-2025)
 }
 _MAPPING_BARE: dict[str, str] = dict(_SUFFIX)                              # 2021-2023
 _MAPPING_PREFIXED: dict[str, str] = {k: f"100S Form {n}" for k, n in _SUFFIX.items()}  # 2024-2025
+
+
+# ── Schedule Q stated answers ───────────────────────────────────────────────
+# One (field, on-state) cell per ANSWER, per year, certified against each year's
+# own template by the printed caption beside each widget Rect (Schedule Q
+# renumbers between years, and radio on-state tokens differ per year — path
+# existence and numbering cannot be copied across years):
+#   audit (Question I on the 2022 form, Question J from 2023): Yes / No.
+#     2022 field 3011 radio /0 Yes /1 No; 2023 field 3011a radio /Yes /No
+#     (tokens spelled out); 2024-2025 field 3011a radio /0 Yes /1 No.
+#   information returns filed (Question O), printed left to right N/A, Yes, No:
+#     2022-2023 three SEPARATE checkboxes 3018 / 3019 / 3020 (on /Yes);
+#     2024 one radio 3018 RB: N/A /0, Yes /1, No /2;
+#     2025 one radio 3018 RB: N/A /0, Yes /2, No /1  (Yes and No swap tokens).
+# 2021 has no entry: the feature floor is TY2022, and a stated answer is
+# refused at emit rather than dropped.
+_Cell = tuple[str, str]
+
+# Field-name namespace: bare through 2023, "100S Form "-prefixed after.
+_Q_PREFIX: dict[int, str] = {
+    2022: "", 2023: "", 2024: "100S Form ", 2025: "100S Form "}
+# Audit question: year -> (field, Yes token, No token).
+_Q_AUDIT: dict[int, tuple[str, str, str]] = {
+    2022: ("3011 rb", "/0", "/1"),
+    2023: ("3011a rb", "/Yes", "/No"),
+    2024: ("3011a rb", "/0", "/1"),
+    2025: ("3011a rb", "/0", "/1"),
+}
+# Question O, 2022-2023: three separate checkboxes (N/A, Yes, No), all /Yes.
+_Q_INFO_CHECKBOXES: dict[int, tuple[str, str, str]] = {
+    2022: ("3018 CB", "3019 CB", "3020 CB"),
+    2023: ("3018 CB", "3019 CB", "3020 CB"),
+}
+# Question O, 2024-2025: one radio; year -> {answer: token}.
+_Q_INFO_RADIO: dict[int, dict[str, str]] = {
+    2024: {"not_applicable": "/0", "yes": "/1", "no": "/2"},
+    2025: {"not_applicable": "/0", "yes": "/2", "no": "/1"},
+}
+
+
+def _schedule_q_cells(year: int) -> dict[str, dict[object, _Cell]]:
+    prefix = _Q_PREFIX[year]
+    field, yes_on, no_on = _Q_AUDIT[year]
+    audit = {True: (prefix + field, yes_on), False: (prefix + field, no_on)}
+    if year in _Q_INFO_CHECKBOXES:
+        na_f, yes_f, no_f = _Q_INFO_CHECKBOXES[year]
+        info = {"not_applicable": (prefix + na_f, "/Yes"),
+                "yes": (prefix + yes_f, "/Yes"),
+                "no": (prefix + no_f, "/Yes")}
+    else:
+        info = {a: (prefix + "3018 RB", t)
+                for a, t in _Q_INFO_RADIO[year].items()}
+    return {"under_irs_audit": audit, "information_returns_filed": info}
+
+
+_SCHEDULE_Q_BY_YEAR: dict[int, dict[str, dict[object, _Cell]]] = {
+    y: _schedule_q_cells(y) for y in _Q_PREFIX
+}
 
 
 class PdfF100S(PdfFormMapping[dict[str, str]]):
@@ -66,3 +125,16 @@ class PdfF100S(PdfFormMapping[dict[str, str]]):
         2021: _MAPPING_BARE, 2022: _MAPPING_BARE, 2023: _MAPPING_BARE,
         2024: _MAPPING_PREFIXED, 2025: _MAPPING_PREFIXED,
     }
+
+    @classmethod
+    def get_schedule_q_cells(cls, year: int) -> dict[str, dict[object, _Cell]]:
+        """{question: {answer: (field_path, on_state)}} for the Schedule Q
+        answers the filer states. ADDITIVE to ``_MAPPINGS``: the orchestrator
+        merges only the CHOSEN answer's cell, so the others stay unmarked
+        (mutually exclusive by construction). Questions: ``under_irs_audit``
+        (answers True/False) and ``information_returns_filed`` ("yes", "no",
+        "not_applicable"). Raises for a year with no certified cells."""
+        if year not in _SCHEDULE_Q_BY_YEAR:
+            raise ValueError(
+                f"No Form 100S Schedule Q answer cells for year {year}")
+        return _SCHEDULE_Q_BY_YEAR[year]
