@@ -9,7 +9,7 @@ Side/Line + printed label).
 What is NOT identical across years is the AcroForm field-NAME NAMESPACE: the
 2021-2023 templates name each widget with the bare number ("1031"), while the
 2024-2025 templates prefix it ("100S Form 1031"). Same line, two name forms.
-So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED` (2024-2025) are built
+So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED_2024` / `_MAPPING_PREFIXED_2025` are built
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
@@ -59,6 +59,9 @@ _SUFFIX: dict[str, str] = {
     "f100s_sch_f_other_deductions":         "4024",  # L20 (19a/19b: no scenario source)
     "f100s_sch_f_total_deductions":         "4025",  # L21
     "f100s_sch_f_ordinary_income":          "4026",  # L22 (= Side 1 L1)
+    "f100s_sch_k_line1_federal":            "6001",  # Side 6 Sch K L1 col (b) Amount from federal K (1120-S)
+    "f100s_sch_k_line1_ca_adjustment":      "6002",  # L1 col (c) California adjustment
+    "f100s_sch_k_line1_ca_total":           "6003",  # L1 col (d) Total using California law
     "f100s_depreciation_adjustment":        "1035",  # Side 1 L5 Depreciation & amort adjustments
     "f100s_net_income_for_tax":             "2012",  # Side 2 L20 Net income for tax purposes
     "f100s_franchise_tax":                  "2014",  # Side 2 L21 Tax amount
@@ -88,8 +91,23 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_date_began_in_ca":        "3010",  # Question H Date business began in California (stated)
     "f100s_entity_date_incorporated":       "3006",  # Side 3 Sch Q Question F Date incorporated (emit-injected; same number every year 2022-2025)
 }
-_MAPPING_BARE: dict[str, str] = dict(_SUFFIX)                              # 2021-2023
-_MAPPING_PREFIXED: dict[str, str] = {k: f"100S Form {n}" for k, n in _SUFFIX.items()}  # 2024-2025
+# Side 6 Schedule K line 19 (reconciliation) cells: 2021-2024 6100/6101/6102;
+# 2025 6102/6103/6104 (2025 re-used 6100 for the line 18e Paid/Accrued radio).
+_LINE19_2021_2024: dict[str, str] = {
+    "f100s_sch_k_line19_federal": "6100",
+    "f100s_sch_k_line19_ca_adjustment": "6101",
+    "f100s_sch_k_line19_ca_total": "6102",
+}
+_LINE19_2025: dict[str, str] = {
+    "f100s_sch_k_line19_federal": "6102",
+    "f100s_sch_k_line19_ca_adjustment": "6103",
+    "f100s_sch_k_line19_ca_total": "6104",
+}
+_MAPPING_BARE: dict[str, str] = {**_SUFFIX, **_LINE19_2021_2024}           # 2021-2023
+_MAPPING_PREFIXED_2024: dict[str, str] = {
+    k: f"100S Form {n}" for k, n in {**_SUFFIX, **_LINE19_2021_2024}.items()}
+_MAPPING_PREFIXED_2025: dict[str, str] = {
+    k: f"100S Form {n}" for k, n in {**_SUFFIX, **_LINE19_2025}.items()}
 
 
 # ── Schedule Q stated answers ───────────────────────────────────────────────
@@ -212,7 +230,7 @@ class PdfF100S(PdfFormMapping[dict[str, str]]):
     _FORM_NAME = "Form 100S"
     _MAPPINGS: dict[int, dict[str, str]] = {
         2021: _MAPPING_BARE, 2022: _MAPPING_BARE, 2023: _MAPPING_BARE,
-        2024: _MAPPING_PREFIXED, 2025: _MAPPING_PREFIXED,
+        2024: _MAPPING_PREFIXED_2024, 2025: _MAPPING_PREFIXED_2025,
     }
 
     @classmethod

@@ -45,6 +45,9 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "f100s_sch_f_depletion", "f100s_sch_f_advertising", "f100s_sch_f_pension",
     "f100s_sch_f_employee_benefits", "f100s_sch_f_other_deductions",
     "f100s_sch_f_total_deductions", "f100s_sch_f_ordinary_income",
+    "f100s_sch_k_line1_federal", "f100s_sch_k_line1_ca_adjustment",
+    "f100s_sch_k_line1_ca_total", "f100s_sch_k_line19_federal",
+    "f100s_sch_k_line19_ca_adjustment", "f100s_sch_k_line19_ca_total",
 })
 
 # Distinctive synthetic fill values: financial = distinct multiples of 50 under
