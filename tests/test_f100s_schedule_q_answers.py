@@ -14,6 +14,7 @@ the radio on-state tokens differ per year (Question O's Yes box is /1 in 2024
 but /2 in 2025), so only each year's own template distinguishes them.
 
 Synthetic fixture only (tests/_scorp_fixtures.py)."""
+import datetime
 import tempfile
 import unittest
 from pathlib import Path
@@ -54,6 +55,10 @@ def _cells(year):
                   {"not_applicable": "/0", "yes": "/2", "no": "/1"})
         info = {a: (_name(year, "3018 RB"), st) for a, st in states.items()}
     return {"audit": audit, "information_returns": info}
+
+
+def _text_cell(year, number):
+    return _name(year, number)
 
 
 def _date_incorporated_cell(year):
@@ -100,15 +105,16 @@ class _EmitBase(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def _emit(self, year, audit=None, info=None, tag="x"):
+    def _emit(self, year, audit=None, info=None, tag="x", **ca_extra):
         s = _make_v1_scenario()
         set_tax_year(s, year)
+        s.s_corp_return.s_election_effective_date = datetime.date(2021, 3, 15)
         s.s_corp_return.ca = SCorpCAInputs(
             first_year=False, estimated_tax_payments=0.0,
             prior_year_overpayment_applied=0.0,
             state_tax_deducted_federally=0.0, depreciation_adjustment=0.0,
             apportionment_ca_only=True,
-            under_irs_audit=audit, information_returns_filed=info)
+            under_irs_audit=audit, information_returns_filed=info, **ca_extra)
         out = Path(self._tmp.name) / f"ca_{year}_{audit}_{info}_{tag}"
         self.orch.run_full_california_scorp_return(s, out)
         return out / f"f100s_{year}.pdf"
@@ -138,6 +144,41 @@ class DateIncorporatedTests(_EmitBase):
                 self.assertEqual(
                     str(fields[_date_incorporated_cell(year)]["/V"]),
                     "01/01/2020")
+
+
+class SElectionAndWhereIncorporatedTests(_EmitBase):
+    """Question K (J on the 2021-2022 forms) S-election date from the existing
+    s_election_effective_date; Question F state and country from the stated
+    ca.state_of_incorporation / country_of_incorporation. Cells 3012 / 3007 /
+    3008 sit beside their printed captions on every year's template."""
+
+    def _vals(self, year, **kw):
+        pdf = self._emit(year, **kw)
+        return {k: (None if v.get("/V") is None else str(v["/V"]))
+                for k, v in (PdfReader(str(pdf)).get_fields() or {}).items()}
+
+    def test_s_election_date_prints_every_year(self):
+        for year in (2021, *_YEARS):
+            with self.subTest(year=year):
+                vals = self._vals(year)
+                self.assertEqual(vals[_text_cell(year, "3012")], "03/15/2021")
+                # neighbouring Question F date proves the emit reached the page
+                self.assertEqual(vals[_text_cell(year, "3006")], "01/01/2020")
+
+    def test_state_and_country_print_every_year(self):
+        for year in (2021, *_YEARS):
+            with self.subTest(year=year):
+                vals = self._vals(year, state_of_incorporation="NV",
+                                  country_of_incorporation="USA")
+                self.assertEqual(vals[_text_cell(year, "3007")], "NV")
+                self.assertEqual(vals[_text_cell(year, "3008")], "USA")
+
+    def test_unstated_state_and_country_stay_blank(self):
+        for year in (2021, *_YEARS):
+            with self.subTest(year=year):
+                vals = self._vals(year)
+                self.assertIn(vals[_text_cell(year, "3007")], (None, ""))
+                self.assertIn(vals[_text_cell(year, "3008")], (None, ""))
 
 
 class StatedAnswerTests(_EmitBase):
@@ -230,6 +271,17 @@ class LoaderTests(unittest.TestCase):
         ca = self._load({})
         self.assertIsNone(ca.under_irs_audit)
         self.assertIsNone(ca.information_returns_filed)
+
+    def test_state_and_country_load_and_validate(self):
+        ca = self._load({"state_of_incorporation": "NV",
+                         "country_of_incorporation": "USA"})
+        self.assertEqual((ca.state_of_incorporation,
+                          ca.country_of_incorporation), ("NV", "USA"))
+        for bad in ({"state_of_incorporation": "Nevada"},
+                    {"state_of_incorporation": 5},
+                    {"country_of_incorporation": ""}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                self._load(bad)
 
     def test_bad_values_rejected(self):
         with self.assertRaises(ValueError):

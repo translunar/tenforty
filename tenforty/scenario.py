@@ -228,6 +228,7 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "first_year", "estimated_tax_payments", "prior_year_overpayment_applied",
     "state_tax_deducted_federally", "depreciation_adjustment",
     "apportionment_ca_only", "under_irs_audit", "information_returns_filed",
+    "state_of_incorporation", "country_of_incorporation",
 })
 
 
@@ -242,6 +243,16 @@ def _load_optional_bool(value, name: str) -> bool | None:
             f"s_corp_return.ca.{name} must be true, false, or null "
             f"(unstated); got {value!r}")
     return value
+
+
+def _load_state_abbreviation(value) -> str | None:
+    if value is None:
+        return None
+    if not (isinstance(value, str) and len(value) == 2 and value.isalpha()):
+        raise ValueError(
+            "s_corp_return.ca.state_of_incorporation must be a two-letter "
+            f"abbreviation or null (unstated); got {value!r}")
+    return value.upper()
 
 
 def _load_information_returns_filed(value) -> str | None:
@@ -285,6 +296,10 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("under_irs_audit"), "under_irs_audit"),
         information_returns_filed=_load_information_returns_filed(
             data.get("information_returns_filed")),
+        state_of_incorporation=_load_state_abbreviation(
+            data.get("state_of_incorporation")),
+        country_of_incorporation=_load_optional_text(
+            data.get("country_of_incorporation"), "ca.country_of_incorporation"),
     )
     if not inputs.apportionment_ca_only:
         raise ValueError(
@@ -297,6 +312,7 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "name", "ein", "address", "date_incorporated", "s_election_effective_date",
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
+    "total_shares_beginning", "total_shares_end",
 })
 
 
@@ -326,11 +342,11 @@ def _load_stated_amount(sh: dict, key: str, *, non_negative: bool) -> float | No
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(
-            f"s_corp_return.shareholders[].{key} must be a number or null "
+            f"s_corp_return.{key} (or shareholders[].{key}) must be a number or null "
             f"(unstated); got {value!r}")
     if non_negative and value < 0:
         raise ValueError(
-            f"s_corp_return.shareholders[].{key} must not be negative; "
+            f"s_corp_return.{key} (or shareholders[].{key}) must not be negative; "
             f"got {value!r}")
     return float(value)
 
@@ -394,6 +410,10 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         ca=_load_scorp_ca(data.get("ca")),
         amended_return=bool(data.get("amended_return", False)),
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
+        total_shares_beginning=_load_stated_amount(
+            data, "total_shares_beginning", non_negative=True),
+        total_shares_end=_load_stated_amount(
+            data, "total_shares_end", non_negative=True),
     )
 
 

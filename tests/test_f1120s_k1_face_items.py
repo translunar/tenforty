@@ -28,7 +28,12 @@ from tests.test_scorp_amended_marks import _scenario_yaml_dict
 _LEFT = "topmostSubform[0].Page1[0].LeftCol[0]."
 _FINAL_BOX = "topmostSubform[0].Page1[0].c1_01[0]"
 _AMENDED_BOX = "topmostSubform[0].Page1[0].c1_02[0]"
+# Part I item D (corporation's total shares) sits in f1_09 / f1_10 on every
+# year's template (printed "D Corporation's total number of shares" caption).
+_ITEM_D = {"total_shares_beginning": _LEFT + "f1_09[0]",
+           "total_shares_end": _LEFT + "f1_10[0]"}
 _CELLS_2021_2023 = {
+    **_ITEM_D,
     "irs_center": _LEFT + "f1_08[0]",
     "shares_beginning": _LEFT + "f1_14[0]",
     "shares_end": _LEFT + "f1_15[0]",
@@ -36,6 +41,7 @@ _CELLS_2021_2023 = {
     "loans_end": _LEFT + "f1_17[0]",
 }
 _CELLS_2024_2025 = {
+    **_ITEM_D,
     "irs_center": _LEFT + "f1_08[0]",
     "shares_beginning": _LEFT + "f1_17[0]",
     "shares_end": _LEFT + "f1_18[0]",
@@ -70,6 +76,8 @@ class _EmitBase(unittest.TestCase):
         r = s.s_corp_return
         if stated:
             r.irs_center = "Ogden, UT"
+            r.total_shares_beginning = 2500.0
+            r.total_shares_end = 2400.0
             for i, sh in enumerate(r.shareholders):
                 sh.shares_beginning = 1000.0 + i
                 sh.shares_end = 900.0 + i
@@ -103,6 +111,8 @@ class StatedFaceItemTests(_EmitBase):
                 # Positive control: a neighbouring cell on the same emit.
                 self.assertEqual(vals[_LEFT + "f1_06[0]"], "00-0000000")
                 want = {"irs_center": "Ogden, UT",
+                        "total_shares_beginning": "2500",
+                        "total_shares_end": "2400",
                         "shares_beginning": "1000", "shares_end": "900",
                         "loans_beginning": "12345", "loans_end": "6789"}
                 for item, text in want.items():
@@ -181,12 +191,15 @@ class LoaderTests(unittest.TestCase):
         s = self._load(
             {"shares_beginning": 1000, "shares_end": 900,
              "loans_beginning": 5000.5, "loans_end": 0, "final_k1": True},
-            {"irs_center": "Ogden, UT"})
+            {"irs_center": "Ogden, UT", "total_shares_beginning": 2500,
+             "total_shares_end": 2400.5})
         sh = s.s_corp_return.shareholders[0]
         self.assertEqual(
             (sh.shares_beginning, sh.shares_end, sh.loans_beginning,
              sh.loans_end, sh.final_k1), (1000.0, 900.0, 5000.5, 0.0, True))
         self.assertEqual(s.s_corp_return.irs_center, "Ogden, UT")
+        self.assertEqual(s.s_corp_return.total_shares_beginning, 2500.0)
+        self.assertEqual(s.s_corp_return.total_shares_end, 2400.5)
 
     def test_absent_keys_default_unstated(self):
         s = self._load()
@@ -195,6 +208,7 @@ class LoaderTests(unittest.TestCase):
         self.assertIsNone(sh.loans_end)
         self.assertFalse(sh.final_k1)
         self.assertIsNone(s.s_corp_return.irs_center)
+        self.assertIsNone(s.s_corp_return.total_shares_beginning)
 
     def test_non_numeric_and_bool_amounts_rejected(self):
         for bad in ("lots", True, [1]):
@@ -206,6 +220,16 @@ class LoaderTests(unittest.TestCase):
     def test_negative_shares_rejected(self):
         with self.assertRaises(ValueError):
             self._load({"shares_end": -1})
+
+    def test_bad_corporation_total_shares_rejected(self):
+        # Reachability: a good value loads, so the refusals below come from
+        # value validation and not from an unknown-key error.
+        self.assertEqual(self._load(
+            scorp_extra={"total_shares_end": 7}).s_corp_return.total_shares_end,
+            7.0)
+        for bad in ("lots", True, -5):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                self._load(scorp_extra={"total_shares_end": bad})
 
     def test_non_bool_final_rejected(self):
         with self.assertRaises(ValueError):

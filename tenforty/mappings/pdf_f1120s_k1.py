@@ -19,6 +19,9 @@ _FIELDS: dict[str, str] = {
     # Field F1: Shareholder's name, address, city, state, and ZIP code —
     # same combined multi-line text area as field B above.
     "shareholder_name_and_address": "topmostSubform[0].Page1[0].LeftCol[0].f1_12[0]",
+    # Field D: Corporation's total number of shares (beginning / end), Part I
+    "k1_total_shares_beginning": "topmostSubform[0].Page1[0].LeftCol[0].f1_09[0]",
+    "k1_total_shares_end":       "topmostSubform[0].Page1[0].LeftCol[0].f1_10[0]",
     # Field C: IRS Center where corporation filed return (Part I)
     "k1_irs_center":            "topmostSubform[0].Page1[0].LeftCol[0].f1_08[0]",
     # Field G: Current year allocation percentage
@@ -71,6 +74,10 @@ _FIELDS_2023: dict[str, str] = {
     "shareholder_ssn_or_ein":   "topmostSubform[0].Page1[0].LeftCol[0].f1_11[0]",
     # Part II — Field F: Shareholder's name/address (combined multi-line text)
     "shareholder_name_and_address": "topmostSubform[0].Page1[0].LeftCol[0].f1_12[0]",
+    # Part I — Field D: Corporation's total shares (beginning / end); f1_09 /
+    # f1_10 beside the printed caption on 2021-2023 as on 2024-2025.
+    "k1_total_shares_beginning": "topmostSubform[0].Page1[0].LeftCol[0].f1_09[0]",
+    "k1_total_shares_end":       "topmostSubform[0].Page1[0].LeftCol[0].f1_10[0]",
     # Part I — Field C: IRS Center where corporation filed return
     "k1_irs_center":            "topmostSubform[0].Page1[0].LeftCol[0].f1_08[0]",
     # Part II — Field G: Current year allocation percentage (2023: f1_13)
@@ -110,6 +117,8 @@ _FIELD_FORMATS = {
     "ownership_percentage": trim_decimal,
     "k1_shares_beginning": trim_decimal,
     "k1_shares_end": trim_decimal,
+    "k1_total_shares_beginning": trim_decimal,
+    "k1_total_shares_end": trim_decimal,
 }
 
 

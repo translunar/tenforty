@@ -873,6 +873,10 @@ class SCorpCAInputs:
     # Question O: have all required information returns (Forms 1099, 8300, 592,
     # 592-B ...) been filed with the FTB? One of "yes", "no", "not_applicable".
     information_returns_filed: str | None = None
+    # Question F "where incorporated": two-letter state abbreviation and country
+    # (free text). None leaves the cell blank.
+    state_of_incorporation: str | None = None
+    country_of_incorporation: str | None = None
 
 
 @dataclass
@@ -908,6 +912,11 @@ class SCorpReturn:
     # Schedule K-1 (1120-S) Part I item C: the IRS Center where the corporation
     # filed its return (free text, e.g. "Ogden, UT"). None leaves it blank.
     irs_center: str | None = None
+    # Schedule K-1 (1120-S) Part I item D: the corporation's total number of
+    # shares at the beginning / end of the tax year. Stated, never summed from
+    # the shareholders' figures. None leaves the cell blank.
+    total_shares_beginning: float | None = None
+    total_shares_end: float | None = None
 
 
 class DivergenceSource(str, Enum):
