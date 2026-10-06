@@ -887,6 +887,27 @@ class SCorpCAInputs:
     # number (12 digits, LLCs taxed as corporations); digits only. Printed on
     # Form 100S and every Schedule K-1 (100S). None leaves it blank.
     corporation_number: str | None = None
+    # Form 100S Schedule Q answers the caller STATES (None leaves blank).
+    # Question G: maximum number of shareholders at any time during the year
+    # (positive integer; stated, never derived from the shareholder list).
+    max_shareholders: int | None = None
+    # Question H: date business began in California or income was first
+    # derived from California sources.
+    date_business_began_in_ca: date | None = None
+    # Question D: filing on a water's-edge basis?
+    water_edge_basis: bool | None = None
+    # Question E: does this return include Qualified Subchapter S Subsidiaries?
+    includes_qsubs: bool | None = None
+    # Question Q: a reportable transaction or listed transaction in this return?
+    included_reportable_transaction: bool | None = None
+    # Question R: did the corporation file the federal Schedule M-3?
+    filed_federal_schedule_m3: bool | None = None
+    # Question S: is FTB 3544 Side 2 Part B (assigned credits) attached?
+    ftb_3544_attached: bool | None = None
+    # Question I: was the S corporation an inactive business both within and
+    # outside California during the year? (2023-2025 forms only; the 2021-2022
+    # forms have no such question.)
+    inactive_business: bool | None = None
 
 
 @dataclass
