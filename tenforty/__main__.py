@@ -1,4 +1,4 @@
-"""CLI entry point: ``python -m tenforty {federal,ca} ...``.
+"""CLI entry point: ``python -m tenforty {federal,ca,scorp} ...``.
 
 Backward-compat: ``python -m tenforty <yaml>`` (no subcommand) is still
 accepted and routed to the ``federal`` subcommand. See ``_route_argv``.
@@ -23,7 +23,7 @@ GENERIC_OUTPUT_KEYS = [
     "overpaid", "sche_line26", "sche_line41", "schd_line16",
 ]
 
-_SUBCOMMANDS = ("federal", "ca")
+_SUBCOMMANDS = ("federal", "ca", "scorp")
 
 
 def print_results(results: dict, stream: TextIO = sys.stdout) -> None:
@@ -185,6 +185,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Directory to write the CA-state PDFs to (required)",
     )
 
+    p_scorp = subparsers.add_parser(
+        "scorp",
+        help=("Emit the federal 1120-S + K-1s and, when the scenario has a "
+              "CA block, the CA 100S + K-1s from an S-corp scenario YAML"),
+    )
+    p_scorp.add_argument(
+        "scenario", type=Path,
+        help="Path to the S-corp scenario YAML file",
+    )
+    p_scorp.add_argument(
+        "--spreadsheets-dir", type=Path, default=Path("spreadsheets"),
+        metavar="DIR",
+        help="Path to spreadsheets directory (default: ./spreadsheets)",
+    )
+    p_scorp.add_argument(
+        "--output-dir", type=Path, required=True, metavar="DIR",
+        help="Directory to write the S-corp packet PDFs to (required)",
+    )
+
     return parser
 
 
@@ -261,6 +280,44 @@ def _run_ca(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_scorp(args: argparse.Namespace) -> int:
+    try:
+        scenario = load_scenario(args.scenario.expanduser())
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    if scenario.s_corp_return is None:
+        print(
+            "Error: scenario has no s_corp_return block; nothing to emit. "
+            "Use the federal or ca subcommand for personal returns.",
+            file=sys.stderr,
+        )
+        return 1
+
+    orchestrator = ReturnOrchestrator(
+        spreadsheets_dir=args.spreadsheets_dir,
+        work_dir=Path("/tmp/tenforty_work"),
+    )
+
+    year = scenario.config.year
+    print(f"Computing {year} federal 1120-S return...")
+    _corp_results, emitted = orchestrator.run_full_federal_scorp_return(
+        scenario, args.output_dir)
+    emitted = dict(emitted)
+
+    if scenario.s_corp_return.ca is not None:
+        print(f"Computing {year} California 100S return...")
+        _ca_results, ca_emitted = orchestrator.run_full_california_scorp_return(
+            scenario, args.output_dir)
+        emitted.update(ca_emitted)
+
+    combined, retained = _assemble_packets_and_prune(
+        emitted, args.output_dir, year, scenario.source_documents)
+    _print_packets(combined, retained, scenario.source_documents)
+    return 0
+
+
 def main() -> int:
     sys.argv = _route_argv(sys.argv)
     parser = _build_parser()
@@ -270,6 +327,8 @@ def main() -> int:
         return _run_federal(args)
     if args.subcommand == "ca":
         return _run_ca(args)
+    if args.subcommand == "scorp":
+        return _run_scorp(args)
     # subparsers(required=True) prevents this branch; keep an explicit
     # fall-through for static analysers.
     parser.error(f"Unknown subcommand: {args.subcommand!r}")
