@@ -23,7 +23,16 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "k1_corp_ca_number", "k1_corp_name", "k1_ownership_pct_whole",
     "k1_ownership_pct_frac", "k1_federal_ordinary_income",
     "k1_ca_ordinary_income_total", "k1_ca_ordinary_income_source",
+    # face items (every year)
+    "k1_shareholder_street", "k1_shareholder_city", "k1_shareholder_state",
+    "k1_shareholder_zip", "k1_corp_street", "k1_corp_city", "k1_corp_state",
+    "k1_corp_zip", "k1_shares_beginning", "k1_shares_end",
+    "k1_loans_beginning", "k1_loans_end",
 })
+# Line H (corporation's total shares) exists on the 2024-2025 forms only.
+_LINE_H_KEYS = frozenset({
+    "k1_corp_total_shares_beginning", "k1_corp_total_shares_end"})
+_LINE_H_YEARS = (2024, 2025)
 
 # Distinctive synthetic fill values: financial = distinct multiples of 50 under
 # 1000 (no thousands-comma formatting to normalize); identity = obviously-fake
@@ -57,8 +66,9 @@ class PdfF100SK1MappingTests(unittest.TestCase):
     def test_every_mapped_key_present_for_every_year(self):
         for year in years.CA_SCORP_YEARS:
             with self.subTest(year=year):
-                self.assertEqual(set(PdfF100SK1.get_mapping(year)),
-                                 _EXPECTED_MAPPED_KEYS)
+                want = _EXPECTED_MAPPED_KEYS | (
+                    _LINE_H_KEYS if year in _LINE_H_YEARS else frozenset())
+                self.assertEqual(set(PdfF100SK1.get_mapping(year)), want)
 
     def test_every_target_is_a_real_pdf_field(self):
         for year in years.CA_SCORP_YEARS:

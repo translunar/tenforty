@@ -1927,12 +1927,42 @@ class ReturnOrchestrator:
         for i, alloc in enumerate(
                 ca_corporate_results.get("f100s_k1_allocations", []), start=1):
             sh = r.shareholders[alloc["shareholder_index"]]
+            this_mapping, this_checkbox, final_values = (
+                k1_mapping, k1_checkbox, {})
+            if sh.final_k1:
+                if r.amended_return and (
+                        PdfF100SK1.final_and_amended_share_one_field(year)):
+                    raise ValueError(
+                        f"Schedule K-1 (100S) {year} line E holds 'final' and "
+                        "'amended' as two states of ONE radio, so a K-1 cannot "
+                        f"be both. Shareholder {sh.name!r} is flagged final_k1 "
+                        "on an amended return: emit them as separate runs or "
+                        "unflag one.")
+                f_path, f_on = PdfF100SK1.get_final_mark(year)
+                this_mapping = {**k1_mapping, "k1_final": f_path}
+                this_checkbox = {**k1_checkbox, "k1_final": f_on}
+                final_values = {"k1_final": True}
             whole, frac = _split_ownership_percent(alloc["ownership_fraction"])
             k1_values = {
                 "k1_shareholder_name": sh.name,
                 "k1_shareholder_id": sh.ssn_or_ein,
                 "k1_corp_fein": r.ein,
                 "k1_corp_name": r.name,
+                "k1_shareholder_street": sh.address.street,
+                "k1_shareholder_city": sh.address.city,
+                "k1_shareholder_state": sh.address.state,
+                "k1_shareholder_zip": sh.address.zip_code,
+                "k1_corp_street": r.address.street,
+                "k1_corp_city": r.address.city,
+                "k1_corp_state": r.address.state,
+                "k1_corp_zip": r.address.zip_code,
+                "k1_shares_beginning": sh.shares_beginning,
+                "k1_shares_end": sh.shares_end,
+                "k1_loans_beginning": sh.loans_beginning,
+                "k1_loans_end": sh.loans_end,
+                "k1_corp_total_shares_beginning": r.total_shares_beginning,
+                "k1_corp_total_shares_end": r.total_shares_end,
+                **final_values,
                 "k1_ownership_pct_whole": whole,
                 "k1_ownership_pct_frac": frac,
                 "k1_federal_ordinary_income": alloc["federal_ordinary_income"],
@@ -1943,8 +1973,9 @@ class ReturnOrchestrator:
             }
             k1_output = output_dir / f"f100s_k1_{i}_{year}.pdf"
             filler.fill(template_path=k1_template, output_path=k1_output,
-                        field_mapping=k1_mapping, values=k1_values,
-                        checkbox_states=k1_checkbox or None)
+                        field_mapping=this_mapping, values=k1_values,
+                        checkbox_states=this_checkbox or None,
+                        field_formats=PdfF100SK1.get_field_formats(year))
             emitted[f"f100s_k1_{i}"] = k1_output
         return emitted
 
