@@ -44,6 +44,27 @@ _LINE_E = {
 _SHARED_RADIO_YEARS = (2024, 2025)
 
 
+# Line F "What type of entity is this shareholder?" — printed choices, left to
+# right: Individual, Estate/trust, Qualified exempt organization, Single member
+# LLC. 2021-2023: four separate checkboxes 1024-1027 (on /Yes). 2024-2025: one
+# radio 1024 RB whose widgets /0../3 sit left to right under (a)-(d).
+_F_CHOICES = ("individual", "estate_trust", "qualified_exempt_organization",
+              "single_member_llc")
+
+
+def _line_f(year):
+    if year <= 2023:
+        return {c: (f"{1024 + i} cb", "/Yes") for i, c in enumerate(_F_CHOICES)}
+    return {c: ("Sch K-1 (100s) 1024 RB", f"/{i}")
+            for i, c in enumerate(_F_CHOICES)}
+
+
+# Line G "Is this shareholder a resident of California?": Yes box left (/0), No
+# box right (/1), one radio 1028 rb every year.
+def _line_g(year):
+    return {True: (_n(year, "1028 rb"), "/0"), False: (_n(year, "1028 rb"), "/1")}
+
+
 def _values(pdf):
     fields = PdfReader(str(pdf)).get_fields() or {}
     return {k: (None if v.get("/V") is None else str(v["/V"]))
@@ -198,6 +219,156 @@ class FinalK1Tests(_EmitBase):
                                / f"f100s_k1_1_{year}.pdf")
                 _, _, a_field, a_on = _LINE_E[year]
                 self.assertEqual(vals[a_field], a_on)
+
+
+class CorporationNumberTests(_EmitBase):
+    def _emit_with_number(self, year, number="1234567"):
+        s = _make_v1_scenario()
+        set_tax_year(s, year)
+        s.s_corp_return.ca = SCorpCAInputs(
+            first_year=False, estimated_tax_payments=0.0,
+            prior_year_overpayment_applied=0.0,
+            state_tax_deducted_federally=0.0, depreciation_adjustment=0.0,
+            apportionment_ca_only=True, corporation_number=number)
+        out = Path(self._tmp.name) / f"num_{year}_{number}"
+        self.orch.run_full_california_scorp_return(s, out)
+        return out
+
+    def test_number_prints_on_100s_and_k1_every_year(self):
+        for year in years.CA_SCORP_YEARS:
+            with self.subTest(year=year):
+                out = self._emit_with_number(year)
+                f100s = _values(out / f"f100s_{year}.pdf")
+                k1 = _values(out / f"f100s_k1_1_{year}.pdf")
+                prefix = "" if year <= 2023 else "100S Form "
+                self.assertEqual(f100s[prefix + "1004"], "1234567")
+                self.assertEqual(k1[_n(year, "1010")], "1234567")
+                # control: the FEIN beside it prints in the same emit
+                self.assertEqual(k1[_n(year, "1009")], "00-0000000")
+
+    def test_twelve_digit_file_number_prints(self):
+        out = self._emit_with_number(2025, "201912345678")
+        self.assertEqual(
+            _values(out / "f100s_k1_1_2025.pdf")[_n(2025, "1010")],
+            "201912345678")
+
+    def test_unstated_number_stays_blank(self):
+        for year in years.CA_SCORP_YEARS:
+            with self.subTest(year=year):
+                out = self._emit(year)
+                prefix = "" if year <= 2023 else "100S Form "
+                self.assertIn(
+                    _values(out / f"f100s_{year}.pdf")[prefix + "1004"], (None, ""))
+                self.assertIn(
+                    _values(out / f"f100s_k1_1_{year}.pdf")[_n(year, "1010")],
+                    (None, ""))
+
+
+class EntityTypeAndResidencyTests(_EmitBase):
+    def _emit_one(self, year, **sh_kw):
+        s = _make_v1_scenario()
+        set_tax_year(s, year)
+        for k, v in sh_kw.items():
+            setattr(s.s_corp_return.shareholders[0], k, v)
+        s.s_corp_return.ca = SCorpCAInputs(
+            first_year=False, estimated_tax_payments=0.0,
+            prior_year_overpayment_applied=0.0,
+            state_tax_deducted_federally=0.0, depreciation_adjustment=0.0,
+            apportionment_ca_only=True)
+        out = Path(self._tmp.name) / f"et_{year}_{sorted(sh_kw.items())}"
+        self.orch.run_full_california_scorp_return(s, out)
+        return out / f"f100s_k1_1_{year}.pdf"
+
+    def _assert_only(self, pdf, cells, chosen):
+        vals = _values(pdf)
+        field, on = cells[chosen]
+        self.assertEqual(vals[field], on)
+        page, rect = widget_rect(pdf, field, on)
+        self.assertGreater(
+            dark_pixels_in_rect(pdf, page, rect, inset=1.0), 0,
+            f"{chosen}: marked box draws no ink")
+        for other, (ofield, oon) in cells.items():
+            if other == chosen:
+                continue
+            if ofield == field:
+                self.assertNotEqual(vals[field], oon)
+            else:
+                self.assertIn(vals[ofield], (None, "/Off"), other)
+
+    def test_certified_cells_are_real_widgets_with_those_on_states(self):
+        for year in years.CA_SCORP_YEARS:
+            tmpl = f"pdfs/california/{year}/f100s_k1.pdf"
+            for cells in (_line_f(year), _line_g(year)):
+                for key, (field, on) in cells.items():
+                    with self.subTest(year=year, key=key):
+                        widget_rect(tmpl, field, on)  # KeyError if absent
+
+    def test_every_entity_type_marks_only_its_own_box(self):
+        for year in years.CA_SCORP_YEARS:
+            for choice in _F_CHOICES:
+                with self.subTest(year=year, choice=choice):
+                    pdf = self._emit_one(year, ca_entity_type=choice)
+                    self._assert_only(pdf, _line_f(year), choice)
+
+    def test_resident_yes_and_no_mark_only_their_own_box(self):
+        for year in years.CA_SCORP_YEARS:
+            for answer in (True, False):
+                with self.subTest(year=year, answer=answer):
+                    pdf = self._emit_one(year, ca_resident=answer)
+                    self._assert_only(pdf, _line_g(year), answer)
+
+    def test_unstated_leaves_f_and_g_blank(self):
+        for year in years.CA_SCORP_YEARS:
+            with self.subTest(year=year):
+                vals = _values(self._emit_one(year))
+                for cells in (_line_f(year), _line_g(year)):
+                    for field, _ in cells.values():
+                        self.assertIn(vals[field], (None, "/Off"), field)
+
+    def test_f_and_g_are_independent(self):
+        pdf = self._emit_one(2025, ca_entity_type="estate_trust",
+                             ca_resident=False)
+        vals = _values(pdf)
+        self.assertEqual(vals[_line_f(2025)["estate_trust"][0]], "/1")
+        self.assertEqual(vals[_line_g(2025)[False][0]], "/1")
+
+
+class LoaderTests(unittest.TestCase):
+    def _load(self, shareholder_extra=None, ca_extra=None):
+        import yaml
+        from tenforty.scenario import load_scenario
+        from tests.test_scorp_amended_marks import _scenario_yaml_dict
+        data = _scenario_yaml_dict()
+        data["s_corp_return"]["ca"] = {
+            "first_year": False, "estimated_tax_payments": 0.0,
+            "prior_year_overpayment_applied": 0.0,
+            "state_tax_deducted_federally": 0.0,
+            "depreciation_adjustment": 0.0, "apportionment_ca_only": True,
+            **(ca_extra or {})}
+        data["s_corp_return"]["shareholders"][0].update(shareholder_extra or {})
+        f = tempfile.NamedTemporaryFile(
+            "w", suffix=".yaml", delete=False, encoding="utf-8")
+        yaml.safe_dump(data, f)
+        f.close()
+        return load_scenario(Path(f.name)).s_corp_return
+
+    def test_stated_values_load(self):
+        r = self._load({"ca_resident": True,
+                        "ca_entity_type": "single_member_llc"},
+                       {"corporation_number": "0123456"})
+        self.assertIs(r.shareholders[0].ca_resident, True)
+        self.assertEqual(r.shareholders[0].ca_entity_type, "single_member_llc")
+        self.assertEqual(r.ca.corporation_number, "0123456")
+
+    def test_bad_values_refused(self):
+        self._load({"ca_resident": False})  # reachability: key is known
+        for bad in ({"ca_resident": "yes"}, {"ca_entity_type": "trust"},
+                    {"ca_entity_type": True}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                self._load(bad)
+        for bad in ("12AB", 1234567, "", "1234567890123"):
+            with self.subTest(number=bad), self.assertRaises(ValueError):
+                self._load(None, {"corporation_number": bad})
 
 
 if __name__ == "__main__":

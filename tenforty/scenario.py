@@ -229,6 +229,7 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "state_tax_deducted_federally", "depreciation_adjustment",
     "apportionment_ca_only", "under_irs_audit", "information_returns_filed",
     "state_of_incorporation", "country_of_incorporation",
+    "corporation_number",
 })
 
 
@@ -240,7 +241,7 @@ def _load_optional_bool(value, name: str) -> bool | None:
     not coerced: "no" is truthy."""
     if value is not None and not isinstance(value, bool):
         raise ValueError(
-            f"s_corp_return.ca.{name} must be true, false, or null "
+            f"{name} (under s_corp_return) must be true, false, or null "
             f"(unstated); got {value!r}")
     return value
 
@@ -298,6 +299,8 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("information_returns_filed")),
         state_of_incorporation=_load_state_abbreviation(
             data.get("state_of_incorporation")),
+        corporation_number=_load_corporation_number(
+            data.get("corporation_number")),
         country_of_incorporation=_load_optional_text(
             data.get("country_of_incorporation"), "ca.country_of_incorporation"),
     )
@@ -319,8 +322,12 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
 _KNOWN_SHAREHOLDER_KEYS: frozenset[str] = frozenset({
     "name", "ssn_or_ein", "address", "ownership_percentage",
     "shares_beginning", "shares_end", "loans_beginning", "loans_end",
-    "final_k1",
+    "final_k1", "ca_resident", "ca_entity_type",
 })
+
+CA_K1_ENTITY_TYPES = (
+    "individual", "estate_trust", "qualified_exempt_organization",
+    "single_member_llc")
 
 
 def _load_optional_text(value, name: str) -> str | None:
@@ -351,6 +358,26 @@ def _load_stated_amount(sh: dict, key: str, *, non_negative: bool) -> float | No
     return float(value)
 
 
+def _load_ca_entity_type(value) -> str | None:
+    if value is not None and value not in CA_K1_ENTITY_TYPES:
+        raise ValueError(
+            "s_corp_return.shareholders[].ca_entity_type must be one of "
+            f"{list(CA_K1_ENTITY_TYPES)} or null (unstated); got {value!r}")
+    return value
+
+
+def _load_corporation_number(value) -> str | None:
+    """Digits only, as a STRING (a YAML integer would drop leading zeros)."""
+    if value is None:
+        return None
+    if not (isinstance(value, str) and value.isdigit() and len(value) <= 12):
+        raise ValueError(
+            "s_corp_return.ca.corporation_number must be a string of 1-12 "
+            "digits (7-digit CA corporation number or 12-digit Secretary of "
+            f"State file number; quote it in YAML) or null; got {value!r}")
+    return value
+
+
 def _load_shareholder(sh: dict) -> SCorpShareholder:
     unknown = set(sh) - _KNOWN_SHAREHOLDER_KEYS
     if unknown:
@@ -375,6 +402,8 @@ def _load_shareholder(sh: dict) -> SCorpShareholder:
             sh, "loans_beginning", non_negative=False),
         loans_end=_load_stated_amount(sh, "loans_end", non_negative=False),
         final_k1=final_k1,
+        ca_resident=_load_optional_bool(sh.get("ca_resident"), "ca_resident"),
+        ca_entity_type=_load_ca_entity_type(sh.get("ca_entity_type")),
     )
 
 

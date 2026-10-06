@@ -683,6 +683,12 @@ class SCorpShareholder:
     loans_beginning: float | None = None
     loans_end: float | None = None
     final_k1: bool = False
+    # CA Schedule K-1 (100S) face items the caller STATES (None = blank):
+    # line G "is this shareholder a resident of California?" and line F "what
+    # type of entity is this shareholder?" — one of "individual",
+    # "estate_trust", "qualified_exempt_organization", "single_member_llc".
+    ca_resident: bool | None = None
+    ca_entity_type: str | None = None
 
 
 @dataclass
@@ -877,6 +883,10 @@ class SCorpCAInputs:
     # (free text). None leaves the cell blank.
     state_of_incorporation: str | None = None
     country_of_incorporation: str | None = None
+    # California corporation number (7 digits) or Secretary of State file
+    # number (12 digits, LLCs taxed as corporations); digits only. Printed on
+    # Form 100S and every Schedule K-1 (100S). None leaves it blank.
+    corporation_number: str | None = None
 
 
 @dataclass

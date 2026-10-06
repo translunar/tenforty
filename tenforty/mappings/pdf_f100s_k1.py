@@ -110,6 +110,27 @@ class PdfF100SK1(PdfFormMapping[dict[str, str]]):
         return _FIELD_FORMATS
 
     @classmethod
+    def get_entity_type_cells(cls, year: int) -> dict[str, tuple[str, str]]:
+        """{entity type: (field_path, ON-state)} for line F "what type of
+        entity is this shareholder?". Choices, as printed left to right:
+        individual, estate_trust, qualified_exempt_organization,
+        single_member_llc. 2021-2023: four separate checkboxes (1024-1027,
+        /Yes); 2024-2025: one radio (1024 RB, /0 ../3). Additive: the
+        orchestrator merges only the chosen cell."""
+        if year not in _ENTITY_TYPE_BY_YEAR:
+            raise ValueError(f"No Schedule K-1 (100S) line F cells for {year}")
+        return _ENTITY_TYPE_BY_YEAR[year]
+
+    @classmethod
+    def get_resident_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
+        """{answer: (field_path, ON-state)} for line G "is this shareholder a
+        resident of California?": one radio (1028 rb) every year, Yes box left
+        (/0), No box right (/1)."""
+        if year not in _RESIDENT_BY_YEAR:
+            raise ValueError(f"No Schedule K-1 (100S) line G cells for {year}")
+        return _RESIDENT_BY_YEAR[year]
+
+    @classmethod
     def get_final_mark(cls, year: int) -> tuple[str, str]:
         """(field_path, ON-state) for the line E "final Schedule K-1" mark.
 
@@ -168,4 +189,22 @@ _FINAL_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
     2023: ("1022 cb", "/Yes"),
     2024: ("Sch K-1 (100s) 1023 RB", "/1. A final Schedule K-1"),
     2025: ("Sch K-1 (100s) 1023 RB", "/0"),
+}
+
+_ENTITY_CHOICES = ("individual", "estate_trust",
+                   "qualified_exempt_organization", "single_member_llc")
+_ENTITY_CHECKBOXES = {c: (f"{1024 + i} cb", "/Yes")
+                      for i, c in enumerate(_ENTITY_CHOICES)}
+_ENTITY_RADIO = {c: ("Sch K-1 (100s) 1024 RB", f"/{i}")
+                 for i, c in enumerate(_ENTITY_CHOICES)}
+_ENTITY_TYPE_BY_YEAR: dict[int, dict[str, tuple[str, str]]] = {
+    2021: _ENTITY_CHECKBOXES, 2022: _ENTITY_CHECKBOXES,
+    2023: _ENTITY_CHECKBOXES, 2024: _ENTITY_RADIO, 2025: _ENTITY_RADIO,
+}
+_RESIDENT_BARE = {True: ("1028 rb", "/0"), False: ("1028 rb", "/1")}
+_RESIDENT_PREFIXED = {True: ("Sch K-1 (100s) 1028 rb", "/0"),
+                      False: ("Sch K-1 (100s) 1028 rb", "/1")}
+_RESIDENT_BY_YEAR: dict[int, dict[bool, tuple[str, str]]] = {
+    2021: _RESIDENT_BARE, 2022: _RESIDENT_BARE, 2023: _RESIDENT_BARE,
+    2024: _RESIDENT_PREFIXED, 2025: _RESIDENT_PREFIXED,
 }
