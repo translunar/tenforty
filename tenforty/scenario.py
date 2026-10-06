@@ -227,8 +227,41 @@ def _load_payments(data: dict) -> SCorpPayments:
 _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "first_year", "estimated_tax_payments", "prior_year_overpayment_applied",
     "state_tax_deducted_federally", "depreciation_adjustment",
-    "apportionment_ca_only",
+    "apportionment_ca_only", "under_irs_audit", "information_returns_filed",
+    "state_of_incorporation", "country_of_incorporation",
 })
+
+
+_INFORMATION_RETURNS_ANSWERS = ("yes", "no", "not_applicable")
+
+
+def _load_optional_bool(value, name: str) -> bool | None:
+    """A stated Yes/No answer (None/absent = unstated). Strings are refused,
+    not coerced: "no" is truthy."""
+    if value is not None and not isinstance(value, bool):
+        raise ValueError(
+            f"s_corp_return.ca.{name} must be true, false, or null "
+            f"(unstated); got {value!r}")
+    return value
+
+
+def _load_state_abbreviation(value) -> str | None:
+    if value is None:
+        return None
+    if not (isinstance(value, str) and len(value) == 2 and value.isalpha()):
+        raise ValueError(
+            "s_corp_return.ca.state_of_incorporation must be a two-letter "
+            f"abbreviation or null (unstated); got {value!r}")
+    return value.upper()
+
+
+def _load_information_returns_filed(value) -> str | None:
+    if value is not None and value not in _INFORMATION_RETURNS_ANSWERS:
+        raise ValueError(
+            "s_corp_return.ca.information_returns_filed must be one of "
+            f"{list(_INFORMATION_RETURNS_ANSWERS)} or null (unstated); "
+            f"got {value!r}")
+    return value
 
 
 def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
@@ -259,6 +292,14 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
         state_tax_deducted_federally=float(data["state_tax_deducted_federally"]),
         depreciation_adjustment=float(data["depreciation_adjustment"]),
         apportionment_ca_only=bool(data["apportionment_ca_only"]),
+        under_irs_audit=_load_optional_bool(
+            data.get("under_irs_audit"), "under_irs_audit"),
+        information_returns_filed=_load_information_returns_filed(
+            data.get("information_returns_filed")),
+        state_of_incorporation=_load_state_abbreviation(
+            data.get("state_of_incorporation")),
+        country_of_incorporation=_load_optional_text(
+            data.get("country_of_incorporation"), "ca.country_of_incorporation"),
     )
     if not inputs.apportionment_ca_only:
         raise ValueError(
@@ -270,8 +311,71 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
 _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "name", "ein", "address", "date_incorporated", "s_election_effective_date",
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
-    "scope_outs", "payments", "ca", "amended_return",
+    "scope_outs", "payments", "ca", "amended_return", "irs_center",
+    "total_shares_beginning", "total_shares_end",
 })
+
+
+_KNOWN_SHAREHOLDER_KEYS: frozenset[str] = frozenset({
+    "name", "ssn_or_ein", "address", "ownership_percentage",
+    "shares_beginning", "shares_end", "loans_beginning", "loans_end",
+    "final_k1",
+})
+
+
+def _load_optional_text(value, name: str) -> str | None:
+    """A stated free-text entry (None/absent = unstated)."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(
+            f"s_corp_return.{name} must be a non-empty string or null "
+            f"(unstated); got {value!r}")
+    return value
+
+
+def _load_stated_amount(sh: dict, key: str, *, non_negative: bool) -> float | None:
+    """A stated shareholder figure (None/absent = unstated). Bools and strings
+    are refused rather than coerced: a typo must not print a wrong face item."""
+    value = sh.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(
+            f"s_corp_return.{key} (or shareholders[].{key}) must be a number or null "
+            f"(unstated); got {value!r}")
+    if non_negative and value < 0:
+        raise ValueError(
+            f"s_corp_return.{key} (or shareholders[].{key}) must not be negative; "
+            f"got {value!r}")
+    return float(value)
+
+
+def _load_shareholder(sh: dict) -> SCorpShareholder:
+    unknown = set(sh) - _KNOWN_SHAREHOLDER_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in s_corp_return.shareholders[]: "
+            f"{sorted(unknown)}. Known keys: {sorted(_KNOWN_SHAREHOLDER_KEYS)}")
+    final_k1 = sh.get("final_k1", False)
+    if not isinstance(final_k1, bool):
+        raise ValueError(
+            "s_corp_return.shareholders[].final_k1 must be true or false; "
+            f"got {final_k1!r}")
+    return SCorpShareholder(
+        name=sh["name"],
+        ssn_or_ein=sh["ssn_or_ein"],
+        address=_load_address(sh["address"]),
+        ownership_percentage=float(sh["ownership_percentage"]),
+        shares_beginning=_load_stated_amount(
+            sh, "shares_beginning", non_negative=True),
+        shares_end=_load_stated_amount(sh, "shares_end", non_negative=True),
+        # A loan balance is a dollar amount; signed values are the filer's call.
+        loans_beginning=_load_stated_amount(
+            sh, "loans_beginning", non_negative=False),
+        loans_end=_load_stated_amount(sh, "loans_end", non_negative=False),
+        final_k1=final_k1,
+    )
 
 
 def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
@@ -300,19 +404,16 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         income=_load_income(data["income"]),
         deductions=_load_deductions(data["deductions"]),
         schedule_b_answers=_load_schedule_b_answers(data["schedule_b_answers"]),
-        shareholders=[
-            SCorpShareholder(
-                name=sh["name"],
-                ssn_or_ein=sh["ssn_or_ein"],
-                address=_load_address(sh["address"]),
-                ownership_percentage=float(sh["ownership_percentage"]),
-            )
-            for sh in data.get("shareholders", [])
-        ],
+        shareholders=[_load_shareholder(sh) for sh in data.get("shareholders", [])],
         scope_outs=_load_scope_outs(data.get("scope_outs", {})),
         payments=_load_payments(data.get("payments", {})),
         ca=_load_scorp_ca(data.get("ca")),
         amended_return=bool(data.get("amended_return", False)),
+        irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
+        total_shares_beginning=_load_stated_amount(
+            data, "total_shares_beginning", non_negative=True),
+        total_shares_end=_load_stated_amount(
+            data, "total_shares_end", non_negative=True),
     )
 
 

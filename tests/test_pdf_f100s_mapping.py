@@ -27,6 +27,8 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "f100s_amount_owed", "f100s_overpayment", "f100s_tax_rate",
     "f100s_entity_name", "f100s_entity_ca_corp_number", "f100s_entity_fein",
     "f100s_entity_street", "f100s_entity_city", "f100s_entity_state", "f100s_entity_zip",
+    "f100s_entity_date_incorporated", "f100s_entity_s_election_date",
+    "f100s_entity_state_incorporated", "f100s_entity_country_incorporated",
 })
 
 # Distinctive synthetic fill values: financial = distinct multiples of 50 under
