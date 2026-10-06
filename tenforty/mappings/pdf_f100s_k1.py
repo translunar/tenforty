@@ -18,7 +18,7 @@ assembled at emit time from the scenario. v1 maps Line 1 (ordinary business
 income) only, mirroring the federal K-1's box-1 scope; other pro-rata lines
 and granular address fields are a follow-up.
 """
-from tenforty.mappings.registry import PdfFormMapping
+from tenforty.mappings.registry import PdfFormMapping, trim_decimal
 
 # Identity/alloc suffixes: stable across all years.
 _IDENTITY_SUFFIX: dict[str, str] = {
@@ -29,6 +29,31 @@ _IDENTITY_SUFFIX: dict[str, str] = {
     "k1_corp_name":            "1011",   # Side 1 "Corporation's name"
     "k1_ownership_pct_whole":  "1016a",  # Item A % box, integer part (left of decimal)
     "k1_ownership_pct_frac":   "1016b",  # Item A % box, fractional part (right of decimal)
+}
+# Face items certified per template by printed caption; the field NUMBERS are
+# stable 2021-2025 (only the namespace differs): shareholder / corporation
+# address block, Line B shares (beginning, ending), Line C loans from
+# shareholder (beginning, ending).
+_FACE_SUFFIX: dict[str, str] = {
+    "k1_shareholder_street":   "1005",
+    "k1_shareholder_city":     "1006",
+    "k1_shareholder_state":    "1007",
+    "k1_shareholder_zip":      "1008",
+    "k1_corp_street":          "1012",
+    "k1_corp_city":            "1013",
+    "k1_corp_state":           "1014",
+    "k1_corp_zip":             "1015",
+    "k1_shares_beginning":     "1017",
+    "k1_shares_end":           "1018",
+    "k1_loans_beginning":      "1019",
+    "k1_loans_end":            "1020",
+}
+# Line H "Corporation's total number of shares" (beginning, ending) exists on
+# the 2024-2025 forms ONLY. On 2021-2023 the bare numbers 1029 / 1030 are the
+# Line 1 income columns, so these must never be added to the bare mapping.
+_LINE_H_SUFFIX: dict[str, str] = {
+    "k1_corp_total_shares_beginning": "1029",
+    "k1_corp_total_shares_end":       "1030",
 }
 # Line 1 (Ordinary business income) income columns — differ by revision.
 _LINE1_BARE: dict[str, str] = {          # 2021-2023
@@ -51,8 +76,18 @@ def _prefixed(suffixes: dict[str, str]) -> dict[str, str]:
     return {k: f"Sch K-1 (100s) {n}" for k, n in suffixes.items()}
 
 
-_MAPPING_2021_2023 = {**_bare(_IDENTITY_SUFFIX), **_bare(_LINE1_BARE)}
-_MAPPING_2024_2025 = {**_prefixed(_IDENTITY_SUFFIX), **_prefixed(_LINE1_PREFIXED)}
+_MAPPING_2021_2023 = {
+    **_bare(_IDENTITY_SUFFIX), **_bare(_FACE_SUFFIX), **_bare(_LINE1_BARE)}
+_MAPPING_2024_2025 = {
+    **_prefixed(_IDENTITY_SUFFIX), **_prefixed(_FACE_SUFFIX),
+    **_prefixed(_LINE_H_SUFFIX), **_prefixed(_LINE1_PREFIXED)}
+
+# Shares may be fractional; loans stay whole-dollar.
+_FIELD_FORMATS = {
+    "k1_shares_beginning": trim_decimal, "k1_shares_end": trim_decimal,
+    "k1_corp_total_shares_beginning": trim_decimal,
+    "k1_corp_total_shares_end": trim_decimal,
+}
 
 
 class PdfF100SK1(PdfFormMapping[dict[str, str]]):
@@ -66,6 +101,35 @@ class PdfF100SK1(PdfFormMapping[dict[str, str]]):
         2023: _MAPPING_2021_2023,
         2024: _MAPPING_2024_2025, 2025: _MAPPING_2024_2025,
     }
+
+    @classmethod
+    def get_field_formats(cls, year: int) -> dict:
+        """Compute key -> render override (see ``PdfFiller.resolve_fields``)."""
+        if year not in cls._MAPPINGS:
+            raise ValueError(f"No {cls._FORM_NAME} field formats for year {year}")
+        return _FIELD_FORMATS
+
+    @classmethod
+    def get_final_mark(cls, year: int) -> tuple[str, str]:
+        """(field_path, ON-state) for the line E "final Schedule K-1" mark.
+
+        Additive like ``get_amended_mark``. Through 2023 Final and Amended are
+        two independent checkboxes (1022 cb / 1023 cb); from 2024 they are TWO
+        STATES OF ONE RADIO (1023 RB), so a K-1 cannot carry both
+        (``final_and_amended_share_one_field``). Tokens per year, read from the
+        template: 2024 '/1. A final Schedule K-1'; 2025 '/0' (the radio's /Opt
+        lists final first, amended second, and the widgets sit left / right).
+        """
+        if year not in _FINAL_MARK_BY_YEAR:
+            raise ValueError(
+                f"No Schedule K-1 (100S) final mark for year {year}")
+        return _FINAL_MARK_BY_YEAR[year]
+
+    @classmethod
+    def final_and_amended_share_one_field(cls, year: int) -> bool:
+        """True when Final and Amended are states of one radio, so a single
+        K-1 cannot be both."""
+        return cls.get_final_mark(year)[0] == cls.get_amended_mark(year)[0]
 
     @classmethod
     def get_amended_mark(cls, year: int) -> tuple[str, str]:
@@ -96,4 +160,12 @@ _AMENDED_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
     2023: ("1023 cb", "/Yes"),
     2024: ("Sch K-1 (100s) 1023 RB", "/(2) An amended Schedule K-1."),
     2025: ("Sch K-1 (100s) 1023 RB", "/1"),
+}
+
+_FINAL_MARK_BY_YEAR: dict[int, tuple[str, str]] = {
+    2021: ("1022 cb", "/Yes"),
+    2022: ("1022 cb", "/Yes"),
+    2023: ("1022 cb", "/Yes"),
+    2024: ("Sch K-1 (100s) 1023 RB", "/1. A final Schedule K-1"),
+    2025: ("Sch K-1 (100s) 1023 RB", "/0"),
 }
