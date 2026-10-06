@@ -8,11 +8,13 @@ way the IRS / FTB expect (attachment sequence).
 This module is pure file assembly: it consumes the ``emitted`` form-key → Path
 mapping and concatenates member PDFs with pypdf. It performs no tax compute.
 
-Three packets are defined:
+Four packets are defined:
 - ``federal_individual`` — Form 1040 + its schedules/forms (attachment order).
 - ``federal_corporate`` — Form 1120-S + one Schedule K-1 per shareholder + one
   §199A Statement A per shareholder. An 1120-S is a separate filing from the
   1040, so it is never folded into the individual packet.
+- ``california_corporate`` — CA Form 100S + one Schedule K-1 (100S) per
+  shareholder (FTB order: 100S first, each K-1 behind it).
 - ``california`` — Form 540 + Schedule CA (540) + Schedule D (540) when the
   return requires it (emitted only when CA capital gains differ from federal).
 
@@ -111,7 +113,20 @@ CALIFORNIA = Packet(
     ),
 )
 
-PACKETS: tuple[Packet, ...] = (FEDERAL_INDIVIDUAL, FEDERAL_CORPORATE, CALIFORNIA)
+# California corporate — Form 100S followed by every shareholder's
+# Schedule K-1 (100S). Valid for every CA S-corp year (years.CA_SCORP_YEARS);
+# the year enters only through the filename template.
+CALIFORNIA_CORPORATE = Packet(
+    name="california_corporate",
+    filename_template="f100s_{year}_complete.pdf",
+    members=(
+        PacketMember("f100s"),
+        PacketMember("f100s_k1", family=True),
+    ),
+)
+
+PACKETS: tuple[Packet, ...] = (
+    FEDERAL_INDIVIDUAL, FEDERAL_CORPORATE, CALIFORNIA, CALIFORNIA_CORPORATE)
 
 # Emitted keys that belong to no packet — separate filings or non-return
 # artifacts. Form 4868 (extension request) is filed on its own, so it stays a
