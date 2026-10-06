@@ -155,6 +155,11 @@ _Q_PREFIX_ALL: dict[int, str] = {
     2021: "", 2022: "", 2023: "", 2024: "100S Form ", 2025: "100S Form "}
 
 
+# Question I (inactive business) exists on the 2023-2025 forms only; on 2021-2022
+# the same field number 3011 is the AUDIT question.
+_Q_INACTIVE_YEARS = (2023, 2024, 2025)
+
+
 def _accounting_cells(year: int) -> dict[str, _Cell]:
     prefix = _Q_PREFIX_ALL[year]
     if _Q_L_CHECKBOXES[year]:
@@ -209,6 +214,9 @@ def _schedule_q_cells(year: int) -> dict[str, dict[object, _Cell]]:
     for question, field in _Q_YESNO_FIELDS.items():
         cells[question] = {True: (prefix + field, "/0"),
                            False: (prefix + field, "/1")}
+    if year in _Q_INACTIVE_YEARS:
+        cells["inactive_business"] = {
+            True: (prefix + "3011 rb", "/0"), False: (prefix + "3011 rb", "/1")}
     return cells
 
 

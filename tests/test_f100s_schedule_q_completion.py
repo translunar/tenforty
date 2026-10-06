@@ -165,6 +165,51 @@ class DerivedQuestionPTests(_EmitBase):
                 self._assert_only(self._emit(year), _line_p(year), False)
 
 
+# Question I "Was the S corporation an inactive business ...": exists on the
+# 2023-2025 forms only (2021-2022's Question I is the audit question). Field
+# 3011 rb, Yes /0 left, No /1 right.
+_INACTIVE_YEARS = (2023, 2024, 2025)
+
+
+def _inactive(year):
+    field = _n(year, "3011 rb")
+    return {True: (field, "/0"), False: (field, "/1")}
+
+
+class InactiveBusinessTests(_EmitBase):
+    def test_cells_are_real_widgets(self):
+        for year in _INACTIVE_YEARS:
+            for key, (field, on) in _inactive(year).items():
+                with self.subTest(year=year, key=key):
+                    widget_rect(f"pdfs/california/{year}/f100s.pdf", field, on)
+
+    def test_each_answer_marks_only_its_own_box(self):
+        for year in _INACTIVE_YEARS:
+            for answer in (True, False):
+                with self.subTest(year=year, answer=answer):
+                    pdf = self._emit(year, inactive_business=answer)
+                    self._assert_only(pdf, _inactive(year), answer)
+
+    def test_unstated_leaves_it_unmarked(self):
+        for year in _INACTIVE_YEARS:
+            with self.subTest(year=year):
+                vals = _values(self._emit(year))
+                self.assertIn(vals[_n(year, "3011 rb")], (None, "/Off"))
+
+    def test_years_without_the_question_refuse_a_stated_answer(self):
+        # 2021-2022 have no inactive-business question (their Question I is the
+        # audit question), so a stated answer must be refused, not mis-printed.
+        for year in (2021, 2022):
+            with self.subTest(year=year), self.assertRaises(ValueError):
+                self._emit(year, inactive_business=True)
+
+    def test_inactive_answer_does_not_touch_the_audit_question(self):
+        pdf = self._emit(2024, inactive_business=True, under_irs_audit=False)
+        vals = _values(pdf)
+        self.assertEqual(vals[_n(2024, "3011 rb")], "/0")
+        self.assertEqual(vals[_n(2024, "3011a rb")], "/1")
+
+
 class StatedYesNoTests(_EmitBase):
     def test_each_answer_marks_only_its_own_box(self):
         for year in _FLOOR:
@@ -209,7 +254,9 @@ class LoaderTests(unittest.TestCase):
             "date_business_began_in_ca": datetime.date(2019, 6, 1),
             "water_edge_basis": False, "includes_qsubs": False,
             "included_reportable_transaction": False,
-            "filed_federal_schedule_m3": False, "ftb_3544_attached": True})
+            "filed_federal_schedule_m3": False, "ftb_3544_attached": True,
+            "inactive_business": False})
+        self.assertIs(ca.inactive_business, False)
         self.assertEqual(ca.max_shareholders, 2)
         self.assertEqual(ca.date_business_began_in_ca,
                          datetime.date(2019, 6, 1))

@@ -1906,6 +1906,7 @@ class ReturnOrchestrator:
                 r.ca.included_reportable_transaction,
             "filed_federal_schedule_m3": r.ca.filed_federal_schedule_m3,
             "ftb_3544_attached": r.ca.ftb_3544_attached,
+            "inactive_business": r.ca.inactive_business,
         }
         if any(a is not None for a in stated_q.values()):
             if year < 2022:
@@ -1922,6 +1923,10 @@ class ReturnOrchestrator:
                     "apportioning_with_schedule_r":
                         not r.ca.apportionment_ca_only}
         for question, answer in chosen_q.items():
+            if question not in q_cells:
+                raise ValueError(
+                    f"California Form 100S {year} has no {question!r} "
+                    "question; remove it from s_corp_return.ca.")
             q_path, q_on = q_cells[question][answer]
             key = f"f100s_q_{question}"
             f100s_mapping = {**f100s_mapping, key: q_path}

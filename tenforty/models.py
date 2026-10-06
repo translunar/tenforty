@@ -904,6 +904,10 @@ class SCorpCAInputs:
     filed_federal_schedule_m3: bool | None = None
     # Question S: is FTB 3544 Side 2 Part B (assigned credits) attached?
     ftb_3544_attached: bool | None = None
+    # Question I: was the S corporation an inactive business both within and
+    # outside California during the year? (2023-2025 forms only; the 2021-2022
+    # forms have no such question.)
+    inactive_business: bool | None = None
 
 
 @dataclass

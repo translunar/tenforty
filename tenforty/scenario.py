@@ -232,6 +232,7 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "corporation_number", "max_shareholders", "date_business_began_in_ca",
     "water_edge_basis", "includes_qsubs", "included_reportable_transaction",
     "filed_federal_schedule_m3", "ftb_3544_attached",
+    "inactive_business",
 })
 
 
@@ -316,6 +317,8 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("filed_federal_schedule_m3"), "filed_federal_schedule_m3"),
         ftb_3544_attached=_load_optional_bool(
             data.get("ftb_3544_attached"), "ftb_3544_attached"),
+        inactive_business=_load_optional_bool(
+            data.get("inactive_business"), "inactive_business"),
         corporation_number=_load_corporation_number(
             data.get("corporation_number")),
         country_of_incorporation=_load_optional_text(
