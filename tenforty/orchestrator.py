@@ -1712,11 +1712,30 @@ class ReturnOrchestrator:
             k1_mapping = {**k1_mapping, "k1_amended_return": k1_path}
             k1_checkbox = {"k1_amended_return": k1_on}
             k1_amended_values = {"k1_amended_return": True}
+        stated_shareholders = scenario.s_corp_return.shareholders
         for i, alloc in enumerate(
             results.get("f1120s_sch_k1_allocations", []),
             start=1,
         ):
+            # Allocations are built one per shareholder in scenario order
+            # (f1120s._compute_schedule_k1_allocations), so index i-1 is this K-1's shareholder.
+            sh = stated_shareholders[i - 1]
+            this_mapping, this_checkbox, final_values = k1_mapping, k1_checkbox, {}
+            if sh.final_k1:
+                f_path, f_on = PdfF1120SK1.get_final_mark(year)
+                this_mapping = {**k1_mapping, "k1_final": f_path}
+                this_checkbox = {**k1_checkbox, "k1_final": f_on}
+                final_values = {"k1_final": True}
             flat_values = {
+                "k1_irs_center": scenario.s_corp_return.irs_center,
+                "k1_total_shares_beginning":
+                    scenario.s_corp_return.total_shares_beginning,
+                "k1_total_shares_end": scenario.s_corp_return.total_shares_end,
+                "k1_shares_beginning": sh.shares_beginning,
+                "k1_shares_end": sh.shares_end,
+                "k1_loans_beginning": sh.loans_beginning,
+                "k1_loans_end": sh.loans_end,
+                **final_values,
                 **_flatten_k1_party("entity", alloc.entity),
                 **_flatten_k1_party("shareholder", alloc.shareholder),
                 "ownership_percentage": alloc.ownership_percentage,
@@ -1731,8 +1750,8 @@ class ReturnOrchestrator:
                 template_path=k1_template,
                 output_path=k1_output,
                 values=flat_values,
-                field_mapping=k1_mapping,
-                checkbox_states=k1_checkbox or None,
+                field_mapping=this_mapping,
+                checkbox_states=this_checkbox or None,
                 field_formats=PdfF1120SK1.get_field_formats(year),
             )
             emitted[f"1120s_k1_{i}"] = k1_output
@@ -1854,12 +1873,43 @@ class ReturnOrchestrator:
             "f100s_entity_state": r.address.state,
             "f100s_entity_zip": r.address.zip_code,
             "f100s_tax_rate": rate,
+            "f100s_entity_date_incorporated":
+                _format_mmddyyyy(r.date_incorporated),
+            "f100s_entity_s_election_date":
+                _format_mmddyyyy(r.s_election_effective_date),
+            "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
+            "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             # f100s_entity_ca_corp_number: no model source in v1 -> left blank.
         }
+        f100s_mapping = PdfF100S.get_mapping(year)
+        f100s_checkbox: dict[str, str] = {}
+        # Schedule Q stated answers: only the CHOSEN answer's box is merged in
+        # (additive, like the amended marks), so a Yes/No/N-A group can never
+        # carry two marks. A year with no certified cells refuses a stated
+        # answer rather than dropping it.
+        stated_q = {"under_irs_audit": r.ca.under_irs_audit,
+                    "information_returns_filed": r.ca.information_returns_filed}
+        if any(a is not None for a in stated_q.values()):
+            if year < 2022:
+                raise ValueError(
+                    f"California Form 100S Schedule Q answers are supported "
+                    f"for tax years 2022 and later; tax year {year} cannot "
+                    "print them. Remove under_irs_audit / "
+                    "information_returns_filed from s_corp_return.ca.")
+            q_cells = PdfF100S.get_schedule_q_cells(year)
+            for question, answer in stated_q.items():
+                if answer is None:
+                    continue
+                q_path, q_on = q_cells[question][answer]
+                key = f"f100s_q_{question}"
+                f100s_mapping = {**f100s_mapping, key: q_path}
+                f100s_checkbox[key] = q_on
+                f100s_values[key] = True
         f100s_template = _PDFS_ROOT / "california" / str(year) / "f100s.pdf"
         f100s_output = output_dir / f"f100s_{year}.pdf"
         filler.fill(template_path=f100s_template, output_path=f100s_output,
-                    field_mapping=PdfF100S.get_mapping(year), values=f100s_values)
+                    field_mapping=f100s_mapping, values=f100s_values,
+                    checkbox_states=f100s_checkbox or None)
         emitted["f100s"] = f100s_output
 
         k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"

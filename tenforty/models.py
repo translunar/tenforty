@@ -673,6 +673,16 @@ class SCorpShareholder:
     ssn_or_ein: str
     address: Address
     ownership_percentage: float
+    # Schedule K-1 (1120-S) Part II face items the caller STATES (None leaves
+    # the cell blank; tenforty never infers them): item H shares held at the
+    # beginning / end of the tax year, item I loans from the shareholder at the
+    # beginning / end of the tax year (dollars), and the "Final K-1" box
+    # (this shareholder's last K-1 from the corporation).
+    shares_beginning: float | None = None
+    shares_end: float | None = None
+    loans_beginning: float | None = None
+    loans_end: float | None = None
+    final_k1: bool = False
 
 
 @dataclass
@@ -855,6 +865,18 @@ class SCorpCAInputs:
     depreciation_adjustment: float
     # v1 supports only 100% CA apportionment; False must raise at load.
     apportionment_ca_only: bool
+    # Form 100S Schedule Q answers the caller STATES (None leaves the question's
+    # boxes blank; never inferred).
+    # Question J (Question I on the 2022 form): is the S corporation under audit
+    # by the IRS, or audited in a prior year?
+    under_irs_audit: bool | None = None
+    # Question O: have all required information returns (Forms 1099, 8300, 592,
+    # 592-B ...) been filed with the FTB? One of "yes", "no", "not_applicable".
+    information_returns_filed: str | None = None
+    # Question F "where incorporated": two-letter state abbreviation and country
+    # (free text). None leaves the cell blank.
+    state_of_incorporation: str | None = None
+    country_of_incorporation: str | None = None
 
 
 @dataclass
@@ -887,6 +909,14 @@ class SCorpReturn:
     # accompanies a preparer-completed 100X. Default False (an ordinary,
     # non-amended return).
     amended_return: bool = False
+    # Schedule K-1 (1120-S) Part I item C: the IRS Center where the corporation
+    # filed its return (free text, e.g. "Ogden, UT"). None leaves it blank.
+    irs_center: str | None = None
+    # Schedule K-1 (1120-S) Part I item D: the corporation's total number of
+    # shares at the beginning / end of the tax year. Stated, never summed from
+    # the shareholders' figures. None leaves the cell blank.
+    total_shares_beginning: float | None = None
+    total_shares_end: float | None = None
 
 
 class DivergenceSource(str, Enum):
