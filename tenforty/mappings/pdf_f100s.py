@@ -36,6 +36,29 @@ _SUFFIX: dict[str, str] = {
     "f100s_net_income_after_adjustments":   "2006",  # Side 2 L14 Net income after state adjustments
     "f100s_net_income_for_state_purposes":  "2007",  # Side 2 L15 Net income for state purposes
     "f100s_total_amount_due":               "2046",  # Side 2 L45 Total amount due (blank when negative)
+    "f100s_sch_f_gross_receipts":           "4001",  # Side 4 Sch F L1a
+    "f100s_sch_f_returns_allowances":       "4002",  # L1b
+    "f100s_sch_f_net_receipts":             "4003",  # L1c
+    "f100s_sch_f_cogs":                     "4004",  # L2
+    "f100s_sch_f_gross_profit":             "4005",  # L3
+    "f100s_sch_f_net_gain_loss":            "4006",  # L4
+    "f100s_sch_f_other_income":             "4007",  # L5
+    "f100s_sch_f_total_income":             "4008",  # L6
+    "f100s_sch_f_officer_comp":             "4009",  # L7
+    "f100s_sch_f_salaries_wages":           "4010",  # L8
+    "f100s_sch_f_repairs":                  "4011",  # L9
+    "f100s_sch_f_bad_debts":                "4012",  # L10
+    "f100s_sch_f_rents":                    "4013",  # L11
+    "f100s_sch_f_taxes":                    "4014",  # L12
+    "f100s_sch_f_interest":                 "4015",  # L13
+    "f100s_sch_f_depreciation_balance":     "4018 a",  # L14c Balance (14a/14b: no scenario source)
+    "f100s_sch_f_depletion":                "4018 b",  # L15
+    "f100s_sch_f_advertising":              "4019",  # L16
+    "f100s_sch_f_pension":                  "4020",  # L17
+    "f100s_sch_f_employee_benefits":        "4021",  # L18
+    "f100s_sch_f_other_deductions":         "4024",  # L20 (19a/19b: no scenario source)
+    "f100s_sch_f_total_deductions":         "4025",  # L21
+    "f100s_sch_f_ordinary_income":          "4026",  # L22 (= Side 1 L1)
     "f100s_depreciation_adjustment":        "1035",  # Side 1 L5 Depreciation & amort adjustments
     "f100s_net_income_for_tax":             "2012",  # Side 2 L20 Net income for tax purposes
     "f100s_franchise_tax":                  "2014",  # Side 2 L21 Tax amount
