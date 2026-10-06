@@ -31,6 +31,11 @@ from tenforty.mappings.registry import PdfFormMapping
 _SUFFIX: dict[str, str] = {
     "f100s_federal_ordinary_income":        "1031",  # Side 1 L1 Ordinary income; label cites fed 1120-S "line 21" (2021-22) / "line 22" (2023-25) — same field & semantic
     "f100s_state_tax_addback":              "1032",  # Side 1 L2 CA franchise/income tax deducted
+    "f100s_total_additions":                "1038",  # Side 1 L8 Total
+    "f100s_total_state_deductions":         "2005",  # Side 2 L13 Total (L9-L12)
+    "f100s_net_income_after_adjustments":   "2006",  # Side 2 L14 Net income after state adjustments
+    "f100s_net_income_for_state_purposes":  "2007",  # Side 2 L15 Net income for state purposes
+    "f100s_total_amount_due":               "2046",  # Side 2 L45 Total amount due (blank when negative)
     "f100s_depreciation_adjustment":        "1035",  # Side 1 L5 Depreciation & amort adjustments
     "f100s_net_income_for_tax":             "2012",  # Side 2 L20 Net income for tax purposes
     "f100s_franchise_tax":                  "2014",  # Side 2 L21 Tax amount

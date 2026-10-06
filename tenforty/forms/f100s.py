@@ -39,7 +39,9 @@ def compute(scenario, upstream) -> dict:
     total_payments = (irs_round(ca.estimated_tax_payments)
                       + irs_round(ca.prior_year_overpayment_applied))
     delta = tax - total_payments
-    return {
+    amount_owed = irs_round(max(delta, 0.0))
+    overpayment = irs_round(max(-delta, 0.0))
+    out = {
         "f100s_federal_ordinary_income": irs_round(federal_income),
         "f100s_state_tax_addback": irs_round(ca.state_tax_deducted_federally),
         "f100s_depreciation_adjustment": irs_round(ca.depreciation_adjustment),
@@ -58,6 +60,20 @@ def compute(scenario, upstream) -> dict:
             irs_round(ca.prior_year_overpayment_applied),
         "f100s_total_payments": total_payments,
         "f100s_payments_balance": total_payments,                # Side 2 L38
-        "f100s_amount_owed": irs_round(max(delta, 0.0)),
-        "f100s_overpayment": irs_round(max(-delta, 0.0)),
+        "f100s_amount_owed": amount_owed,
+        "f100s_overpayment": overpayment,
+        # Printed totals (v1: no state deductions on Side 2 lines 9-12, no
+        # Schedule R apportionment, no L16-L19 deductions), so Side 1 L8 = Side
+        # 2 L14 = L15 = the whole-dollar net income that L20 and the tax use.
+        "f100s_total_additions": net_income_line,                # Side 1 L8
+        "f100s_total_state_deductions": 0,                       # Side 2 L13
+        "f100s_net_income_after_adjustments": net_income_line,   # Side 2 L14
+        "f100s_net_income_for_state_purposes": net_income_line,  # Side 2 L15
     }
+    # Side 2 L45 = L39 + L40 + L42 + L44a - L41 (L39 use tax, L42 credited
+    # forward and L44a penalties are out of v1 scope = 0). A negative result
+    # (an overpayment) is NOT emitted: no FTB instruction in the repo says how a
+    # negative line 45 is entered, so the cell stays blank (refund = L41-L43).
+    if amount_owed - overpayment >= 0:
+        out["f100s_total_amount_due"] = amount_owed - overpayment
+    return out
