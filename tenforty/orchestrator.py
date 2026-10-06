@@ -32,7 +32,7 @@ from tenforty.ca_divergences import (
     entry_citation,
     resolve_divergence_id,
 )
-from tenforty.models import DivergenceSource
+from tenforty.models import DivergenceSource, validate_sche_1099_answers
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -1473,10 +1473,33 @@ class ReturnOrchestrator:
             merged["taxpayer_name_page2"] = merged.get("taxpayer_name")
             merged["taxpayer_ssn_page2"] = merged.get("taxpayer_ssn")
             sch_e_values = merged
+            sch_e_mapping = PdfSchE.get_mapping(year)
+            sch_e_spec_values = sch_e_values  # downstream compute inputs stay clean
+            # Lines A/B (Form 1099 questions): only the CHOSEN answer's box is
+            # written (its export on-state), so each Yes/No pair is mutually
+            # exclusive; unstated answers add nothing (boxes stay blank).
+            validate_sche_1099_answers(scenario.config)
+            q_stated = {
+                "payments_requiring_1099s":
+                    scenario.config.payments_requiring_1099s,
+                "filed_required_1099s": scenario.config.filed_required_1099s,
+            }
+            if any(a is not None for a in q_stated.values()):
+                q_cells = PdfSchE.get_1099_question_cells(year)
+                q_scalars = dict(sch_e_mapping["scalars"])
+                q_values = dict(sch_e_spec_values)
+                for question, answer in q_stated.items():
+                    if answer is None:
+                        continue
+                    q_path, q_on = q_cells[question][answer]
+                    q_scalars[f"sch_e_{question}"] = q_path
+                    q_values[f"sch_e_{question}"] = q_on
+                sch_e_mapping = {**sch_e_mapping, "scalars": q_scalars}
+                sch_e_spec_values = q_values
             specs.append(_FederalFormSpec(
                 name="sch_e", template=_fed("f1040se.pdf"),
                 output_name=f"f1040se_{year}.pdf", kind="repeater",
-                mapping=PdfSchE.get_mapping(year), values=sch_e_values,
+                mapping=sch_e_mapping, values=sch_e_spec_values,
             ))
 
         if self._should_emit_sch_a(scenario, {"f1040": results}):

@@ -385,6 +385,23 @@ _FIELDS_2021: dict = {
 }
 
 
+# Page 1 lines A and B (the Form 1099 questions), federal TY2022-2025. Yes box
+# left (export /1), No box right (export /2), one two-widget checkbox group per
+# line (c1_1 = line A, c1_2 = line B). Verified separately against the 2022,
+# 2023, 2024 and 2025 templates (widget Rects and the printed Yes/No caption
+# positions agree and are identical in those years). The 2021 template has
+# different geometry and is out of scope.
+_P1 = "topmostSubform[0].Page1[0]."
+_Q1099_CELLS: dict[str, dict[bool, tuple[str, str]]] = {
+    "payments_requiring_1099s": {
+        True: (_P1 + "c1_1[0]", "/1"), False: (_P1 + "c1_1[1]", "/2")},
+    "filed_required_1099s": {
+        True: (_P1 + "c1_2[0]", "/1"), False: (_P1 + "c1_2[1]", "/2")},
+}
+_Q1099_BY_YEAR: dict[int, dict[str, dict[bool, tuple[str, str]]]] = {
+    y: _Q1099_CELLS for y in (2022, 2023, 2024, 2025)}
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
@@ -395,3 +412,15 @@ class PdfSchE(PdfFormMapping[dict]):
         2021: _FIELDS_2021,
         2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
 
+    @classmethod
+    def get_1099_question_cells(
+        cls, year: int,
+    ) -> dict[str, dict[bool, tuple[str, str]]]:
+        """{question: {answer: (field_path, on_state)}} for lines A
+        (``payments_requiring_1099s``) and B (``filed_required_1099s``).
+        Additive to the value mapping: the orchestrator writes only the CHOSEN
+        answer's on-state, so a Yes/No pair can never carry two marks."""
+        if year not in _Q1099_BY_YEAR:
+            raise ValueError(
+                f"No Schedule E line A/B (1099 question) cells for year {year}")
+        return _Q1099_BY_YEAR[year]

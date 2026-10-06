@@ -418,6 +418,15 @@ class TaxReturnConfig:
     # rather than print a signed return with the box left blank. True/False
     # check the form's Yes/No box.
     digital_assets: bool | None = None
+    # Schedule E page 1 lines A and B (federal TY2022+): "Did you make any
+    # payments that would require you to file Form(s) 1099?" and "If 'Yes,' did
+    # you or will you file required Form(s) 1099?". None = UNSTATED (boxes left
+    # blank). payments False -> line A "No", line B stays blank (filed_required
+    # must then be unstated); payments True -> line A "Yes" and filed_required
+    # is REQUIRED. See ``validate_sche_1099_answers``. (Distinct from the
+    # S-corp Schedule B answers of the same names under s_corp_return.)
+    payments_requiring_1099s: bool | None = None
+    filed_required_1099s: bool | None = None
     # CA Form 540 line 92 "you and your household had full-year health care
     # coverage" box (the individual-mandate attestation). None means UNSTATED.
     # Like digital_assets it is NOT required at load time or by the compute
@@ -599,6 +608,46 @@ class TaxReturnConfig:
             "taxpayer_name": self.full_name,
             "taxpayer_ssn": self.ssn,
         })
+
+
+def validate_sche_1099_answers(cfg: "TaxReturnConfig") -> None:
+    """Refuse an inconsistent Schedule E 1099-question answer set (lines A/B).
+
+    Both unstated is fine (boxes stay blank). Otherwise: both values must be
+    bool-or-None; line B depends on line A, so ``filed_required_1099s`` without
+    ``payments_requiring_1099s`` is refused, ``payments_requiring_1099s: True``
+    REQUIRES ``filed_required_1099s``, and ``payments_requiring_1099s: False``
+    with a stated ``filed_required_1099s`` is contradictory (the form's line B
+    only applies to a "Yes" on line A). TY2021 cannot print them (feature floor
+    TY2022), so a stated answer there is refused rather than dropped."""
+    a, b = cfg.payments_requiring_1099s, cfg.filed_required_1099s
+    for name, val in (("payments_requiring_1099s", a),
+                      ("filed_required_1099s", b)):
+        if val is not None and not isinstance(val, bool):
+            raise ValueError(
+                f"config.{name} must be true, false, or null (unstated); "
+                f"got {val!r}")
+    if a is None and b is None:
+        return
+    if cfg.year < 2022:
+        raise ValueError(
+            "Schedule E lines A/B (Form 1099 questions) are supported for tax "
+            f"year 2022 and later; tax year {cfg.year} cannot print them. "
+            "Remove payments_requiring_1099s / filed_required_1099s.")
+    if a is None:
+        raise ValueError(
+            "config.filed_required_1099s answers Schedule E line B, which "
+            "applies only after a 'Yes' to line A: state "
+            "payments_requiring_1099s: true or remove filed_required_1099s.")
+    if a is True and b is None:
+        raise ValueError(
+            "config.payments_requiring_1099s is true (Schedule E line A "
+            "'Yes'), so config.filed_required_1099s (line B) is required.")
+    if a is False and b is not None:
+        raise ValueError(
+            "config.filed_required_1099s is stated but "
+            "payments_requiring_1099s is false: Schedule E line B applies "
+            "only after a 'Yes' to line A. Remove filed_required_1099s.")
 
 
 @dataclass
