@@ -13,7 +13,7 @@ So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED` (2024-2025) are built
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
-The eleven f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
+The sixteen f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
@@ -53,6 +53,11 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_s_election_date":         "3012",  # Side 3 Sch Q Question K (J on 2021-2022 forms) Effective date of federal S election (emit-injected)
     "f100s_entity_state_incorporated":      "3007",  # Side 3 Sch Q Question F "Where incorporated: State" (stated; emit-injected)
     "f100s_entity_country_incorporated":    "3008",  # Side 3 Sch Q Question F "Where incorporated: Country" (stated; emit-injected)
+    "f100s_entity_activity_code":           "3001",  # Side 3 Sch Q Question C Principal business activity code
+    "f100s_entity_business_activity":       "3002",  # Question C Business activity
+    "f100s_entity_product_or_service":      "3003",  # Question C Product or service
+    "f100s_entity_max_shareholders":        "3009",  # Question G Maximum number of shareholders (stated)
+    "f100s_entity_date_began_in_ca":        "3010",  # Question H Date business began in California (stated)
     "f100s_entity_date_incorporated":       "3006",  # Side 3 Sch Q Question F Date incorporated (emit-injected; same number every year 2022-2025)
 }
 _MAPPING_BARE: dict[str, str] = dict(_SUFFIX)                              # 2021-2023
@@ -74,6 +79,49 @@ _MAPPING_PREFIXED: dict[str, str] = {k: f"100S Form {n}" for k, n in _SUFFIX.ite
 # 2021 has no entry: the feature floor is TY2022, and a stated answer is
 # refused at emit rather than dropped.
 _Cell = tuple[str, str]
+
+# Stated Yes/No questions D, E, Q, R, S (same field name every year, bare
+# through 2023 / prefixed after): Yes box left (/0), No box right (/1).
+_Q_YESNO_FIELDS: dict[str, str] = {
+    "water_edge_basis": "3004 RB",
+    "includes_qsubs": "3005 rb",
+    "included_reportable_transaction": "3022 rb",
+    "filed_federal_schedule_m3": "3023 rb",
+    "ftb_3544_attached": "3024 rb",
+}
+# Question P (apportioning with Schedule R): same /0 Yes /1 No tokens, but the
+# 2022 group is named plain "3021", and the 2021 template carries '/Yes' /
+# '/No' tokens under "3021 rb".
+_Q_P: dict[int, tuple[str, str, str]] = {
+    2021: ("3021 rb", "/Yes", "/No"),
+    2022: ("3021", "/0", "/1"),
+    2023: ("3021 RB", "/0", "/1"),
+    2024: ("3021 RB", "/0", "/1"),
+    2025: ("3021 RB", "/0", "/1"),
+}
+# Question L accounting method: cash / accrual / other. Through 2023 three
+# separate checkboxes (3013 cb / 3014 cb / 3015 cb, on /Yes); from 2024 one
+# radio 3013 RB (/0 /1 /2). 2021 matches 2022.
+_Q_L_CHECKBOXES: dict[int, bool] = {
+    2021: True, 2022: True, 2023: True, 2024: False, 2025: False}
+_Q_L_METHODS = ("cash", "accrual", "other")
+_Q_PREFIX_ALL: dict[int, str] = {
+    2021: "", 2022: "", 2023: "", 2024: "100S Form ", 2025: "100S Form "}
+
+
+def _accounting_cells(year: int) -> dict[str, _Cell]:
+    prefix = _Q_PREFIX_ALL[year]
+    if _Q_L_CHECKBOXES[year]:
+        return {m: (f"{prefix}{3013 + i} cb", "/Yes")
+                for i, m in enumerate(_Q_L_METHODS)}
+    return {m: (f"{prefix}3013 RB", f"/{i}")
+            for i, m in enumerate(_Q_L_METHODS)}
+
+
+def _line_p_cells(year: int) -> dict[object, _Cell]:
+    field, yes_on, no_on = _Q_P[year]
+    field = _Q_PREFIX_ALL[year] + field
+    return {True: (field, yes_on), False: (field, no_on)}
 
 # Field-name namespace: bare through 2023, "100S Form "-prefixed after.
 _Q_PREFIX: dict[int, str] = {
@@ -109,12 +157,22 @@ def _schedule_q_cells(year: int) -> dict[str, dict[object, _Cell]]:
     else:
         info = {a: (prefix + "3018 RB", t)
                 for a, t in _Q_INFO_RADIO[year].items()}
-    return {"under_irs_audit": audit, "information_returns_filed": info}
+    cells: dict[str, dict[object, _Cell]] = {
+        "under_irs_audit": audit, "information_returns_filed": info,
+        "apportioning_with_schedule_r": _line_p_cells(year)}
+    for question, field in _Q_YESNO_FIELDS.items():
+        cells[question] = {True: (prefix + field, "/0"),
+                           False: (prefix + field, "/1")}
+    return cells
 
 
 _SCHEDULE_Q_BY_YEAR: dict[int, dict[str, dict[object, _Cell]]] = {
     y: _schedule_q_cells(y) for y in _Q_PREFIX
 }
+# 2021 carries only the DERIVED Question P and (below) Question L; every STATED
+# question is refused for 2021 (feature floor TY2022).
+_SCHEDULE_Q_BY_YEAR[2021] = {
+    "apportioning_with_schedule_r": _line_p_cells(2021)}
 
 
 class PdfF100S(PdfFormMapping[dict[str, str]]):
@@ -128,6 +186,14 @@ class PdfF100S(PdfFormMapping[dict[str, str]]):
         2021: _MAPPING_BARE, 2022: _MAPPING_BARE, 2023: _MAPPING_BARE,
         2024: _MAPPING_PREFIXED, 2025: _MAPPING_PREFIXED,
     }
+
+    @classmethod
+    def get_accounting_method_cells(cls, year: int) -> dict[str, _Cell]:
+        """{"cash"|"accrual"|"other": (field_path, ON-state)} for Question L
+        (Question L on every year 2021-2025; see ``_accounting_cells``)."""
+        if year not in _Q_L_CHECKBOXES:
+            raise ValueError(f"No Form 100S Question L cells for year {year}")
+        return _accounting_cells(year)
 
     @classmethod
     def get_schedule_q_cells(cls, year: int) -> dict[str, dict[object, _Cell]]:
