@@ -1728,6 +1728,9 @@ class ReturnOrchestrator:
                 final_values = {"k1_final": True}
             flat_values = {
                 "k1_irs_center": scenario.s_corp_return.irs_center,
+                "k1_total_shares_beginning":
+                    scenario.s_corp_return.total_shares_beginning,
+                "k1_total_shares_end": scenario.s_corp_return.total_shares_end,
                 "k1_shares_beginning": sh.shares_beginning,
                 "k1_shares_end": sh.shares_end,
                 "k1_loans_beginning": sh.loans_beginning,
@@ -1872,6 +1875,10 @@ class ReturnOrchestrator:
             "f100s_tax_rate": rate,
             "f100s_entity_date_incorporated":
                 _format_mmddyyyy(r.date_incorporated),
+            "f100s_entity_s_election_date":
+                _format_mmddyyyy(r.s_election_effective_date),
+            "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
+            "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             # f100s_entity_ca_corp_number: no model source in v1 -> left blank.
         }
         f100s_mapping = PdfF100S.get_mapping(year)
