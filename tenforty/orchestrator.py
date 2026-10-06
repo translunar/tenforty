@@ -1879,7 +1879,7 @@ class ReturnOrchestrator:
                 _format_mmddyyyy(r.s_election_effective_date),
             "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
             "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
-            # f100s_entity_ca_corp_number: no model source in v1 -> left blank.
+            "f100s_entity_ca_corp_number": r.ca.corporation_number,
         }
         f100s_mapping = PdfF100S.get_mapping(year)
         f100s_checkbox: dict[str, str] = {}
@@ -1942,6 +1942,19 @@ class ReturnOrchestrator:
                 this_mapping = {**k1_mapping, "k1_final": f_path}
                 this_checkbox = {**k1_checkbox, "k1_final": f_on}
                 final_values = {"k1_final": True}
+            # Lines F (entity type) and G (CA resident): only the CHOSEN
+            # answer's cell is merged, so each group is mutually exclusive.
+            for stated, cells, tag in (
+                    (sh.ca_entity_type, PdfF100SK1.get_entity_type_cells(year),
+                     "k1_entity_type"),
+                    (sh.ca_resident, PdfF100SK1.get_resident_cells(year),
+                     "k1_ca_resident")):
+                if stated is None:
+                    continue
+                c_path, c_on = cells[stated]
+                this_mapping = {**this_mapping, tag: c_path}
+                this_checkbox = {**this_checkbox, tag: c_on}
+                final_values = {**final_values, tag: True}
             whole, frac = _split_ownership_percent(alloc["ownership_fraction"])
             k1_values = {
                 "k1_shareholder_name": sh.name,
@@ -1968,7 +1981,7 @@ class ReturnOrchestrator:
                 "k1_federal_ordinary_income": alloc["federal_ordinary_income"],
                 "k1_ca_ordinary_income_total": alloc["ca_ordinary_income"],
                 "k1_ca_ordinary_income_source": alloc["ca_ordinary_income"],
-                # k1_corp_ca_number: no model source in v1 -> left blank.
+                "k1_corp_ca_number": r.ca.corporation_number,
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f100s_k1_{i}_{year}.pdf"
