@@ -34,6 +34,7 @@ from tenforty.ca_divergences import (
 )
 from tenforty.models import (
     DivergenceSource, validate_sche_1099_answers, validate_tax_year_dates,
+    validate_third_party_designee,
     validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
@@ -1352,6 +1353,7 @@ class ReturnOrchestrator:
         K-1s already appended) when operating on S-corp returns.
         Returns a dict mapping form name to the filled PDF path.
         """
+        validate_third_party_designee(scenario.config)
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
 
@@ -1758,6 +1760,12 @@ class ReturnOrchestrator:
             main_mapping = {**main_mapping, "f1120s_item_g": g_path}
             main_checkbox = {**main_checkbox, "f1120s_item_g": g_on}
             main_values = {**main_values, "f1120s_item_g": True}
+        if r_.discuss_with_preparer is not None:
+            d_path, d_on = PdfF1120S.get_discuss_cells(year)[
+                r_.discuss_with_preparer]
+            main_mapping = {**main_mapping, "f1120s_discuss": d_path}
+            main_checkbox = {**main_checkbox, "f1120s_discuss": d_on}
+            main_values = {**main_values, "f1120s_discuss": True}
         for item, (h_path, h_on) in PdfF1120S.get_item_h_cells(year).items():
             if getattr(r_, item) is True:
                 key = f"f1120s_item_h_{item}"
@@ -1924,6 +1932,7 @@ class ReturnOrchestrator:
                 "the return is filed and paid on time, or to the amount owed. "
                 "It is left unstated (null) here."
             )
+        validate_third_party_designee(scenario.config)
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
 
@@ -2025,15 +2034,19 @@ class ReturnOrchestrator:
             "inactive_business": r.ca.inactive_business,
             "filed_unclaimed_property_report":
                 r.ca.filed_unclaimed_property_report,
+            "discuss_with_preparer": r.ca.discuss_with_preparer,
         }
-        if any(a is not None for a in stated_q.values()):
+        # The preparer-discussion answer (signature block) exists on every
+        # year's form incl. 2021, so it is exempt from the Schedule Q floor.
+        floored = [k for k, a in stated_q.items()
+                   if a is not None and k != "discuss_with_preparer"]
+        if floored:
             if year < 2022:
                 raise ValueError(
                     f"California Form 100S Schedule Q answers are supported "
                     f"for tax years 2022 and later; tax year {year} cannot "
                     "print them. Remove the stated Schedule Q answers "
-                    f"({', '.join(k for k, a in stated_q.items() if a is not None)}) "
-                    "from s_corp_return.ca.")
+                    f"({', '.join(floored)}) from s_corp_return.ca.")
         q_cells = PdfF100S.get_schedule_q_cells(year)
         # Question P is DERIVED: v1 supports only 100% California
         # apportionment (gated at load), so Schedule R is never used -> No.
@@ -2892,6 +2905,10 @@ class ReturnOrchestrator:
         if answer is not None:
             values["digital_assets_yes"] = answer
             values["digital_assets_no"] = not answer
+        # Third party designee: only "No" is ever written (True is refused
+        # upstream); unstated leaves the pair blank.
+        if scenario.config.third_party_designee is False:
+            values["third_party_designee_no"] = True
         return values
 
     def _should_emit_sch_d(self, scenario: Scenario) -> bool:

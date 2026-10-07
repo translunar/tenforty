@@ -418,6 +418,12 @@ class TaxReturnConfig:
     # rather than print a signed return with the box left blank. True/False
     # check the form's Yes/No box.
     digital_assets: bool | None = None
+    # Form 1040 (and CA 540) third party designee: "Do you want to allow another
+    # person to discuss this return with the IRS / us?". None = unstated (1040
+    # box blank). False checks "No". True is REFUSED (NotImplementedError): the
+    # designee name / phone / PIN cells are unmodeled. The CA 540 already
+    # hardwires "No" in its presentation layer; this field only gates True.
+    third_party_designee: bool | None = None
     # Schedule E page 1 lines A and B (federal TY2022+): "Did you make any
     # payments that would require you to file Form(s) 1099?" and "If 'Yes,' did
     # you or will you file required Form(s) 1099?". None = UNSTATED (boxes left
@@ -608,6 +614,22 @@ class TaxReturnConfig:
             "taxpayer_name": self.full_name,
             "taxpayer_ssn": self.ssn,
         })
+
+
+def validate_third_party_designee(cfg: "TaxReturnConfig") -> None:
+    """``config.third_party_designee`` must be bool-or-None; True is refused
+    because tenforty does not model the designee name / phone / PIN cells."""
+    v = cfg.third_party_designee
+    if v is not None and not isinstance(v, bool):
+        raise ValueError(
+            f"config.third_party_designee must be true, false, or null; "
+            f"got {v!r}")
+    if v is True:
+        raise NotImplementedError(
+            "config.third_party_designee is true, but the third party designee "
+            "name, phone and PIN cells are not modeled by tenforty; a return "
+            "naming a designee cannot be produced. Set it to false (no "
+            "designee) or prepare this return outside tenforty.")
 
 
 def validate_sche_1099_answers(cfg: "TaxReturnConfig") -> None:
@@ -1042,6 +1064,10 @@ class SCorpCAInputs:
     # outside California during the year? (2023-2025 forms only; the 2021-2022
     # forms have no such question.)
     inactive_business: bool | None = None
+    # Form 100S Side 3 "May the FTB discuss this return with the preparer shown
+    # above?" (Yes/No; None = both boxes blank). Lives on the CA block because it
+    # answers a CA-form question. Standing ruling: No.
+    discuss_with_preparer: bool | None = None
     # Question U: has the entity previously filed an unclaimed property Holder
     # Remit Report with the State Controller's Office? (1) Yes/No; (2) date the
     # last report was filed, "mm/dd/yyyy"; (3) amount last remitted (>= 0, 0.00
@@ -1094,6 +1120,9 @@ class SCorpReturn:
     # blank. NOTE: tenforty must NEVER fill the signature or the signature-date
     # cells of any return; only the title is stated.
     officer_title: str | None = None
+    # Form 1120-S page 1 "May the IRS discuss this return with the preparer shown
+    # below?" (Yes/No; None = both boxes blank). Standing ruling: No.
+    discuss_with_preparer: bool | None = None
     # Short tax year (e.g. a first year starting mid-year): the header date
     # boxes of the 1120-S, K-1 (1120-S), 100S and K-1 (100S) print these. Both or
     # neither; ending must be Dec 31 of the scenario year (fiscal years are
