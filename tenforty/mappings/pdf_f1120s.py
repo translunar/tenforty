@@ -568,6 +568,16 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
         return frozenset(paths)
 
     @classmethod
+    def get_discuss_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
+        """{answer: (field_path, ON-state)} for "May the IRS discuss this return
+        with the preparer shown below?" (Yes / No). Additive: only the chosen
+        answer's box is written."""
+        if year not in _DISCUSS_GROUP:
+            raise ValueError(f"No Form 1120-S discuss cells for year {year}")
+        g = f"topmostSubform[0].Page1[0].{_DISCUSS_GROUP[year]}"
+        return {True: (f"{g}[0]", "/1"), False: (f"{g}[1]", "/2")}
+
+    @classmethod
     def get_item_g_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
         """{answer: (field_path, ON-state)} for page 1 item G (Yes / No).
         Additive: the orchestrator writes only the chosen answer's box."""
@@ -634,6 +644,13 @@ _BLANK_WHEN_ZERO_KEYS: frozenset[str] = frozenset({
     *(k for k, _, _ in _SCH_K_P3_ROWS),
     *(k for k, _ in _SCH_K_P4_ROWS),
 })
+
+# Page 1 signature block "May the IRS discuss this return with the preparer shown
+# below?" Yes / No pair (Yes left, export /1; No right, /2). c1_10 on 2021-2024;
+# the 2025 form moved the refund-deposit Checking/Savings pair into c1_10 and the
+# discuss pair to c1_11. Certified per year against the printed Yes / No caption.
+_DISCUSS_GROUP: dict[int, str] = {
+    2021: "c1_10", 2022: "c1_10", 2023: "c1_10", 2024: "c1_10", 2025: "c1_11"}
 
 # Page 1 item G (electing S this year, Yes / No) and item H "Check if:" boxes
 # (1) Final return, (2) Name change, (3) Address change, (5) S election

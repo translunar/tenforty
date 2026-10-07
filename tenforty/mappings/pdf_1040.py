@@ -68,6 +68,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "sch_d_not_required": "/1",
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
+        "third_party_designee_no": "/2",
     },
     2022: {
         "filing_status_single": "/1",
@@ -78,6 +79,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "sch_d_not_required": "/1",
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
+        "third_party_designee_no": "/2",
     },
     2023: {
         "filing_status_single": "/1",
@@ -88,6 +90,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "sch_d_not_required": "/1",
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
+        "third_party_designee_no": "/2",
     },
     2024: {
         "filing_status_single": "/1",
@@ -98,6 +101,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "sch_d_not_required": "/1",
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
+        "third_party_designee_no": "/2",
     },
     2025: {
         "filing_status_single": "/1",
@@ -108,6 +112,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "sch_d_not_required": "/1",
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
+        "third_party_designee_no": "/2",
     },
 }
 
@@ -166,6 +171,8 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "sch_d_not_required": "topmostSubform[0].Page1[0].Lines1-11_ReadOrder[0].c1_21[0]",
             "digital_assets_yes": "topmostSubform[0].Page1[0].c1_04[0]",
             "digital_assets_no": "topmostSubform[0].Page1[0].c1_04[1]",
+            # Third party designee "No" (page 2; Yes is /1 at [0], No /2 at [1]).
+            "third_party_designee_no": "topmostSubform[0].Page2[0].c2_7[1]",
 
             # === Page 1: Income (Lines 1-11) — all nest in Lines1-11_ReadOrder[0] ===
             # Line 1: Wages, salaries, tips — SINGLE box in 2021 (no 1a-1z).
@@ -328,6 +335,8 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "sch_d_not_required": "topmostSubform[0].Page1[0].Lines4a-11_ReadOrder[0].c1_22[0]",
             "digital_assets_yes": "topmostSubform[0].Page1[0].c1_04[0]",
             "digital_assets_no": "topmostSubform[0].Page1[0].c1_04[1]",
+            # Third party designee "No" (page 2; Yes is /1 at [0], No /2 at [1]).
+            "third_party_designee_no": "topmostSubform[0].Page2[0].c2_06[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a-3b sit directly on Page1 at f1_28-f1_41.
@@ -495,6 +504,8 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "sch_d_not_required": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].c1_22[0]",
             "digital_assets_yes": "topmostSubform[0].Page1[0].c1_4[0]",
             "digital_assets_no": "topmostSubform[0].Page1[0].c1_4[1]",
+            # Third party designee "No" (page 2; Yes is /1 at [0], No /2 at [1]).
+            "third_party_designee_no": "topmostSubform[0].Page2[0].c2_6[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_31–f1_44.
@@ -670,6 +681,8 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "sch_d_not_required": "topmostSubform[0].Page1[0].Line4a-11_ReadOrder[0].c1_23[0]",
             "digital_assets_yes": "topmostSubform[0].Page1[0].c1_5[0]",
             "digital_assets_no": "topmostSubform[0].Page1[0].c1_5[1]",
+            # Third party designee "No" (page 2; Yes is /1 at [0], No /2 at [1]).
+            "third_party_designee_no": "topmostSubform[0].Page2[0].c2_6[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_32–f1_45.
@@ -820,6 +833,8 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "sch_d_not_required": "topmostSubform[0].Page1[0].c1_43[0]",
             "digital_assets_yes": "topmostSubform[0].Page1[0].c1_10[0]",
             "digital_assets_no": "topmostSubform[0].Page1[0].c1_10[1]",
+            # Third party designee "No" (page 2; Yes is /1 at [0], No /2 at [1]).
+            "third_party_designee_no": "topmostSubform[0].Page2[0].c2_17[1]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Line 1a: Wages, salaries, tips (W-2 box 1)
