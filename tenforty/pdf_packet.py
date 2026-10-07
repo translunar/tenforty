@@ -11,7 +11,8 @@ mapping and concatenates member PDFs with pypdf. It performs no tax compute.
 Four packets are defined:
 - ``federal_individual`` — Form 1040 + its schedules/forms (attachment order).
 - ``federal_corporate`` — Form 1120-S + one Schedule K-1 per shareholder + one
-  §199A Statement A per shareholder. An 1120-S is a separate filing from the
+  §199A Statement A per shareholder + the line 19 Other Deductions statement
+  (when itemized). An 1120-S is a separate filing from the
   1040, so it is never folded into the individual packet.
 - ``california_corporate`` — CA Form 100S + one Schedule K-1 (100S) per
   shareholder (FTB order: 100S first, each K-1 behind it).
@@ -98,6 +99,7 @@ FEDERAL_CORPORATE = Packet(
         PacketMember("1120s"),
         PacketMember("1120s_k1", family=True),
         PacketMember("1120s_k1_qbi_stmt", family=True),
+        PacketMember("1120s_other_deductions_stmt"),
     ),
 )
 
@@ -122,6 +124,7 @@ CALIFORNIA_CORPORATE = Packet(
     members=(
         PacketMember("f100s"),
         PacketMember("f100s_k1", family=True),
+        PacketMember("f100s_other_deductions_stmt"),
     ),
 )
 
