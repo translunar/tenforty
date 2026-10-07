@@ -1,6 +1,8 @@
-"""Form 1120-S Schedule K pro-rata block: uniform zero-fill of every dollar line
-in sections 12-17 that the schema cannot make nonzero, plus the one real concept
-among them, shareholder distributions (line 16d / K-1 box 16 code D).
+"""Form 1120-S Schedule K pro-rata block under the professional-software
+convention: a DETAIL line (input-driven amount) prints only when nonzero, while
+computed results (line 1 ordinary income, line 18 reconciliation) always print,
+even when 0. Plus the one real concept among sections 12-17, shareholder
+distributions (line 16d / K-1 box 16 code D).
 
 Cell table is written independently of the mapping module and was certified per
 year from each template's caption rows: the Schedule K cell names SHIFT between
@@ -119,33 +121,50 @@ class CellsSitOnTheirCaptionRowsTests(unittest.TestCase):
                     hits, f"{year} line {line}: no printed label on {path}")
 
 
-class ZeroFillTests(_EmitBase):
-    def test_every_sections_12_to_17_amount_line_prints_zero(self):
+class DetailLinesBlankWhenZeroTests(_EmitBase):
+    def test_every_inactive_detail_line_is_blank(self):
         for year in _ALL:
             with self.subTest(year=year):
                 out = self._emit(year)
                 v = _fields(out / f"f1120s_{year}.pdf")
                 self.assertEqual(
-                    v[f"{_P3}3[0]"], "70000")        # control: line 1
+                    v[f"{_P3}3[0]"], "70000")        # control: line 1 prints
                 for line in list(_LINES) + list(_PAGE4):
                     cell = _cell(year, line)
                     if cell is None:
                         continue
-                    self.assertEqual(v[cell], "0", f"{year} line {line}")
+                    self.assertIn(v[cell], (None, ""), f"{year} line {line}")
+                # the other detail lines of sections 2-10 are blank too
+                for n in (4, 7, 8, 9, 11, 12, 13, 16, 18):
+                    self.assertIn(v[f"{_P3}{n}[0]"], (None, ""), f"f3_{n}")
+
+    def test_computed_lines_1_and_18_print_even_when_zero(self):
+        for year in _ALL:
+            with self.subTest(year=year):
+                s = _make_v1_scenario(gross_receipts=30000.0,
+                                      compensation_of_officers=30000.0)
+                set_tax_year(s, year)
+                out = Path(self._tmp.name) / f"zero_obi_{year}"
+                self.orch.run_full_federal_scorp_return(s, out)
+                v = _fields(out / f"f1120s_{year}.pdf")
+                self.assertEqual(v[f"{_P3}3[0]"], "0")      # line 1
+                self.assertEqual(v[f"{_P4}4[0]"], "0")      # line 18
 
     def test_old_forms_have_no_12e_cell(self):
         for year in (2021, 2022, 2023):
             self.assertIsNone(_cell(year, "12e"))
 
-    def test_line_18_foots_from_printed_cells(self):
+    def test_line_18_foots_from_printed_cells_blanks_counting_as_zero(self):
         for year in _ALL:
             with self.subTest(year=year):
                 v = _fields(self._emit(year) / f"f1120s_{year}.pdf")
-                income = sum(int(v[f"{_P3}{n}[0]"]) for n in (3, 4, 7, 8, 9,
-                                                              11, 12, 13, 16, 18))
-                deductions = sum(int(v[_cell(year, l)]) for l in (
-                    "11", "12a", "12b", "12c", "12d", "12e", "16f")
-                    if _cell(year, l))
+
+                def amt(cell):
+                    return int(v[cell] or 0) if cell else 0
+                income = sum(amt(f"{_P3}{n}[0]") for n in (3, 4, 7, 8, 9,
+                                                           11, 12, 13, 16, 18))
+                deductions = sum(amt(_cell(year, l)) for l in (
+                    "11", "12a", "12b", "12c", "12d", "12e", "16f"))
                 self.assertEqual(
                     int(v[f"{_P4}4[0]"]), income - deductions)
 
@@ -159,7 +178,7 @@ class DistributionsTests(_EmitBase):
                 self.assertEqual(v[_cell(year, "16d")], "40000")
                 # no other 16-line carries it
                 for line in ("16a", "16b", "16c", "16e", "16f"):
-                    self.assertEqual(v[_cell(year, line)], "0", line)
+                    self.assertIn(v[_cell(year, line)], (None, ""), line)
                 k = _fields(out / f"f1120s_k1_1_{year}.pdf")
                 code, amt = _K1_BOX16[year]
                 self.assertEqual(k[_K1 + f"{code}[0]"], "D")

@@ -551,6 +551,23 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
         return _ENTITY_HEADER_BY_YEAR[year]
 
     @classmethod
+    def get_blank_when_zero(cls, year: int) -> frozenset[str]:
+        """PDF cell paths of DETAIL lines that print only when nonzero.
+
+        Professional-software convention: an input-driven amount line (income
+        lines 1b/2/4/5, deduction lines 7-19, the tax/payment inputs, and every
+        Schedule K detail line) is blank when its value is 0, while computed
+        results and totals (1a/1c/3/6, line 20/21, 23c, 24z, 26-28b, Schedule K
+        line 1 and 18) always print, even when 0. See
+        ``_BLANK_WHEN_ZERO_KEYS`` for the classification."""
+        mapping = cls.get_mapping(year)
+        paths = {mapping[k] for k in _BLANK_WHEN_ZERO_KEYS if k in mapping}
+        for cell, keys in cls.get_aggregations(year).items():
+            if keys[0] == "f1120s_estimated_tax_payments":
+                paths.add(cell)          # line 24a: a sum of input lines
+        return frozenset(paths)
+
+    @classmethod
     def get_item_g_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
         """{answer: (field_path, ON-state)} for page 1 item G (Yes / No).
         Additive: the orchestrator writes only the chosen answer's box."""
@@ -583,6 +600,40 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
             raise ValueError(f"No Form 1120-S amended mark for year {year}")
         return _AMENDED_MARK_BY_YEAR[year]
 
+
+# Detail (input-driven) compute keys: print only when nonzero. Everything else
+# the form shows as an amount is a computed result or total and always prints.
+# Classification notes (arguable cells flagged): 1a gross receipts is kept
+# always-printing (it anchors 1c); amount_owed / overpayment are computed and
+# both print (one is always 0); Sch K line 3c is an input slot in v1 (3a/3b are
+# unwired) so it is treated as detail.
+_BLANK_WHEN_ZERO_KEYS: frozenset[str] = frozenset({
+    # income detail
+    "f1120s_returns_and_allowances", "f1120s_cost_of_goods_sold",
+    "f1120s_net_gain_loss_4797", "f1120s_other_income",
+    # deductions 7-19 (all detail)
+    "f1120s_compensation_of_officers", "f1120s_salaries_wages",
+    "f1120s_repairs_maintenance", "f1120s_bad_debts", "f1120s_rents",
+    "f1120s_taxes_licenses", "f1120s_interest", "f1120s_depreciation",
+    "f1120s_depletion", "f1120s_advertising", "f1120s_pension_profit_sharing",
+    "f1120s_employee_benefits", "f1120s_energy_efficient_buildings_deduction",
+    "f1120s_other_deductions",
+    # tax and payment inputs
+    "f1120s_net_passive_income_tax", "f1120s_built_in_gains_tax",
+    "f1120s_tax_deposited_with_7004", "f1120s_credit_for_federal_excise_tax",
+    "f1120s_refundable_credits", "f1120s_estimated_tax_penalty",
+    "f1120s_credited_to_next_year",
+    # Schedule K: every detail line (line 1 and line 18 are computed)
+    "f1120s_sch_k_net_rental_real_estate", "f1120s_sch_k_other_net_rental_income",
+    "f1120s_sch_k_interest_income", "f1120s_sch_k_ordinary_dividends",
+    "f1120s_sch_k_royalties", "f1120s_sch_k_net_short_term_capital_gain",
+    "f1120s_sch_k_net_long_term_capital_gain",
+    "f1120s_sch_k_net_section_1231_gain", "f1120s_sch_k_other_income",
+    "f1120s_sch_k_section_179_deduction", "f1120s_sch_k_charitable_contributions",
+    "f1120s_sch_k_investment_income",
+    *(k for k, _, _ in _SCH_K_P3_ROWS),
+    *(k for k, _ in _SCH_K_P4_ROWS),
+})
 
 # Page 1 item G (electing S this year, Yes / No) and item H "Check if:" boxes
 # (1) Final return, (2) Name change, (3) Address change, (5) S election
