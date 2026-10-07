@@ -349,7 +349,7 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
     "total_shares_beginning", "total_shares_end",
-    "distributions_to_shareholders", "electing_s_this_year", "final_return", "name_change", "address_change",
+    "distributions_to_shareholders", "officer_title", "electing_s_this_year", "final_return", "name_change", "address_change",
     "s_election_terminated",
 })
 
@@ -506,6 +506,8 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         ca=_load_scorp_ca(data.get("ca")),
         amended_return=bool(data.get("amended_return", False)),
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
+        officer_title=_load_optional_text(
+            data.get("officer_title"), "officer_title"),
         distributions_to_shareholders=_load_distributions(
             data.get("distributions_to_shareholders")),
         electing_s_this_year=_load_optional_bool(

@@ -897,8 +897,22 @@ _ENTITY_HEADER_2025: dict[str, str] = {
     "f1120s_entity_total_assets":      _P1 + "f1_15[0]",
     "f1120s_entity_shareholder_count": _P1 + "f1_16[0]",
 }
+# Signature-block Title cell (officer title). Certified per year against the
+# printed "Title" caption: above it on 2021-2024, right of it on 2025. The
+# signature and signature-date cells are never filled by tenforty (policy).
+_OFFICER_TITLE_CELL: dict[int, str] = {
+    2021: _P1 + "f1_49[0]", 2022: _P1 + "f1_49[0]", 2023: _P1 + "f1_50[0]",
+    2024: _P1 + "f1_50[0]", 2025: _P1 + "f1_56[0]",
+}
 _ENTITY_HEADER_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: _ENTITY_HEADER_2021_2024, 2022: _ENTITY_HEADER_2021_2024,
-    2023: _ENTITY_HEADER_2021_2024, 2024: _ENTITY_HEADER_2021_2024,
-    2025: _ENTITY_HEADER_2025,
+    2021: {**_ENTITY_HEADER_2021_2024,
+           "f1120s_officer_title": _OFFICER_TITLE_CELL[2021]},
+    2022: {**_ENTITY_HEADER_2021_2024,
+           "f1120s_officer_title": _OFFICER_TITLE_CELL[2022]},
+    2023: {**_ENTITY_HEADER_2021_2024,
+           "f1120s_officer_title": _OFFICER_TITLE_CELL[2023]},
+    2024: {**_ENTITY_HEADER_2021_2024,
+           "f1120s_officer_title": _OFFICER_TITLE_CELL[2024]},
+    2025: {**_ENTITY_HEADER_2025,
+           "f1120s_officer_title": _OFFICER_TITLE_CELL[2025]},
 }

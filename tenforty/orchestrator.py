@@ -222,6 +222,7 @@ def _entity_header_values(r) -> dict:
         "f1120s_entity_date_incorporated": _format_mmddyyyy(r.date_incorporated),
         "f1120s_entity_total_assets": r.total_assets,
         "f1120s_entity_shareholder_count": len(r.shareholders),
+        "f1120s_officer_title": r.officer_title,
     }
 
 
@@ -1935,6 +1936,7 @@ class ReturnOrchestrator:
                 _format_mmddyyyy(r.date_incorporated),
             "f100s_entity_s_election_date":
                 _format_mmddyyyy(r.s_election_effective_date),
+            "f100s_entity_officer_title": r.officer_title,
             "f100s_entity_activity_code":
                 r.schedule_b_answers.business_activity_code,
             "f100s_entity_business_activity":
