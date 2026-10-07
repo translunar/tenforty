@@ -650,6 +650,50 @@ def validate_sche_1099_answers(cfg: "TaxReturnConfig") -> None:
             "only after a 'Yes' to line A. Remove filed_required_1099s.")
 
 
+def validate_unclaimed_property(ca: "SCorpCAInputs") -> None:
+    """Refuse an inconsistent Schedule Q item U answer set.
+
+    All unstated is fine. A date or amount without a "Yes", or with a "No", is
+    contradictory; a "Yes" REQUIRES both a valid mm/dd/yyyy date and a
+    non-negative amount (0.00 is legal)."""
+    import datetime as _dt
+    import re as _re
+    a = ca.filed_unclaimed_property_report
+    d = ca.unclaimed_property_report_date
+    amt = ca.unclaimed_property_amount_remitted
+    if a is not None and not isinstance(a, bool):
+        raise ValueError(
+            "ca.filed_unclaimed_property_report must be true, false, or null; "
+            f"got {a!r}")
+    if a is not True:
+        if d is not None or amt is not None:
+            raise ValueError(
+                "ca.unclaimed_property_report_date / "
+                "unclaimed_property_amount_remitted answer item U(2)/(3), "
+                "which apply only after a 'Yes' to U(1): state "
+                "filed_unclaimed_property_report: true or remove them.")
+        return
+    if d is None or amt is None:
+        raise ValueError(
+            "ca.filed_unclaimed_property_report is true (item U(1) 'Yes'), so "
+            "unclaimed_property_report_date and "
+            "unclaimed_property_amount_remitted are both required.")
+    if not (isinstance(d, str) and _re.fullmatch(r"\d{2}/\d{2}/\d{4}", d)):
+        raise ValueError(
+            "ca.unclaimed_property_report_date must be a string mm/dd/yyyy; "
+            f"got {d!r}")
+    try:
+        _dt.datetime.strptime(d, "%m/%d/%Y")
+    except ValueError:
+        raise ValueError(
+            f"ca.unclaimed_property_report_date {d!r} is not a real date") \
+            from None
+    if isinstance(amt, bool) or not isinstance(amt, (int, float)) or amt < 0:
+        raise ValueError(
+            "ca.unclaimed_property_amount_remitted must be a non-negative "
+            f"number; got {amt!r}")
+
+
 @dataclass
 class ItemizedDeductions:
     medical_expenses: float = 0.0
@@ -961,6 +1005,13 @@ class SCorpCAInputs:
     # outside California during the year? (2023-2025 forms only; the 2021-2022
     # forms have no such question.)
     inactive_business: bool | None = None
+    # Question U: has the entity previously filed an unclaimed property Holder
+    # Remit Report with the State Controller's Office? (1) Yes/No; (2) date the
+    # last report was filed, "mm/dd/yyyy"; (3) amount last remitted (>= 0, 0.00
+    # legal). Dependent answers: see ``validate_unclaimed_property``.
+    filed_unclaimed_property_report: bool | None = None
+    unclaimed_property_report_date: str | None = None
+    unclaimed_property_amount_remitted: float | None = None
 
 
 @dataclass

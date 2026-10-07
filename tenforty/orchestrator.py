@@ -32,7 +32,8 @@ from tenforty.ca_divergences import (
     entry_citation,
     resolve_divergence_id,
 )
-from tenforty.models import DivergenceSource, validate_sche_1099_answers
+from tenforty.models import (
+    DivergenceSource, validate_sche_1099_answers, validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -221,6 +222,19 @@ def _entity_header_values(r) -> dict:
         "f1120s_entity_date_incorporated": _format_mmddyyyy(r.date_incorporated),
         "f1120s_entity_total_assets": r.total_assets,
         "f1120s_entity_shareholder_count": len(r.shareholders),
+    }
+
+
+def _unclaimed_property_values(ca) -> dict:
+    """Item U(2) date and U(3) dollars / cents, only after a stated "Yes"
+    (``validate_unclaimed_property`` has already enforced the dependency)."""
+    if ca.filed_unclaimed_property_report is not True:
+        return {}
+    total_cents = round(ca.unclaimed_property_amount_remitted * 100)
+    return {
+        "f100s_entity_unclaimed_date": ca.unclaimed_property_report_date,
+        "f100s_entity_unclaimed_dollars": total_cents // 100,
+        "f100s_entity_unclaimed_cents": f"{total_cents % 100:02d}",
     }
 
 
@@ -1901,6 +1915,7 @@ class ReturnOrchestrator:
         r = scenario.s_corp_return
         if r is None or r.ca is None:
             return {}
+        validate_unclaimed_property(r.ca)
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
@@ -1930,6 +1945,7 @@ class ReturnOrchestrator:
             "f100s_entity_date_began_in_ca":
                 None if r.ca.date_business_began_in_ca is None
                 else _format_mmddyyyy(r.ca.date_business_began_in_ca),
+            **_unclaimed_property_values(r.ca),
             "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
             "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             "f100s_entity_ca_corp_number": r.ca.corporation_number,
@@ -1950,6 +1966,8 @@ class ReturnOrchestrator:
             "filed_federal_schedule_m3": r.ca.filed_federal_schedule_m3,
             "ftb_3544_attached": r.ca.ftb_3544_attached,
             "inactive_business": r.ca.inactive_business,
+            "filed_unclaimed_property_report":
+                r.ca.filed_unclaimed_property_report,
         }
         if any(a is not None for a in stated_q.values()):
             if year < 2022:

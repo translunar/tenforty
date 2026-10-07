@@ -12,6 +12,7 @@ from tenforty.ca_divergences import (
 from tenforty.params.federal import load as load_federal_params
 from tenforty.models import (
     validate_sche_1099_answers,
+    validate_unclaimed_property,
     AccountingMethod,
     Address,
     CA540Return,
@@ -235,7 +236,8 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "corporation_number", "max_shareholders", "date_business_began_in_ca",
     "water_edge_basis", "includes_qsubs", "included_reportable_transaction",
     "filed_federal_schedule_m3", "ftb_3544_attached",
-    "inactive_business",
+    "inactive_business", "filed_unclaimed_property_report",
+    "unclaimed_property_report_date", "unclaimed_property_amount_remitted",
 })
 
 
@@ -322,11 +324,19 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("ftb_3544_attached"), "ftb_3544_attached"),
         inactive_business=_load_optional_bool(
             data.get("inactive_business"), "inactive_business"),
+        filed_unclaimed_property_report=_load_optional_bool(
+            data.get("filed_unclaimed_property_report"),
+            "filed_unclaimed_property_report"),
+        unclaimed_property_report_date=data.get("unclaimed_property_report_date"),
+        unclaimed_property_amount_remitted=(
+            None if data.get("unclaimed_property_amount_remitted") is None
+            else data["unclaimed_property_amount_remitted"]),
         corporation_number=_load_corporation_number(
             data.get("corporation_number")),
         country_of_incorporation=_load_optional_text(
             data.get("country_of_incorporation"), "ca.country_of_incorporation"),
     )
+    validate_unclaimed_property(inputs)
     if not inputs.apportionment_ca_only:
         raise ValueError(
             "CA S-corp v1 supports only 100% California apportionment "
