@@ -1052,6 +1052,11 @@ class SCorpReturn:
     # basis is tracked externally (standing attestation), so no basis or
     # excess-distribution computation. Must be >= 0.
     distributions_to_shareholders: float = 0.0
+    # Title of the signing officer (e.g. "President"), printed in the Title cell
+    # of the Form 1120-S page 1 and Form 100S signature blocks. None leaves it
+    # blank. NOTE: tenforty must NEVER fill the signature or the signature-date
+    # cells of any return; only the title is stated.
+    officer_title: str | None = None
     # Form 1120-S page 1 item G: "Is the corporation electing to be an S
     # corporation beginning with this tax year?" (stated; None leaves both boxes
     # blank, True / False marks the chosen box).
