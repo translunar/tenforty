@@ -29,6 +29,8 @@ _IDENTITY_SUFFIX: dict[str, str] = {
     "k1_corp_name":            "1011",   # Side 1 "Corporation's name"
     "k1_ownership_pct_whole":  "1016a",  # Item A % box, integer part (left of decimal)
     "k1_ownership_pct_frac":   "1016b",  # Item A % box, fractional part (right of decimal)
+    "k1_tax_year_begin":       "1001",   # Header: tax year beginning mm/dd/yyyy (short year only)
+    "k1_tax_year_end":         "1002",   # Header: and ending mm/dd/yyyy
 }
 # Face items certified per template by printed caption; the field NUMBERS are
 # stable 2021-2025 (only the namespace differs): shareholder / corporation

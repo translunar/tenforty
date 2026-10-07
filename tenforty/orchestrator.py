@@ -33,7 +33,8 @@ from tenforty.ca_divergences import (
     resolve_divergence_id,
 )
 from tenforty.models import (
-    DivergenceSource, validate_sche_1099_answers, validate_unclaimed_property)
+    DivergenceSource, validate_sche_1099_answers, validate_tax_year_dates,
+    validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -227,6 +228,7 @@ def _entity_header_values(r) -> dict:
         "f1120s_entity_total_assets": r.total_assets,
         "f1120s_entity_shareholder_count": len(r.shareholders),
         "f1120s_officer_title": r.officer_title,
+        **_tax_year_header_values(r),
     }
 
 
@@ -240,6 +242,33 @@ def _unclaimed_property_values(ca) -> dict:
         "f100s_entity_unclaimed_date": ca.unclaimed_property_report_date,
         "f100s_entity_unclaimed_dollars": total_cents // 100,
         "f100s_entity_unclaimed_cents": f"{total_cents % 100:02d}",
+    }
+
+
+def _k1_tax_year_header_values(r) -> dict:
+    """Schedule K-1 (1120-S) header month / day / four-digit-year boxes."""
+    b, e = r.tax_year_beginning, r.tax_year_ending
+    if b is None or e is None:
+        return {}
+    return {
+        "k1_tax_year_begin_month": b.strftime("%m"),
+        "k1_tax_year_begin_day": b.strftime("%d"),
+        "k1_tax_year_end_month": e.strftime("%m"),
+        "k1_tax_year_end_day": e.strftime("%d"),
+        "k1_tax_year_end_year": e.strftime("%Y"),
+    }
+
+
+def _tax_year_header_values(r) -> dict:
+    """Short-year header date values for the 1120-S page 1 header cells
+    (month/day strings plus the two-digit ending year); {} for a calendar year."""
+    b, e = r.tax_year_beginning, r.tax_year_ending
+    if b is None or e is None:
+        return {}
+    return {
+        "f1120s_tax_year_begin_md": b.strftime("%m/%d"),
+        "f1120s_tax_year_end_md": e.strftime("%m/%d"),
+        "f1120s_tax_year_end_yy": e.strftime("%y"),
     }
 
 
@@ -1691,6 +1720,7 @@ class ReturnOrchestrator:
             return emitted
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
+        validate_tax_year_dates(scenario.s_corp_return, year)
         filler = PdfFiller()
         amended = scenario.s_corp_return.amended_return
         # Schedule B must be fully answered before anything is printed: an
@@ -1786,6 +1816,7 @@ class ReturnOrchestrator:
                 this_checkbox = {**k1_checkbox, "k1_final": f_on}
                 final_values = {"k1_final": True}
             flat_values = {
+                **_k1_tax_year_header_values(scenario.s_corp_return),
                 "k1_irs_center": scenario.s_corp_return.irs_center,
                 "k1_total_shares_beginning":
                     scenario.s_corp_return.total_shares_beginning,
@@ -1935,6 +1966,7 @@ class ReturnOrchestrator:
         # attached-statement requirement (and footing rule) applies here.
         form_f1120s.check_other_deductions_statement_for_emit(scenario)
         validate_unclaimed_property(r.ca)
+        validate_tax_year_dates(r, scenario.config.year)
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
@@ -1955,6 +1987,11 @@ class ReturnOrchestrator:
             "f100s_entity_s_election_date":
                 _format_mmddyyyy(r.s_election_effective_date),
             "f100s_entity_officer_title": r.officer_title,
+            **({"f100s_entity_tax_year_begin":
+                    r.tax_year_beginning.strftime("%m/%d/%Y"),
+                "f100s_entity_tax_year_end":
+                    r.tax_year_ending.strftime("%m/%d/%Y")}
+               if r.tax_year_beginning and r.tax_year_ending else {}),
             "f100s_entity_activity_code":
                 r.schedule_b_answers.business_activity_code,
             "f100s_entity_business_activity":
@@ -2074,6 +2111,11 @@ class ReturnOrchestrator:
             k1_values = {
                 "k1_shareholder_name": sh.name,
                 "k1_shareholder_id": sh.ssn_or_ein,
+                **({"k1_tax_year_begin":
+                        r.tax_year_beginning.strftime("%m/%d/%Y"),
+                    "k1_tax_year_end":
+                        r.tax_year_ending.strftime("%m/%d/%Y")}
+                   if r.tax_year_beginning and r.tax_year_ending else {}),
                 "k1_corp_fein": r.ein,
                 "k1_corp_name": r.name,
                 "k1_shareholder_street": sh.address.street,

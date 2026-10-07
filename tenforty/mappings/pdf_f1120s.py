@@ -904,15 +904,32 @@ _OFFICER_TITLE_CELL: dict[int, str] = {
     2021: _P1 + "f1_49[0]", 2022: _P1 + "f1_49[0]", 2023: _P1 + "f1_50[0]",
     2024: _P1 + "f1_50[0]", 2025: _P1 + "f1_56[0]",
 }
+# Short-year header cells "tax year beginning [md] , <yr>, ending [md] , 20[yy]":
+# beginning month/day, ending month/day, two-digit ending year (the beginning
+# year is preprinted). Group CalendarYear-TypePrint_ReadOrder through 2024,
+# Date_Name_ReadOrder on 2025.
+_TAX_YEAR_CELLS_2021_2024: dict[str, str] = {
+    "f1120s_tax_year_begin_md":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_1[0]",
+    "f1120s_tax_year_end_md":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_2[0]",
+    "f1120s_tax_year_end_yy":
+        _P1 + "CalendarYear-TypePrint_ReadOrder[0].f1_3[0]",
+}
+_TAX_YEAR_CELLS_2025: dict[str, str] = {
+    "f1120s_tax_year_begin_md": _P1 + "Date_Name_ReadOrder[0].f1_1[0]",
+    "f1120s_tax_year_end_md": _P1 + "Date_Name_ReadOrder[0].f1_2[0]",
+    "f1120s_tax_year_end_yy": _P1 + "Date_Name_ReadOrder[0].f1_3[0]",
+}
 _ENTITY_HEADER_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: {**_ENTITY_HEADER_2021_2024,
+    2021: {**_ENTITY_HEADER_2021_2024, **_TAX_YEAR_CELLS_2021_2024,
            "f1120s_officer_title": _OFFICER_TITLE_CELL[2021]},
-    2022: {**_ENTITY_HEADER_2021_2024,
+    2022: {**_ENTITY_HEADER_2021_2024, **_TAX_YEAR_CELLS_2021_2024,
            "f1120s_officer_title": _OFFICER_TITLE_CELL[2022]},
-    2023: {**_ENTITY_HEADER_2021_2024,
+    2023: {**_ENTITY_HEADER_2021_2024, **_TAX_YEAR_CELLS_2021_2024,
            "f1120s_officer_title": _OFFICER_TITLE_CELL[2023]},
-    2024: {**_ENTITY_HEADER_2021_2024,
+    2024: {**_ENTITY_HEADER_2021_2024, **_TAX_YEAR_CELLS_2021_2024,
            "f1120s_officer_title": _OFFICER_TITLE_CELL[2024]},
-    2025: {**_ENTITY_HEADER_2025,
+    2025: {**_ENTITY_HEADER_2025, **_TAX_YEAR_CELLS_2025,
            "f1120s_officer_title": _OFFICER_TITLE_CELL[2025]},
 }

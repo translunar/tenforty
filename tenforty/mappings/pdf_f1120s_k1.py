@@ -6,6 +6,14 @@ from tenforty.mappings.registry import PdfFormMapping, trim_decimal
 # 2024 and 2025 Schedule K-1 (1120-S) PDFs share an identical field tree
 # (pinned by tests/test_mapping_year_identity.py); one payload serves both.
 _FIELDS: dict[str, str] = {
+    # Header "tax year beginning month / day ... ending month / day / year"
+    # (short-year K-1s only; a calendar-year K-1 leaves these blank). The
+    # beginning year is preprinted; the ending year is four digits.
+    "k1_tax_year_begin_month": "topmostSubform[0].Page1[0].Header[0].ForCalendarYear[0].f1_01[0]",
+    "k1_tax_year_begin_day":   "topmostSubform[0].Page1[0].Header[0].ForCalendarYear[0].f1_02[0]",
+    "k1_tax_year_end_month":   "topmostSubform[0].Page1[0].Header[0].ForCalendarYear[0].f1_03[0]",
+    "k1_tax_year_end_day":     "topmostSubform[0].Page1[0].Header[0].ForCalendarYear[0].f1_04[0]",
+    "k1_tax_year_end_year":    "topmostSubform[0].Page1[0].Header[0].ForCalendarYear[0].f1_05[0]",
     # Part I — Information About the Corporation
     # Field A: Corporation's employer identification number
     "entity_ein":               "topmostSubform[0].Page1[0].LeftCol[0].f1_06[0]",
@@ -76,6 +84,14 @@ _FIELDS: dict[str, str] = {
 # Both 2024 paths exist on the 2023 template, so only the rendered position
 # (not path existence) distinguishes them.
 _FIELDS_2023: dict[str, str] = {
+    # Header "tax year beginning month / day ... ending month / day / year"
+    # (short-year K-1s only; a calendar-year K-1 leaves these blank). The
+    # beginning year is preprinted; the ending year is four digits.
+    "k1_tax_year_begin_month": "topmostSubform[0].Page1[0].Header[0].f1_01[0]",
+    "k1_tax_year_begin_day":   "topmostSubform[0].Page1[0].Header[0].f1_02[0]",
+    "k1_tax_year_end_month":   "topmostSubform[0].Page1[0].Header[0].f1_03[0]",
+    "k1_tax_year_end_day":     "topmostSubform[0].Page1[0].Header[0].f1_04[0]",
+    "k1_tax_year_end_year":    "topmostSubform[0].Page1[0].Header[0].f1_05[0]",
     # Part I — Field A: Corporation's EIN
     "entity_ein":               "topmostSubform[0].Page1[0].LeftCol[0].f1_06[0]",
     # Part I — Field B: Corporation's name/address (combined multi-line text)
