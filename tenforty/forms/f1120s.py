@@ -49,6 +49,32 @@ _SCH_K_V1_ZERO_PLACEHOLDERS: dict[str, int] = {
     "f1120s_sch_k_amt_items": 0,
     "f1120s_sch_k_tax_exempt_interest": 0,
     "f1120s_sch_k_investment_income": 0,
+    # Lines 12b-12e, 13b-13g, 15a-15f, 16b/16c/16e/16f, 17b/17c: schema-enforced
+    # zeros (no input field exists; the loader is fail-closed), printed so the
+    # whole Schedule K block reads 0 rather than a 0-vs-blank patchwork. Line
+    # 16d (distributions) is NOT here: it is a real input.
+    "f1120s_sch_k_noncash_charitable_contributions": 0,
+    "f1120s_sch_k_investment_interest_expense": 0,
+    "f1120s_sch_k_section_59e2_expenditures": 0,
+    "f1120s_sch_k_other_deductions": 0,
+    "f1120s_sch_k_low_income_housing_credit_other": 0,
+    "f1120s_sch_k_qualified_rehab_expenditures": 0,
+    "f1120s_sch_k_other_rental_real_estate_credits": 0,
+    "f1120s_sch_k_other_rental_credits": 0,
+    "f1120s_sch_k_biofuel_producer_credit": 0,
+    "f1120s_sch_k_other_credits": 0,
+    "f1120s_sch_k_amt_depreciation_adjustment": 0,
+    "f1120s_sch_k_amt_adjusted_gain_loss": 0,
+    "f1120s_sch_k_amt_depletion": 0,
+    "f1120s_sch_k_amt_oil_gas_gross_income": 0,
+    "f1120s_sch_k_amt_oil_gas_deductions": 0,
+    "f1120s_sch_k_amt_other_items": 0,
+    "f1120s_sch_k_other_tax_exempt_income": 0,
+    "f1120s_sch_k_nondeductible_expenses": 0,
+    "f1120s_sch_k_repayment_of_shareholder_loans": 0,
+    "f1120s_sch_k_foreign_taxes_paid": 0,
+    "f1120s_sch_k_investment_expenses": 0,
+    "f1120s_sch_k_dividend_distributions": 0,
 }
 
 
@@ -376,6 +402,13 @@ _SCH_K_LINE_18_INCOME_KEYS = (
 _SCH_K_LINE_18_DEDUCTION_KEYS = (
     "f1120s_sch_k_section_179_deduction",
     "f1120s_sch_k_charitable_contributions",
+    # 12b-12e and 16f (the form: "lines 11 through 12e and 16f"); all zero in
+    # v1 but listed so line 18 stays right when they gain inputs.
+    "f1120s_sch_k_noncash_charitable_contributions",
+    "f1120s_sch_k_investment_interest_expense",
+    "f1120s_sch_k_section_59e2_expenditures",
+    "f1120s_sch_k_other_deductions",
+    "f1120s_sch_k_foreign_taxes_paid",
 )
 
 
@@ -389,7 +422,7 @@ def _schedule_k_line_18(sch_k: dict) -> int:
     )
 
 
-def _compute_schedule_k(deductions: dict) -> dict:
+def _compute_schedule_k(deductions: dict, r: SCorpReturn | None = None) -> dict:
     """Form 1120-S Schedule K entity-level totals.
 
     In v1 only line 1 (OBI) has compute logic; the remaining lines emit
@@ -401,6 +434,9 @@ def _compute_schedule_k(deductions: dict) -> dict:
         "f1120s_sch_k_ordinary_business_income":
             deductions["f1120s_ordinary_business_income"],
         **_SCH_K_V1_ZERO_PLACEHOLDERS,
+        # Line 16d: cash distributions (a real input; not part of line 18).
+        "f1120s_sch_k_distributions": irs_round(
+            0.0 if r is None else r.distributions_to_shareholders),
     }
     sch_k["f1120s_sch_k_income_loss_reconciliation"] = \
         _schedule_k_line_18(sch_k)
@@ -452,6 +488,8 @@ def _compute_schedule_k1_allocations(
             box_17v_qbi=irs_round(entity_qbi * share),
             box_17v_w2_wages=irs_round(entity_w2 * share),
             box_17v_ubia=irs_round(entity_ubia * share),
+            box_16d_distributions=irs_round(
+                schedule_k["f1120s_sch_k_distributions"] * share),
         ))
     return allocations
 
@@ -466,7 +504,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     income = _compute_income(r)
     deductions = _compute_deductions(r, income)
     total_tax = _compute_total_tax(r)
-    schedule_k = _compute_schedule_k(deductions)
+    schedule_k = _compute_schedule_k(deductions, r)
     return {
         **income,
         **deductions,

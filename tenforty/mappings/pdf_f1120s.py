@@ -91,6 +91,69 @@ _SCH_B_Q16_KEYS = frozenset({
     f"f1120s_sch_b_{_SCH_B_Q16_FIELD}", f"f1120s_sch_b_{_SCH_B_Q16_FIELD}_no"})
 
 
+# ── Schedule K pro-rata amount cells, sections 12-17 (every year) ────────────
+# ONE table drives the whole block so the compute placeholders and the printed
+# cells cannot drift apart. Each row: compute key, then the Page-3 field NUMBER
+# on the 2021-2023 forms and on the 2024-2025 forms (None = the line has no cell
+# on that vintage). The numbers SHIFT between vintages and were certified per
+# year by matching each widget's row to the printed line label on that year's
+# own template (tests/test_f1120s_sch_k_zero_fill.py repeats that check
+# independently): line 12e exists on 2024+ only; 12c/12d are f3_23/f3_25 on the
+# older forms but f3_22/f3_24 later; 13a-13g and 15a-16f sit one field lower on
+# 2021-2023 (13a is f3_26 there, f3_27 from 2024). Type-text sub-cells and 17d
+# have no amount cell and stay blank. 17b/17c (Page 4) are identical every year.
+_SCH_K_P3_ROWS: tuple[tuple[str, int | None, int | None], ...] = (
+    ("f1120s_sch_k_noncash_charitable_contributions", 21, 21),     # 12b
+    ("f1120s_sch_k_investment_interest_expense", 23, 22),          # 12c
+    ("f1120s_sch_k_section_59e2_expenditures", 25, 24),            # 12d
+    ("f1120s_sch_k_other_deductions", None, 26),                   # 12e
+    ("f1120s_sch_k_low_income_housing_credit", 26, 27),            # 13a
+    ("f1120s_sch_k_low_income_housing_credit_other", 27, 28),      # 13b
+    ("f1120s_sch_k_qualified_rehab_expenditures", 28, 29),         # 13c
+    ("f1120s_sch_k_other_rental_real_estate_credits", 30, 31),     # 13d
+    ("f1120s_sch_k_other_rental_credits", 32, 33),                 # 13e
+    ("f1120s_sch_k_biofuel_producer_credit", 33, 34),              # 13f
+    ("f1120s_sch_k_other_credits", 35, 36),                        # 13g
+    ("f1120s_sch_k_amt_depreciation_adjustment", 36, 37),          # 15a
+    ("f1120s_sch_k_amt_adjusted_gain_loss", 37, 38),               # 15b
+    ("f1120s_sch_k_amt_depletion", 38, 39),                        # 15c
+    ("f1120s_sch_k_amt_oil_gas_gross_income", 39, 40),             # 15d
+    ("f1120s_sch_k_amt_oil_gas_deductions", 40, 41),               # 15e
+    ("f1120s_sch_k_amt_other_items", 41, 42),                      # 15f
+    ("f1120s_sch_k_tax_exempt_interest", 42, 43),                  # 16a
+    ("f1120s_sch_k_other_tax_exempt_income", 43, 44),              # 16b
+    ("f1120s_sch_k_nondeductible_expenses", 44, 45),               # 16c
+    ("f1120s_sch_k_distributions", 45, 46),                        # 16d
+    ("f1120s_sch_k_repayment_of_shareholder_loans", 46, 47),       # 16e
+    ("f1120s_sch_k_foreign_taxes_paid", 47, 48),                   # 16f
+)
+_SCH_K_P4_ROWS: tuple[tuple[str, int], ...] = (
+    ("f1120s_sch_k_investment_expenses", 2),                       # 17b
+    ("f1120s_sch_k_dividend_distributions", 3),                    # 17c
+)
+
+
+def _sch_k_cells(newer: bool) -> dict[str, str]:
+    """Schedule K section 12-17 cells for one vintage (``newer`` = 2024-2025).
+    Lines with no cell on the vintage are simply absent (see
+    ``_SCH_K_NO_CELL_2021_2023``)."""
+    out = {
+        key: f"topmostSubform[0].Page3[0].f3_{n}[0]"
+        for key, old, new in _SCH_K_P3_ROWS
+        if (n := new if newer else old) is not None
+    }
+    out.update({key: f"topmostSubform[0].Page4[0].f4_{n}[0]"
+                for key, n in _SCH_K_P4_ROWS})
+    return out
+
+
+_SCH_K_CELLS_2021_2023: dict[str, str] = _sch_k_cells(False)
+_SCH_K_CELLS_2024_2025: dict[str, str] = _sch_k_cells(True)
+# Compute keys the 2021-2023 forms have no cell for (suppressed there).
+_SCH_K_NO_CELL_2021_2023: frozenset[str] = frozenset(
+    key for key, old, _ in _SCH_K_P3_ROWS if old is None)
+
+
 # ── 2025 registries ──────────────────────────────────────────────────────────
 #
 # Direct 1:1 mappings — most compute keys go here.
@@ -163,9 +226,8 @@ _MAPPING_2025: dict[str, str] = {
     # Schedule K — deductions/credits
     "f1120s_sch_k_section_179_deduction":       "topmostSubform[0].Page3[0].f3_19[0]",
     "f1120s_sch_k_charitable_contributions":    "topmostSubform[0].Page3[0].f3_20[0]",
-    "f1120s_sch_k_low_income_housing_credit":   "topmostSubform[0].Page3[0].f3_27[0]",
+    **_SCH_K_CELLS_2024_2025,
     # Schedule K — other items
-    "f1120s_sch_k_tax_exempt_interest":         "topmostSubform[0].Page3[0].f3_43[0]",
     "f1120s_sch_k_investment_income":           "topmostSubform[0].Page4[0].f4_1[0]",
     "f1120s_sch_k_income_loss_reconciliation":  "topmostSubform[0].Page4[0].f4_4[0]",
 }
@@ -273,9 +335,8 @@ _MAPPING_2024: dict[str, str] = {
     # Schedule K — deductions/credits (identical paths to 2025)
     "f1120s_sch_k_section_179_deduction":       "topmostSubform[0].Page3[0].f3_19[0]",
     "f1120s_sch_k_charitable_contributions":    "topmostSubform[0].Page3[0].f3_20[0]",
-    "f1120s_sch_k_low_income_housing_credit":   "topmostSubform[0].Page3[0].f3_27[0]",
+    **_SCH_K_CELLS_2024_2025,
     # Schedule K — other items (identical paths to 2025)
-    "f1120s_sch_k_tax_exempt_interest":         "topmostSubform[0].Page3[0].f3_43[0]",
     "f1120s_sch_k_investment_income":           "topmostSubform[0].Page4[0].f4_1[0]",
     "f1120s_sch_k_income_loss_reconciliation":  "topmostSubform[0].Page4[0].f4_4[0]",
 }
@@ -301,8 +362,11 @@ _MAPPING_2024: dict[str, str] = {
 # a path-existence check passes either way (both fields exist on every
 # template); only the rendered position distinguishes the right cell.
 _MAPPING_2023: dict[str, str] = {
-    **_MAPPING_2024,
-    "f1120s_sch_k_tax_exempt_interest": "topmostSubform[0].Page3[0].f3_42[0]",
+    **{k: v for k, v in _MAPPING_2024.items()
+       if k not in _SCH_K_CELLS_2024_2025},
+    # Every 2023 Schedule K section 12-17 cell comes from the 2021-2023 table
+    # (13a is f3_26 here, not 2024's f3_27; 16a f3_42; no line 12e).
+    **_SCH_K_CELLS_2021_2023,
 }
 
 
@@ -379,8 +443,7 @@ _MAPPING_2022: dict[str, str] = {
     "f1120s_sch_k_other_income": "topmostSubform[0].Page3[0].f3_18[0]",
     "f1120s_sch_k_section_179_deduction": "topmostSubform[0].Page3[0].f3_19[0]",
     "f1120s_sch_k_charitable_contributions": "topmostSubform[0].Page3[0].f3_20[0]",
-    "f1120s_sch_k_low_income_housing_credit": "topmostSubform[0].Page3[0].f3_27[0]",
-    "f1120s_sch_k_tax_exempt_interest": "topmostSubform[0].Page3[0].f3_42[0]",
+    **_SCH_K_CELLS_2021_2023,
     "f1120s_sch_k_investment_income": "topmostSubform[0].Page4[0].f4_1[0]",
     "f1120s_sch_k_income_loss_reconciliation": "topmostSubform[0].Page4[0].f4_4[0]",
 }
@@ -703,7 +766,7 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
 }
 _SUPPRESSED_2022: frozenset[str] = frozenset(
-    {"f1120s_refundable_credits",
+    _SCH_K_NO_CELL_2021_2023 | {"f1120s_refundable_credits",
      # No line 19 energy deduction on the 2021-2022 forms.
      "f1120s_energy_efficient_buildings_deduction"} | _SCH_B_Q16_KEYS)
 
@@ -723,10 +786,11 @@ _DERIVATIONS_BY_YEAR: dict[int, dict[str, Callable[[Mapping[str, object]], objec
     2022: _DERIVATIONS_2022,
     2023: _DERIVATIONS_2024, 2024: _DERIVATIONS_2024, 2025: _DERIVATIONS_2025,
 }
+_SUPPRESSED_2023: frozenset[str] = _SUPPRESSED_2024 | _SCH_K_NO_CELL_2021_2023
 _SUPPRESSED_BY_YEAR: dict[int, frozenset[str]] = {
     2021: _SUPPRESSED_2022,
     2022: _SUPPRESSED_2022,
-    2023: _SUPPRESSED_2024, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
+    2023: _SUPPRESSED_2023, 2024: _SUPPRESSED_2024, 2025: _SUPPRESSED_2025,
 }
 # 2021/2022: same accounting-method states, but the Schedule B answer cells use
 # the zero-padded group names and have no line 16 (so no line 16 on-state).

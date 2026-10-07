@@ -1781,6 +1781,10 @@ class ReturnOrchestrator:
                     alloc.box_1_ordinary_business_income,
                 "box_17_code_v": "V",
                 "box_17_code_v_amount": "STMT",
+                # Box 16 code D (distributions): only when there is one.
+                **({"box_16_code_d": "D",
+                    "box_16_code_d_amount": alloc.box_16d_distributions}
+                   if alloc.box_16d_distributions else {}),
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
