@@ -1725,6 +1725,7 @@ class ReturnOrchestrator:
             aggregations=PdfF1120S.get_aggregations(year),
             derivations=PdfF1120S.get_derivations(year),
             checkbox_states=main_checkbox,
+            blank_when_zero=PdfF1120S.get_blank_when_zero(year),
         )
         emitted["1120s"] = main_output
 
@@ -1984,7 +1985,8 @@ class ReturnOrchestrator:
         f100s_output = output_dir / f"f100s_{year}.pdf"
         filler.fill(template_path=f100s_template, output_path=f100s_output,
                     field_mapping=f100s_mapping, values=f100s_values,
-                    checkbox_states=f100s_checkbox or None)
+                    checkbox_states=f100s_checkbox or None,
+                    blank_when_zero=PdfF100S.get_blank_when_zero(year))
         emitted["f100s"] = f100s_output
 
         k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"

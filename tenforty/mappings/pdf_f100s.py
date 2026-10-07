@@ -229,6 +229,25 @@ _SCHEDULE_Q_BY_YEAR[2021] = {
     "apportioning_with_schedule_r": _line_p_cells(2021)}
 
 
+# Detail (input-driven) keys: print only when nonzero. Arguable cells: Side 2
+# lines 31/32 (prior-year overpayment applied, estimated payments) are inputs
+# feeding the line 36 total, so they are detail; line 40 / 41 are computed (one
+# is always 0) and both print; Schedule F 1a is kept always-printing (it anchors
+# 1c), mirroring the federal 1120-S.
+_BLANK_WHEN_ZERO_KEYS: frozenset[str] = frozenset({
+    "f100s_state_tax_addback", "f100s_depreciation_adjustment",
+    "f100s_prior_year_overpayment_applied", "f100s_estimated_tax_payments",
+    "f100s_sch_f_returns_allowances", "f100s_sch_f_cogs",
+    "f100s_sch_f_net_gain_loss", "f100s_sch_f_other_income",
+    "f100s_sch_f_officer_comp", "f100s_sch_f_salaries_wages",
+    "f100s_sch_f_repairs", "f100s_sch_f_bad_debts", "f100s_sch_f_rents",
+    "f100s_sch_f_taxes", "f100s_sch_f_interest",
+    "f100s_sch_f_depreciation_balance", "f100s_sch_f_depletion",
+    "f100s_sch_f_advertising", "f100s_sch_f_pension",
+    "f100s_sch_f_employee_benefits", "f100s_sch_f_other_deductions",
+})
+
+
 class PdfF100S(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for California Form 100S. Flat 1:1. The line/number
     correspondence is identical across all CA_SCORP_YEARS (marker-probe
@@ -240,6 +259,17 @@ class PdfF100S(PdfFormMapping[dict[str, str]]):
         2021: _MAPPING_BARE, 2022: _MAPPING_BARE, 2023: _MAPPING_BARE,
         2024: _MAPPING_PREFIXED_2024, 2025: _MAPPING_PREFIXED_2025,
     }
+
+    @classmethod
+    def get_blank_when_zero(cls, year: int) -> frozenset[str]:
+        """PDF cell paths of DETAIL lines that print only when nonzero
+        (professional-software convention). Computed results and totals
+        (Side 1 lines 1 and 8, Side 2 lines 13-15, 20, 21, 26, 30, 36, 38,
+        40, 41, 45, Schedule F lines 1a/1c/3/6/21/22, Schedule K lines 1 and
+        19) always print, even when 0. See ``_BLANK_WHEN_ZERO_KEYS``."""
+        mapping = cls.get_mapping(year)
+        return frozenset(mapping[k] for k in _BLANK_WHEN_ZERO_KEYS
+                         if k in mapping)
 
     @classmethod
     def get_accounting_method_cells(cls, year: int) -> dict[str, _Cell]:
