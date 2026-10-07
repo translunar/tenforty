@@ -143,6 +143,9 @@ _Q_YESNO_FIELDS: dict[str, str] = {
     # Item U(1): radio 3027 rb, Yes /0 left, No /1 right, on every year 2021-2025
     # (2021 never reaches the stated-answer path: it is refused at emit).
     "filed_unclaimed_property_report": "3027 rb",
+    # Side 3 signature block "May the FTB discuss this return with the preparer
+    # shown above?": radio 3051 rb, Yes /0 left, No /1 right, every year.
+    "discuss_with_preparer": "3051 rb",
 }
 # Question P (apportioning with Schedule R): same /0 Yes /1 No tokens, but the
 # 2022 group is named plain "3021", and the 2021 template carries '/Yes' /
@@ -235,7 +238,9 @@ _SCHEDULE_Q_BY_YEAR: dict[int, dict[str, dict[object, _Cell]]] = {
 # 2021 carries only the DERIVED Question P and (below) Question L; every STATED
 # question is refused for 2021 (feature floor TY2022).
 _SCHEDULE_Q_BY_YEAR[2021] = {
-    "apportioning_with_schedule_r": _line_p_cells(2021)}
+    "apportioning_with_schedule_r": _line_p_cells(2021),
+    # signature-block question (not Schedule Q proper): present on 2021 too
+    "discuss_with_preparer": {True: ("3051 rb", "/0"), False: ("3051 rb", "/1")}}
 
 
 # Detail (input-driven) keys: print only when nonzero. Arguable cells: Side 2

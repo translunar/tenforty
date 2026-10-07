@@ -16,6 +16,7 @@ from tenforty.filing.statement_other_deductions import (
 from tenforty.models import (
     OtherDeductionComponent,
     validate_sche_1099_answers,
+    validate_third_party_designee,
     validate_tax_year_dates,
     validate_unclaimed_property,
     AccountingMethod,
@@ -284,7 +285,8 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "corporation_number", "max_shareholders", "date_business_began_in_ca",
     "water_edge_basis", "includes_qsubs", "included_reportable_transaction",
     "filed_federal_schedule_m3", "ftb_3544_attached",
-    "inactive_business", "filed_unclaimed_property_report",
+    "inactive_business", "discuss_with_preparer",
+    "filed_unclaimed_property_report",
     "unclaimed_property_report_date", "unclaimed_property_amount_remitted",
 })
 
@@ -372,6 +374,8 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("ftb_3544_attached"), "ftb_3544_attached"),
         inactive_business=_load_optional_bool(
             data.get("inactive_business"), "inactive_business"),
+        discuss_with_preparer=_load_optional_bool(
+            data.get("discuss_with_preparer"), "discuss_with_preparer"),
         filed_unclaimed_property_report=_load_optional_bool(
             data.get("filed_unclaimed_property_report"),
             "filed_unclaimed_property_report"),
@@ -398,6 +402,7 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
     "total_shares_beginning", "total_shares_end",
     "distributions_to_shareholders", "officer_title",
+    "discuss_with_preparer",
     "tax_year_beginning", "tax_year_ending", "electing_s_this_year", "final_return", "name_change", "address_change",
     "s_election_terminated",
 })
@@ -576,6 +581,8 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
         officer_title=_load_optional_text(
             data.get("officer_title"), "officer_title"),
+        discuss_with_preparer=_load_optional_bool(
+            data.get("discuss_with_preparer"), "discuss_with_preparer"),
         tax_year_beginning=_load_tax_year_date(
             data.get("tax_year_beginning"), "tax_year_beginning"),
         tax_year_ending=_load_tax_year_date(
@@ -768,6 +775,7 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     values, not on a trigger-predicate over the full scenario."""
     validate_load_time(cfg)
     validate_sche_1099_answers(cfg)
+    validate_third_party_designee(cfg)
 
     # has_foreign_accounts=True is an immediate NotImplementedError regardless
     # of trigger predicate — there is no scenario context that makes a foreign
