@@ -35,6 +35,7 @@ _EXPECTED_COMPUTE_KEYS = frozenset({
     "f1120s_advertising",
     "f1120s_pension_profit_sharing",
     "f1120s_employee_benefits",
+    "f1120s_energy_efficient_buildings_deduction",
     "f1120s_other_deductions",
     "f1120s_total_deductions",
     "f1120s_ordinary_business_income",
