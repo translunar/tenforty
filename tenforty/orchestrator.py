@@ -32,7 +32,8 @@ from tenforty.ca_divergences import (
     entry_citation,
     resolve_divergence_id,
 )
-from tenforty.models import DivergenceSource, validate_sche_1099_answers
+from tenforty.models import (
+    DivergenceSource, validate_sche_1099_answers, validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
@@ -225,6 +226,20 @@ def _entity_header_values(r) -> dict:
         "f1120s_entity_date_incorporated": _format_mmddyyyy(r.date_incorporated),
         "f1120s_entity_total_assets": r.total_assets,
         "f1120s_entity_shareholder_count": len(r.shareholders),
+        "f1120s_officer_title": r.officer_title,
+    }
+
+
+def _unclaimed_property_values(ca) -> dict:
+    """Item U(2) date and U(3) dollars / cents, only after a stated "Yes"
+    (``validate_unclaimed_property`` has already enforced the dependency)."""
+    if ca.filed_unclaimed_property_report is not True:
+        return {}
+    total_cents = round(ca.unclaimed_property_amount_remitted * 100)
+    return {
+        "f100s_entity_unclaimed_date": ca.unclaimed_property_report_date,
+        "f100s_entity_unclaimed_dollars": total_cents // 100,
+        "f100s_entity_unclaimed_cents": f"{total_cents % 100:02d}",
     }
 
 
@@ -1730,6 +1745,7 @@ class ReturnOrchestrator:
             aggregations=PdfF1120S.get_aggregations(year),
             derivations=PdfF1120S.get_derivations(year),
             checkbox_states=main_checkbox,
+            blank_when_zero=PdfF1120S.get_blank_when_zero(year),
         )
         emitted["1120s"] = main_output
 
@@ -1786,6 +1802,10 @@ class ReturnOrchestrator:
                     alloc.box_1_ordinary_business_income,
                 "box_17_code_v": "V",
                 "box_17_code_v_amount": "STMT",
+                # Box 16 code D (distributions): only when there is one.
+                **({"box_16_code_d": "D",
+                    "box_16_code_d_amount": alloc.box_16d_distributions}
+                   if alloc.box_16d_distributions else {}),
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
@@ -1914,6 +1934,7 @@ class ReturnOrchestrator:
         # Sch F line 20 passes the federal line 19 figure through, so the same
         # attached-statement requirement (and footing rule) applies here.
         form_f1120s.check_other_deductions_statement_for_emit(scenario)
+        validate_unclaimed_property(r.ca)
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
@@ -1933,6 +1954,7 @@ class ReturnOrchestrator:
                 _format_mmddyyyy(r.date_incorporated),
             "f100s_entity_s_election_date":
                 _format_mmddyyyy(r.s_election_effective_date),
+            "f100s_entity_officer_title": r.officer_title,
             "f100s_entity_activity_code":
                 r.schedule_b_answers.business_activity_code,
             "f100s_entity_business_activity":
@@ -1943,6 +1965,7 @@ class ReturnOrchestrator:
             "f100s_entity_date_began_in_ca":
                 None if r.ca.date_business_began_in_ca is None
                 else _format_mmddyyyy(r.ca.date_business_began_in_ca),
+            **_unclaimed_property_values(r.ca),
             "f100s_entity_state_incorporated": r.ca.state_of_incorporation,
             "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             "f100s_entity_ca_corp_number": r.ca.corporation_number,
@@ -1963,6 +1986,8 @@ class ReturnOrchestrator:
             "filed_federal_schedule_m3": r.ca.filed_federal_schedule_m3,
             "ftb_3544_attached": r.ca.ftb_3544_attached,
             "inactive_business": r.ca.inactive_business,
+            "filed_unclaimed_property_report":
+                r.ca.filed_unclaimed_property_report,
         }
         if any(a is not None for a in stated_q.values()):
             if year < 2022:
@@ -1998,7 +2023,8 @@ class ReturnOrchestrator:
         f100s_output = output_dir / f"f100s_{year}.pdf"
         filler.fill(template_path=f100s_template, output_path=f100s_output,
                     field_mapping=f100s_mapping, values=f100s_values,
-                    checkbox_states=f100s_checkbox or None)
+                    checkbox_states=f100s_checkbox or None,
+                    blank_when_zero=PdfF100S.get_blank_when_zero(year))
         emitted["f100s"] = f100s_output
 
         k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"
