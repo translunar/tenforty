@@ -25,7 +25,7 @@ from pypdf import PdfReader
 
 from tenforty import years
 from tenforty.mappings.pdf_f1120s import PdfF1120S
-from tenforty.models import SCorpCAInputs
+from tenforty.models import OtherDeductionComponent, SCorpCAInputs
 from tenforty.orchestrator import ReturnOrchestrator
 from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 
@@ -88,6 +88,12 @@ class Fed1120SPage1Tests(_EmitBase):
                 setattr(inc, k, v)
             elif hasattr(ded, k) and k != "compensation_of_officers":
                 setattr(ded, k, v)
+        # PDF emit requires the line 19 statement rows (merge of the
+        # other-deductions-statement gate with this branch's fixtures).
+        if ded.other_deductions and not ded.other_deductions_components:
+            ded.other_deductions_components = [
+                OtherDeductionComponent("Synthetic misc expense",
+                                        ded.other_deductions)]
         out = Path(self._tmp.name) / f"p1_{year}_{sorted(kw.items())}"
         self.orch.run_full_federal_scorp_return(s, out)
         return _fields(out / f"f1120s_{year}.pdf")
