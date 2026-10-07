@@ -1699,6 +1699,21 @@ class ReturnOrchestrator:
             main_mapping = {**main_mapping, "f1120s_amended_return": m_path}
             main_checkbox = {**main_checkbox, "f1120s_amended_return": m_on}
             main_values = {**main_values, "f1120s_amended_return": True}
+        # Item G (Yes / No: the chosen box only) and item H check-if boxes
+        # (only True marks; False / None leave the box blank). Additive.
+        r_ = scenario.s_corp_return
+        if r_.electing_s_this_year is not None:
+            g_path, g_on = PdfF1120S.get_item_g_cells(year)[
+                r_.electing_s_this_year]
+            main_mapping = {**main_mapping, "f1120s_item_g": g_path}
+            main_checkbox = {**main_checkbox, "f1120s_item_g": g_on}
+            main_values = {**main_values, "f1120s_item_g": True}
+        for item, (h_path, h_on) in PdfF1120S.get_item_h_cells(year).items():
+            if getattr(r_, item) is True:
+                key = f"f1120s_item_h_{item}"
+                main_mapping = {**main_mapping, key: h_path}
+                main_checkbox = {**main_checkbox, key: h_on}
+                main_values = {**main_values, key: True}
         # Pass the full results dict — aggregation and derivation lambdas
         # reference keys that are NOT in _MAPPING_<year>, so filtering to
         # mapping keys alone would silently drop those inputs.
