@@ -23,6 +23,7 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "k1_corp_ca_number", "k1_corp_name", "k1_ownership_pct_whole",
     "k1_ownership_pct_frac", "k1_federal_ordinary_income",
     "k1_ca_ordinary_income_total", "k1_ca_ordinary_income_source",
+    "k1_tax_year_begin", "k1_tax_year_end",
     # face items (every year)
     "k1_shareholder_street", "k1_shareholder_city", "k1_shareholder_state",
     "k1_shareholder_zip", "k1_corp_street", "k1_corp_city", "k1_corp_state",

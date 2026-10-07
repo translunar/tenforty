@@ -89,6 +89,8 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_product_or_service":      "3003",  # Question C Product or service
     "f100s_entity_max_shareholders":        "3009",  # Question G Maximum number of shareholders (stated)
     "f100s_entity_date_began_in_ca":        "3010",  # Question H Date business began in California (stated)
+    "f100s_entity_tax_year_begin":          "1001",  # Side 1 header: taxable year beginning mm/dd/yyyy (short year only)
+    "f100s_entity_tax_year_end":            "1002",  # Side 1 header: and ending mm/dd/yyyy
     "f100s_entity_officer_title":           "3040",  # Side 3 Sign Here: Title of signing officer (stated; signature/date cells are never filled)
     "f100s_entity_unclaimed_date":          "3028",  # Sch Q item U(2) date last report filed (stated; emit-injected, "Yes" only)
     "f100s_entity_unclaimed_dollars":       "3029",  # item U(3) amount last remitted, dollars

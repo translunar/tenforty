@@ -650,6 +650,30 @@ def validate_sche_1099_answers(cfg: "TaxReturnConfig") -> None:
             "only after a 'Yes' to line A. Remove filed_required_1099s.")
 
 
+def validate_tax_year_dates(r: "SCorpReturn", year: int) -> None:
+    """Refuse an inconsistent short-year header: both or neither stated; ending
+    is Dec 31 of ``year``; beginning is in ``year`` and not after the ending."""
+    b, e = r.tax_year_beginning, r.tax_year_ending
+    if b is None and e is None:
+        return
+    if b is None or e is None:
+        raise ValueError(
+            "s_corp_return.tax_year_beginning and tax_year_ending must be "
+            "stated together (or neither, for a calendar year).")
+    if (e.year, e.month, e.day) != (year, 12, 31):
+        raise ValueError(
+            f"s_corp_return.tax_year_ending must be Dec 31, {year} (the "
+            f"scenario year); got {e.isoformat()}. Fiscal years are "
+            "unsupported.")
+    if b.year != year:
+        raise ValueError(
+            f"s_corp_return.tax_year_beginning must fall in {year}; got "
+            f"{b.isoformat()}.")
+    if b > e:
+        raise ValueError(
+            "s_corp_return.tax_year_beginning is after tax_year_ending.")
+
+
 def validate_unclaimed_property(ca: "SCorpCAInputs") -> None:
     """Refuse an inconsistent Schedule Q item U answer set.
 
@@ -1070,6 +1094,13 @@ class SCorpReturn:
     # blank. NOTE: tenforty must NEVER fill the signature or the signature-date
     # cells of any return; only the title is stated.
     officer_title: str | None = None
+    # Short tax year (e.g. a first year starting mid-year): the header date
+    # boxes of the 1120-S, K-1 (1120-S), 100S and K-1 (100S) print these. Both or
+    # neither; ending must be Dec 31 of the scenario year (fiscal years are
+    # unsupported) and beginning must fall in the scenario year. None =
+    # calendar year = boxes blank. See ``validate_tax_year_dates``.
+    tax_year_beginning: date | None = None
+    tax_year_ending: date | None = None
     # Form 1120-S page 1 item G: "Is the corporation electing to be an S
     # corporation beginning with this tax year?" (stated; None leaves both boxes
     # blank, True / False marks the chosen box).
