@@ -851,6 +851,10 @@ class SCorpDeductions:
     pension_profit_sharing_plans: float
     employee_benefits: float
     other_deductions: float
+    # Form 1120-S line 19 "Energy efficient commercial buildings deduction"
+    # (section 179D, Form 7205), 2023+ forms. Must be 0: a nonzero claim cannot
+    # be printed without the attached Form 7205, so compute refuses it.
+    energy_efficient_buildings_deduction: float = 0.0
 
 
 @dataclass
