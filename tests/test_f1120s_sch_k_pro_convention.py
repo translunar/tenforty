@@ -121,6 +121,58 @@ class CellsSitOnTheirCaptionRowsTests(unittest.TestCase):
                     hits, f"{year} line {line}: no printed label on {path}")
 
 
+# Sub-column detail cells (x 396-474) with NO compute key: certified here so we
+# know where every Schedule K line IS, and asserted blank (no zero-fill).
+# line -> field number; 3a / 3b exist on the 2023-2025 forms only.
+_SUB_CELLS = {"3a": (None, 5), "3b": (None, 6), "5b": (10, 10),
+              "8b": (14, 14), "8c": (15, 15)}
+
+
+def _sub_cell(year, line):
+    old, new = _SUB_CELLS[line]
+    n = None if year <= 2022 and old is None else (old or new)
+    return None if n is None else f"{_P3}{n}[0]"
+
+
+class UnwiredSubCellsTests(_EmitBase):
+    def test_sub_cells_sit_on_their_caption_rows(self):
+        for year in _ALL:
+            pdf = f"pdfs/federal/{year}/f1120s.pdf"
+            page = PdfReader(pdf).pages[2]
+            H = float(page.mediabox.height)
+            out = subprocess.run(
+                ["pdftotext", "-bbox", "-f", "3", "-l", "3", pdf, "-"],
+                capture_output=True, text=True).stdout
+            words = [(float(x0), H - float(y1), w) for x0, y1, w in re.findall(
+                r'xMin="([\d.]+)" yMin="[\d.]+" xMax="[\d.]+" '
+                r'yMax="([\d.]+)">([^<]*)<', out)]
+            rects = {}
+            for a in page["/Annots"]:
+                a = a.get_object()
+                if "/T" in a:
+                    rects[f"topmostSubform[0].Page3[0].{a['/T']}"] = [
+                        float(v) for v in a["/Rect"]]
+            for line in _SUB_CELLS:
+                path = _sub_cell(year, line)
+                if path is None:
+                    continue
+                with self.subTest(year=year, line=line):
+                    rect = rects[path]
+                    self.assertTrue(
+                        [w for x, y, w in words if w == line and 360 < x < 396
+                         and abs(y - (rect[1] + 1)) <= 3],
+                        f"no printed {line} label on {path}")
+
+    def test_sub_cells_stay_blank(self):
+        for year in _ALL:
+            with self.subTest(year=year):
+                v = _fields(self._emit(year) / f"f1120s_{year}.pdf")
+                for line in _SUB_CELLS:
+                    path = _sub_cell(year, line)
+                    if path is not None:
+                        self.assertIn(v[path], (None, ""), f"{year} {line}")
+
+
 class DetailLinesBlankWhenZeroTests(_EmitBase):
     def test_every_inactive_detail_line_is_blank(self):
         for year in _ALL:
