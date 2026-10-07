@@ -200,6 +200,8 @@ def _load_deductions(data: dict) -> SCorpDeductions:
         pension_profit_sharing_plans=float(data["pension_profit_sharing_plans"]),
         employee_benefits=float(data["employee_benefits"]),
         other_deductions=float(data["other_deductions"]),
+        energy_efficient_buildings_deduction=float(
+            data.get("energy_efficient_buildings_deduction", 0.0)),
     )
 
 

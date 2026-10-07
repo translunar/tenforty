@@ -118,10 +118,11 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_advertising":               "topmostSubform[0].Page1[0].f1_34[0]",
     "f1120s_pension_profit_sharing":    "topmostSubform[0].Page1[0].f1_35[0]",
     "f1120s_employee_benefits":         "topmostSubform[0].Page1[0].f1_36[0]",
-    # Why skip `f1_37`: the 2025 form added a new Line 19 ("Energy
-    # efficient commercial buildings deduction", Form 7205) with no
-    # corresponding compute key in the v1 1120-S model. The next compute
-    # key (`f1120s_other_deductions`) maps to Line 20 (`f1_38`).
+    # Line 19 "Energy efficient commercial buildings deduction" (Form 7205) is
+    # f1_37 on the 2025 form; the compute value is always 0 (nonzero refused).
+    # Other deductions follows at Line 20 (`f1_38`).
+    "f1120s_energy_efficient_buildings_deduction":
+        "topmostSubform[0].Page1[0].f1_37[0]",
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_38[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_39[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_40[0]",
@@ -225,7 +226,10 @@ _MAPPING_2024: dict[str, str] = {
     "f1120s_advertising":               "topmostSubform[0].Page1[0].f1_30[0]",
     "f1120s_pension_profit_sharing":    "topmostSubform[0].Page1[0].f1_31[0]",
     "f1120s_employee_benefits":         "topmostSubform[0].Page1[0].f1_32[0]",
-    # Skip f1_33[0] — Line 19 Energy efficient commercial buildings (no compute key)
+    # Line 19 Energy efficient commercial buildings (Form 7205): f1_33[0] on the
+    # 2023 and 2024 forms; value always 0 (nonzero refused at compute).
+    "f1120s_energy_efficient_buildings_deduction":
+        "topmostSubform[0].Page1[0].f1_33[0]",
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_34[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_35[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_36[0]",
@@ -699,7 +703,9 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
 }
 _SUPPRESSED_2022: frozenset[str] = frozenset(
-    {"f1120s_refundable_credits"} | _SCH_B_Q16_KEYS)
+    {"f1120s_refundable_credits",
+     # No line 19 energy deduction on the 2021-2022 forms.
+     "f1120s_energy_efficient_buildings_deduction"} | _SCH_B_Q16_KEYS)
 
 
 # 2021 inherits every 2022 tax-and-payments registry verbatim: the 2021 and
