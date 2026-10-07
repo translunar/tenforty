@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 
 import re
@@ -199,6 +199,7 @@ class PdfFiller:
         derivations: Mapping[str, Callable[[Mapping[str, object]], object]] | None = None,
         checkbox_states: Mapping[str, str] | None = None,
         field_formats: Mapping[str, str | Callable[[float], str]] | None = None,
+        blank_when_zero: Collection[str] | None = None,
     ) -> Path:
         """Fill a PDF form template with values.
 
@@ -228,6 +229,12 @@ class PdfFiller:
                 whole-dollar default for that numeric field (see
                 ``resolve_fields``).
 
+            blank_when_zero: PDF field paths of DETAIL lines (input-driven
+                amounts) that print only when nonzero: a resolved value of
+                zero is dropped so the cell stays blank. Computed results and
+                totals are never listed here, so they print even when 0 (the
+                professional-software convention).
+
         Returns:
             Path to the filled PDF.
         """
@@ -241,6 +248,10 @@ class PdfFiller:
             checkbox_states=checkbox_states,
             field_formats=field_formats,
         )
+        if blank_when_zero:
+            for path in blank_when_zero:
+                if pdf_fields.get(path) in ("0", "-0"):
+                    del pdf_fields[path]
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)

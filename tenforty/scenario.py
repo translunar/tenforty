@@ -16,6 +16,7 @@ from tenforty.filing.statement_other_deductions import (
 from tenforty.models import (
     OtherDeductionComponent,
     validate_sche_1099_answers,
+    validate_unclaimed_property,
     AccountingMethod,
     Address,
     CA540Return,
@@ -282,7 +283,8 @@ _KNOWN_SCORP_CA_KEYS: frozenset[str] = frozenset({
     "corporation_number", "max_shareholders", "date_business_began_in_ca",
     "water_edge_basis", "includes_qsubs", "included_reportable_transaction",
     "filed_federal_schedule_m3", "ftb_3544_attached",
-    "inactive_business",
+    "inactive_business", "filed_unclaimed_property_report",
+    "unclaimed_property_report_date", "unclaimed_property_amount_remitted",
 })
 
 
@@ -369,11 +371,19 @@ def _load_scorp_ca(data: dict | None) -> SCorpCAInputs | None:
             data.get("ftb_3544_attached"), "ftb_3544_attached"),
         inactive_business=_load_optional_bool(
             data.get("inactive_business"), "inactive_business"),
+        filed_unclaimed_property_report=_load_optional_bool(
+            data.get("filed_unclaimed_property_report"),
+            "filed_unclaimed_property_report"),
+        unclaimed_property_report_date=data.get("unclaimed_property_report_date"),
+        unclaimed_property_amount_remitted=(
+            None if data.get("unclaimed_property_amount_remitted") is None
+            else data["unclaimed_property_amount_remitted"]),
         corporation_number=_load_corporation_number(
             data.get("corporation_number")),
         country_of_incorporation=_load_optional_text(
             data.get("country_of_incorporation"), "ca.country_of_incorporation"),
     )
+    validate_unclaimed_property(inputs)
     if not inputs.apportionment_ca_only:
         raise ValueError(
             "CA S-corp v1 supports only 100% California apportionment "
@@ -386,7 +396,7 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
     "total_shares_beginning", "total_shares_end",
-    "electing_s_this_year", "final_return", "name_change", "address_change",
+    "distributions_to_shareholders", "officer_title", "electing_s_this_year", "final_return", "name_change", "address_change",
     "s_election_terminated",
 })
 
@@ -427,6 +437,17 @@ def _load_stated_amount(sh: dict, key: str, *, non_negative: bool) -> float | No
         raise ValueError(
             f"s_corp_return.{key} (or shareholders[].{key}) must not be negative; "
             f"got {value!r}")
+    return float(value)
+
+
+def _load_distributions(value) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, bool) or not isinstance(value, (int, float)) \
+            or value < 0:
+        raise ValueError(
+            "s_corp_return.distributions_to_shareholders must be a "
+            f"non-negative number; got {value!r}")
     return float(value)
 
 
@@ -532,6 +553,10 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         ca=_load_scorp_ca(data.get("ca")),
         amended_return=bool(data.get("amended_return", False)),
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
+        officer_title=_load_optional_text(
+            data.get("officer_title"), "officer_title"),
+        distributions_to_shareholders=_load_distributions(
+            data.get("distributions_to_shareholders")),
         electing_s_this_year=_load_optional_bool(
             data.get("electing_s_this_year"), "electing_s_this_year"),
         final_return=_load_optional_bool(

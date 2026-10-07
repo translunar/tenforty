@@ -1,8 +1,9 @@
 """Form 1120-S page 1 line 19 "Energy efficient commercial buildings deduction"
 (Form 7205), present on the 2023-2025 forms only.
 
-Like its sibling deduction lines it must print (0) and foot into total
-deductions, but a NONZERO claim must refuse: a section 179D deduction cannot be
+Like its sibling deduction lines it is a detail line (blank when zero, per the
+professional-software convention) and foots into total deductions, but a
+NONZERO claim must refuse: a section 179D deduction cannot be
 printed without the attached Form 7205, which tenforty does not produce.
 
 Cells are certified per year by the printed "Energy efficient ..." caption row
@@ -64,16 +65,16 @@ class _EmitBase(unittest.TestCase):
         return _fields(out / f"f1120s_{year}.pdf")
 
 
-class ZeroPrintsAndFootsTests(_EmitBase):
-    def test_line_19_prints_zero_and_total_deductions_foot(self):
+class ZeroBlankAndFootsTests(_EmitBase):
+    def test_line_19_blank_when_zero_and_total_deductions_foot(self):
         for year, (first, energy, other, total) in _CELLS.items():
             with self.subTest(year=year):
                 v = self._emit(year)
                 # siblings print (control), then the energy line itself
                 self.assertEqual(v[f"{_P1}f1_{other}[0]"], "300")
-                self.assertEqual(v[f"{_P1}f1_{energy}[0]"], "0")
-                # lines 7..20 (first .. other), 13 cells incl. energy, sum to total
-                printed = [int(v[f"{_P1}f1_{n}[0]"])
+                self.assertIn(v[f"{_P1}f1_{energy}[0]"], (None, ""))
+                # lines 7..20 (first .. other), blanks counting as 0, sum to total
+                printed = [int(v[f"{_P1}f1_{n}[0]"] or 0)
                            for n in range(first, other + 1)]
                 self.assertEqual(len(printed), 14)
                 self.assertEqual(sum(printed), int(v[f"{_P1}f1_{total}[0]"]))

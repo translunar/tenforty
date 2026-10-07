@@ -13,7 +13,7 @@ So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED_2024` / `_MAPPING_PREFIXED
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
-The sixteen f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
+The nineteen f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
@@ -89,6 +89,10 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_product_or_service":      "3003",  # Question C Product or service
     "f100s_entity_max_shareholders":        "3009",  # Question G Maximum number of shareholders (stated)
     "f100s_entity_date_began_in_ca":        "3010",  # Question H Date business began in California (stated)
+    "f100s_entity_officer_title":           "3040",  # Side 3 Sign Here: Title of signing officer (stated; signature/date cells are never filled)
+    "f100s_entity_unclaimed_date":          "3028",  # Sch Q item U(2) date last report filed (stated; emit-injected, "Yes" only)
+    "f100s_entity_unclaimed_dollars":       "3029",  # item U(3) amount last remitted, dollars
+    "f100s_entity_unclaimed_cents":         "3030",  # item U(3) cents
     "f100s_entity_date_incorporated":       "3006",  # Side 3 Sch Q Question F Date incorporated (emit-injected; same number every year 2022-2025)
 }
 # Side 6 Schedule K line 19 (reconciliation) cells: 2021-2024 6100/6101/6102;
@@ -134,6 +138,9 @@ _Q_YESNO_FIELDS: dict[str, str] = {
     "included_reportable_transaction": "3022 rb",
     "filed_federal_schedule_m3": "3023 rb",
     "ftb_3544_attached": "3024 rb",
+    # Item U(1): radio 3027 rb, Yes /0 left, No /1 right, on every year 2021-2025
+    # (2021 never reaches the stated-answer path: it is refused at emit).
+    "filed_unclaimed_property_report": "3027 rb",
 }
 # Question P (apportioning with Schedule R): same /0 Yes /1 No tokens, but the
 # 2022 group is named plain "3021", and the 2021 template carries '/Yes' /
@@ -229,6 +236,25 @@ _SCHEDULE_Q_BY_YEAR[2021] = {
     "apportioning_with_schedule_r": _line_p_cells(2021)}
 
 
+# Detail (input-driven) keys: print only when nonzero. Arguable cells: Side 2
+# lines 31/32 (prior-year overpayment applied, estimated payments) are inputs
+# feeding the line 36 total, so they are detail; line 40 / 41 are computed (one
+# is always 0) and both print; Schedule F 1a is kept always-printing (it anchors
+# 1c), mirroring the federal 1120-S.
+_BLANK_WHEN_ZERO_KEYS: frozenset[str] = frozenset({
+    "f100s_state_tax_addback", "f100s_depreciation_adjustment",
+    "f100s_prior_year_overpayment_applied", "f100s_estimated_tax_payments",
+    "f100s_sch_f_returns_allowances", "f100s_sch_f_cogs",
+    "f100s_sch_f_net_gain_loss", "f100s_sch_f_other_income",
+    "f100s_sch_f_officer_comp", "f100s_sch_f_salaries_wages",
+    "f100s_sch_f_repairs", "f100s_sch_f_bad_debts", "f100s_sch_f_rents",
+    "f100s_sch_f_taxes", "f100s_sch_f_interest",
+    "f100s_sch_f_depreciation_balance", "f100s_sch_f_depletion",
+    "f100s_sch_f_advertising", "f100s_sch_f_pension",
+    "f100s_sch_f_employee_benefits", "f100s_sch_f_other_deductions",
+})
+
+
 class PdfF100S(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for California Form 100S. Flat 1:1. The line/number
     correspondence is identical across all CA_SCORP_YEARS (marker-probe
@@ -240,6 +266,17 @@ class PdfF100S(PdfFormMapping[dict[str, str]]):
         2021: _MAPPING_BARE, 2022: _MAPPING_BARE, 2023: _MAPPING_BARE,
         2024: _MAPPING_PREFIXED_2024, 2025: _MAPPING_PREFIXED_2025,
     }
+
+    @classmethod
+    def get_blank_when_zero(cls, year: int) -> frozenset[str]:
+        """PDF cell paths of DETAIL lines that print only when nonzero
+        (professional-software convention). Computed results and totals
+        (Side 1 lines 1 and 8, Side 2 lines 13-15, 20, 21, 26, 30, 36, 38,
+        40, 41, 45, Schedule F lines 1a/1c/3/6/21/22, Schedule K lines 1 and
+        19) always print, even when 0. See ``_BLANK_WHEN_ZERO_KEYS``."""
+        mapping = cls.get_mapping(year)
+        return frozenset(mapping[k] for k in _BLANK_WHEN_ZERO_KEYS
+                         if k in mapping)
 
     @classmethod
     def get_accounting_method_cells(cls, year: int) -> dict[str, _Cell]:
