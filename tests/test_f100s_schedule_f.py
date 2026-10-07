@@ -18,7 +18,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from tenforty import years
-from tenforty.models import SCorpCAInputs
+from tenforty.models import OtherDeductionComponent, SCorpCAInputs
 from tenforty.orchestrator import ReturnOrchestrator
 from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
 
@@ -67,6 +67,10 @@ class ScheduleFTests(unittest.TestCase):
         ded.depreciation, ded.depletion = 2500.0, 100.0
         ded.advertising, ded.pension_profit_sharing_plans = 900.0, 1500.0
         ded.employee_benefits, ded.other_deductions = 2100.0, 4000.0
+        # Emit requires the attached line 20 statement (foots to 4000).
+        ded.other_deductions_components = [
+            OtherDeductionComponent("Synthetic misc expense A", 2500.0),
+            OtherDeductionComponent("Synthetic misc expense B", 1500.0)]
         r.ca = SCorpCAInputs(
             first_year=False, estimated_tax_payments=0.0,
             prior_year_overpayment_applied=0.0,

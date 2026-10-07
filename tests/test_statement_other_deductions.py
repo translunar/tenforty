@@ -169,6 +169,59 @@ class RendererTests(unittest.TestCase):
                 self._render(d, comps=[])
 
 
+class CaEmitTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=Path("spreadsheets"),
+            work_dir=Path(self._tmp.name))
+
+    def _ca(self, s):
+        from tenforty.models import SCorpCAInputs
+        s.s_corp_return.ca = SCorpCAInputs(
+            first_year=False, estimated_tax_payments=0.0,
+            prior_year_overpayment_applied=0.0,
+            state_tax_deducted_federally=0.0, depreciation_adjustment=0.0,
+            apportionment_ca_only=True)
+        return s
+
+    def test_ca_emit_without_components_refused(self):
+        s = self._ca(_make_v1_scenario(other_deductions=1500.0))
+        with self.assertRaises(ValueError) as cm:
+            self.orch.run_full_california_scorp_return(
+                s, Path(self._tmp.name) / "o")
+        self.assertIn("other_deductions_components", str(cm.exception))
+
+    def test_ca_emit_with_components_emits_ca_titled_statement(self):
+        s = self._ca(_with_components(1500.0, _COMPS))
+        _r, emitted = self.orch.run_full_california_scorp_return(
+            s, Path(self._tmp.name) / "o")
+        key = "f100s_other_deductions_stmt"
+        self.assertIn(key, emitted)
+        text = pypdf.PdfReader(str(emitted[key])).pages[0].extract_text()
+        self.assertIn("Form 100S, Schedule F, Line 20", text)
+        self.assertIn("Software subscriptions", text)
+        self.assertIn("1,500", text)
+        self.assertNotIn("1120-S", text)
+
+    def test_ca_emit_zero_other_deductions_emits_none(self):
+        s = self._ca(_make_v1_scenario(other_deductions=0.0))
+        _r, emitted = self.orch.run_full_california_scorp_return(
+            s, Path(self._tmp.name) / "o")
+        self.assertNotIn("f100s_other_deductions_stmt", emitted)
+
+    def test_ca_packet_places_statement_after_k1(self):
+        from tenforty.pdf_packet import CALIFORNIA_CORPORATE
+        self.assertEqual(classify_key("f100s_other_deductions_stmt"),
+                         "california_corporate")
+        emitted = {k: Path(f"/x/{k}.pdf") for k in (
+            "f100s", "f100s_k1_1", "f100s_other_deductions_stmt")}
+        names = [p.stem for p in ordered_members(emitted, CALIFORNIA_CORPORATE)]
+        self.assertEqual(names, ["f100s", "f100s_k1_1",
+                                 "f100s_other_deductions_stmt"])
+
+
 class PacketTests(unittest.TestCase):
     def test_claimed_by_federal_corporate(self):
         self.assertEqual(classify_key("1120s_other_deductions_stmt"),

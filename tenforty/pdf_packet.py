@@ -124,6 +124,7 @@ CALIFORNIA_CORPORATE = Packet(
     members=(
         PacketMember("f100s"),
         PacketMember("f100s_k1", family=True),
+        PacketMember("f100s_other_deductions_stmt"),
     ),
 )
 

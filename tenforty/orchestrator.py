@@ -59,6 +59,7 @@ from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.filing.statement_199a import render_199a_statement_a
 from tenforty.filing.statement_other_deductions import (
+    render_ca_100s_other_deductions_statement,
     render_other_deductions_statement,
 )
 from tenforty.mappings.pdf_f100s import PdfF100S
@@ -1910,6 +1911,9 @@ class ReturnOrchestrator:
         r = scenario.s_corp_return
         if r is None or r.ca is None:
             return {}
+        # Sch F line 20 passes the federal line 19 figure through, so the same
+        # attached-statement requirement (and footing rule) applies here.
+        form_f1120s.check_other_deductions_statement_for_emit(scenario)
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         filler = PdfFiller()
@@ -2075,6 +2079,13 @@ class ReturnOrchestrator:
                         checkbox_states=this_checkbox or None,
                         field_formats=PdfF100SK1.get_field_formats(year))
             emitted[f"f100s_k1_{i}"] = k1_output
+
+        comps = r.deductions.other_deductions_components
+        if comps:
+            od_output = output_dir / f"f100s_other_deductions_stmt_{year}.pdf"
+            render_ca_100s_other_deductions_statement(
+                r.name, r.ein, year, comps, od_output)
+            emitted["f100s_other_deductions_stmt"] = od_output
         return emitted
 
     def _refuse_missing_source_documents(self, scenario: Scenario) -> None:

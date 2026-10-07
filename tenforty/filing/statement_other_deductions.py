@@ -48,6 +48,9 @@ def other_deductions_footing_problem(
 def render_other_deductions_statement(
     entity_name: str, ein: str, year: int,
     components: Sequence[OtherDeductionComponent], output_path: Path,
+    *, title: str = "Form 1120-S, Line 19 — Other Deductions Statement",
+    subtitle: str | None = None,
+    total_label: str = "Total other deductions (Form 1120-S, line 19)",
 ) -> Path:
     """Render the statement to ``output_path``. Deterministic (invariant=1,
     fixed creator/producer), like ``render_199a_statement_a``."""
@@ -58,17 +61,17 @@ def render_other_deductions_statement(
             f"other-deductions statement supports at most "
             f"{_ROWS_PER_PAGE_LIMIT} rows on one page; got {len(components)}")
     c = canvas.Canvas(str(output_path), pagesize=letter, invariant=1)
-    c.setTitle(f"Form 1120-S Line 19 Other Deductions Statement {year}")
+    c.setTitle(f"{title} {year}")
     c.setCreator("tenforty")
     c.setProducer("tenforty")
 
     left, right = 1 * inch, 7.5 * inch
     y = 10.2 * inch
     c.setFont("Helvetica-Bold", 13)
-    c.drawString(left, y, "Form 1120-S, Line 19 — Other Deductions Statement")
+    c.drawString(left, y, title)
     y -= 0.26 * inch
     c.setFont("Helvetica", 10)
-    c.drawString(left, y, f"(Other deductions — Tax Year {year})")
+    c.drawString(left, y, subtitle or f"(Other deductions — Tax Year {year})")
     y -= 0.45 * inch
 
     for label, value in [("Corporation's name", entity_name),
@@ -96,8 +99,21 @@ def render_other_deductions_statement(
     c.line(left, y, right, y)
     y -= 0.26 * inch
     c.setFont("Helvetica-Bold", 10)
-    c.drawString(left + 0.15 * inch, y, "Total other deductions (Form 1120-S, line 19)")
+    c.drawString(left + 0.15 * inch, y, total_label)
     c.drawRightString(right, y, f"{components_total(components):,}")
     c.showPage()
     c.save()
     return output_path
+
+
+def render_ca_100s_other_deductions_statement(
+    entity_name: str, ein: str, year: int,
+    components: Sequence[OtherDeductionComponent], output_path: Path,
+) -> Path:
+    """The same itemization titled for California Form 100S Schedule F line 20
+    (a pass-through of the federal line 19 figure)."""
+    return render_other_deductions_statement(
+        entity_name, ein, year, components, output_path,
+        title="Form 100S, Schedule F, Line 20 — Other Deductions Statement",
+        subtitle=f"(Other deductions — California — Tax Year {year})",
+        total_label="Total other deductions (Form 100S, Schedule F, line 20)")
