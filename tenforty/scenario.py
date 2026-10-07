@@ -16,6 +16,7 @@ from tenforty.filing.statement_other_deductions import (
 from tenforty.models import (
     OtherDeductionComponent,
     validate_sche_1099_answers,
+    validate_tax_year_dates,
     validate_unclaimed_property,
     AccountingMethod,
     Address,
@@ -396,7 +397,8 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
     "total_shares_beginning", "total_shares_end",
-    "distributions_to_shareholders", "officer_title", "electing_s_this_year", "final_return", "name_change", "address_change",
+    "distributions_to_shareholders", "officer_title",
+    "tax_year_beginning", "tax_year_ending", "electing_s_this_year", "final_return", "name_change", "address_change",
     "s_election_terminated",
 })
 
@@ -438,6 +440,25 @@ def _load_stated_amount(sh: dict, key: str, *, non_negative: bool) -> float | No
             f"s_corp_return.{key} (or shareholders[].{key}) must not be negative; "
             f"got {value!r}")
     return float(value)
+
+
+def _load_tax_year_date(value, name: str):
+    """A short-year header date: a YAML date or an ISO ``YYYY-MM-DD`` string.
+    (mm/dd/yyyy strings are refused to keep one unambiguous input format.)"""
+    if value is None:
+        return None
+    if isinstance(value, datetime.datetime):
+        raise ValueError(f"s_corp_return.{name} must be a date, not a datetime")
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            pass
+    raise ValueError(
+        f"s_corp_return.{name} must be an ISO date (YYYY-MM-DD) or null; "
+        f"got {value!r}")
 
 
 def _load_distributions(value) -> float:
@@ -555,6 +576,10 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
         officer_title=_load_optional_text(
             data.get("officer_title"), "officer_title"),
+        tax_year_beginning=_load_tax_year_date(
+            data.get("tax_year_beginning"), "tax_year_beginning"),
+        tax_year_ending=_load_tax_year_date(
+            data.get("tax_year_ending"), "tax_year_ending"),
         distributions_to_shareholders=_load_distributions(
             data.get("distributions_to_shareholders")),
         electing_s_this_year=_load_optional_bool(
@@ -916,6 +941,8 @@ def load_scenario(path: Path) -> Scenario:
         form_data[field_name] = [model_cls(**item) for item in items]
 
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
+    if s_corp_return is not None:
+        validate_tax_year_dates(s_corp_return, config.year)
     ca540 = _load_ca540(data.get("ca540"), config.year)
     itemized_raw = data.get("itemized_deductions")
     itemized_deductions = (

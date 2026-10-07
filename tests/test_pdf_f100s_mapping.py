@@ -34,6 +34,7 @@ _EXPECTED_MAPPED_KEYS = frozenset({
     "f100s_entity_date_began_in_ca",
     "f100s_entity_unclaimed_date", "f100s_entity_unclaimed_dollars",
     "f100s_entity_unclaimed_cents", "f100s_entity_officer_title",
+    "f100s_entity_tax_year_begin", "f100s_entity_tax_year_end",
     "f100s_total_additions", "f100s_total_state_deductions",
     "f100s_net_income_after_adjustments",
     "f100s_net_income_for_state_purposes", "f100s_total_amount_due",
