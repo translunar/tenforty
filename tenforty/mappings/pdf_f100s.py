@@ -13,7 +13,7 @@ So `_MAPPING_BARE` (2021-2023) and `_MAPPING_PREFIXED_2024` / `_MAPPING_PREFIXED
 from one shared `_SUFFIX` dict; only the namespace differs. Each year's paths
 are verified present on that year's own template.
 
-The sixteen f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
+The nineteen f100s_entity_* keys carry the corporation's identity (and, on Side 3, Schedule Q Questions F and K) onto the form; their
 VALUES are injected at emit time from the scenario (see the CA S-corp emit
 wiring), not produced by f100s.compute. The diagnostic compute outputs
 f100s_measured_tax and f100s_minimum_tax_applies have no Form 100S line and are
@@ -89,6 +89,9 @@ _SUFFIX: dict[str, str] = {
     "f100s_entity_product_or_service":      "3003",  # Question C Product or service
     "f100s_entity_max_shareholders":        "3009",  # Question G Maximum number of shareholders (stated)
     "f100s_entity_date_began_in_ca":        "3010",  # Question H Date business began in California (stated)
+    "f100s_entity_unclaimed_date":          "3028",  # Sch Q item U(2) date last report filed (stated; emit-injected, "Yes" only)
+    "f100s_entity_unclaimed_dollars":       "3029",  # item U(3) amount last remitted, dollars
+    "f100s_entity_unclaimed_cents":         "3030",  # item U(3) cents
     "f100s_entity_date_incorporated":       "3006",  # Side 3 Sch Q Question F Date incorporated (emit-injected; same number every year 2022-2025)
 }
 # Side 6 Schedule K line 19 (reconciliation) cells: 2021-2024 6100/6101/6102;
@@ -134,6 +137,9 @@ _Q_YESNO_FIELDS: dict[str, str] = {
     "included_reportable_transaction": "3022 rb",
     "filed_federal_schedule_m3": "3023 rb",
     "ftb_3544_attached": "3024 rb",
+    # Item U(1): radio 3027 rb, Yes /0 left, No /1 right, on every year 2021-2025
+    # (2021 never reaches the stated-answer path: it is refused at emit).
+    "filed_unclaimed_property_report": "3027 rb",
 }
 # Question P (apportioning with Schedule R): same /0 Yes /1 No tokens, but the
 # 2022 group is named plain "3021", and the 2021 template carries '/Yes' /
