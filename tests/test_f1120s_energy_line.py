@@ -19,6 +19,7 @@ from pathlib import Path
 import yaml
 from pypdf import PdfReader
 
+from tenforty.models import OtherDeductionComponent
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 from tests._scorp_fixtures import _make_v1_scenario, set_tax_year
@@ -49,6 +50,9 @@ class _EmitBase(unittest.TestCase):
         set_tax_year(s, year)
         s.s_corp_return.deductions.rents = 1200.0
         s.s_corp_return.deductions.other_deductions = 300.0
+        # PDF emit requires the line 19 statement rows (they foot to 300).
+        s.s_corp_return.deductions.other_deductions_components = [
+            OtherDeductionComponent("Synthetic misc expense", 300.0)]
         return s
 
     def _emit(self, year, energy=None):

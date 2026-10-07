@@ -25,6 +25,9 @@ from tenforty.models import (
     AccountingMethod, K1Allocation, K1AllocationEntity,
     K1AllocationShareholder, Scenario, SCorpReturn,
 )
+from tenforty.filing.statement_other_deductions import (
+    other_deductions_footing_problem,
+)
 from tenforty.rounding import irs_round
 
 
@@ -282,6 +285,32 @@ def _compute_schedule_b(r: SCorpReturn) -> dict:
         out["f1120s_sch_b_net_unrealized_built_in_gain"] = irs_round(
             sb.net_unrealized_built_in_gain)
     return out
+
+
+def check_other_deductions_statement_for_emit(scenario: Scenario) -> None:
+    """Refuse to print line 19 with a nonzero amount and no attached statement.
+
+    IRS Form 1120-S line 19 says "Other deductions (attach statement)", so a
+    PDF emit needs the itemization; components that do not foot to the line
+    are refused too. Compute-only paths never call this."""
+    r = scenario.s_corp_return
+    if r is None:
+        return
+    d = r.deductions
+    if not d.other_deductions_components:
+        if irs_round(d.other_deductions) != 0:
+            raise ValueError(
+                "Form 1120-S line 19 'Other deductions' is "
+                f"{irs_round(d.other_deductions):,} but the IRS requires an "
+                "attached statement itemizing it: add "
+                "s_corp_return.deductions.other_deductions_components "
+                "(a list of {description, amount} rows that sum to "
+                "other_deductions).")
+        return
+    problem = other_deductions_footing_problem(
+        d.other_deductions_components, d.other_deductions)
+    if problem:
+        raise ValueError(problem)
 
 
 def check_schedule_b_for_emit(scenario: Scenario) -> None:
