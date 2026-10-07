@@ -828,6 +828,13 @@ class SCorpIncome:
     other_income: float
 
 
+@dataclass(frozen=True)
+class OtherDeductionComponent:
+    """One row of the Form 1120-S line 19 'Other deductions' attached statement."""
+    description: str
+    amount: float
+
+
 @dataclass
 class SCorpDeductions:
     """Caller-supplied aggregates for Form 1120-S Deductions lines 7–19.
@@ -855,6 +862,12 @@ class SCorpDeductions:
     # (section 179D, Form 7205), 2023+ forms. Must be 0: a nonzero claim cannot
     # be printed without the attached Form 7205, so compute refuses it.
     energy_efficient_buildings_deduction: float = 0.0
+    # Itemization of ``other_deductions`` for the attached line 19 statement.
+    # Empty = no statement can be generated (PDF emit refuses a nonzero
+    # other_deductions without it). When present, the per-item-rounded sum
+    # must equal the rounded ``other_deductions``.
+    other_deductions_components: list[OtherDeductionComponent] = field(
+        default_factory=list)
 
 
 @dataclass

@@ -10,7 +10,11 @@ from tenforty.ca_divergences import (
     resolve_divergence_id,
 )
 from tenforty.params.federal import load as load_federal_params
+from tenforty.filing.statement_other_deductions import (
+    other_deductions_footing_problem,
+)
 from tenforty.models import (
+    OtherDeductionComponent,
     validate_sche_1099_answers,
     AccountingMethod,
     Address,
@@ -185,7 +189,48 @@ def _load_income(data: dict) -> SCorpIncome:
     )
 
 
+_KNOWN_OTHER_DEDUCTION_COMPONENT_KEYS: frozenset[str] = frozenset(
+    {"description", "amount"})
+
+
+def _load_other_deductions_components(
+        data, other_deductions: float) -> list[OtherDeductionComponent]:
+    """Parse ``s_corp_return.deductions.other_deductions_components``
+    fail-closed, and enforce the footing rule against ``other_deductions``."""
+    where = "s_corp_return.deductions.other_deductions_components"
+    if data is None:
+        return []
+    if not isinstance(data, list):
+        raise ValueError(f"{where} must be a list of "
+                         f"{{description, amount}} rows; got {data!r}")
+    comps: list[OtherDeductionComponent] = []
+    for i, row in enumerate(data):
+        if not isinstance(row, dict):
+            raise ValueError(f"{where}[{i}] must be a mapping; got {row!r}")
+        unknown = set(row) - _KNOWN_OTHER_DEDUCTION_COMPONENT_KEYS
+        if unknown:
+            raise ValueError(
+                f"Unknown key(s) in {where}[{i}]: {sorted(unknown)}. "
+                f"Known keys: {sorted(_KNOWN_OTHER_DEDUCTION_COMPONENT_KEYS)}")
+        missing = _KNOWN_OTHER_DEDUCTION_COMPONENT_KEYS - set(row)
+        if missing:
+            raise ValueError(f"{where}[{i}] is missing {sorted(missing)}")
+        desc, amount = row["description"], row["amount"]
+        if not isinstance(desc, str) or not desc.strip():
+            raise ValueError(
+                f"{where}[{i}].description must be a non-blank string")
+        if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+            raise ValueError(
+                f"{where}[{i}].amount must be a number; got {amount!r}")
+        comps.append(OtherDeductionComponent(desc.strip(), float(amount)))
+    problem = other_deductions_footing_problem(comps, other_deductions)
+    if problem:
+        raise ValueError(problem)
+    return comps
+
+
 def _load_deductions(data: dict) -> SCorpDeductions:
+    other = float(data["other_deductions"])
     return SCorpDeductions(
         compensation_of_officers=float(data["compensation_of_officers"]),
         salaries_wages=float(data["salaries_wages"]),
@@ -199,9 +244,11 @@ def _load_deductions(data: dict) -> SCorpDeductions:
         advertising=float(data["advertising"]),
         pension_profit_sharing_plans=float(data["pension_profit_sharing_plans"]),
         employee_benefits=float(data["employee_benefits"]),
-        other_deductions=float(data["other_deductions"]),
+        other_deductions=other,
         energy_efficient_buildings_deduction=float(
             data.get("energy_efficient_buildings_deduction", 0.0)),
+        other_deductions_components=_load_other_deductions_components(
+            data.get("other_deductions_components"), other),
     )
 
 

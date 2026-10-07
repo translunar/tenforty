@@ -58,6 +58,9 @@ from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.filing.statement_199a import render_199a_statement_a
+from tenforty.filing.statement_other_deductions import (
+    render_other_deductions_statement,
+)
 from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
@@ -1678,6 +1681,7 @@ class ReturnOrchestrator:
         # unstated question would leave its boxes blank on a return that gets
         # signed. Compute never asks; emit refuses (all gaps listed at once).
         form_f1120s.check_schedule_b_for_emit(scenario)
+        form_f1120s.check_other_deductions_statement_for_emit(scenario)
 
         # Main 1120-S + Sch B + Sch K.
         main_template = _PDFS_ROOT / "federal" / str(year) / "f1120s.pdf"
@@ -1797,6 +1801,16 @@ class ReturnOrchestrator:
             stmt_output = output_dir / f"f1120s_k1_qbi_stmt_{i}_{year}.pdf"
             render_199a_statement_a(alloc, year, stmt_output)
             emitted[f"1120s_k1_qbi_stmt_{i}"] = stmt_output
+
+        # Line 19 "Other deductions (attach statement)": generated only when
+        # itemized (the emit gate above refuses a nonzero line without it).
+        comps = scenario.s_corp_return.deductions.other_deductions_components
+        if comps:
+            od_output = output_dir / f"f1120s_other_deductions_stmt_{year}.pdf"
+            render_other_deductions_statement(
+                scenario.s_corp_return.name, scenario.s_corp_return.ein,
+                year, comps, od_output)
+            emitted["1120s_other_deductions_stmt"] = od_output
 
         return emitted
 
