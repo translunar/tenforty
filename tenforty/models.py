@@ -996,6 +996,11 @@ class SCorpReturn:
     # Schedule K-1 (1120-S) Part I item C: the IRS Center where the corporation
     # filed its return (free text, e.g. "Ogden, UT"). None leaves it blank.
     irs_center: str | None = None
+    # Cash distributions to shareholders for the year (Schedule K line 16d;
+    # K-1 box 16 code D, allocated by ownership). Printed only: shareholder
+    # basis is tracked externally (standing attestation), so no basis or
+    # excess-distribution computation. Must be >= 0.
+    distributions_to_shareholders: float = 0.0
     # Form 1120-S page 1 item G: "Is the corporation electing to be an S
     # corporation beginning with this tax year?" (stated; None leaves both boxes
     # blank, True / False marks the chosen box).
@@ -1161,6 +1166,9 @@ class K1Allocation:
     box_17v_qbi: float = 0.0
     box_17v_w2_wages: float = 0.0
     box_17v_ubia: float = 0.0
+    # Box 16 code D (distributions), the shareholder's pro-rata share of Sch K
+    # line 16d. Printed only; basis is tracked externally.
+    box_16d_distributions: int = 0
 
 
 @dataclass(frozen=True)

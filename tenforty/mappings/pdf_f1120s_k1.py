@@ -51,6 +51,16 @@ _FIELDS: dict[str, str] = {
     "box_17_code_v_amount": (
         "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_91[0]"
     ),
+    # Part III box 16 "Items affecting shareholder basis", first row: code cell
+    # (the letter D = distributions) and its amount. Certified by the printed
+    # "16 Items affecting shareholder basis" header (y 446) with the first row
+    # directly below it; the row above the header belongs to box 15 (AMT).
+    "box_16_code_d": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_80[0]"
+    ),
+    "box_16_code_d_amount": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_81[0]"
+    ),
 }
 
 
@@ -105,6 +115,14 @@ _FIELDS_2023: dict[str, str] = {
     ),
     "box_17_code_v_amount": (
         "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_88[0]"
+    ),
+    # Box 16 first row (2021-2023 vintage: f1_77 code / f1_78 amount); same
+    # caption-row certification as the 2024-2025 payload above.
+    "box_16_code_d": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_77[0]"
+    ),
+    "box_16_code_d_amount": (
+        "topmostSubform[0].Page1[0].RightCol[0].Lines13-17[0].f1_78[0]"
     ),
 }
 
