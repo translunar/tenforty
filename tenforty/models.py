@@ -851,6 +851,10 @@ class SCorpDeductions:
     pension_profit_sharing_plans: float
     employee_benefits: float
     other_deductions: float
+    # Form 1120-S line 19 "Energy efficient commercial buildings deduction"
+    # (section 179D, Form 7205), 2023+ forms. Must be 0: a nonzero claim cannot
+    # be printed without the attached Form 7205, so compute refuses it.
+    energy_efficient_buildings_deduction: float = 0.0
 
 
 @dataclass
@@ -992,6 +996,18 @@ class SCorpReturn:
     # Schedule K-1 (1120-S) Part I item C: the IRS Center where the corporation
     # filed its return (free text, e.g. "Ogden, UT"). None leaves it blank.
     irs_center: str | None = None
+    # Form 1120-S page 1 item G: "Is the corporation electing to be an S
+    # corporation beginning with this tax year?" (stated; None leaves both boxes
+    # blank, True / False marks the chosen box).
+    electing_s_this_year: bool | None = None
+    # Item H "Check if:" boxes (1) Final return, (2) Name change, (3) Address
+    # change, (5) S election termination or revocation. Check-if-applicable:
+    # only True marks a box; False and None both leave it blank. (H(4) Amended
+    # is ``amended_return``.)
+    final_return: bool | None = None
+    name_change: bool | None = None
+    address_change: bool | None = None
+    s_election_terminated: bool | None = None
     # Schedule K-1 (1120-S) Part I item D: the corporation's total number of
     # shares at the beginning / end of the tax year. Stated, never summed from
     # the shareholders' figures. None leaves the cell blank.

@@ -200,6 +200,8 @@ def _load_deductions(data: dict) -> SCorpDeductions:
         pension_profit_sharing_plans=float(data["pension_profit_sharing_plans"]),
         employee_benefits=float(data["employee_benefits"]),
         other_deductions=float(data["other_deductions"]),
+        energy_efficient_buildings_deduction=float(
+            data.get("energy_efficient_buildings_deduction", 0.0)),
     )
 
 
@@ -337,6 +339,8 @@ _KNOWN_SCORP_KEYS: frozenset[str] = frozenset({
     "total_assets", "income", "deductions", "schedule_b_answers", "shareholders",
     "scope_outs", "payments", "ca", "amended_return", "irs_center",
     "total_shares_beginning", "total_shares_end",
+    "electing_s_this_year", "final_return", "name_change", "address_change",
+    "s_election_terminated",
 })
 
 
@@ -481,6 +485,16 @@ def _load_s_corp_return(data: dict | None) -> SCorpReturn | None:
         ca=_load_scorp_ca(data.get("ca")),
         amended_return=bool(data.get("amended_return", False)),
         irs_center=_load_optional_text(data.get("irs_center"), "irs_center"),
+        electing_s_this_year=_load_optional_bool(
+            data.get("electing_s_this_year"), "electing_s_this_year"),
+        final_return=_load_optional_bool(
+            data.get("final_return"), "final_return"),
+        name_change=_load_optional_bool(
+            data.get("name_change"), "name_change"),
+        address_change=_load_optional_bool(
+            data.get("address_change"), "address_change"),
+        s_election_terminated=_load_optional_bool(
+            data.get("s_election_terminated"), "s_election_terminated"),
         total_shares_beginning=_load_stated_amount(
             data, "total_shares_beginning", non_negative=True),
         total_shares_end=_load_stated_amount(

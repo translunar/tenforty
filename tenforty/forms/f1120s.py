@@ -88,6 +88,14 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
     outer re-round. Same convention as the Schedule SE R10 ruling.
     """
     d = r.deductions
+    if d.energy_efficient_buildings_deduction != 0:
+        raise NotImplementedError(
+            "deductions.energy_efficient_buildings_deduction is nonzero, but "
+            "the section 179D deduction (Form 1120-S line 19, Form 7205) is "
+            "not supported: tenforty does not produce Form 7205, and a "
+            "nonzero claim must not print without it. Set it to 0 or "
+            "prepare this return outside tenforty."
+        )
     lines = (
         ("f1120s_compensation_of_officers", d.compensation_of_officers),
         ("f1120s_salaries_wages", d.salaries_wages),
@@ -101,6 +109,10 @@ def _compute_deductions(r: SCorpReturn, income: dict) -> dict:
         ("f1120s_advertising", d.advertising),
         ("f1120s_pension_profit_sharing", d.pension_profit_sharing_plans),
         ("f1120s_employee_benefits", d.employee_benefits),
+        # Line 19 on the 2023+ forms (always 0; nonzero refused above). The
+        # 2021-2022 forms have no such line, so the key is suppressed there.
+        ("f1120s_energy_efficient_buildings_deduction",
+         d.energy_efficient_buildings_deduction),
         ("f1120s_other_deductions", d.other_deductions),
     )
     printed = {key: irs_round(amount) for key, amount in lines}

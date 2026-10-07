@@ -118,10 +118,11 @@ _MAPPING_2025: dict[str, str] = {
     "f1120s_advertising":               "topmostSubform[0].Page1[0].f1_34[0]",
     "f1120s_pension_profit_sharing":    "topmostSubform[0].Page1[0].f1_35[0]",
     "f1120s_employee_benefits":         "topmostSubform[0].Page1[0].f1_36[0]",
-    # Why skip `f1_37`: the 2025 form added a new Line 19 ("Energy
-    # efficient commercial buildings deduction", Form 7205) with no
-    # corresponding compute key in the v1 1120-S model. The next compute
-    # key (`f1120s_other_deductions`) maps to Line 20 (`f1_38`).
+    # Line 19 "Energy efficient commercial buildings deduction" (Form 7205) is
+    # f1_37 on the 2025 form; the compute value is always 0 (nonzero refused).
+    # Other deductions follows at Line 20 (`f1_38`).
+    "f1120s_energy_efficient_buildings_deduction":
+        "topmostSubform[0].Page1[0].f1_37[0]",
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_38[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_39[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_40[0]",
@@ -225,7 +226,10 @@ _MAPPING_2024: dict[str, str] = {
     "f1120s_advertising":               "topmostSubform[0].Page1[0].f1_30[0]",
     "f1120s_pension_profit_sharing":    "topmostSubform[0].Page1[0].f1_31[0]",
     "f1120s_employee_benefits":         "topmostSubform[0].Page1[0].f1_32[0]",
-    # Skip f1_33[0] — Line 19 Energy efficient commercial buildings (no compute key)
+    # Line 19 Energy efficient commercial buildings (Form 7205): f1_33[0] on the
+    # 2023 and 2024 forms; value always 0 (nonzero refused at compute).
+    "f1120s_energy_efficient_buildings_deduction":
+        "topmostSubform[0].Page1[0].f1_33[0]",
     "f1120s_other_deductions":          "topmostSubform[0].Page1[0].f1_34[0]",
     "f1120s_total_deductions":          "topmostSubform[0].Page1[0].f1_35[0]",
     "f1120s_ordinary_business_income":  "topmostSubform[0].Page1[0].f1_36[0]",
@@ -484,6 +488,23 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
         return _ENTITY_HEADER_BY_YEAR[year]
 
     @classmethod
+    def get_item_g_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
+        """{answer: (field_path, ON-state)} for page 1 item G (Yes / No).
+        Additive: the orchestrator writes only the chosen answer's box."""
+        if year not in _ITEM_G_BY_YEAR:
+            raise ValueError(f"No Form 1120-S item G cells for year {year}")
+        return _ITEM_G_BY_YEAR[year]
+
+    @classmethod
+    def get_item_h_cells(cls, year: int) -> dict[str, tuple[str, str]]:
+        """{item: (field_path, ON-state)} for the item H check-if boxes other
+        than H(4) Amended (see ``get_amended_mark``). Additive: only a True
+        item is written."""
+        if year not in _ITEM_H_BY_YEAR:
+            raise ValueError(f"No Form 1120-S item H cells for year {year}")
+        return _ITEM_H_BY_YEAR[year]
+
+    @classmethod
     def get_amended_mark(cls, year: int) -> tuple[str, str]:
         """(field_path, ON-state) for box H(4) "Amended return" (§4a).
 
@@ -499,6 +520,25 @@ class PdfF1120S(PdfFormMapping[dict[str, str]]):
             raise ValueError(f"No Form 1120-S amended mark for year {year}")
         return _AMENDED_MARK_BY_YEAR[year]
 
+
+# Page 1 item G (electing S this year, Yes / No) and item H "Check if:" boxes
+# (1) Final return, (2) Name change, (3) Address change, (5) S election
+# termination. Identical on every template 2021-2025 (each verified separately,
+# the 2021 template included): widget Rects against the printed captions. Item G
+# is one two-widget group c1_2 (Yes [0] export /1 left, No [1] export /2 right);
+# each H box is its own checkbox c1_3 / c1_4 / c1_5 / (c1_6 = H(4) Amended,
+# wired via get_amended_mark) / c1_7, export /1.
+_P1_ = "topmostSubform[0].Page1[0]."
+_ITEM_G: dict[bool, tuple[str, str]] = {
+    True: (_P1_ + "c1_2[0]", "/1"), False: (_P1_ + "c1_2[1]", "/2")}
+_ITEM_H: dict[str, tuple[str, str]] = {
+    "final_return": (_P1_ + "c1_3[0]", "/1"),
+    "name_change": (_P1_ + "c1_4[0]", "/1"),
+    "address_change": (_P1_ + "c1_5[0]", "/1"),
+    "s_election_terminated": (_P1_ + "c1_7[0]", "/1"),
+}
+_ITEM_G_BY_YEAR = {y: _ITEM_G for y in (2021, 2022, 2023, 2024, 2025)}
+_ITEM_H_BY_YEAR = {y: _ITEM_H for y in (2021, 2022, 2023, 2024, 2025)}
 
 # §4a amended-return mark — box H(4) "Amended return".
 # Field PATH + ON-state read off each template's own get_fields()/_States_:
@@ -663,7 +703,9 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     ),
 }
 _SUPPRESSED_2022: frozenset[str] = frozenset(
-    {"f1120s_refundable_credits"} | _SCH_B_Q16_KEYS)
+    {"f1120s_refundable_credits",
+     # No line 19 energy deduction on the 2021-2022 forms.
+     "f1120s_energy_efficient_buildings_deduction"} | _SCH_B_Q16_KEYS)
 
 
 # 2021 inherits every 2022 tax-and-payments registry verbatim: the 2021 and
