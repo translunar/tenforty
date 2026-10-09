@@ -23,3 +23,6 @@ scripts/personal_data_config.yaml
 
 # Local implementation plan drafts (iterated with team-lead before becoming GH issues)
 docs/plans/
+
+# Local agent config/skills — may reference personal context
+.claude/

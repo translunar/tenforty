@@ -488,10 +488,7 @@ if __name__ == "__main__":
 # Real-world identifiers to reject in tracked files.
 # This file is gitignored — it contains personal information.
 denylist_patterns:
-  - "pattern-redacted-a"
-  - "pattern-redacted-b"
-  - "pattern-redacted-c"
-  - "pattern-redacted-d"
+  - "<real patterns live only in the gitignored file — never reproduce them in tracked docs>"
 ```
 
 - [ ] **Step 5: Run test to confirm it passes**
