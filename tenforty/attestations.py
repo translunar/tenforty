@@ -1555,11 +1555,10 @@ _DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
             "service (Instructions for Form 4562, \"Who Must File\"). "
             "tenforty emits Form 4562 only in a year property is placed in "
             "service, does not model listed property (Part V), and cannot "
-            "tell a listed asset from any other. If NONE of these assets is "
-            "listed property -- no passenger automobile or other vehicle, "
-            "and no property generally used for entertainment, recreation "
-            "or amusement -- set the top-level scenario key "
-            "`acknowledges_no_listed_property: true`. If any of them is "
+            "tell a listed asset from any other. See the Form 4562 "
+            "instructions for what counts as listed property. If NONE of "
+            "these assets is listed property, set the top-level scenario "
+            "key `acknowledges_no_listed_property: true`. If any of them is "
             "listed property, this return cannot be produced with that "
             "asset in the list."),
         exception=NotImplementedError,
