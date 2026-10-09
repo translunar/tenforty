@@ -226,6 +226,80 @@ class PriorDepreciationReconciliationTests(unittest.TestCase):
         enforce_scoped_refusals(s, "load")
 
 
+class BasisCeilingTests(unittest.TestCase):
+    """Ruled 2026-10-09: on the acknowledged-mismatch path the forward-year
+    deduction is min(table amount, basis - stated prior), so an asset whose
+    stated history runs AHEAD of the tables cannot be depreciated past its
+    basis. (Within one return year no forward amount has yet been taken, so
+    the remaining basis is basis less the stated prior.)"""
+
+    def _messy(self, prior: float) -> DepreciableAsset:
+        return _old_equipment(
+            prior_depreciation=prior,
+            acknowledges_prior_depreciation_as_stated=True)
+
+    def test_ceiling_binds_when_the_stated_prior_leaves_less_than_the_table(self):
+        table = macrs_deduction(_old_equipment(), YEAR)
+        self.assertGreater(table, 1_000)
+        r = resolve(_rental(depreciable_assets=[self._messy(9_000.0)]), YEAR)
+        (row,) = r.per_asset
+        self.assertEqual(row.amount, 1_000)          # 10,000 - 9,000
+        self.assertEqual(row.table_amount, table)
+        self.assertIs(row.basis_ceiling_bound, True)
+        self.assertEqual(r.amount, 1_000)
+        self.assertEqual(r.engine_amount, 1_000)
+
+    def test_stated_prior_at_or_over_basis_leaves_nothing(self):
+        for prior in (10_000.0, 10_500.0):
+            with self.subTest(prior=prior):
+                r = resolve(
+                    _rental(depreciable_assets=[self._messy(prior)]), YEAR)
+                self.assertEqual(r.amount, 0)
+                self.assertIs(r.per_asset[0].basis_ceiling_bound, True)
+
+    def test_ceiling_does_not_bind_when_basis_remains(self):
+        table = macrs_deduction(_old_equipment(), YEAR)
+        r = resolve(_rental(depreciable_assets=[self._messy(1_234.0)]), YEAR)
+        (row,) = r.per_asset
+        self.assertEqual(row.amount, table)
+        self.assertEqual(row.table_amount, table)
+        self.assertIs(row.basis_ceiling_bound, False)
+
+    def test_exactly_the_table_amount_remaining_is_not_binding(self):
+        table = macrs_deduction(_old_equipment(), YEAR)
+        r = resolve(_rental(depreciable_assets=[
+            self._messy(10_000.0 - table)]), YEAR)
+        self.assertEqual(r.per_asset[0].amount, table)
+        self.assertIs(r.per_asset[0].basis_ceiling_bound, False)
+
+    def test_no_ceiling_off_the_acknowledged_mismatch_path(self):
+        """A history that matches the tables is never capped: any small
+        residual between lifetime depreciation and basis from per-year
+        rounding is documented behaviour, not something this ceiling fixes."""
+        final_year = DepreciableAsset(
+            description="Equipment", date_placed_in_service=date(2020, 3, 15),
+            basis=10_000.0, recovery_class="5-year",
+            no_bonus_or_section_179_history=True)
+        final_year.prior_depreciation = float(
+            reconstruct_prior_depreciation(final_year, YEAR))
+        for acknowledged in (False, True):
+            with self.subTest(acknowledged=acknowledged):
+                final_year.acknowledges_prior_depreciation_as_stated = (
+                    acknowledged)
+                r = resolve(_rental(depreciable_assets=[final_year]), YEAR)
+                self.assertEqual(
+                    r.per_asset[0].amount, macrs_deduction(final_year, YEAR))
+                self.assertGreater(r.per_asset[0].amount, 0)
+                self.assertIs(r.per_asset[0].basis_ceiling_bound, False)
+
+    def test_override_restates_the_capped_engine_figure(self):
+        """The engine figure an override pins is the figure the engine
+        would use -- ceiling applied."""
+        from tenforty.forms.depreciation.resolver import engine_amount
+        rental = _rental(depreciable_assets=[self._messy(9_000.0)])
+        self.assertEqual(engine_amount(rental, YEAR), 1_000)
+
+
 class AssetPlacedAfterReturnYearTests(unittest.TestCase):
     def _future(self) -> DepreciableAsset:
         return DepreciableAsset(

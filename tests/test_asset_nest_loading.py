@@ -397,8 +397,9 @@ class BonusHistoryRefusalTests(unittest.TestCase):
             "date_placed_in_service": datetime.date(2023, 3, 15),
             "basis": 10_000.0, "recovery_class": "5-year",
             "no_bonus_or_section_179_history": False,
-            "prior_depreciation": 9_000.0,
-            "acknowledges_prior_depreciation_as_stated": True, **extra}
+            # Reconciles with the tables (legacy pin), so only the history
+            # field is at issue.
+            "prior_depreciation": 5_200.0, **extra}
 
     def _engine_figure(self) -> float:
         from tenforty.forms.depreciation.macrs import macrs_deduction

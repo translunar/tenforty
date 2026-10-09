@@ -191,6 +191,53 @@ class LiftedBonusHistoryNoteTests(_Case):
         self.assertNotIn("staleness pin", self._printed(results))
 
 
+class BasisCeilingReconTests(_Case):
+    KEY = "depreciation_recon_rental_0_basis_ceiling_bound"
+    NOTE = "depreciation_recon_rental_0_note"
+
+    def _messy(self, prior: float):
+        asset = DepreciableAsset(
+            description="Refrigerator",
+            date_placed_in_service=date(2023, 3, 15), basis=10_000.0,
+            recovery_class="5-year", no_bonus_or_section_179_history=True,
+            prior_depreciation=prior,
+            acknowledges_prior_depreciation_as_stated=True)
+        return _scenario(_rental(depreciable_assets=[asset]))
+
+    def test_binding_ceiling_sets_the_key_and_the_note(self):
+        results = self._results(self._messy(9_000.0))
+        self.assertIs(results[self.KEY], True)
+        self.assertEqual(
+            results["depreciation_recon_rental_0_used_amount"], 1_000)
+        self.assertRegex(
+            results[self.NOTE],
+            r"'Refrigerator' limited to its remaining basis of 1,000 "
+            r"\(table amount [\d,]+\).*Form 3115")
+        on_disk = self._snapshot_results(results)
+        self.assertIs(on_disk[self.KEY], True)
+        self.assertIn("limited to its remaining basis", self._printed(results))
+        self.assertEqual(results["sche_line26"], 24_000 - 1_000)
+
+    def test_form_4562_total_agrees_with_schedule_e_when_capped(self):
+        """The legacy one-form 4562 lists every asset; it must carry the
+        same capped figure Schedule E line 18 prints, not the raw table."""
+        from tenforty.forms import f4562, sch_e
+        scenario = self._messy(9_000.0)
+        line_18 = sch_e.compute(scenario, upstream={})[
+            "sch_e_property_a_depreciation"]
+        self.assertEqual(line_18, 1_000)
+        self.assertEqual(
+            f4562.compute(scenario, upstream={})[
+                "f4562_line_22_total_depreciation"], line_18)
+
+    def test_non_binding_case_carries_neither(self):
+        results = self._results(self._messy(1_234.0))
+        self.assertNotIn(self.KEY, results)
+        self.assertNotIn(self.NOTE, results)
+        self.assertNotIn(
+            "limited to its remaining basis", self._printed(results))
+
+
 class NoAssetModeTwinTests(_Case):
     def test_stated_mode_only_carries_no_keys_and_prints_no_section(self):
         results = self._results(_scenario(_rental(
