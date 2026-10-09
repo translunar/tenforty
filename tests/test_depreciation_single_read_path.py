@@ -34,8 +34,6 @@ ALLOWED_STRING_CONSTANTS: dict[tuple[str, str], str] = {
         "negative-amount refusal at load: a sign check, not an amount read",
     ("scenario.py", "_load_deductions"):
         "s_corp_return.deductions YAML key (Form 1120-S line 14)",
-    ("forms/sch_c.py", "_REFUSED_AMOUNT_FIELDS"):
-        "Schedule C line 13 still refuses any nonzero stated amount",
 }
 
 
