@@ -48,7 +48,7 @@ class _FixtureCase(unittest.TestCase):
 class WrongPriorHistoryTests(_FixtureCase):
     """An appliance-class asset whose prior years ran a wrong class/method."""
 
-    NAME = "macrs_prior_history_mismatch.yaml"
+    NAME = "refusals/macrs_prior_history_mismatch.yaml"
 
     def test_fixture_refuses_naming_form_3115(self):
         with self.assertRaisesRegex(
@@ -80,7 +80,7 @@ class SupersededComponentTests(_FixtureCase):
     """A component superseded by a later whole-structure replacement is a
     partial disposition: the disposed refusal fires from a full load."""
 
-    NAME = "macrs_superseded_component_disposed.yaml"
+    NAME = "refusals/macrs_superseded_component_disposed.yaml"
 
     def test_fixture_refuses_from_a_full_scenario_load(self):
         with self.assertRaisesRegex(
@@ -190,7 +190,7 @@ class MixedActivityTests(_FixtureCase):
 
 
 class DualSourceTests(_FixtureCase):
-    NAME = "macrs_dual_source.yaml"
+    NAME = "refusals/macrs_dual_source.yaml"
 
     def test_fixture_refuses(self):
         with self.assertRaisesRegex(

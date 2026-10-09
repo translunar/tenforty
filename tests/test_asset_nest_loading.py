@@ -239,7 +239,7 @@ class TopLevelAssetListRefusalTests(unittest.TestCase):
         from tests.helpers import FIXTURES_DIR
         with self.assertRaisesRegex(
                 ValueError, r"top-level `depreciable_assets:`"):
-            load_scenario(FIXTURES_DIR / "rental_with_depreciation.yaml")
+            load_scenario(FIXTURES_DIR / "refusals" / "rental_with_depreciation.yaml")
 
     def test_same_assets_nested_under_a_rental_load(self):
         s = _load(_doc(rental_properties=[
