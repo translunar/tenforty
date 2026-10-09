@@ -3078,7 +3078,7 @@ class ReturnOrchestrator:
 
     def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
         """Emit Form 4562 whenever the scenario has any depreciable asset."""
-        return bool(scenario.depreciable_assets)
+        return bool(form_4562.scenario_assets(scenario))
 
     def _should_emit_8995(self, f8995_values: dict) -> bool:
         """Emit Form 8995 when the computed form claims a QBI deduction
