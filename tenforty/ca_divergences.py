@@ -22,6 +22,9 @@ from typing import TYPE_CHECKING, Callable
 
 import yaml
 
+from tenforty.forms.depreciation.resolver import (
+    resolve as resolve_depreciation,
+)
 from tenforty.models import (
     CASchCAAdjustment,
     DivergenceDirection,
@@ -446,8 +449,12 @@ def has_k1(scenario: "Scenario") -> bool:
 
 
 def has_rental_depreciation(scenario: "Scenario") -> bool:
-    """True iff any rental property carries positive depreciation."""
-    return any(p.depreciation > 0 for p in scenario.rental_properties)
+    """True iff any rental property carries positive depreciation, from
+    either source (stated scalar or assets) -- read through the resolver."""
+    year = scenario.config.year
+    return any(
+        resolve_depreciation(p, year).amount > 0
+        for p in scenario.rental_properties)
 
 
 def has_capital_gain_distributions(scenario: "Scenario") -> bool:
