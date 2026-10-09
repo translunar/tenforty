@@ -105,10 +105,19 @@ F540_BLANK_BY_DESIGN = [
 
 # ── Schedule CA (540) ───────────────────────────────────────────────────────
 SCH_CA_BLANK_BY_DESIGN = [
-    (r"^\[Part II\]",
-     "KNOWN GAP (reported): Part Two (itemized-deduction adjustments) is not placed on the page. "
-     "The compute emits only CA-adjusted line totals (compute_part_ii_itemized), not the "
-     "Col A / B / C splits the form prints, and Part II catalog rows have no placed cells"),
+    # Part Two prints on an itemizing return (see tests/test_ca_sch_ca_part_ii_print.py,
+    # which asserts every placed cell by value). What stays blank even then:
+    (r"^\[Part II\] (?:[^.]*\. )?Line\s+(?:19|20|21|22|23|24|25|27)\s*\.",
+     "Part Two lines 19-25 (job expenses / 2% miscellaneous deductions) and 27 (other "
+     "adjustments): no scenario input; lines 26 and 28 carry line 18 down unchanged"),
+    (r"^\[Part II\] (?:[^.]*\. )?Line\s+(?:5 ?c|6|8 ?[bcd]|9|12|13|15|16)\s*\.",
+     "Part Two lines whose federal Schedule A line is zero on every return forms.sch_a.compute "
+     "produces (5c, 6, 8b-8d, 9, 12, 13, 15, 16): blank, as on the federal Schedule A; a "
+     "nonzero line 6 / 15 / 16 refuses in compute_part_ii_itemized instead of printing unadjusted"),
+    (r"^\[Part II\] (?:[^.]*\. )?Line\s+(?:4|8 ?a|8 ?e|10|11|14)\s*\.\s*Column [BC]\.",
+     "Part Two Col B / Col C on the medical, interest and charity lines: those sections "
+     "conform in v1 (Col A passes through), so there is no adjustment to print; the only "
+     "modeled adjustment is state income tax on lines 5a / 5e, carried to 7 and 17"),
     (r"Column A\. Federal Amounts|Column A\.? *$|Federal Amounts\.",
      "Col A for a line with no federal source in the compute (federal 1b-1i, 2a alimony, 8a-8v, "
      "12/14/16/18/19a/23/24x, 25): blank, as the federal 1040 is blank there"),
@@ -135,9 +144,13 @@ SCH_D_540_BLANK_BY_DESIGN = [
 class CAFormCompletenessTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        from tests.test_ca_sch_ca_part_ii_print import itemizing_scenario
         cls.emits = {}
         for year in CA_YEARS:
             cls.emits[year] = [emit_ca(make_ca_scenario(year, **kw))[1] for kw in SCENARIOS]
+            # An itemizing return, so a Part Two cell counts as blank only if
+            # it is blank even when California itemized deductions are taken.
+            cls.emits[year].append(emit_ca(itemizing_scenario(year))[1])
         # Schedule D (540) is omitted from the scenarios above (no CA capital-
         # gain adjustment), so its cells are inspected on emits that carry one.
         cls.sch_d_emits = {
