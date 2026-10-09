@@ -19,6 +19,9 @@ PACKAGE = Path(__file__).parent.parent / "tenforty"
 ALLOWED_ATTRIBUTE_READS: dict[tuple[str, str], str] = {
     ("forms/depreciation/resolver.py", "resolve"):
         "the one door: stated mode returns the activity's scalar",
+    ("forms/depreciation/resolver.py", "stated_mode_activity_labels"):
+        "inside the door, truthiness only: which activities are in stated "
+        "mode, for the mid-quarter test's unverifiable-totals refusal",
     ("attestations.py", "_dual_source_activities"):
         "shape rule, truthiness only: assets AND a stated scalar refuse",
     ("attestations.py", "_unacknowledged_stated_figures"):
