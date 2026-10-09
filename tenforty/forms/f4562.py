@@ -68,6 +68,23 @@ def scenario_assets(scenario: Scenario) -> list:
         for asset in activity.depreciable_assets]
 
 
+def is_required(scenario: Scenario) -> bool:
+    """True when the return must carry Form 4562: some property was placed
+    in service during the return year, on any activity.
+
+    Instructions for Form 4562 (2025), "Who Must File" (page 2): file the
+    form if claiming "Depreciation for property placed in service during the
+    2025 tax year." The other listed triggers -- a section 179 deduction,
+    listed property, amortization beginning this year, a corporate return --
+    are out of scope and refuse or have no input. An ongoing year, with only
+    property placed in earlier years, files no Form 4562; the depreciation
+    still prints on Schedule E line 18 / Schedule C line 13."""
+    year = scenario.config.year
+    return any(
+        asset.date_placed_in_service.year == year
+        for asset in scenario_assets(scenario))
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
     result: dict = {**scenario.config.pdf_header()}
