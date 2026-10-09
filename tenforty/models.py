@@ -514,7 +514,7 @@ class TaxReturnConfig:
     # Schedule E line 28 column (e): an S corporation loss requires the
     # shareholder's basis computation (Form 7203) to be attached. tenforty
     # does not produce Form 7203. True affirms it is prepared by hand and
-    # attached; False + an S-corp K-1 box 1 loss refuses. Distinct from
+    # attached; False + an S-corp K-1 net-loss row refuses. Distinct from
     # `basis_tracked_externally`, which attests the tracking, not the
     # attachment.
     acknowledges_form_7203_attached_separately: bool | None = None

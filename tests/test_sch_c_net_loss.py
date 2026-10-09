@@ -228,8 +228,10 @@ class SchCNetLossReturnTests(unittest.TestCase):
                     PdfF8995.get_mapping(year)["scalars"][
                         "f8995_line_16_qbi_loss_carryforward"],
                     _F8995_LINE_16)
+                # The compute key is signed; the line 16 cell has
+                # PREPRINTED parentheses, so the magnitude prints in it.
                 self.assertEqual(
-                    _field(emitted["f8995"], _F8995_LINE_16), str(_LOSS))
+                    _field(emitted["f8995"], _F8995_LINE_16), str(-_LOSS))
                 self.assertEqual(_field(emitted["f8995"], _F8995_LINE_15), "0")
 
     def test_a_profit_business_leaves_both_line_32_boxes_blank(self):
