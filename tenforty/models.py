@@ -239,7 +239,7 @@ class ScheduleCBusiness:
     """Sole-proprietor Schedule C businesses; each is one Schedule C.
 
     Expense fields are Part II categories a P&L export covers. COGS/inventory,
-    depreciation, home office, vehicle, depletion, returns & allowances, and
+    home office, vehicle, depletion, returns & allowances, and
     statutory-employee are UNMODELED -- nonzero refuses at compute (see
     forms/sch_c.py).
 
@@ -276,6 +276,8 @@ class ScheduleCBusiness:
     # carries them so the refusal has something to see; it does not enforce here.
     cost_of_goods_sold: float = 0.0
     inventory: float = 0.0
+    # NOT unmodeled: the stated-mode depreciation scalar (Schedule C line 13).
+    # It sits here to keep the field order stable for positional callers.
     depreciation: float = 0.0
     home_office: float = 0.0
     vehicle_expenses: float = 0.0

@@ -426,8 +426,9 @@ def aggregate_business_losses(scenario: Scenario) -> int:
     and each K-1 loss box is rounded UP (the K-1 row prints its boxes netted
     and its two rental boxes combined, so no per-box rounding matches the
     page; the ceiling is never less than what any of those prints)."""
-    sch_c = sum(max(0, -form_sch_c.printed_net_profit(biz))
-                for biz in scenario.schedule_c_businesses)
+    sch_c = sum(
+        max(0, -form_sch_c.printed_net_profit(biz, scenario.config.year))
+        for biz in scenario.schedule_c_businesses)
     k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
     rental = sum(
@@ -814,7 +815,7 @@ class ReturnOrchestrator:
             # the workbook path refuses Schedule C outright (fail-closed).
             # This estimate runs BEFORE sch_c.compute's refusals, so it uses
             # the non-raising estimate.
-            + sum(form_sch_c.net_profit_estimate(biz)
+            + sum(form_sch_c.net_profit_estimate(biz, cfg.year)
                   for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))
