@@ -7,6 +7,14 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Results snapshots and columnar cover sheets** (`tenforty.summary`).
+  `write_results_snapshot` persists a return run's full results dict with
+  metadata (year, label, scenario hash, emitted forms); `compose_cover`
+  renders a one-page summary table from any set of snapshots — one column
+  per return (a year, or side-by-side variants of the same year), a fixed
+  general row vocabulary mirroring the 1040 (income by schedule family,
+  computation, tax, state, amendment bottom lines), rows collapsing when
+  empty everywhere except bottom lines, which always print.
 - **Schedule C, Schedule SE and Schedule 2 PDF emission (tax years 2022–2025).**
   A return with `schedule_c_businesses` now emits a complete paper packet: one
   Schedule C per business (`f1040sc_<n>_<year>.pdf`, always numbered), one
