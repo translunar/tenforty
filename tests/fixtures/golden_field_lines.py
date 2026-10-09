@@ -260,6 +260,7 @@ GOLDEN_FIELD_LINES: dict = {
             "sch_c_line_5_gross_profit": ("f1_14", "5"),
             "sch_c_line_7_gross_income": ("f1_16", "7"),
             "sch_c_expense_advertising": ("f1_17", "8"),
+            "sch_c_line_13_depreciation": ("f1_22", "13"),
             "sch_c_expense_insurance": ("f1_24", "15"),
             "sch_c_expense_legal_professional": ("f1_27", "17"),
             "sch_c_expense_office_expense": ("f1_28", "18"),

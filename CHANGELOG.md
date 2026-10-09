@@ -7,6 +7,77 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Depreciable assets are the depreciation source of truth, per activity.**
+  Assets now nest under the activity that uses them
+  (`rental_properties[n].depreciable_assets`,
+  `schedule_c_businesses[n].depreciable_assets`) and one resolver supplies
+  each activity's depreciation to every consumer: Schedule E line 18,
+  Schedule C line 13, the excess-business-loss guard, the routing
+  estimates, the workbook inputs and the CA divergence trigger. An activity
+  has exactly one source — its asset list, or its stated `depreciation`
+  amount. Each asset-mode activity's engine-computed and used figures are
+  written to the results (`depreciation_recon_*` keys) and printed in a
+  "Depreciation Reconciliation" section. Supported: 27.5-year and 39-year
+  real property, and 3/5/7/10/15/20-year personal property with no bonus or
+  section 179 history. Everything else refuses by name.
+- **Schedule C line 13 (depreciation) prints and counts.** It previously
+  refused any nonzero amount. Section 179 remains unmodeled.
+- **Value-pinned depreciation override.** An asset-mode activity may carry
+  `depreciation_override: {amount, restates_engine_amount, acknowledgment}`.
+  The return uses `amount`; the override refuses if `restates_engine_amount`
+  no longer equals what the engine computes, and in any year the activity
+  places property in service.
+- **Breaking: a stated `depreciation` amount needs an acknowledgment.** A
+  rental property or Schedule C business that states `depreciation` without
+  an asset list must set
+  `acknowledges_depreciation_stated_outside_macrs: true` on that activity.
+  Activities with no depreciation need nothing.
+- **Breaking: top-level `depreciable_assets:` refuses at load**, with a
+  pointer to the nested location. Nothing computed from it before (no form
+  line read it), but a scenario that carried one — and emitted a Form 4562
+  from it — now stops at load.
+- **Breaking: `convention:` on an asset refuses at load.** The convention is
+  computed from the recovery class.
+- **Breaking: asset fields.** An asset placed in service before the return
+  year must state `prior_depreciation`, which must equal the MACRS-table
+  reconstruction unless `acknowledges_prior_depreciation_as_stated: true`.
+  Personal property must state `no_bonus_or_section_179_history: true`
+  unless the activity carries an acknowledged `depreciation_override` (the
+  reconciliation then notes that the engine figure is not a claim of
+  correctness); real property must not carry the field. A `disposed` asset,
+  an unsupported recovery class, and asset mode on any rental other than the
+  first all refuse.
+- **Basis ceiling on an acknowledged mismatched history.** When
+  `acknowledges_prior_depreciation_as_stated` accepts a prior figure that
+  differs from the tables, this year's deduction is the lesser of the table
+  amount and the basis left after the stated prior. When the ceiling binds,
+  the reconciliation says so (`depreciation_recon_*_basis_ceiling_bound`).
+  A stated prior below the tables is not topped up.
+- **Mid-quarter convention refuses.** When personal property placed in
+  service in the last three months of the year exceeds 40% of all personal
+  property placed in service that year — across every activity on the
+  return, real property excluded from both totals (26 U.S.C. §168(d)(3)) —
+  the return refuses: there are no mid-quarter tables. If an asset list
+  places personal property this year while another activity states its
+  depreciation as a single figure, the test cannot be verified and the
+  return refuses unless the top-level scenario key
+  `acknowledges_no_personal_property_behind_stated_depreciation: true` is
+  set.
+- **Breaking: Form 4562 is emitted only in a year property is placed in
+  service** (Instructions for Form 4562, "Who Must File"). A return whose
+  assets were all placed in earlier years no longer emits the form; its
+  depreciation still prints on Schedule E line 18 / Schedule C line 13. The
+  form remains one merged form per return, reading the nested assets;
+  per-activity forms are not in this change. Because the merged form lists
+  the engine's figures, a placement year on a return where any activity
+  carries a `depreciation_override` refuses.
+- **Listed property must be ruled out.** Form 4562 is required every year
+  for a vehicle or other listed property, which tenforty does not model and
+  cannot detect. A return listing any personal-property asset must set the
+  top-level scenario key `acknowledges_no_listed_property: true`; without it
+  the return refuses. Real-property-only returns are not asked.
+- **Breaking: a negative stated rental `depreciation` refuses at load**, as
+  negative Schedule C amounts already did.
 - **Schedule C net losses.** A Schedule C business whose line 31 is a loss
   now computes and emits instead of refusing, when the new config
   attestation `acknowledges_sch_c_all_investment_at_risk` is true: box 32a is

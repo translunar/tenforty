@@ -37,7 +37,16 @@ class SchCRefusalTests(unittest.TestCase):
 
     def test_cogs_refused(self):            self._assert_refused(cost_of_goods_sold=100.0)
     def test_inventory_refused(self):       self._assert_refused(inventory=100.0)
-    def test_depreciation_refused(self):    self._assert_refused(depreciation=100.0)
+    def test_stated_depreciation_refused_without_its_acknowledgment(self):
+        # Line 13 is modeled; what refuses now is a stated figure that is not
+        # acknowledged as coming from outside the MACRS model. (The computing
+        # twin is in tests/test_sch_c_line_13.py.)
+        biz = ScheduleCBusiness(
+            description="x", gross_receipts=10_000.0, depreciation=100.0)
+        with self.assertRaisesRegex(
+                ValueError, "states `depreciation` without an asset list"):
+            sch_c.compute(_scn(biz), upstream={})
+
     def test_home_office_refused(self):     self._assert_refused(home_office=100.0)
     def test_vehicle_refused(self):         self._assert_refused(vehicle_expenses=100.0)
     def test_depletion_refused(self):       self._assert_refused(depletion=100.0)

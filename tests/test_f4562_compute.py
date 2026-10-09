@@ -7,6 +7,14 @@ from tenforty.forms import f4562 as form_f4562
 from tenforty.models import DepreciableAsset
 from tests.helpers import make_simple_scenario
 
+def _nest_assets(scenario, assets):
+    """Assets nest under an activity; hang them on one rental property."""
+    from tenforty.models import RentalProperty
+    scenario.rental_properties = [RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0,
+        depreciable_assets=list(assets))]
+
 
 def _scenario_with_assets(*assets):
     s = make_simple_scenario()
@@ -14,7 +22,7 @@ def _scenario_with_assets(*assets):
     s.config.last_name = "Filer"
     s.config.ssn = "000-00-0000"
     s.config.year = 2025
-    s.depreciable_assets = list(assets)
+    _nest_assets(s, assets)
     return s
 
 
@@ -30,7 +38,6 @@ class F4562ComputeTests(unittest.TestCase):
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",
-            convention="mid-month",
         )
         r = form_f4562.compute(_scenario_with_assets(asset), upstream={})
         self.assertEqual(len(r["f4562_part_iii_section_b_rows"]), 1)
@@ -54,14 +61,12 @@ class F4562ComputeTests(unittest.TestCase):
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",
-            convention="mid-month",
         )
         laptop = DepreciableAsset(
             description="Laptop",
             date_placed_in_service=date(2025, 3, 1),
             basis=2_500.0,
             recovery_class="5-year",
-            convention="half-year",
         )
         r = form_f4562.compute(
             _scenario_with_assets(building, laptop), upstream={},
@@ -78,11 +83,11 @@ class F4562ComputeTests(unittest.TestCase):
     def test_multiple_5_year_assets_aggregate_into_one_19b_row(self):
         a = DepreciableAsset(
             description="Laptop A", date_placed_in_service=date(2025, 3, 1),
-            basis=2_500.0, recovery_class="5-year", convention="half-year",
+            basis=2_500.0, recovery_class="5-year",
         )
         b = DepreciableAsset(
             description="Laptop B", date_placed_in_service=date(2025, 7, 1),
-            basis=1_500.0, recovery_class="5-year", convention="half-year",
+            basis=1_500.0, recovery_class="5-year",
         )
         r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
         self.assertEqual(len(r["f4562_part_iii_section_b_rows"]), 1)
@@ -103,23 +108,10 @@ class F4562ComputeTests(unittest.TestCase):
             date_placed_in_service=date(2022, 1, 1),
             basis=10_000.0,
             recovery_class="5-year",
-            convention="half-year",
             disposed=date(2025, 6, 1),
         )
         with self.assertRaisesRegex(NotImplementedError, "disposition"):
             form_f4562.compute(_scenario_with_assets(a), upstream={})
-
-    def test_mixed_conventions_in_one_class_raise(self):
-        a = DepreciableAsset(
-            description="Q1 laptop", date_placed_in_service=date(2025, 2, 1),
-            basis=1_000.0, recovery_class="5-year", convention="half-year",
-        )
-        b = DepreciableAsset(
-            description="Q4 laptop", date_placed_in_service=date(2025, 11, 1),
-            basis=1_000.0, recovery_class="5-year", convention="mid-quarter",
-        )
-        with self.assertRaisesRegex(NotImplementedError, "Mixed conventions"):
-            form_f4562.compute(_scenario_with_assets(a, b), upstream={})
 
     def test_basis_rounding_at_half_boundary_follows_irs_half_up(self):
         # Python's built-in round() uses banker's rounding: round(200_000.5) == 200_000
@@ -128,11 +120,11 @@ class F4562ComputeTests(unittest.TestCase):
         # boundary and expose any banker's-rounding bug.
         a = DepreciableAsset(
             description="Main equipment", date_placed_in_service=date(2025, 3, 1),
-            basis=200_000.0, recovery_class="5-year", convention="half-year",
+            basis=200_000.0, recovery_class="5-year",
         )
         b = DepreciableAsset(
             description="Accessory", date_placed_in_service=date(2025, 4, 1),
-            basis=0.5, recovery_class="5-year", convention="half-year",
+            basis=0.5, recovery_class="5-year",
         )
         r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
         # IRS half-up: 200_000.5 → 200_001. Banker's rounding would yield 200_000.

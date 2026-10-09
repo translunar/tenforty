@@ -5,7 +5,13 @@ from pathlib import Path
 
 import yaml
 
-from tenforty.attestations import enforce_compute_time
+from tenforty.attestations import (
+    enforce_compute_time, enforce_scoped_refusals,
+)
+from tenforty.forms.depreciation.resolver import (
+    recon_keys as depreciation_recon_keys,
+    resolve as resolve_depreciation,
+)
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
@@ -380,14 +386,15 @@ def _k1_positive_income(k1: ScheduleK1) -> float:
     ))
 
 
-def _rental_net_income(r: RentalProperty) -> float:
-    """Net rental income (rents received − all deductible Schedule E expenses)."""
+def _rental_net_income(r: RentalProperty, tax_year: int) -> float:
+    """Net rental income (rents received − all deductible Schedule E expenses).
+    Depreciation is the resolved figure for ``tax_year``, never a raw field."""
     return r.rents_received - (
         r.advertising + r.auto_and_travel + r.cleaning_and_maintenance
         + r.commissions + r.insurance + r.legal_and_professional_fees
         + r.management_fees + r.mortgage_interest + r.other_interest
         + r.repairs + r.supplies + r.taxes + r.utilities
-        + r.depreciation + r.other_expenses
+        + resolve_depreciation(r, tax_year).amount + r.other_expenses
     )
 
 
@@ -419,13 +426,23 @@ def aggregate_business_losses(scenario: Scenario) -> int:
     and each K-1 loss box is rounded UP (the K-1 row prints its boxes netted
     and its two rental boxes combined, so no per-box rounding matches the
     page; the ceiling is never less than what any of those prints)."""
-    sch_c = sum(max(0, -form_sch_c.printed_net_profit(biz))
-                for biz in scenario.schedule_c_businesses)
+    sch_c = sum(
+        max(0, -form_sch_c.printed_net_profit(biz, scenario.config.year))
+        for biz in scenario.schedule_c_businesses)
     k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
-    rental = sum(max(0, -form_sch_e.printed_rental_net(r))
-                 for r in scenario.rental_properties)
+    rental = sum(
+        max(0, -form_sch_e.printed_rental_net(r, scenario.config.year))
+        for r in scenario.rental_properties)
     return sch_c + k1 + rental
+
+
+def _enforce_refusal_ledger(scenario: Scenario) -> None:
+    """Run the scoped-refusal ledger at compute entry: the load-stage entries
+    again (a Scenario built in code never passed `load_scenario`, so compute
+    does not trust that the loader ran), then the compute-stage entries."""
+    enforce_scoped_refusals(scenario, "load")
+    enforce_scoped_refusals(scenario, "compute")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -702,6 +719,7 @@ class ReturnOrchestrator:
         (scenario, {}) unchanged.
         """
         if scenario.s_corp_return is None:
+            _enforce_refusal_ledger(scenario)
             return scenario, {}
 
         corp_results = self.compute_corporate(scenario)
@@ -718,6 +736,7 @@ class ReturnOrchestrator:
         # Plan D's Sch E Part II) must see the FULL list including
         # the just-appended computed K-1s, not just the original.
         enforce_compute_time(effective_scenario)
+        _enforce_refusal_ledger(effective_scenario)
         return effective_scenario, corp_results
 
     def _scenario_in_spine_scope(self, effective_scenario: Scenario) -> bool:
@@ -782,7 +801,7 @@ class ReturnOrchestrator:
                   for g in effective_scenario.form1099_g)
             + sum(_k1_positive_income(k)
                   for k in effective_scenario.schedule_k1s)
-            + sum(max(0.0, _rental_net_income(r))
+            + sum(max(0.0, _rental_net_income(r, cfg.year))
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
@@ -796,7 +815,7 @@ class ReturnOrchestrator:
             # the workbook path refuses Schedule C outright (fail-closed).
             # This estimate runs BEFORE sch_c.compute's refusals, so it uses
             # the non-raising estimate.
-            + sum(form_sch_c.net_profit_estimate(biz)
+            + sum(form_sch_c.net_profit_estimate(biz, cfg.year)
                   for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))
@@ -838,6 +857,17 @@ class ReturnOrchestrator:
             )
 
     def _compute_1040_pipeline(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, object]:
+        """The 1040 pipeline plus the depreciation recon keys.
+
+        The recon keys (engine-computed vs used depreciation, one group per
+        asset-mode activity) ride in the results dict on BOTH compute paths,
+        so they reach the results snapshot and the CLI on every run."""
+        results = self._compute_1040_pipeline_core(effective_scenario)
+        return {**results, **depreciation_recon_keys(effective_scenario)}
+
+    def _compute_1040_pipeline_core(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
         """Native 1040 spine for in-scope scenarios; XLSX oracle otherwise.
@@ -3047,8 +3077,9 @@ class ReturnOrchestrator:
         return bool(scenario.schedule_k1s)
 
     def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
-        """Emit Form 4562 whenever the scenario has any depreciable asset."""
-        return bool(scenario.depreciable_assets)
+        """Emit Form 4562 only in a year the return places property in
+        service (see `forms.f4562.is_required` for the instruction cite)."""
+        return form_4562.is_required(scenario)
 
     def _should_emit_8995(self, f8995_values: dict) -> bool:
         """Emit Form 8995 when the computed form claims a QBI deduction

@@ -17,6 +17,14 @@ from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.models import DepreciableAsset
 from tests.helpers import make_simple_scenario
 
+def _nest_assets(scenario, assets):
+    """Assets nest under an activity; hang them on one rental property."""
+    from tenforty.models import RentalProperty
+    scenario.rental_properties = [RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0,
+        depreciable_assets=list(assets))]
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PDF_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4562.pdf"
@@ -28,15 +36,14 @@ def _one_rental_scenario():
     s.config.last_name = "Trip"
     s.config.ssn = "000-00-0000"
     s.config.year = 2025
-    s.depreciable_assets = [
+    _nest_assets(s, [
         DepreciableAsset(
             description="Cedar Court",
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",
-            convention="mid-month",
         ),
-    ]
+    ])
     return s
 
 
@@ -85,13 +92,12 @@ class F4562RoundTripTests(unittest.TestCase):
     def test_rental_plus_laptop_fills_19b_and_19i(self):
         import tempfile
         scenario = _one_rental_scenario()
-        scenario.depreciable_assets.append(
+        scenario.rental_properties[0].depreciable_assets.append(
             DepreciableAsset(
                 description="Laptop",
                 date_placed_in_service=date(2025, 3, 1),
                 basis=2_500.0,
                 recovery_class="5-year",
-                convention="half-year",
             ),
         )
         values = form_f4562.compute(scenario, upstream={})

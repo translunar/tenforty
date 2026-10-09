@@ -12,6 +12,7 @@ from typing import TextIO
 import pypdf
 
 from tenforty import pdf_packet
+from tenforty.forms.depreciation.resolver import recon_groups
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.rounding import irs_round
 from tenforty.scenario import load_scenario
@@ -49,6 +50,28 @@ def print_results(results: dict, stream: TextIO = sys.stdout) -> None:
     print(f"  {'schedule_a_total':25s} ${sch_a:>12,}", file=stream)
     label = _which_applied(std, sch_a, applied)
     print(f"  {'total_deductions':25s} ${applied:>12,}   ({label})", file=stream)
+
+    _print_depreciation_recon(results, stream)
+
+
+def _print_depreciation_recon(results: dict, stream: TextIO) -> None:
+    """Printed whenever any activity is in asset mode: the engine's computed
+    depreciation beside the figure the return uses. They differ only under a
+    value-pinned override, which is flagged -- loud, never a silent mode."""
+    groups = recon_groups(results)
+    if not groups:
+        return
+    print("", file=stream)
+    print("=== Depreciation Reconciliation ===", file=stream)
+    for group in groups:
+        engine = irs_round(float(group["engine_amount"]))
+        used = irs_round(float(group["used_amount"]))
+        flag = "   OVERRIDE" if group["mode"] == "assets-overridden" else ""
+        print(f"  {group['activity']}", file=stream)
+        print(f"    {'engine computed':23s} ${engine:>12,}", file=stream)
+        print(f"    {'used on return':23s} ${used:>12,}{flag}", file=stream)
+        if group.get("note"):
+            print(f"    NOTE: {group['note']}", file=stream)
 
 
 def _which_applied(standard: float, schedule_a: float, applied: float) -> str:

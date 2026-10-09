@@ -1,0 +1,72 @@
+config:
+  year: 2025
+  filing_status: single
+  birthdate: 1980-01-01
+  state: CA
+  first_name: Test
+  last_name: Filer
+  ssn: "000-00-0000"
+  has_foreign_accounts: false
+  acknowledges_no_wash_sale_adjustments: false
+  acknowledges_no_other_basis_adjustments: false
+  acknowledges_no_28_rate_gain: false
+  acknowledges_no_unrecaptured_section_1250: false
+  acknowledges_no_1120s_schedule_l_needed: false
+  acknowledges_no_1120s_schedule_m_needed: false
+  acknowledges_constant_shareholder_ownership: false
+  acknowledges_no_section_1375_tax: false
+  acknowledges_no_section_1374_tax: false
+  acknowledges_cogs_aggregate_only: false
+  acknowledges_officer_comp_aggregate_only: false
+  acknowledges_no_elective_payment_election: false
+  acknowledges_no_540nr_filing: false
+  acknowledges_no_ca_amt_preferences: false
+  acknowledges_no_ca_nol_carryover: false
+  acknowledges_no_ca_depreciation_divergence: false
+  acknowledges_no_ca_ira_basis_divergence: false
+  acknowledges_no_ca_rdp_status: false
+  acknowledges_no_excess_business_loss_carryover: false
+  acknowledges_no_1031_personal_property_divergence: false
+  acknowledges_no_ic_worker_reclassification: false
+  acknowledges_no_other_state_tax_credit: false
+  acknowledges_no_railroad_retirement_benefits: false
+  acknowledges_no_paid_family_leave_benefits: false
+  acknowledges_sch_a_sales_tax_unsupported: false
+  acknowledges_qbi_below_threshold: false
+  acknowledges_unlimited_at_risk: true
+  basis_tracked_externally: true
+  acknowledges_no_partnership_se_earnings: false
+  acknowledges_no_section_1231_gain: false
+  acknowledges_no_more_than_four_k1s: false
+  acknowledges_no_k1_credits: false
+  acknowledges_no_section_179: false
+  acknowledges_no_estate_trust_k1: false
+  acknowledges_no_capital_loss_carryforward: true
+  acknowledges_no_federal_amt: true
+  acknowledges_sch_c_all_investment_at_risk: false
+  acknowledges_form_7203_attached_separately: false
+  prior_year_itemized: false
+w2s:
+  - employer: "Example Employer"
+    wages: 100000.00
+    federal_tax_withheld: 15000.00
+    ss_wages: 100000.00
+    ss_tax_withheld: 6200.00
+    medicare_wages: 100000.00
+    medicare_tax_withheld: 1450.00
+acknowledges_no_listed_property: true
+rental_properties:
+  - address: "100 Example Street"
+    property_type: 1
+    fair_rental_days: 365
+    personal_use_days: 0
+    rents_received: 24000.0
+    taxes: 3000.0
+    depreciable_assets:
+      # Prior years ran a different class and method than the 5-year table.
+      - description: "Refrigerator"
+        date_placed_in_service: 2022-07-01
+        basis: 1800.0
+        recovery_class: "5-year"
+        no_bonus_or_section_179_history: true
+        prior_depreciation: 196.0

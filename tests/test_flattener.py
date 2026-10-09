@@ -202,7 +202,7 @@ class TestFlattenRentalProperty(unittest.TestCase):
                 repairs=950,
                 supplies=350,
                 taxes=8500,
-                depreciation=5500,
+                depreciation=5500, acknowledges_depreciation_stated_outside_macrs=True,
             )],
         )
 
