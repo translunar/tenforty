@@ -104,7 +104,7 @@ class SEHealthAmendmentColumnCTests(unittest.TestCase):
         case = AmendmentCase(
             year=2024,
             explanation="Added self-employed health-insurance deduction.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out_without = form_f1040x.assemble(filed, corrected_without, case)
         out_with = form_f1040x.assemble(filed, corrected_with, case)
 

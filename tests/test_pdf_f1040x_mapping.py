@@ -41,6 +41,9 @@ def _synthetic_case() -> AmendmentCase:
         explanation="SYNTHETIC-AMENDMENT-EXPLANATION-9F3",
         original_refund_received=20.0,
         original_refund_applied=0.0,
+        # The arbitrary filed figures below net to a balance due, so line 16
+        # must be stated; 0 keeps the tail read-back values unchanged.
+        original_tax_paid=0.0,
     )
 
 
