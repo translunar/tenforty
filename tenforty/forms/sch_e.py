@@ -90,6 +90,14 @@ def _property_a_fields(rp: RentalProperty) -> dict:
     return fields
 
 
+def printed_rental_net(rp: RentalProperty) -> int:
+    """One property's Schedule E line 21 (income or loss) exactly as the
+    form prints it: rounded rents less the sum of the individually rounded
+    expense lines. Consumed by the IRC §461(l) excess-business-loss guard
+    (orchestrator.aggregate_business_losses)."""
+    return _property_a_fields(rp)["sch_e_property_a_income_loss"]
+
+
 def has_any_net_loss(scenario: Scenario) -> bool:
     """True when any Sch E Part I rental runs a net loss.
 

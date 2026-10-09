@@ -9,6 +9,8 @@ per value.
 import math
 
 SOURCES: tuple[str, ...] = (
+    "IRS Form 461 (2021), Limitation on Business Losses (irs.gov/pub/irs-prior/"
+    "f461--2021.pdf), line 15 — for excess_business_loss_threshold.",
     # 2021 inflation adjustments: standard deduction, tax-rate schedules,
     # capital-gains breakpoints, §199A/QBI threshold.
     "Rev. Proc. 2020-45, https://www.irs.gov/pub/irs-drop/rp-20-45.pdf",
@@ -156,6 +158,19 @@ ATTESTED: dict[str, object] = {
         1: 48108,  # one qualifying child (MFJ): $48,108
         2: 53865,  # two qualifying children (MFJ): $53,865
         3: 57414,  # three or more qualifying children (MFJ): $57,414
+    },
+
+    # IRC §461(l) excess-business-loss threshold — 2021 Form 461, line 15:
+    # "Enter $262,000 (or $524,000 if married filing jointly)". Supplied by
+    # team-lead from an independent read (team-lead's own read of f461--2021.pdf),
+    # NOT from the params author. Every status other than married filing
+    # jointly takes the single amount.
+    "excess_business_loss_threshold": {
+        "single": 262000,
+        "married_jointly": 524000,
+        "married_separately": 262000,
+        "head_of_household": 262000,
+        "qualifying_widow": 262000,
     },
 }
 

@@ -58,7 +58,7 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
         name (a) f2_(3,6,9,12), entity_code (b) f2_(4,7,10,13),
         foreign-partnership checkbox (c) c2_(2,5,8,11) [UNMAPPED],
         ein (d) f2_(5,8,11,14),
-        basis-required checkbox (e) c2_(3,6,9,12) [UNMAPPED],
+        basis-required checkbox (e) c2_(3,6,9,12) [see _BASIS_CELLS],
         not-at-risk checkbox (f) c2_(4,7,10,13) [UNMAPPED, always was]
       GK sub-table (income/loss columns) — +5 per row:
         passive_loss f2_(15,20,25,30), passive_income f2_(16,21,26,31),
@@ -74,9 +74,9 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
         f"sch_e_part_ii_row_{row}_name":                     f"{af}.f2_{3 + 3 * i}[0]",
         f"sch_e_part_ii_row_{row}_entity_code":               f"{af}.f2_{4 + 3 * i}[0]",
         # DELIBERATELY UNMAPPED: col (c) c2_{2 + 3 * i} (foreign-partnership
-        # checkbox) and col (e) c2_{3 + 3 * i} (basis-required checkbox) are
-        # not modeled by compute (col (f) c2_{4 + 3 * i}, not-at-risk, was
-        # already unmapped before this fix and stays so).
+        # checkbox) and col (f) c2_{4 + 3 * i} (not-at-risk) are not modeled
+        # by compute. Col (e) c2_{3 + 3 * i} (basis-required checkbox) is
+        # written through get_basis_computation_cells, not this value map.
         f"sch_e_part_ii_row_{row}_ein":                      f"{af}.f2_{5 + 3 * i}[0]",
         f"sch_e_part_ii_row_{row}_passive_loss":             f"{gk}.f2_{15 + 5 * i}[0]",
         f"sch_e_part_ii_row_{row}_passive_income":           f"{gk}.f2_{16 + 5 * i}[0]",
@@ -402,6 +402,19 @@ _Q1099_BY_YEAR: dict[int, dict[str, dict[bool, tuple[str, str]]]] = {
     y: _Q1099_CELLS for y in (2022, 2023, 2024, 2025)}
 
 
+# Page 2 line 28 column (e) "Check if basis computation is required", federal
+# TY2022-2025: one checkbox per row, c2_(3,6,9,12), export state /1, inside the
+# Table_Line28a-f row subform (same tree in all four years; 2022 pads only
+# single-digit TEXT leaves, never checkbox leaves). Position verified by render
+# against each year's template. The 2021 template has a different line 28
+# table (Table_Line28a-e) and is not mapped.
+_BASIS_CELLS: dict[str, tuple[str, str]] = {
+    row.lower(): (f"{_T28AF}.Row{row}[0].c2_{3 + 3 * i}[0]", "/1")
+    for i, row in enumerate(_ROWS)
+}
+_BASIS_YEARS = (2022, 2023, 2024, 2025)
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
@@ -411,6 +424,23 @@ class PdfSchE(PdfFormMapping[dict]):
     _MAPPINGS: dict[int, dict] = {
         2021: _FIELDS_2021,
         2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+
+    @classmethod
+    def get_basis_computation_cells(
+        cls, year: int,
+    ) -> dict[str, tuple[str, str]]:
+        """{row letter: (field_path, on_state)} for line 28 column (e).
+        Additive to the value mapping, like the line A/B cells: the
+        orchestrator writes the on-state only for rows whose compute carries
+        ``sch_e_part_ii_row_<letter>_basis_computation_required``."""
+        if year not in _BASIS_YEARS:
+            raise NotImplementedError(
+                f"Schedule E line 28 column (e) (basis computation required) "
+                f"is not mapped for tax year {year}; an S corporation K-1 "
+                f"loss must check it, so this Schedule E cannot be emitted. "
+                f"The compute path still produces the numbers; complete the "
+                f"form by hand.")
+        return _BASIS_CELLS
 
     @classmethod
     def get_1099_question_cells(

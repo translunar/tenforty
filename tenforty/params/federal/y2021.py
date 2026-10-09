@@ -156,4 +156,10 @@ PARAMS = FederalParams(
         _HOH: 3_000,
         _QSS: 3_000,
     },
+    # IRC §461(l) excess-business-loss threshold: 2021 Form 461 line 15,
+    # "Enter $262,000 (or $524,000 if married filing jointly)".
+    excess_business_loss_threshold={
+        _S: 262_000, _MFJ: 524_000, _MFS: 262_000, _HOH: 262_000,
+        _QSS: 262_000,
+    },
 )

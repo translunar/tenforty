@@ -56,6 +56,8 @@ _YAML_WITHOUT_CA540 = textwrap.dedent("""\
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
       acknowledges_no_federal_amt: true
+      acknowledges_sch_c_all_investment_at_risk: false
+      acknowledges_form_7203_attached_separately: false
 """)
 
 
@@ -106,6 +108,8 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
       acknowledges_no_federal_amt: true
+      acknowledges_sch_c_all_investment_at_risk: false
+      acknowledges_form_7203_attached_separately: false
     ca540:
       estimated_payments: 1500.0
       use_tax: 25.0

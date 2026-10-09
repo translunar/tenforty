@@ -42,6 +42,11 @@ WAIVED: dict[str, str] = {
                            "short-circuiting the Sch 1 tax-benefit rule",
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
+    "excess_business_loss_threshold":
+        "a fail-closed refusal trip-wire, not a computed value: a battery "
+        "scenario over it would refuse by design, and battery scenarios "
+        "must compute. Driven at its boundary (at / one over, all three "
+        "loss lanes) in tests/test_excess_business_loss_guard.py",
 }
 
 

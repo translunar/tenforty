@@ -23,6 +23,8 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
 import math
 
 SOURCES: tuple[str, ...] = (
+    "IRS Form 461 (2024), Limitation on Business Losses (irs.gov/pub/irs-prior/"
+    "f461--2024.pdf), line 15 — for excess_business_loss_threshold.",
     "IRS Rev. Proc. 2023-34 (Internal Revenue Bulletin 2023-48, "
     "irs.gov/irb/2023-48_IRB): Tax Rate Tables, Maximum Capital Gains Rate, "
     "Qualified Business Income (§199A) threshold, Earned Income Credit, "
@@ -212,5 +214,18 @@ ATTESTED: dict[str, object] = {
         1: 56004,
         2: 62688,
         3: 66819,  # 3 or more qualifying children
+    },
+
+    # IRC §461(l) excess-business-loss threshold — 2024 Form 461, line 15:
+    # "Enter $305,000 (or $610,000 if married filing jointly)". Supplied by
+    # team-lead from an independent read (blind transcription agent),
+    # NOT from the params author. Every status other than married filing
+    # jointly takes the single amount.
+    "excess_business_loss_threshold": {
+        "single": 305000,
+        "married_jointly": 610000,
+        "married_separately": 305000,
+        "head_of_household": 305000,
+        "qualifying_widow": 305000,
     },
 }

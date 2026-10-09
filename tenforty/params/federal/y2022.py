@@ -105,4 +105,10 @@ PARAMS = FederalParams(
     capital_loss_limit={
         _S: 3_000, _MFJ: 3_000, _HOH: 3_000, _QW: 3_000, _MFS: 1_500,
     },
+    # IRC §461(l) excess-business-loss threshold: 2022 Form 461 line 15,
+    # "Enter $270,000 (or $540,000 if married filing jointly)".
+    excess_business_loss_threshold={
+        _S: 270_000, _MFJ: 540_000, _HOH: 270_000, _QW: 270_000,
+        _MFS: 270_000,
+    },
 )
