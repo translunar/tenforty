@@ -1088,12 +1088,20 @@ def has_valid_override(activity) -> bool:
     return override is not None and override.acknowledgment is True
 
 
+def _negative_stated_depreciation(s: Scenario) -> list[str]:
+    return [label for _sec, _i, label, act in depreciation_activities(s)
+            if act.depreciation < 0]
+
+
 def _bonus_history_assets(s: Scenario) -> list[str]:
     # The refusal is per asset but the out is per activity: a valid override
-    # pins the figure the return uses, so the engine's figure for such an
-    # asset never reaches a printed form. That keeps the activity's other
-    # assets in asset mode. (The recon then carries a note; see
-    # forms/depreciation/resolver.recon_keys.)
+    # pins the figure the return uses, which keeps the activity's other
+    # assets in asset mode. The engine's figure for such an asset is kept
+    # off every printed form by two other rules, not by this one: Form 4562
+    # is emitted only in a year the return places property in service
+    # (forms/f4562.is_required), and `merged_4562_with_override` refuses any
+    # such year when an override exists anywhere on the return. (The recon
+    # carries a note; see forms/depreciation/resolver.recon_keys.)
     return [
         f"asset {a.description!r} on {label} is {a.recovery_class} personal "
         f"property without `no_bonus_or_section_179_history: true`"
@@ -1219,6 +1227,22 @@ def _overrides_with_current_year_placement(s: Scenario) -> list[str]:
     return found
 
 
+def _merged_4562_with_override(s: Scenario) -> list[str]:
+    """Activities carrying an override, when the return also places
+    property in service this year (on any activity). A bonus-history lift
+    needs an override, so this covers that case too."""
+    year = s.config.year
+    activities = list(depreciation_activities(s))
+    placed = any(
+        a.date_placed_in_service.year == year
+        for _sec, _i, _label, act in activities
+        for a in act.depreciable_assets)
+    if not placed:
+        return []
+    return [label for _sec, _i, label, act in activities
+            if act.depreciation_override is not None]
+
+
 def _mid_quarter_convention(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     if not resolver.mid_quarter_applies(s):
@@ -1282,6 +1306,16 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
             f"{_join(o)}. Asset amounts are carried through verbatim (never "
             "clamped), so a negative value cannot be silently corrected to "
             "0 -- it is refused instead."),
+    ),
+    ScopedRefusal(
+        name="negative_stated_depreciation",
+        stage="load",
+        offenders=_negative_stated_depreciation,
+        message=lambda o: (
+            f"{_join(o)} states a negative `depreciation`. The stated amount "
+            "is carried onto the return verbatim (never clamped), so a "
+            "negative value cannot be silently corrected to 0 -- it is "
+            "refused instead."),
     ),
     ScopedRefusal(
         name="asset_disposed",
@@ -1441,6 +1475,22 @@ _DEPRECIATION_RESOLVER_REFUSALS: tuple[ScopedRefusal, ...] = (
 # --- Depreciation: the taxpayer-wide convention test -----------------------
 
 _DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="merged_4562_with_override",
+        stage="load",
+        whole_return=True,
+        offenders=_merged_4562_with_override,
+        message=lambda o: (
+            "Form 4562 is required this year (property was placed in "
+            f"service), and {_join(o)} carries a `depreciation_override`. "
+            "tenforty still prints one merged form for the whole return, "
+            "listing every asset with the engine's figures, so its total "
+            "would disagree with the override amount that activity claims. "
+            "The real resolution is per-activity forms (one Form 4562 per "
+            "activity that needs one), which is a later change. Until then "
+            "this combination cannot be produced."),
+        exception=NotImplementedError,
+    ),
     ScopedRefusal(
         name="mid_quarter_convention",
         stage="load",
