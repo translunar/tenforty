@@ -19,13 +19,28 @@ class IdenticalYearPayloadTests(unittest.TestCase):
 
 
 class RootSwapPayloadTests(unittest.TestCase):
-    def test_sch_a_2024_is_root_swapped_2025_with_one_override(self):
+    def test_sch_a_2024_is_root_swapped_2025_with_eleven_overrides(self):
         s24 = PdfSchA.get_mapping(2024)["scalars"]
         s25 = PdfSchA.get_mapping(2025)["scalars"]
         self.assertEqual(set(s24), set(s25))
         self.assertEqual(len(s24), 22)
+        # Line 2's AGI cell is flat in 2024 (nested in Line2_ReadOrder in
+        # 2025). From line 6 down 2024 carries four write-in fields 2025
+        # dropped, so every amount leaf is renumbered: +1 after line 6's
+        # extra write-in, +2 after line 8b's, +4 after line 16's two.
+        page1 = "topmostSubform[0].Page1[0]"
         overrides = {
-            "sch_a_line_2_agi": "topmostSubform[0].Page1[0].f1_4[0]",
+            "sch_a_line_2_agi": f"{page1}.f1_4[0]",
+            "sch_a_line_6_other_taxes": f"{page1}.f1_14[0]",
+            "sch_a_line_7_taxes_total": f"{page1}.f1_15[0]",
+            "sch_a_line_8a_mortgage_interest": f"{page1}.f1_16[0]",
+            "sch_a_line_10_interest_total": f"{page1}.f1_24[0]",
+            "sch_a_line_11_charity_cash": f"{page1}.f1_25[0]",
+            "sch_a_line_12_charity_noncash": f"{page1}.f1_26[0]",
+            "sch_a_line_14_charity_total": f"{page1}.f1_28[0]",
+            "sch_a_line_15_casualty": f"{page1}.f1_29[0]",
+            "sch_a_line_16_other": f"{page1}.f1_33[0]",
+            "sch_a_line_17_total": f"{page1}.f1_34[0]",
         }
         for key, value25 in s25.items():
             expected = overrides.get(
