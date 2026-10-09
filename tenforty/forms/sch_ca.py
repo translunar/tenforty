@@ -191,6 +191,29 @@ def federal_itemization_applied(federal_results: dict) -> bool:
     return total > 0 and federal_results.get("applied_deduction") == total
 
 
+# Federal Schedule A lines this Part II has no California rule for. Each is
+# zero on every return forms.sch_a.compute produces today; a nonzero amount
+# would need its own Col B / Col C treatment, so it refuses rather than pass
+# through unadjusted.
+_PART_II_UNMODELED_FEDERAL_LINES = (
+    ("sch_a_line_6_other_taxes", "6"),
+    ("sch_a_line_15_casualty", "15"),
+    ("sch_a_line_16_other", "16"),
+)
+
+
+def _part_ii_key(line: str, column: str | None = None) -> str:
+    key = f"sch_ca_line_part_ii_{line}"
+    return key if column is None else f"{key}_{column}"
+
+
+def _part_ii_must_equal(line: str, what: str, printed: int, expected: int):
+    if printed != expected:
+        raise ValueError(
+            f"Schedule CA (540) Part II does not foot at line {line}: {what} "
+            f"is {printed}, expected {expected}.")
+
+
 def compute_part_ii_itemized(sch_a_results: dict) -> dict:
     """Schedule CA (540) Part II — California itemized deductions.
 
@@ -221,20 +244,138 @@ def compute_part_ii_itemized(sch_a_results: dict) -> dict:
     Part II and Form 540 keeps the CA standard deduction. (v1 scope: CA
     itemizes iff the federal return itemized — independent CA itemization on a
     federally-standard return is not modeled.)
+
+    Besides the four section sums and ``ca_itemized_total``, the result
+    carries the figures the form PRINTS, keyed
+    ``sch_ca_line_part_ii_<line>[_col_a|_subtractions|_additions]``: Col A is
+    the federal Schedule A line, Col B / Col C the California adjustment.
+    The taxes adjustment follows the rule printed on line 5e (the same
+    wording on the 2021–2025 forms): Col B of 5a and of 5e is the line-5a
+    state income tax; Col C of 5e is line 5d less line 5e Col A — the amount
+    the federal cap took off. Line 7 then nets (A − B + C) to property plus
+    personal-property tax, which is the section sum above.
+
+    Input-driven detail lines (1–3, 5a–5c, 8a, 11, 12) are emitted only when
+    nonzero, so an unused line stays blank; computed lines are always emitted.
+    Lines 19–25 (2% miscellaneous deductions) and 27 (other adjustments) have
+    no scenario input and are never emitted.
+
+    Line 29 is emitted equal to line 28. The high-income itemized-deduction
+    limitation worksheet (Schedule CA instructions, line 29) is NOT modeled.
+    That is safe only because ``forms.f540.compute`` refuses every return
+    whose federal AGI exceeds ``CaliforniaParams.agi_phaseout_threshold``,
+    which is the Single/MFS line-29 amount — the lowest of the three filing
+    status thresholds — so no return the limitation could reduce gets this
+    far. If that gate is ever relaxed, line 29 needs the worksheet first.
+
+    Raises ``NotImplementedError`` for a nonzero federal line with no Part II
+    rule here, and ``ValueError`` naming the line when the printed figures do
+    not foot to the federal Schedule A or to the section sums.
     """
-    medical = sch_a_results.get("sch_a_line_4_medical_deductible", 0)
+    def fed(key):
+        return sch_a_results.get(key, 0)
+
+    for key, line in _PART_II_UNMODELED_FEDERAL_LINES:
+        if fed(key):
+            raise NotImplementedError(
+                f"Schedule CA (540) Part II line {line}: federal Schedule A "
+                f"line {line} is {fed(key)}, and no California adjustment "
+                f"rule is implemented for that line.")
+
+    medical = fed("sch_a_line_4_medical_deductible")
     # State/local income tax (line 5a) is disallowed; no CA SALT cap applies.
-    ca_taxes = (sch_a_results.get("sch_a_line_5b_property_tax", 0)
-                + sch_a_results.get("sch_a_line_5c_personal_property_tax", 0))
-    mortgage = sch_a_results.get("sch_a_line_8a_mortgage_interest", 0)
-    charity = sch_a_results.get("sch_a_line_14_charity_total", 0)
+    ca_taxes = (fed("sch_a_line_5b_property_tax")
+                + fed("sch_a_line_5c_personal_property_tax"))
+    mortgage = fed("sch_a_line_8a_mortgage_interest")
+    charity = fed("sch_a_line_14_charity_total")
     total = medical + ca_taxes + mortgage + charity
+
+    # --- The printed lines, built from the federal lines by the form's rules.
+    line_5a = fed("sch_a_line_5a_state_income_tax")
+    line_5b = fed("sch_a_line_5b_property_tax")
+    line_5c = fed("sch_a_line_5c_personal_property_tax")
+    line_5d = line_5a + line_5b + line_5c
+    line_5e = fed("sch_a_line_5e_salt_capped")
+    line_5e_subtraction = line_5a
+    line_5e_addition = line_5d - line_5e
+    line_7 = {"col_a": line_5e, "subtractions": line_5e_subtraction,
+              "additions": line_5e_addition}
+    line_8a = fed("sch_a_line_8a_mortgage_interest")
+    line_10 = line_8a
+    line_11 = fed("sch_a_line_11_charity_cash")
+    line_12 = fed("sch_a_line_12_charity_noncash")
+    line_14 = line_11 + line_12
+    line_17 = {
+        "col_a": medical + line_7["col_a"] + line_10 + line_14,
+        "subtractions": line_7["subtractions"],
+        "additions": line_7["additions"],
+    }
+    line_18 = line_17["col_a"] - line_17["subtractions"] + line_17["additions"]
+
+    # Col A must be the federal Schedule A, line for line.
+    for line, printed, key in (
+        ("5d", line_5d, "sch_a_line_5d_salt_sum"),
+        ("7", line_7["col_a"], "sch_a_line_7_taxes_total"),
+        ("10", line_10, "sch_a_line_10_interest_total"),
+        ("14", line_14, "sch_a_line_14_charity_total"),
+        ("17", line_17["col_a"], "sch_a_line_17_total"),
+    ):
+        _part_ii_must_equal(
+            line, "Col A", printed, fed(key))
+    # Each section's printed net (A − B + C) must be the section sum, and
+    # line 18 the total Form 540 line 18 takes.
+    _part_ii_must_equal(
+        "7", "Col A less Col B plus Col C",
+        line_7["col_a"] - line_7["subtractions"] + line_7["additions"],
+        ca_taxes)
+    _part_ii_must_equal("10", "Col A (no adjustment)", line_10, mortgage)
+    _part_ii_must_equal("14", "Col A (no adjustment)", line_14, charity)
+    _part_ii_must_equal("18", "line 17 Col A less Col B plus Col C",
+                        line_18, total)
+
+    printed = {
+        _part_ii_key("4", "col_a"): medical,
+        _part_ii_key("5d", "col_a"): line_5d,
+        _part_ii_key("5e", "col_a"): line_5e,
+        _part_ii_key("5e", "subtractions"): line_5e_subtraction,
+        _part_ii_key("5e", "additions"): line_5e_addition,
+        **{_part_ii_key("7", col): amount for col, amount in line_7.items()},
+        _part_ii_key("8e", "col_a"): line_8a,
+        _part_ii_key("10", "col_a"): line_10,
+        _part_ii_key("14", "col_a"): line_14,
+        **{_part_ii_key("17", col): amount for col, amount in line_17.items()},
+        _part_ii_key("18"): line_18,
+        # Line 25 (2% miscellaneous) and line 27 (other adjustments) are not
+        # modeled, so lines 26 and 28 carry line 18 down unchanged.
+        _part_ii_key("26"): line_18,
+        _part_ii_key("28"): line_18,
+        # Limitation worksheet not modeled; see the docstring.
+        _part_ii_key("29"): line_18,
+    }
+    detail = {
+        _part_ii_key("5a", "col_a"): line_5a,
+        _part_ii_key("5a", "subtractions"): line_5a,
+        _part_ii_key("5b", "col_a"): line_5b,
+        _part_ii_key("5c", "col_a"): line_5c,
+        _part_ii_key("8a", "col_a"): line_8a,
+        _part_ii_key("11", "col_a"): line_11,
+        _part_ii_key("12", "col_a"): line_12,
+    }
+    if fed("sch_a_line_1_medical_gross"):
+        detail.update({
+            _part_ii_key("1"): fed("sch_a_line_1_medical_gross"),
+            _part_ii_key("2"): fed("sch_a_line_2_agi"),
+            _part_ii_key("3"): fed("sch_a_line_3_medical_floor"),
+        })
+    printed.update({key: amount for key, amount in detail.items() if amount})
+
     return {
         "sch_ca_part_ii_medical": medical,
         "sch_ca_part_ii_taxes": ca_taxes,
         "sch_ca_part_ii_mortgage": mortgage,
         "sch_ca_part_ii_charity": charity,
         "ca_itemized_total": total,
+        **printed,
     }
 
 
