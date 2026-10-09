@@ -1,4 +1,5 @@
 import dataclasses
+from collections.abc import Mapping
 from pathlib import Path
 
 import yaml
@@ -566,6 +567,13 @@ class PacketManifest:
     caveats: tuple[str, ...]
     ca_divergences: CADivergenceTrail = dataclasses.field(
         default_factory=CADivergenceTrail)
+    # The assembled amendment-form values the packet was filled from: every
+    # ``forms.f1040x.assemble`` key and, when the packet has a CA side, every
+    # ``forms.schedule_x.assemble_ca`` key, in one flat dict (the two key sets
+    # are disjoint by prefix). For callers that summarize a packet; NOT part of
+    # the printed manifest, nor of equality or hashing.
+    values: Mapping[str, object] = dataclasses.field(
+        default_factory=dict, compare=False, repr=False)
 
     def render(self) -> str:
         lines: list[str] = [
@@ -2462,6 +2470,7 @@ class ReturnOrchestrator:
         caveats: list[str] = [_ERRONEOUS_INCLUSION_CAVEAT]
         dropped: tuple[str, ...] = ()
         ca_divergences = CADivergenceTrail()
+        schedule_x_values: dict = {}
 
         # --- Federal: corrected run feeds Column C; filed file is Column A. ---
         eff_amended, corp_amended = self._build_effective_scenario(amended_scenario)
@@ -2573,7 +2582,8 @@ class ReturnOrchestrator:
         manifest = PacketManifest(
             year=year, mailed_files=tuple(mailed),
             dropped=dropped, caveats=tuple(caveats),
-            ca_divergences=ca_divergences)
+            ca_divergences=ca_divergences,
+            values={**f1040x_values, **schedule_x_values})
         (output_dir / "packet_manifest.txt").write_text(manifest.render())
         return manifest
 
