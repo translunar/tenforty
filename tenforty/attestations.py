@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from tenforty.models import EntityType, Scenario
+from tenforty.rounding import irs_round
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,36 @@ def _has_partnership_se_earnings(s: Scenario) -> bool:
 
 def _more_than_four_k1s(s: Scenario) -> bool:
     return len(s.schedule_k1s) > 4
+
+
+def k1_part_ii_row_total(k1) -> int:
+    """The single Schedule E Part II amount a K-1 prints: its business boxes
+    NETTED into one row, IRS-rounded per component (the two rental boxes are
+    combined before rounding, matching the form's single rental line).
+    Lives here, not in forms/sch_e_part_ii.py (which imports it), so the
+    attestation trigger below and the printed row share one definition."""
+    return (
+        irs_round(k1.ordinary_business_income)
+        + irs_round(k1.net_rental_real_estate + k1.other_net_rental)
+        + irs_round(k1.royalties)
+        + irs_round(k1.other_income)
+    )
+
+
+def scorp_k1_row_is_net_loss(k1) -> bool:
+    """True for an S corporation K-1 whose printed Part II row is a NET
+    LOSS -- the row Schedule E line 28 column (e) must flag as needing a
+    basis computation. Keyed on the printed row, not on box 1 alone: a row
+    can report a loss with box 1 at zero or positive, and a box 1 loss
+    inside a net-income row prints no loss at all. Public:
+    forms/sch_e_part_ii.py uses the SAME predicate to check the box, so the
+    gate and the printed box cannot disagree."""
+    return (k1.entity_type == EntityType.S_CORP
+            and k1_part_ii_row_total(k1) < 0)
+
+
+def _has_any_scorp_k1_net_loss_row(s: Scenario) -> bool:
+    return any(scorp_k1_row_is_net_loss(k1) for k1 in s.schedule_k1s)
 
 
 def _never(s: Scenario) -> bool:
@@ -293,6 +324,45 @@ _FEDERAL_ATTESTATIONS: tuple[Attestation, ...] = (
             "13 / 15 credits are not implemented in tenforty v1; set the "
             "attestation to true to affirm no K-1 credits apply."
         ),
+    ),
+    Attestation(
+        field="acknowledges_form_7203_attached_separately",
+        triggered_when=_has_any_scorp_k1_net_loss_row,
+        load_error=(
+            "Scenario config field `acknowledges_form_7203_attached_separately` "
+            "is required and must be either true or false. A loss from an S "
+            "corporation (a K-1 whose Schedule E Part II row nets to a loss) "
+            "requires line 28 column (e) to be checked and the shareholder's basis "
+            "computation (Form 7203) to be attached. tenforty checks the box "
+            "but does NOT produce Form 7203. Set true to affirm Form 7203 is "
+            "prepared by hand and attached to the return; set false "
+            "otherwise -- compute will then refuse any S corporation K-1 "
+            "net-loss row with NotImplementedError."
+        ),
+        compute_error=(
+            "An S corporation K-1 reports a net loss on Schedule E Part II but "
+            "`acknowledges_form_7203_attached_separately` is false. The loss "
+            "requires Schedule E line 28 column (e) and an attached basis "
+            "computation (Form 7203), which tenforty does not produce. Set "
+            "`acknowledges_form_7203_attached_separately: true` to affirm "
+            "Form 7203 is prepared by hand and attached to the return."
+        ),
+    ),
+    Attestation(
+        field="acknowledges_sch_c_all_investment_at_risk",
+        triggered_when=_never,  # enforced in forms.sch_c (line 31 < 0)
+        load_error=(
+            "Scenario config field `acknowledges_sch_c_all_investment_at_risk` "
+            "is required and must be either true or false. A Schedule C "
+            "business with a net loss must check line 32a (all investment "
+            "is at risk) or 32b (some investment is not at risk, Form 6198). "
+            "Form 6198 is not implemented in tenforty v1. Set true to affirm "
+            "that ALL investment in every loss-making Schedule C business is "
+            "at risk (box 32a is then checked); set false otherwise -- "
+            "compute will then refuse any Schedule C net loss with "
+            "NotImplementedError."
+        ),
+        compute_error="",
     ),
     # --- Load-time-only: user-awareness, not a compute trigger ---
     Attestation(

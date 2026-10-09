@@ -7,6 +7,33 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Schedule C net losses.** A Schedule C business whose line 31 is a loss
+  now computes and emits instead of refusing, when the new config
+  attestation `acknowledges_sch_c_all_investment_at_risk` is true: box 32a is
+  checked on each loss business, the loss flows to Schedule 1 line 3, no
+  self-employment tax is figured on a net loss, and Form 8995 takes the loss
+  as a negative QBI component (netted against other QBI, deduction floored at
+  zero, remainder on the line 16 carryforward). Without the attestation a
+  loss still refuses (Form 6198 is not modeled).
+- **S corporation K-1 losses check Schedule E line 28 column (e).** A K-1
+  from an S corporation whose Part II row nets to a loss now checks "basis
+  computation is required" (tax years 2022-2025; other years refuse at emit)
+  and is gated on the new attestation
+  `acknowledges_form_7203_attached_separately`. Form 7203 itself is not
+  produced; amendment packet manifests name it as a hand attachment. The gate
+  runs on the native compute path and at emit; a compute-only run on the
+  workbook path does not enforce it. **Breaking:** such a return previously
+  computed with no gate.
+- **Form 8995 line 16 prints its magnitude.** The loss-carryforward cell has
+  preprinted parentheses; it previously received the signed value and read
+  "( -N )". Re-emitted loss-year Forms 8995 differ in that cell.
+- **§461(l) excess-business-loss guard.** A return whose business losses
+  (Schedule C losses + K-1 business loss boxes + rental property losses, in
+  whole dollars as the forms print them, with no business income netted)
+  exceed the year's Form 461 threshold is
+  refused, in every supported tax year. New `FederalParams` field
+  `excess_business_loss_threshold`.
+
 - **Amendment packets print the identity set.** Form 1040-X page 1 carries
   name, SSN, address and the filing-status checkbox; CA Schedule X carries
   name, SSN and the "Other" reason box; the amended Form 540 checks its
@@ -47,6 +74,16 @@ breaking changes are called out explicitly.
   repayment, self-employment tax or Additional Medicare Tax now attaches
   Schedule 2. Re-emitting such a 2021 return produces a packet with one more
   form than before.
+
+### Changed
+
+- **Both new attestations are required in every scenario config** (load
+  refuses when either is unset), like the existing scope-out attestations.
+- **Schedule E lines 30 and 31 now print** on every return with a K-1 (they
+  were mapped but never computed, so line 32 had no printed addends).
+- **EIC routing estimate counts Schedule C losses.** A filer whose wages
+  clear the EIC ceiling but whose wages less a Schedule C loss do not is no
+  longer routed to the native 1040 path, which performs no EIC math.
 
 ### Breaking
 

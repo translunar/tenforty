@@ -163,9 +163,17 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
         """
         scenario = _make_v1_scenario(
             gross_receipts=20_000.0, compensation_of_officers=50_000.0)
-        scenario = dataclasses.replace(scenario, form1099_int=[
-            Form1099INT(payer="Example Bank", interest=120_000.0),
-        ])
+        # An S corporation box 1 loss computes only when the shareholder
+        # attests the Form 7203 basis computation is attached by hand; this
+        # test's subject is the QBI floor, so it affirms that gate.
+        scenario = dataclasses.replace(
+            scenario,
+            config=dataclasses.replace(
+                scenario.config,
+                acknowledges_form_7203_attached_separately=True),
+            form1099_int=[
+                Form1099INT(payer="Example Bank", interest=120_000.0),
+            ])
         self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
 
         with tempfile.TemporaryDirectory() as d:

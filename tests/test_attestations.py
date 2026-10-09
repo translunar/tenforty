@@ -76,6 +76,8 @@ class TestAttestationsTable(unittest.TestCase):
             "acknowledges_no_capital_loss_carryforward",
             # Federal alternative minimum tax (IRC §55, Form 6251)
             "acknowledges_no_federal_amt",
+            "acknowledges_sch_c_all_investment_at_risk",
+            "acknowledges_form_7203_attached_separately",
         }
         self.assertEqual(expected, fields)
 
@@ -184,6 +186,8 @@ class TestLoadTimeValidation(unittest.TestCase):
             acknowledges_no_paid_family_leave_benefits=False,
             acknowledges_no_capital_loss_carryforward=True,
             acknowledges_no_federal_amt=True,
+            acknowledges_sch_c_all_investment_at_risk=False,
+            acknowledges_form_7203_attached_separately=False,
         )
         cfg = TaxReturnConfig(**kw)
         _validate_scenario_config(cfg)  # no raise

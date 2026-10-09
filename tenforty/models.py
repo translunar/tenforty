@@ -506,6 +506,18 @@ class TaxReturnConfig:
     # gate above it has no data-derived trigger; the registry entry in
     # `attestations._ALWAYS_TAIL` records why the shape is `_always`.
     acknowledges_no_federal_amt: bool | None = None
+    # Schedule C line 32 (at-risk). A business with a net loss must say
+    # whether all of its investment is at risk (box 32a) or not (box 32b,
+    # Form 6198 -- unmodeled). True affirms 32a for every loss business;
+    # False + any Schedule C net loss refuses in forms/sch_c.py.
+    acknowledges_sch_c_all_investment_at_risk: bool | None = None
+    # Schedule E line 28 column (e): an S corporation loss requires the
+    # shareholder's basis computation (Form 7203) to be attached. tenforty
+    # does not produce Form 7203. True affirms it is prepared by hand and
+    # attached; False + an S-corp K-1 net-loss row refuses. Distinct from
+    # `basis_tracked_externally`, which attests the tracking, not the
+    # attachment.
+    acknowledges_form_7203_attached_separately: bool | None = None
     # --- 1120-S scope-out attestations (8 unconditional) ---
     # Sch L (balance sheet) is out of scope; total_assets >= $250,000 OR
     # gross_receipts >= $250,000 + False raises.

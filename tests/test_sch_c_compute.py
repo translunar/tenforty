@@ -47,8 +47,9 @@ class SchCRefusalTests(unittest.TestCase):
 
 class SchCNetLossRefusalTests(unittest.TestCase):
     def test_net_loss_refused(self):
-        # expenses exceed receipts -> line 31 < 0 -> refuse (at-risk / QBI-loss /
-        # 461(l) unmodeled).
+        # expenses exceed receipts -> line 31 < 0 -> refuse, because the
+        # helper scenario does NOT attest all investment is at risk (Form
+        # 6198 unmodeled). The attested path is in test_sch_c_net_loss.py.
         biz = ScheduleCBusiness(description="loss", gross_receipts=10_000.0,
                                 supplies=15_000.0)   # net profit = -5,000
         with self.assertRaises(NotImplementedError):

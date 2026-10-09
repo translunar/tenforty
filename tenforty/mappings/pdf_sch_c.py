@@ -26,8 +26,12 @@ are invariants of what tenforty models, not per-return facts:
   - Line G, material participation = Yes. Passive sole proprietorships are
     unmodeled.
 The compute layer's refusals (cost of goods sold, depreciation, home office,
-vehicle, depletion, returns and allowances, net loss, statutory employee)
-fence everything else.
+vehicle, depletion, returns and allowances, statutory employee, and a net
+loss without the at-risk attestation) fence everything else.
+
+LINE 32 (at-risk). Box 32a (c1_7[0], on-state /1) is checked for a business
+whose line 31 is a loss; a profit business leaves both boxes blank. Box 32b
+(c1_7[1], on-state /2) is never written. Same field and states 2021-2025.
 
 LEFT BLANK for hand-completion: business name (C), EIN (D), address (E), the
 "started this year" box (H), the Form 1099 questions (I, J), the unmodeled
@@ -110,6 +114,12 @@ _FIELDS_2025: dict[str, str] = inherit_pdf_fields(
 _DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
     f"{_P1}.c1_1[0]": lambda _values: "/1",    # line F: (1) Cash
     f"{_P1}.c1_2[0]": lambda _values: "/Yes",  # line G: Yes
+    # Line 32a "All investment is at risk": marked only for a business with a
+    # net loss (the compute emits the key for those alone). The companion
+    # box 32b is c1_7[1] (on-state /2) and is never written -- Form 6198 is
+    # unmodeled, and a loss without the 32a attestation refuses in compute.
+    f"{_P1}.c1_7[0]": lambda values: (
+        "/1" if values.get("sch_c_line_32a_all_investment_at_risk") else None),
 }
 
 

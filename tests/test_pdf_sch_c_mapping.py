@@ -14,6 +14,7 @@ from tests.helpers import REPO_ROOT
 _P1 = "topmostSubform[0].Page1[0]"
 _CASH_BOX = f"{_P1}.c1_1[0]"
 _MATERIAL_PARTICIPATION_YES_BOX = f"{_P1}.c1_2[0]"
+_LINE_32A_BOX = "topmostSubform[0].Page1[0].c1_7[0]"  # literal on purpose
 
 
 class PdfSchCMappingTests(unittest.TestCase):
@@ -64,9 +65,18 @@ class PdfSchCMappingTests(unittest.TestCase):
             with self.subTest(year=year):
                 d = PdfSchC.get_derivations(year)
                 self.assertEqual(set(d), {_CASH_BOX,
-                                          _MATERIAL_PARTICIPATION_YES_BOX})
+                                          _MATERIAL_PARTICIPATION_YES_BOX,
+                                          _LINE_32A_BOX})
                 self.assertEqual(d[_CASH_BOX]({}), "/1")
                 self.assertEqual(d[_MATERIAL_PARTICIPATION_YES_BOX]({}), "/Yes")
+
+    def test_line_32a_box_is_marked_only_for_a_loss_business(self):
+        for year in years.SCHEDULE_C_FAMILY_YEARS:
+            with self.subTest(year=year):
+                box = PdfSchC.get_derivations(year)[_LINE_32A_BOX]
+                self.assertEqual(
+                    box({"sch_c_line_32a_all_investment_at_risk": True}), "/1")
+                self.assertIsNone(box({}))
 
     def test_fill_round_trip_lands_values_and_checks_boxes(self):
         values = {

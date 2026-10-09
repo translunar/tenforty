@@ -63,6 +63,13 @@ class FederalParams:
     # maintainer should not go hunting for a year-by-year inflation table;
     # there isn't one.
     capital_loss_limit: dict[str, int]
+    # IRC §461(l) excess-business-loss threshold (Form 461 line 15), keyed by
+    # FilingStatus.value. Form 461 prints one amount and a doubled amount for
+    # married filing jointly; every other status takes the single amount.
+    # NOT used to compute the limitation (Form 461 is unmodeled): it is the
+    # trip-wire for the orchestrator's fail-closed refusal when a return's
+    # un-netted business losses exceed it.
+    excess_business_loss_threshold: dict[str, int]
 
 
 def load(year: int) -> FederalParams:

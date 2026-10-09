@@ -113,6 +113,19 @@ ATTESTED: dict[str, object] = {
         2: 55529,  # "Two ... $55,529"
         3: 59187,  # "Three or More ... $59,187"
     },
+
+    # IRC §461(l) excess-business-loss threshold — 2022 Form 461, line 15:
+    # "Enter $270,000 (or $540,000 if married filing jointly)". Supplied by
+    # team-lead from an independent read (blind transcription agent),
+    # NOT from the params author. Every status other than married filing
+    # jointly takes the single amount.
+    "excess_business_loss_threshold": {
+        "single": 270000,
+        "married_jointly": 540000,
+        "married_separately": 270000,
+        "head_of_household": 270000,
+        "qualifying_widow": 270000,
+    },
 }
 
 NOT_APPLICABLE: dict[str, str] = {
@@ -137,6 +150,8 @@ NOT_APPLICABLE: dict[str, str] = {
 }
 
 SOURCES: tuple[str, ...] = (
+    "IRS Form 461 (2022), Limitation on Business Losses (irs.gov/pub/irs-prior/"
+    "f461--2022.pdf), line 15 — for excess_business_loss_threshold.",
     "IRS Rev. Proc. 2021-45 (2022 inflation adjustments), https://www.irs.gov/pub/irs-drop/rp-21-45.pdf: "
     "§3.01 Table 3 (single ordinary rate schedule / ordinary_brackets); "
     "§3.03 Maximum Capital Gains Rate (qdcgt_breakpoints); "

@@ -56,7 +56,8 @@ class SchCNetProfitEstimateHelperTests(unittest.TestCase):
         )
 
     def test_net_profit_estimate_does_not_raise_on_net_loss(self):
-        # A net-loss business is refused by sch_c.compute, but the estimate runs
+        # A net-loss business may be refused by sch_c.compute (no at-risk
+        # attestation), but the estimate runs
         # BEFORE that refusal -- it must NOT raise (returns a negative number).
         biz = ScheduleCBusiness(
             description="synthetic loss", gross_receipts=1_000.0,
