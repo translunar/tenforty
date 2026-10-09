@@ -68,6 +68,8 @@ _MINIMAL_CA_CONFIG = textwrap.dedent("""\
       acknowledges_no_paid_family_leave_benefits: false
       acknowledges_no_capital_loss_carryforward: true
       acknowledges_no_federal_amt: true
+      acknowledges_sch_c_all_investment_at_risk: false
+      acknowledges_form_7203_attached_separately: false
 """)
 
 

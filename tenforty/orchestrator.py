@@ -390,6 +390,35 @@ def _rental_net_income(r: RentalProperty) -> float:
     )
 
 
+# The K-1 boxes that carry business income or loss onto Schedule E Part II.
+_K1_BUSINESS_BOXES = (
+    "ordinary_business_income", "net_rental_real_estate", "other_net_rental",
+    "royalties", "other_income",
+)
+
+
+def aggregate_business_losses(scenario: Scenario) -> float:
+    """Sum of every LOSS-positioned business item on the return, as a
+    positive number, with NO netting of business income against it: each
+    Schedule C business's net loss, each K-1 business box that is negative,
+    and each Schedule E rental property's net loss.
+
+    This is the quantity the IRC §461(l) guard compares to the threshold. It
+    is a deliberate SUPERSET of the true excess-business-loss base (which
+    nets business income and gains against the deductions): leaving the
+    income out can only make the sum larger, so the guard can over-refuse
+    but can never pass a return whose loss the limitation would cut. Inputs
+    are read raw -- before the passive-loss and at-risk rules -- for the same
+    reason."""
+    sch_c = sum(max(0.0, -form_sch_c.net_profit_estimate(biz))
+                for biz in scenario.schedule_c_businesses)
+    k1 = sum(max(0.0, -getattr(k, box))
+             for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
+    rental = sum(max(0.0, -_rental_net_income(r))
+                 for r in scenario.rental_properties)
+    return sch_c + k1 + rental
+
+
 @dataclasses.dataclass(frozen=True)
 class _FederalFormSpec:
     """One federal individual-return form's fully-prepared emit unit, WITHOUT
@@ -723,7 +752,8 @@ class ReturnOrchestrator:
         # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
         # native spine; the old wages-only estimate mis-routed such a filer to
         # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
-        # Every component here is clamped at 0, so this estimate only ever RISES
+        # Every component here EXCEPT Schedule C (see its own note below) is
+        # clamped at 0, so this estimate only ever RISES
         # vs the old wages-only value: it can route MORE scenarios native, never
         # fewer, and leaves a genuinely low-income filer (no other income)
         # unchanged. Overestimating is safe for the gate — it rules EIC OUT
@@ -747,22 +777,56 @@ class ReturnOrchestrator:
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
-            # Schedule C net profit — the income component this filer class lives
-            # on. The per-business max(0, ...) is REDUNDANT-BY-CONSTRUCTION (a
-            # net-loss business is refused upstream in sch_c.compute, so no
-            # negative reaches the native spine), but it is correct to KEEP: this
-            # estimate runs BEFORE those refusals fire (it is a pre-compute gate),
-            # so a loss could appear here. Do NOT "simplify" it into a loss-
-            # subtracting estimate — the clamp keeps the estimate MONOTONICALLY
-            # RISING (like every other component above), so a scenario can only
-            # ever move TOWARD the native spine, never away from it.
-            + sum(max(0.0, form_sch_c.net_profit_estimate(biz))
+            # Schedule C net profit OR LOSS, netted across businesses and NOT
+            # clamped. Every other component above is clamped at 0 (an
+            # overestimate), but a Schedule C loss is now a real, allowed
+            # reduction of AGI: clamping it would let a filer whose WAGES
+            # clear the ceiling but whose wages-less-loss do not route to the
+            # native spine, which performs no EIC math. Counting the loss
+            # sends that possibly-eligible filer out of spine scope, where
+            # the workbook path refuses Schedule C outright (fail-closed).
+            # This estimate runs BEFORE sch_c.compute's refusals, so it uses
+            # the non-raising estimate.
+            + sum(form_sch_c.net_profit_estimate(biz)
                   for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
         # Below the ceiling → possibly EIC-eligible → out of spine scope.
         return agi_estimate >= ceiling
+
+    def _refuse_possible_excess_business_loss(self, scenario: Scenario) -> None:
+        """FAIL-CLOSED GUARD -- IRC §461(l) excess business loss (Form 461).
+
+        A noncorporate taxpayer's aggregate business loss is deductible only
+        up to a yearly threshold; the excess is disallowed and carried
+        forward. tenforty does not model Form 461. Rather than deduct a loss
+        the limitation would cut, refuse whenever the un-netted sum of
+        business losses (``aggregate_business_losses``) exceeds the year's
+        threshold for the filing status. There is no acknowledge-and-proceed:
+        above the threshold the correct deduction needs the unmodeled form.
+        """
+        from tenforty.models import FilingStatus
+        from tenforty.params.federal import load as load_params
+        thresholds = load_params(
+            scenario.config.year).excess_business_loss_threshold
+        # FilingStatus(...) accepts the enum or its raw string value.
+        status = FilingStatus(scenario.config.filing_status).value
+        threshold = thresholds[status]
+        losses = aggregate_business_losses(scenario)
+        if losses > threshold:
+            raise NotImplementedError(
+                f"Business losses on this return total {losses:,.0f} (Schedule "
+                f"C net losses + K-1 business loss boxes + rental property "
+                f"losses, with no business income netted against them), which "
+                f"exceeds the IRC §461(l) excess-business-loss threshold of "
+                f"{threshold:,} for filing status {status} in tax year "
+                f"{scenario.config.year}. Form 461 (Limitation on Business "
+                f"Losses) is not modeled in tenforty v1, so the allowed loss "
+                f"cannot be determined and this return cannot be produced. "
+                f"The comparison is deliberately conservative: it may refuse "
+                f"a return whose true excess business loss is zero."
+            )
 
     def _compute_1040_pipeline(
         self, effective_scenario: Scenario,
@@ -777,6 +841,8 @@ class ReturnOrchestrator:
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
         params = load_params(effective_scenario.config.year)
+        # Before the native/workbook split, so BOTH paths are covered.
+        self._refuse_possible_excess_business_loss(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # A 1095-A scenario that is out of native-spine scope
@@ -1401,7 +1467,7 @@ class ReturnOrchestrator:
         # so a year outside it refuses here, rather than failing later
         # on a missing mapping. Native compute is not year-restricted. The
         # compute layer's own refusals (unmodeled Schedule C features, a net
-        # loss) are the real guards for everything else and fire below, in
+        # loss without the at-risk attestation) are the real guards for everything else and fire below, in
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
         if (scenario.schedule_c_businesses
@@ -1555,6 +1621,26 @@ class ReturnOrchestrator:
                     q_values[f"sch_e_{question}"] = q_on
                 sch_e_mapping = {**sch_e_mapping, "scalars": q_scalars}
                 sch_e_spec_values = q_values
+            # Line 28 column (e) (basis computation required): written only
+            # for rows the compute flags (an S corporation box 1 loss). A
+            # year with no cell mapping refuses rather than emit the loss row
+            # without its required box.
+            basis_rows = [
+                letter for letter in ("a", "b", "c", "d")
+                if sch_e_spec_values.get(
+                    f"sch_e_part_ii_row_{letter}_basis_computation_required")
+            ]
+            if basis_rows:
+                basis_cells = PdfSchE.get_basis_computation_cells(year)
+                b_scalars = dict(sch_e_mapping["scalars"])
+                b_values = dict(sch_e_spec_values)
+                for letter in basis_rows:
+                    b_path, b_on = basis_cells[letter]
+                    key = f"sch_e_part_ii_row_{letter}_basis_computation_box"
+                    b_scalars[key] = b_path
+                    b_values[key] = b_on
+                sch_e_mapping = {**sch_e_mapping, "scalars": b_scalars}
+                sch_e_spec_values = b_values
             specs.append(_FederalFormSpec(
                 name="sch_e", template=_fed("f1040se.pdf"),
                 output_name=f"f1040se_{year}.pdf", kind="repeater",
@@ -2579,6 +2665,9 @@ class ReturnOrchestrator:
             else:
                 caveats.append(_CA_COMPUTE_ONLY_NOTE)
 
+        # Required attachments tenforty does not produce (e.g. Form 7203 for
+        # an S corporation K-1 loss) are named so the preparer adds them.
+        caveats.extend(form_sch_e_part_ii.hand_attachment_notes(eff_amended))
         manifest = PacketManifest(
             year=year, mailed_files=tuple(mailed),
             dropped=dropped, caveats=tuple(caveats),
