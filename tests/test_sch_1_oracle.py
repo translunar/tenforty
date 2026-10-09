@@ -39,6 +39,7 @@ class Sch1OracleTests(unittest.TestCase):
                 mortgage_interest=8_000.0,
                 taxes=3_000.0,
                 depreciation=5_000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ]
 

@@ -25,7 +25,10 @@ fires first for a given scenario remain green."""
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
-from tenforty.models import EntityType, Scenario
+from tenforty.models import (
+    PERSONAL_PROPERTY_CLASSES, REAL_PROPERTY_CLASSES,
+    SUPPORTED_RECOVERY_CLASSES, EntityType, Scenario,
+)
 from tenforty.rounding import irs_round
 
 
@@ -989,7 +992,287 @@ class ScopedRefusal:
                 f"{self.stage!r}; expected one of {SCOPED_REFUSAL_STAGES}.")
 
 
-_SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = ()
+# --- Depreciation: the asset model's shape rules ---------------------------
+
+_DEPRECIATION_ACTIVITY_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("rental_properties", "rental property"),
+    ("schedule_c_businesses", "Schedule C business"),
+)
+
+
+def depreciation_activities(scenario: Scenario):
+    """Every activity that can carry depreciation, as
+    ``(section, index, label, activity)``. ``label`` is how refusal text names
+    the activity."""
+    for i, rp in enumerate(scenario.rental_properties):
+        yield ("rental_properties", i,
+               f"rental property #{i} ({rp.address!r})", rp)
+    for i, biz in enumerate(scenario.schedule_c_businesses):
+        yield ("schedule_c_businesses", i,
+               f"Schedule C business #{i} ({biz.description!r})", biz)
+
+
+def _assets(scenario: Scenario):
+    """Every nested asset as ``(asset label, asset)``."""
+    for _section, _i, label, activity in depreciation_activities(scenario):
+        for asset in activity.depreciable_assets:
+            yield f"asset {asset.description!r} on {label}", asset
+
+
+def _raw_top_level_asset_list(raw) -> list:
+    return ["depreciable_assets"] if "depreciable_assets" in raw else []
+
+
+def _raw_assets_with_convention(raw) -> list[str]:
+    found = []
+    for section, _label in _DEPRECIATION_ACTIVITY_SECTIONS:
+        for i, activity in enumerate(raw.get(section) or []):
+            if not isinstance(activity, dict):
+                continue
+            for j, asset in enumerate(activity.get("depreciable_assets") or []):
+                if isinstance(asset, dict) and "convention" in asset:
+                    found.append(f"{section}[{i}].depreciable_assets[{j}]")
+    return found
+
+
+def _unknown_class_assets(s: Scenario) -> list[str]:
+    return [f"{label} has recovery_class {a.recovery_class!r}"
+            for label, a in _assets(s)
+            if a.recovery_class not in SUPPORTED_RECOVERY_CLASSES]
+
+
+def _disposed_assets(s: Scenario) -> list[str]:
+    return [label for label, a in _assets(s) if a.disposed is not None]
+
+
+def _negative_asset_amounts(s: Scenario) -> list[str]:
+    found = []
+    for label, a in _assets(s):
+        if a.basis < 0:
+            found.append(f"{label} has a negative `basis`")
+        if a.prior_depreciation is not None and a.prior_depreciation < 0:
+            found.append(f"{label} has a negative `prior_depreciation`")
+    for _section, _i, label, activity in depreciation_activities(s):
+        ov = activity.depreciation_override
+        if ov is None:
+            continue
+        if ov.amount < 0:
+            found.append(
+                f"{label} has a negative `depreciation_override.amount`")
+        if ov.restates_engine_amount < 0:
+            found.append(
+                f"{label} has a negative "
+                f"`depreciation_override.restates_engine_amount`")
+    return found
+
+
+def _bonus_history_assets(s: Scenario) -> list[str]:
+    return [
+        f"{label} is {a.recovery_class} personal property without "
+        f"`no_bonus_or_section_179_history: true`"
+        for label, a in _assets(s)
+        if a.recovery_class in PERSONAL_PROPERTY_CLASSES
+        and a.no_bonus_or_section_179_history is not True]
+
+
+def _real_property_with_history_field(s: Scenario) -> list[str]:
+    return [
+        f"{label} is {a.recovery_class} real property and must not carry "
+        f"`no_bonus_or_section_179_history`"
+        for label, a in _assets(s)
+        if a.recovery_class in REAL_PROPERTY_CLASSES
+        and a.no_bonus_or_section_179_history is not None]
+
+
+def _assets_missing_prior_depreciation(s: Scenario) -> list[str]:
+    year = s.config.year
+    return [
+        f"{label} was placed in service in "
+        f"{a.date_placed_in_service.year}, before the {year} return year, "
+        f"but states no `prior_depreciation`"
+        for label, a in _assets(s)
+        if a.date_placed_in_service.year < year
+        and a.prior_depreciation is None]
+
+
+def _dual_source_activities(s: Scenario) -> list[str]:
+    return [label for _sec, _i, label, act in depreciation_activities(s)
+            if act.depreciable_assets and act.depreciation]
+
+
+def _unacknowledged_stated_figures(s: Scenario) -> list[str]:
+    return [label for _sec, _i, label, act in depreciation_activities(s)
+            if act.depreciation and not act.depreciable_assets
+            and act.acknowledges_depreciation_stated_outside_macrs is not True]
+
+
+def _overrides_outside_asset_mode(s: Scenario) -> list[str]:
+    return [label for _sec, _i, label, act in depreciation_activities(s)
+            if act.depreciation_override is not None
+            and not act.depreciable_assets]
+
+
+def _unacknowledged_overrides(s: Scenario) -> list[str]:
+    return [label for _sec, _i, label, act in depreciation_activities(s)
+            if act.depreciation_override is not None
+            and act.depreciation_override.acknowledgment is not True]
+
+
+def _asset_mode_on_unprinted_rentals(s: Scenario) -> list[str]:
+    return [f"rental property #{i} ({rp.address!r})"
+            for i, rp in enumerate(s.rental_properties)
+            if i >= 1 and rp.depreciable_assets]
+
+
+def _join(items: Sequence) -> str:
+    return "; ".join(str(i) for i in items)
+
+
+_DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="top_level_asset_list",
+        stage="parse",
+        offenders=_raw_top_level_asset_list,
+        message=lambda o: (
+            "A top-level `depreciable_assets:` list is no longer accepted: "
+            "nothing tied those assets to the activity whose depreciation "
+            "they are. Move each asset under its activity -- "
+            "`rental_properties[n].depreciable_assets` or "
+            "`schedule_c_businesses[n].depreciable_assets` -- and drop any "
+            "`convention:` key (it is computed)."),
+    ),
+    ScopedRefusal(
+        name="stated_convention",
+        stage="parse",
+        offenders=_raw_assets_with_convention,
+        message=lambda o: (
+            f"{_join(o)} carries `convention:` -- convention is computed, "
+            "not stated. Real property is mid-month by statute; personal "
+            "property is half-year unless the mid-quarter test applies. "
+            "Remove the key."),
+    ),
+    # Class first: the property-type predicates below classify by it.
+    ScopedRefusal(
+        name="unknown_recovery_class",
+        stage="load",
+        offenders=_unknown_class_assets,
+        message=lambda o: (
+            f"{_join(o)}; tenforty has MACRS tables only for "
+            f"{list(SUPPORTED_RECOVERY_CLASSES)}. An asset in any other "
+            "class cannot be depreciated here and is never approximated."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="negative_asset_amount",
+        stage="load",
+        offenders=_negative_asset_amounts,
+        message=lambda o: (
+            f"{_join(o)}. Asset amounts are carried through verbatim (never "
+            "clamped), so a negative value cannot be silently corrected to "
+            "0 -- it is refused instead."),
+    ),
+    ScopedRefusal(
+        name="asset_disposed",
+        stage="load",
+        offenders=_disposed_assets,
+        message=lambda o: (
+            f"{_join(o)} is marked `disposed`. Dispositions and retirements "
+            "-- including partial dispositions, where a component is "
+            "superseded by a later replacement -- are not modeled: the "
+            "disposal-year proration, gain or loss and any recapture are "
+            "all out of scope. This is a named follow-on; until it lands "
+            "the return cannot be produced with this asset in the list."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="history_field_on_real_property",
+        stage="load",
+        offenders=_real_property_with_history_field,
+        message=lambda o: (
+            f"{_join(o)}. The field is an attestation about personal "
+            "property only; remove it from real property."),
+    ),
+    ScopedRefusal(
+        name="bonus_or_section_179_history",
+        stage="load",
+        offenders=_bonus_history_assets,
+        message=lambda o: (
+            f"{_join(o)}. An asset that took a special (bonus) depreciation "
+            "allowance or a section 179 deduction computes wrong under the "
+            "plain MACRS tables, and tenforty models neither. Set the field "
+            "true only if the asset has no such history. Otherwise remove "
+            "the activity's asset list and state the activity's figure "
+            "instead: its `depreciation` amount with "
+            "`acknowledges_depreciation_stated_outside_macrs: true`."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="missing_prior_depreciation",
+        stage="load",
+        offenders=_assets_missing_prior_depreciation,
+        message=lambda o: (
+            f"{_join(o)}. An asset already in service needs the "
+            "depreciation taken in earlier years (state 0 if none was)."),
+    ),
+    ScopedRefusal(
+        name="dual_source_depreciation",
+        stage="load",
+        offenders=_dual_source_activities,
+        message=lambda o: (
+            f"{_join(o)} carries both `depreciable_assets` and a stated "
+            "`depreciation` amount. One activity has one depreciation "
+            "source: keep the asset list (and set `depreciation` to 0) or "
+            "keep the stated amount (and remove the list). They are never "
+            "added together."),
+    ),
+    ScopedRefusal(
+        name="unacknowledged_stated_depreciation",
+        stage="load",
+        offenders=_unacknowledged_stated_figures,
+        message=lambda o: (
+            f"{_join(o)} states `depreciation` without an asset list. That "
+            "figure comes from outside tenforty's MACRS model and is "
+            "carried onto the return unverified. Set "
+            "`acknowledges_depreciation_stated_outside_macrs: true` on "
+            "that activity to accept it, or replace the amount with "
+            "`depreciable_assets`."),
+    ),
+    ScopedRefusal(
+        name="override_outside_asset_mode",
+        stage="load",
+        offenders=_overrides_outside_asset_mode,
+        message=lambda o: (
+            f"{_join(o)} carries a `depreciation_override` but no "
+            "`depreciable_assets`. The override pins the figure for an "
+            "asset-mode activity against the engine's own computation; "
+            "with no assets there is nothing to override. State the "
+            "activity's `depreciation` amount instead."),
+    ),
+    ScopedRefusal(
+        name="unacknowledged_depreciation_override",
+        stage="load",
+        offenders=_unacknowledged_overrides,
+        message=lambda o: (
+            f"{_join(o)} carries a `depreciation_override` without "
+            "`acknowledgment: true`. The override replaces the engine's "
+            "computed depreciation on the return; it must be acknowledged "
+            "explicitly."),
+    ),
+    ScopedRefusal(
+        name="asset_mode_on_unprinted_rental",
+        stage="load",
+        offenders=_asset_mode_on_unprinted_rentals,
+        message=lambda o: (
+            f"{_join(o)} carries `depreciable_assets`, but Schedule E prints "
+            "only the first rental property (property A). Asset-mode "
+            "depreciation on a property the schedule does not print would "
+            "compute a deduction no form shows. This refusal lifts when "
+            "Schedule E prints beyond property A."),
+        exception=NotImplementedError,
+    ),
+)
+
+_SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = _DEPRECIATION_SHAPE_REFUSALS
 
 
 def enforce_scoped_refusals(subject, stage: str) -> None:
@@ -1006,3 +1289,16 @@ def enforce_scoped_refusals(subject, stage: str) -> None:
         offenders = refusal.offenders(subject)
         if offenders:
             raise refusal.exception(refusal.message(offenders))
+
+
+def raise_scoped_refusal(name: str, offenders: Sequence) -> None:
+    """Raise the registered refusal ``name`` for ``offenders`` directly.
+
+    For code that must stay fail-closed when reached without the ledger
+    having run (a direct call that bypassed the loader and the orchestrator):
+    it raises the ledger's own exception and text, so the registry remains
+    the single owner of the refusal."""
+    for refusal in _SCOPED_REFUSALS:
+        if refusal.name == name:
+            raise refusal.exception(refusal.message(offenders))
+    raise KeyError(f"No scoped refusal named {name!r} is registered.")

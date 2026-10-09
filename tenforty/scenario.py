@@ -24,6 +24,7 @@ from tenforty.models import (
     Address,
     CA540Return,
     DepreciableAsset,
+    DepreciationOverride,
     EntityType,
     FilingStatus,
     Form1095A,
@@ -61,10 +62,28 @@ _FORM_REGISTRY: dict[str, tuple[type, str]] = {
     "form1099_g": (Form1099G, "form1099_g"),
     "form1098s": (Form1098, "form1098s"),
     "schedule_k1s": (ScheduleK1, "schedule_k1s"),
-    "rental_properties": (RentalProperty, "rental_properties"),
-    "schedule_c_businesses": (ScheduleCBusiness, "schedule_c_businesses"),
-    "depreciable_assets": (DepreciableAsset, "depreciable_assets"),
 }
+
+# Activities that can hold nested `depreciable_assets:` / a
+# `depreciation_override:` block. Built by `_load_depreciation_activity`
+# rather than a bare `model_cls(**item)` so the nested mappings become models
+# and unknown nested keys fail closed.
+_DEPRECIATION_ACTIVITY_REGISTRY: dict[str, type] = {
+    "rental_properties": RentalProperty,
+    "schedule_c_businesses": ScheduleCBusiness,
+}
+
+_KNOWN_DEPRECIABLE_ASSET_KEYS: frozenset[str] = frozenset({
+    "description", "date_placed_in_service", "basis", "recovery_class",
+    "disposed", "prior_depreciation", "no_bonus_or_section_179_history",
+    "acknowledges_prior_depreciation_as_stated",
+})
+_REQUIRED_DEPRECIABLE_ASSET_KEYS: tuple[str, ...] = (
+    "description", "date_placed_in_service", "basis", "recovery_class")
+_KNOWN_DEPRECIATION_OVERRIDE_KEYS: frozenset[str] = frozenset(
+    {"amount", "restates_engine_amount", "acknowledgment"})
+_REQUIRED_DEPRECIATION_OVERRIDE_KEYS: tuple[str, ...] = (
+    "amount", "restates_engine_amount")
 
 # Amount fields on ScheduleCBusiness that are carried through verbatim (never
 # computed or clamped): gross receipts, every Part II expense category, and the
@@ -87,7 +106,7 @@ _SCHEDULE_C_AMOUNT_FIELDS: tuple[str, ...] = (
 # first surfaced this gap — a typo must not vanish without a sound).
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a"}
-    | set(_FORM_REGISTRY)
+    | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
 # Keys recognized inside the form_1095a block and inside each month row.
@@ -103,6 +122,100 @@ def _coerce_date(value) -> datetime.date:
     if isinstance(value, datetime.date):
         return value
     return datetime.date.fromisoformat(value)
+
+
+def _load_stated_bool(value, where: str) -> bool:
+    """A stated true/false. Strings are refused, never coerced: a quoted
+    "no" is truthy."""
+    if not isinstance(value, bool):
+        raise ValueError(f"{where} must be true or false; got {value!r}")
+    return value
+
+
+def _load_stated_number(value, where: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{where} must be a number; got {value!r}")
+    return float(value)
+
+
+def _load_depreciable_asset(data, where: str) -> DepreciableAsset:
+    if not isinstance(data, dict):
+        raise ValueError(f"{where} must be a mapping; got {data!r}")
+    unknown = set(data) - _KNOWN_DEPRECIABLE_ASSET_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in {where}: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_DEPRECIABLE_ASSET_KEYS)}")
+    missing = [k for k in _REQUIRED_DEPRECIABLE_ASSET_KEYS if k not in data]
+    if missing:
+        raise ValueError(f"{where} is missing {missing}")
+    disposed = data.get("disposed")
+    prior = data.get("prior_depreciation")
+    history = data.get("no_bonus_or_section_179_history")
+    return DepreciableAsset(
+        description=str(data["description"]),
+        date_placed_in_service=_coerce_date(data["date_placed_in_service"]),
+        basis=_load_stated_number(data["basis"], f"{where}.basis"),
+        recovery_class=str(data["recovery_class"]),
+        disposed=None if disposed is None else _coerce_date(disposed),
+        prior_depreciation=(
+            None if prior is None else _load_stated_number(
+                prior, f"{where}.prior_depreciation")),
+        no_bonus_or_section_179_history=(
+            None if history is None else _load_stated_bool(
+                history, f"{where}.no_bonus_or_section_179_history")),
+        acknowledges_prior_depreciation_as_stated=_load_stated_bool(
+            data.get("acknowledges_prior_depreciation_as_stated", False),
+            f"{where}.acknowledges_prior_depreciation_as_stated"),
+    )
+
+
+def _load_depreciation_override(data, where: str) -> DepreciationOverride:
+    if not isinstance(data, dict):
+        raise ValueError(f"{where} must be a mapping; got {data!r}")
+    unknown = set(data) - _KNOWN_DEPRECIATION_OVERRIDE_KEYS
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in {where}: {sorted(unknown)}. "
+            f"Known keys: {sorted(_KNOWN_DEPRECIATION_OVERRIDE_KEYS)}")
+    missing = [
+        k for k in _REQUIRED_DEPRECIATION_OVERRIDE_KEYS if k not in data]
+    if missing:
+        raise ValueError(f"{where} is missing {missing}")
+    return DepreciationOverride(
+        amount=_load_stated_number(data["amount"], f"{where}.amount"),
+        restates_engine_amount=_load_stated_number(
+            data["restates_engine_amount"],
+            f"{where}.restates_engine_amount"),
+        acknowledgment=_load_stated_bool(
+            data.get("acknowledgment", False), f"{where}.acknowledgment"),
+    )
+
+
+def _load_depreciation_activity(model_cls: type, item: dict, where: str):
+    """Build a RentalProperty / ScheduleCBusiness, turning its nested
+    `depreciable_assets` and `depreciation_override` mappings into models."""
+    fields = dict(item)
+    raw_assets = fields.pop("depreciable_assets", None) or []
+    if not isinstance(raw_assets, list):
+        raise ValueError(
+            f"{where}.depreciable_assets must be a list; got {raw_assets!r}")
+    assets = [
+        _load_depreciable_asset(a, f"{where}.depreciable_assets[{i}]")
+        for i, a in enumerate(raw_assets)]
+    raw_override = fields.pop("depreciation_override", None)
+    override = (
+        None if raw_override is None else _load_depreciation_override(
+            raw_override, f"{where}.depreciation_override"))
+    ack_key = "acknowledges_depreciation_stated_outside_macrs"
+    if ack_key in fields:
+        fields[ack_key] = _load_stated_bool(
+            fields[ack_key], f"{where}.{ack_key}")
+    # ScheduleCBusiness is frozen and holds a tuple; RentalProperty a list.
+    container = tuple if model_cls is ScheduleCBusiness else list
+    return model_cls(
+        **fields, depreciable_assets=container(assets),
+        depreciation_override=override)
 
 
 def _load_address(data: dict) -> Address:
@@ -935,13 +1048,15 @@ def load_scenario(path: Path) -> Scenario:
             f"Scenario YAML must be a mapping at the top level, got "
             f"{type(data).__name__}")
 
+    # Before the unknown-key check: a retired shape gets its own migration
+    # pointer from the ledger rather than a generic "unknown key".
+    _attestations.enforce_scoped_refusals(data, "parse")
+
     unknown = set(data) - _KNOWN_TOP_LEVEL_KEYS
     if unknown:
         raise ValueError(
             f"Unknown top-level key(s) in scenario YAML: {sorted(unknown)}. "
             f"Known keys: {sorted(_KNOWN_TOP_LEVEL_KEYS)}")
-
-    _attestations.enforce_scoped_refusals(data, "parse")
 
     config = TaxReturnConfig(**data["config"])
     _validate_scenario_config(config)
@@ -950,6 +1065,10 @@ def load_scenario(path: Path) -> Scenario:
     for yaml_key, (model_cls, field_name) in _FORM_REGISTRY.items():
         items = data.get(yaml_key, [])
         form_data[field_name] = [model_cls(**item) for item in items]
+    for yaml_key, model_cls in _DEPRECIATION_ACTIVITY_REGISTRY.items():
+        form_data[yaml_key] = [
+            _load_depreciation_activity(model_cls, item, f"{yaml_key}[{i}]")
+            for i, item in enumerate(data.get(yaml_key) or [])]
 
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
     if s_corp_return is not None:

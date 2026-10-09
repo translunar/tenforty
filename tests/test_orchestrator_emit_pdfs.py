@@ -284,6 +284,7 @@ class EmitPdfsSchETests(unittest.TestCase):
                 mortgage_interest=8000.0,
                 taxes=3000.0,
                 depreciation=5000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ]
         emitted = self.orchestrator.emit_pdfs(
@@ -349,6 +350,7 @@ class EmitPdfsSchETests(unittest.TestCase):
                 fair_rental_days=365, personal_use_days=0,
                 rents_received=24000.0, mortgage_interest=8000.0,
                 taxes=3000.0, depreciation=5000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ]  # Part I line 26 = 24000 - 16000 = 8000
         scenario.schedule_k1s = [
@@ -398,6 +400,7 @@ class EmitPdfsSch1Tests(unittest.TestCase):
                 fair_rental_days=365, personal_use_days=0,
                 rents_received=24000.0, mortgage_interest=8000.0,
                 taxes=3000.0, depreciation=5000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ]
         emitted = self.orchestrator.emit_pdfs(
@@ -424,6 +427,7 @@ class EmitPdfsSch1Tests(unittest.TestCase):
                 fair_rental_days=365, personal_use_days=0,
                 rents_received=24000.0, mortgage_interest=8000.0,
                 taxes=3000.0, depreciation=5000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ]
         results = {**SAMPLE_RESULTS, "sche_line26": 8000}

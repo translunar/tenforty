@@ -68,7 +68,8 @@ class _EmitBase(unittest.TestCase):
         s.rental_properties = [RentalProperty(
             address="123 Main St", property_type=1, fair_rental_days=365,
             personal_use_days=0, rents_received=24000.0,
-            mortgage_interest=8000.0, taxes=3000.0, depreciation=5000.0)]
+            mortgage_interest=8000.0, taxes=3000.0, depreciation=5000.0,
+            acknowledges_depreciation_stated_outside_macrs=True)]
         return s
 
     def _emit(self, year, payments=None, filed=None):

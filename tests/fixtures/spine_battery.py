@@ -128,6 +128,7 @@ def build_canonical_wage_investment_rental(year: int) -> Scenario:
                 mortgage_interest=7_000.0,
                 taxes=2_500.0,
                 depreciation=4_500.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ],
     )
@@ -293,6 +294,7 @@ def build_qbi_threshold_boundary(year: int) -> Scenario:
                 mortgage_interest=8_000.0,
                 taxes=3_000.0,
                 depreciation=5_000.0,
+                acknowledges_depreciation_stated_outside_macrs=True,
             ),
         ],
     )
