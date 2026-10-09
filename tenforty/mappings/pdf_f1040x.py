@@ -37,6 +37,15 @@ Only the BARE keys are mapped to their fields. Mapping the aliases too would
 double-fill a single field (identical value written twice to the same widget),
 so they are DELIBERATELY absent from ``_MAPPING``. The payload-coverage test
 asserts their absence.
+
+PAGE-1 HEADER — a separate mapping
+----------------------------------
+Name, SSN, spouse, address and the "Amended return filing status" row are
+scenario-derived (``forms.f1040x.presentation_keys``), not assembler output, so
+they live in ``_PRESENTATION_MAPPING`` (``get_presentation_mapping``) and the
+orchestrator merges the two at emit. That keeps ``_MAPPING`` exactly the
+assembler's key set. The filing-status boxes are five separate /Btn fields
+whose on-states are ``/1``..``/5`` left to right (``get_checkbox_states``).
 """
 from tenforty.mappings.registry import PdfFormMapping
 
@@ -110,6 +119,39 @@ _MAPPING: dict[str, str] = {
     "f1040x_explanation":  "topmostSubform[0].Page2[0].f2_35[0]",  # p2 Part II — Explanation of Changes
 }
 
+# Page-1 header. Each path was confirmed by rendering a fill of the template
+# with every header cell stamped with its own field name and each filing-status
+# box checked in turn. NOT mapped: f1_02 (fiscal year ended), f1_10 (apt. no.),
+# f1_14-f1_16 (foreign address), c1_1/c1_2 (Presidential Election Campaign),
+# f1_17 (name line under the filing-status row).
+_AD = _P1 + "Address_ReadOrder[0]."
+_PRESENTATION_MAPPING: dict[str, str] = {
+    "f1040x_first_name":        _P1 + "f1_03[0]",  # Your first name and middle initial
+    "f1040x_last_name":         _P1 + "f1_04[0]",  # Last name
+    "f1040x_ssn":               _P1 + "f1_05[0]",  # Your social security number (9-cell comb)
+    "f1040x_spouse_first_name": _P1 + "f1_06[0]",  # Spouse's first name and middle initial
+    "f1040x_spouse_last_name":  _P1 + "f1_07[0]",  # Spouse's last name
+    "f1040x_spouse_ssn":        _P1 + "f1_08[0]",  # Spouse's social security number (9-cell comb)
+    "f1040x_address":           _AD + "f1_09[0]",  # Home address (number and street)
+    "f1040x_city":              _AD + "f1_11[0]",  # City, town, or post office
+    "f1040x_state":             _AD + "f1_12[0]",  # State
+    "f1040x_zip_code":          _AD + "f1_13[0]",  # ZIP code
+    "f1040x_filing_status_single": _P1 + "c1_3[0]",  # Single
+    "f1040x_filing_status_mfj":    _P1 + "c1_3[1]",  # Married filing jointly
+    "f1040x_filing_status_mfs":    _P1 + "c1_3[2]",  # Married filing separately (MFS)
+    "f1040x_filing_status_hoh":    _P1 + "c1_3[3]",  # Head of household (HOH)
+    "f1040x_filing_status_qss":    _P1 + "c1_3[4]",  # Qualifying surviving spouse (QSS)
+}
+
+# On-state of each filing-status box, from its own /_States_.
+_CHECKBOX_STATES: dict[str, str] = {
+    "f1040x_filing_status_single": "/1",
+    "f1040x_filing_status_mfj": "/2",
+    "f1040x_filing_status_mfs": "/3",
+    "f1040x_filing_status_hoh": "/4",
+    "f1040x_filing_status_qss": "/5",
+}
+
 
 class PdfF1040X(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for Form 1040-X (Rev. December 2025). Flat 1:1,
@@ -118,6 +160,10 @@ class PdfF1040X(PdfFormMapping[dict[str, str]]):
 
     _FORM_NAME = "Form 1040-X"
     _MAPPINGS: dict[str, dict[str, str]] = {"rev-2025-12": _MAPPING}
+    _PRESENTATION_MAPPINGS: dict[str, dict[str, str]] = {
+        "rev-2025-12": _PRESENTATION_MAPPING}
+    _CHECKBOX_STATES_BY_REVISION: dict[str, dict[str, str]] = {
+        "rev-2025-12": _CHECKBOX_STATES}
 
     @classmethod
     def get_mapping(cls, revision: str) -> dict[str, str]:
@@ -126,6 +172,17 @@ class PdfF1040X(PdfFormMapping[dict[str, str]]):
                 f"No {cls._FORM_NAME} PDF mapping for revision {revision!r}"
             )
         return cls._MAPPINGS[revision]
+
+    @classmethod
+    def get_presentation_mapping(cls, revision: str) -> dict[str, str]:
+        """The page-1 header cells (``forms.f1040x.presentation_keys``)."""
+        cls.get_mapping(revision)  # same unknown-revision refusal
+        return cls._PRESENTATION_MAPPINGS[revision]
+
+    @classmethod
+    def get_checkbox_states(cls, revision: str) -> dict[str, str]:
+        cls.get_mapping(revision)
+        return cls._CHECKBOX_STATES_BY_REVISION[revision]
 
 
 def get_mapping(revision: str) -> dict[str, str]:
