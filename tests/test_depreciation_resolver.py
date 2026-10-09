@@ -275,21 +275,28 @@ class BasisCeilingTests(unittest.TestCase):
     def test_no_ceiling_off_the_acknowledged_mismatch_path(self):
         """A history that matches the tables is never capped: any small
         residual between lifetime depreciation and basis from per-year
-        rounding is documented behaviour, not something this ceiling fixes."""
-        final_year = DepreciableAsset(
-            description="Equipment", date_placed_in_service=date(2020, 3, 15),
-            basis=10_000.0, recovery_class="5-year",
+        rounding is documented behaviour, not something this ceiling fixes.
+
+        Built so the ceiling COULD bind if it were (wrongly) applied: on a
+        basis of 8 the four prior years' whole-dollar amounts already sum to
+        the whole basis, yet the table still gives a nonzero fifth year. A
+        ceiling here would cut that to zero."""
+        tiny = DepreciableAsset(
+            description="Equipment", date_placed_in_service=date(2021, 3, 15),
+            basis=8.0, recovery_class="5-year",
             no_bonus_or_section_179_history=True)
-        final_year.prior_depreciation = float(
-            reconstruct_prior_depreciation(final_year, YEAR))
+        prior = reconstruct_prior_depreciation(tiny, YEAR)
+        table = macrs_deduction(tiny, YEAR)
+        # The reachability precondition: remaining basis is BELOW the table
+        # amount, so min(table, basis - prior) would differ from the table.
+        self.assertGreater(table, 0)
+        self.assertLess(tiny.basis - prior, table)
+        tiny.prior_depreciation = float(prior)
         for acknowledged in (False, True):
             with self.subTest(acknowledged=acknowledged):
-                final_year.acknowledges_prior_depreciation_as_stated = (
-                    acknowledged)
-                r = resolve(_rental(depreciable_assets=[final_year]), YEAR)
-                self.assertEqual(
-                    r.per_asset[0].amount, macrs_deduction(final_year, YEAR))
-                self.assertGreater(r.per_asset[0].amount, 0)
+                tiny.acknowledges_prior_depreciation_as_stated = acknowledged
+                r = resolve(_rental(depreciable_assets=[tiny]), YEAR)
+                self.assertEqual(r.per_asset[0].amount, table)
                 self.assertIs(r.per_asset[0].basis_ceiling_bound, False)
 
     def test_override_restates_the_capped_engine_figure(self):

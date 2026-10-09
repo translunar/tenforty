@@ -40,6 +40,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_asset_nest_loading::UnknownRecoveryClassRefusalTests::test_class_outside_the_supported_eight_refuses",
     "negative_asset_amount":
         "tests.test_asset_nest_loading::NegativeAssetAmountRefusalTests::test_negative_basis_refuses",
+    "negative_stated_depreciation":
+        "tests.test_asset_nest_loading::NegativeStatedDepreciationRefusalTests::test_negative_rental_depreciation_refuses",
     "asset_disposed":
         "tests.test_asset_nest_loading::DisposedRefusalTests::test_disposed_asset_refuses_naming_partial_dispositions",
     "history_field_on_real_property":
@@ -66,6 +68,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_a_stale_override",
     "override_with_current_year_placement":
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_override_with_current_year_placement",
+    "merged_4562_with_override":
+        "tests.test_f4562_emit_gate::MergedFormWithOverrideRefusalTests::test_placement_on_one_activity_and_override_on_another_refuses",
     "mid_quarter_convention":
         "tests.test_mid_quarter_refusal::FortyPercentTestTests::test_fires_over_the_threshold",
     "unverifiable_mid_quarter_test":
@@ -291,6 +295,36 @@ class ScopedRefusalWiringTests(unittest.TestCase):
         self.assertIn((len(effective.schedule_k1s), "compute"), seen)
 
 
+class SCorpPathLoadStageRecheckTests(unittest.TestCase):
+    """On the S-corp path the effective scenario gains synthesized K-1s
+    AFTER the original scenario was checked. The LOAD-stage entries must be
+    re-run on that effective scenario too, not only the compute-stage ones."""
+
+    def test_load_stage_entry_fires_on_the_effective_scenario_only(self):
+        from tests._scorp_fixtures import _make_v1_scenario
+        scenario = _make_v1_scenario()
+        self.assertEqual(scenario.schedule_k1s, [])
+        entry = ScopedRefusal(
+            name="synthetic_load_k1",
+            stage="load",
+            offenders=lambda subject: [
+                k.entity_name for k in subject.schedule_k1s],
+            message=lambda offenders: (
+                f"synthetic load refusal saw K-1s: {offenders}"),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            orchestrator = ReturnOrchestrator(
+                spreadsheets_dir=SPREADSHEETS_DIR, work_dir=Path(tmp))
+            with mock.patch.object(attestations, "_SCOPED_REFUSALS", (entry,)):
+                # Silent on the scenario as given: it has no K-1 yet.
+                enforce_scoped_refusals(scenario, "load")
+                # Fires once the corporate pipeline has added one -- which
+                # only a load-stage run over the EFFECTIVE scenario can see.
+                with self.assertRaisesRegex(
+                        ValueError, "synthetic load refusal saw K-1s"):
+                    orchestrator._build_effective_scenario(scenario)
+
+
 class ScopedRefusalRegistryTests(unittest.TestCase):
     def test_registered_names(self):
         # A literal, in precedence order: tuple position is which refusal a
@@ -301,6 +335,7 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "stated_convention",
                 "unknown_recovery_class",
                 "negative_asset_amount",
+                "negative_stated_depreciation",
                 "asset_disposed",
                 "history_field_on_real_property",
                 "bonus_or_section_179_history",
@@ -314,14 +349,16 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "prior_depreciation_mismatch",
                 "stale_depreciation_override",
                 "override_with_current_year_placement",
+                "merged_4562_with_override",
                 "mid_quarter_convention",
                 "unverifiable_mid_quarter_test",
             ])
 
-    def test_whole_return_entries_are_exactly_the_taxpayer_wide_ones(self):
+    def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
         self.assertEqual(
             [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
-            ["mid_quarter_convention", "unverifiable_mid_quarter_test"])
+            ["merged_4562_with_override", "mid_quarter_convention",
+             "unverifiable_mid_quarter_test"])
 
     def test_names_are_unique(self):
         names = [r.name for r in attestations._SCOPED_REFUSALS]

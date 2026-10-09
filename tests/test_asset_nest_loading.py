@@ -225,6 +225,82 @@ class NestedLoadingTests(unittest.TestCase):
                     _load(doc)
 
 
+class StatedNumberRefusalTests(unittest.TestCase):
+    """Amounts are numbers. Strings and booleans are refused, never
+    coerced: `true` would otherwise load as 1.0."""
+
+    def test_non_numeric_asset_amounts_refuse(self):
+        for field_name, value in (("basis", "200000 dollars"), ("basis", True),
+                                  ("prior_depreciation", "none")):
+            with self.subTest(field=field_name, value=value):
+                with self.assertRaisesRegex(
+                        ValueError,
+                        rf"rental_properties\[0\]\.depreciable_assets\[0\]"
+                        rf"\.{field_name} must be a number"):
+                    _load(_doc(rental_properties=[_rental(depreciable_assets=[
+                        _old_building(**{field_name: value})])]))
+
+    def test_non_numeric_override_amounts_refuse(self):
+        for field_name in ("amount", "restates_engine_amount"):
+            with self.subTest(field=field_name):
+                block = {"amount": 7_000.0, "restates_engine_amount": 7_272.0,
+                         "acknowledgment": True}
+                block[field_name] = "seven thousand"
+                with self.assertRaisesRegex(
+                        ValueError,
+                        rf"depreciation_override\.{field_name} must be a "
+                        r"number"):
+                    _load(_doc(rental_properties=[_rental(
+                        depreciable_assets=[_old_building()],
+                        depreciation_override=block)]))
+
+    def test_numeric_amounts_load_as_floats(self):
+        s = _load(_doc(rental_properties=[_rental(depreciable_assets=[
+            _building(basis=200_000)])]))
+        basis = s.rental_properties[0].depreciable_assets[0].basis
+        self.assertEqual(basis, 200_000.0)
+        self.assertIsInstance(basis, float)
+
+
+class MissingRequiredAssetKeyRefusalTests(unittest.TestCase):
+    def test_each_required_key_is_required(self):
+        for key in ("description", "date_placed_in_service", "basis",
+                    "recovery_class"):
+            with self.subTest(missing=key):
+                asset = _building()
+                del asset[key]
+                with self.assertRaisesRegex(
+                        ValueError,
+                        rf"rental_properties\[0\]\.depreciable_assets\[0\] "
+                        rf"is missing \['{key}'\]"):
+                    _load(_doc(rental_properties=[
+                        _rental(depreciable_assets=[asset])]))
+
+    def test_asset_with_every_required_key_loads(self):
+        s = _load(_doc(rental_properties=[
+            _rental(depreciable_assets=[_building()])]))
+        self.assertEqual(len(s.rental_properties[0].depreciable_assets), 1)
+
+
+class NegativeStatedDepreciationRefusalTests(unittest.TestCase):
+    def test_negative_rental_depreciation_refuses(self):
+        with self.assertRaisesRegex(
+                ValueError,
+                r"rental property #0 \('100 Example Street'\) states a "
+                r"negative `depreciation`"):
+            _load(_doc(rental_properties=[_rental(
+                depreciation=-5_000.0,
+                acknowledges_depreciation_stated_outside_macrs=True)]))
+
+    def test_zero_and_positive_load(self):
+        zero = _load(_doc(rental_properties=[_rental(depreciation=0.0)]))
+        self.assertEqual(zero.rental_properties[0].depreciation, 0.0)
+        positive = _load(_doc(rental_properties=[_rental(
+            depreciation=5_000.0,
+            acknowledges_depreciation_stated_outside_macrs=True)]))
+        self.assertEqual(positive.rental_properties[0].depreciation, 5_000.0)
+
+
 class TopLevelAssetListRefusalTests(unittest.TestCase):
     def test_top_level_list_refuses_with_migration_pointer(self):
         with self.assertRaisesRegex(
