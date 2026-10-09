@@ -1,6 +1,6 @@
 """PDF field mapping for IRS Schedule 2 (Form 1040), Additional Taxes.
 
-Flat scalars. Years 2022-2025 only (tenforty.years.SCHEDULE_C_FAMILY_YEARS).
+Flat scalars. Years 2021-2025 (tenforty.years.SCHEDULE_C_FAMILY_YEARS).
 Field names were derived by marker-probe (scripts/probe_pdf_fields.py) and
 are pinned line-by-line in tests/fixtures/golden_field_lines.py.
 
@@ -11,13 +11,17 @@ unmapped in every year -- it is unmodeled and stays blank.
 
 2025 added an exemption-number box (f1_14) ahead of the line 4 amount, which
 shifted lines 4 and 11 by one field and dropped one field from page 2.
+
+2021 shares the 2022-2023 payload. Its template lacks one checkbox that 2022
+has (Line8_ReadOrder[0].c1_1[0], unmapped); every mapped leaf was read on its
+printed line from the marker probe (pdfs/federal/2021/f1040s2.probe.pdf).
 """
 from tenforty.mappings.registry import PdfFormMapping
 
 _P1 = "form1[0].Page1[0]"
 _P2 = "form1[0].Page2[0]"
 
-_FIELDS_2022_2023: dict[str, str] = {
+_FIELDS_2021_2023: dict[str, str] = {
     "taxpayer_name": f"{_P1}.f1_01[0]",
     "taxpayer_ssn": f"{_P1}.f1_02[0]",
     "sch_2_line_2_excess_aptc_repayment": f"{_P1}.f1_04[0]",
@@ -51,8 +55,9 @@ class PdfSch2(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule 2"
 
     _MAPPINGS: dict[int, dict] = {
-        2022: _FIELDS_2022_2023,
-        2023: _FIELDS_2022_2023,
+        2021: _FIELDS_2021_2023,
+        2022: _FIELDS_2021_2023,
+        2023: _FIELDS_2021_2023,
         2024: _FIELDS_2024,
         2025: _FIELDS_2025,
     }

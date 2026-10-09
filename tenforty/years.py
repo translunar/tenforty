@@ -70,11 +70,19 @@ FEDERAL_COMPUTE_ONLY_FORMS: tuple[str, ...] = tuple(
 # asserts that no template or mapping exists below a floor -- so a floor can
 # neither hide a missing pack nor mask a stray one. Every future feature that
 # adds a form registers it here.
+#
+# EXCEPTION -- the Schedule C family (Schedule C, Schedule SE, Schedule 2)
+# floors at TY2021, one year below the general floor. Provenance: Juno
+# 2026-10-08 dual-posture program (all-years Sch C second copies) -- a 2021
+# Schedule C packet needs all three forms, so that later, specific direction
+# overrides the general floor for exactly these forms. NEW_FEATURE_FLOOR_YEAR
+# is unchanged and still governs every other new form.
 NEW_FEATURE_FLOOR_YEAR: int = 2022
+SCHEDULE_C_FAMILY_FLOOR_YEAR: int = 2021
 POLICY_YEAR_FLOORS: dict[str, int] = {
-    "sch_2": NEW_FEATURE_FLOOR_YEAR,
-    "sch_se": NEW_FEATURE_FLOOR_YEAR,
-    "sch_c": NEW_FEATURE_FLOOR_YEAR,
+    "sch_2": SCHEDULE_C_FAMILY_FLOOR_YEAR,
+    "sch_se": SCHEDULE_C_FAMILY_FLOOR_YEAR,
+    "sch_c": SCHEDULE_C_FAMILY_FLOOR_YEAR,
 }
 
 
@@ -84,11 +92,11 @@ def form_supported_in_year(form: str, year: int) -> bool:
     return floor is None or year >= floor
 
 
-# Emit years for the Schedule C family (Schedule C, Schedule SE, Schedule 2):
-# a TY2021 Schedule C return refuses at emit and a TY2021 return never emits
-# Schedule 2.
+# Emit years for the Schedule C family (Schedule C, Schedule SE, Schedule 2).
+# The orchestrator's Schedule C emit refusal and its Schedule 2 gate both
+# read this tuple; a year outside it refuses / emits no Schedule 2.
 SCHEDULE_C_FAMILY_YEARS: tuple[int, ...] = tuple(
-    y for y in FEDERAL_YEARS if y >= NEW_FEATURE_FLOOR_YEAR
+    y for y in FEDERAL_YEARS if y >= SCHEDULE_C_FAMILY_FLOOR_YEAR
 )
 
 CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540")
