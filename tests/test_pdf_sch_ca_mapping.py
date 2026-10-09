@@ -65,11 +65,14 @@ _EXPECTED_COMPUTE_KEYS = frozenset({
 
 def _expected_total_derivation_fields(year: int) -> set[str]:
     """The cells that are DERIVED (section totals + the 1a Col A mirror): 1z Col B/C,
-    9a / 25 Col A-C, 10 / 26 Col A-C, and 1a Col A where the year has line 1a.
+    9a / 25 Col A-C, 10 / 26 Col A-C, and 1a Col A where the year has line 1a —
+    plus Part II line 30, which prints the Form 540 line 18 deduction.
     (2022 shares 2023's tables.)"""
-    t = getattr(pdf_sch_ca, f"_TOTAL_CELLS_{2023 if year == 2022 else year}")
+    table_year = 2023 if year == 2022 else year
+    t = getattr(pdf_sch_ca, f"_TOTAL_CELLS_{table_year}")
     wanted = ["1zB", "1zC", *(f"{n}{c}" for n in ("9a", "10", "25", "26") for c in "ABC"), "1aA"]
-    return {t[k] for k in wanted if k in t}
+    return ({t[k] for k in wanted if k in t}
+            | {pdf_sch_ca._PART_II_LINE_30_FIELD[table_year]})
 
 
 class PdfSchCaMappingTests(unittest.TestCase):

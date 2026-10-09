@@ -187,8 +187,8 @@ _MAPPING_2025: dict[str, str] = {
 _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {}
 
 
-# No within-form derivations in v1. Sch D (540) capital-gain pass-through
-# and Part II itemized-adjustment sums are deferred to a later phase.
+# Section-total and Part II line-30 derivations are installed below
+# (_install_sch_ca_totals, _install_sch_ca_part_ii).
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {}
 
 
@@ -999,6 +999,96 @@ _install_sch_ca_totals(2024, _MAPPING_2024, _DERIVATIONS_2024, _SUPPRESSED_2024,
                        _CATALOG_CELLS_2024, _TOTAL_CELLS_2024)
 _install_sch_ca_totals(2025, _MAPPING_2025, _DERIVATIONS_2025, _SUPPRESSED_2025,
                        _CATALOG_CELLS_2025, _TOTAL_CELLS_2025)
+
+
+# ── Part II (adjustments to federal itemized deductions) ────────────────────
+#
+# forms.sch_ca.compute_part_ii_itemized emits one key per printed cell —
+# sch_ca_line_part_ii_<line>[_col_a|_subtractions|_additions] — only on a
+# return that itemizes, so on a standard-deduction return every cell below
+# stays blank. Tokens are the line plus its column (A federal amounts,
+# B subtractions, C additions); lines 1-3, 18, 26, 28 and 29 are single cells.
+#
+# Field numbers were read from each template's /TU tooltips and are
+# re-verified against them by tests/test_ca_sch_ca_part_ii_print.py. 2021
+# numbers Part II in its own 4xxx/5xxx bands (it starts a page earlier);
+# 2022-2025 share one numbering, with the '540ca_form - ' prefix from 2024.
+_PART_II_TOKENS = (
+    "1", "2", "3", "4A",
+    "5aA", "5aB", "5bA", "5cA", "5dA", "5eA", "5eB", "5eC",
+    "7A", "7B", "7C",
+    "8aA", "8eA", "10A",
+    "11A", "12A", "14A",
+    "17A", "17B", "17C",
+    "18", "26", "28", "29",
+)
+_PART_II_FIELDS_2021 = (
+    "4001", "4005", "4009", "4013",
+    "4016", "4017", "4019", "4022", "4025", "4028", "4029", "4030",
+    "4035", "4036", "4037",
+    "4038", "4050", "4056",
+    "5001", "5004", "5010",
+    "5019", "5020", "5021",
+    "5022", "5031", "5034", "5035",
+)
+_PART_II_FIELDS_2023 = (
+    "5001", "5002", "5003", "5004",
+    "5006", "5007", "5008", "5009", "5010", "5011", "5012", "5013",
+    "5018", "5019", "5020",
+    "5021", "5027", "5033",
+    "6001", "6004", "6010",
+    "6019", "6020", "6021",
+    "6022", "6031", "6034", "6035",
+)
+_PART_II_FIELDS_2024 = tuple(f"540ca_form - {n}" for n in _PART_II_FIELDS_2023)
+# Line 30 ("the larger of line 29 or your standard deduction ... Transfer the
+# amount on line 30 to Form 540, line 18").
+_PART_II_LINE_30_FIELD = {
+    2021: "5036", 2023: "6036",
+    2024: "540ca_form - 6036", 2025: "540ca_form - 6036",
+}
+# The section sums and the total are what Form 540 line 18 is computed from;
+# the page prints the per-line cells above, not these.
+_PART_II_TRANSIT_KEYS = frozenset({
+    "sch_ca_part_ii_medical",
+    "sch_ca_part_ii_taxes",
+    "sch_ca_part_ii_mortgage",
+    "sch_ca_part_ii_charity",
+    "ca_itemized_total",
+})
+
+
+def _part_ii_key(token: str) -> str:
+    if token[-1] in _SUFFIX:
+        return f"sch_ca_line_part_ii_{token[:-1]}_{_SUFFIX[token[-1]]}"
+    return f"sch_ca_line_part_ii_{token}"
+
+
+def _install_sch_ca_part_ii(mapping, derivations, fields, line_30_field):
+    mapping.update(
+        {_part_ii_key(token): field
+         for token, field in zip(_PART_II_TOKENS, fields, strict=True)})
+    # Line 30 is by definition the Form 540 line 18 deduction, so it prints
+    # that figure itself rather than a second computation of it — and only
+    # when Part II is on the page at all (line 28 present).
+    derivations[line_30_field] = (
+        lambda c: c.get("f540_deduction")
+        if c.get("sch_ca_line_part_ii_28") is not None else None)
+
+
+# 2022 shares 2023's mapping / derivation objects (identical field tree).
+for _y, _m, _d, _fields in (
+        (2021, _MAPPING_2021, _DERIVATIONS_2021, _PART_II_FIELDS_2021),
+        (2023, _MAPPING_2023, _DERIVATIONS_2023, _PART_II_FIELDS_2023),
+        (2024, _MAPPING_2024, _DERIVATIONS_2024, _PART_II_FIELDS_2024),
+        (2025, _MAPPING_2025, _DERIVATIONS_2025, _PART_II_FIELDS_2024)):
+    _install_sch_ca_part_ii(_m, _d, _fields, _PART_II_LINE_30_FIELD[_y])
+
+_SUPPRESSED_2021 = _SUPPRESSED_2021 | _PART_II_TRANSIT_KEYS
+_SUPPRESSED_2023 = _SUPPRESSED_2023 | _PART_II_TRANSIT_KEYS
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_SUPPRESSED_2024 = _SUPPRESSED_2024 | _PART_II_TRANSIT_KEYS
+_SUPPRESSED_2025 = _SUPPRESSED_2025 | _PART_II_TRANSIT_KEYS
 
 
 _AGGREGATIONS_BY_YEAR: dict[int, dict[str, tuple[str, ...]]] = {

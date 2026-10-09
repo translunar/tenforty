@@ -109,3 +109,27 @@ def part_i_sectioned(pdf_path):
                 sec = "B"
         out.append((sec, token, col, name))
     return out
+
+
+_PART_II_LINE = re.compile(r"Line\s+(\d{1,2})\s?([a-e])?\s*[.:]")
+
+
+def part_ii_cells(pdf_path):
+    """{token: field_name} for the Part II (itemized deductions) cells, read
+    from the template's tooltips. token is the line plus its column when the
+    tooltip names one ('5aA', '5eB', '17C') and the bare line otherwise ('1',
+    '18', '30'). A token two cells share (a line's write-in description and its
+    amount, lines 21 and 27) is left out: nothing is placed there."""
+    from tests._blank_by_design import part_two_fields
+    part2 = part_two_fields(pdf_path)
+    fields = PdfReader(str(pdf_path)).get_fields()
+    seen: dict[str, list[str]] = {}
+    for name in part2:
+        tu = str(fields[name].get("/TU") or "")
+        line = _PART_II_LINE.search(tu)
+        if line is None:
+            continue
+        col = _COL.search(tu)
+        token = line.group(1) + (line.group(2) or "") + (col.group(1) if col else "")
+        seen.setdefault(token, []).append(name)
+    return {token: names[0] for token, names in seen.items() if len(names) == 1}
