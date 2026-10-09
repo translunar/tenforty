@@ -58,6 +58,14 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_asset_nest_loading::UnacknowledgedOverrideRefusalTests::test_override_without_acknowledgment_refuses",
     "asset_mode_on_unprinted_rental":
         "tests.test_asset_nest_loading::UnprintedRentalRefusalTests::test_assets_on_a_rental_other_than_the_first_refuse",
+    "asset_placed_after_return_year":
+        "tests.test_depreciation_resolver::AssetPlacedAfterReturnYearTests::test_ledger_fires_and_twin_in_the_return_year_is_silent",
+    "prior_depreciation_mismatch":
+        "tests.test_depreciation_resolver::PriorDepreciationReconciliationTests::test_ledger_fires_on_a_scenario_with_a_mismatched_prior",
+    "stale_depreciation_override":
+        "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_a_stale_override",
+    "override_with_current_year_placement":
+        "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_override_with_current_year_placement",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -298,6 +306,10 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "override_outside_asset_mode",
                 "unacknowledged_depreciation_override",
                 "asset_mode_on_unprinted_rental",
+                "asset_placed_after_return_year",
+                "prior_depreciation_mismatch",
+                "stale_depreciation_override",
+                "override_with_current_year_placement",
             ])
 
     def test_names_are_unique(self):
