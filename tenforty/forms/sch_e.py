@@ -7,7 +7,9 @@ flow-throughs) is out of scope.
 Per-expense amounts for property A come from the scenario's
 ``RentalProperty`` (they're user inputs, not computed values — the
 oracle workbook consumes them rather than exposing them as named
-ranges). Lines 20 (total expenses) and 21 (income/loss) are summed
+ranges). The exception is line 18 (depreciation), which comes from the
+depreciation resolver: the property's asset list, or its stated amount.
+Lines 20 (total expenses) and 21 (income/loss) are summed
 locally here. Line 26 (page total) comes from the oracle via
 ``f1040['sche_line26']`` and is cross-checked against the locally-summed
 line 21 for the single-property case.

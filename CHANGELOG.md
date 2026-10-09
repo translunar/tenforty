@@ -7,6 +7,44 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Depreciable assets are the depreciation source of truth, per activity.**
+  Assets now nest under the activity that uses them
+  (`rental_properties[n].depreciable_assets`,
+  `schedule_c_businesses[n].depreciable_assets`) and one resolver supplies
+  each activity's depreciation to every consumer: Schedule E line 18,
+  Schedule C line 13, the excess-business-loss guard, the routing
+  estimates, the workbook inputs and the CA divergence trigger. An activity
+  has exactly one source — its asset list, or its stated `depreciation`
+  amount. Each asset-mode activity's engine-computed and used figures are
+  written to the results (`depreciation_recon_*` keys) and printed in a
+  "Depreciation Reconciliation" section. Supported: 27.5-year and 39-year
+  real property, and 3/5/7/10/15/20-year personal property with no bonus or
+  section 179 history. Everything else refuses by name.
+- **Schedule C line 13 (depreciation) prints and counts.** It previously
+  refused any nonzero amount. Section 179 remains unmodeled.
+- **Value-pinned depreciation override.** An asset-mode activity may carry
+  `depreciation_override: {amount, restates_engine_amount, acknowledgment}`.
+  The return uses `amount`; the override refuses if `restates_engine_amount`
+  no longer equals what the engine computes, and in any year the activity
+  places property in service.
+- **Breaking: a stated `depreciation` amount needs an acknowledgment.** A
+  rental property or Schedule C business that states `depreciation` without
+  an asset list must set
+  `acknowledges_depreciation_stated_outside_macrs: true` on that activity.
+  Activities with no depreciation need nothing.
+- **Breaking: top-level `depreciable_assets:` refuses at load**, with a
+  pointer to the nested location. Nothing computed from it before (no form
+  line read it), but a scenario that carried one — and emitted a Form 4562
+  from it — now stops at load.
+- **Breaking: `convention:` on an asset refuses at load.** The convention is
+  computed from the recovery class.
+- **Breaking: asset fields.** An asset placed in service before the return
+  year must state `prior_depreciation`, which must equal the MACRS-table
+  reconstruction unless `acknowledges_prior_depreciation_as_stated: true`.
+  Personal property must state `no_bonus_or_section_179_history: true`; real
+  property must not carry the field. A `disposed` asset, an unsupported
+  recovery class, and asset mode on any rental other than the first all
+  refuse.
 - **Schedule C net losses.** A Schedule C business whose line 31 is a loss
   now computes and emits instead of refusing, when the new config
   attestation `acknowledges_sch_c_all_investment_at_risk` is true: box 32a is
