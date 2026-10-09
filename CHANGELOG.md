@@ -41,10 +41,24 @@ breaking changes are called out explicitly.
 - **Breaking: asset fields.** An asset placed in service before the return
   year must state `prior_depreciation`, which must equal the MACRS-table
   reconstruction unless `acknowledges_prior_depreciation_as_stated: true`.
-  Personal property must state `no_bonus_or_section_179_history: true`; real
-  property must not carry the field. A `disposed` asset, an unsupported
-  recovery class, and asset mode on any rental other than the first all
-  refuse.
+  Personal property must state `no_bonus_or_section_179_history: true`
+  unless the activity carries an acknowledged `depreciation_override` (the
+  reconciliation then notes that the engine figure is not a claim of
+  correctness); real property must not carry the field. A `disposed` asset,
+  an unsupported recovery class, and asset mode on any rental other than the
+  first all refuse.
+- **Mid-quarter convention refuses.** When personal property placed in
+  service in the last three months of the year exceeds 40% of all personal
+  property placed in service that year — across every activity on the
+  return, real property excluded from both totals (26 U.S.C. §168(d)(3)) —
+  the return refuses: there are no mid-quarter tables. If an asset list
+  places personal property this year while another activity states its
+  depreciation as a single figure, the test cannot be verified and the
+  return refuses unless the top-level scenario key
+  `acknowledges_no_personal_property_behind_stated_depreciation: true` is
+  set.
+- **Form 4562 reads the nested assets.** It still emits one form per return
+  from all activities' assets; per-activity forms are not in this change.
 - **Schedule C net losses.** A Schedule C business whose line 31 is a loss
   now computes and emits instead of refusing, when the new config
   attestation `acknowledges_sch_c_all_investment_at_risk` is true: box 32a is
