@@ -24,7 +24,8 @@ from tests.helpers import make_simple_scenario
 
 YEAR = 2025
 REFUSAL = (r"listed property.*regardless of when it was placed in service.*"
-           r"acknowledges_no_listed_property: true")
+           r"See the Form 4562 instructions for what counts as listed "
+           r"property.*acknowledges_no_listed_property: true")
 
 
 def _vehicle(year: int = 2023) -> DepreciableAsset:
@@ -78,6 +79,21 @@ class ListedPropertyAcknowledgmentTests(unittest.TestCase):
         self.assertFalse(f4562.is_required(s))
         with self.assertRaisesRegex(NotImplementedError, REFUSAL):
             enforce_scoped_refusals(s, "load")
+
+    def test_message_cites_the_instructions_and_defines_nothing_itself(self):
+        """The message quotes the Who-Must-File trigger and points to the
+        instructions; it carries no definition of listed property of its
+        own (an untranscribed definition is not shipped)."""
+        with self.assertRaises(NotImplementedError) as cm:
+            enforce_scoped_refusals(
+                _scenario(business_assets=[_vehicle()]), "load")
+        text = str(cm.exception)
+        self.assertIn(
+            "any vehicle or other listed property, regardless of when it "
+            "was placed in service", text)
+        for invented in ("passenger automobile", "entertainment",
+                         "recreation", "amusement"):
+            self.assertNotIn(invented, text)
 
     def test_proceeds_with_the_acknowledgment(self):
         enforce_scoped_refusals(
