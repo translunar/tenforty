@@ -54,6 +54,24 @@ original_refund_applied: 0.0
         self.assertEqual(case.ca_original_refund_received, 250.0)
         self.assertEqual(case.ca_original_refund_applied, 0.0)
 
+    def test_original_tax_paid_defaults_to_none(self):
+        # Absent = "not stated" (None), never coerced to 0.0: f1040x.assemble
+        # fails closed at USE if the filed return shows a balance due.
+        case = load_amendment_case(_write(self.GOOD))
+        self.assertIsNone(case.original_tax_paid)
+
+    def test_loads_original_tax_paid(self):
+        case = load_amendment_case(_write(
+            self.GOOD + "original_tax_paid: 150\n"))
+        self.assertEqual(case.original_tax_paid, 150.0)
+        self.assertIsInstance(case.original_tax_paid, float)
+
+    def test_loads_original_tax_paid_explicit_zero(self):
+        case = load_amendment_case(_write(
+            self.GOOD + "original_tax_paid: 0\n"))
+        self.assertIsNotNone(case.original_tax_paid)
+        self.assertEqual(case.original_tax_paid, 0.0)
+
     def test_unknown_key_still_fails_closed_with_ca_fields(self):
         with self.assertRaises(ValueError) as ctx:
             load_amendment_case(_write(

@@ -200,7 +200,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
         case = AmendmentCase(
             year=2024, explanation="Corrected taxable interest income.",
-            original_refund_received=0.0, original_refund_applied=0.0,
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0,
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0,
         )
@@ -322,7 +322,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
         case = AmendmentCase(
             year=year, explanation="Corrected taxable interest income.",
-            original_refund_received=0.0, original_refund_applied=0.0,
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0,
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0,
         )
@@ -383,7 +383,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
         case = AmendmentCase(
             year=2021, explanation="Corrected taxable interest income.",
-            original_refund_received=0.0, original_refund_applied=0.0,
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0,
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0,
         )
@@ -455,7 +455,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
         case = AmendmentCase(
             year=2022, explanation="Corrected taxable interest income.",
-            original_refund_received=0.0, original_refund_applied=0.0,
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0,
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0,
         )
@@ -612,7 +612,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
             year=2024, explanation="Corrected Form 1095-A APTC.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out = self.tmp / "packet"
 
         # No OutOfScopeAmendmentError: f8962_repayment rides its own key now,
@@ -661,7 +661,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
             year=2024, explanation="Added omitted self-employment income.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out = self.tmp / "packet"
 
         manifest = self.orch.run_amendment_packet(
@@ -711,7 +711,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
             year=2021, explanation="Added omitted self-employment income.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         return original, amended, case, filed_path, ca_filed_path
 
     def test_ty2021_schedule_c_amendment_renders_the_family(self):
@@ -832,7 +832,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
             year=2021, explanation="Corrected taxable interest income.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out = self.tmp / "packet"
         manifest = self.orch.run_amendment_packet(
             original, amended, case, filed_path, ca_filed_path, out)
@@ -899,7 +899,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
         case = AmendmentCase(
             year=2021, explanation="x",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out = self.tmp / "packet"
 
         synthetic_federal = tuple(
@@ -965,7 +965,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
         case = AmendmentCase(
             year=2022, explanation="x",
-            original_refund_received=0.0, original_refund_applied=0.0,
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0,
             ca_original_refund_received=max(0.0, -orig_ca["f540_total_liability"]),
             ca_original_refund_applied=0.0)
         out = self.tmp / "packet"
@@ -1040,7 +1040,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
             year=2021,
             explanation="No changes; confirms 2021 line-12b non-itemizer "
                         "charitable deduction carries through the amendment.",
-            original_refund_received=0.0, original_refund_applied=0.0)
+            original_refund_received=0.0, original_refund_applied=0.0, original_tax_paid=0.0)
         out = form_f1040x.assemble(filed, corrected_fed, case)
 
         agi = 60_000.0
