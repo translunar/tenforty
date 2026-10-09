@@ -13,7 +13,7 @@ asset with the engine's figures. That cannot print consistently when any
 activity's deduction is an override amount, so a placement year with an
 override anywhere refuses.
 
-Field paths are literals (see the provenance note on each). 6,970 is a legacy
+Field paths are literals probed on the 2025 templates. 6,970 is a legacy
 regression pin (January 27.5-year building on 200,000).
 """
 
@@ -40,13 +40,52 @@ from tests.helpers import SPREADSHEETS_DIR, make_simple_scenario
 YEAR = 2025
 SCH_E_LINE_18_PROPERTY_A = (
     "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_61[0]")
-# PROVENANCE, stated plainly: unlike the Schedule E path above (probed on
-# the template), this literal was copied from mappings/pdf_4562.py's 2025
-# entry -- the Part IV summary sits on page 2 in the 2025 revision and my
-# label probe did not locate it. It is a literal here so a mapping change
-# breaks this test, but it is NOT independent evidence that the field is
-# line 22; tests/test_4562_round_trip.py and the 4562 mapping tests own that.
+# Probed on the 2025 template (the Part IV summary is on page 2 in this
+# revision): the widget on the row whose printed line number is "22".
+# `TemplateAnchorTests` below re-derives that from the template itself on
+# every run, so this literal is anchored to the artifact, not to
+# mappings/pdf_4562.py.
 F4562_LINE_22 = "topmostSubform[0].Page2[0].f2_2[0]"
+
+
+F4562_TEMPLATE = (
+    Path(__file__).parent.parent / "pdfs" / "federal" / str(YEAR)
+    / "f4562.pdf")
+
+
+def _widgets_by_printed_line(template: Path, page_index: int) -> dict:
+    """{printed line number: full field name} for the amount widgets on one
+    page of a blank template: each widget is paired with the line-number
+    label printed at the right-hand end of its own row, immediately left of
+    the widget."""
+    page = PdfReader(str(template)).pages[page_index]
+    fragments = []
+
+    def visit(text, cm, tm, _font_dict, _font_size):
+        if text.strip():
+            fragments.append((tm[5] + cm[5], tm[4] + cm[4], text.strip()))
+
+    page.extract_text(visitor_text=visit)
+    found = {}
+    for annotation in page.get("/Annots", []):
+        annotation = annotation.get_object()
+        if annotation.get("/Subtype") != "/Widget":
+            continue
+        names, node = [], annotation
+        while node is not None:
+            if "/T" in node:
+                names.append(node["/T"])
+            node = node.get("/Parent")
+            node = node.get_object() if node is not None else None
+        left, bottom, _right, top = (float(v) for v in annotation["/Rect"])
+        row_y = (bottom + top) / 2
+        on_row = sorted(
+            (x, text) for y, x, text in fragments
+            if abs(y - row_y) < 6 and x < left)
+        if on_row:
+            label = on_row[-1][1].split()[-1]
+            found.setdefault(label, ".".join(reversed(names)))
+    return found
 
 
 def _read(pdf_path, field_path) -> str:
@@ -97,6 +136,23 @@ def _scenario(rentals=(), businesses=()):
     return dataclasses.replace(
         base, config=config, rental_properties=list(rentals),
         schedule_c_businesses=list(businesses))
+
+
+class TemplateAnchorTests(unittest.TestCase):
+    """The line 22 literal is what the blank 2025 template itself puts on
+    the row printed "22" -- read from the PDF, not from the mapping."""
+
+    def test_line_22_literal_is_the_widget_on_the_row_printed_22(self):
+        by_line = _widgets_by_printed_line(F4562_TEMPLATE, page_index=1)
+        self.assertEqual(by_line["22"], F4562_LINE_22)
+        # The neighbouring rows are different widgets, so an off-by-one
+        # literal would not pass.
+        self.assertNotEqual(by_line["21"], F4562_LINE_22)
+        self.assertNotEqual(by_line["23a"], F4562_LINE_22)
+
+    def test_the_literal_is_a_real_field_of_the_template(self):
+        fields = PdfReader(str(F4562_TEMPLATE)).get_fields() or {}
+        self.assertIn(F4562_LINE_22, fields)
 
 
 class _EmitCase(unittest.TestCase):
