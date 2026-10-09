@@ -423,9 +423,8 @@ def aggregate_business_losses(scenario: Scenario) -> int:
                 for biz in scenario.schedule_c_businesses)
     k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
-    rental = sum(
-        max(0, -form_sch_e._property_a_fields(r)["sch_e_property_a_income_loss"])
-        for r in scenario.rental_properties)
+    rental = sum(max(0, -form_sch_e.printed_rental_net(r))
+                 for r in scenario.rental_properties)
     return sch_c + k1 + rental
 
 
