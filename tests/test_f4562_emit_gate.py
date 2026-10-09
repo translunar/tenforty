@@ -18,6 +18,7 @@ regression pin (January 27.5-year building on 200,000).
 """
 
 import dataclasses
+import re
 import tempfile
 import unittest
 from datetime import date
@@ -41,7 +42,7 @@ YEAR = 2025
 SCH_E_LINE_18_PROPERTY_A = (
     "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_61[0]")
 # Probed on the 2025 template (the Part IV summary is on page 2 in this
-# revision): the widget on the row whose printed line number is "22".
+# revision): the widget on the line whose printed number is "22".
 # `TemplateAnchorTests` below re-derives that from the template itself on
 # every run, so this literal is anchored to the artifact, not to
 # mappings/pdf_4562.py.
@@ -53,20 +54,43 @@ F4562_TEMPLATE = (
     / "f4562.pdf")
 
 
-def _widgets_by_printed_line(template: Path, page_index: int) -> dict:
-    """{printed line number: full field name} for the amount widgets on one
-    page of a blank template: each widget is paired with the line-number
-    label printed at the right-hand end of its own row, immediately left of
-    the widget."""
-    page = PdfReader(str(template)).pages[page_index]
-    fragments = []
+# A line's text starts beside its number and may wrap onto a second row; the
+# amount box sits on the line's LAST row. So a widget's line number is the
+# nearest left-margin number at or above the widget's row, and never further
+# above than a wrapped line can reach.
+_LEFT_MARGIN_MAX_X = 60.0
+_ROW_TOLERANCE = 6.0
+_MAX_WRAP_HEIGHT = 30.0
+_LINE_NUMBER = re.compile(r"(\d+[a-z]?)\b")
+
+
+def _left_margin_line_numbers(page) -> list[tuple[float, str]]:
+    """``(y, line number)`` for every line-number label printed in the left
+    margin of a page, top to bottom.
+
+    Only the START of a left-margin text fragment is read. That is the one
+    thing pypdf versions agree on for these forms: the line's number begins
+    a fragment at the left margin whether or not the words after it are
+    split off ("22" / "22 Total."). The right-hand copy of the number, at
+    the end of the leader dots, is NOT used -- pypdf 6.9.2 does not emit it
+    as a separate fragment, which is what broke the first version of this
+    probe."""
+    labels = []
 
     def visit(text, cm, tm, _font_dict, _font_size):
-        if text.strip():
-            fragments.append((tm[5] + cm[5], tm[4] + cm[4], text.strip()))
+        text = text.strip()
+        x, y = tm[4] + cm[4], tm[5] + cm[5]
+        match = _LINE_NUMBER.match(text)
+        if match and x < _LEFT_MARGIN_MAX_X:
+            labels.append((y, match.group(1)))
 
     page.extract_text(visitor_text=visit)
-    found = {}
+    return sorted(labels, reverse=True)
+
+
+def _page_widgets(page) -> list[tuple[float, float, str]]:
+    """``(row y, left x, full field name)`` for every widget on a page."""
+    widgets = []
     for annotation in page.get("/Annots", []):
         annotation = annotation.get_object()
         if annotation.get("/Subtype") != "/Widget":
@@ -78,13 +102,28 @@ def _widgets_by_printed_line(template: Path, page_index: int) -> dict:
             node = node.get("/Parent")
             node = node.get_object() if node is not None else None
         left, bottom, _right, top = (float(v) for v in annotation["/Rect"])
-        row_y = (bottom + top) / 2
-        on_row = sorted(
-            (x, text) for y, x, text in fragments
-            if abs(y - row_y) < 6 and x < left)
-        if on_row:
-            label = on_row[-1][1].split()[-1]
-            found.setdefault(label, ".".join(reversed(names)))
+        widgets.append(((bottom + top) / 2, left, ".".join(reversed(names))))
+    return widgets
+
+
+def _line_number_of(row_y: float, labels) -> str | None:
+    """The nearest left-margin line number at or above a widget's row, or
+    None when there is none within a wrapped line's reach."""
+    above = [(y, number) for y, number in labels
+             if row_y - _ROW_TOLERANCE <= y <= row_y + _MAX_WRAP_HEIGHT]
+    return min(above)[1] if above else None
+
+
+def _widgets_by_printed_line(template: Path, page_index: int) -> dict:
+    """{printed line number: [field names]} for the widgets on one page of a
+    blank template, by the nearest-number-above rule."""
+    page = PdfReader(str(template)).pages[page_index]
+    labels = _left_margin_line_numbers(page)
+    found: dict[str, list[str]] = {}
+    for row_y, _left, name in _page_widgets(page):
+        number = _line_number_of(row_y, labels)
+        if number is not None:
+            found.setdefault(number, []).append(name)
     return found
 
 
@@ -141,19 +180,67 @@ def _scenario(rentals=(), businesses=()):
 
 class TemplateAnchorTests(unittest.TestCase):
     """The line 22 literal is what the blank 2025 template itself puts on
-    the row printed "22" -- read from the PDF, not from the mapping."""
+    the line printed "22" -- read from the PDF, not from the mapping.
 
-    def test_line_22_literal_is_the_widget_on_the_row_printed_22(self):
+    Two independent readings of the page must agree:
+      1. geometry: each widget takes the nearest left-margin line number at
+         or above its row;
+      2. order: the first three line numbers printed on the page (top to
+         bottom) pair off with the first three widgets (top to bottom).
+    A probe that finds no "22" label FAILS -- it never skips and never
+    passes on a missing label."""
+
+    def setUp(self):
+        self.page = PdfReader(str(F4562_TEMPLATE)).pages[1]
+        self.labels = _left_margin_line_numbers(self.page)
+        self.numbers = [number for _y, number in self.labels]
+
+    def test_the_probe_finds_the_line_numbers_it_relies_on(self):
+        """Loud failure, by name, if a pypdf version stops yielding them."""
+        for number in ("21", "22", "23a"):
+            self.assertIn(
+                number, self.numbers,
+                f"no left-margin label for line {number} was extracted from "
+                f"{F4562_TEMPLATE.name} page 2; labels found: {self.numbers}")
+        self.assertEqual(self.numbers[:3], ["21", "22", "23a"])
+
+    def test_line_22_literal_is_the_widget_on_the_line_printed_22(self):
         by_line = _widgets_by_printed_line(F4562_TEMPLATE, page_index=1)
-        self.assertEqual(by_line["22"], F4562_LINE_22)
-        # The neighbouring rows are different widgets, so an off-by-one
-        # literal would not pass.
-        self.assertNotEqual(by_line["21"], F4562_LINE_22)
-        self.assertNotEqual(by_line["23a"], F4562_LINE_22)
+        self.assertIn("22", by_line, f"lines located: {sorted(by_line)}")
+        # Exactly one widget belongs to line 22, and it is the literal.
+        self.assertEqual(by_line["22"], [F4562_LINE_22])
+        # The neighbouring lines are different widgets, so an off-by-one
+        # literal cannot pass.
+        self.assertNotIn(F4562_LINE_22, by_line["21"])
+        self.assertNotIn(F4562_LINE_22, by_line["23a"])
+
+    def test_reading_order_agrees_with_the_geometry(self):
+        top_three = [
+            name for _y, _x, name in sorted(
+                _page_widgets(self.page), reverse=True)[:3]]
+        by_order = dict(zip(self.numbers[:3], top_three))
+        by_line = _widgets_by_printed_line(F4562_TEMPLATE, page_index=1)
+        self.assertEqual(by_order["22"], F4562_LINE_22)
+        for number in ("21", "22", "23a"):
+            self.assertIn(by_order[number], by_line[number])
 
     def test_the_literal_is_a_real_field_of_the_template(self):
         fields = PdfReader(str(F4562_TEMPLATE)).get_fields() or {}
         self.assertIn(F4562_LINE_22, fields)
+
+    def test_a_missing_label_is_a_failure_not_a_pass(self):
+        """With the "22" label withheld from the probe, no widget is
+        attributed to line 22 -- the anchor test's assertIn then fails."""
+        labels = [(y, n) for y, n in self.labels if n != "22"]
+        attributed = {
+            _line_number_of(row_y, labels)
+            for row_y, _x, _name in _page_widgets(self.page)}
+        self.assertNotIn("22", attributed)
+        # ...and the widget is NOT silently handed to a neighbouring line
+        # in a way that would let the literal pass as line 22.
+        row_y = next(y for y, _x, name in _page_widgets(self.page)
+                     if name == F4562_LINE_22)
+        self.assertNotEqual(_line_number_of(row_y, labels), "22")
 
 
 class _EmitCase(unittest.TestCase):
