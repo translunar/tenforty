@@ -26,7 +26,9 @@ behavior is to ignore, not raise.
 
 import logging
 
-from tenforty.attestations import enforce_compute_time, has_scorp_k1_box_1_loss
+from tenforty.attestations import (
+    enforce_compute_time, k1_part_ii_row_total, scorp_k1_row_is_net_loss,
+)
 from tenforty.models import (
     EntityType, K1FanoutActivity, K1FanoutData, PayerAmount,
     Scenario, ScheduleK1,
@@ -39,16 +41,9 @@ log = logging.getLogger(__name__)
 _ROW_LETTERS = ("a", "b", "c", "d")
 
 
-def _k1_row_total(k1: ScheduleK1) -> float:
-    """Sum of the Sch E Part II row components per K-1, IRS-rounded
-    per component (rentals are combined before rounding, matching the
-    form's single 'Rental real estate' line)."""
-    return (
-        irs_round(k1.ordinary_business_income)
-        + irs_round(k1.net_rental_real_estate + k1.other_net_rental)
-        + irs_round(k1.royalties)
-        + irs_round(k1.other_income)
-    )
+# The per-K-1 Part II row amount. Defined in tenforty.attestations so the
+# Form 7203 gate and this module read ONE definition of "the printed row".
+_k1_row_total = k1_part_ii_row_total
 
 
 def compute(
@@ -205,14 +200,14 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
 def hand_attachment_notes(scenario: Scenario) -> tuple[str, ...]:
     """Attachments the return REQUIRES that tenforty does not produce, one
     note per item, for a packet manifest. Today: Form 7203 for each S
-    corporation K-1 reporting a box 1 loss (Schedule E line 28 column (e) is
-    checked for that row). Empty when nothing is required."""
+    corporation K-1 whose Part II row is a net loss (Schedule E line 28
+    column (e) is checked for that row). Empty when nothing is required."""
     return tuple(
         f"Form 7203 (S Corporation Shareholder Stock and Debt Basis "
         f"Limitations) for {k1.entity_name!r} is NOT produced by tenforty: "
         f"Schedule E line 28 column (e) is checked for its loss, so prepare "
         f"Form 7203 by hand and attach it to the return."
-        for k1 in scenario.schedule_k1s if has_scorp_k1_box_1_loss(k1)
+        for k1 in scenario.schedule_k1s if scorp_k1_row_is_net_loss(k1)
     )
 
 
@@ -230,14 +225,15 @@ def _row_fields(k1: ScheduleK1, letter: str) -> dict:
         else:
             passive_loss = -total
     # Line 28 column (e) "Check if basis computation is required": the form's
-    # Part II note requires it for a loss from an S corporation. The key is
+    # Part II note requires it for a loss from an S corporation -- here, an
+    # S corporation row that prints a NET loss (boxes are netted per row). The key is
     # ABSENT (not False) on every other row, so the box stays blank there.
     # The basis computation itself (Form 7203) is not produced; the
     # `acknowledges_form_7203_attached_separately` gate covers the attachment
     # and uses the same predicate.
     basis_box = (
         {f"sch_e_part_ii_row_{letter}_basis_computation_required": True}
-        if has_scorp_k1_box_1_loss(k1) else {}
+        if scorp_k1_row_is_net_loss(k1) else {}
     )
     return {
         **basis_box,

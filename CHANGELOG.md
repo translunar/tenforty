@@ -16,14 +16,21 @@ breaking changes are called out explicitly.
   zero, remainder on the line 16 carryforward). Without the attestation a
   loss still refuses (Form 6198 is not modeled).
 - **S corporation K-1 losses check Schedule E line 28 column (e).** A K-1
-  from an S corporation with a box 1 loss now checks "basis computation is
-  required" (tax years 2022-2025; other years refuse at emit) and is gated on
-  the new attestation `acknowledges_form_7203_attached_separately`. Form 7203
-  itself is not produced; amendment packet manifests name it as a hand
-  attachment. **Breaking:** such a return previously computed with no gate.
+  from an S corporation whose Part II row nets to a loss now checks "basis
+  computation is required" (tax years 2022-2025; other years refuse at emit)
+  and is gated on the new attestation
+  `acknowledges_form_7203_attached_separately`. Form 7203 itself is not
+  produced; amendment packet manifests name it as a hand attachment. The gate
+  runs on the native compute path and at emit; a compute-only run on the
+  workbook path does not enforce it. **Breaking:** such a return previously
+  computed with no gate.
+- **Form 8995 line 16 prints its magnitude.** The loss-carryforward cell has
+  preprinted parentheses; it previously received the signed value and read
+  "( -N )". Re-emitted loss-year Forms 8995 differ in that cell.
 - **§461(l) excess-business-loss guard.** A return whose business losses
-  (Schedule C losses + K-1 business loss boxes + rental property losses,
-  with no business income netted) exceed the year's Form 461 threshold is
+  (Schedule C losses + K-1 business loss boxes + rental property losses, in
+  whole dollars as the forms print them, with no business income netted)
+  exceed the year's Form 461 threshold is
   refused, in every supported tax year. New `FederalParams` field
   `excess_business_loss_threshold`.
 

@@ -105,6 +105,27 @@ class BasisComputationBoxTests(unittest.TestCase):
             _scenario(_k1(-70.0, entity_type="partnership")), upstream={})
         self.assertNotIn(BASIS_KEY, out)
 
+    # The box follows the PRINTED row: tenforty nets a K-1's boxes into one
+    # Part II row, so the row -- not box 1 alone -- is what reports a loss.
+    def test_net_loss_row_with_no_box_1_loss_requires_it(self):
+        for label, k1 in (
+            ("box 1 zero, rental loss",
+             dataclasses.replace(_k1(0.0), net_rental_real_estate=-70.0)),
+            ("box 1 income, larger other loss",
+             dataclasses.replace(_k1(10.0), other_income=-80.0)),
+        ):
+            with self.subTest(case=label):
+                out, _ = sch_e_part_ii.compute(_scenario(k1), upstream={})
+                self.assertEqual(out["sch_e_part_ii_row_a_nonpassive_loss"], 70)
+                self.assertIs(out[BASIS_KEY], True)
+
+    def test_box_1_loss_inside_a_net_income_row_does_not(self):
+        k1 = dataclasses.replace(_k1(-70.0), other_income=500.0)
+        out, _ = sch_e_part_ii.compute(
+            _scenario(k1, attached=False), upstream={})
+        self.assertEqual(out["sch_e_part_ii_row_a_nonpassive_income"], 430)
+        self.assertNotIn(BASIS_KEY, out)
+
 
 class Form7203AttestationTests(unittest.TestCase):
     def setUp(self):
@@ -128,6 +149,20 @@ class Form7203AttestationTests(unittest.TestCase):
         with self.assertRaises(NotImplementedError) as ctx:
             self.orch.compute_federal(scn)
         self.assertIn(ATTESTATION, str(ctx.exception))
+
+    def test_net_loss_row_with_no_box_1_loss_refuses_too(self):
+        for label, k1 in (
+            ("box 1 zero, rental loss",
+             dataclasses.replace(_k1(0.0), net_rental_real_estate=-70.0)),
+            ("box 1 income, larger other loss",
+             dataclasses.replace(_k1(10.0), other_income=-80.0)),
+        ):
+            with self.subTest(case=label):
+                scn = _scenario(k1, attached=False)
+                self.assertIs(getattr(scn.config, ATTESTATION), False)
+                with self.assertRaises(NotImplementedError) as ctx:
+                    self.orch.compute_federal(scn)
+                self.assertIn(ATTESTATION, str(ctx.exception))
 
     def test_scorp_profit_and_partnership_loss_do_not_trigger_it(self):
         for label, k1 in (("scorp profit", _k1(500.0)),
@@ -194,9 +229,10 @@ class ScorpLossEmitTests(unittest.TestCase):
         self.assertEqual(_field(emitted["sch_e"], _COL_E_ROW_A), "/1")
         self.assertEqual(_field(emitted["sch_e"], _LINE_31), "70")
         self.assertEqual(_field(emitted["sch_e"], _LINE_32), "-70")
+        # Line 16 sits in preprinted parentheses: the magnitude prints.
         self.assertEqual(
             _field(emitted["f8995"], "topmostSubform[0].Page1[0].f1_32[0]"),
-            "-70")
+            "70")
 
     def test_a_year_without_the_box_mapping_refuses_at_emit(self):
         scn = _scenario(_k1(-70.0), year=2021)

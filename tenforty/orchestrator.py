@@ -1,4 +1,5 @@
 import dataclasses
+import math
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -397,25 +398,34 @@ _K1_BUSINESS_BOXES = (
 )
 
 
-def aggregate_business_losses(scenario: Scenario) -> float:
+def aggregate_business_losses(scenario: Scenario) -> int:
     """Sum of every LOSS-positioned business item on the return, as a
-    positive number, with NO netting of business income against it: each
-    Schedule C business's net loss, each K-1 business box that is negative,
-    and each Schedule E rental property's net loss.
+    positive whole-dollar number, with NO netting of business income against
+    it: each Schedule C business's net loss, each K-1 business box that is
+    negative, and each Schedule E rental property's net loss.
 
     This is the quantity the IRC §461(l) guard compares to the threshold. It
     is a deliberate SUPERSET of the true excess-business-loss base (which
     nets business income and gains against the deductions): leaving the
     income out can only make the sum larger, so the guard can over-refuse
     but can never pass a return whose loss the limitation would cut. Inputs
-    are read raw -- before the passive-loss and at-risk rules -- for the same
-    reason."""
-    sch_c = sum(max(0.0, -form_sch_c.net_profit_estimate(biz))
+    are read before the passive-loss and at-risk rules for the same reason.
+
+    WHOLE DOLLARS, never below what the forms print. The forms round entry
+    lines one by one, so a printed loss can exceed the raw arithmetic by a
+    dollar or more; summing raw floats would let a return through whose
+    printed loss is over the threshold. So: a Schedule C business contributes
+    its PRINTED line 31, a rental property its PRINTED Schedule E line 21,
+    and each K-1 loss box is rounded UP (the K-1 row prints its boxes netted
+    and its two rental boxes combined, so no per-box rounding matches the
+    page; the ceiling is never less than what any of those prints)."""
+    sch_c = sum(max(0, -form_sch_c.printed_net_profit(biz))
                 for biz in scenario.schedule_c_businesses)
-    k1 = sum(max(0.0, -getattr(k, box))
+    k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
-    rental = sum(max(0.0, -_rental_net_income(r))
-                 for r in scenario.rental_properties)
+    rental = sum(
+        max(0, -form_sch_e._property_a_fields(r)["sch_e_property_a_income_loss"])
+        for r in scenario.rental_properties)
     return sch_c + k1 + rental
 
 
@@ -1748,7 +1758,7 @@ class ReturnOrchestrator:
                 name="f8995", template=_fed("f8995.pdf"),
                 output_name=f"f8995_{year}.pdf", kind="flat",
                 mapping=PdfF8995.get_mapping(year)["scalars"],
-                values=f8995_values,
+                values=PdfF8995.presentation_values(f8995_values),
             ))
 
         if self._should_emit_8582(scenario, upstream):

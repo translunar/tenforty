@@ -61,13 +61,38 @@ above carry a misleading name.
   f8995_line_14_income_limit             |    14     | Income limitation. Multiply line 13 by 20%
   f8995_line_15_qbi_deduction            |    15     | Enter the smaller of line 10 or line 14
   f8995_line_16_qbi_loss_carryforward    |  **16**   | Total qualified business (loss) carryforward
+
+Lines 3, 7, 16 and 17 sit in PREPRINTED parentheses; see ``presentation_values``.
 """
 
 from tenforty.mappings.registry import PdfFormMapping
 
 
+# Compute keys whose cell has PREPRINTED parentheses on the form. The compute
+# value is signed (a loss is negative); the cell must receive the MAGNITUDE,
+# or the page reads "( -70 )". Line 16 is the only such key that can be
+# nonzero today: lines 3 and 7 (prior-year carryforwards IN) have no input
+# channel and print 0, and line 17 (REIT/PTP carryforward) has no compute key.
+_PARENTHESIZED_KEYS = (
+    "f8995_line_16_qbi_loss_carryforward",
+    "f8995_line_3_prior_qbi_loss_carryforward",
+    "f8995_line_7_prior_reit_ptp_loss_carryforward",
+)
+
+
 class PdfF8995(PdfFormMapping[dict]):
     _FORM_NAME = "Form 8995"
+
+    @staticmethod
+    def presentation_values(values: dict) -> dict:
+        """The fill payload for a computed Form 8995: a copy of ``values``
+        with every preprinted-parentheses cell carrying its magnitude.
+        Compute keys stay signed everywhere else (gates, snapshots)."""
+        out = dict(values)
+        for key in _PARENTHESIZED_KEYS:
+            if isinstance(out.get(key), (int, float)):
+                out[key] = abs(out[key])
+        return out
 
     _MAPPINGS: dict[int, dict] = {
         2024: {

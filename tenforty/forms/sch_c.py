@@ -49,6 +49,17 @@ def net_profit_estimate(biz: ScheduleCBusiness) -> float:
     return biz.gross_receipts - sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
 
 
+def printed_net_profit(biz: ScheduleCBusiness) -> int:
+    """Line 31 exactly as the form prints it, NON-RAISING: rounded line 1
+    less the sum of the individually rounded expense lines (unmodeled lines
+    ignored -- `compute` refuses those). Because entry lines round one by
+    one, this can differ from the raw `net_profit_estimate` by a dollar or
+    more. `_compute_business` and the excess-business-loss guard both use
+    it, so the guard compares the same figure the page shows."""
+    return irs_round(biz.gross_receipts) - sum(
+        irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
+
+
 _REFUSED_AMOUNT_FIELDS = (
     ("cost_of_goods_sold", "Part III cost of goods sold"),
     ("inventory", "Part III inventory"),
@@ -90,7 +101,7 @@ def _compute_business(
     line_1 = irs_round(biz.gross_receipts)
     line_7 = line_1
     line_28 = sum(irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
-    line_29 = line_7 - line_28           # tentative profit
+    line_29 = printed_net_profit(biz)    # tentative profit (line 7 - line 28)
     line_31 = line_29                    # line 30 home office refused -> 0
     is_loss = line_31 < 0
     if is_loss and all_investment_at_risk is not True:

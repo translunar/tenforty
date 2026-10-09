@@ -16,6 +16,7 @@ import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tenforty import orchestrator
 from tenforty.models import (
@@ -79,6 +80,32 @@ class AggregateBusinessLossTests(unittest.TestCase):
         scn = _scenario(businesses=[_sch_c_loss(100), profit_biz],
                         k1s=[_k1_loss(200), profit_k1])
         self.assertEqual(orchestrator.aggregate_business_losses(scn), 300)
+
+    def test_schedule_c_contributes_its_printed_line_31_loss(self):
+        # Entry lines round individually, so the PRINTED loss can exceed the
+        # raw one: 1,000.5 + 2,000.5 - 1.0 is 3,000 raw, but the form prints
+        # 1,001 + 2,001 - 1 = 3,001 on line 31.
+        biz = ScheduleCBusiness(description="Synthetic Loss Shop",
+                                gross_receipts=1.0, supplies=1_000.5,
+                                advertising=2_000.5)
+        self.assertEqual(
+            orchestrator.aggregate_business_losses(_scenario(businesses=[biz])),
+            3_001)
+
+    def test_k1_and_rental_fractions_round_up_never_down(self):
+        k1 = dataclasses.replace(
+            _k1_loss(0), ordinary_business_income=0.0, qbi_amount=0.0,
+            net_rental_real_estate=-0.4, other_net_rental=-0.4)
+        # Two loss boxes of 0.4 print as one combined rental loss of 1; the
+        # un-netted sum must not come out below that.
+        self.assertEqual(
+            orchestrator.aggregate_business_losses(_scenario(k1s=[k1])), 2)
+        rental = _rental_loss(0)
+        rental = dataclasses.replace(rental, repairs=100.5, taxes=200.5,
+                                     rents_received=1.0)
+        self.assertEqual(
+            orchestrator.aggregate_business_losses(_scenario(rentals=[rental])),
+            301)  # the Schedule E line 21 the form prints: 101 + 201 - 1
 
     def test_no_losses_is_zero(self):
         self.assertEqual(orchestrator.aggregate_business_losses(_scenario()), 0)
@@ -146,6 +173,50 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
             ordinary_business_income=400_000.0, qbi_amount=0.0)
         self._assert_refused(_scenario(
             businesses=[_sch_c_loss(_threshold(2025) + 1)], k1s=[profit_k1]))
+
+    def test_printed_loss_one_dollar_over_refuses_though_raw_is_at_threshold(self):
+        limit = _threshold(2025)
+        biz = ScheduleCBusiness(
+            description="Synthetic Loss Shop", gross_receipts=1.0,
+            supplies=limit - 1_000 + 0.5, advertising=1_000.5)
+        # Raw arithmetic lands exactly ON the threshold ...
+        self.assertEqual(biz.supplies + biz.advertising - biz.gross_receipts,
+                         limit)
+        # ... but line 31 prints one dollar over it.
+        self._assert_refused(_scenario(businesses=[biz]))
+
+    def test_guard_fires_before_the_workbook_route(self):
+        """A married-jointly return routes to the workbook path, not the
+        native spine. The guard must refuse it too -- BEFORE the workbook is
+        evaluated."""
+        scn = _scenario(rentals=[_rental_loss(
+            _threshold(2025, "married_jointly") + 1)])
+        mfj = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, filing_status="married_jointly"))
+        self.assertFalse(self.orch._scenario_in_spine_scope(mfj))
+        with mock.patch.object(
+                self.orch, "_compute_1040_via_workbook",
+                side_effect=AssertionError("workbook route was reached"),
+        ) as workbook:
+            with self.assertRaises(NotImplementedError) as ctx:
+                self.orch._compute_1040_pipeline(mfj)
+        workbook.assert_not_called()
+        self.assertIn("461(l)", str(ctx.exception))
+
+    def test_workbook_route_under_the_threshold_reaches_the_workbook(self):
+        # Reachability of the route the test above protects: the same joint
+        # return UNDER the threshold does go to the workbook.
+        scn = _scenario(rentals=[_rental_loss(1_000)])
+        mfj = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, filing_status="married_jointly"))
+        with mock.patch.object(
+                self.orch, "_compute_1040_via_workbook",
+                return_value={"taxable_income": 0}) as workbook:
+            try:
+                self.orch._compute_1040_pipeline(mfj)
+            except Exception:
+                pass  # downstream of the mocked workbook is not under test
+        workbook.assert_called_once()
 
     def test_married_jointly_uses_its_own_threshold(self):
         single_limit = _threshold(2025)
