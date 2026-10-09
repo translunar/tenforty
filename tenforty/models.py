@@ -996,9 +996,9 @@ class SCorpDeductions:
 
     ``compensation_of_officers`` is the Form 1125-E line 4 total; Form 1125-E
     line-item detail is out of scope for v1. ``depreciation`` is also a
-    caller-supplied aggregate — tenforty does not automatically integrate
-    Form 4562 / ``Scenario.depreciable_assets`` output into 1120-S deductions,
-    so a caller using both must avoid double-counting.
+    caller-supplied aggregate — tenforty does not integrate Form 4562 or any
+    activity's ``depreciable_assets`` into 1120-S deductions, so a caller
+    using both must avoid double-counting.
     """
     compensation_of_officers: float
     salaries_wages: float
