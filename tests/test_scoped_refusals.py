@@ -9,6 +9,7 @@ registered refusal names the test that makes it fire, and an entry without a
 proof (or naming a test that does not exist) fails the suite.
 """
 
+import dataclasses
 import importlib
 import tempfile
 import unittest
@@ -321,6 +322,35 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 self.assertTrue(issubclass(cls, unittest.TestCase))
                 self.assertTrue(method_name.startswith("test_"))
                 self.assertTrue(callable(getattr(cls, method_name)))
+
+    def test_every_firing_proof_reddens_when_its_refusal_is_neutered(self):
+        """A proof that stays green with its refusal switched off proves
+        nothing (some other refusal is firing, or the assertion is vacuous).
+        Neuter each entry in turn -- its predicate finds nothing -- and
+        require the named test to FAIL."""
+        registry = attestations._SCOPED_REFUSALS
+        for name, node in FIRING_PROOFS.items():
+            with self.subTest(refusal=name):
+                module_name, class_name, method_name = node.split("::")
+                cls = getattr(
+                    importlib.import_module(module_name), class_name)
+                neutered = tuple(
+                    dataclasses.replace(r, offenders=lambda subject: [])
+                    if r.name == name else r for r in registry)
+                self.assertNotEqual(neutered, registry)
+                result = unittest.TestResult()
+                with mock.patch.object(
+                        attestations, "_SCOPED_REFUSALS", neutered):
+                    cls(method_name).run(result)
+                self.assertEqual(result.testsRun, 1)
+                self.assertFalse(
+                    result.wasSuccessful(),
+                    f"{node} still passes with {name} neutered")
+                # And it passes with the registry intact, so the red above is
+                # the neutering, not a broken test.
+                intact = unittest.TestResult()
+                cls(method_name).run(intact)
+                self.assertTrue(intact.wasSuccessful(), intact.failures)
 
     def test_completeness_gate_fails_an_unproven_entry(self):
         """The gate itself fires: an entry with no proof is caught."""
