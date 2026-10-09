@@ -25,6 +25,7 @@ from types import SimpleNamespace
 
 from tenforty.attestations import (
     depreciation_activities, enforce_scoped_refusals,
+    has_unattested_bonus_history,
 )
 from tenforty.forms.depreciation.macrs import convention_for, macrs_deduction
 from tenforty.models import (
@@ -155,15 +156,16 @@ def resolve(activity, tax_year: int) -> ResolvedDepreciation:
 RECON_PREFIX = "depreciation_recon_"
 _RECON_SECTION_SLUGS = {
     "rental_properties": "rental", "schedule_c_businesses": "sch_c"}
-RECON_FIELDS = ("activity", "mode", "engine_amount", "used_amount")
+RECON_FIELDS = ("activity", "mode", "engine_amount", "used_amount", "note")
 
 
 def recon_keys(scenario) -> dict:
     """Result keys reconciling the engine's figure with the figure used, one
     group per ASSET-MODE activity (none for stated-mode or no-depreciation
     activities). Keys: ``depreciation_recon_{rental|sch_c}_{index}_{field}``
-    for each field in `RECON_FIELDS`. An overridden activity shows both
-    figures, differing; every other asset-mode activity shows them equal."""
+    for each field in `RECON_FIELDS` (`note` only when there is one). An
+    overridden activity shows both figures, differing; every other
+    asset-mode activity shows them equal."""
     keys: dict = {}
     year = scenario.config.year
     for section, index, label, activity in depreciation_activities(scenario):
@@ -175,6 +177,17 @@ def recon_keys(scenario) -> dict:
         keys[prefix + "mode"] = resolved.mode
         keys[prefix + "engine_amount"] = resolved.engine_amount
         keys[prefix + "used_amount"] = irs_round(resolved.amount)
+        # Present only when an override lifted the bonus / section 179
+        # history refusal for this activity (the ledger lets such an asset
+        # load only under a valid override).
+        tainted = [a.description for a in activity.depreciable_assets
+                   if has_unattested_bonus_history(a)]
+        if tainted:
+            names = ", ".join(repr(name) for name in tainted)
+            keys[prefix + "note"] = (
+                f"engine figure includes {names} with unmodeled bonus / "
+                f"section 179 history: the engine column here is a "
+                f"staleness pin, not a claim of correctness")
     return keys
 
 

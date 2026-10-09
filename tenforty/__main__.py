@@ -70,6 +70,8 @@ def _print_depreciation_recon(results: dict, stream: TextIO) -> None:
         print(f"  {group['activity']}", file=stream)
         print(f"    {'engine computed':23s} ${engine:>12,}", file=stream)
         print(f"    {'used on return':23s} ${used:>12,}{flag}", file=stream)
+        if group.get("note"):
+            print(f"    NOTE: {group['note']}", file=stream)
 
 
 def _which_applied(standard: float, schedule_a: float, applied: float) -> str:

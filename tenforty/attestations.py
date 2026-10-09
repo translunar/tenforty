@@ -1071,13 +1071,32 @@ def _negative_asset_amounts(s: Scenario) -> list[str]:
     return found
 
 
+def has_unattested_bonus_history(asset) -> bool:
+    """Personal property whose bonus / section 179 history is not attested
+    clean (the field is false or absent)."""
+    return (asset.recovery_class in PERSONAL_PROPERTY_CLASSES
+            and asset.no_bonus_or_section_179_history is not True)
+
+
+def has_valid_override(activity) -> bool:
+    """An acknowledged value-pinned override on the activity."""
+    override = activity.depreciation_override
+    return override is not None and override.acknowledgment is True
+
+
 def _bonus_history_assets(s: Scenario) -> list[str]:
+    # The refusal is per asset but the out is per activity: a valid override
+    # pins the figure the return uses, so the engine's figure for such an
+    # asset never reaches a printed form. That keeps the activity's other
+    # assets in asset mode. (The recon then carries a note; see
+    # forms/depreciation/resolver.recon_keys.)
     return [
-        f"{label} is {a.recovery_class} personal property without "
-        f"`no_bonus_or_section_179_history: true`"
-        for label, a in _assets(s)
-        if a.recovery_class in PERSONAL_PROPERTY_CLASSES
-        and a.no_bonus_or_section_179_history is not True]
+        f"asset {a.description!r} on {label} is {a.recovery_class} personal "
+        f"property without `no_bonus_or_section_179_history: true`"
+        for _sec, _i, label, act in depreciation_activities(s)
+        if not has_valid_override(act)
+        for a in act.depreciable_assets
+        if has_unattested_bonus_history(a)]
 
 
 def _real_property_with_history_field(s: Scenario) -> list[str]:
@@ -1272,9 +1291,11 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
             f"{_join(o)}. An asset that took a special (bonus) depreciation "
             "allowance or a section 179 deduction computes wrong under the "
             "plain MACRS tables, and tenforty models neither. Set the field "
-            "true only if the asset has no such history. Otherwise remove "
-            "the activity's asset list and state the activity's figure "
-            "instead: its `depreciation` amount with "
+            "true only if the asset has no such history. Otherwise either "
+            "add a `depreciation_override` to the activity (the return then "
+            "uses the override amount; the other assets stay tracked), or "
+            "remove the activity's asset list and state the activity's "
+            "figure instead: its `depreciation` amount with "
             "`acknowledges_depreciation_stated_outside_macrs: true`."),
         exception=NotImplementedError,
     ),
