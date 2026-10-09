@@ -1146,5 +1146,151 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         self.assertEqual(out["f1040x_line2_b"], 0)
 
 
+# --- Printed header set (defect N18) -----------------------------------------
+# Every path below is a LITERAL AcroForm field name, read off the template and
+# confirmed by rendering a marker fill of the page. They are deliberately NOT
+# read through the mapping: a read-through only fails when a path is missing
+# from the template, never when it names the wrong (but existing) cell.
+_X_P1 = "topmostSubform[0].Page1[0]."
+_X_ADDR = _X_P1 + "Address_ReadOrder[0]."
+_F1040X_FIRST_AND_INITIAL = _X_P1 + "f1_03[0]"
+_F1040X_LAST_NAME = _X_P1 + "f1_04[0]"
+_F1040X_SSN = _X_P1 + "f1_05[0]"
+_F1040X_STREET = _X_ADDR + "f1_09[0]"
+_F1040X_CITY = _X_ADDR + "f1_11[0]"
+_F1040X_STATE = _X_ADDR + "f1_12[0]"
+_F1040X_ZIP = _X_ADDR + "f1_13[0]"
+# "Amended return filing status" row, left to right: (field, on-state).
+_F1040X_FILING_STATUS_BOXES = {
+    FilingStatus.SINGLE: (_X_P1 + "c1_3[0]", "/1"),
+    FilingStatus.MARRIED_JOINTLY: (_X_P1 + "c1_3[1]", "/2"),
+    FilingStatus.MARRIED_SEPARATELY: (_X_P1 + "c1_3[2]", "/3"),
+    FilingStatus.HEAD_OF_HOUSEHOLD: (_X_P1 + "c1_3[3]", "/4"),
+    FilingStatus.QUALIFYING_WIDOW: (_X_P1 + "c1_3[4]", "/5"),
+}
+# Schedule X per year: (name, SSN, Part II line 1 box m "Other").
+_SCHEDULE_X_HEADER = {
+    2021: ("1002", "1003", "1029 CB"),
+    2022: ("1002", "1003", "1029 CB"),
+    2023: ("1001", "1002", "1027 CB"),
+    2024: ("Sch X Form 1001", "Sch X Form 1002", "Sch X Form 1027 CB"),
+    2025: ("Sch X Form 1001", "Sch X Form 1002", "Sch X Form 1027 CB"),
+}
+# Form 540 "Check here if this is an AMENDED return." per year.
+_F540_AMENDED_BOX = {
+    2021: "1001 CB", 2022: "1001 CB", 2023: "1001 CB",
+    2024: "540-1001 CB", 2025: "540_form_1001 CB",
+}
+
+
+def _with_identity(scenario, **overrides):
+    """Give a battery scenario a distinctive synthetic header: every value is
+    unique in the packet, so a cell holding the wrong one cannot pass."""
+    cfg = dataclasses.replace(
+        scenario.config,
+        first_name="Zelda", middle_initial="Q", last_name="Marker",
+        ssn="000-00-0417",
+        address="417 Synthetic Blvd", address_city="Faketown",
+        address_state="CA", address_zip="90417",
+        **overrides)
+    return dataclasses.replace(scenario, config=cfg)
+
+
+def _checked(pdf_path, suffix=""):
+    """Every button field on the PDF whose value is an on-state."""
+    fields = PdfReader(str(pdf_path)).get_fields() or {}
+    return {
+        name for name, f in fields.items()
+        if f.get("/FT") == "/Btn" and name.endswith(suffix)
+        and str(f.get("/V") or "/Off") != "/Off"
+    }
+
+
+class AmendmentPacketHeaderTests(unittest.TestCase):
+    """The amendment packet prints who is amending: name, SSN, address and
+    filing status on the 1040-X; name, SSN and a Part II reason on Schedule X;
+    the AMENDED box on the amended 540."""
+
+    setUp = AmendmentPacketEmitTests.setUp
+    tearDown = AmendmentPacketEmitTests.tearDown
+    _write_federal_filed = AmendmentPacketEmitTests._write_federal_filed
+    _write_ca_filed = AmendmentPacketEmitTests._write_ca_filed
+
+    def _emit(self, year, **identity_overrides):
+        original = _with_identity(
+            _with_ca(build_canonical_wage_investment_rental(year)),
+            **identity_overrides)
+        amended = _bump_interest(original, 3_000.0)
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=year, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            original_tax_paid=0.0,
+            ca_original_refund_received=max(
+                0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / f"packet_{year}"
+        self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+        return out
+
+    def test_f1040x_prints_name_ssn_address_and_filing_status(self):
+        for year in years.amendable_federal_years():
+            with self.subTest(year=year):
+                pdf = self._emit(year) / f"f1040x_{year}.pdf"
+                self.assertEqual(
+                    _read_v(pdf, _F1040X_FIRST_AND_INITIAL), "Zelda Q")
+                self.assertEqual(_read_v(pdf, _F1040X_LAST_NAME), "Marker")
+                # A 9-cell comb field: digits only, as on the Form 1040.
+                self.assertEqual(_read_v(pdf, _F1040X_SSN), "000000417")
+                self.assertEqual(
+                    _read_v(pdf, _F1040X_STREET), "417 Synthetic Blvd")
+                self.assertEqual(_read_v(pdf, _F1040X_CITY), "Faketown")
+                self.assertEqual(_read_v(pdf, _F1040X_STATE), "CA")
+                self.assertEqual(_read_v(pdf, _F1040X_ZIP), "90417")
+                box, on = _F1040X_FILING_STATUS_BOXES[FilingStatus.SINGLE]
+                self.assertEqual(_read_v(pdf, box), on)
+                # Exactly one filing-status box.
+                status_boxes = {
+                    b for b, _ in _F1040X_FILING_STATUS_BOXES.values()}
+                self.assertEqual(_checked(pdf) & status_boxes, {box})
+
+    def test_schedule_x_prints_name_ssn_and_other_reason(self):
+        for year in years.amendable_california_years():
+            with self.subTest(year=year):
+                pdf = self._emit(year) / f"schedule_x_{year}.pdf"
+                name, ssn, other = _SCHEDULE_X_HEADER[year]
+                self.assertEqual(_read_v(pdf, name), "Zelda Q Marker")
+                self.assertEqual(_read_v(pdf, ssn), "000-00-0417")
+                self.assertEqual(_read_v(pdf, other), "/Yes")
+                # "Other" is the ONLY Part II reason checked.
+                self.assertEqual(_checked(pdf, " CB"), {other})
+
+    def test_amended_540_checks_the_amended_box(self):
+        for year in years.CALIFORNIA_YEARS:
+            with self.subTest(year=year):
+                pdf = self._emit(year) / f"f540_amended_{year}.pdf"
+                self.assertEqual(
+                    _read_v(pdf, _F540_AMENDED_BOX[year]), "/Yes")
+
+    def test_original_540_leaves_the_amended_box_unchecked(self):
+        """The box is the amended return's alone: the same scenario emitted as
+        an original 540 leaves it off."""
+        for year in years.CALIFORNIA_YEARS:
+            with self.subTest(year=year):
+                scenario = _with_identity(
+                    _with_ca(build_canonical_wage_investment_rental(year)))
+                federal = self.orch.compute_federal(scenario)
+                ca = self.orch._compute_ca_results(
+                    scenario, scenario.ca540, federal)
+                pdfs = self.orch._emit_ca_pdfs_internal(
+                    scenario, ca, self.tmp / f"original_{year}")
+                self.assertIn(
+                    _read_v(pdfs["f540"], _F540_AMENDED_BOX[year]),
+                    ("", "/Off"))
+
+
 if __name__ == "__main__":
     unittest.main()

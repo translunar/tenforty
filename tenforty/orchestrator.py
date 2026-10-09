@@ -69,6 +69,7 @@ from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_f540 import interest_and_penalties_must_be_stated
+from tenforty.mappings.pdf_f540 import AMENDED_RETURN_KEY, AMENDED_RETURN_ON
 from tenforty.mappings.pdf_f1040x import PdfF1040X
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
@@ -2475,7 +2476,11 @@ class ReturnOrchestrator:
             filler,
             _PDFS_ROOT / "federal" / "amendments" / "f1040x.pdf",
             output_dir / f"f1040x_{year}.pdf",
-            PdfF1040X.get_mapping(revision), f1040x_values,
+            {**PdfF1040X.get_mapping(revision),
+             **PdfF1040X.get_presentation_mapping(revision)},
+            {**f1040x_values,
+             **form_f1040x.presentation_keys(amended_scenario.config)},
+            checkbox_states=PdfF1040X.get_checkbox_states(revision),
         )
         mailed.append(MailedFile(
             f"f1040x_{year}.pdf", "Form 1040-X (amended federal return)",
@@ -2529,7 +2534,11 @@ class ReturnOrchestrator:
                 filler,
                 _PDFS_ROOT / "california" / "amendments" / f"schedule_x_{year}.pdf",
                 output_dir / f"schedule_x_{year}.pdf",
-                PdfScheduleX.get_mapping(year), schedule_x_values,
+                {**PdfScheduleX.get_mapping(year),
+                 **PdfScheduleX.get_presentation_mapping(year)},
+                {**schedule_x_values,
+                 **form_schedule_x.presentation_keys(amended_scenario.config)},
+                checkbox_states=PdfScheduleX.get_checkbox_states(year),
             )
             mailed.append(MailedFile(
                 f"schedule_x_{year}.pdf",
@@ -2537,8 +2546,12 @@ class ReturnOrchestrator:
                 "amendment form"))
 
             if year in years.CALIFORNIA_YEARS:
+                # The 540 emitted here IS the amended return: check its
+                # "AMENDED return" box (an original 540 never carries the key).
                 ca_pdfs = self._emit_ca_pdfs_internal(
-                    amended_scenario, corrected_ca, output_dir)
+                    amended_scenario,
+                    {**corrected_ca, AMENDED_RETURN_KEY: AMENDED_RETURN_ON},
+                    output_dir)
                 amended_540 = output_dir / f"f540_amended_{year}.pdf"
                 ca_pdfs["f540"].replace(amended_540)
                 mailed.append(MailedFile(
@@ -2568,11 +2581,13 @@ class ReturnOrchestrator:
     def _emit_flat(
         filler: PdfFiller, template: Path, output_path: Path,
         field_mapping: dict, values: dict,
+        checkbox_states: dict | None = None,
     ) -> Path:
         """Fill a flat-mapping amendment form (1040-X / Schedule X)."""
         return filler.fill(
             template_path=template, output_path=output_path,
             field_mapping=field_mapping, values=values,
+            checkbox_states=checkbox_states,
         )
 
     def run_full_california_scorp_return(

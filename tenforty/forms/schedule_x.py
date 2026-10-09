@@ -74,8 +74,25 @@ the guard used to be protecting against.
 """
 
 from tenforty.amendment import MissingFiledValueError, OutOfScopeAmendmentError
-from tenforty.models import AmendmentCase
+from tenforty.models import AmendmentCase, TaxReturnConfig
 from tenforty.rounding import irs_round
+
+
+def presentation_keys(config: TaxReturnConfig) -> dict[str, object]:
+    """The Schedule X header and Part II line 1 reason, from the scenario
+    config.
+
+    Name and SSN are the same ``full_name`` / hyphenated ``ssn`` pair the
+    Schedule CA and Schedule D (540) headers print. Part II line 1 ("Check all
+    that apply") always gets box m, "Other": the assembler has no reason
+    taxonomy, only the free-text explanation it prints on line 2, and "Other"
+    is the one box that explanation always supports.
+    """
+    return {
+        "schedule_x_taxpayer_name": config.full_name,
+        "schedule_x_taxpayer_ssn": config.ssn,
+        "schedule_x_reason_other": True,
+    }
 
 # ca_filed source keys the assembler consumes. Every one must be present in
 # the filed dict — a missing one is a MissingFiledValueError, never defaulted.
