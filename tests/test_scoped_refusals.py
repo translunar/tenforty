@@ -66,6 +66,10 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_a_stale_override",
     "override_with_current_year_placement":
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_override_with_current_year_placement",
+    "mid_quarter_convention":
+        "tests.test_mid_quarter_refusal::FortyPercentTestTests::test_fires_over_the_threshold",
+    "unverifiable_mid_quarter_test":
+        "tests.test_mid_quarter_refusal::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -310,7 +314,14 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "prior_depreciation_mismatch",
                 "stale_depreciation_override",
                 "override_with_current_year_placement",
+                "mid_quarter_convention",
+                "unverifiable_mid_quarter_test",
             ])
+
+    def test_whole_return_entries_are_exactly_the_taxpayer_wide_ones(self):
+        self.assertEqual(
+            [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
+            ["mid_quarter_convention", "unverifiable_mid_quarter_test"])
 
     def test_names_are_unique(self):
         names = [r.name for r in attestations._SCOPED_REFUSALS]
