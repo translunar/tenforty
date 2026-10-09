@@ -105,6 +105,43 @@ GOLDEN_FIELD_LINES: dict = {
         "sch_1_line_10_total_additional_income": ("f1_38", "10"),
         "sch_1_line_26_total_adjustments": ("f2_30", "26"),
     },
+    # Schedule A money lines. 2021-2024 share one field numbering; the 2025
+    # re-issue dropped four write-in fields ahead of the amount boxes (line 6
+    # lost one, line 8b one, line 16 two), so every leaf from line 6 down
+    # differs. Lines 6 and 16 each have a description field on the same row as
+    # the amount box, which the row-token probe cannot tell apart -- the
+    # amount-column geometry test in tests/test_pdf_sch_a_mapping.py does.
+    **{
+        ("federal", "sch_a", year): {
+            "sch_a_line_1_medical_gross": ("f1_3", "1"),
+            "sch_a_line_2_agi": ("f1_4", "2"),
+            "sch_a_line_3_medical_floor": ("f1_5", "3"),
+            "sch_a_line_4_medical_deductible": ("f1_6", "4"),
+            "sch_a_line_5a_state_income_tax": ("f1_7", "5a"),
+            "sch_a_line_5b_property_tax": ("f1_8", "5b"),
+            "sch_a_line_5c_personal_property_tax": ("f1_9", "5c"),
+            "sch_a_line_5d_salt_sum": ("f1_10", "5d"),
+            "sch_a_line_5e_salt_capped": ("f1_11", "5e"),
+            "sch_a_line_6_other_taxes": (line_6, "6"),
+            "sch_a_line_7_taxes_total": (line_7, "7"),
+            "sch_a_line_8a_mortgage_interest": (line_8a, "8a"),
+            "sch_a_line_10_interest_total": (line_10, "10"),
+            "sch_a_line_11_charity_cash": (line_11, "11"),
+            "sch_a_line_12_charity_noncash": (line_12, "12"),
+            "sch_a_line_14_charity_total": (line_14, "14"),
+            "sch_a_line_15_casualty": (line_15, "15"),
+            "sch_a_line_16_other": (line_16, "16"),
+            "sch_a_line_17_total": (line_17, "17"),
+        }
+        for year, (line_6, line_7, line_8a, line_10, line_11, line_12,
+                   line_14, line_15, line_16, line_17) in (
+            *((y, ("f1_14", "f1_15", "f1_16", "f1_24", "f1_25", "f1_26",
+                   "f1_28", "f1_29", "f1_33", "f1_34"))
+              for y in (2021, 2022, 2023, 2024)),
+            (2025, ("f1_13", "f1_14", "f1_15", "f1_22", "f1_23", "f1_24",
+                    "f1_26", "f1_27", "f1_29", "f1_30")),
+        )
+    },
     # Schedule E page-2 Part II/III totals. Line 41 is the form-true grand
     # total (line 26 + line 32) bound to the line-41 box; the prior mapping
     # bound the pte-only subtotal to line 39's field (2022-2025) and line 37
