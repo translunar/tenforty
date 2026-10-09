@@ -1292,5 +1292,66 @@ class AmendmentPacketHeaderTests(unittest.TestCase):
                     ("", "/Off"))
 
 
+class AmendmentPacketValuesTests(unittest.TestCase):
+    """``run_amendment_packet`` hands back the assembled Form 1040-X and
+    Schedule X values on its manifest, so a caller can summarize a packet
+    without re-assembling it."""
+
+    setUp = AmendmentPacketEmitTests.setUp
+    tearDown = AmendmentPacketEmitTests.tearDown
+    _write_federal_filed = AmendmentPacketEmitTests._write_federal_filed
+    _write_ca_filed = AmendmentPacketEmitTests._write_ca_filed
+
+    def test_manifest_carries_the_assembled_amendment_values(self):
+        original = _with_ca(build_canonical_wage_investment_rental(2024))
+        amended = _bump_interest(original, 3_000.0)
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2024, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            original_tax_paid=0.0,
+            ca_original_refund_received=max(
+                0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path,
+            self.tmp / "packet")
+
+        corrected_fed = self.orch.compute_federal(amended)
+        expected_x = form_f1040x.assemble(
+            {k: orig_fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS},
+            corrected_fed, case)
+        expected_sx = form_schedule_x.assemble_ca(
+            {"f540_total_liability": orig_ca["f540_total_liability"]},
+            self.orch._compute_ca_results(amended, amended.ca540, corrected_fed),
+            case)
+        # The whole of both assemblers' output, and nothing else.
+        self.assertEqual(
+            dict(manifest.values), {**expected_x, **expected_sx})
+        # Spot checks on named keys, against independent facts of the case.
+        self.assertEqual(manifest.values["f1040x_line1_b"], 1_000)
+        self.assertIn("f1040x_line20_amount_owed", manifest.values)
+        self.assertIn("f1040x_line22_refund", manifest.values)
+        self.assertIn("schedule_x_line7_amount_owed", manifest.values)
+        self.assertIn("schedule_x_line11_refund", manifest.values)
+        self.assertEqual(
+            manifest.values["schedule_x_explanation"],
+            "Corrected taxable interest income.")
+
+    def test_values_do_not_enter_manifest_equality_or_the_printed_manifest(self):
+        from tenforty.orchestrator import PacketManifest
+        bare = PacketManifest(
+            year=2024, mailed_files=(), dropped=(), caveats=())
+        carrying = PacketManifest(
+            year=2024, mailed_files=(), dropped=(), caveats=(),
+            values={"f1040x_line20_amount_owed": 417})
+        self.assertEqual(dict(bare.values), {})
+        self.assertEqual(bare, carrying)
+        self.assertEqual(hash(bare), hash(carrying))
+        self.assertEqual(bare.render(), carrying.render())
+
+
 if __name__ == "__main__":
     unittest.main()
