@@ -380,6 +380,69 @@ class BonusHistoryRefusalTests(unittest.TestCase):
             s.rental_properties[0].depreciable_assets[0]
             .no_bonus_or_section_179_history, True)
 
+    def test_refusal_names_both_outs(self):
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"add a `depreciation_override` to the activity.*"
+                r"or remove the activity's asset list and state.*"
+                r"acknowledges_depreciation_stated_outside_macrs"):
+            _load(_doc(rental_properties=[_rental(depreciable_assets=[
+                _appliance(no_bonus_or_section_179_history=False)])]))
+
+    def _tainted_prior_year_asset(self, **extra) -> dict:
+        """Five-year property placed in a PRIOR year (an override cannot
+        coexist with a current-year placement), history field false."""
+        return {
+            "description": "Refrigerator",
+            "date_placed_in_service": datetime.date(2023, 3, 15),
+            "basis": 10_000.0, "recovery_class": "5-year",
+            "no_bonus_or_section_179_history": False,
+            "prior_depreciation": 9_000.0,
+            "acknowledges_prior_depreciation_as_stated": True, **extra}
+
+    def _engine_figure(self) -> float:
+        from tenforty.forms.depreciation.macrs import macrs_deduction
+        return float(macrs_deduction(DepreciableAsset(
+            description="Refrigerator",
+            date_placed_in_service=datetime.date(2023, 3, 15),
+            basis=10_000.0, recovery_class="5-year"), YEAR))
+
+    def test_activity_override_lifts_the_refusal(self):
+        """Ruling: the refusal is per asset but the override is per
+        activity; a valid override keeps the activity in asset mode."""
+        override = {"amount": 400.0,
+                    "restates_engine_amount": self._engine_figure(),
+                    "acknowledgment": True}
+        for label in ("false", "absent"):
+            with self.subTest(field=label):
+                asset = self._tainted_prior_year_asset()
+                if label == "absent":
+                    del asset["no_bonus_or_section_179_history"]
+                s = _load(_doc(rental_properties=[_rental(
+                    depreciable_assets=[asset],
+                    depreciation_override=override)]))
+                self.assertIsNot(
+                    s.rental_properties[0].depreciable_assets[0]
+                    .no_bonus_or_section_179_history, True)
+
+    def test_same_asset_without_the_override_refuses(self):
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"asset 'Refrigerator' on rental property #0 .* is 5-year "
+                r"personal property without"):
+            _load(_doc(rental_properties=[_rental(
+                depreciable_assets=[self._tainted_prior_year_asset()])]))
+
+    def test_unacknowledged_override_does_not_lift_it(self):
+        with self.assertRaisesRegex(
+                NotImplementedError, r"is 5-year personal property without"):
+            _load(_doc(rental_properties=[_rental(
+                depreciable_assets=[self._tainted_prior_year_asset()],
+                depreciation_override={
+                    "amount": 400.0,
+                    "restates_engine_amount": self._engine_figure(),
+                    "acknowledgment": False})]))
+
 
 class HistoryFieldOnRealPropertyRefusalTests(unittest.TestCase):
     def test_real_property_carrying_the_field_refuses(self):
