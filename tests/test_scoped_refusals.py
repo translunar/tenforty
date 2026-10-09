@@ -30,7 +30,34 @@ from tests.helpers import (
 )
 
 # refusal name -> "tests.module::Class::test_method" that makes it fire.
-FIRING_PROOFS: dict[str, str] = {}
+FIRING_PROOFS: dict[str, str] = {
+    "top_level_asset_list":
+        "tests.test_asset_nest_loading::TopLevelAssetListRefusalTests::test_top_level_list_refuses_with_migration_pointer",
+    "stated_convention":
+        "tests.test_asset_nest_loading::StatedConventionRefusalTests::test_asset_carrying_convention_refuses",
+    "unknown_recovery_class":
+        "tests.test_asset_nest_loading::UnknownRecoveryClassRefusalTests::test_class_outside_the_supported_eight_refuses",
+    "negative_asset_amount":
+        "tests.test_asset_nest_loading::NegativeAssetAmountRefusalTests::test_negative_basis_refuses",
+    "asset_disposed":
+        "tests.test_asset_nest_loading::DisposedRefusalTests::test_disposed_asset_refuses_naming_partial_dispositions",
+    "history_field_on_real_property":
+        "tests.test_asset_nest_loading::HistoryFieldOnRealPropertyRefusalTests::test_real_property_carrying_the_field_refuses",
+    "bonus_or_section_179_history":
+        "tests.test_asset_nest_loading::BonusHistoryRefusalTests::test_personal_property_without_true_history_field_refuses",
+    "missing_prior_depreciation":
+        "tests.test_asset_nest_loading::MissingPriorDepreciationRefusalTests::test_prior_year_asset_without_prior_depreciation_refuses",
+    "dual_source_depreciation":
+        "tests.test_asset_nest_loading::DualSourceRefusalTests::test_assets_and_stated_scalar_on_one_activity_refuse",
+    "unacknowledged_stated_depreciation":
+        "tests.test_asset_nest_loading::UnacknowledgedStatedFigureRefusalTests::test_stated_scalar_without_acknowledgment_refuses",
+    "override_outside_asset_mode":
+        "tests.test_asset_nest_loading::OverrideOutsideAssetModeRefusalTests::test_override_on_an_activity_with_no_assets_refuses",
+    "unacknowledged_depreciation_override":
+        "tests.test_asset_nest_loading::UnacknowledgedOverrideRefusalTests::test_override_without_acknowledgment_refuses",
+    "asset_mode_on_unprinted_rental":
+        "tests.test_asset_nest_loading::UnprintedRentalRefusalTests::test_assets_on_a_rental_other_than_the_first_refuse",
+}
 
 # The config-field registry as it stood before the ledger was added. A literal,
 # not derived from the registry, so the pin cannot become a tautology.
@@ -253,8 +280,24 @@ class ScopedRefusalWiringTests(unittest.TestCase):
 
 class ScopedRefusalRegistryTests(unittest.TestCase):
     def test_registered_names(self):
+        # A literal, in precedence order: tuple position is which refusal a
+        # multi-violation scenario reports.
         self.assertEqual(
-            [r.name for r in attestations._SCOPED_REFUSALS], [])
+            [r.name for r in attestations._SCOPED_REFUSALS], [
+                "top_level_asset_list",
+                "stated_convention",
+                "unknown_recovery_class",
+                "negative_asset_amount",
+                "asset_disposed",
+                "history_field_on_real_property",
+                "bonus_or_section_179_history",
+                "missing_prior_depreciation",
+                "dual_source_depreciation",
+                "unacknowledged_stated_depreciation",
+                "override_outside_asset_mode",
+                "unacknowledged_depreciation_override",
+                "asset_mode_on_unprinted_rental",
+            ])
 
     def test_names_are_unique(self):
         names = [r.name for r in attestations._SCOPED_REFUSALS]
