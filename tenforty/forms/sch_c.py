@@ -5,12 +5,18 @@ follow-on unit; keys are named by form line so mapping adds no compute change.
 
 v1 scope: gross receipts (line 1/7) minus deductible Part II expense categories
 (line 28) -> tentative profit (line 29) -> net profit or (loss) (line 31). Cost
-of goods sold / inventory (Part III), depreciation (line 13), home office (Form
-8829, line 30), vehicle expenses, depletion (line 12), returns & allowances
-(line 2), and the statutory-employee flag are UNMODELED and refuse loudly
-(nonzero -> NotImplementedError) -- there is no correct net profit for those
-inputs without the unmodeled math, so fail closed rather than silently drop
-them.
+of goods sold / inventory (Part III), home office (Form 8829, line 30), vehicle
+expenses, depletion (line 12), returns & allowances (line 2), and the
+statutory-employee flag are UNMODELED and refuse loudly (nonzero ->
+NotImplementedError) -- there is no correct net profit for those inputs
+without the unmodeled math, so fail closed rather than silently drop them.
+
+LINE 13 (depreciation) prints and counts the business's RESOLVED depreciation
+(forms/depreciation/resolver.py): its asset list, or its stated amount with
+the per-business acknowledgment. The section 179 deduction, which shares the
+line on the form, is NOT modeled and has no input: an asset with section 179
+or bonus history refuses at load, and there is no field through which a
+current-year election could be stated.
 
 NET LOSS (line 31 below zero). Line 32 then asks whether all investment in the
 activity is at risk (box 32a) or not (box 32b, Form 6198). Form 6198 is
@@ -21,49 +27,65 @@ loss refuses. A loss owes no self-employment tax (forms/sch_se.py), enters
 Form 8995 as a negative QBI component (forms/f8995.py), and is counted by the
 excess-business-loss guard in the orchestrator.
 """
+from tenforty.forms.depreciation.resolver import resolve
 from tenforty.models import Scenario, ScheduleCBusiness
 from tenforty.rounding import irs_round
 
 # The 12 Part II expense categories (Schedule C lines 8-27a) a P&L export
-# covers. SINGLE SOURCE OF TRUTH: line_28 (below) sums exactly these, and
-# `net_profit_estimate` subtracts exactly these -- keeping the total and the
-# routing-gate estimate from drifting apart (the partial-total failure this
-# tuple prevents from recurring).
+# covers, read straight off the business.
 _EXPENSE_FIELDS = (
     "advertising", "insurance", "legal_professional", "office_expense",
     "rent_lease", "supplies", "taxes_licenses", "travel", "deductible_meals",
     "utilities", "wages", "other_expenses",
 )
 
+LINE_13_KEY = "sch_c_line_13_depreciation"
 
-def net_profit_estimate(biz: ScheduleCBusiness) -> float:
+
+def part_ii_lines(biz: ScheduleCBusiness, tax_year: int) -> dict[str, float]:
+    """Every modeled Part II amount for one business, UNROUNDED, keyed by
+    the value key it prints under: the 12 stated categories plus line 13
+    from the depreciation resolver.
+
+    SINGLE SOURCE OF TRUTH. Line 28, `net_profit_estimate`,
+    `printed_net_profit` and the emitted values all derive from this one
+    mapping, so a line cannot be in the page total but out of the routing
+    estimate or the loss guard (the partial-total failure). Adding a line
+    here adds it to all four at once.
+    """
+    lines = {
+        f"sch_c_expense_{name}": getattr(biz, name) for name in _EXPENSE_FIELDS}
+    lines[LINE_13_KEY] = resolve(biz, tax_year).amount
+    return lines
+
+
+def net_profit_estimate(biz: ScheduleCBusiness, tax_year: int) -> float:
     """Cheap net-profit estimate for the EIC-scope routing gate.
 
-    Returns ``gross_receipts - sum(the 12 Part II expense categories)``. This is
-    a NON-RAISING pre-compute estimate: it has NO refusal guards (no at-risk /
-    unmodeled-feature checks) BECAUSE it runs BEFORE ``compute`` fires those
-    refusals -- the routing gate must be able to estimate income for any input,
-    including one that ``compute`` will later refuse. Uses `_EXPENSE_FIELDS` so
-    the estimate can never drift from the line-28 total.
+    Returns ``gross_receipts - sum(part_ii_lines)``. A pre-compute estimate:
+    it has NO at-risk or unmodeled-feature refusals, because it runs BEFORE
+    ``compute`` fires those -- the routing gate must be able to estimate
+    income for an input ``compute`` will later refuse. (The depreciation
+    resolver's own refusals do apply; the orchestrator runs that ledger
+    before any estimate is taken.)
     """
-    return biz.gross_receipts - sum(getattr(biz, f) for f in _EXPENSE_FIELDS)
+    return biz.gross_receipts - sum(part_ii_lines(biz, tax_year).values())
 
 
-def printed_net_profit(biz: ScheduleCBusiness) -> int:
-    """Line 31 exactly as the form prints it, NON-RAISING: rounded line 1
-    less the sum of the individually rounded expense lines (unmodeled lines
-    ignored -- `compute` refuses those). Because entry lines round one by
-    one, this can differ from the raw `net_profit_estimate` by a dollar or
-    more. `_compute_business` and the excess-business-loss guard both use
-    it, so the guard compares the same figure the page shows."""
+def printed_net_profit(biz: ScheduleCBusiness, tax_year: int) -> int:
+    """Line 31 exactly as the form prints it: rounded line 1 less the sum of
+    the individually rounded expense lines (unmodeled lines ignored --
+    `compute` refuses those). Because entry lines round one by one, this can
+    differ from the raw `net_profit_estimate` by a dollar or more.
+    `_compute_business` and the excess-business-loss guard both use it, so
+    the guard compares the same figure the page shows."""
     return irs_round(biz.gross_receipts) - sum(
-        irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
+        irs_round(amount) for amount in part_ii_lines(biz, tax_year).values())
 
 
 _REFUSED_AMOUNT_FIELDS = (
     ("cost_of_goods_sold", "Part III cost of goods sold"),
     ("inventory", "Part III inventory"),
-    ("depreciation", "line 13 depreciation / §179"),
     ("home_office", "line 30 home office (Form 8829)"),
     ("vehicle_expenses", "line 9 car & truck / vehicle expenses"),
     ("depletion", "line 12 depletion"),
@@ -89,6 +111,7 @@ def _guard_unmodeled(biz: ScheduleCBusiness, idx: int) -> None:
 
 def _compute_business(
     biz: ScheduleCBusiness, idx: int, all_investment_at_risk: bool | None,
+    tax_year: int,
 ) -> dict:
     _guard_unmodeled(biz, idx)
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
@@ -100,8 +123,11 @@ def _compute_business(
     # (line 1, each expense category 8-27b) round individually.
     line_1 = irs_round(biz.gross_receipts)
     line_7 = line_1
-    line_28 = sum(irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
-    line_29 = printed_net_profit(biz)    # tentative profit (line 7 - line 28)
+    lines = part_ii_lines(biz, tax_year)
+    line_13 = irs_round(lines[LINE_13_KEY])
+    line_28 = sum(irs_round(amount) for amount in lines.values())
+    # tentative profit (line 7 - line 28)
+    line_29 = printed_net_profit(biz, tax_year)
     line_31 = line_29                    # line 30 home office refused -> 0
     is_loss = line_31 < 0
     if is_loss and all_investment_at_risk is not True:
@@ -125,6 +151,9 @@ def _compute_business(
         "sch_c_line_3_net_receipts": gross,
         "sch_c_line_5_gross_profit": gross,
         "sch_c_line_7_gross_income": gross,
+        # Line 13 prints only when there is depreciation; a business with
+        # none leaves the box blank, so the key is ABSENT (not 0).
+        **({LINE_13_KEY: line_13} if line_13 else {}),
         "sch_c_line_28_total_expenses": line_28,
         "sch_c_line_29_tentative_profit": line_29,
         "sch_c_line_31_net_profit": line_31,
@@ -140,7 +169,8 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         return {}
     at_risk = scenario.config.acknowledges_sch_c_all_investment_at_risk
     per_business = [
-        _compute_business(b, i, at_risk) for i, b in enumerate(businesses)]
+        _compute_business(b, i, at_risk, scenario.config.year)
+        for i, b in enumerate(businesses)]
     total = sum(b["sch_c_line_31_net_profit"] for b in per_business)
     return {
         "sch_c_businesses": per_business,
@@ -166,10 +196,12 @@ def emit_values(scenario: Scenario, index: int, line_values: dict) -> dict:
     code = str(biz.business_code).strip()
     if code:
         out["sch_c_line_b_business_code"] = code
-    for field_name in _EXPENSE_FIELDS:
-        amount = getattr(biz, field_name)
+    # The Part II amounts, from the single definition. Line 13 is carried by
+    # `line_values` (the computed, whole-dollar figure), which overwrites the
+    # unrounded entry below when present.
+    for key, amount in part_ii_lines(biz, scenario.config.year).items():
         if amount:
-            out[f"sch_c_expense_{field_name}"] = amount
+            out[key] = amount
     # Part V line 48 is the total the "Other expenses (from line 48)" line
     # carries forward, so it prints the same amount. The itemization rows
     # above line 48 are left blank for hand-completion.
