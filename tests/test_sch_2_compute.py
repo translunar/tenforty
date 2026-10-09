@@ -90,11 +90,27 @@ class Sch2ComputeTests(unittest.TestCase):
 
     def test_unsupported_year_raises(self):
         with self.assertRaises(ValueError) as ctx:
-            sch_2.compute(_scn(2021), {"f1040": {}})
-        self.assertIn("2021", str(ctx.exception))
+            sch_2.compute(_scn(2020), {"f1040": {}})
+        self.assertIn("2020", str(ctx.exception))
 
-    def test_layout_table_covers_exactly_2022_through_2025(self):
-        self.assertEqual(sorted(sch_2.PART_I_LAYOUT), [2022, 2023, 2024, 2025])
+    def test_layout_table_covers_exactly_the_schedule_c_family_years(self):
+        from tenforty import years
+        self.assertEqual(
+            sorted(sch_2.PART_I_LAYOUT), [2021, 2022, 2023, 2024, 2025])
+        self.assertEqual(
+            tuple(sorted(sch_2.PART_I_LAYOUT)), years.SCHEDULE_C_FAMILY_YEARS)
+
+    def test_2021_uses_the_amt_first_part_i_layout(self):
+        # 2021 Schedule 2: line 1 AMT, line 2 excess APTC repayment, line 3
+        # total -- the same Part I as 2022-2023 (no 1a/1z block).
+        out = sch_2.compute(_scn(2021), {"f1040": {
+            "f8962_repayment": 300, "sch_se_line_12_se_tax": 1_200}})
+        self.assertEqual(out["sch_2_line_2_excess_aptc_repayment"], 300)
+        self.assertNotIn("sch_2_line_1a_excess_aptc_repayment", out)
+        self.assertNotIn("sch_2_line_1z_total_additions", out)
+        self.assertEqual(out["sch_2_line_3_part_i_total"], 300)
+        self.assertEqual(out["sch_2_line_4_se_tax"], 1_200)
+        self.assertEqual(out["sch_2_line_21_total_other_taxes"], 1_200)
 
 
 if __name__ == "__main__":

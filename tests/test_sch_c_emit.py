@@ -1,13 +1,14 @@
 """Schedule C / Schedule SE emit through the real entry points.
 
 Replaces the fail-closed emit guard test: Schedule C returns now emit for
-2022-2025 and refuse only below the year floor. Every expected value is read
+every year in years.SCHEDULE_C_FAMILY_YEARS and refuse only outside it. Every expected value is read
 from the native compute for the same scenario -- the property under test is
 that the EMITTED forms agree with the compute. Native pypdf fills only (no
 soffice). Synthetic values only."""
 import dataclasses
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -70,12 +71,48 @@ class SchCEmitTests(unittest.TestCase):
         )
 
     # --- year floor -------------------------------------------------------
-    def test_ty2021_refuses_with_the_year_floor_message(self):
+    def test_ty2021_schedule_c_return_emits_the_family(self):
+        scn = _scenario(year=2021, businesses=_ONE, first_name="Example",
+                        last_name="Filer", ssn="000-00-0000")
+        results = self.orch.compute_federal(scn)
+        self.assertEqual(results["sch_1_line_3_business_income"], 75_000)
+        emitted = self.orch.emit_pdfs(scn, results, self.tmp / "out")
+        for key, name in (("sch_c_1", "f1040sc_1_2021.pdf"),
+                          ("sch_se", "f1040sse_2021.pdf"),
+                          ("sch_2", "f1040s2_2021.pdf")):
+            self.assertIn(key, emitted)
+            self.assertEqual(emitted[key].name, name)
+        c_map = PdfSchC.get_mapping(2021)
+        self.assertEqual(
+            int(_read_v(emitted["sch_c_1"],
+                        c_map["sch_c_line_31_net_profit"])), 75_000)
+        # The header is the one place the 2021 templates differ from 2022
+        # (Schedule C nests the name under PgHeader[0]). Read through
+        # LITERAL probe-verified paths, not through the mapping: a read via
+        # the mapping would agree with any path the fill used.
+        for key, name_path, ssn_path in (
+            ("sch_c_1", "topmostSubform[0].Page1[0].PgHeader[0].f1_1[0]",
+             "topmostSubform[0].Page1[0].f1_2[0]"),
+            ("sch_se", "topmostSubform[0].Page1[0].f1_01[0]",
+             "topmostSubform[0].Page1[0].f1_02[0]"),
+            ("sch_2", "form1[0].Page1[0].f1_01[0]",
+             "form1[0].Page1[0].f1_02[0]"),
+        ):
+            self.assertEqual(
+                _read_v(emitted[key], name_path), "Example Filer", key)
+            self.assertEqual(
+                _read_v(emitted[key], ssn_path), "000-00-0000", key)
+
+    def test_a_year_outside_the_family_refuses_with_the_floor_message(self):
+        # The emit refusal reads years.SCHEDULE_C_FAMILY_YEARS and nothing
+        # else: with 2021 taken out of the family, the TY2021 return that
+        # emits above is refused, and the message names the family years.
         scn = _scenario(year=2021, businesses=_ONE)
         results = self.orch.compute_federal(scn)   # compute is unrestricted
-        self.assertEqual(results["sch_1_line_3_business_income"], 75_000)
-        with self.assertRaises(NotImplementedError) as ctx:
-            self.orch.emit_pdfs(scn, results, self.tmp / "out")
+        with mock.patch.object(
+                years, "SCHEDULE_C_FAMILY_YEARS", (2022, 2023, 2024, 2025)):
+            with self.assertRaises(NotImplementedError) as ctx:
+                self.orch.emit_pdfs(scn, results, self.tmp / "refused")
         msg = str(ctx.exception)
         self.assertIn("Schedule C", msg)
         self.assertIn("2021", msg)

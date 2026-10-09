@@ -1388,8 +1388,8 @@ class ReturnOrchestrator:
         # chokepoint for both public emit entries (emit_pdfs and
         # run_amendment_packet). Schedule C / Schedule SE / Schedule 2 have
         # templates and mappings for years.SCHEDULE_C_FAMILY_YEARS only
-        # (year-coverage policy: new features floor at TY2022), so an earlier
-        # year refuses here with the policy named, rather than failing later
+        # (the family's own policy floor, years.SCHEDULE_C_FAMILY_FLOOR_YEAR),
+        # so a year outside it refuses here, rather than failing later
         # on a missing mapping. Native compute is not year-restricted. The
         # compute layer's own refusals (unmodeled Schedule C features, a net
         # loss) are the real guards for everything else and fire below, in
@@ -1403,10 +1403,10 @@ class ReturnOrchestrator:
                 "supported for tax years "
                 f"{year_manifest.describe(year_manifest.SCHEDULE_C_FAMILY_YEARS)} "
                 f"only; this return is tax year {scenario.config.year}. "
-                "tenforty's year-coverage policy floors new features at tax "
-                "year 2022 (earlier years are maintained for bug fixes only), "
-                "so there is no Schedule C, Schedule SE or Schedule 2 "
-                "template or mapping for this year. The native compute path "
+                "tenforty's year-coverage policy floors the Schedule C "
+                "family there, so there is no Schedule C, Schedule SE or "
+                "Schedule 2 template or mapping for this year. The native "
+                "compute path "
                 "(compute_federal) still produces the numbers; file the PDF "
                 "by hand."
             )
@@ -2984,7 +2984,7 @@ class ReturnOrchestrator:
         component is nonzero: the excess-APTC repayment (Part I),
         self-employment tax (line 4), or Additional Medicare Tax (line 11).
 
-        This fires for returns with no Schedule C business too. A 2022-2025
+        This fires for returns with no Schedule C business too. A 2021-2025
         native-path return whose 1040 line 17 or line 23 is nonzero must
         attach Schedule 2; before this gate existed those packets printed the
         totals with no detail schedule.
@@ -2992,7 +2992,8 @@ class ReturnOrchestrator:
         TWO DELIBERATE ABSTENTIONS, both keeping the legacy convention of
         totals on the 1040 with no detail schedule:
 
-        - TY2021 (year-coverage policy: new features floor at TY2022).
+        - Years outside years.SCHEDULE_C_FAMILY_YEARS (the family's policy
+          floor).
         - WORKBOOK-PATH returns (non-single or EIC-possible filers). The
           workbook's 1040 line 17 can include the alternative minimum tax and
           its line 24 can include the net investment income tax; forms/sch_2
