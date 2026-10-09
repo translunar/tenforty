@@ -103,8 +103,9 @@ class OutOfScopeAmendmentError(ValueError):
 # silently dropped (a dropped `explanation:` is how a bad packet ships).
 _KNOWN_CASE_KEYS: frozenset[str] = frozenset(f.name for f in fields(AmendmentCase))
 
-# Required = every field with no default (i.e. every field except the sole
-# optional `prior_amendment_note`).
+# Required = every field with no default (i.e. every field except the optional
+# `prior_amendment_note`, the CA `ca_original_refund_*` analogues, and
+# `original_tax_paid`).
 _REQUIRED_CASE_KEYS: frozenset[str] = frozenset(
     f.name for f in fields(AmendmentCase) if f.default is MISSING)
 
@@ -114,8 +115,10 @@ def load_amendment_case(path: Path) -> AmendmentCase:
 
     Mirrors ``scenario.load_scenario``: YAML safe-load, top-level mapping
     check, unknown-key diff naming the offending key(s), and a required-key
-    check naming any absent field. ``prior_amendment_note`` is the only
-    optional field.
+    check naming any absent field. Optional (defaulted) fields:
+    ``prior_amendment_note``, the CA ``ca_original_refund_*`` analogues, and
+    ``original_tax_paid`` — the latter three load as ``None`` when absent and
+    are refused at the point of use if needed, never coerced to 0.0.
     """
     path = Path(path)
     if not path.exists():
@@ -153,6 +156,10 @@ def load_amendment_case(path: Path) -> AmendmentCase:
             data.get("ca_original_refund_received")),
         ca_original_refund_applied=_optional_float(
             data.get("ca_original_refund_applied")),
+        # 1040-X line 16 (paid with extension / original return / after
+        # filing): OPTIONAL at load, left None when absent — f1040x.assemble
+        # fails closed if the filed return shows a balance due while None.
+        original_tax_paid=_optional_float(data.get("original_tax_paid")),
     )
 
 

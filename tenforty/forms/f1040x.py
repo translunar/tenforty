@@ -43,10 +43,28 @@ Three-column, COMPUTED subtotal (on-form):
   L3  = L1 - L2   (per column)
   L8  = L6 - L7   (per column)
   L11 = L8 + L10  (per column; L9 is reserved/never filled)
+Single-column, SOURCED from the AmendmentCase:
+  L16 paid with extension / with original return / after filing
+                              <- case.original_tax_paid. Post-filing money
+                                  movement, never inferred: None is 0 ONLY
+                                  when the filed return shows no balance due;
+                                  a filed balance due with the amount unstated
+                                  is refused (see _line16_original_tax_paid).
+  L18 original overpayment    <- case.original_refund_received + _applied
 Single-column, COMPUTED tail (see _tail):
-  L16..L23 — keyed off the COMPUTED L11 column-C value (L8c + L10c), not a
-  bare ``corrected["total_tax"]``, so the owed/refund tail stays consistent
+  L17, L19..L23 — keyed off the COMPUTED L11 column-C value (L8c + L10c), not
+  a bare ``corrected["total_tax"]``, so the owed/refund tail stays consistent
   with the emitted L11.
+
+NET INVARIANT: L20 - L22 == (corrected L11 - corrected total_payments)
+- (filed L11 - filed total_payments) — the true additional owed / refund —
+given the consistency constraint that the case's stated original settlement
+equals the filed return's: L16 - L18 == filed L11 - filed total_payments
+(a balance-due original paid in full has L16 = that balance and L18 = 0; a
+refund original has L16 = 0 and L18 = the overpayment). L18's half is machine-
+checked when the filed dict carries ``"overpaid"``; L16's half is NOT — a
+filer may legitimately have paid less than the balance due (or nothing), in
+which case L20 correctly includes the still-unpaid original balance.
 SKIPPED — reserved:
   L9  "Reserved for future use" (shaded; fields exist but are never mapped).
 INTENTIONALLY UNMAPPED (guarded out-of-scope — see _OUT_OF_SCOPE_FILED_KEYS):
@@ -175,6 +193,46 @@ def _guard_original_overpayment(filed: dict, case: AmendmentCase) -> None:
         )
 
 
+def _line16_original_tax_paid(
+    filed: dict, case: AmendmentCase, line11_a: float
+) -> float:
+    """1040-X line 16: amount paid with extension / with the original return /
+    after it was filed — ``case.original_tax_paid``, never inferred.
+
+    FAIL CLOSED: when the case does not state it (None) AND the filed values
+    show the original return had a balance due — the COMPUTED column-A line 11
+    (tax + other taxes, the same figure the form prints) exceeds filed
+    ``total_payments`` — refuse. Silently emitting 0 there would overstate
+    line 20 ("amount you owe") by whatever the filer already paid. When the
+    filed return was even or overpaid (a refund year), None stays 0: nothing
+    was due with the original, so existing refund-year cases are unchanged.
+    A STATED value is always taken as asserted (0 = never paid), except a
+    negative one, which is not a payment."""
+    stated = case.original_tax_paid
+    if stated is not None:
+        if stated < 0:
+            raise ValueError(
+                f"AmendmentCase.original_tax_paid is negative ({stated}); "
+                f"1040-X line 16 is an amount PAID (with extension / with the "
+                f"original return / after filing) and cannot be below 0. An "
+                f"original overpayment belongs in original_refund_received / "
+                f"original_refund_applied (line 18)."
+            )
+        return irs_round(stated)
+    filed_balance_due = irs_round(line11_a - filed["total_payments"])
+    if filed_balance_due > 0:
+        raise ValueError(
+            f"AmendmentCase.original_tax_paid is not stated, but the filed "
+            f"return shows a balance due of {filed_balance_due} (1040-X line "
+            f"11 column A {line11_a} minus filed total_payments "
+            f"{filed['total_payments']}). 1040-X line 16 (amount paid with "
+            f"extension / with the original return / after filing) is never "
+            f"inferred — state original_tax_paid in the amendment case as the "
+            f"amount actually paid (0 if it was never paid)."
+        )
+    return 0.0
+
+
 def _triple(out: dict, line: str, a: float, c: float) -> None:
     """Emit an A/B/C triple with B = C - A (so A + B == C by construction)."""
     out[f"f1040x_line{line}_a"] = a
@@ -188,8 +246,10 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     ``filed`` supplies Column A (whole-dollar as-filed figures); ``corrected``
     supplies Column C (already rounded by the spine — trusted, not re-rounded);
     Column B is C - A. Lines 16-23 are single-column amounts derived per the
-    form's printed arithmetic. ``case`` supplies the original-return overpayment
-    (line 18), the Part II explanation, and the amended year.
+    form's printed arithmetic. ``case`` supplies the amount paid with the
+    original return (line 16 — refused if unstated while the filed return shows
+    a balance due), the original-return overpayment (line 18), the Part II
+    explanation, and the amended year.
 
     The tail's net-owed/refund invariant (line 20/22 tracking corrected total
     tax against original payments net of the original overpayment) HOLDS ONLY
@@ -274,7 +334,8 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     # Keyed off the COMPUTED L11 column-C value (c8 + c10), not a bare
     # corrected["total_tax"], so the owed/refund tail stays consistent with
     # the emitted L11.
-    out.update(_tail(corrected, case, c11))
+    line16 = _line16_original_tax_paid(filed, case, a11)
+    out.update(_tail(corrected, case, c11, line16))
 
     # ----- Narrative / year (Part II + page-1 write-in) -------------------
     out["f1040x_explanation"] = case.explanation
@@ -282,7 +343,9 @@ def assemble(filed: dict, corrected: dict, case: AmendmentCase) -> dict:
     return out
 
 
-def _tail(corrected: dict, case: AmendmentCase, line11_c: float) -> dict:
+def _tail(
+    corrected: dict, case: AmendmentCase, line11_c: float, line16: float
+) -> dict:
     """Lines 16-23, transcribed from the 1040-X printed arithmetic.
 
     Source: docs/plans/amended-returns-probe-tables.md, "Single-column lines
@@ -299,17 +362,19 @@ def _tail(corrected: dict, case: AmendmentCase, line11_c: float) -> dict:
     total_payments now includes the estimated-payments channel (federal
     withholding + estimated tax payments + net PTC, per the spine wiring),
     and flows through here unchanged: L17 = corrected total_payments + L16.
-    L16 and L23 are not sourced (0.0). L18 (original overpayment) =
-    original_refund_received + original_refund_applied — the full
-    overpayment the filer either received or applied forward on the
-    original return.
+    L16 is ``line16``, resolved by ``_line16_original_tax_paid`` in
+    ``assemble`` (the stated ``case.original_tax_paid``, or 0 when unstated
+    and the filed return had no balance due) and passed in because the
+    fail-closed check needs the filed dict. L23 is not sourced (0). L18
+    (original overpayment) = original_refund_received +
+    original_refund_applied — the full overpayment the filer either received
+    or applied forward on the original return.
 
     ``line11_c`` is the COMPUTED column-C L11 value from ``assemble`` (L8c +
     L10c = corrected total_tax + f8962_repayment - nonrefundable_credits +
     f8959_tax_total + sch_se_line_12_se_tax), passed in rather than recomputed
     here so the tail can never drift from the emitted L11.
     """
-    line16 = 0.0  # amount paid with extension/original/after filing — unsourced
     line17 = irs_round(corrected["total_payments"] + line16)
     line18 = irs_round(case.original_refund_received + case.original_refund_applied)
     line19 = irs_round(line17 - line18)

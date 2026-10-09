@@ -317,7 +317,7 @@ class F1040XAssemblerTests(unittest.TestCase):
 
     def test_line17_foots_over_payments_grid_column_c(self):
         """Line 17 (total payments) must equal 12c + 13c + 14c + 15c (+ line
-        16, unsourced 0) — the form's printed arithmetic. With line 15 sourced
+        16, 0 here: refund-year original) — the form's printed arithmetic. With line 15 sourced
         from net PTC (not a duplicate of total_payments), the chain foots."""
         corrected = self._filed(
             federal_withheld=3000.0,
@@ -337,6 +337,109 @@ class F1040XAssemblerTests(unittest.TestCase):
             + out["f1040x_line15_c"]
         )
         self.assertEqual(grid_c, out["f1040x_line17"])
+
+    # ----- Line 16: tax paid with extension / original return / after filing
+
+    def test_line16_refund_year_unstated_stays_zero(self):
+        """Filed return was OVERPAID and the case does not state
+        original_tax_paid: line 16 is silently 0 and the tail is unchanged."""
+        filed = self._filed()  # total_tax 100, payments 250 -> overpaid 150
+        corrected = self._filed(total_tax=200.0)
+        case = self._case(original_refund_received=150.0)
+        self.assertIsNone(case.original_tax_paid)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line16"], 0)
+        self.assertEqual(out["f1040x_line17"], 250)
+        self.assertEqual(out["f1040x_line19"], 100)
+        self.assertEqual(out["f1040x_line20_amount_owed"], 100)
+        self.assertEqual(out["f1040x_line22_refund"], 0)
+
+    def test_line16_filed_exactly_even_unstated_stays_zero(self):
+        """Filed liability == filed payments: no balance due, no refusal."""
+        filed = self._filed(total_tax=250.0)  # payments 250 -> even
+        corrected = self._filed(total_tax=300.0)
+        out = assemble(filed, corrected, self._case())
+
+        self.assertEqual(out["f1040x_line16"], 0)
+        self.assertEqual(out["f1040x_line20_amount_owed"], 50)
+
+    def test_line16_balance_due_filed_unstated_refuses(self):
+        """Filed return had a balance due and the case does not say what was
+        paid: refuse, naming the field and the filed balance due."""
+        filed = self._filed(total_tax=400.0)  # payments 250 -> balance due 150
+        corrected = self._filed(total_tax=500.0)
+        with self.assertRaises(ValueError) as ctx:
+            assemble(filed, corrected, self._case())
+        msg = str(ctx.exception)
+        self.assertIn("original_tax_paid", msg)
+        self.assertIn("150", msg)
+        self.assertIn("line 16", msg)
+
+    def test_line16_balance_due_detected_on_line11_not_bare_total_tax(self):
+        """The filed balance due is measured on the Column-A line 11 total
+        (tax + other taxes), not bare total_tax: total_tax 200 alone is under
+        payments 250, but SE tax 100 makes the filed liability 300."""
+        filed = self._filed(total_tax=200.0, sch_se_line_12_se_tax=100.0)
+        corrected = self._filed(total_tax=260.0, sch_se_line_12_se_tax=100.0)
+        with self.assertRaises(ValueError) as ctx:
+            assemble(filed, corrected, self._case())
+        msg = str(ctx.exception)
+        self.assertIn("original_tax_paid", msg)
+        self.assertIn("balance due of 50", msg)
+
+    def test_line16_balance_due_stated_flows_through_tail(self):
+        """Balance-due original, payment stated: L16 -> L17 -> L19 -> L20."""
+        filed = self._filed(total_tax=400.0)  # balance due 150, paid in full
+        corrected = self._filed(total_tax=500.0)
+        case = self._case(original_tax_paid=150.0)
+        out = assemble(filed, corrected, case)
+
+        self.assertEqual(out["f1040x_line16"], 150)
+        self.assertEqual(out["f1040x_line17"], 400)   # 250 + 150
+        self.assertEqual(out["f1040x_line18"], 0)
+        self.assertEqual(out["f1040x_line19"], 400)   # 400 - 0
+        self.assertEqual(out["f1040x_line20_amount_owed"], 100)  # 500 - 400
+        self.assertEqual(out["f1040x_line21"], 0)
+        self.assertEqual(out["f1040x_line22_refund"], 0)
+        # Net invariant: L20 - L22 == (corrected L11 - corrected payments)
+        #                            - (filed L11 - filed payments)
+        self.assertEqual(
+            out["f1040x_line20"] - out["f1040x_line22"],
+            (500 - 250) - (400 - 250),
+        )
+
+    def test_line16_stated_payment_can_produce_refund(self):
+        """Paid 150 with the original; the amendment lowers tax below what
+        was paid in total -> the excess comes back on line 22."""
+        filed = self._filed(total_tax=400.0)
+        corrected = self._filed(total_tax=300.0)
+        out = assemble(filed, corrected, self._case(original_tax_paid=150.0))
+
+        self.assertEqual(out["f1040x_line17"], 400)
+        self.assertEqual(out["f1040x_line20_amount_owed"], 0)
+        self.assertEqual(out["f1040x_line22_refund"], 100)
+
+    def test_line16_stated_zero_accepted_never_paid(self):
+        """Balance-due original the filer never paid: stating 0 is an
+        accepted assertion, and line 20 is what it was before line 16 was
+        sourced (corrected L11 500 - payments 250)."""
+        filed = self._filed(total_tax=400.0)
+        corrected = self._filed(total_tax=500.0)
+        out = assemble(filed, corrected, self._case(original_tax_paid=0.0))
+
+        self.assertEqual(out["f1040x_line16"], 0)
+        self.assertEqual(out["f1040x_line17"], 250)
+        self.assertEqual(out["f1040x_line19"], 250)
+        self.assertEqual(out["f1040x_line20_amount_owed"], 250)
+        self.assertEqual(out["f1040x_line22_refund"], 0)
+
+    def test_line16_negative_stated_refuses(self):
+        filed = self._filed(total_tax=400.0)
+        corrected = self._filed(total_tax=500.0)
+        with self.assertRaises(ValueError) as ctx:
+            assemble(filed, corrected, self._case(original_tax_paid=-1.0))
+        self.assertIn("original_tax_paid", str(ctx.exception))
 
     def test_required_filed_keys_are_the_column_a_sources(self):
         self.assertEqual(
