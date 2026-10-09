@@ -1,4 +1,5 @@
 import dataclasses
+from collections.abc import Mapping
 from pathlib import Path
 
 import yaml
@@ -69,6 +70,7 @@ from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_f540 import interest_and_penalties_must_be_stated
+from tenforty.mappings.pdf_f540 import AMENDED_RETURN_KEY, AMENDED_RETURN_ON
 from tenforty.mappings.pdf_f1040x import PdfF1040X
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
@@ -565,6 +567,13 @@ class PacketManifest:
     caveats: tuple[str, ...]
     ca_divergences: CADivergenceTrail = dataclasses.field(
         default_factory=CADivergenceTrail)
+    # The assembled amendment-form values the packet was filled from: every
+    # ``forms.f1040x.assemble`` key and, when the packet has a CA side, every
+    # ``forms.schedule_x.assemble_ca`` key, in one flat dict (the two key sets
+    # are disjoint by prefix). For callers that summarize a packet; NOT part of
+    # the printed manifest, nor of equality or hashing.
+    values: Mapping[str, object] = dataclasses.field(
+        default_factory=dict, compare=False, repr=False)
 
     def render(self) -> str:
         lines: list[str] = [
@@ -2461,6 +2470,7 @@ class ReturnOrchestrator:
         caveats: list[str] = [_ERRONEOUS_INCLUSION_CAVEAT]
         dropped: tuple[str, ...] = ()
         ca_divergences = CADivergenceTrail()
+        schedule_x_values: dict = {}
 
         # --- Federal: corrected run feeds Column C; filed file is Column A. ---
         eff_amended, corp_amended = self._build_effective_scenario(amended_scenario)
@@ -2475,7 +2485,11 @@ class ReturnOrchestrator:
             filler,
             _PDFS_ROOT / "federal" / "amendments" / "f1040x.pdf",
             output_dir / f"f1040x_{year}.pdf",
-            PdfF1040X.get_mapping(revision), f1040x_values,
+            {**PdfF1040X.get_mapping(revision),
+             **PdfF1040X.get_presentation_mapping(revision)},
+            {**f1040x_values,
+             **form_f1040x.presentation_keys(amended_scenario.config)},
+            checkbox_states=PdfF1040X.get_checkbox_states(revision),
         )
         mailed.append(MailedFile(
             f"f1040x_{year}.pdf", "Form 1040-X (amended federal return)",
@@ -2529,7 +2543,11 @@ class ReturnOrchestrator:
                 filler,
                 _PDFS_ROOT / "california" / "amendments" / f"schedule_x_{year}.pdf",
                 output_dir / f"schedule_x_{year}.pdf",
-                PdfScheduleX.get_mapping(year), schedule_x_values,
+                {**PdfScheduleX.get_mapping(year),
+                 **PdfScheduleX.get_presentation_mapping(year)},
+                {**schedule_x_values,
+                 **form_schedule_x.presentation_keys(amended_scenario.config)},
+                checkbox_states=PdfScheduleX.get_checkbox_states(year),
             )
             mailed.append(MailedFile(
                 f"schedule_x_{year}.pdf",
@@ -2537,8 +2555,12 @@ class ReturnOrchestrator:
                 "amendment form"))
 
             if year in years.CALIFORNIA_YEARS:
+                # The 540 emitted here IS the amended return: check its
+                # "AMENDED return" box (an original 540 never carries the key).
                 ca_pdfs = self._emit_ca_pdfs_internal(
-                    amended_scenario, corrected_ca, output_dir)
+                    amended_scenario,
+                    {**corrected_ca, AMENDED_RETURN_KEY: AMENDED_RETURN_ON},
+                    output_dir)
                 amended_540 = output_dir / f"f540_amended_{year}.pdf"
                 ca_pdfs["f540"].replace(amended_540)
                 mailed.append(MailedFile(
@@ -2560,7 +2582,8 @@ class ReturnOrchestrator:
         manifest = PacketManifest(
             year=year, mailed_files=tuple(mailed),
             dropped=dropped, caveats=tuple(caveats),
-            ca_divergences=ca_divergences)
+            ca_divergences=ca_divergences,
+            values={**f1040x_values, **schedule_x_values})
         (output_dir / "packet_manifest.txt").write_text(manifest.render())
         return manifest
 
@@ -2568,11 +2591,13 @@ class ReturnOrchestrator:
     def _emit_flat(
         filler: PdfFiller, template: Path, output_path: Path,
         field_mapping: dict, values: dict,
+        checkbox_states: dict | None = None,
     ) -> Path:
         """Fill a flat-mapping amendment form (1040-X / Schedule X)."""
         return filler.fill(
             template_path=template, output_path=output_path,
             field_mapping=field_mapping, values=values,
+            checkbox_states=checkbox_states,
         )
 
     def run_full_california_scorp_return(
