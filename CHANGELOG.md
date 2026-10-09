@@ -47,6 +47,12 @@ breaking changes are called out explicitly.
   correctness); real property must not carry the field. A `disposed` asset,
   an unsupported recovery class, and asset mode on any rental other than the
   first all refuse.
+- **Basis ceiling on an acknowledged mismatched history.** When
+  `acknowledges_prior_depreciation_as_stated` accepts a prior figure that
+  differs from the tables, this year's deduction is the lesser of the table
+  amount and the basis left after the stated prior. When the ceiling binds,
+  the reconciliation says so (`depreciation_recon_*_basis_ceiling_bound`).
+  A stated prior below the tables is not topped up.
 - **Mid-quarter convention refuses.** When personal property placed in
   service in the last three months of the year exceeds 40% of all personal
   property placed in service that year — across every activity on the

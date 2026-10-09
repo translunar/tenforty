@@ -16,6 +16,9 @@ into the same row (their bases and deductions sum). Row labels:
   19i: residential rental (27.5-year)
   19j: nonresidential real (39-year)
 
+There is no mixed-convention guard, by design: the convention is computed
+from the recovery class, so one class cannot carry two conventions.
+
 v1 emits only rows whose class has at least one asset — zero-asset
 rows are omitted (no phantom zeros). 19i and 19j each have two
 placement sub-rows on the PDF; v1 fills the first sub-row and raises
@@ -26,7 +29,8 @@ explicit sub-row support rather than silently dropping).
 from collections import defaultdict
 
 from tenforty.attestations import depreciation_activities
-from tenforty.forms.depreciation.macrs import convention_for, macrs_deduction
+from tenforty.forms.depreciation.macrs import convention_for
+from tenforty.forms.depreciation.resolver import asset_amount
 from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
@@ -86,8 +90,10 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         convention = convention_for(recovery_class)
         earliest = min(a.date_placed_in_service for a in assets)
         class_total_basis = sum(a.basis for a in assets)
+        # Through the resolver's per-asset figure, not the raw table, so
+        # this form cannot disagree with the line the activity prints.
         class_total_deduction = sum(
-            macrs_deduction(a, tax_year) for a in assets
+            asset_amount(a, tax_year)[0] for a in assets
         )
         total += class_total_deduction
         row = {
