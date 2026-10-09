@@ -104,8 +104,12 @@ _SCHEDULE_C_AMOUNT_FIELDS: tuple[str, ...] = (
 # any key outside this set raises rather than being silently dropped (a
 # dropped `itemized_deductions:` block is how a filed-return reconciliation
 # first surfaced this gap — a typo must not vanish without a sound).
+_MID_QUARTER_ACK_KEY = (
+    "acknowledges_no_personal_property_behind_stated_depreciation")
+
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
-    {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a"}
+    {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
+     _MID_QUARTER_ACK_KEY}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -1079,10 +1083,16 @@ def load_scenario(path: Path) -> Scenario:
         ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)
     form_1095a = _load_form_1095a(data.get("form_1095a"), config)
     source_documents = _load_source_documents(form_data["w2s"], path.parent)
+    mid_quarter_ack = data.get(_MID_QUARTER_ACK_KEY)
+    if mid_quarter_ack is not None:
+        mid_quarter_ack = _load_stated_bool(
+            mid_quarter_ack, _MID_QUARTER_ACK_KEY)
     scenario = Scenario(
         config=config, s_corp_return=s_corp_return, ca540=ca540,
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         source_documents=source_documents,
+        acknowledges_no_personal_property_behind_stated_depreciation=(
+            mid_quarter_ack),
         **form_data)
     _validate_schedule_k1s(scenario)
     _validate_schedule_c_businesses(scenario)

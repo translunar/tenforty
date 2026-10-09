@@ -29,8 +29,8 @@ from tenforty.attestations import (
 )
 from tenforty.forms.depreciation.macrs import convention_for, macrs_deduction
 from tenforty.models import (
-    SUPPORTED_RECOVERY_CLASSES, DepreciableAsset, RentalProperty,
-    ScheduleCBusiness,
+    PERSONAL_PROPERTY_CLASSES, SUPPORTED_RECOVERY_CLASSES, DepreciableAsset,
+    RentalProperty, ScheduleCBusiness,
 )
 from tenforty.rounding import irs_round
 
@@ -120,7 +120,9 @@ def _one_activity_scenario(activity, tax_year: int):
 
 def resolve(activity, tax_year: int) -> ResolvedDepreciation:
     """Resolve one activity's depreciation for ``tax_year``."""
-    enforce_scoped_refusals(_one_activity_scenario(activity, tax_year), "load")
+    enforce_scoped_refusals(
+        _one_activity_scenario(activity, tax_year), "load",
+        single_activity=True)
 
     assets = activity.depreciable_assets
     if not assets:
@@ -149,6 +151,58 @@ def resolve(activity, tax_year: int) -> ResolvedDepreciation:
             engine_amount=engine, per_asset=rows)
     return ResolvedDepreciation(
         amount=engine, mode=MODE_ASSETS, engine_amount=engine, per_asset=rows)
+
+
+# --- The mid-quarter 40% test (taxpayer-wide) ------------------------------
+#
+# 26 U.S.C. 168(d)(3); Pub 946 "Which Convention Applies?". The rule text is
+# transcribed in tests/test_mid_quarter_refusal.py. The totals run over the
+# whole return, and the statute's exclusions come out of BOTH of them.
+
+MID_QUARTER_THRESHOLD_PERCENT = 40
+_LAST_THREE_MONTHS = (10, 11, 12)   # calendar tax year; short years refuse
+
+
+def personal_property_placed_this_year(scenario) -> list:
+    """``(label, asset)`` for every asset in the 40% test: personal property
+    placed in service during the return year, across every activity.
+
+    Real property is out of both totals (168(d)(3)(B)(i)). The remaining
+    statutory exclusions cannot occur: a `disposed` asset and an asset in a
+    class with no table both refuse at load, and are skipped here so this
+    stays that other refusal's business."""
+    year = scenario.config.year
+    return [
+        (label, asset)
+        for _section, _index, label, activity in depreciation_activities(
+            scenario)
+        for asset in activity.depreciable_assets
+        if asset.recovery_class in PERSONAL_PROPERTY_CLASSES
+        and asset.disposed is None
+        and asset.date_placed_in_service.year == year]
+
+
+def mid_quarter_bases(scenario) -> tuple[float, float]:
+    """``(last three months, entire year)`` aggregate bases for the 40%
+    test. `basis` is used as stated: see the test module for why the
+    publication's basis Caution is inert in this model."""
+    assets = [a for _label, a in personal_property_placed_this_year(scenario)]
+    last_quarter = sum(
+        a.basis for a in assets
+        if a.date_placed_in_service.month in _LAST_THREE_MONTHS)
+    return last_quarter, sum(a.basis for a in assets)
+
+
+def mid_quarter_applies(scenario) -> bool:
+    """True when the last-three-months bases EXCEED 40% of the year's."""
+    last_quarter, year_total = mid_quarter_bases(scenario)
+    return last_quarter * 100 > MID_QUARTER_THRESHOLD_PERCENT * year_total
+
+
+def stated_mode_activity_labels(scenario) -> list[str]:
+    return [label for _section, _index, label, activity
+            in depreciation_activities(scenario)
+            if activity.depreciation and not activity.depreciable_assets]
 
 
 # --- Recon surface ---------------------------------------------------------
