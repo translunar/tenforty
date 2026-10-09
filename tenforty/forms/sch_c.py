@@ -4,12 +4,22 @@ Compute-first, per-business, ending in net profit (line 31). PDF mapping is a
 follow-on unit; keys are named by form line so mapping adds no compute change.
 
 v1 scope: gross receipts (line 1/7) minus deductible Part II expense categories
-(line 28) -> tentative profit (line 29) -> net profit (line 31). Cost of goods
-sold / inventory (Part III), depreciation (line 13), home office (Form 8829,
-line 30), vehicle expenses, depletion (line 12), returns & allowances (line 2),
-and the statutory-employee flag are UNMODELED and refuse loudly (nonzero ->
-NotImplementedError) -- there is no correct net profit for those inputs without
-the unmodeled math, so fail closed rather than silently drop them.
+(line 28) -> tentative profit (line 29) -> net profit or (loss) (line 31). Cost
+of goods sold / inventory (Part III), depreciation (line 13), home office (Form
+8829, line 30), vehicle expenses, depletion (line 12), returns & allowances
+(line 2), and the statutory-employee flag are UNMODELED and refuse loudly
+(nonzero -> NotImplementedError) -- there is no correct net profit for those
+inputs without the unmodeled math, so fail closed rather than silently drop
+them.
+
+NET LOSS (line 31 below zero). Line 32 then asks whether all investment in the
+activity is at risk (box 32a) or not (box 32b, Form 6198). Form 6198 is
+unmodeled, so a loss computes ONLY when the filer attests
+`acknowledges_sch_c_all_investment_at_risk`; box 32a is then marked for that
+business and the loss flows to Schedule 1 line 3. Without the attestation the
+loss refuses. A loss owes no self-employment tax (forms/sch_se.py), enters
+Form 8995 as a negative QBI component (forms/f8995.py), and is counted by the
+excess-business-loss guard in the orchestrator.
 """
 from tenforty.models import Scenario, ScheduleCBusiness
 from tenforty.rounding import irs_round
@@ -30,7 +40,7 @@ def net_profit_estimate(biz: ScheduleCBusiness) -> float:
     """Cheap net-profit estimate for the EIC-scope routing gate.
 
     Returns ``gross_receipts - sum(the 12 Part II expense categories)``. This is
-    a NON-RAISING pre-compute estimate: it has NO refusal guards (no net-loss /
+    a NON-RAISING pre-compute estimate: it has NO refusal guards (no at-risk /
     unmodeled-feature checks) BECAUSE it runs BEFORE ``compute`` fires those
     refusals -- the routing gate must be able to estimate income for any input,
     including one that ``compute`` will later refuse. Uses `_EXPENSE_FIELDS` so
@@ -66,7 +76,9 @@ def _guard_unmodeled(biz: ScheduleCBusiness, idx: int) -> None:
         )
 
 
-def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
+def _compute_business(
+    biz: ScheduleCBusiness, idx: int, all_investment_at_risk: bool | None,
+) -> dict:
     _guard_unmodeled(biz, idx)
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
     # refused above, so both are 0 here by construction).
@@ -80,13 +92,17 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
     line_28 = sum(irs_round(getattr(biz, f)) for f in _EXPENSE_FIELDS)
     line_29 = line_7 - line_28           # tentative profit
     line_31 = line_29                    # line 30 home office refused -> 0
-    if line_31 < 0:
+    is_loss = line_31 < 0
+    if is_loss and all_investment_at_risk is not True:
         raise NotImplementedError(
             f"Schedule C business #{idx} ({biz.description!r}) computes a net LOSS "
-            f"(line 31 = {line_31:.0f}). A Schedule C loss triggers the at-risk "
-            f"limitation (Form 6198 / line 32), QBI negative-component netting "
-            f"(Form 8995), and the §461(l) excess-business-loss limitation -- none "
-            f"modeled in tenforty v1. This return cannot be produced by v1."
+            f"(line 31 = {line_31:.0f}). A loss must answer line 32: box 32a (all "
+            f"investment is at risk) or box 32b (some investment is not at risk, "
+            f"which requires Form 6198). Form 6198 is not modeled in tenforty v1. "
+            f"Set `acknowledges_sch_c_all_investment_at_risk: true` to affirm that "
+            f"ALL investment in every loss-making Schedule C business is at risk "
+            f"(box 32a is then checked and the loss is allowed); otherwise this "
+            f"return cannot be produced by v1."
         )
     # Lines 1, 3 and 5 are printed explicitly so the form's own chain is
     # complete. They all equal line 7 BY CONSTRUCTION: line 2 (returns and
@@ -101,6 +117,9 @@ def _compute_business(biz: ScheduleCBusiness, idx: int) -> dict:
         "sch_c_line_28_total_expenses": line_28,
         "sch_c_line_29_tentative_profit": line_29,
         "sch_c_line_31_net_profit": line_31,
+        # Line 32a is answered only on a loss; a profit business leaves line
+        # 32 blank, so the key is ABSENT (not False) for it.
+        **({"sch_c_line_32a_all_investment_at_risk": True} if is_loss else {}),
     }
 
 
@@ -108,7 +127,9 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
     businesses = scenario.schedule_c_businesses
     if not businesses:
         return {}
-    per_business = [_compute_business(b, i) for i, b in enumerate(businesses)]
+    at_risk = scenario.config.acknowledges_sch_c_all_investment_at_risk
+    per_business = [
+        _compute_business(b, i, at_risk) for i, b in enumerate(businesses)]
     total = sum(b["sch_c_line_31_net_profit"] for b in per_business)
     return {
         "sch_c_businesses": per_business,

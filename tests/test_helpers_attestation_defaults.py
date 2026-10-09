@@ -53,5 +53,7 @@ class ScopeOutAttestationDefaultsSnapshotTests(unittest.TestCase):
             "acknowledges_no_paid_family_leave_benefits": False,
             "acknowledges_no_capital_loss_carryforward": True,
             "acknowledges_no_federal_amt": True,
+            "acknowledges_sch_c_all_investment_at_risk": False,
+            "acknowledges_form_7203_attached_separately": False,
         }
         self.assertEqual(expected, scope_out_attestation_defaults())

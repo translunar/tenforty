@@ -249,9 +249,24 @@ ATTESTED: dict[str, object] = {
         2: 59478,
         3: 63398,
     },
+
+    # IRC §461(l) excess-business-loss threshold — 2023 Form 461, line 15:
+    # "Enter $289,000 (or $578,000 if married filing jointly)". Supplied by
+    # team-lead from an independent read (blind transcription agent),
+    # NOT from the params author. Every status other than married filing
+    # jointly takes the single amount.
+    "excess_business_loss_threshold": {
+        "single": 289000,
+        "married_jointly": 578000,
+        "married_separately": 289000,
+        "head_of_household": 289000,
+        "qualifying_widow": 289000,
+    },
 }
 
 SOURCES: tuple[str, ...] = (
+    "IRS Form 461 (2023), Limitation on Business Losses (irs.gov/pub/irs-prior/"
+    "f461--2023.pdf), line 15 — for excess_business_loss_threshold.",
     "IRS Rev. Proc. 2022-38, https://www.irs.gov/pub/irs-drop/rp-22-38.pdf "
     "-- SECTION 3.01 Table 3 (Unmarried Individuals other than Surviving "
     "Spouses and Heads of Households) for ordinary_brackets; SECTION 3.03 "

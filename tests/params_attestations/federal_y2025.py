@@ -32,6 +32,8 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
 import math
 
 SOURCES: tuple[str, ...] = (
+    "IRS Form 461 (2025), Limitation on Business Losses (irs.gov/pub/irs-prior/"
+    "f461--2025.pdf), line 15 — for excess_business_loss_threshold.",
     "IRS news release 'IRS releases tax inflation adjustments for tax year "
     "2025' (IR-2024-273, "
     "irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2025)"
@@ -235,5 +237,18 @@ ATTESTED: dict[str, object] = {
         1: 57554,
         2: 64430,
         3: 68675,  # 3 or more qualifying children
+    },
+
+    # IRC §461(l) excess-business-loss threshold — 2025 Form 461, line 15:
+    # "Enter $313,000 (or $626,000 if married filing jointly)". Supplied by
+    # team-lead from an independent read (blind transcription agent),
+    # NOT from the params author. Every status other than married filing
+    # jointly takes the single amount.
+    "excess_business_loss_threshold": {
+        "single": 313000,
+        "married_jointly": 626000,
+        "married_separately": 313000,
+        "head_of_household": 313000,
+        "qualifying_widow": 313000,
     },
 }

@@ -26,7 +26,7 @@ behavior is to ignore, not raise.
 
 import logging
 
-from tenforty.attestations import enforce_compute_time
+from tenforty.attestations import enforce_compute_time, has_scorp_k1_box_1_loss
 from tenforty.models import (
     EntityType, K1FanoutActivity, K1FanoutData, PayerAmount,
     Scenario, ScheduleK1,
@@ -129,10 +129,16 @@ def compute(
     result["sch_e_line_29b_total_nonpassive_loss"] = line_29a_nonpassive_loss
     # Line 37 (estate/trust) is always 0: estate_trust K-1s are rejected by
     # _enforce_scope_gates, so nothing reaches Part III.
-    result["sch_e_line_32_total_partnership_scorp"] = (
-        line_29a_passive_income + line_29a_nonpassive_income
-        - line_29a_passive_loss - line_29a_nonpassive_loss
-    )
+    # Lines 30 and 31 are the printed addends of line 32. Line 30: "Add
+    # columns (h) and (k) of line 29a" (the two income columns). Line 31: "Add
+    # columns (g), (i), and (j) of line 29b" (the two loss columns; column (j),
+    # section 179, is unmodeled). Line 31 sits in PREPRINTED parentheses, so
+    # it is stored POSITIVE. Line 32: "Combine lines 30 and 31."
+    line_30 = line_29a_passive_income + line_29a_nonpassive_income
+    line_31 = line_29a_passive_loss + line_29a_nonpassive_loss
+    result["sch_e_line_30_total_income"] = line_30
+    result["sch_e_line_31_total_loss"] = line_31
+    result["sch_e_line_32_total_partnership_scorp"] = line_30 - line_31
     result["sch_e_line_37_total_estate_trust"] = 0
     result["sch_e_line_41_total_pte"] = result["sch_e_line_32_total_partnership_scorp"]
 
@@ -196,6 +202,20 @@ def _enforce_scope_gates(scenario: Scenario) -> None:
     enforce_compute_time(scenario)
 
 
+def hand_attachment_notes(scenario: Scenario) -> tuple[str, ...]:
+    """Attachments the return REQUIRES that tenforty does not produce, one
+    note per item, for a packet manifest. Today: Form 7203 for each S
+    corporation K-1 reporting a box 1 loss (Schedule E line 28 column (e) is
+    checked for that row). Empty when nothing is required."""
+    return tuple(
+        f"Form 7203 (S Corporation Shareholder Stock and Debt Basis "
+        f"Limitations) for {k1.entity_name!r} is NOT produced by tenforty: "
+        f"Schedule E line 28 column (e) is checked for its loss, so prepare "
+        f"Form 7203 by hand and attach it to the return."
+        for k1 in scenario.schedule_k1s if has_scorp_k1_box_1_loss(k1)
+    )
+
+
 def _row_fields(k1: ScheduleK1, letter: str) -> dict:
     total = _k1_row_total(k1)
     passive_income = passive_loss = nonpassive_income = nonpassive_loss = 0
@@ -209,7 +229,18 @@ def _row_fields(k1: ScheduleK1, letter: str) -> dict:
             passive_income = total
         else:
             passive_loss = -total
+    # Line 28 column (e) "Check if basis computation is required": the form's
+    # Part II note requires it for a loss from an S corporation. The key is
+    # ABSENT (not False) on every other row, so the box stays blank there.
+    # The basis computation itself (Form 7203) is not produced; the
+    # `acknowledges_form_7203_attached_separately` gate covers the attachment
+    # and uses the same predicate.
+    basis_box = (
+        {f"sch_e_part_ii_row_{letter}_basis_computation_required": True}
+        if has_scorp_k1_box_1_loss(k1) else {}
+    )
     return {
+        **basis_box,
         f"sch_e_part_ii_row_{letter}_name": k1.entity_name,
         f"sch_e_part_ii_row_{letter}_ein": k1.entity_ein,
         # Line 28 col (b) is a single "Enter P for partnership; S for S
