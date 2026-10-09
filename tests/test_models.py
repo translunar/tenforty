@@ -480,13 +480,11 @@ class DepreciableAssetTests(unittest.TestCase):
             date_placed_in_service=date(2019, 6, 1),
             basis=250_000.0,
             recovery_class="27.5-year",
-            convention="mid-month",
         )
         self.assertEqual(a.description, "Rental building - Cedar Court")
         self.assertEqual(a.date_placed_in_service, date(2019, 6, 1))
         self.assertEqual(a.basis, 250_000.0)
         self.assertEqual(a.recovery_class, "27.5-year")
-        self.assertEqual(a.convention, "mid-month")
         self.assertIsNone(a.disposed)
 
     def test_accepts_disposed_date(self):
@@ -495,14 +493,16 @@ class DepreciableAssetTests(unittest.TestCase):
             date_placed_in_service=date(2023, 1, 10),
             basis=2_000.0,
             recovery_class="5-year",
-            convention="half-year",
             disposed=date(2025, 8, 14),
         )
         self.assertEqual(a.disposed, date(2025, 8, 14))
 
 
 class ScenarioDepreciableAssetsTests(unittest.TestCase):
-    def test_defaults_empty(self):
+    """Assets nest under their activity; the scenario has no list of its
+    own, and a YAML file that still carries one refuses at load."""
+
+    def test_scenario_has_no_asset_list(self):
         scenario = Scenario(
             config=TaxReturnConfig(
                 year=2025,
@@ -516,15 +516,15 @@ class ScenarioDepreciableAssetsTests(unittest.TestCase):
                 acknowledges_no_unrecaptured_section_1250=False,
             ),
         )
-        self.assertEqual(scenario.depreciable_assets, [])
+        self.assertFalse(hasattr(scenario, "depreciable_assets"))
+        with self.assertRaises(TypeError):
+            Scenario(config=scenario.config, depreciable_assets=[])
 
-    def test_load_scenario_parses_depreciable_assets(self):
-        s = load_scenario(FIXTURES_DIR / "rental_with_depreciation.yaml")
-        self.assertEqual(len(s.depreciable_assets), 1)
-        a = s.depreciable_assets[0]
-        self.assertEqual(a.description, "Rental building")
-        self.assertEqual(a.basis, 250_000.0)
-        self.assertEqual(a.recovery_class, "27.5-year")
+    def test_load_scenario_refuses_top_level_depreciable_assets(self):
+        with self.assertRaisesRegex(
+                ValueError, r"top-level `depreciable_assets:` list is no "
+                            r"longer accepted"):
+            load_scenario(FIXTURES_DIR / "rental_with_depreciation.yaml")
 
 
 class TestEntityType(unittest.TestCase):

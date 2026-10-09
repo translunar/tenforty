@@ -151,7 +151,7 @@ class StrictTopLevelKeysTests(unittest.TestCase):
             "form1098s": [],
             "schedule_k1s": [],
             "rental_properties": [],
-            "depreciable_assets": [],
+            "schedule_c_businesses": [],
             "s_corp_return": None,
             "ca540": None,
             "itemized_deductions": {"medical_expenses": 22450.0},
