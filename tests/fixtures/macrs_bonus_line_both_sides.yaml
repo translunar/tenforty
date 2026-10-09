@@ -54,6 +54,7 @@ w2s:
     ss_tax_withheld: 6200.00
     medicare_wages: 100000.00
     medicare_tax_withheld: 1450.00
+acknowledges_no_listed_property: true
 rental_properties:
   - address: "100 Example Street"
     property_type: 1

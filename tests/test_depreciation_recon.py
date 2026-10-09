@@ -58,6 +58,7 @@ def _scenario(*rentals):
     s = make_simple_scenario()
     s.config.year = YEAR
     s.rental_properties = list(rentals)
+    s.acknowledges_no_listed_property = True
     return s
 
 

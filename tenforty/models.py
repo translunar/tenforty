@@ -1430,6 +1430,11 @@ class Scenario:
     # field: no other scenario has to carry it.
     acknowledges_no_personal_property_behind_stated_depreciation: (
         bool | None) = None
+    # Required ONLY when the return lists any personal-property asset:
+    # listed property (a vehicle, say) needs Form 4562 every year, and the
+    # asset model cannot tell a listed asset from any other. Scenario-level,
+    # not a config field.
+    acknowledges_no_listed_property: bool | None = None
 
     def __post_init__(self) -> None:
         # CA-withholding channel, schema layer (state-attribution ruling):

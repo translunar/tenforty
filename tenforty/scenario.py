@@ -107,9 +107,11 @@ _SCHEDULE_C_AMOUNT_FIELDS: tuple[str, ...] = (
 _MID_QUARTER_ACK_KEY = (
     "acknowledges_no_personal_property_behind_stated_depreciation")
 
+_LISTED_PROPERTY_ACK_KEY = "acknowledges_no_listed_property"
+
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
-     _MID_QUARTER_ACK_KEY}
+     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -1087,8 +1089,13 @@ def load_scenario(path: Path) -> Scenario:
     if mid_quarter_ack is not None:
         mid_quarter_ack = _load_stated_bool(
             mid_quarter_ack, _MID_QUARTER_ACK_KEY)
+    listed_property_ack = data.get(_LISTED_PROPERTY_ACK_KEY)
+    if listed_property_ack is not None:
+        listed_property_ack = _load_stated_bool(
+            listed_property_ack, _LISTED_PROPERTY_ACK_KEY)
     scenario = Scenario(
         config=config, s_corp_return=s_corp_return, ca540=ca540,
+        acknowledges_no_listed_property=listed_property_ack,
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         source_documents=source_documents,
         acknowledges_no_personal_property_behind_stated_depreciation=(

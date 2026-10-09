@@ -74,6 +74,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_mid_quarter_refusal::FortyPercentTestTests::test_fires_over_the_threshold",
     "unverifiable_mid_quarter_test":
         "tests.test_mid_quarter_refusal::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
+    "unacknowledged_listed_property":
+        "tests.test_listed_property_acknowledgment::ListedPropertyAcknowledgmentTests::test_personal_property_without_the_acknowledgment_refuses",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -352,13 +354,15 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "merged_4562_with_override",
                 "mid_quarter_convention",
                 "unverifiable_mid_quarter_test",
+                "unacknowledged_listed_property",
             ])
 
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
         self.assertEqual(
             [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
             ["merged_4562_with_override", "mid_quarter_convention",
-             "unverifiable_mid_quarter_test"])
+             "unverifiable_mid_quarter_test",
+             "unacknowledged_listed_property"])
 
     def test_names_are_unique(self):
         names = [r.name for r in attestations._SCOPED_REFUSALS]
