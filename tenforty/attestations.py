@@ -23,7 +23,7 @@ per-field checks they replace, so existing tests that assert on which error
 fires first for a given scenario remain green."""
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Sequence
 
 from tenforty.models import EntityType, Scenario
 from tenforty.rounding import irs_round
@@ -947,3 +947,62 @@ def enforce_compute_time(scenario: Scenario) -> None:
             continue
         if getattr(cfg, a.field) is False:
             raise NotImplementedError(a.compute_error)
+
+
+# ---------------------------------------------------------------------------
+# The refusal ledger: field-less, scenario-triggered refusals.
+#
+# A sibling species to `Attestation` above, which is untouched. An
+# `Attestation` is keyed on a `TaxReturnConfig` field that EVERY scenario must
+# answer at load. A `ScopedRefusal` has no config field: it taxes no filer, and
+# fires only when its own predicate finds offending items. Acknowledgments that
+# lift a scoped refusal live on the activity or asset they concern, and the
+# predicate reads them there.
+#
+# U-1 owns these mechanically: tests/test_scoped_refusals.py requires every
+# registered name to appear in its FIRING_PROOFS map, naming the test that
+# makes the refusal fire. An entry with no proof fails the suite.
+# ---------------------------------------------------------------------------
+
+# "parse": the predicate sees the RAW YAML mapping, before any model is built
+#          (for shapes the models can no longer represent).
+# "load":  the predicate sees the constructed Scenario. Re-checked at compute
+#          entry, because a Scenario built in code never passed the loader.
+# "compute": the predicate sees the (effective) Scenario at compute entry.
+SCOPED_REFUSAL_STAGES: tuple[str, ...] = ("parse", "load", "compute")
+
+
+@dataclass(frozen=True)
+class ScopedRefusal:
+    name: str
+    stage: str
+    # Returns the offending items; empty means the refusal does not fire.
+    offenders: Callable[[object], Sequence]
+    # Builds the refusal text from the offending items.
+    message: Callable[[Sequence], str]
+    exception: type[Exception] = ValueError
+
+    def __post_init__(self) -> None:
+        if self.stage not in SCOPED_REFUSAL_STAGES:
+            raise ValueError(
+                f"ScopedRefusal {self.name!r} has unknown stage "
+                f"{self.stage!r}; expected one of {SCOPED_REFUSAL_STAGES}.")
+
+
+_SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = ()
+
+
+def enforce_scoped_refusals(subject, stage: str) -> None:
+    """Raise the first registered refusal of ``stage`` whose predicate finds
+    offending items in ``subject`` (the raw YAML mapping for "parse", the
+    Scenario otherwise). Tuple position is error precedence."""
+    if stage not in SCOPED_REFUSAL_STAGES:
+        raise ValueError(
+            f"Unknown scoped-refusal stage {stage!r}; expected one of "
+            f"{SCOPED_REFUSAL_STAGES}.")
+    for refusal in _SCOPED_REFUSALS:
+        if refusal.stage != stage:
+            continue
+        offenders = refusal.offenders(subject)
+        if offenders:
+            raise refusal.exception(refusal.message(offenders))

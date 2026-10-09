@@ -4,6 +4,7 @@ from pathlib import Path
 import pypdf
 import yaml
 
+from tenforty import attestations as _attestations
 from tenforty.attestations import validate_load_time
 from tenforty.ca_divergences import (
     materialize_user_divergence,
@@ -940,6 +941,8 @@ def load_scenario(path: Path) -> Scenario:
             f"Unknown top-level key(s) in scenario YAML: {sorted(unknown)}. "
             f"Known keys: {sorted(_KNOWN_TOP_LEVEL_KEYS)}")
 
+    _attestations.enforce_scoped_refusals(data, "parse")
+
     config = TaxReturnConfig(**data["config"])
     _validate_scenario_config(config)
 
@@ -965,6 +968,7 @@ def load_scenario(path: Path) -> Scenario:
     _validate_schedule_k1s(scenario)
     _validate_schedule_c_businesses(scenario)
     _validate_charitable_itemizer(scenario)
+    _attestations.enforce_scoped_refusals(scenario, "load")
     return scenario
 
 

@@ -5,7 +5,9 @@ from pathlib import Path
 
 import yaml
 
-from tenforty.attestations import enforce_compute_time
+from tenforty.attestations import (
+    enforce_compute_time, enforce_scoped_refusals,
+)
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
@@ -428,6 +430,14 @@ def aggregate_business_losses(scenario: Scenario) -> int:
     return sch_c + k1 + rental
 
 
+def _enforce_refusal_ledger(scenario: Scenario) -> None:
+    """Run the scoped-refusal ledger at compute entry: the load-stage entries
+    again (a Scenario built in code never passed `load_scenario`, so compute
+    does not trust that the loader ran), then the compute-stage entries."""
+    enforce_scoped_refusals(scenario, "load")
+    enforce_scoped_refusals(scenario, "compute")
+
+
 @dataclasses.dataclass(frozen=True)
 class _FederalFormSpec:
     """One federal individual-return form's fully-prepared emit unit, WITHOUT
@@ -702,6 +712,7 @@ class ReturnOrchestrator:
         (scenario, {}) unchanged.
         """
         if scenario.s_corp_return is None:
+            _enforce_refusal_ledger(scenario)
             return scenario, {}
 
         corp_results = self.compute_corporate(scenario)
@@ -718,6 +729,7 @@ class ReturnOrchestrator:
         # Plan D's Sch E Part II) must see the FULL list including
         # the just-appended computed K-1s, not just the original.
         enforce_compute_time(effective_scenario)
+        _enforce_refusal_ledger(effective_scenario)
         return effective_scenario, corp_results
 
     def _scenario_in_spine_scope(self, effective_scenario: Scenario) -> bool:
