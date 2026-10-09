@@ -1004,12 +1004,17 @@ def depreciation_activities(scenario: Scenario):
     """Every activity that can carry depreciation, as
     ``(section, index, label, activity)``. ``label`` is how refusal text names
     the activity."""
+    # The resolver runs the ledger over a single activity it was handed
+    # directly; that view has no positions to report, so the label omits one.
+    unindexed = getattr(scenario, "unindexed_activities", False)
     for i, rp in enumerate(scenario.rental_properties):
+        position = "" if unindexed else f" #{i}"
         yield ("rental_properties", i,
-               f"rental property #{i} ({rp.address!r})", rp)
+               f"rental property{position} ({rp.address!r})", rp)
     for i, biz in enumerate(scenario.schedule_c_businesses):
+        position = "" if unindexed else f" #{i}"
         yield ("schedule_c_businesses", i,
-               f"Schedule C business #{i} ({biz.description!r})", biz)
+               f"Schedule C business{position} ({biz.description!r})", biz)
 
 
 def _assets(scenario: Scenario):
@@ -1122,6 +1127,73 @@ def _asset_mode_on_unprinted_rentals(s: Scenario) -> list[str]:
     return [f"rental property #{i} ({rp.address!r})"
             for i, rp in enumerate(s.rental_properties)
             if i >= 1 and rp.depreciable_assets]
+
+
+# The four predicates below need the engine, which lives in
+# forms/depreciation/ and itself imports this module -- hence the imports
+# inside the functions. Each skips an asset the engine has no figure for
+# (unknown class, disposed): those are other entries' refusals.
+
+def _assets_placed_after_return_year(s: Scenario) -> list[str]:
+    year = s.config.year
+    return [
+        f"{label} was placed in service in "
+        f"{a.date_placed_in_service.year}, after the {year} return year"
+        for label, a in _assets(s) if a.date_placed_in_service.year > year]
+
+
+def _prior_depreciation_mismatches(s: Scenario) -> list[str]:
+    from tenforty.forms.depreciation import resolver
+    year = s.config.year
+    found = []
+    for label, a in _assets(s):
+        if not resolver.is_computable(a):
+            continue
+        mismatch = resolver.prior_depreciation_mismatch(a, year)
+        if mismatch is not None:
+            stated, reconstructed = mismatch
+            found.append(
+                f"{label} states `prior_depreciation` of {stated:,} but the "
+                f"MACRS tables reconstruct {reconstructed:,} for the years "
+                f"before {year}")
+    return found
+
+
+def _computable_overridden_activities(s: Scenario):
+    from tenforty.forms.depreciation import resolver
+    for _sec, _i, label, act in depreciation_activities(s):
+        if act.depreciation_override is None or not act.depreciable_assets:
+            continue
+        if all(resolver.is_computable(a) for a in act.depreciable_assets):
+            yield label, act
+
+
+def _stale_overrides(s: Scenario) -> list[str]:
+    from tenforty.forms.depreciation import resolver
+    found = []
+    for label, act in _computable_overridden_activities(s):
+        engine = resolver.engine_amount(act, s.config.year)
+        restated = irs_round(act.depreciation_override.restates_engine_amount)
+        if restated != engine:
+            found.append(
+                f"{label} carries a `depreciation_override` restating the "
+                f"engine's figure as {restated:,}, but the engine now "
+                f"computes {engine:,}")
+    return found
+
+
+def _overrides_with_current_year_placement(s: Scenario) -> list[str]:
+    from tenforty.forms.depreciation import resolver
+    year = s.config.year
+    found = []
+    for label, act in _computable_overridden_activities(s):
+        placed = resolver.placed_this_year(act, year)
+        if placed:
+            names = ", ".join(repr(a.description) for a in placed)
+            found.append(
+                f"{label} carries a `depreciation_override` and placed "
+                f"{names} in service in {year}")
+    return found
 
 
 def _join(items: Sequence) -> str:
@@ -1272,7 +1344,61 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
-_SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = _DEPRECIATION_SHAPE_REFUSALS
+# --- Depreciation: what the resolver refuses -------------------------------
+
+_DEPRECIATION_RESOLVER_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="asset_placed_after_return_year",
+        stage="load",
+        offenders=_assets_placed_after_return_year,
+        message=lambda o: (
+            f"{_join(o)}. An asset not yet in service has no depreciation "
+            "for this return; remove it from this year's scenario."),
+    ),
+    ScopedRefusal(
+        name="prior_depreciation_mismatch",
+        stage="load",
+        offenders=_prior_depreciation_mismatches,
+        message=lambda o: (
+            f"{_join(o)}. A history that does not match the tables usually "
+            "means an earlier year used a different class, method or "
+            "convention. Correcting that is a change in accounting method "
+            "(Form 3115, with a section 481(a) adjustment) -- CPA "
+            "territory, which tenforty does not prepare. To proceed with "
+            "the history as it stands, set "
+            "`acknowledges_prior_depreciation_as_stated: true` on the "
+            "asset; this year's deduction is still computed from the "
+            "tables."),
+    ),
+    ScopedRefusal(
+        name="stale_depreciation_override",
+        stage="load",
+        offenders=_stale_overrides,
+        message=lambda o: (
+            f"{_join(o)}. The override was acknowledged against a figure "
+            "the engine no longer produces (the books changed). Review the "
+            "override and re-acknowledge it by setting "
+            "`restates_engine_amount` to the engine's current figure."),
+    ),
+    ScopedRefusal(
+        name="override_with_current_year_placement",
+        stage="load",
+        offenders=_overrides_with_current_year_placement,
+        message=lambda o: (
+            f"{_join(o)}. Property placed in service this year requires "
+            "Form 4562, which would print the engine's figures while the "
+            "return claims the override amount -- an internally "
+            "inconsistent filing. Overriding an activity in a year it "
+            "places property in service is a named follow-on; until then "
+            "remove the override, or state the activity's figure instead "
+            "of listing assets."),
+        exception=NotImplementedError,
+    ),
+)
+
+_SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
+    _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
+)
 
 
 def enforce_scoped_refusals(subject, stage: str) -> None:
