@@ -123,7 +123,10 @@ name the same line differently.
     Caller-supplied ``extra_rows``: ``{row_label: {column_index: short_string}}``.
 
 PRINTING RULES. A row prints only if at least one column holds a NONZERO value
-for it (zero-collapse). In a row that prints, a column whose snapshot lacks the
+for it (zero-collapse). The bottom-line rows (BOTTOM LINE, CA bottom line,
+1040-X bottom line, Schedule X bottom line) are EXEMPT: an exactly-even bottom
+line prints "0", and the row is dropped only when no column carries one at
+all. In a row that prints, a column whose snapshot lacks the
 value shows an em dash and a column whose value is a real zero shows "0" — the
 two are different facts. Amounts are whole dollars with thousands separators,
 right-aligned; a negative is parenthesized. A bottom line prints as
@@ -387,7 +390,8 @@ def _schedule_x_bottom_line(r: Mapping) -> _Cell | None:
     )
 
 
-# (section, row label, cell function, emphasized)
+# (section, row label, cell function, emphasized). Emphasized == a
+# bottom-line row: drawn bold on a band AND exempt from zero-collapse.
 _VOCABULARY: tuple[tuple[str, str, Callable[[Mapping], _Cell | None], bool], ...] = (
     ("Income", "Wages", _key("wages"), False),
     ("Income", "Interest", _key("taxable_interest", "interest_income"), False),
@@ -469,7 +473,12 @@ def _layout(columns: list[dict], extra_rows: Mapping | None) -> list[_Row]:
     rows = []
     for section, label, cell_fn, emphasized in _VOCABULARY:
         cells = tuple(cell_fn(c["results"]) for c in columns)
-        if any(cell is not None and not cell.zero for cell in cells):
+        # A bottom-line row (the emphasized ones) prints whenever any column
+        # HAS one, even an exactly-even "0": nothing due and nothing refunded
+        # is the headline fact of a return, not noise. Every other row needs
+        # a nonzero value somewhere.
+        if any(cell is not None and (emphasized or not cell.zero)
+               for cell in cells):
             rows.append(_Row(section, label, cells, emphasized))
     rows.extend(
         row for row in _extra_rows(extra_rows, len(columns))

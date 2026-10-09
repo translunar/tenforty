@@ -321,6 +321,31 @@ class BottomLineSignTests(unittest.TestCase):
         self.assertEqual(rows["Schedule X bottom line"], ["owe 95", "refund 41"])
 
 
+    def test_even_bottom_lines_print_zero_instead_of_collapsing(self):
+        # Nothing due, nothing refunded is the headline fact of a return:
+        # bottom-line rows are exempt from zero-collapse.
+        even = _native_results(
+            total_payments=15626, overpaid=0, refund=0, amount_owed=0,
+            f540_total_liability=0,
+            f1040x_line20_amount_owed=0, f1040x_line21=0,
+            schedule_x_line7_amount_owed=0, schedule_x_line9=0)
+        rows = _rows([_snap(even), _snap(even)])
+        for label in ("BOTTOM LINE", "CA bottom line", "1040-X bottom line",
+                      "Schedule X bottom line"):
+            self.assertEqual(rows[label], ["0", "0"])
+
+    def test_bottom_line_no_column_carries_still_does_not_print(self):
+        # The exemption is for an EVEN bottom line, not an absent one.
+        rows = _rows([_snap(_native_results())])
+        for label in ("CA bottom line", "1040-X bottom line",
+                      "Schedule X bottom line"):
+            self.assertNotIn(label, rows)
+
+    def test_exemption_is_bottom_lines_only(self):
+        rows = _rows([_snap(_native_results(total_credits=0))])
+        self.assertNotIn("Credits", rows)
+
+
 class RenderedCoverTests(unittest.TestCase):
 
     def setUp(self):
