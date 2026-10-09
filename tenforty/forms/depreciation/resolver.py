@@ -23,7 +23,9 @@ from dataclasses import dataclass
 from datetime import date
 from types import SimpleNamespace
 
-from tenforty.attestations import enforce_scoped_refusals
+from tenforty.attestations import (
+    depreciation_activities, enforce_scoped_refusals,
+)
 from tenforty.forms.depreciation.macrs import convention_for, macrs_deduction
 from tenforty.models import (
     SUPPORTED_RECOVERY_CLASSES, DepreciableAsset, RentalProperty,
@@ -146,3 +148,44 @@ def resolve(activity, tax_year: int) -> ResolvedDepreciation:
             engine_amount=engine, per_asset=rows)
     return ResolvedDepreciation(
         amount=engine, mode=MODE_ASSETS, engine_amount=engine, per_asset=rows)
+
+
+# --- Recon surface ---------------------------------------------------------
+
+RECON_PREFIX = "depreciation_recon_"
+_RECON_SECTION_SLUGS = {
+    "rental_properties": "rental", "schedule_c_businesses": "sch_c"}
+RECON_FIELDS = ("activity", "mode", "engine_amount", "used_amount")
+
+
+def recon_keys(scenario) -> dict:
+    """Result keys reconciling the engine's figure with the figure used, one
+    group per ASSET-MODE activity (none for stated-mode or no-depreciation
+    activities). Keys: ``depreciation_recon_{rental|sch_c}_{index}_{field}``
+    for each field in `RECON_FIELDS`. An overridden activity shows both
+    figures, differing; every other asset-mode activity shows them equal."""
+    keys: dict = {}
+    year = scenario.config.year
+    for section, index, label, activity in depreciation_activities(scenario):
+        resolved = resolve(activity, year)
+        if resolved.mode not in (MODE_ASSETS, MODE_ASSETS_OVERRIDDEN):
+            continue
+        prefix = f"{RECON_PREFIX}{_RECON_SECTION_SLUGS[section]}_{index}_"
+        keys[prefix + "activity"] = label
+        keys[prefix + "mode"] = resolved.mode
+        keys[prefix + "engine_amount"] = resolved.engine_amount
+        keys[prefix + "used_amount"] = irs_round(resolved.amount)
+    return keys
+
+
+def recon_groups(results) -> list[dict]:
+    """The recon key groups in ``results``, one dict of `RECON_FIELDS` per
+    activity, in key order."""
+    groups: dict[str, dict] = {}
+    for key in sorted(k for k in results if k.startswith(RECON_PREFIX)):
+        for field_name in RECON_FIELDS:
+            if key.endswith("_" + field_name):
+                stem = key[: -len(field_name) - 1]
+                groups.setdefault(stem, {})[field_name] = results[key]
+                break
+    return list(groups.values())

@@ -9,6 +9,7 @@ from tenforty.attestations import (
     enforce_compute_time, enforce_scoped_refusals,
 )
 from tenforty.forms.depreciation.resolver import (
+    recon_keys as depreciation_recon_keys,
     resolve as resolve_depreciation,
 )
 from tenforty.oracle.engine import SpreadsheetEngine
@@ -855,6 +856,17 @@ class ReturnOrchestrator:
             )
 
     def _compute_1040_pipeline(
+        self, effective_scenario: Scenario,
+    ) -> dict[str, object]:
+        """The 1040 pipeline plus the depreciation recon keys.
+
+        The recon keys (engine-computed vs used depreciation, one group per
+        asset-mode activity) ride in the results dict on BOTH compute paths,
+        so they reach the results snapshot and the CLI on every run."""
+        results = self._compute_1040_pipeline_core(effective_scenario)
+        return {**results, **depreciation_recon_keys(effective_scenario)}
+
+    def _compute_1040_pipeline_core(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
         """Native 1040 spine for in-scope scenarios; XLSX oracle otherwise.
