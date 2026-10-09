@@ -7,6 +7,13 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Amendment packets print the identity set.** Form 1040-X page 1 carries
+  name, SSN, address and the filing-status checkbox; CA Schedule X carries
+  name, SSN and the "Other" reason box; the amended Form 540 checks its
+  AMENDED box. Previously all of these printed blank — re-emitted amendment
+  packets differ from prior emits in these header cells. `PacketManifest`
+  gains a `values` mapping (assembled 1040-X / Schedule X line values;
+  excluded from equality and hash) for results snapshots.
 - **Results snapshots and columnar cover sheets** (`tenforty.summary`).
   `write_results_snapshot` persists a return run's full results dict with
   metadata (year, label, scenario hash, emitted forms); `compose_cover`
