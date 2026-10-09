@@ -984,6 +984,10 @@ class ScopedRefusal:
     # Builds the refusal text from the offending items.
     message: Callable[[Sequence], str]
     exception: type[Exception] = ValueError
+    # True for a question that only the WHOLE return can answer (a
+    # taxpayer-wide aggregate). Such an entry is skipped when the ledger is
+    # run over a single activity, where asking it would give a wrong answer.
+    whole_return: bool = False
 
     def __post_init__(self) -> None:
         if self.stage not in SCOPED_REFUSAL_STAGES:
@@ -1215,6 +1219,23 @@ def _overrides_with_current_year_placement(s: Scenario) -> list[str]:
     return found
 
 
+def _mid_quarter_convention(s: Scenario) -> list[str]:
+    from tenforty.forms.depreciation import resolver
+    if not resolver.mid_quarter_applies(s):
+        return []
+    last_quarter, year_total = resolver.mid_quarter_bases(s)
+    return [f"{irs_round(last_quarter):,} of {irs_round(year_total):,}"]
+
+
+def _unverifiable_mid_quarter_test(s: Scenario) -> list[str]:
+    from tenforty.forms.depreciation import resolver
+    if s.acknowledges_no_personal_property_behind_stated_depreciation is True:
+        return []
+    if not resolver.personal_property_placed_this_year(s):
+        return []
+    return resolver.stated_mode_activity_labels(s)
+
+
 def _join(items: Sequence) -> str:
     return "; ".join(str(i) for i in items)
 
@@ -1417,21 +1438,68 @@ _DEPRECIATION_RESOLVER_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
+# --- Depreciation: the taxpayer-wide convention test -----------------------
+
+_DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="mid_quarter_convention",
+        stage="load",
+        whole_return=True,
+        offenders=_mid_quarter_convention,
+        message=lambda o: (
+            f"The mid-quarter convention applies to this return: personal "
+            f"property placed in service in the last three months of the "
+            f"year has aggregate basis {_join(o)} placed in service during "
+            "the year, which is more than 40% (26 U.S.C. 168(d)(3)). "
+            "tenforty has no mid-quarter tables, and the half-year tables "
+            "would compute every asset placed this year wrong. The totals "
+            "run across every activity on the return; real property is in "
+            "neither. This return cannot be produced with these assets "
+            "listed."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="unverifiable_mid_quarter_test",
+        stage="load",
+        whole_return=True,
+        offenders=_unverifiable_mid_quarter_test,
+        message=lambda o: (
+            "The mid-quarter 40% test cannot be verified: an asset list "
+            "places personal property in service this year, but "
+            f"{_join(o)} states its depreciation as a single figure, and "
+            "that figure does not show what it placed in service or when. "
+            "The test's totals cover every activity on the return. If no "
+            "personal property was placed in service this year behind any "
+            "stated depreciation figure, set the top-level scenario key "
+            "`acknowledges_no_personal_property_behind_stated_depreciation: "
+            "true`. Otherwise the convention cannot be determined here."),
+        exception=NotImplementedError,
+    ),
+)
+
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
+    + _DEPRECIATION_CONVENTION_REFUSALS
 )
 
 
-def enforce_scoped_refusals(subject, stage: str) -> None:
+def enforce_scoped_refusals(
+        subject, stage: str, *, single_activity: bool = False) -> None:
     """Raise the first registered refusal of ``stage`` whose predicate finds
     offending items in ``subject`` (the raw YAML mapping for "parse", the
-    Scenario otherwise). Tuple position is error precedence."""
+    Scenario otherwise). Tuple position is error precedence.
+
+    ``single_activity`` is for the depreciation resolver, which runs the
+    ledger over the one activity it was handed: `whole_return` entries are
+    skipped there."""
     if stage not in SCOPED_REFUSAL_STAGES:
         raise ValueError(
             f"Unknown scoped-refusal stage {stage!r}; expected one of "
             f"{SCOPED_REFUSAL_STAGES}.")
     for refusal in _SCOPED_REFUSALS:
         if refusal.stage != stage:
+            continue
+        if single_activity and refusal.whole_return:
             continue
         offenders = refusal.offenders(subject)
         if offenders:

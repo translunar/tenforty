@@ -1424,6 +1424,12 @@ class Scenario:
     # list (via scenario._load_source_documents) or the emit gate will pass
     # while packet assembly splices nothing.
     source_documents: list[SourceDocument] = field(default_factory=list)
+    # Required ONLY when an asset-mode activity places personal property in
+    # service this year while a stated-mode activity exists (the mid-quarter
+    # 40% test then cannot see every placement). Scenario-level, not a config
+    # field: no other scenario has to carry it.
+    acknowledges_no_personal_property_behind_stated_depreciation: (
+        bool | None) = None
 
     def __post_init__(self) -> None:
         # CA-withholding channel, schema layer (state-attribution ruling):
