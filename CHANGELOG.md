@@ -63,8 +63,16 @@ breaking changes are called out explicitly.
   return refuses unless the top-level scenario key
   `acknowledges_no_personal_property_behind_stated_depreciation: true` is
   set.
-- **Form 4562 reads the nested assets.** It still emits one form per return
-  from all activities' assets; per-activity forms are not in this change.
+- **Breaking: Form 4562 is emitted only in a year property is placed in
+  service** (Instructions for Form 4562, "Who Must File"). A return whose
+  assets were all placed in earlier years no longer emits the form; its
+  depreciation still prints on Schedule E line 18 / Schedule C line 13. The
+  form remains one merged form per return, reading the nested assets;
+  per-activity forms are not in this change. Because the merged form lists
+  the engine's figures, a placement year on a return where any activity
+  carries a `depreciation_override` refuses.
+- **Breaking: a negative stated rental `depreciation` refuses at load**, as
+  negative Schedule C amounts already did.
 - **Schedule C net losses.** A Schedule C business whose line 31 is a loss
   now computes and emits instead of refusing, when the new config
   attestation `acknowledges_sch_c_all_investment_at_risk` is true: box 32a is
