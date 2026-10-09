@@ -16,7 +16,7 @@
 
 1. **Activate the venv before ANY Python command:**
    ```bash
-   source /Users/juno/Projects/tenforty/.venv/bin/activate
+   source ~/Projects/tenforty/.venv/bin/activate
    ```
 
 2. **PEP8 typing only.** Use `dict[str, str]`, `list[int]`, `X | None`. Never import from `typing`.
@@ -29,7 +29,7 @@
 
 6. **Test commands always include `-v`:**
    ```bash
-   source /Users/juno/Projects/tenforty/.venv/bin/activate && python -m pytest tests/path/test_file.py -v
+   source ~/Projects/tenforty/.venv/bin/activate && python -m pytest tests/path/test_file.py -v
    ```
 
 7. **Test classes inherit from `unittest.TestCase`.** Use `self.assertEqual()`, `self.assertGreater()`, etc. Never bare `assert`.

@@ -9,7 +9,7 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_4868 import Pdf4868
 
-F4868_PDF = Path("/Users/juno/Projects/tenforty/pdfs/federal/2025/f4868.pdf")
+F4868_PDF = Path(__file__).resolve().parents[1] / "pdfs" / "federal" / "2025" / "f4868.pdf"
 F4868_2021 = (
     Path(__file__).resolve().parents[1] / "pdfs" / "federal" / "2021" / "f4868.pdf"
 )

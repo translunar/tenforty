@@ -30,7 +30,7 @@ def _one_rental_scenario():
     s.config.year = 2025
     s.depreciable_assets = [
         DepreciableAsset(
-            description="Evans Ave",
+            description="Cedar Court",
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",

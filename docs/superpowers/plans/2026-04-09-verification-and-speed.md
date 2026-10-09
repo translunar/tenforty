@@ -18,7 +18,7 @@
 
 **Every subagent MUST follow these rules:**
 
-1. **Activate the venv before ANY Python command:** `source /Users/juno/Projects/tenforty/.venv/bin/activate`
+1. **Activate the venv before ANY Python command:** `source ~/Projects/tenforty/.venv/bin/activate`
 2. **PEP8 typing only.** `dict[str, str]`, `list[int]`, `X | None`. Never import from `typing`.
 3. **All imports at top of file.** No inline imports.
 4. **Reduce code duplication.**

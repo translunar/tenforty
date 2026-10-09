@@ -26,7 +26,7 @@ class F4562ComputeTests(unittest.TestCase):
 
     def test_one_rental_building_emits_19i_row(self):
         asset = DepreciableAsset(
-            description="Evans Ave",
+            description="Cedar Court",
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",

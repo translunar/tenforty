@@ -476,13 +476,13 @@ class TestForm1099B(unittest.TestCase):
 class DepreciableAssetTests(unittest.TestCase):
     def test_minimum_fields(self):
         a = DepreciableAsset(
-            description="Rental building - Evans Ave",
+            description="Rental building - Cedar Court",
             date_placed_in_service=date(2019, 6, 1),
             basis=250_000.0,
             recovery_class="27.5-year",
             convention="mid-month",
         )
-        self.assertEqual(a.description, "Rental building - Evans Ave")
+        self.assertEqual(a.description, "Rental building - Cedar Court")
         self.assertEqual(a.date_placed_in_service, date(2019, 6, 1))
         self.assertEqual(a.basis, 250_000.0)
         self.assertEqual(a.recovery_class, "27.5-year")

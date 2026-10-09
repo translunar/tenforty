@@ -16,7 +16,7 @@
 
 1. **Activate the venv before ANY Python command:**
    ```bash
-   source /Users/juno/Projects/tenforty/.venv/bin/activate
+   source ~/Projects/tenforty/.venv/bin/activate
    ```
 
 2. **PEP8 typing only.** Use `dict[str, str]`, `list[int]`, `tuple[str, ...]`, `X | None`. Never import `Dict`, `List`, `Tuple`, `Optional` from `typing`.
@@ -29,7 +29,7 @@
 
 6. **Test commands always include `-v`:**
    ```bash
-   source /Users/juno/Projects/tenforty/.venv/bin/activate && python -m pytest tests/path/test_file.py -v
+   source ~/Projects/tenforty/.venv/bin/activate && python -m pytest tests/path/test_file.py -v
    ```
 
 7. **Commit after each passing test cycle.** Small, frequent commits with descriptive messages.
@@ -488,10 +488,7 @@ if __name__ == "__main__":
 # Real-world identifiers to reject in tracked files.
 # This file is gitignored — it contains personal information.
 denylist_patterns:
-  - "(?i)\\bastranis\\b"
-  - "(?i)\\bmorgan\\s+stanley\\b"
-  - "(?i)\\bcharm\\b"
-  - "(?i)\\btake\\s+4\\s+presents\\b"
+  - "<real patterns live only in the gitignored file — never reproduce them in tracked docs>"
 ```
 
 - [ ] **Step 5: Run test to confirm it passes**

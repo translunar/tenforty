@@ -21,7 +21,7 @@ class MacrsDeductionTests(unittest.TestCase):
 
     def test_27_5_year_first_year_january_mid_month(self):
         a = DepreciableAsset(
-            description="Evans Ave building",
+            description="Cedar Court building",
             date_placed_in_service=date(2025, 1, 15),
             basis=200_000.0,
             recovery_class="27.5-year",
