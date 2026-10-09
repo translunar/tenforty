@@ -1315,7 +1315,18 @@ class AmendmentCase:
     FEDERAL-ONLY amendment case still loads without stating them, but
     ``schedule_x.assemble_ca`` FAILS CLOSED at the point of use if a CA
     amendment is assembled while either is None: the filer must ASSERT the CA
-    original-payment context (even if it is 0), it is never inferred."""
+    original-payment context (even if it is 0), it is never inferred.
+
+    `original_tax_paid` is the federal 1040-X line 16 amount — the total paid
+    with a request for extension of time to file, paid with the ORIGINAL
+    return, and any additional tax paid after it was filed. Like line 18 it is
+    genuine post-filing money movement, not a recomputable figure, so it rides
+    the case. It defaults to ``None`` ("not stated") rather than 0.0 so an
+    amendment of a REFUND-year original loads and assembles without it (line
+    16 = 0), but ``f1040x.assemble`` FAILS CLOSED at the point of use if the
+    filed values show the original return had a balance due while it is None:
+    the filer must ASSERT what was actually paid (0 if never paid), it is
+    never inferred from the balance due."""
 
     year: int
     explanation: str
@@ -1324,6 +1335,7 @@ class AmendmentCase:
     prior_amendment_note: str | None = None
     ca_original_refund_received: float | None = None
     ca_original_refund_applied: float | None = None
+    original_tax_paid: float | None = None
 
 
 @dataclass

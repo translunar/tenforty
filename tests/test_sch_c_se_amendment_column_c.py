@@ -22,7 +22,8 @@ def _with_business(scenario, receipts, expenses=0.0):
 
 def _case():
     return AmendmentCase(year=2024, explanation="Reclassified K-1 income to Schedule C.",
-                         original_refund_received=0.0, original_refund_applied=0.0)
+                         original_refund_received=0.0, original_refund_applied=0.0,
+                         original_tax_paid=0.0)
 
 
 # Minimal filed/corrected dicts for the reconciliation guard (pure dict logic —
