@@ -135,7 +135,8 @@ def _scenario(rentals=(), businesses=()):
         ssn="000-00-0000", acknowledges_no_source_documents=True)
     return dataclasses.replace(
         base, config=config, rental_properties=list(rentals),
-        schedule_c_businesses=list(businesses))
+        schedule_c_businesses=list(businesses),
+        acknowledges_no_listed_property=True)
 
 
 class TemplateAnchorTests(unittest.TestCase):
@@ -221,17 +222,16 @@ class OverriddenActivityTests(_EmitCase):
         self.assertNotIn("f4562", emitted)
 
     def test_no_printed_4562_can_disagree_with_schedule_e(self):
-        """Stated directly as the cross-form identity: for an overridden
-        return either no Form 4562 exists, or its line 22 equals the
-        depreciation the activity prints."""
+        """Why the form must be absent for an overridden return: the
+        merged form's engine-only total differs from the depreciation the
+        activity prints. (The emitted-and-equal case is asserted on a
+        placement year in EmitOnlyInAPlacementYearTests.)"""
         scenario = _scenario(
             rentals=[_rental(_old_building(), override_amount=7_000.0)])
         emitted = self._emit(scenario)
         line_18 = sch_e.compute(scenario, upstream={})[
             "sch_e_property_a_depreciation"]
-        if "f4562" in emitted:
-            self.assertEqual(
-                _read(emitted["f4562"], F4562_LINE_22), str(line_18))
+        self.assertNotIn("f4562", emitted)
         # The engine-only total the merged form WOULD have printed differs,
         # which is why it must not be emitted here.
         self.assertNotEqual(

@@ -74,9 +74,20 @@ def is_required(scenario: Scenario) -> bool:
 
     Instructions for Form 4562 (2025), "Who Must File" (page 2): file the
     form if claiming "Depreciation for property placed in service during the
-    2025 tax year." The other listed triggers -- a section 179 deduction,
-    listed property, amortization beginning this year, a corporate return --
-    are out of scope and refuse or have no input. An ongoing year, with only
+    2025 tax year." The other triggers on that list, and what happens to
+    each here:
+      - a section 179 deduction: no input exists, and an asset with section
+        179 history refuses (ledger: `bonus_or_section_179_history`);
+      - depreciation on any vehicle or other listed property, "regardless
+        of when it was placed in service": REFUSES unless the scenario
+        states `acknowledges_no_listed_property: true` (ledger:
+        `unacknowledged_listed_property`) -- the asset model cannot see
+        whether an asset is listed, so it asks whenever personal property
+        is present;
+      - amortization beginning this year: no input exists;
+      - a corporate return: Form 1120-S is excluded by the instructions'
+        own words, and no other corporate return is modeled.
+    An ongoing year, with only
     property placed in earlier years, files no Form 4562; the depreciation
     still prints on Schedule E line 18 / Schedule C line 13."""
     year = scenario.config.year

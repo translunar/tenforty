@@ -71,6 +71,11 @@ breaking changes are called out explicitly.
   per-activity forms are not in this change. Because the merged form lists
   the engine's figures, a placement year on a return where any activity
   carries a `depreciation_override` refuses.
+- **Listed property must be ruled out.** Form 4562 is required every year
+  for a vehicle or other listed property, which tenforty does not model and
+  cannot detect. A return listing any personal-property asset must set the
+  top-level scenario key `acknowledges_no_listed_property: true`; without it
+  the return refuses. Real-property-only returns are not asked.
 - **Breaking: a negative stated rental `depreciation` refuses at load**, as
   negative Schedule C amounts already did.
 - **Schedule C net losses.** A Schedule C business whose line 31 is a loss

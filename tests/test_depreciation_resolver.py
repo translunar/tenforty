@@ -68,6 +68,7 @@ def _scenario(rentals=(), businesses=()):
     s.config.year = YEAR
     s.rental_properties = list(rentals)
     s.schedule_c_businesses = list(businesses)
+    s.acknowledges_no_listed_property = True
     return s
 
 

@@ -1243,6 +1243,16 @@ def _merged_4562_with_override(s: Scenario) -> list[str]:
             if act.depreciation_override is not None]
 
 
+def _unacknowledged_listed_property(s: Scenario) -> list[str]:
+    """Every personal-property asset on the return, unless the scenario
+    states it has no listed property. Real property cannot be listed
+    property and is never asked about."""
+    if s.acknowledges_no_listed_property is True:
+        return []
+    return [label for label, a in _assets(s)
+            if a.recovery_class in PERSONAL_PROPERTY_CLASSES]
+
+
 def _mid_quarter_convention(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     if not resolver.mid_quarter_applies(s):
@@ -1527,9 +1537,38 @@ _DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
+# --- Depreciation: Form 4562 triggers the model cannot see -----------------
+#
+# LAST on purpose: tuple position is error precedence, and every specific
+# refusal above should report before this general question does.
+
+_DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="unacknowledged_listed_property",
+        stage="load",
+        whole_return=True,
+        offenders=_unacknowledged_listed_property,
+        message=lambda o: (
+            f"This return lists personal property ({_join(o)}). Form 4562 "
+            "must be filed when claiming depreciation on any vehicle or "
+            "other listed property, regardless of when it was placed in "
+            "service (Instructions for Form 4562, \"Who Must File\"). "
+            "tenforty emits Form 4562 only in a year property is placed in "
+            "service, does not model listed property (Part V), and cannot "
+            "tell a listed asset from any other. If NONE of these assets is "
+            "listed property -- no passenger automobile or other vehicle, "
+            "and no property generally used for entertainment, recreation "
+            "or amusement -- set the top-level scenario key "
+            "`acknowledges_no_listed_property: true`. If any of them is "
+            "listed property, this return cannot be produced with that "
+            "asset in the list."),
+        exception=NotImplementedError,
+    ),
+)
+
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
-    + _DEPRECIATION_CONVENTION_REFUSALS
+    + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
 )
 
 

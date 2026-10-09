@@ -53,7 +53,7 @@ def _scenario(year: int, *, with_assets: bool = True):
         basis=10_000.0, recovery_class="5-year",
         no_bonus_or_section_179_history=True)
     return dataclasses.replace(
-        base, config=config,
+        base, config=config, acknowledges_no_listed_property=True,
         rental_properties=[RentalProperty(
             address="100 Example Street", property_type=1,
             fair_rental_days=365, personal_use_days=0, rents_received=24_000.0,

@@ -60,6 +60,7 @@ def _scenario(rentals=(), businesses=(), acknowledgment=None):
     s.schedule_c_businesses = list(businesses)
     s.acknowledges_no_personal_property_behind_stated_depreciation = (
         acknowledgment)
+    s.acknowledges_no_listed_property = True
     return s
 
 

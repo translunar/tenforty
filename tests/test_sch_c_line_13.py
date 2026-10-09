@@ -47,6 +47,7 @@ def _scenario(*businesses, at_risk: bool | None = None):
     if at_risk is not None:
         s.config.acknowledges_sch_c_all_investment_at_risk = at_risk
     s.schedule_c_businesses = list(businesses)
+    s.acknowledges_no_listed_property = True
     return s
 
 

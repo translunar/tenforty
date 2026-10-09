@@ -87,7 +87,11 @@ def _load(doc: dict):
 
 
 def _doc(**sections) -> dict:
-    return {"config": _config(), **copy.deepcopy(sections)}
+    # These shape tests list personal property throughout; none of it is
+    # listed property, and the acknowledgment has its own tests in
+    # tests/test_listed_property_acknowledgment.py.
+    return {"config": _config(), "acknowledges_no_listed_property": True,
+            **copy.deepcopy(sections)}
 
 
 class AssetModelTests(unittest.TestCase):
