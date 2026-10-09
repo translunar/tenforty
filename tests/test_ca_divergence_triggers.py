@@ -127,7 +127,9 @@ class HasRentalDepreciationTest(unittest.TestCase):
             config=_config(),
             rental_properties=[
                 _rental(),
-                _rental(address="2 Oak Ave", depreciation=3200.0),
+                _rental(
+                    address="2 Oak Ave", depreciation=3200.0,
+                    acknowledges_depreciation_stated_outside_macrs=True),
             ],
         )
         result = TRIGGER_PREDICATES[self.name](scenario)
