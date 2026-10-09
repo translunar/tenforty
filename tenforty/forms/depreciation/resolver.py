@@ -50,6 +50,10 @@ class AssetDepreciation:
     basis: float
     amount: int
     placed_this_year: bool
+    # What the table alone gives; differs from `amount` only when the basis
+    # ceiling bound.
+    table_amount: int = 0
+    basis_ceiling_bound: bool = False
 
 
 @dataclass(frozen=True)
@@ -91,9 +95,40 @@ def prior_depreciation_mismatch(
     return None if stated == reconstructed else (stated, reconstructed)
 
 
+def asset_amount(asset: DepreciableAsset, tax_year: int) -> tuple[int, int]:
+    """``(amount, table amount)`` for one asset in ``tax_year``.
+
+    The amount is the table amount, except on the ACKNOWLEDGED-MISMATCH path
+    (a stated prior that differs from the table reconstruction, accepted via
+    `acknowledges_prior_depreciation_as_stated`). There a BASIS CEILING
+    applies: the deduction is min(table amount, basis - stated prior), never
+    below zero, so a history that ran ahead of the tables cannot depreciate
+    the asset past its basis. Within one return year nothing has yet been
+    taken forward, so the remaining basis is basis less the stated prior.
+
+    Deliberately NOT applied anywhere else: an asset whose history matches
+    the tables takes the table percentage through its final year, and any
+    small residual against basis from per-year rounding is documented
+    behaviour. Nor does anything top UP a history that ran behind the
+    tables -- that asset is left with unrecovered basis when its table runs
+    out; the remedy is a change of accounting method (Form 3115), which
+    tenforty does not prepare."""
+    table = macrs_deduction(asset, tax_year)
+    if not asset.acknowledges_prior_depreciation_as_stated:
+        return table, table
+    if asset.prior_depreciation is None:
+        return table, table
+    stated = irs_round(asset.prior_depreciation)
+    if stated == reconstruct_prior_depreciation(asset, tax_year):
+        return table, table
+    remaining = max(0, irs_round(asset.basis) - stated)
+    return min(table, remaining), table
+
+
 def engine_amount(activity, tax_year: int) -> int:
     """The engine's own figure for an asset-mode activity."""
-    return sum(macrs_deduction(a, tax_year) for a in activity.depreciable_assets)
+    return sum(
+        asset_amount(a, tax_year)[0] for a in activity.depreciable_assets)
 
 
 def placed_this_year(activity, tax_year: int) -> list[DepreciableAsset]:
@@ -133,16 +168,21 @@ def resolve(activity, tax_year: int) -> ResolvedDepreciation:
         return ResolvedDepreciation(
             amount=0, mode=MODE_NONE, engine_amount=None, per_asset=())
 
-    rows = tuple(
-        AssetDepreciation(
+    rows = []
+    for a in assets:
+        amount, table = asset_amount(a, tax_year)
+        rows.append(AssetDepreciation(
             description=a.description,
             recovery_class=a.recovery_class,
             convention=convention_for(a.recovery_class),
             date_placed_in_service=a.date_placed_in_service,
             basis=a.basis,
-            amount=macrs_deduction(a, tax_year),
+            amount=amount,
             placed_this_year=a.date_placed_in_service.year == tax_year,
-        ) for a in assets)
+            table_amount=table,
+            basis_ceiling_bound=amount != table,
+        ))
+    rows = tuple(rows)
     engine = sum(row.amount for row in rows)
     override = activity.depreciation_override
     if override is not None:
@@ -210,7 +250,9 @@ def stated_mode_activity_labels(scenario) -> list[str]:
 RECON_PREFIX = "depreciation_recon_"
 _RECON_SECTION_SLUGS = {
     "rental_properties": "rental", "schedule_c_businesses": "sch_c"}
-RECON_FIELDS = ("activity", "mode", "engine_amount", "used_amount", "note")
+RECON_FIELDS = (
+    "activity", "mode", "engine_amount", "used_amount", "note",
+    "basis_ceiling_bound")
 
 
 def recon_keys(scenario) -> dict:
@@ -234,14 +276,32 @@ def recon_keys(scenario) -> dict:
         # Present only when an override lifted the bonus / section 179
         # history refusal for this activity (the ledger lets such an asset
         # load only under a valid override).
+        notes = []
         tainted = [a.description for a in activity.depreciable_assets
                    if has_unattested_bonus_history(a)]
         if tainted:
             names = ", ".join(repr(name) for name in tainted)
-            keys[prefix + "note"] = (
+            notes.append(
                 f"engine figure includes {names} with unmodeled bonus / "
                 f"section 179 history: the engine column here is a "
                 f"staleness pin, not a claim of correctness")
+        # Present only when the basis ceiling bound on the
+        # acknowledged-mismatch path (see `asset_amount`).
+        capped = [row for row in resolved.per_asset if row.basis_ceiling_bound]
+        if capped:
+            keys[prefix + "basis_ceiling_bound"] = True
+            detail = ", ".join(
+                f"{row.description!r} limited to its remaining basis of "
+                f"{row.amount:,} (table amount {row.table_amount:,})"
+                for row in capped)
+            notes.append(
+                f"{detail}: the stated prior depreciation leaves less basis "
+                f"than the table amount. A stated prior BELOW the tables is "
+                f"not topped up and leaves basis unrecovered when the table "
+                f"ends; correcting either history is a change of accounting "
+                f"method (Form 3115), which tenforty does not prepare")
+        if notes:
+            keys[prefix + "note"] = "; ".join(notes)
     return keys
 
 
