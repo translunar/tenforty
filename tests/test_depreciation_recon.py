@@ -151,6 +151,46 @@ class OverriddenReconTests(_Case):
         self.assertNotIn("OVERRIDE", out)
 
 
+class LiftedBonusHistoryNoteTests(_Case):
+    """When an activity override lifts the bonus / section 179 history
+    refusal, the recon carries a note: the engine column there is a
+    staleness pin, not a claim of correctness."""
+
+    NOTE_KEY = "depreciation_recon_rental_0_note"
+
+    def _overridden(self, *, history):
+        asset = DepreciableAsset(
+            description="Refrigerator",
+            date_placed_in_service=date(2023, 3, 15), basis=10_000.0,
+            recovery_class="5-year", no_bonus_or_section_179_history=history)
+        asset.prior_depreciation = float(
+            reconstruct_prior_depreciation(asset, YEAR))
+        return _scenario(_rental(
+            depreciable_assets=[asset],
+            depreciation_override=DepreciationOverride(
+                amount=400.0,
+                restates_engine_amount=float(macrs_deduction(asset, YEAR)),
+                acknowledgment=True)))
+
+    def test_note_present_when_the_refusal_was_lifted(self):
+        results = self._results(self._overridden(history=False))
+        self.assertRegex(
+            results[self.NOTE_KEY],
+            r"'Refrigerator'.*unmodeled bonus / section 179 history.*"
+            r"staleness pin, not a claim of correctness")
+        self.assertIn(self.NOTE_KEY, self._snapshot_results(results))
+        out = self._printed(results)
+        self.assertIn("staleness pin, not a claim of correctness", out)
+        self.assertRegex(out, r"used on return\s+\$\s*400")
+
+    def test_note_absent_for_a_clean_history_activity(self):
+        results = self._results(self._overridden(history=True))
+        self.assertEqual(
+            results["depreciation_recon_rental_0_mode"], "assets-overridden")
+        self.assertNotIn(self.NOTE_KEY, results)
+        self.assertNotIn("staleness pin", self._printed(results))
+
+
 class NoAssetModeTwinTests(_Case):
     def test_stated_mode_only_carries_no_keys_and_prints_no_section(self):
         results = self._results(_scenario(_rental(
