@@ -8,6 +8,9 @@ import yaml
 from tenforty.attestations import (
     enforce_compute_time, enforce_scoped_refusals,
 )
+from tenforty.forms.depreciation.resolver import (
+    resolve as resolve_depreciation,
+)
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
@@ -382,14 +385,15 @@ def _k1_positive_income(k1: ScheduleK1) -> float:
     ))
 
 
-def _rental_net_income(r: RentalProperty) -> float:
-    """Net rental income (rents received − all deductible Schedule E expenses)."""
+def _rental_net_income(r: RentalProperty, tax_year: int) -> float:
+    """Net rental income (rents received − all deductible Schedule E expenses).
+    Depreciation is the resolved figure for ``tax_year``, never a raw field."""
     return r.rents_received - (
         r.advertising + r.auto_and_travel + r.cleaning_and_maintenance
         + r.commissions + r.insurance + r.legal_and_professional_fees
         + r.management_fees + r.mortgage_interest + r.other_interest
         + r.repairs + r.supplies + r.taxes + r.utilities
-        + r.depreciation + r.other_expenses
+        + resolve_depreciation(r, tax_year).amount + r.other_expenses
     )
 
 
@@ -425,8 +429,9 @@ def aggregate_business_losses(scenario: Scenario) -> int:
                 for biz in scenario.schedule_c_businesses)
     k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
-    rental = sum(max(0, -form_sch_e.printed_rental_net(r))
-                 for r in scenario.rental_properties)
+    rental = sum(
+        max(0, -form_sch_e.printed_rental_net(r, scenario.config.year))
+        for r in scenario.rental_properties)
     return sch_c + k1 + rental
 
 
@@ -794,7 +799,7 @@ class ReturnOrchestrator:
                   for g in effective_scenario.form1099_g)
             + sum(_k1_positive_income(k)
                   for k in effective_scenario.schedule_k1s)
-            + sum(max(0.0, _rental_net_income(r))
+            + sum(max(0.0, _rental_net_income(r, cfg.year))
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
