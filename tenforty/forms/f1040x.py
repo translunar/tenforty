@@ -78,8 +78,47 @@ blank Column A.
 """
 
 from tenforty.amendment import MissingFiledValueError, OutOfScopeAmendmentError
-from tenforty.models import AmendmentCase
+from tenforty.forms.f1040_spine import header_values
+from tenforty.models import AmendmentCase, FilingStatus, TaxReturnConfig
 from tenforty.rounding import irs_round
+
+# The header cells Form 1040-X shares with Form 1040, as ``header_values`` keys.
+_HEADER_KEYS: tuple[str, ...] = (
+    "first_name", "last_name", "ssn",
+    "spouse_first_name", "spouse_last_name", "spouse_ssn",
+    "address", "city", "state", "zip_code",
+)
+
+# Filing status -> the suffix of its ``f1040x_filing_status_<suffix>`` key.
+_FILING_STATUS_SUFFIX: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE: "single",
+    FilingStatus.MARRIED_JOINTLY: "mfj",
+    FilingStatus.MARRIED_SEPARATELY: "mfs",
+    FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
+    FilingStatus.QUALIFYING_WIDOW: "qss",
+}
+
+
+def presentation_keys(config: TaxReturnConfig) -> dict[str, object]:
+    """The page-1 header of Form 1040-X, from the scenario config: name, SSN,
+    spouse, address, and the "Amended return filing status" row.
+
+    Built from ``f1040_spine.header_values`` so the 1040-X header is the Form
+    1040's, cell for cell: the first-name cell carries the middle initial and
+    the SSN is digits only (both forms use a nine-cell comb). The form says
+    "You must check one box even if you are not changing your filing status",
+    so exactly one ``f1040x_filing_status_*`` key is True.
+
+    Not filled: the apartment number and foreign-address cells (no config
+    field), the Presidential Election Campaign boxes, and the name line under
+    the filing-status row (the MFS spouse / non-dependent qualifying child).
+    """
+    header = header_values(config)
+    out: dict[str, object] = {f"f1040x_{k}": header[k] for k in _HEADER_KEYS}
+    status = FilingStatus(config.filing_status)
+    for fs, suffix in _FILING_STATUS_SUFFIX.items():
+        out[f"f1040x_filing_status_{suffix}"] = status is fs
+    return out
 
 # Column-A source keys the assembler consumes. Every one must be present in
 # the filed dict (a missing one is a MissingFiledValueError — never defaulted).

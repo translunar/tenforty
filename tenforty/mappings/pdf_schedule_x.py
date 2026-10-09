@@ -52,11 +52,22 @@ single field (identical value written twice to one widget), so both aliases are
 DELIBERATELY absent from every year's mapping. The coverage test asserts their
 absence.
 
-The Part II reason CHECKBOXES (13 boxes for 2021/2022, 12 for 2023-2025) and
-the name/SSN identity fields are out of this mapping's scope — the assembler
-emits neither; identity is injected at emit and the reason boxes are a
-follow-up. Only the fillable Part I money lines + the Part II explanation (+ the
-Group-A year write-in) are mapped here.
+HEADER + PART II REASON — a separate mapping
+-------------------------------------------
+The name/SSN header and the Part II line 1 reason box are scenario-derived
+(``forms.schedule_x.presentation_keys``), not assembler output, so they live in
+the per-year ``_PRESENTATION`` table (``get_presentation_mapping``) and the
+orchestrator merges the two at emit. (This docstring used to say identity "is
+injected at emit"; nothing injected it, and every Schedule X printed with a
+blank header until the presentation mapping landed.)
+
+Of the Part II reason CHECKBOXES (13 boxes a-m for 2021/2022, 12 for 2023-2025,
+which drop "NOL carryback") only box m, "Other. See instructions.", is mapped —
+the one reason the free-text explanation always supports. Its field is NOT
+uniform within Group A: 2021 lays the boxes out 5/5/3 and 2022 lays them out
+5/4/4, so "Other" is the third box of the right column in 2021 and the fourth
+in 2022. Both happen to be named ``1029 CB``; each was confirmed by rendering
+that year's own template.
 """
 from tenforty.mappings.registry import PdfFormMapping
 
@@ -106,6 +117,29 @@ _MAPPING_2024_2025: dict[str, str] = {  # "Sch X Form "-prefixed
     k: f"Sch X Form {n}" for k, n in _MONEY_SUFFIX_BC.items()
 }
 
+# Header + Part II line 1 box m ("Other"), per year. Each path was confirmed by
+# rendering a fill of THAT year's template with the name and SSN cells stamped
+# with their own field names and the "Other" box checked. Every reason box's
+# on-state is /Yes (its own /_States_).
+_PRESENTATION: dict[int, dict[str, str]] = {
+    2021: {"schedule_x_taxpayer_name": "1002",
+           "schedule_x_taxpayer_ssn": "1003",
+           "schedule_x_reason_other": "1029 CB"},
+    2022: {"schedule_x_taxpayer_name": "1002",
+           "schedule_x_taxpayer_ssn": "1003",
+           "schedule_x_reason_other": "1029 CB"},
+    2023: {"schedule_x_taxpayer_name": "1001",
+           "schedule_x_taxpayer_ssn": "1002",
+           "schedule_x_reason_other": "1027 CB"},
+    2024: {"schedule_x_taxpayer_name": "Sch X Form 1001",
+           "schedule_x_taxpayer_ssn": "Sch X Form 1002",
+           "schedule_x_reason_other": "Sch X Form 1027 CB"},
+    2025: {"schedule_x_taxpayer_name": "Sch X Form 1001",
+           "schedule_x_taxpayer_ssn": "Sch X Form 1002",
+           "schedule_x_reason_other": "Sch X Form 1027 CB"},
+}
+_CHECKBOX_STATES: dict[str, str] = {"schedule_x_reason_other": "/Yes"}
+
 
 class PdfScheduleX(PdfFormMapping[dict[str, str]]):
     """PDF field mapping for California Schedule X. YEAR-KEYED across five
@@ -122,6 +156,18 @@ class PdfScheduleX(PdfFormMapping[dict[str, str]]):
         2023: _MAPPING_2023,
         2024: _MAPPING_2024_2025, 2025: _MAPPING_2024_2025,
     }
+
+    @classmethod
+    def get_presentation_mapping(cls, year: int) -> dict[str, str]:
+        """The name/SSN header and the Part II "Other" reason box
+        (``forms.schedule_x.presentation_keys``)."""
+        cls.get_mapping(year)  # same unknown-year refusal
+        return _PRESENTATION[year]
+
+    @classmethod
+    def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        cls.get_mapping(year)
+        return _CHECKBOX_STATES
 
 
 def get_mapping(year: int) -> dict[str, str]:

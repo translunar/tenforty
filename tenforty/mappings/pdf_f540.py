@@ -1077,12 +1077,28 @@ _FULL_YEAR_COVERAGE_BOX = {
 }
 
 
+# Side 1 "Check here if this is an AMENDED return." Full field names. ON-state
+# /Yes per each box's OWN /_States_ in every year. Only the amendment packet
+# supplies the value (``ReturnOrchestrator.run_amendment_packet``); an original
+# return never carries the key, so the box stays off.
+_AMENDED_RETURN_BOX = {
+    2021: "1001 CB",
+    2022: "1001 CB",
+    2023: "1001 CB",
+    2024: "540-1001 CB",
+    2025: "540_form_1001 CB",
+}
+AMENDED_RETURN_KEY = "f540_amended_return_checkbox"
+AMENDED_RETURN_ON = "/Yes"
+
+
 def _install_presentation(year, mapping, derivations):
     (prefix, l7, l10, l11, l12, name_fields, ssn_fields,
      (use_tax_radio, no_use_tax), (designee_radio, designee_no)) = _YEAR_PRESENTATION[year]
     mapping.update({key: prefix + num for key, num in _HEADER_NUMBERS.items()})
     mapping["f540_address_is_residence_checkbox"] = _RESIDENCE_SAME_BOX[year]
     mapping["f540_full_year_coverage_checkbox"] = _FULL_YEAR_COVERAGE_BOX[year]
+    mapping[AMENDED_RETURN_KEY] = _AMENDED_RETURN_BOX[year]
     mapping.update({
         "f540_line7_count": prefix + l7[0],
         "f540_line7_amount": prefix + l7[1],

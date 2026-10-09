@@ -18,8 +18,8 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import f1040x
 from tenforty.mappings.pdf_f1040x import PdfF1040X, get_mapping
-from tenforty.models import AmendmentCase
-from tests.helpers import REPO_ROOT
+from tenforty.models import AmendmentCase, FilingStatus, TaxReturnConfig
+from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
 
 _REVISION = "rev-2025-12"
 _TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "amendments" / "f1040x.pdf"
@@ -158,6 +158,99 @@ class FilledEmitReadBackTests(unittest.TestCase):
                          "SYNTHETIC-AMENDMENT-EXPLANATION-9F3")
         # Year write-in carries case.year.
         self.assertEqual(read("f1040x_amended_year"), "2023")
+
+
+# Literal field names for the page-1 header, read off the template and
+# confirmed by rendering a marker fill. NOT read through the mapping: that
+# would only fail for a path missing from the template, never a wrong one.
+_P1 = "topmostSubform[0].Page1[0]."
+_FILING_STATUS_BOXES = {
+    FilingStatus.SINGLE: (_P1 + "c1_3[0]", "/1"),
+    FilingStatus.MARRIED_JOINTLY: (_P1 + "c1_3[1]", "/2"),
+    FilingStatus.MARRIED_SEPARATELY: (_P1 + "c1_3[2]", "/3"),
+    FilingStatus.HEAD_OF_HOUSEHOLD: (_P1 + "c1_3[3]", "/4"),
+    FilingStatus.QUALIFYING_WIDOW: (_P1 + "c1_3[4]", "/5"),
+}
+
+
+def _config(filing_status: FilingStatus, **spouse) -> TaxReturnConfig:
+    return TaxReturnConfig(
+        **spouse,
+        year=2023, filing_status=filing_status, birthdate="1980-01-01",
+        state="CA", first_name="Zelda", middle_initial="Q",
+        last_name="Marker", ssn="000-00-0417",
+        address="417 Synthetic Blvd", address_city="Faketown",
+        address_state="CA", address_zip="90417",
+        **scope_out_attestation_defaults(),
+    )
+
+
+class HeaderFillTests(unittest.TestCase):
+    """The page-1 header (name, SSN, address, filing status) is filled from
+    the scenario config, alongside the assembler's money lines."""
+
+    def _fill(self, filing_status: FilingStatus, **spouse) -> dict:
+        values = {
+            **_synthetic_assembler_output(),
+            **f1040x.presentation_keys(_config(filing_status, **spouse)),
+        }
+        mapping = {
+            **get_mapping(_REVISION),
+            **PdfF1040X.get_presentation_mapping(_REVISION),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "f1040x_filled.pdf"
+            PdfFiller().fill(
+                _TEMPLATE, out, mapping, values,
+                checkbox_states=PdfF1040X.get_checkbox_states(_REVISION))
+            return {
+                name: str(f.get("/V") or "")
+                for name, f in (PdfReader(out).get_fields() or {}).items()}
+
+    def test_each_filing_status_checks_its_own_box_and_no_other(self):
+        all_boxes = {box for box, _ in _FILING_STATUS_BOXES.values()}
+        for status, (box, on) in _FILING_STATUS_BOXES.items():
+            with self.subTest(status=status):
+                fields = self._fill(status)
+                self.assertEqual(fields[box], on)
+                self.assertEqual(
+                    {b for b in all_boxes if fields[b] not in ("", "/Off")},
+                    {box})
+
+    def test_name_ssn_and_address_cells(self):
+        fields = self._fill(FilingStatus.SINGLE)
+        addr = _P1 + "Address_ReadOrder[0]."
+        self.assertEqual(fields[_P1 + "f1_03[0]"], "Zelda Q")
+        self.assertEqual(fields[_P1 + "f1_04[0]"], "Marker")
+        self.assertEqual(fields[_P1 + "f1_05[0]"], "000000417")
+        self.assertEqual(fields[addr + "f1_09[0]"], "417 Synthetic Blvd")
+        self.assertEqual(fields[addr + "f1_11[0]"], "Faketown")
+        self.assertEqual(fields[addr + "f1_12[0]"], "CA")
+        self.assertEqual(fields[addr + "f1_13[0]"], "90417")
+        # The money lines still land: the header is additive.
+        self.assertEqual(
+            fields[get_mapping(_REVISION)["f1040x_amended_year"]], "2023")
+
+    def test_joint_return_prints_the_spouse_cells(self):
+        fields = self._fill(
+            FilingStatus.MARRIED_JOINTLY,
+            spouse_first_name="Wendell", spouse_middle_initial="R",
+            spouse_last_name="Probe", spouse_ssn="000-00-0582")
+        self.assertEqual(fields[_P1 + "f1_06[0]"], "Wendell R")
+        self.assertEqual(fields[_P1 + "f1_07[0]"], "Probe")
+        self.assertEqual(fields[_P1 + "f1_08[0]"], "000000582")
+        # The taxpayer's own cells are untouched by the spouse's.
+        self.assertEqual(fields[_P1 + "f1_03[0]"], "Zelda Q")
+        self.assertEqual(fields[_P1 + "f1_05[0]"], "000000417")
+
+    def test_header_keys_are_disjoint_from_the_assembler_mapping(self):
+        self.assertEqual(
+            set(get_mapping(_REVISION))
+            & set(PdfF1040X.get_presentation_mapping(_REVISION)), set())
+        self.assertEqual(
+            set(get_mapping(_REVISION).values())
+            & set(PdfF1040X.get_presentation_mapping(_REVISION).values()),
+            set())
 
 
 if __name__ == "__main__":
