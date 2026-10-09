@@ -12,6 +12,7 @@ import unittest
 
 from tenforty.models import ScheduleCBusiness, Scenario, TaxReturnConfig
 from tenforty.scenario import (
+    _DEPRECIATION_ACTIVITY_REGISTRY,
     _FORM_REGISTRY,
     _KNOWN_TOP_LEVEL_KEYS,
     _validate_schedule_c_businesses,
@@ -37,11 +38,14 @@ class ScheduleCLoadTests(unittest.TestCase):
     def test_registered_for_yaml_load(self):
         # The top-level YAML key must be recognized by the fail-closed loader,
         # and it must route to the ScheduleCBusiness model on the Scenario field.
-        self.assertIn("schedule_c_businesses", _FORM_REGISTRY)
-        model_cls, field_name = _FORM_REGISTRY["schedule_c_businesses"]
-        self.assertIs(model_cls, ScheduleCBusiness)
-        self.assertEqual(field_name, "schedule_c_businesses")
-        # _KNOWN_TOP_LEVEL_KEYS is derived from _FORM_REGISTRY; confirm the key
+        # Schedule C businesses (like rental properties) are loaded through
+        # the depreciation-activity registry, whose loader builds their nested
+        # asset list; the key names the Scenario field it fills.
+        self.assertNotIn("schedule_c_businesses", _FORM_REGISTRY)
+        self.assertIs(
+            _DEPRECIATION_ACTIVITY_REGISTRY["schedule_c_businesses"],
+            ScheduleCBusiness)
+        # _KNOWN_TOP_LEVEL_KEYS is derived from both registries; confirm the key
         # actually flows through (a YAML file using it must not be rejected as
         # an unknown key).
         self.assertIn("schedule_c_businesses", _KNOWN_TOP_LEVEL_KEYS)

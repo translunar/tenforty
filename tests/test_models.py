@@ -524,7 +524,7 @@ class ScenarioDepreciableAssetsTests(unittest.TestCase):
         with self.assertRaisesRegex(
                 ValueError, r"top-level `depreciable_assets:` list is no "
                             r"longer accepted"):
-            load_scenario(FIXTURES_DIR / "rental_with_depreciation.yaml")
+            load_scenario(FIXTURES_DIR / "refusals" / "rental_with_depreciation.yaml")
 
 
 class TestEntityType(unittest.TestCase):
