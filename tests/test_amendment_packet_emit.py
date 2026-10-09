@@ -697,7 +697,7 @@ class AmendmentPacketEmitTests(unittest.TestCase):
                               s2_map["sch_2_line_4_se_tax"]))),
             round(corrected["sch_se_line_12_se_tax"]))
 
-    def test_ty2021_schedule_c_amendment_hits_the_year_floor(self):
+    def _ty2021_schedule_c_amendment(self):
         original = build_canonical_wage_investment_rental(2021)
         amended = dataclasses.replace(
             original,
@@ -712,10 +712,50 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         case = AmendmentCase(
             year=2021, explanation="Added omitted self-employment income.",
             original_refund_received=0.0, original_refund_applied=0.0)
-        with self.assertRaises(NotImplementedError) as cm:
-            self.orch.run_amendment_packet(
-                original, amended, case, filed_path, ca_filed_path,
-                self.tmp / "packet")
+        return original, amended, case, filed_path, ca_filed_path
+
+    def test_ty2021_schedule_c_amendment_renders_the_family(self):
+        original, amended, case, filed_path, ca_filed_path = (
+            self._ty2021_schedule_c_amendment())
+        out = self.tmp / "packet"
+
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        for name in ("f1040sc_1_2021.pdf", "f1040sse_2021.pdf",
+                     "f1040s2_2021.pdf"):
+            self.assertIn(name, by_name)
+            self.assertEqual(by_name[name].reason, "new", msg=name)
+        corrected = self.orch.compute_federal(amended)
+        self.assertGreater(corrected["sch_se_line_12_se_tax"], 0)
+        self.assertEqual(
+            int(float(_read_v(
+                out / "f1040sc_1_2021.pdf",
+                PdfSchC.get_mapping(2021)["sch_c_line_31_net_profit"]))),
+            round(corrected["sch_1_line_3_business_income"]))
+        self.assertEqual(
+            int(float(_read_v(
+                out / "f1040sse_2021.pdf",
+                PdfSchSe.get_mapping(2021)["sch_se_line_12_se_tax"]))),
+            round(corrected["sch_se_line_12_se_tax"]))
+        self.assertEqual(
+            int(float(_read_v(
+                out / "f1040s2_2021.pdf",
+                PdfSch2.get_mapping(2021)["sch_2_line_4_se_tax"]))),
+            round(corrected["sch_se_line_12_se_tax"]))
+
+    def test_schedule_c_amendment_outside_the_family_hits_the_year_floor(self):
+        # The amendment entry shares the emit chokepoint: with 2021 taken
+        # out of years.SCHEDULE_C_FAMILY_YEARS the same amendment refuses.
+        original, amended, case, filed_path, ca_filed_path = (
+            self._ty2021_schedule_c_amendment())
+        with unittest.mock.patch.object(
+                years, "SCHEDULE_C_FAMILY_YEARS", (2022, 2023, 2024, 2025)):
+            with self.assertRaises(NotImplementedError) as cm:
+                self.orch.run_amendment_packet(
+                    original, amended, case, filed_path, ca_filed_path,
+                    self.tmp / "refused")
         self.assertIn("2022, 2023, 2024, 2025", str(cm.exception))
 
     def test_ruling2_out_of_scope_guard_propagates(self):

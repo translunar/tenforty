@@ -1,14 +1,15 @@
 """PDF field mapping for IRS Schedule C (Form 1040), Profit or Loss From
 Business. One PDF is rendered per business from the same per-year template.
 
-Flat scalars (page 1 plus Part V line 48 on page 2). Years 2022-2025
+Flat scalars (page 1 plus Part V line 48 on page 2). Years 2021-2025
 (tenforty.years.SCHEDULE_C_FAMILY_YEARS). Field names were derived by
 marker-probe and are pinned in tests/fixtures/golden_field_lines.py.
 
 EXPENSE LINES. The twelve modeled Part II categories map to lines 8, 15, 17,
 18, 20b, 22, 23, 24a, 24b, 25, 26 and "Other expenses (from line 48)" -- which
 is line 27a through 2024 and line 27b in 2025 (the same field, relabelled when
-the energy-efficient-buildings deduction took 27a). `rent_lease` is a single
+the energy-efficient-buildings deduction took 27a; on the 2021 form 27b is
+"Reserved for future use"). `rent_lease` is a single
 modeled amount and prints on line 20b (other business property). Line 20a
 (vehicles, machinery, equipment) is UNMODELED, consistent with the compute
 layer refusing `vehicle_expenses`: tenforty models no vehicle or equipment
@@ -33,8 +34,8 @@ LEFT BLANK for hand-completion: business name (C), EIN (D), address (E), the
 Part I lines 2, 4 and 6, Parts III and IV, and the Part V itemization rows
 2-9 (row 1 itemizes the line 48 total).
 
-The proprietor-name field sits inside a Pg1Header subform in 2022-2023 and
-directly on Page1 from 2024.
+The proprietor-name field sits inside a PgHeader subform in 2021, a Pg1Header
+subform in 2022-2023, and directly on Page1 from 2024.
 """
 from collections.abc import Callable, Mapping
 
@@ -70,7 +71,7 @@ _FIELDS_2022_2023: dict[str, str] = {
     "sch_c_line_31_net_profit": f"{_P1}.f1_46[0]",
     # Part V (page 2): row 1 itemizes the line 48 total (single-aggregate v1;
     # rows 2-9 stay blank — multi-row itemization is out of scope). Same
-    # paths in every year 2022-2025 (probe-verified: wide description box
+    # paths in every year 2021-2025 (probe-verified: wide description box
     # left, narrow amount box right, top row of the table).
     "sch_c_part_v_row_1_description":
         "topmostSubform[0].Page2[0].PartVTable[0].Item1[0].f2_15[0]",
@@ -79,6 +80,16 @@ _FIELDS_2022_2023: dict[str, str] = {
     "sch_c_line_48_total_other_expenses":
         "topmostSubform[0].Page2[0].f2_33[0]",
 }
+
+# 2021: field inventory differs from 2022 in exactly one mapped path -- the
+# proprietor-name wrapper is PgHeader[0], not Pg1Header[0]
+# (scripts/diff_pdf_fields.py). Every other leaf was read on its printed line
+# from the marker probe (pdfs/federal/2021/f1040sc.probe.pdf), not assumed
+# from the shared names.
+_FIELDS_2021: dict[str, str] = inherit_pdf_fields(
+    _FIELDS_2022_2023,
+    overrides={"taxpayer_name": f"{_P1}.PgHeader[0].f1_1[0]"},
+)
 
 _FIELDS_2024: dict[str, str] = inherit_pdf_fields(
     _FIELDS_2022_2023,
@@ -95,7 +106,7 @@ _FIELDS_2025: dict[str, str] = inherit_pdf_fields(
     overrides={"sch_c_expense_other_expenses": f"{_L18}.f1_39[0]"},
 )
 
-# PDF path -> constant on-state. Same paths and states in all four years.
+# PDF path -> constant on-state. Same paths and states in all five years.
 _DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
     f"{_P1}.c1_1[0]": lambda _values: "/1",    # line F: (1) Cash
     f"{_P1}.c1_2[0]": lambda _values: "/Yes",  # line G: Yes
@@ -106,6 +117,7 @@ class PdfSchC(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule C"
 
     _MAPPINGS: dict[int, dict] = {
+        2021: _FIELDS_2021,
         2022: _FIELDS_2022_2023,
         2023: _FIELDS_2022_2023,
         2024: _FIELDS_2024,

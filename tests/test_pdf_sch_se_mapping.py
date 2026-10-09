@@ -27,6 +27,35 @@ class PdfSchSeBlankLineTests(unittest.TestCase):
             self.assertNotIn(
                 "sch_se_line_7_ss_wage_base", PdfSchSe.get_mapping(year))
 
+    def test_2021_shares_the_zero_padded_2022_field_tree(self):
+        self.assertIn(2021, years.SCHEDULE_C_FAMILY_YEARS)
+        m2021 = PdfSchSe.get_mapping(2021)
+        self.assertEqual(m2021, PdfSchSe.get_mapping(2022))
+        self.assertEqual(
+            m2021["sch_se_line_2_net_profit"],
+            "topmostSubform[0].Page1[0].f1_05[0]")
+        # Read off the 2021 template itself, not inferred from 2022: the
+        # zero-padded leaves exist and the unpadded ones do not.
+        on_template = set(PdfReader(str(
+            REPO_ROOT / "pdfs" / "federal" / "2021" / "f1040sse.pdf"
+        )).get_fields())
+        self.assertIn("topmostSubform[0].Page1[0].f1_05[0]", on_template)
+        self.assertNotIn("topmostSubform[0].Page1[0].f1_5[0]", on_template)
+
+    def test_line_7_field_is_read_only_on_every_template(self):
+        # The reason line 7 is unmapped: the wage base is pre-printed in a
+        # read-only field (f1_13). Checked per year on the template.
+        for year in years.SCHEDULE_C_FAMILY_YEARS:
+            with self.subTest(year=year):
+                fields = PdfReader(str(
+                    REPO_ROOT / "pdfs" / "federal" / str(year)
+                    / "f1040sse.pdf")).get_fields()
+                line_7 = fields["topmostSubform[0].Page1[0].f1_13[0]"]
+                self.assertTrue(int(line_7.get("/Ff", 0)) & 1)
+                self.assertNotIn(
+                    "topmostSubform[0].Page1[0].f1_13[0]",
+                    set(PdfSchSe.get_mapping(year).values()))
+
     def test_lines_absent_from_the_compute_leave_their_fields_empty(self):
         values = sch_se.compute(
             make_simple_scenario(),

@@ -4,7 +4,7 @@ Thin compute: every component is already computed by the 1040 pipeline, so
 this module only places them on Schedule 2's lines and totals the two parts.
 Keys are named by the form line they print on.
 
-PART I WAS RENUMBERED. In 2022-2023 line 1 is the alternative minimum tax and
+PART I WAS RENUMBERED. In 2021-2023 line 1 is the alternative minimum tax and
 line 2 the excess advance premium tax credit repayment. From 2024 the
 repayment is line 1a, line 1z totals the "additions to tax" block, and the
 alternative minimum tax is line 2. PART_I_LAYOUT records which layout a year
@@ -21,6 +21,7 @@ from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
 PART_I_LAYOUT: dict[int, str] = {
+    2021: "amt_first",
     2022: "amt_first",
     2023: "amt_first",
     2024: "additions_first",
