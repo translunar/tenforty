@@ -25,7 +25,8 @@ explicit sub-row support rather than silently dropping).
 
 from collections import defaultdict
 
-from tenforty.forms.depreciation.macrs import macrs_deduction
+from tenforty.attestations import depreciation_activities
+from tenforty.forms.depreciation.macrs import convention_for, macrs_deduction
 from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
@@ -50,11 +51,24 @@ _PROPERTY_METHOD = {
 }
 
 
+def scenario_assets(scenario: Scenario) -> list:
+    """Every asset on the return, flattened across activities.
+
+    READ-PATH ADAPTER ONLY: assets now nest under their activity, and this
+    form still emits its legacy one-form-per-return shape. The per-activity
+    form is a later branch."""
+    return [
+        asset
+        for _section, _index, _label, activity in depreciation_activities(
+            scenario)
+        for asset in activity.depreciable_assets]
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
     result: dict = {**scenario.config.pdf_header()}
     assets_by_class: dict[str, list] = defaultdict(list)
-    for asset in scenario.depreciable_assets:
+    for asset in scenario_assets(scenario):
         assets_by_class[asset.recovery_class].append(asset)
 
     rows: list[dict] = []
@@ -67,14 +81,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 f"{recovery_class!r}. v1 supports "
                 f"{sorted(_CLASS_TO_ROW)}."
             )
-        conventions = {a.convention for a in assets}
-        if len(conventions) > 1:
-            raise NotImplementedError(
-                f"Mixed conventions {sorted(conventions)!r} within a single "
-                f"recovery class {recovery_class!r} require separate "
-                f"Section B sub-rows; v1 assumes one convention per class."
-            )
-        convention = conventions.pop()
+        # The convention is computed from the class (the One Door helper),
+        # so a class has exactly one.
+        convention = convention_for(recovery_class)
         earliest = min(a.date_placed_in_service for a in assets)
         class_total_basis = sum(a.basis for a in assets)
         class_total_deduction = sum(

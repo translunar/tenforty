@@ -16,6 +16,14 @@ from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_atte
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+def _nest_assets(scenario, assets):
+    """Assets nest under an activity; hang them on one rental property."""
+    from tenforty.models import RentalProperty
+    scenario.rental_properties = [RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0,
+        depreciable_assets=list(assets))]
+
 
 class OrchestratorPredicateTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -203,15 +211,14 @@ class OrchestratorPredicateTests(unittest.TestCase):
 
     def test_should_emit_4562_true_when_any_asset_present(self) -> None:
         scenario = make_simple_scenario()
-        scenario.depreciable_assets = [
+        _nest_assets(scenario, [
             DepreciableAsset(
                 description="x",
                 date_placed_in_service=date(2024, 1, 1),
                 basis=1000.0,
                 recovery_class="5-year",
-                convention="half-year",
             ),
-        ]
+        ])
         self.assertTrue(self.orchestrator._should_emit_4562(scenario, {}))
 
 

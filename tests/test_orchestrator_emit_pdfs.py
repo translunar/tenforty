@@ -16,6 +16,14 @@ from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import scope_out_attestation_defaults
 
+def _nest_assets(scenario, assets):
+    """Assets nest under an activity; hang them on one rental property."""
+    from tenforty.models import RentalProperty
+    scenario.rental_properties = [RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0,
+        depreciable_assets=list(assets))]
+
 
 REPO_ROOT = Path(__file__).parent.parent
 F4868_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f4868.pdf"
@@ -588,15 +596,14 @@ class EmitPdfs8959Tests(unittest.TestCase):
 
     def test_emits_4562_when_depreciable_asset_present(self):
         scenario = make_scenario_with_identity()
-        scenario.depreciable_assets = [
+        _nest_assets(scenario, [
             DepreciableAsset(
                 description="Cedar Court",
                 date_placed_in_service=date(2025, 1, 15),
                 basis=200_000.0,
                 recovery_class="27.5-year",
-                convention="mid-month",
             ),
-        ]
+        ])
         emitted = self.orchestrator.emit_pdfs(
             scenario, SAMPLE_RESULTS, self.output_dir,
         )
