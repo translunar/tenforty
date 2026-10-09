@@ -5,6 +5,9 @@ Flat scalars (page 1 plus Part V line 48 on page 2). Years 2021-2025
 (tenforty.years.SCHEDULE_C_FAMILY_YEARS). Field names were derived by
 marker-probe and are pinned in tests/fixtures/golden_field_lines.py.
 
+LINE 13 (depreciation) prints the business's resolved depreciation; the
+section 179 deduction that shares the line is unmodeled and has no input.
+
 EXPENSE LINES. The twelve modeled Part II categories map to lines 8, 15, 17,
 18, 20b, 22, 23, 24a, 24b, 25, 26 and "Other expenses (from line 48)" -- which
 is line 27a through 2024 and line 27b in 2025 (the same field, relabelled when
@@ -25,7 +28,7 @@ are invariants of what tenforty models, not per-return facts:
   - Line F, accounting method = Cash. Accrual accounting is unmodeled.
   - Line G, material participation = Yes. Passive sole proprietorships are
     unmodeled.
-The compute layer's refusals (cost of goods sold, depreciation, home office,
+The compute layer's refusals (cost of goods sold, home office,
 vehicle, depletion, returns and allowances, statutory employee, and a net
 loss without the at-risk attestation) fence everything else.
 
@@ -59,6 +62,9 @@ _FIELDS_2022_2023: dict[str, str] = {
     "sch_c_line_5_gross_profit": f"{_P1}.f1_14[0]",
     "sch_c_line_7_gross_income": f"{_P1}.f1_16[0]",
     "sch_c_expense_advertising": f"{_L8}.f1_17[0]",          # line 8
+    # Line 13 (depreciation). Probed on each year's own template, 2021-2025:
+    # the widget beside the "13" label is Lines8-17.f1_22 in all five.
+    "sch_c_line_13_depreciation": f"{_L8}.f1_22[0]",         # line 13
     "sch_c_expense_insurance": f"{_L8}.f1_24[0]",            # line 15
     "sch_c_expense_legal_professional": f"{_L8}.f1_27[0]",   # line 17
     "sch_c_expense_office_expense": f"{_L18}.f1_28[0]",      # line 18

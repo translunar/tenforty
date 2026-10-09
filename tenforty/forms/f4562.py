@@ -16,6 +16,9 @@ into the same row (their bases and deductions sum). Row labels:
   19i: residential rental (27.5-year)
   19j: nonresidential real (39-year)
 
+There is no mixed-convention guard, by design: the convention is computed
+from the recovery class, so one class cannot carry two conventions.
+
 v1 emits only rows whose class has at least one asset — zero-asset
 rows are omitted (no phantom zeros). 19i and 19j each have two
 placement sub-rows on the PDF; v1 fills the first sub-row and raises
@@ -25,7 +28,9 @@ explicit sub-row support rather than silently dropping).
 
 from collections import defaultdict
 
-from tenforty.forms.depreciation.macrs import macrs_deduction
+from tenforty.attestations import depreciation_activities
+from tenforty.forms.depreciation.macrs import convention_for
+from tenforty.forms.depreciation.resolver import asset_amount
 from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
@@ -50,11 +55,52 @@ _PROPERTY_METHOD = {
 }
 
 
+def scenario_assets(scenario: Scenario) -> list:
+    """Every asset on the return, flattened across activities.
+
+    READ-PATH ADAPTER ONLY: assets now nest under their activity, and this
+    form still emits its legacy one-form-per-return shape. The per-activity
+    form is a later branch."""
+    return [
+        asset
+        for _section, _index, _label, activity in depreciation_activities(
+            scenario)
+        for asset in activity.depreciable_assets]
+
+
+def is_required(scenario: Scenario) -> bool:
+    """True when the return must carry Form 4562: some property was placed
+    in service during the return year, on any activity.
+
+    Instructions for Form 4562 (2025), "Who Must File" (page 2): file the
+    form if claiming "Depreciation for property placed in service during the
+    2025 tax year." The other triggers on that list, and what happens to
+    each here:
+      - a section 179 deduction: no input exists, and an asset with section
+        179 history refuses (ledger: `bonus_or_section_179_history`);
+      - depreciation on any vehicle or other listed property, "regardless
+        of when it was placed in service": REFUSES unless the scenario
+        states `acknowledges_no_listed_property: true` (ledger:
+        `unacknowledged_listed_property`) -- the asset model cannot see
+        whether an asset is listed, so it asks whenever personal property
+        is present;
+      - amortization beginning this year: no input exists;
+      - a corporate return: Form 1120-S is excluded by the instructions'
+        own words, and no other corporate return is modeled.
+    An ongoing year, with only
+    property placed in earlier years, files no Form 4562; the depreciation
+    still prints on Schedule E line 18 / Schedule C line 13."""
+    year = scenario.config.year
+    return any(
+        asset.date_placed_in_service.year == year
+        for asset in scenario_assets(scenario))
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
     result: dict = {**scenario.config.pdf_header()}
     assets_by_class: dict[str, list] = defaultdict(list)
-    for asset in scenario.depreciable_assets:
+    for asset in scenario_assets(scenario):
         assets_by_class[asset.recovery_class].append(asset)
 
     rows: list[dict] = []
@@ -67,18 +113,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
                 f"{recovery_class!r}. v1 supports "
                 f"{sorted(_CLASS_TO_ROW)}."
             )
-        conventions = {a.convention for a in assets}
-        if len(conventions) > 1:
-            raise NotImplementedError(
-                f"Mixed conventions {sorted(conventions)!r} within a single "
-                f"recovery class {recovery_class!r} require separate "
-                f"Section B sub-rows; v1 assumes one convention per class."
-            )
-        convention = conventions.pop()
+        # The convention is computed from the class (the One Door helper),
+        # so a class has exactly one.
+        convention = convention_for(recovery_class)
         earliest = min(a.date_placed_in_service for a in assets)
         class_total_basis = sum(a.basis for a in assets)
+        # Through the resolver's per-asset figure, not the raw table, so
+        # this form cannot disagree with the line the activity prints.
         class_total_deduction = sum(
-            macrs_deduction(a, tax_year) for a in assets
+            asset_amount(a, tax_year)[0] for a in assets
         )
         total += class_total_deduction
         row = {

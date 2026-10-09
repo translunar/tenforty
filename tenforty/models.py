@@ -180,14 +180,72 @@ class ScheduleK1:
             self.entity_type = EntityType(self.entity_type)
 
 
+# MACRS recovery classes the engine has a table for. Real property is
+# straight-line / mid-month by statute; personal property is 200DB (150DB for
+# 15- and 20-year) under the half-year convention unless the mid-quarter test
+# trips, which refuses.
+REAL_PROPERTY_CLASSES: tuple[str, ...] = ("27.5-year", "39-year")
+PERSONAL_PROPERTY_CLASSES: tuple[str, ...] = (
+    "3-year", "5-year", "7-year", "10-year", "15-year", "20-year")
+SUPPORTED_RECOVERY_CLASSES: tuple[str, ...] = (
+    PERSONAL_PROPERTY_CLASSES + REAL_PROPERTY_CLASSES)
+
+
+@dataclass
+class DepreciableAsset:
+    """An asset subject to MACRS depreciation, nested under the activity
+    that uses it (`RentalProperty.depreciable_assets` /
+    `ScheduleCBusiness.depreciable_assets`).
+
+    ``basis`` is the DEPRECIABLE basis: land is already excluded.
+    ``recovery_class`` is one of `SUPPORTED_RECOVERY_CLASSES`. There is no
+    convention field: the convention is computed from the class, never stated.
+
+    ``prior_depreciation`` is required when the asset was placed in service
+    before the return year. ``no_bonus_or_section_179_history`` must be True
+    on personal property and must be absent on real property.
+    ``acknowledges_prior_depreciation_as_stated`` accepts a stated prior
+    figure that does not match the table reconstruction. ``disposed``, when
+    set, refuses.
+    """
+
+    description: str
+    date_placed_in_service: date
+    basis: float
+    recovery_class: str
+    disposed: date | None = None
+    prior_depreciation: float | None = None
+    no_bonus_or_section_179_history: bool | None = None
+    acknowledges_prior_depreciation_as_stated: bool = False
+
+
+@dataclass(frozen=True)
+class DepreciationOverride:
+    """Value-pinned override of one asset-mode activity's depreciation.
+
+    ``amount`` is the figure the forms use. ``restates_engine_amount``
+    restates the figure tenforty's own engine computes for the activity; when
+    the engine's figure moves (a books change), the restatement goes stale and
+    the override refuses until it is re-acknowledged. ``acknowledgment`` must
+    be True."""
+
+    amount: float
+    restates_engine_amount: float
+    acknowledgment: bool = False
+
+
 @dataclass(frozen=True)
 class ScheduleCBusiness:
     """Sole-proprietor Schedule C businesses; each is one Schedule C.
 
     Expense fields are Part II categories a P&L export covers. COGS/inventory,
-    depreciation, home office, vehicle, depletion, returns & allowances, and
+    home office, vehicle, depletion, returns & allowances, and
     statutory-employee are UNMODELED -- nonzero refuses at compute (see
     forms/sch_c.py).
+
+    Depreciation has two mutually exclusive sources per business:
+    ``depreciable_assets`` (asset mode) or the stated ``depreciation`` scalar
+    with ``acknowledges_depreciation_stated_outside_macrs`` (stated mode).
     """
     description: str = ""
     # Schedule C line B: the 6-digit principal business or professional
@@ -218,12 +276,19 @@ class ScheduleCBusiness:
     # carries them so the refusal has something to see; it does not enforce here.
     cost_of_goods_sold: float = 0.0
     inventory: float = 0.0
+    # NOT unmodeled: the stated-mode depreciation scalar (Schedule C line 13).
+    # It sits here to keep the field order stable for positional callers.
     depreciation: float = 0.0
     home_office: float = 0.0
     vehicle_expenses: float = 0.0
     depletion: float = 0.0
     returns_and_allowances: float = 0.0
     statutory_employee: bool = False
+    # Depreciation sources (see class docstring). A tuple, not a list: the
+    # dataclass is frozen.
+    depreciable_assets: tuple[DepreciableAsset, ...] = ()
+    acknowledges_depreciation_stated_outside_macrs: bool = False
+    depreciation_override: DepreciationOverride | None = None
 
 
 @dataclass
@@ -261,6 +326,13 @@ class RentalProperty:
     utilities: float = 0.0
     depreciation: float = 0.0
     other_expenses: float = 0.0
+    # Depreciation has two mutually exclusive sources per property:
+    # `depreciable_assets` (asset mode) or the stated `depreciation` scalar
+    # with `acknowledges_depreciation_stated_outside_macrs` (stated mode: the
+    # figure comes from outside tenforty's MACRS model).
+    depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
+    acknowledges_depreciation_stated_outside_macrs: bool = False
+    depreciation_override: DepreciationOverride | None = None
 
     @property
     def property_type_code(self) -> str:
@@ -780,25 +852,6 @@ class Form1095A:
 
 
 @dataclass
-class DepreciableAsset:
-    """An asset subject to MACRS depreciation (Form 4562 Part III row).
-
-    ``recovery_class`` is the GDS class-life string ("3-year", "5-year",
-    "7-year", "10-year", "15-year", "20-year", "27.5-year", "39-year").
-    ``convention`` is one of "half-year", "mid-quarter", "mid-month"
-    (mid-quarter unsupported in v1). ``disposed``, when not None,
-    triggers NotImplementedError in v1 compute.
-    """
-
-    description: str
-    date_placed_in_service: date
-    basis: float
-    recovery_class: str
-    convention: str
-    disposed: date | None = None
-
-
-@dataclass
 class Address:
     """Mailing-address record. Reusable across entity and shareholder
     contexts; future migrations of `TaxReturnConfig.address*` should
@@ -943,9 +996,9 @@ class SCorpDeductions:
 
     ``compensation_of_officers`` is the Form 1125-E line 4 total; Form 1125-E
     line-item detail is out of scope for v1. ``depreciation`` is also a
-    caller-supplied aggregate — tenforty does not automatically integrate
-    Form 4562 / ``Scenario.depreciable_assets`` output into 1120-S deductions,
-    so a caller using both must avoid double-counting.
+    caller-supplied aggregate — tenforty does not integrate Form 4562 or any
+    activity's ``depreciable_assets`` into 1120-S deductions, so a caller
+    using both must avoid double-counting.
     """
     compensation_of_officers: float
     salaries_wages: float
@@ -1362,7 +1415,6 @@ class Scenario:
     schedule_k1s: list[ScheduleK1] = field(default_factory=list)
     rental_properties: list[RentalProperty] = field(default_factory=list)
     schedule_c_businesses: list[ScheduleCBusiness] = field(default_factory=list)
-    depreciable_assets: list[DepreciableAsset] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
     form_1095a: Form1095A | None = None
     s_corp_return: SCorpReturn | None = None
@@ -1372,6 +1424,17 @@ class Scenario:
     # list (via scenario._load_source_documents) or the emit gate will pass
     # while packet assembly splices nothing.
     source_documents: list[SourceDocument] = field(default_factory=list)
+    # Required ONLY when an asset-mode activity places personal property in
+    # service this year while a stated-mode activity exists (the mid-quarter
+    # 40% test then cannot see every placement). Scenario-level, not a config
+    # field: no other scenario has to carry it.
+    acknowledges_no_personal_property_behind_stated_depreciation: (
+        bool | None) = None
+    # Required ONLY when the return lists any personal-property asset:
+    # listed property (a vehicle, say) needs Form 4562 every year, and the
+    # asset model cannot tell a listed asset from any other. Scenario-level,
+    # not a config field.
+    acknowledges_no_listed_property: bool | None = None
 
     def __post_init__(self) -> None:
         # CA-withholding channel, schema layer (state-attribution ruling):

@@ -54,7 +54,7 @@ class SchEPropertyAFieldsTests(unittest.TestCase):
             rents_received=24000.0,
             mortgage_interest=8000.0,
             taxes=3000.0,
-            depreciation=5000.0,
+            depreciation=5000.0, acknowledges_depreciation_stated_outside_macrs=True,
         )]
         result = compute(scenario, upstream={"f1040": {}})
         self.assertEqual(result["sch_e_property_a_rents"], 24000)
@@ -74,7 +74,7 @@ class SchEComputedTotalsTests(unittest.TestCase):
             rents_received=24000.0,
             mortgage_interest=8000.0,
             taxes=3000.0,
-            depreciation=5000.0,
+            depreciation=5000.0, acknowledges_depreciation_stated_outside_macrs=True,
         )]
         result = compute(scenario, upstream={"f1040": {}})
         self.assertEqual(result["sch_e_property_a_total_expenses"], 16000)
@@ -127,6 +127,7 @@ class SchELine26OracleTests(unittest.TestCase):
         scenario.rental_properties = [_rental(
             rents_received=24000.0, mortgage_interest=8000.0,
             taxes=3000.0, depreciation=5000.0,
+            acknowledges_depreciation_stated_outside_macrs=True,
         )]
         result = compute(scenario, upstream={"f1040": {"sche_line26": 8000}})
         self.assertEqual(result["sch_e_line_26_total"], 8000)

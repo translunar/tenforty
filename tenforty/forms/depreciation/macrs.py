@@ -1,81 +1,68 @@
 """MACRS depreciation — per-asset per-year deduction.
 
-Dispatches on convention → table lookup → percentage × basis → IRS
-rounding. Year-stable; uses the hand-keyed tables in tables.py
-(cell-verified against table_generator.py under @pytest.mark.oracle).
+Class → computed convention → table lookup → percentage × basis → IRS
+rounding. Year-stable; uses the tables in tables.py.
 
-V1 scope:
-  - half-year convention  → TABLE_A_1 (3/5/7/10/15/20-year)
-  - mid-month convention  → TABLE_A_6 (27.5-year) or TABLE_A_7a (39-year)
-  - mid-quarter           → NotImplementedError (add when first Q4-heavy
-                            scenario appears)
-  - dispositions          → NotImplementedError (mid-year disposition
-                            proration scoped out of v1)
+The convention is COMPUTED from the recovery class, never stated:
+  - real property (27.5-year, 39-year) → mid-month, TABLE_A_6 / TABLE_A_7a
+  - personal property (3/5/7/10/15/20-year) → half-year, TABLE_A_1
+The mid-quarter convention has no tables here; whether it applies is a
+taxpayer-wide question answered over the whole scenario, not per asset.
+
+Refusals (a disposed asset, a class with no table) are refusal-ledger entries
+in tenforty.attestations. This module raises THROUGH those entries when
+called directly, so a caller that bypassed the loader still fails closed and
+the ledger stays the single owner of the refusal text.
 """
 
+from tenforty.attestations import raise_scoped_refusal
 from tenforty.forms.depreciation.tables import TABLE_A_1, TABLE_A_6, TABLE_A_7a
-from tenforty.models import DepreciableAsset
+from tenforty.models import (
+    PERSONAL_PROPERTY_CLASSES, REAL_PROPERTY_CLASSES, DepreciableAsset,
+)
 from tenforty.rounding import irs_round
+
+MID_MONTH = "mid-month"
+HALF_YEAR = "half-year"
+
+_REAL_PROPERTY_TABLES = {
+    "27.5-year": TABLE_A_6["27.5-year"],
+    "39-year": TABLE_A_7a["39-year"],
+}
+
+
+def convention_for(recovery_class: str, *, label: str = "asset") -> str:
+    """The averaging convention a recovery class takes."""
+    if recovery_class in REAL_PROPERTY_CLASSES:
+        return MID_MONTH
+    if recovery_class in PERSONAL_PROPERTY_CLASSES:
+        return HALF_YEAR
+    raise_scoped_refusal(
+        "unknown_recovery_class",
+        [f"{label} has recovery_class {recovery_class!r}"])
 
 
 def macrs_deduction(asset: DepreciableAsset, tax_year: int) -> int:
-    """Return the MACRS deduction (IRS-rounded whole dollars) for ``asset``
-    in ``tax_year``.
+    """The MACRS deduction (IRS-rounded whole dollars) for ``asset`` in
+    ``tax_year``.
 
     Zero when the asset was not yet placed in service, or the recovery
-    period has elapsed. NotImplementedError for v1 scope-outs
-    (dispositions, mid-quarter).
+    period has elapsed (the class IS mapped and the published schedule has
+    run out — a legitimate 0, the asset is fully depreciated).
     """
+    label = f"asset {asset.description!r}"
     if asset.disposed is not None:
-        raise NotImplementedError(
-            "disposition proration not supported in v1 "
-            f"(asset {asset.description!r} disposed {asset.disposed.isoformat()})"
-        )
+        raise_scoped_refusal("asset_disposed", [label])
+    convention = convention_for(asset.recovery_class, label=label)
 
     recovery_year = tax_year - asset.date_placed_in_service.year + 1
     if recovery_year < 1:
         return 0
 
-    pct = _lookup_percentage(asset, recovery_year)
-    return irs_round(asset.basis * pct)
-
-
-def _lookup_percentage(asset: DepreciableAsset, recovery_year: int) -> float:
-    """Return the MACRS percentage for this asset in ``recovery_year``.
-
-    Raises NotImplementedError when the class/convention combination
-    has no table in v1 (Law 2: never silently zero a deduction for an
-    asset the module doesn't know how to depreciate). Returns 0.0 when
-    the class IS mapped but ``recovery_year`` is past the end of the
-    published schedule — a legitimate 0 (the asset is fully depreciated).
-    """
-    conv = asset.convention
-    cls = asset.recovery_class
-    if conv == "half-year":
-        rows = TABLE_A_1.get(cls)
-        if rows is None:
-            raise NotImplementedError(
-                f"MACRS table missing for class={cls!r} convention={conv!r}. "
-                "v1 supports 3/5/7/10/15/20-year classes under half-year. "
-                "Add the table to forms.depreciation.tables (and the "
-                "generator) before depreciating this asset."
-            )
-        return rows.get(recovery_year, 0.0)
-    if conv == "mid-month":
+    if convention == MID_MONTH:
         month = asset.date_placed_in_service.month
-        if cls == "27.5-year":
-            return TABLE_A_6["27.5-year"].get(recovery_year, {}).get(month, 0.0)
-        if cls == "39-year":
-            return TABLE_A_7a["39-year"].get(recovery_year, {}).get(month, 0.0)
-        raise NotImplementedError(
-            f"MACRS table missing for class={cls!r} convention={conv!r}. "
-            "Mid-month convention is only valid for real property "
-            "(27.5-year residential rental, 39-year nonresidential). "
-            "Refusing to silently zero the deduction."
-        )
-    if conv == "mid-quarter":
-        raise NotImplementedError(
-            "mid-quarter convention not supported in v1 "
-            "(add TABLE_A_4/A_5 to forms.depreciation.tables + generator)"
-        )
-    raise ValueError(f"Unknown MACRS convention: {conv!r}")
+        pct = _REAL_PROPERTY_TABLES[asset.recovery_class].get(
+            recovery_year, {}).get(month, 0.0)
+    else:
+        pct = TABLE_A_1[asset.recovery_class].get(recovery_year, 0.0)
+    return irs_round(asset.basis * pct)

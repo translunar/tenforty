@@ -16,6 +16,14 @@ from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_atte
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+def _nest_assets(scenario, assets):
+    """Assets nest under an activity; hang them on one rental property."""
+    from tenforty.models import RentalProperty
+    scenario.rental_properties = [RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0,
+        depreciable_assets=list(assets))]
+
 
 class OrchestratorPredicateTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -201,18 +209,20 @@ class OrchestratorPredicateTests(unittest.TestCase):
         self.assertTrue(emit({"f8995_line_15_qbi_deduction": 0,
                               "f8995_line_16_qbi_loss_carryforward": -30_000}))
 
-    def test_should_emit_4562_true_when_any_asset_present(self) -> None:
+    def test_should_emit_4562_true_when_an_asset_is_placed_this_year(self) -> None:
+        # Was "true when any asset present". Form 4562 is required only in a
+        # year property is placed in service; the prior-year twin is false.
         scenario = make_simple_scenario()
-        scenario.depreciable_assets = [
-            DepreciableAsset(
-                description="x",
-                date_placed_in_service=date(2024, 1, 1),
-                basis=1000.0,
-                recovery_class="5-year",
-                convention="half-year",
-            ),
-        ]
+        asset = DepreciableAsset(
+            description="x",
+            date_placed_in_service=date(scenario.config.year, 1, 1),
+            basis=1000.0,
+            recovery_class="5-year",
+        )
+        _nest_assets(scenario, [asset])
         self.assertTrue(self.orchestrator._should_emit_4562(scenario, {}))
+        asset.date_placed_in_service = date(scenario.config.year - 1, 1, 1)
+        self.assertFalse(self.orchestrator._should_emit_4562(scenario, {}))
 
 
 class TestShouldCompute8949(unittest.TestCase):

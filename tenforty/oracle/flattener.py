@@ -1,3 +1,6 @@
+from tenforty.forms.depreciation.resolver import (
+    resolve as resolve_depreciation,
+)
 from tenforty.forms.f8949 import BOX_KEYS, adjustment_code_and_amount
 from tenforty.models import Scenario
 
@@ -138,12 +141,15 @@ _RENTAL_EXPENSE_FIELDS = [
     ("supplies", "sche_supplies"),
     ("taxes", "sche_taxes"),
     ("utilities", "sche_utilities"),
-    ("depreciation", "sche_depreciation"),
     ("other_expenses", "sche_other_expenses"),
 ]
+# Depreciation is not in the list above: it is not a raw field read. Both the
+# per-property input and the 8582 net block take it from the resolver.
+_RENTAL_DEPRECIATION_KEY = "sche_depreciation"
 
 
 def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> None:
+    tax_year = scenario.config.year
     for i, prop in enumerate(scenario.rental_properties):
         letter = _RENTAL_PROPERTY_LETTERS[i]
         flat[f"sche_property_type_{letter}"] = prop.property_type
@@ -155,6 +161,9 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
             value = getattr(prop, attr)
             if value:
                 flat[f"{key_prefix}_{letter}"] = value
+        depreciation = resolve_depreciation(prop, tax_year).amount
+        if depreciation:
+            flat[f"{_RENTAL_DEPRECIATION_KEY}_{letter}"] = depreciation
 
     # 8582 Part IV slot A: Sch E Part I net income/loss for first rental
     # property (v1 scope: single property). Income and loss are separate
@@ -163,7 +172,7 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
         prop = scenario.rental_properties[0]
         total_expenses = sum(
             getattr(prop, attr) for attr, _ in _RENTAL_EXPENSE_FIELDS
-        )
+        ) + resolve_depreciation(prop, tax_year).amount
         net = prop.rents_received - total_expenses
         if net > 0:
             flat["sche_8582_net_income"] = round(net)
