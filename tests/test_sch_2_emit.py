@@ -4,11 +4,12 @@ Native pypdf fills only (no soffice). Synthetic values only."""
 import dataclasses
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from pypdf import PdfReader
 
-from tenforty import pdf_packet
+from tenforty import pdf_packet, years
 from tenforty.mappings.pdf_sch_2 import PdfSch2
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures.spine_battery import build_ptc_capped_repayment
@@ -44,7 +45,7 @@ class Sch2EmitTests(unittest.TestCase):
         )
 
     def test_additional_medicare_tax_emits_schedule_2(self):
-        for year in (2022, 2023, 2024, 2025):
+        for year in years.SCHEDULE_C_FAMILY_YEARS:
             with self.subTest(year=year):
                 scn = _high_wage_scenario(year)
                 results = self.orch.compute_federal(scn)
@@ -66,7 +67,8 @@ class Sch2EmitTests(unittest.TestCase):
                     pdf_packet.classify_key("sch_2"), "federal_individual")
 
     def test_excess_aptc_repayment_emits_schedule_2_on_the_years_line(self):
-        for year, key in ((2023, "sch_2_line_2_excess_aptc_repayment"),
+        for year, key in ((2021, "sch_2_line_2_excess_aptc_repayment"),
+                          (2023, "sch_2_line_2_excess_aptc_repayment"),
                           (2024, "sch_2_line_1a_excess_aptc_repayment")):
             with self.subTest(year=year):
                 scn = build_ptc_capped_repayment(year)
@@ -88,14 +90,18 @@ class Sch2EmitTests(unittest.TestCase):
         self.assertNotIn(
             "sch_2", self.orch.emit_pdfs(scn, results, self.tmp / "plain"))
 
-    def test_2021_never_emits_schedule_2(self):
-        # Legacy convention: a TY2021 packet prints the totals on the 1040
-        # with no detail schedule, exactly as before.
+    def test_a_year_outside_the_family_never_emits_schedule_2(self):
+        # The Schedule 2 gate reads years.SCHEDULE_C_FAMILY_YEARS and nothing
+        # else: with 2021 taken out of the family, the same TY2021 return
+        # that emits Schedule 2 above emits none.
         scn = build_ptc_capped_repayment(2021)
         results = self.orch.compute_federal(scn)
         self.assertGreater(results["f8962_repayment"], 0)
-        self.assertNotIn(
-            "sch_2", self.orch.emit_pdfs(scn, results, self.tmp / "y2021"))
+        with mock.patch.object(
+                years, "SCHEDULE_C_FAMILY_YEARS", (2022, 2023, 2024, 2025)):
+            self.assertNotIn(
+                "sch_2",
+                self.orch.emit_pdfs(scn, results, self.tmp / "y2021"))
 
     def test_gate_tolerates_none_and_missing_components(self):
         scn = make_simple_scenario()

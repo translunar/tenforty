@@ -24,9 +24,14 @@ breaking changes are called out explicitly.
 - **Form 8995 now attaches whenever a QBI deduction is claimed**, including a
   deduction that comes from Schedule C alone (previously only K-1 QBI
   attached it).
-- **Year-coverage policy:** new features floor at tax year 2022. A tax-year
-  2021 return with a Schedule C business computes as before but refuses at PDF
-  emit, and tax-year 2021 packets do not gain a Schedule 2.
+- **Year-coverage policy:** new features floor at tax year 2022.
+- **Schedule C family extended to tax year 2021** (an exception to the floor
+  above, for Schedule C, Schedule SE and Schedule 2 only). A tax-year 2021
+  return with a Schedule C business now emits its packet instead of refusing,
+  and any natively-computed tax-year 2021 return that owes an excess-APTC
+  repayment, self-employment tax or Additional Medicare Tax now attaches
+  Schedule 2. Re-emitting such a 2021 return produces a packet with one more
+  form than before.
 
 ### Breaking
 

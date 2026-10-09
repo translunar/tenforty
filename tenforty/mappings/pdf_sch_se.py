@@ -1,19 +1,23 @@
 """PDF field mapping for IRS Schedule SE (Form 1040), Self-Employment Tax.
 
-Flat scalars, Part I only. Years 2022-2025
+Flat scalars, Part I only. Years 2021-2025
 (tenforty.years.SCHEDULE_C_FAMILY_YEARS). Field names were derived by
 marker-probe and are pinned in tests/fixtures/golden_field_lines.py.
 
 Every key tenforty/forms/sch_se.py emits maps directly -- including the
 chain lines 2 and 4a, which the compute emits so the printed form's own
 arithmetic is complete -- EXCEPT line 7
-(sch_se_line_7_ss_wage_base): on all four templates the line-7 field is
+(sch_se_line_7_ss_wage_base): on all five templates the line-7 field is
 READ-ONLY with the year's wage base pre-printed, so there is nothing to fill.
 
-2022 zero-pads the first nine field leaves (f1_01..f1_09); 2023-2025 do not
-(f1_1..f1_9). Leaves f1_10 and above are identical in all four years. The 8a field is
-nested under Line8a_ReadOrder[0] in all four years; 8b/8c are unmodeled
-(blank).
+2021-2022 zero-pad the first nine field leaves (f1_01..f1_09); 2023-2025 do
+not (f1_1..f1_9). Leaves f1_10 and above are identical in all five years. The
+8a field is nested under Line8a_ReadOrder[0] in all five years; 8b/8c are
+unmodeled (blank).
+
+The 2021 field inventory is identical to 2022's (scripts/diff_pdf_fields.py),
+and each mapped leaf was read on its printed line from the marker probe
+(pdfs/federal/2021/f1040sse.probe.pdf), so 2021 shares the 2022 payload.
 """
 from tenforty.mappings.registry import PdfFormMapping, inherit_pdf_fields
 
@@ -37,7 +41,7 @@ _FIELDS_2023_2025: dict[str, str] = {
     "sch_se_line_13_half_deduction": f"{_P1}.f1_22[0]",
 }
 
-_FIELDS_2022: dict[str, str] = inherit_pdf_fields(
+_FIELDS_2021_2022: dict[str, str] = inherit_pdf_fields(
     _FIELDS_2023_2025,
     overrides={
         "taxpayer_name": f"{_P1}.f1_01[0]",
@@ -54,7 +58,8 @@ class PdfSchSe(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule SE"
 
     _MAPPINGS: dict[int, dict] = {
-        2022: _FIELDS_2022,
+        2021: _FIELDS_2021_2022,
+        2022: _FIELDS_2021_2022,
         2023: _FIELDS_2023_2025,
         2024: _FIELDS_2023_2025,
         2025: _FIELDS_2023_2025,

@@ -33,11 +33,28 @@ class PdfSchCMappingTests(unittest.TestCase):
                         "sch_c_line_48_total_other_expenses"):
                 self.assertIn(key, mapping)
 
-    def test_2021_is_unmapped(self):
+    def test_2021_is_mapped_with_its_own_header_wrapper(self):
+        self.assertIn(2021, years.SCHEDULE_C_FAMILY_YEARS)
+        m2021 = PdfSchC.get_mapping(2021)
+        m2022 = PdfSchC.get_mapping(2022)
+        # The 2021 template nests the proprietor name under PgHeader[0];
+        # 2022-2023 use Pg1Header[0]. Nothing else differs.
+        self.assertEqual(
+            m2021["taxpayer_name"], f"{_P1}.PgHeader[0].f1_1[0]")
+        self.assertEqual(
+            {k for k in m2022 if m2021[k] != m2022[k]}, {"taxpayer_name"})
+        self.assertEqual(set(m2021), set(m2022))
+        # "Other expenses (from line 48)" is line 27a on the 2021 form.
+        self.assertEqual(
+            m2021["sch_c_expense_other_expenses"],
+            f"{_P1}.Lines18-27[0].f1_39[0]")
+
+    def test_a_year_before_the_family_floor_is_unmapped(self):
+        below = years.SCHEDULE_C_FAMILY_YEARS[0] - 1
         with self.assertRaises(ValueError):
-            PdfSchC.get_mapping(2021)
+            PdfSchC.get_mapping(below)
         with self.assertRaises(ValueError):
-            PdfSchC.get_derivations(2021)
+            PdfSchC.get_derivations(below)
 
     def test_fixed_checkboxes_are_cash_and_material_participation_yes(self):
         self.assertEqual(
@@ -80,6 +97,8 @@ class PdfSchCMappingTests(unittest.TestCase):
                 def v(path):
                     return str(fields[path].get("/V") or "")
 
+                self.assertEqual(v(mapping["taxpayer_name"]), "Example Filer")
+                self.assertEqual(v(mapping["taxpayer_ssn"]), "000-00-0000")
                 self.assertEqual(v(mapping["sch_c_line_31_net_profit"]), "8000")
                 self.assertEqual(v(mapping["sch_c_expense_supplies"]), "1000")
                 self.assertEqual(

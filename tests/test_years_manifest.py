@@ -5,6 +5,7 @@ Structural invariants only — whether a declared year actually has a
 complete pack is the (future) completeness gate's job, not this test's.
 """
 import unittest
+from unittest import mock
 
 from tenforty import years
 from tenforty import years as year_manifest
@@ -72,20 +73,37 @@ class YearManifestTests(unittest.TestCase):
         self.assertIn("f8962", year_manifest.FEDERAL_FORMS)
         self.assertIn("f8962", year_manifest.FEDERAL_COMPUTE_ONLY_FORMS)
 
-    def test_schedule_c_family_floor_is_2022(self):
-        # Year-coverage policy (2026-10-03): new features floor at TY2022.
+    def test_schedule_c_family_floor_is_2021(self):
+        # The Schedule C family carries its own floor, one year below the
+        # general new-feature floor (Juno 2026-10-08 dual-posture program).
+        self.assertEqual(year_manifest.SCHEDULE_C_FAMILY_FLOOR_YEAR, 2021)
         self.assertEqual(year_manifest.SCHEDULE_C_FAMILY_YEARS,
-                         (2022, 2023, 2024, 2025))
+                         (2021, 2022, 2023, 2024, 2025))
         self.assertTrue(set(year_manifest.SCHEDULE_C_FAMILY_YEARS)
                         <= set(year_manifest.FEDERAL_YEARS))
 
     def test_policy_year_floor_registry(self):
+        # The general floor is unchanged; only the three Schedule C family
+        # forms sit below it. The exact-dict pin means a fourth form cannot
+        # join (or leave) the registry without this test being edited.
         self.assertEqual(year_manifest.NEW_FEATURE_FLOOR_YEAR, 2022)
-        self.assertEqual(year_manifest.POLICY_YEAR_FLOORS["sch_2"], 2022)
-        self.assertFalse(year_manifest.form_supported_in_year("sch_2", 2021))
+        self.assertEqual(
+            year_manifest.POLICY_YEAR_FLOORS,
+            {"sch_2": 2021, "sch_se": 2021, "sch_c": 2021})
+        self.assertTrue(year_manifest.form_supported_in_year("sch_2", 2021))
         self.assertTrue(year_manifest.form_supported_in_year("sch_2", 2022))
         # A form with no floor is supported in every year.
         self.assertTrue(year_manifest.form_supported_in_year("1040", 2021))
+
+    def test_form_supported_in_year_honours_a_floor_above_the_year(self):
+        # No registered floor sits above a federal year any more, so the
+        # False branch is exercised against a synthetic floor.
+        with mock.patch.dict(year_manifest.POLICY_YEAR_FLOORS,
+                             {"sch_2": 2022}):
+            self.assertFalse(
+                year_manifest.form_supported_in_year("sch_2", 2021))
+            self.assertTrue(
+                year_manifest.form_supported_in_year("sch_2", 2022))
 
 
 class ScorpTiersTests(unittest.TestCase):

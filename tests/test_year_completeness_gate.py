@@ -356,18 +356,42 @@ class PolicyYearFloorTests(unittest.TestCase):
                 self.assertIn(form, year_manifest.FEDERAL_FORMS)
                 self.assertIn(floor, year_manifest.FEDERAL_YEARS)
 
-    def test_no_template_or_mapping_exists_below_a_floor(self):
-        for form, floor in year_manifest.POLICY_YEAR_FLOORS.items():
+    @staticmethod
+    def _below_floor_strays(floors):
+        """(form, year, piece) for every mapping or template that exists
+        below a floor in `floors`."""
+        strays = []
+        for form, floor in floors.items():
             entry = CATALOG[("federal", form)]
             for year in year_manifest.FEDERAL_YEARS:
                 if year >= floor:
                     continue
-                with self.subTest(form=form, year=year):
-                    with self.assertRaises(ValueError):
-                        entry.mapping_cls.get_mapping(year)
-                    self.assertFalse(
-                        (_PDFS / "federal" / str(year)
-                         / f"{entry.template_stem}.pdf").exists())
+                try:
+                    entry.mapping_cls.get_mapping(year)
+                except ValueError:
+                    pass
+                else:
+                    strays.append((form, year, "mapping"))
+                if (_PDFS / "federal" / str(year)
+                        / f"{entry.template_stem}.pdf").exists():
+                    strays.append((form, year, "template"))
+        return strays
+
+    def test_no_template_or_mapping_exists_below_a_floor(self):
+        self.assertEqual(
+            self._below_floor_strays(year_manifest.POLICY_YEAR_FLOORS), [])
+
+    def test_below_floor_check_detects_a_stray_pack(self):
+        # Every registered floor is now the first federal year, so the check
+        # above has no year to inspect. Prove the mechanism is live: under a
+        # synthetic TY2022 floor the real 2021 Schedule C family packs are
+        # reported as strays, mapping and template both.
+        strays = self._below_floor_strays(
+            {"sch_c": 2022, "sch_se": 2022, "sch_2": 2022})
+        self.assertEqual(sorted(strays), sorted(
+            (form, 2021, piece)
+            for form in ("sch_c", "sch_se", "sch_2")
+            for piece in ("mapping", "template")))
 
     def test_a_floored_year_is_never_also_a_known_gap(self):
         for juris, form, year in KNOWN_GAPS:
