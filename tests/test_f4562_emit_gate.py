@@ -182,6 +182,10 @@ class TemplateAnchorTests(unittest.TestCase):
     """The line 22 literal is what the blank 2025 template itself puts on
     the line printed "22" -- read from the PDF, not from the mapping.
 
+    This class reads the 2025 template (its page 2 layout). The same anchor
+    for every template year 2021-2025, and for line 17, is
+    tests/test_f4562_prior_asset_line17.py::TemplateAnchorTests.
+
     Two independent readings of the page must agree:
       1. geometry: each widget takes the nearest left-margin line number at
          or above its row;

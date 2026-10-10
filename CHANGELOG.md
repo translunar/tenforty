@@ -156,6 +156,20 @@ breaking changes are called out explicitly.
   clear the EIC ceiling but whose wages less a Schedule C loss do not is no
   longer routed to the native 1040 path, which performs no EIC math.
 
+- **Form 4562 prints prior-year assets on line 17, not line 19.** In a year
+  that places property in service on a return that also carries assets
+  placed in earlier years, the earlier assets used to merge into their
+  line 19 class row (under the earliest in-service date, with the bases
+  summed). Line 19 now lists only property placed in service during the
+  return year; the MACRS deduction on everything placed earlier is one
+  amount on line 17 (new result key `f4562_line_17`). Line 22 is their sum
+  and is unchanged in amount. Any Form 4562 emitted for such a year should
+  be re-emitted.
+- **Form 4562 line 22 prints on line 22 for 2022-2024.** Those years mapped
+  the total to the line 25 box on page 2 (special depreciation allowance
+  for listed property). 2021 and 2025 were already correct. Any 2022-2024
+  Form 4562 should be re-emitted.
+
 ### Breaking
 
 - **CA Schedule CA divergences: the `.ca.fods` worksheet round-trip is
