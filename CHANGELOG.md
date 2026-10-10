@@ -236,6 +236,12 @@ breaking changes are called out explicitly.
   Those years put it in the middle header box ("Business or activity to
   which this form relates") and left "Identifying number" blank. 2021 was
   already correct. Any 2022-2025 Form 4562 should be re-emitted.
+- **Form 4562 fills "Business or activity to which this form relates".**
+  The box carries the one activity that lists the form's assets, named as
+  its own schedule names it: a rental's address (Schedule E line 1a) or a
+  business's description (Schedule C line A). It stays blank when that
+  activity has no name or when assets are listed on more than one activity
+  (new result key `f4562_business_or_activity`).
 - **Form 4562 line 22 prints on line 22 for 2022-2024.** Those years mapped
   the total to the line 25 box on page 2 (special depreciation allowance
   for listed property). 2021 and 2025 were already correct. Any 2022-2024

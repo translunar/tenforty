@@ -1,6 +1,7 @@
 """Form 4562 — Depreciation and Amortization.
 
-Scope: Part III line 17 (MACRS on assets placed in service in earlier tax
+Scope: the header (name, business or activity, identifying number), Part
+III line 17 (MACRS on assets placed in service in earlier tax
 years), Part III Section B (line 19a..19j, GDS MACRS on assets placed in
 service DURING the return year) and the line 22 total. Section 179 (Part I),
 special/bonus (Part II), ADS (Section C, line 20), listed property (Part V)
@@ -46,13 +47,14 @@ each have two placement sub-rows on the PDF; only the first is filled.
 
 from collections import defaultdict
 
-from tenforty.attestations import depreciation_activities
+from tenforty.attestations import (
+    activities_with_assets, depreciation_activities,
+)
 from tenforty.forms.depreciation.macrs import asset_convention, method_for
 from tenforty.forms.depreciation.resolver import (
     asset_amount, mid_quarter_applies,
 )
-from tenforty.models import REAL_PROPERTY_CLASSES
-from tenforty.models import Scenario
+from tenforty.models import REAL_PROPERTY_CLASSES, RentalProperty, Scenario
 from tenforty.rounding import irs_round
 
 # Recovery class → Form 4562 Section B row label (lowercase letter).
@@ -192,10 +194,35 @@ def _line_19_row_fields(row: dict) -> dict:
     }
 
 
+ACTIVITY_KEY = "f4562_business_or_activity"
+
+
+def _business_or_activity(scenario: Scenario) -> str:
+    """What the header box "Business or activity to which this form relates"
+    prints: the one asset-listing activity, named exactly as its own
+    schedule names it -- a rental's address (Schedule E line 1a) or a
+    business's description (Schedule C line A). Nothing is added to it.
+
+    Empty when there is nothing to print: the activity has no name, or the
+    assets span more than one activity, so the one merged form has no
+    single activity to name. The box then stays blank; no placeholder is
+    ever printed."""
+    listing = activities_with_assets(scenario)
+    if len(listing) != 1:
+        return ""
+    _label, activity = listing[0]
+    if isinstance(activity, RentalProperty):
+        return activity.address
+    return str(activity.description).strip()
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
     mid_quarter = mid_quarter_applies(scenario)
     result: dict = {**scenario.config.pdf_header()}
+    activity = _business_or_activity(scenario)
+    if activity:
+        result[ACTIVITY_KEY] = activity
     placed_this_year, placed_earlier = [], []
     for asset in scenario_assets(scenario):
         if asset.date_placed_in_service.year == tax_year:
