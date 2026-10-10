@@ -391,11 +391,6 @@ class K1FanoutActivity:
     income: float
     loss: float
     prior_carryforward: float
-    # True only when rental real estate (box 2) is the K-1's ONLY nonzero
-    # business box. The row nets every box, and the boxes are not split, so a
-    # K-1 with anything else nonzero is non-rental as a whole. Defaults to
-    # the conservative answer: a non-rental loss gets no special allowance.
-    rental_real_estate_only: bool = False
 
 
 @dataclass(frozen=True)

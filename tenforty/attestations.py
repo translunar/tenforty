@@ -1578,11 +1578,11 @@ _DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
 
 # What the two predicates below read from a Form 8582 result block.
 _F8582_BLOCK_KEYS: tuple[str, ...] = (
-    "f8582_line_1a_activities_with_income",
     "f8582_line_1b_activities_with_loss",
     "f8582_line_1c_prior_year_unallowed_loss",
     "f8582_line_11_allowed_loss",
     "f8582_non_rental_passive_loss",
+    "f8582_non_rental_passive_income",
 )
 
 
@@ -1614,19 +1614,20 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
     That is right only when all three hold:
       * nothing is suspended by Form 8582's own figure;
       * there is no prior-year loss at all (an allowed one is never deducted);
-      * non-rental passive losses do not exceed passive income. forms/f8582
-        applies the rental real estate special allowance to the whole loss
-        pool, so its figure can show a non-rental loss as allowed when only
-        passive income may absorb it. With non-rental losses inside passive
-        income the pooled figure equals the correct one."""
+      * non-rental passive losses do not exceed non-rental passive income,
+        box by box across the passive K-1s. forms/f8582 applies the rental
+        real estate special allowance to the whole loss pool; the allowance
+        may only excuse a rental real estate net loss, so a net non-rental
+        loss can show as allowed when it is not. With non-rental boxes
+        netting to zero or better, the pooled figure is the correct one."""
     f8582 = _f8582_block(schedule_results)
     if f8582 is None:
         return []
-    income = f8582["f8582_line_1a_activities_with_income"]
     current = f8582["f8582_line_1b_activities_with_loss"]
     prior = f8582["f8582_line_1c_prior_year_unallowed_loss"]
     allowed = f8582["f8582_line_11_allowed_loss"]
-    non_rental = f8582["f8582_non_rental_passive_loss"]
+    non_rental_loss = f8582["f8582_non_rental_passive_loss"]
+    non_rental_income = f8582["f8582_non_rental_passive_income"]
     reasons: list[str] = []
     suspended = current + prior - allowed
     if suspended > 0:
@@ -1634,13 +1635,13 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
             f"{suspended:,.0f} of passive loss is not allowed this year "
             f"(Form 8582 allows {allowed:,.0f} of {current + prior:,.0f}), "
             f"yet the return deducts every current-year loss in full")
-    if non_rental > income:
+    if non_rental_loss > non_rental_income:
         reasons.append(
-            f"non-rental passive losses of {non_rental:,.0f} exceed passive "
-            f"income of {income:,.0f}, and tenforty's Form 8582 applies the "
-            f"rental real estate special allowance to all passive losses "
-            f"alike, so its allowed figure may excuse a loss the allowance "
-            f"does not cover")
+            f"non-rental passive losses of {non_rental_loss:,.0f} exceed "
+            f"non-rental passive income of {non_rental_income:,.0f}, and "
+            f"tenforty's Form 8582 applies the rental real estate special "
+            f"allowance to all passive losses alike, so its allowed figure "
+            f"may excuse a loss the allowance does not cover")
     if prior > 0:
         reasons.append(
             f"a prior-year unallowed loss of {prior:,.0f} enters Form 8582 "
@@ -1694,8 +1695,8 @@ _PASSIVE_LOSS_REFUSALS: tuple[ScopedRefusal, ...] = (
             f"result to Schedule E lines 22, 25 and 26 and to Schedule 1 is "
             f"tracked as a follow-up; until then tenforty produces only "
             f"returns on which every passive loss is deductible in full: "
-            f"none suspended, no non-rental passive loss beyond passive "
-            f"income, and no prior-year unallowed loss carried in."),
+            f"none suspended, no non-rental passive loss beyond non-rental "
+            f"passive income, and no prior-year unallowed loss carried in."),
         exception=NotImplementedError,
     ),
 )

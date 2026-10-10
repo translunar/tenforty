@@ -68,15 +68,15 @@ def _passive_k1(income: float, carryforward: float = 0.0) -> ScheduleK1:
         prior_year_passive_loss_carryforward=carryforward)
 
 
-def _block(loss, carryforward, allowed, *, income=0, non_rental=0,
-           **extra) -> dict:
+def _block(loss, carryforward, allowed, *, non_rental_loss=0,
+           non_rental_income=0, **extra) -> dict:
     """A complete Form 8582 result block, as the ledger predicates read it."""
     return {
-        "f8582_line_1a_activities_with_income": income,
         "f8582_line_1b_activities_with_loss": loss,
         "f8582_line_1c_prior_year_unallowed_loss": carryforward,
         "f8582_line_11_allowed_loss": allowed,
-        "f8582_non_rental_passive_loss": non_rental,
+        "f8582_non_rental_passive_loss": non_rental_loss,
+        "f8582_non_rental_passive_income": non_rental_income,
         **extra,
     }
 
@@ -142,9 +142,10 @@ class LimitationBindsRefusalTests(_Case):
     # Form 8582's compute applies the rental real estate special allowance to
     # the WHOLE passive-loss pool whenever any rental exists, so by its own
     # figure a non-rental passive loss looks "allowed in full". The allowance
-    # may only excuse rental real estate losses: a non-rental passive loss is
-    # deductible only against passive income. The return refuses whenever
-    # non-rental passive losses exceed passive income.
+    # may only excuse a rental real estate NET loss. The return refuses
+    # whenever non-rental passive losses exceed non-rental passive income,
+    # summed box by box across the passive K-1s (ordinary, other net rental,
+    # royalties, other income) -- not by netted Schedule E row.
 
     @staticmethod
     def _business_k1(income: float, name: str = "Fake LP") -> ScheduleK1:
@@ -161,15 +162,15 @@ class LimitationBindsRefusalTests(_Case):
             mortgage_interest=interest)
 
     def test_non_rental_loss_beside_a_profitable_rental_refuses(self):
-        # Passive partnership business loss 20,000; rental nets +3,000. Only
-        # 3,000 of passive income exists to absorb the 20,000.
+        # Passive partnership business loss 20,000; rental nets +3,000. The
+        # rental's income is not non-rental income.
         scenario = _scenario(
             wages=60_000, rentals=[self._rental(5_000.0, 2_000.0)],
             k1s=[self._business_k1(-20_000.0)])
         with self.assertRaisesRegex(
                 NotImplementedError,
                 _REFUSAL + r".*non-rental passive losses of 20,000 exceed "
-                r"passive income of 3,000"):
+                r"non-rental passive income of 0"):
             self.orch.compute_federal(scenario)
 
     def test_non_rental_loss_beside_a_rental_loss_refuses(self):
@@ -181,29 +182,86 @@ class LimitationBindsRefusalTests(_Case):
         with self.assertRaisesRegex(
                 NotImplementedError,
                 _REFUSAL + r".*non-rental passive losses of 15,000 exceed "
-                r"passive income of 0"):
+                r"non-rental passive income of 0"):
             self.orch.compute_federal(scenario)
 
-    def test_non_rental_loss_absorbed_by_passive_income_computes(self):
-        # Twin: the non-rental loss (2,000) fits inside the rental's passive
-        # income (3,000), so nothing is suspended and the return computes.
-        scenario = _scenario(
-            wages=60_000, rentals=[self._rental(5_000.0, 2_000.0)],
-            k1s=[self._business_k1(-2_000.0)])
-        r = self.orch.compute_federal(scenario)
-        self.assertEqual(r["f8582_line_11_oracle"], 2_000)
-        self.assertEqual(r["agi"], 61_000)
+    @staticmethod
+    def _rental_k1(net: float, name: str = "Fake Rental LP") -> ScheduleK1:
+        return ScheduleK1(
+            entity_name=name, entity_ein="00-0000000",
+            entity_type="partnership", material_participation=False,
+            net_rental_real_estate=net)
 
-    def test_non_rental_loss_equal_to_passive_income_computes(self):
-        scenario = _scenario(
-            wages=60_000, rentals=[self._rental(5_000.0, 2_000.0)],
-            k1s=[self._business_k1(-3_000.0)])
-        self.assertEqual(self.orch.compute_federal(scenario)["agi"], 60_000)
+    def test_rental_income_does_not_shelter_a_non_rental_loss_from_the_test(self):
+        # Non-rental K-1 loss 5,000; a rental property netting +5,000; a pure
+        # rental real estate K-1 losing 20,000. Passive income (5,000) equals
+        # the non-rental loss, and the pooled Form 8582 figure allows all
+        # 25,000. Correct: the allowance reaches only the 15,000 rental real
+        # estate NET loss, so 5,000 is suspended. The test is non-rental loss
+        # against NON-RENTAL income (0 here), not against all passive income.
+        def shaped(non_rental: float) -> Scenario:
+            return _scenario(
+                wages=60_000, rentals=[self._rental(7_000.0, 2_000.0)],
+                k1s=[self._business_k1(non_rental),
+                     self._rental_k1(-20_000.0)])
+        twin = self.orch.compute_federal(shaped(0.0))  # no non-rental loss
+        self.assertEqual(twin["f8582_line_11_oracle"], 20_000)
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                _REFUSAL + r".*non-rental passive losses of 5,000 exceed "
+                r"non-rental passive income of 0"):
+            self.orch.compute_federal(shaped(-5_000.0))
 
-    def test_k1_with_any_non_rental_box_counts_as_non_rental(self):
-        # Conservative classification, no box split: a passive K-1 is rental
-        # real estate only when that is its ONLY nonzero business box. This
-        # one nets to a 10,000 loss across an ordinary and a rental box.
+    def test_a_box_loss_hidden_by_the_k1_row_net_still_refuses(self):
+        # One passive K-1: ordinary business loss 10,000 and rental real
+        # estate income 10,000. Its Schedule E row nets to zero, so by rows it
+        # shows no loss at all; beside it a rental property loses 10,000 and
+        # the pooled figure allows that in full. Correct: rental real estate
+        # nets to zero, so the allowance has nothing to excuse and the
+        # 10,000 of passive loss is suspended. Compared box by box.
+        def shaped(ordinary: float) -> Scenario:
+            return _scenario(
+                wages=60_000, rentals=[self._rental(5_000.0, 15_000.0)],
+                k1s=[ScheduleK1(
+                    entity_name="Fake LP", entity_ein="00-0000000",
+                    entity_type="partnership", material_participation=False,
+                    ordinary_business_income=ordinary,
+                    net_rental_real_estate=10_000.0)])
+        twin = self.orch.compute_federal(shaped(0.0))  # no ordinary-box loss
+        self.assertEqual(twin["agi"], 60_000)
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                _REFUSAL + r".*non-rental passive losses of 10,000 exceed "
+                r"non-rental passive income of 0"):
+            self.orch.compute_federal(shaped(-10_000.0))
+
+    def test_non_rental_income_on_another_k1_offsets_a_non_rental_loss(self):
+        # Box level ACROSS K-1s: one passive K-1 loses 6,000 in its ordinary
+        # box, another earns 6,000 of other income. Non-rental loss equals
+        # non-rental income: the pooled figure is right, the return computes.
+        # One dollar more loss and it refuses.
+        def shaped(loss: float) -> Scenario:
+            return _scenario(
+                wages=60_000, rentals=[self._rental(5_000.0, 15_000.0)],
+                k1s=[self._business_k1(loss, "Fake LP One"),
+                     ScheduleK1(
+                         entity_name="Fake LP Two", entity_ein="00-0000000",
+                         entity_type="partnership",
+                         material_participation=False, other_income=6_000.0)])
+        r = self.orch.compute_federal(shaped(-6_000.0))
+        self.assertEqual(r["f8582_line_11_oracle"], 16_000)
+        self.assertEqual(r["agi"], 50_000)
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"non-rental passive losses of 6,001 exceed non-rental "
+                r"passive income of 6,000"):
+            self.orch.compute_federal(shaped(-6_001.0))
+
+    def test_mixed_k1_is_judged_box_by_box_not_as_a_whole(self):
+        # One passive K-1 with an ordinary loss of 4,000 and a rental real
+        # estate loss of 6,000. Its 4,000 non-rental box is a loss with no
+        # non-rental income against it: refuses, naming 4,000 -- not the
+        # 10,000 row net.
         mixed = ScheduleK1(
             entity_name="Fake LP", entity_ein="00-0000000",
             entity_type="partnership", material_participation=False,
@@ -211,16 +269,30 @@ class LimitationBindsRefusalTests(_Case):
             net_rental_real_estate=-6_000.0)
         with self.assertRaisesRegex(
                 NotImplementedError,
-                r"non-rental passive losses of 10,000 exceed"):
+                r"non-rental passive losses of 4,000 exceed non-rental "
+                r"passive income of 0"):
             self.orch.compute_federal(_scenario(wages=60_000, k1s=[mixed]))
-        # A K-1 whose only box is rental real estate stays a rental: the
-        # allowance covers its 10,000 loss and the return computes.
-        pure = ScheduleK1(
+        # The same K-1 with its ordinary box at a 4,000 PROFIT: the rental
+        # real estate loss keeps its allowance (no whole-K-1 reclassification)
+        # and the return computes.
+        profitable = ScheduleK1(
             entity_name="Fake LP", entity_ein="00-0000000",
             entity_type="partnership", material_participation=False,
-            net_rental_real_estate=-10_000.0)
-        r = self.orch.compute_federal(_scenario(wages=60_000, k1s=[pure]))
-        self.assertEqual(r["f8582_line_11_oracle"], 10_000)
+            ordinary_business_income=4_000.0,
+            net_rental_real_estate=-6_000.0)
+        r = self.orch.compute_federal(_scenario(wages=60_000, k1s=[profitable]))
+        self.assertEqual(r["agi"], 58_000)
+
+    def test_materially_participating_k1_boxes_are_not_passive(self):
+        # A nonpassive K-1's ordinary loss is not a passive loss at all.
+        active = ScheduleK1(
+            entity_name="Fake Active LP", entity_ein="00-0000000",
+            entity_type="partnership", material_participation=True,
+            ordinary_business_income=-9_000.0)
+        r = self.orch.compute_federal(_scenario(
+            wages=60_000, rentals=[self._rental(5_000.0, 2_000.0)],
+            k1s=[active]))
+        self.assertEqual(r["agi"], 54_000)
 
     def test_allowed_but_undeducted_carryforward_refuses(self):
         # Passive income 9,000 lets Form 8582 allow the whole 3,000 prior-year
@@ -244,35 +316,6 @@ class LimitationBindsRefusalTests(_Case):
                 with self.assertRaisesRegex(NotImplementedError, _REFUSAL):
                     self.orch.compute_federal(_scenario(
                         wages=200_000, rentals=[_loss_rental()], year=year))
-
-
-class RentalRealEstateClassificationTests(unittest.TestCase):
-    """Which passive K-1s reach Form 8582 as rental real estate: only those
-    whose rental real estate box is their ONLY nonzero business box."""
-
-    @staticmethod
-    def _flag(**boxes) -> bool:
-        from tenforty.forms import sch_e_part_ii
-        k1 = ScheduleK1(
-            entity_name="Fake LP", entity_ein="00-0000000",
-            entity_type="partnership", material_participation=False, **boxes)
-        _fields, fanout = sch_e_part_ii.compute(
-            _scenario(wages=60_000, k1s=[k1]), upstream={})
-        (activity,) = fanout.passive_activities
-        return activity.rental_real_estate_only
-
-    def test_only_a_pure_rental_real_estate_k1_is_rental(self):
-        self.assertIs(self._flag(net_rental_real_estate=-10_000.0), True)
-        self.assertIs(self._flag(net_rental_real_estate=4_000.0), True)
-        for other in ("ordinary_business_income", "other_net_rental",
-                      "royalties", "other_income"):
-            with self.subTest(other_box=other):
-                self.assertIs(self._flag(
-                    net_rental_real_estate=-10_000.0, **{other: 1.0}), False)
-                self.assertIs(self._flag(**{other: -5_000.0}), False)
-
-    def test_k1_with_no_business_box_is_not_rental(self):
-        self.assertIs(self._flag(interest_income=100.0), False)
 
 
 class ShippedFixtureTests(_Case):
@@ -300,9 +343,11 @@ class LedgerEntryTests(unittest.TestCase):
     """The entry itself, over a Form 8582 result (stage "schedules")."""
 
     @staticmethod
-    def _f8582(loss, carryforward, allowed, *, income=0, non_rental=0) -> dict:
+    def _f8582(loss, carryforward, allowed, *, non_rental_loss=0,
+               non_rental_income=0) -> dict:
         return {"f8582": _block(
-            loss, carryforward, allowed, income=income, non_rental=non_rental)}
+            loss, carryforward, allowed, non_rental_loss=non_rental_loss,
+            non_rental_income=non_rental_income)}
 
     def test_fires_on_a_suspended_loss(self):
         with self.assertRaisesRegex(NotImplementedError, _REFUSAL):
@@ -321,21 +366,27 @@ class LedgerEntryTests(unittest.TestCase):
         enforce_scoped_refusals({"f8582": None}, "schedules")
         enforce_scoped_refusals(self._f8582(0, 0, 0), "schedules")
 
-    def test_fires_when_non_rental_losses_exceed_passive_income(self):
+    def test_fires_when_non_rental_losses_exceed_non_rental_income(self):
         # Nothing "suspended" by the form's own figure (20,000 allowed of
-        # 20,000), but 20,000 of non-rental loss against 3,000 of income.
+        # 20,000), but 20,000 of non-rental loss against 3,000 of non-rental
+        # income.
         with self.assertRaisesRegex(
                 NotImplementedError, r"non-rental passive losses of 20,000 "
-                r"exceed passive income of 3,000"):
+                r"exceed non-rental passive income of 3,000"):
             enforce_scoped_refusals(self._f8582(
-                20_000, 0, 20_000, income=3_000, non_rental=20_000),
-                "schedules")
+                20_000, 0, 20_000, non_rental_loss=20_000,
+                non_rental_income=3_000), "schedules")
 
-    def test_silent_when_passive_income_covers_non_rental_losses(self):
+    def test_silent_when_non_rental_income_covers_non_rental_losses(self):
         enforce_scoped_refusals(self._f8582(
-            2_000, 0, 2_000, income=3_000, non_rental=2_000), "schedules")
+            2_000, 0, 2_000, non_rental_loss=2_000, non_rental_income=3_000),
+            "schedules")
         enforce_scoped_refusals(self._f8582(
-            3_000, 0, 3_000, income=3_000, non_rental=3_000), "schedules")
+            3_000, 0, 3_000, non_rental_loss=3_000, non_rental_income=3_000),
+            "schedules")
+        # Income with no loss at all is not a reason either.
+        enforce_scoped_refusals(self._f8582(
+            0, 0, 0, non_rental_loss=0, non_rental_income=3_000), "schedules")
 
     def test_present_block_missing_an_expected_key_fails_loudly(self):
         # A Form 8582 block that IS present but lacks a figure the predicates
