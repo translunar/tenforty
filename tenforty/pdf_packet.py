@@ -66,7 +66,7 @@ class Packet:
 #   1040 (main), Sch 1 (01), Sch 2 (02), Sch A (07), Sch B (08), Sch C (09,
 #   one per business), Sch D (12), Form 8949 (12A), Sch E (13), Sch SE (17),
 #   Form 8995 (55), Form 8959 (71), Form 8962 (73), Form 8582 (88),
-#   Form 4562 (179).
+#   Form 4562 (179), Form 3115 (315) followed by its Schedule E statement.
 FEDERAL_INDIVIDUAL = Packet(
     name="federal_individual",
     filename_template="f1040_{year}_complete.pdf",
@@ -86,6 +86,8 @@ FEDERAL_INDIVIDUAL = Packet(
         PacketMember("8962"),
         PacketMember("f8582"),
         PacketMember("f4562"),
+        PacketMember("f3115"),
+        PacketMember("f3115_asset_stmt"),
     ),
 )
 
@@ -134,7 +136,10 @@ PACKETS: tuple[Packet, ...] = (
 # Emitted keys that belong to no packet — separate filings or non-return
 # artifacts. Form 4868 (extension request) is filed on its own, so it stays a
 # standalone loose PDF rather than being folded into the 1040 packet.
-STANDALONE_KEYS: frozenset[str] = frozenset({"4868"})
+# The Form 3115 duplicate copy (form + statement) is likewise its own filing:
+# it is signed and sent to the IRS separately from the return that carries
+# the original.
+STANDALONE_KEYS: frozenset[str] = frozenset({"4868", "f3115_duplicate_copy"})
 
 # Source documents (the taxpayer's real issued PDFs — W-2 Copy B today)
 # splice in immediately after the main form's pages, mirroring the

@@ -22,12 +22,17 @@ at sch_e_part_ii compute time appear in the same logical order as the old
 per-field checks they replace, so existing tests that assert on which error
 fires first for a given scenario remain green."""
 
+import dataclasses
+import math
+import re
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
 from tenforty.models import (
-    PERSONAL_PROPERTY_CLASSES, REAL_PROPERTY_CLASSES,
-    SUPPORTED_RECOVERY_CLASSES, EntityType, Scenario,
+    FORM_3115_ASSET_ACCOUNTS, PERSONAL_PROPERTY_CLASSES,
+    REAL_PROPERTY_CLASSES, SUPPORTED_RECOVERY_CLASSES, EntityType,
+    FilingStatus, Form3115, Form3115Asset, Scenario,
 )
 from tenforty.rounding import irs_round
 
@@ -1742,10 +1747,637 @@ _SCHEDULE_E_PRINT_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
+
+# --- Form 3115 (Application for Change in Accounting Method) ---------------
+#
+# v1 prints ONE answer pattern: an individual's automatic change number 7
+# (depreciation, impermissible to permissible), not under examination, not
+# before Appeals or a court. Everything else is refused here by name rather
+# than printed as an application tenforty cannot stand behind.
+
+FORM_3115_KEY = "form_3115"
+# The block's keys ARE the model's fields: none has a default, so every one
+# is required and no other is known.
+FORM_3115_BLOCK_KEYS: tuple[str, ...] = tuple(
+    f.name for f in dataclasses.fields(Form3115))
+FORM_3115_ASSET_KEYS: tuple[str, ...] = tuple(
+    f.name for f in dataclasses.fields(Form3115Asset))
+FORM_3115_SUPPORTED_CHANGE_NUMBER = 7
+FORM_3115_SUPPORTED_APPLICANT_TYPE = "individual"
+FORM_3115_SUPPORTED_TYPE_OF_CHANGE = "depreciation_or_amortization"
+# Form 3115 instructions (Rev. December 2022), line 28: the 1-year election
+# is for "a positive section 481(a) adjustment that is less than $50,000".
+FORM_3115_DE_MINIMIS_LIMIT = 50_000
+
+_FORM_3115_ASSET_TEXT_COLUMNS: tuple[str, ...] = (
+    "description", "property_type", "use_in_activity",
+    "tax_credits_or_grants", "present_method", "present_recovery_period",
+    "present_convention", "proposed_method", "proposed_recovery_period",
+    "proposed_convention", "code_section", "asset_class", "asset_account",
+)
+_FORM_3115_ASSET_AMOUNT_COLUMNS: tuple[str, ...] = (
+    "unadjusted_basis", "depreciation_claimed_present_method")
+_FORM_3115_IDENTITY_FIELDS: tuple[str, ...] = (
+    "first_name", "last_name", "ssn", "address", "address_city",
+    "address_state", "address_zip")
+
+
+def _raw_form_3115(raw):
+    return raw.get(FORM_3115_KEY) if isinstance(raw, dict) else None
+
+
+def _raw_form_3115_assets(raw) -> list:
+    """(label, row) for each asset row that is a mapping. A malformed
+    `assets` value or row is reported by `_raw_form_3115_not_a_mapping`."""
+    block = _raw_form_3115(raw)
+    if not isinstance(block, dict) or not isinstance(block.get("assets"), list):
+        return []
+    return [(f"form_3115.assets[{i}]", row)
+            for i, row in enumerate(block["assets"]) if isinstance(row, dict)]
+
+
+def _raw_form_3115_not_a_mapping(raw) -> list[str]:
+    block = _raw_form_3115(raw)
+    if block is None:
+        # A key written with no value is a block the user meant to fill,
+        # not an absent one.
+        if isinstance(raw, dict) and FORM_3115_KEY in raw:
+            return ["form_3115 is present but empty (null); fill the block "
+                    "or remove the key"]
+        return []
+    if not isinstance(block, dict):
+        return [f"form_3115 must be a mapping; got {block!r}"]
+    if "assets" not in block:
+        return []
+    assets = block["assets"]
+    if not isinstance(assets, list):
+        return [f"form_3115.assets must be a list of mappings; got {assets!r}"]
+    return [f"form_3115.assets[{i}] must be a mapping; got {row!r}"
+            for i, row in enumerate(assets) if not isinstance(row, dict)]
+
+
+def _raw_form_3115_unknown_keys(raw) -> list[str]:
+    block = _raw_form_3115(raw)
+    if not isinstance(block, dict):
+        return []
+    out = [f"form_3115: {sorted(unknown)}"] if (
+        unknown := set(block) - set(FORM_3115_BLOCK_KEYS)) else []
+    for label, row in _raw_form_3115_assets(raw):
+        if unknown := set(row) - set(FORM_3115_ASSET_KEYS):
+            out.append(f"{label}: {sorted(unknown)}")
+    return out
+
+
+def _raw_form_3115_missing_keys(raw) -> list[str]:
+    block = _raw_form_3115(raw)
+    if not isinstance(block, dict):
+        return []
+    out = [f"form_3115: {missing}"] if (
+        missing := [k for k in FORM_3115_BLOCK_KEYS if k not in block]) else []
+    for label, row in _raw_form_3115_assets(raw):
+        if missing := [k for k in FORM_3115_ASSET_KEYS if k not in row]:
+            out.append(f"{label}: {missing}")
+    return out
+
+
+def _f3115(s: Scenario) -> Form3115 | None:
+    return getattr(s, "form_3115", None)
+
+
+def _blank(value) -> bool:
+    return not isinstance(value, str) or not value.strip()
+
+
+def _f3115_year_mismatch(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None or f.year_of_change == s.config.year:
+        return []
+    return [f"year_of_change {f.year_of_change} is not the return's tax "
+            f"year {s.config.year}"]
+
+
+def _f3115_change_number(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None or (
+            f.designated_change_number == FORM_3115_SUPPORTED_CHANGE_NUMBER
+            and not isinstance(f.designated_change_number, bool)):
+        return []
+    return [f"designated_change_number {f.designated_change_number}"]
+
+
+def _f3115_tax_year_dates(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    out = []
+    if f.tax_year_begins.year != f.year_of_change:
+        out.append(
+            f"tax_year_begins {f.tax_year_begins.isoformat()} is not in the "
+            f"year of change {f.year_of_change}")
+    if f.tax_year_ends <= f.tax_year_begins:
+        out.append(
+            f"tax_year_ends {f.tax_year_ends.isoformat()} is not after "
+            f"tax_year_begins {f.tax_year_begins.isoformat()}")
+    return out
+
+
+def _f3115_applicant_type(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None or f.applicant_type == FORM_3115_SUPPORTED_APPLICANT_TYPE:
+        return []
+    return [f"applicant_type {f.applicant_type!r}"]
+
+
+def _f3115_type_of_change(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None or f.type_of_change == FORM_3115_SUPPORTED_TYPE_OF_CHANGE:
+        return []
+    return [f"type_of_change {f.type_of_change!r}"]
+
+
+def _f3115_joint_filer(s: Scenario) -> list[str]:
+    if _f3115(s) is None:
+        return []
+    status = FilingStatus(s.config.filing_status)
+    return ([status.value] if status is FilingStatus.MARRIED_JOINTLY else [])
+
+
+def _f3115_identity_missing(s: Scenario) -> list[str]:
+    if _f3115(s) is None:
+        return []
+    return [f"config.{name}" for name in _FORM_3115_IDENTITY_FIELDS
+            if _blank(getattr(s.config, name))]
+
+
+def _f3115_contact_missing(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    return [f"form_3115.{name}" for name in ("contact_person", "contact_phone")
+            if _blank(getattr(f, name))]
+
+
+def _f3115_activity_code(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    code = None if f is None else f.principal_business_activity_code
+    if code is None or (isinstance(code, str) and re.fullmatch(r"\d{6}", code)):
+        return []
+    return [repr(code)]
+
+
+def _f3115_election_ineligible(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None or not f.elect_one_year_spread:
+        return []
+    if 0 < f.section_481a_adjustment < FORM_3115_DE_MINIMIS_LIMIT:
+        return []
+    return [f"{f.section_481a_adjustment:,.2f}"]
+
+
+def _f3115_no_assets(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    return ["form_3115.assets"] if f is not None and not f.assets else []
+
+
+def _f3115_asset_label(index: int, asset: Form3115Asset) -> str:
+    return f"form_3115.assets[{index}] ({asset.description!r})"
+
+
+def _f3115_asset_blank_columns(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    return [f"{_f3115_asset_label(i, a)} {column}"
+            for i, a in enumerate(f.assets)
+            for column in _FORM_3115_ASSET_TEXT_COLUMNS
+            if _blank(getattr(a, column))]
+
+
+def _f3115_asset_account_unknown(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    return [f"{_f3115_asset_label(i, a)} asset_account {a.asset_account!r}"
+            for i, a in enumerate(f.assets)
+            if not _blank(a.asset_account)
+            and a.asset_account not in FORM_3115_ASSET_ACCOUNTS]
+
+
+def _f3115_asset_negative_amounts(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    return [f"{_f3115_asset_label(i, a)} {column} {getattr(a, column):,.2f}"
+            for i, a in enumerate(f.assets)
+            for column in _FORM_3115_ASSET_AMOUNT_COLUMNS
+            if getattr(a, column) < 0]
+
+
+def _amendment_scenarios_with_form_3115(subject) -> list[str]:
+    """Subject: ``{"original": Scenario, "amended": Scenario}``."""
+    if not isinstance(subject, dict):
+        return []
+    return [label for label, s in subject.items() if _f3115(s) is not None]
+
+
+def _is_bool_field(field: dataclasses.Field) -> bool:
+    return field.type is bool or field.type == (bool | None)
+
+
+# Yes/No answers on the block, and whether each may be stated None.
+_FORM_3115_ANSWER_FIELDS: dict[str, bool] = {
+    f.name: f.type != bool
+    for f in dataclasses.fields(Form3115) if _is_bool_field(f)}
+_FORM_3115_ASSET_ANSWER_FIELDS: tuple[str, ...] = tuple(
+    f.name for f in dataclasses.fields(Form3115Asset) if _is_bool_field(f))
+
+
+def _f3115_non_boolean_answers(s: Scenario) -> list[str]:
+    """Answers that are neither True nor False. The loader types every
+    answer, so only a Scenario built in code can carry one; printed, it
+    would check neither box of its Yes/No pair."""
+    f = _f3115(s)
+    if f is None:
+        return []
+    out = []
+    for name, nullable in _FORM_3115_ANSWER_FIELDS.items():
+        value = getattr(f, name)
+        if not (isinstance(value, bool) or (nullable and value is None)):
+            out.append(f"form_3115.{name} ({value!r})")
+    for i, asset in enumerate(f.assets):
+        for name in _FORM_3115_ASSET_ANSWER_FIELDS:
+            value = getattr(asset, name)
+            if not isinstance(value, bool):
+                out.append(f"form_3115.assets[{i}].{name} ({value!r})")
+    return out
+
+
+def _cent_exact(amount) -> bool:
+    """True when ``amount`` is a whole number of cents as written. A
+    non-finite or non-numeric value is not this check's question."""
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+        return True
+    if not math.isfinite(amount):
+        return True
+    value = Decimal(repr(amount))
+    return value == value.quantize(Decimal("0.01"))
+
+
+def _f3115_amounts_not_cent_exact(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    out = []
+    if not _cent_exact(f.section_481a_adjustment):
+        out.append(
+            f"form_3115.section_481a_adjustment {f.section_481a_adjustment!r}")
+    for i, asset in enumerate(f.assets):
+        for column in _FORM_3115_ASSET_AMOUNT_COLUMNS:
+            if not _cent_exact(getattr(asset, column)):
+                out.append(f"{_f3115_asset_label(i, asset)} {column} "
+                           f"{getattr(asset, column)!r}")
+    return out
+
+
+@dataclass(frozen=True)
+class _Form3115Answer:
+    """One Form 3115 answer v1 cannot print: the registry name's suffix, the
+    block field, the answer that refuses, where it sits on the form, and
+    why. The opposite answer prints."""
+
+    name: str
+    field: str
+    refused: bool
+    line: str
+    reason: str
+
+
+# Reasons restate the form (Rev. December 2022) or its instructions; none is
+# a judgment about the applicant's eligibility.
+_FORM_3115_UNSUPPORTED_ANSWERS: tuple[_Form3115Answer, ...] = (
+    _Form3115Answer(
+        "correspondence_by_fax_or_email",
+        "wants_correspondence_by_fax_or_email", True,
+        "page 1, correspondence by fax or encrypted email attachment",
+        "a \"Yes\" needs an attached statement requesting the service, "
+        "which tenforty does not produce"),
+    _Form3115Answer(
+        "eligibility_rules_restrict",
+        "eligibility_rules_restrict_automatic_change", True, "line 2",
+        "a \"Yes\" says the eligibility rules restrict the automatic change "
+        "and needs an attached explanation of why the applicant qualifies"),
+    _Form3115Answer(
+        "information_incomplete", "all_required_information_provided", False,
+        "line 3",
+        "a \"No\" says the filer has not provided all the information and "
+        "statements the form and the List of Automatic Changes require"),
+    _Form3115Answer(
+        "final_year_of_trade_or_business",
+        "ceases_trade_or_terminates_in_year_of_change", True, "line 4",
+        "a \"Yes\" needs an attached statement explaining why the applicant "
+        "is eligible to change its method in that year"),
+    _Form3115Answer(
+        "section_381_principal_method",
+        "changing_to_section_381_principal_method", True, "line 5",
+        "the form says that on a \"Yes\" the applicant cannot file a Form "
+        "3115 for this change"),
+    _Form3115Answer(
+        "under_examination", "under_examination", True, "line 6a",
+        "unsupported in v1: an applicant under examination also completes "
+        "lines 6b-6d, gives the examining agent a copy, picks a line 7b "
+        "audit-protection category other than \"Not under exam\", and may "
+        "have a 2-year adjustment period, none of which tenforty builds"),
+    _Form3115Answer(
+        "no_audit_protection", "audit_protection_applies", False, "line 7a",
+        "a \"No\" needs an attached explanation, which tenforty does not "
+        "produce"),
+    _Form3115Answer(
+        "before_appeals_or_court", "before_appeals_or_federal_court", True,
+        "line 8a",
+        "unsupported in v1: a return before Appeals or a federal court also "
+        "needs lines 8b-8d and a copy to the Appeals officer or government "
+        "counsel, none of which tenforty builds"),
+    _Form3115Answer(
+        "prior_change_within_five_years",
+        "prior_method_change_within_five_years", True, "line 11a",
+        "prior §446(e) change within 5 years — eligibility interaction "
+        "with Rev. Proc. 2022-14 §6.01 not encoded in v1"),
+    _Form3115Answer(
+        "pending_request", "pending_ruling_or_method_change_request", True,
+        "line 12",
+        "a \"Yes\" needs an attached statement for each pending request, "
+        "which tenforty does not produce"),
+    _Form3115Answer(
+        "overall_method_change", "changing_overall_method", True, "line 13",
+        "a \"Yes\" requires Schedule A, which tenforty does not complete"),
+    _Form3115Answer(
+        "cut_off_basis", "cut_off_basis", True, "line 25",
+        "on a \"Yes\" the form says to attach an explanation and not to "
+        "complete lines 26 through 29, so there is no section 481(a) "
+        "adjustment to print"),
+    _Form3115Answer(
+        "prior_adjustment_remaining",
+        "prior_section_481a_adjustment_remaining", True, "line 27",
+        "a \"Yes\" needs the remaining amount of a prior section 481(a) "
+        "adjustment, which tenforty does not model"),
+    _Form3115Answer(
+        "related_party_adjustment",
+        "adjustment_from_related_party_transactions", True, "line 29",
+        "a \"Yes\" needs an attached explanation, which tenforty does not "
+        "produce"),
+    _Form3115Answer(
+        "cladr", "depreciation_under_cladr", True, "Schedule E, line 1",
+        "on a \"Yes\" the form says the only changes permitted are under "
+        "Regulations section 1.167(a)-11(c)(1)(iii)"),
+    _Form3115Answer(
+        "depreciation_capitalized",
+        "depreciation_capitalized_under_another_section", True,
+        "Schedule E, line 2",
+        "a \"Yes\" needs the applicable Code section entered, which "
+        "tenforty does not model"),
+    _Form3115Answer(
+        "depreciation_election", "depreciation_election_made", True,
+        "Schedule E, line 3",
+        "a \"Yes\" needs the election stated, which tenforty does not "
+        "model"),
+    _Form3115Answer(
+        "public_utility_property", "public_utility_property", True,
+        "Schedule E, line 4c",
+        "unsupported in v1: public utility property is not modeled"),
+)
+
+
+def _form_3115_answer_refusal(answer: _Form3115Answer) -> "ScopedRefusal":
+    def offenders(s: Scenario) -> list[str]:
+        f = _f3115(s)
+        if f is None or getattr(f, answer.field) is not answer.refused:
+            return []
+        return [f"`form_3115.{answer.field}: "
+                f"{'true' if answer.refused else 'false'}`"]
+
+    return ScopedRefusal(
+        name=f"form_3115_{answer.name}",
+        stage="load",
+        offenders=offenders,
+        message=lambda o: (
+            f"Form 3115 {answer.line}: {_join(o)} cannot be printed -- "
+            f"{answer.reason}. No Form 3115 is emitted for this scenario."),
+        exception=NotImplementedError,
+    )
+
+
+_FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
+    ScopedRefusal(
+        name="form_3115_not_a_mapping",
+        stage="parse",
+        offenders=_raw_form_3115_not_a_mapping,
+        message=lambda o: f"Malformed `form_3115:` block: {_join(o)}.",
+    ),
+    ScopedRefusal(
+        name="form_3115_unknown_key",
+        stage="parse",
+        offenders=_raw_form_3115_unknown_keys,
+        message=lambda o: (
+            f"Unknown key(s) in the `form_3115:` block -- {_join(o)}. "
+            f"Known keys: {sorted(FORM_3115_BLOCK_KEYS)}; known asset keys: "
+            f"{sorted(FORM_3115_ASSET_KEYS)}."),
+    ),
+    ScopedRefusal(
+        name="form_3115_missing_key",
+        stage="parse",
+        offenders=_raw_form_3115_missing_keys,
+        message=lambda o: (
+            f"The `form_3115:` block is missing required key(s) -- "
+            f"{_join(o)}. Every Form 3115 answer and every asset column is "
+            f"an explicit statement with no default: an application is "
+            f"signed under penalties of perjury, so nothing on it is "
+            f"assumed and nothing is printed blank."),
+    ),
+    # First of the load entries: the predicates below read these answers.
+    ScopedRefusal(
+        name="form_3115_answer_not_boolean",
+        stage="load",
+        offenders=_f3115_non_boolean_answers,
+        message=lambda o: (
+            f"Form 3115: {_join(o)} must be true or false. Each is a Yes/No "
+            f"answer on a signed application; any other value would print "
+            f"with neither box checked."),
+    ),
+    ScopedRefusal(
+        name="form_3115_year_of_change_mismatch",
+        stage="load",
+        offenders=_f3115_year_mismatch,
+        message=lambda o: (
+            f"Form 3115: {_join(o)}. The original Form 3115 is attached to "
+            f"the return for the year of change, so `form_3115."
+            f"year_of_change` must equal `config.year`."),
+    ),
+    ScopedRefusal(
+        name="form_3115_change_number_unsupported",
+        stage="load",
+        offenders=_f3115_change_number,
+        message=lambda o: (
+            f"Form 3115 line 1a: {_join(o)} is not supported. tenforty "
+            f"prints only designated automatic accounting method change "
+            f"number {FORM_3115_SUPPORTED_CHANGE_NUMBER} (depreciation or "
+            f"amortization, impermissible to permissible) in v1; each other "
+            f"change has its own eligibility rules, schedules and "
+            f"statements, none of which are built."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="form_3115_tax_year_dates",
+        stage="load",
+        offenders=_f3115_tax_year_dates,
+        message=lambda o: (
+            f"Form 3115 \"Tax year of change begins / ends\": {_join(o)}."),
+    ),
+    ScopedRefusal(
+        name="form_3115_applicant_type_unsupported",
+        stage="load",
+        offenders=_f3115_applicant_type,
+        message=lambda o: (
+            f"Form 3115 type of applicant: {_join(o)} is not supported. "
+            f"tenforty prints the application for an individual only "
+            f"(`applicant_type: {FORM_3115_SUPPORTED_APPLICANT_TYPE}`), "
+            f"with the name, identification number and address taken from "
+            f"`config`."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="form_3115_type_of_change_unsupported",
+        stage="load",
+        offenders=_f3115_type_of_change,
+        message=lambda o: (
+            f"Form 3115 type of accounting method change: {_join(o)} is "
+            f"not supported. tenforty checks only the \"Depreciation or "
+            f"Amortization\" box (`type_of_change: "
+            f"{FORM_3115_SUPPORTED_TYPE_OF_CHANGE}`)."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="form_3115_joint_filer_unsupported",
+        stage="load",
+        offenders=_f3115_joint_filer,
+        message=lambda o: (
+            f"Form 3115 on a joint return (filing_status {_join(o)}) is not "
+            f"supported: the instructions call for both spouses' names, "
+            f"identification numbers and signatures, and tenforty fills one "
+            f"applicant's."),
+        exception=NotImplementedError,
+    ),
+    ScopedRefusal(
+        name="form_3115_applicant_identity_missing",
+        stage="load",
+        offenders=_f3115_identity_missing,
+        message=lambda o: (
+            f"Form 3115 takes the applicant's name, identification number "
+            f"and address from `config`, and {_join(o)} is blank. Set it; "
+            f"the application is not printed with a blank identity cell."),
+    ),
+    ScopedRefusal(
+        name="form_3115_contact_missing",
+        stage="load",
+        offenders=_f3115_contact_missing,
+        message=lambda o: (
+            f"Form 3115 contact person: {_join(o)} is blank. State the "
+            f"contact person's name and telephone number."),
+    ),
+    ScopedRefusal(
+        name="form_3115_business_activity_code_malformed",
+        stage="load",
+        offenders=_f3115_activity_code,
+        message=lambda o: (
+            f"`form_3115.principal_business_activity_code` is {_join(o)}; "
+            f"the form takes the filer's 6-digit principal business "
+            f"activity code. State six digits, or null when the filer is "
+            f"not a business."),
+    ),
+    # Before the election: its limit is tested on the amount as printed.
+    ScopedRefusal(
+        name="form_3115_amount_not_cent_exact",
+        stage="load",
+        offenders=_f3115_amounts_not_cent_exact,
+        message=lambda o: (
+            f"Form 3115: {_join(o)} is not exact to the cent. Amounts are "
+            f"printed as stated, to the cent at most, so a finer amount "
+            f"would print as a different figure than the one tested "
+            f"against the line 28 limit. State it to the cent."),
+    ),
+    ScopedRefusal(
+        name="form_3115_one_year_election_ineligible",
+        stage="load",
+        offenders=_f3115_election_ineligible,
+        message=lambda o: (
+            f"`form_3115.elect_one_year_spread` is true but the stated "
+            f"section 481(a) adjustment is {_join(o)}. The line 28 "
+            f"de minimis election is for a positive adjustment that is less "
+            f"than ${FORM_3115_DE_MINIMIS_LIMIT:,}; a negative adjustment "
+            f"is taken in one year by rule, so there is no election to "
+            f"make. Set `elect_one_year_spread: false`."),
+    ),
+    ScopedRefusal(
+        name="form_3115_no_assets",
+        stage="load",
+        offenders=_f3115_no_assets,
+        message=lambda o: (
+            f"{_join(o)} is empty. Schedule E lines 4a and 7 require a "
+            f"statement describing the property subject to the change; "
+            f"list each item of property."),
+    ),
+    ScopedRefusal(
+        name="form_3115_asset_field_blank",
+        stage="load",
+        offenders=_f3115_asset_blank_columns,
+        message=lambda o: (
+            f"Form 3115 Schedule E statement: {_join(o)} is blank. Every "
+            f"column of every asset is printed as stated; none is left "
+            f"blank."),
+    ),
+    ScopedRefusal(
+        name="form_3115_asset_account_unknown",
+        stage="load",
+        offenders=_f3115_asset_account_unknown,
+        message=lambda o: (
+            f"Form 3115 Schedule E line 7h: {_join(o)} is not one of "
+            f"{sorted(FORM_3115_ASSET_ACCOUNTS)}."),
+    ),
+    ScopedRefusal(
+        name="form_3115_asset_amount_negative",
+        stage="load",
+        offenders=_f3115_asset_negative_amounts,
+        message=lambda o: (
+            f"Form 3115 Schedule E statement: {_join(o)} is negative. A "
+            f"basis or a depreciation total is stated as a positive "
+            f"amount."),
+    ),
+    *(_form_3115_answer_refusal(a) for a in _FORM_3115_UNSUPPORTED_ANSWERS),
+    # Asked by ReturnOrchestrator.run_amendment_packet through
+    # `enforce_named_refusal`, with the amendment's scenarios as the subject:
+    # whether a run is an amendment is a property of the entry point, not of
+    # a Scenario, so the ordinary emit pass (a lone Scenario) finds nothing.
+    ScopedRefusal(
+        name="form_3115_in_amendment_packet",
+        stage="emit",
+        offenders=_amendment_scenarios_with_form_3115,
+        message=lambda o: (
+            f"The {' and '.join(o)} scenario carries a `form_3115:` block, and an "
+            f"amendment packet does not carry a Form 3115: the instructions "
+            f"attach the original to the timely filed return for the year "
+            f"of change, and tenforty does not build an amended-return "
+            f"filing of the application. Remove the block from the "
+            f"amendment scenarios."),
+        exception=NotImplementedError,
+    ),
+)
+
+
+
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
     + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
     + _PASSIVE_LOSS_REFUSALS + _SCHEDULE_E_PRINT_REFUSALS
+    + _FORM_3115_REFUSALS
 )
 
 
@@ -1770,6 +2402,36 @@ def enforce_scoped_refusals(
         offenders = refusal.offenders(subject)
         if offenders:
             raise refusal.exception(refusal.message(offenders))
+
+
+_FORM_3115_REFUSAL_NAMES: frozenset[str] = frozenset(
+    r.name for r in _FORM_3115_REFUSALS)
+
+
+def enforce_form_3115_refusals(scenario: Scenario) -> None:
+    """Run only the Form 3115 load-stage entries of the ledger. For the emit
+    path, which may be handed a Scenario that never passed the loader or the
+    compute entry: the application is refused before any PDF is written."""
+    for refusal in _SCOPED_REFUSALS:
+        if (refusal.stage != "load"
+                or refusal.name not in _FORM_3115_REFUSAL_NAMES):
+            continue
+        offenders = refusal.offenders(scenario)
+        if offenders:
+            raise refusal.exception(refusal.message(offenders))
+
+
+def enforce_named_refusal(name: str, subject) -> None:
+    """Ask the one registered refusal ``name`` about ``subject`` and raise it
+    if its predicate finds offenders. For a question only one entry point
+    can pose, whose subject is not the Scenario the stage passes carry."""
+    for refusal in _SCOPED_REFUSALS:
+        if refusal.name == name:
+            offenders = refusal.offenders(subject)
+            if offenders:
+                raise refusal.exception(refusal.message(offenders))
+            return
+    raise KeyError(f"No scoped refusal named {name!r} is registered.")
 
 
 def raise_scoped_refusal(name: str, offenders: Sequence) -> None:

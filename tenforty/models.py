@@ -1403,6 +1403,99 @@ class AmendmentCase:
     original_tax_paid: float | None = None
 
 
+@dataclass(frozen=True)
+class Form3115Asset:
+    """One item of property on the Form 3115 Schedule E statement (lines 4a
+    and 7). Every column is STATED by the applicant and printed as stated;
+    tenforty derives none of them. No field has a default: a missing column
+    is refused at load, never printed blank.
+
+    ``asset_account`` is one of `FORM_3115_ASSET_ACCOUNTS` (line 7h).
+    ``depreciation_claimed_present_method`` is the depreciation taken under
+    the present method through the close of the year before the change.
+    """
+
+    description: str
+    property_type: str
+    date_placed_in_service: date
+    use_in_activity: str
+    tax_credits_or_grants: str
+    unadjusted_basis: float
+    depreciation_claimed_present_method: float
+    present_method: str
+    present_recovery_period: str
+    present_convention: str
+    proposed_method: str
+    proposed_recovery_period: str
+    proposed_convention: str
+    code_section: str
+    asset_class: str
+    special_depreciation_allowance_claimed: bool
+    asset_account: str
+
+
+# Form 3115 Schedule E line 7h: "a single asset account, a multiple asset
+# account, or a general asset account". Key -> the printed wording.
+FORM_3115_ASSET_ACCOUNTS: dict[str, str] = {
+    "single": "Single asset account",
+    "multiple": "Multiple asset account",
+    "general": "General asset account",
+}
+
+
+@dataclass(frozen=True)
+class Form3115:
+    """Form 3115 (Application for Change in Accounting Method), the top-level
+    `form_3115:` scenario block. v1 prints ONE answer pattern: an individual's
+    automatic change number 7 (depreciation, impermissible to permissible),
+    not under examination and not before Appeals or a court.
+
+    ``section_481a_adjustment`` is STATED, signed (positive = an increase in
+    income). tenforty does not compute it -- the applicant's workpapers do --
+    and does not carry it onto the return's income.
+
+    Every answer is an explicit attestation with no default. The answers v1
+    cannot print are refused by name (`attestations._FORM_3115_REFUSALS`).
+    ``lived_in_residential_rental_before_renting`` (Schedule E line 4b) and
+    ``principal_business_activity_code`` may be stated None: the line is asked
+    only of residential rental property, the code only of a business.
+    """
+
+    year_of_change: int
+    designated_change_number: int
+    section_481a_adjustment: float
+    elect_one_year_spread: bool
+    tax_year_begins: date
+    tax_year_ends: date
+    principal_business_activity_code: str | None
+    contact_person: str
+    contact_phone: str
+    applicant_type: str
+    type_of_change: str
+    wants_correspondence_by_fax_or_email: bool
+    eligibility_rules_restrict_automatic_change: bool
+    all_required_information_provided: bool
+    ceases_trade_or_terminates_in_year_of_change: bool
+    changing_to_section_381_principal_method: bool
+    under_examination: bool
+    audit_protection_applies: bool
+    before_appeals_or_federal_court: bool
+    prior_method_change_within_five_years: bool
+    pending_ruling_or_method_change_request: bool
+    changing_overall_method: bool
+    proposed_method_used_for_books: bool
+    requests_conference_if_adverse: bool
+    cut_off_basis: bool
+    prior_section_481a_adjustment_remaining: bool
+    adjustment_from_related_party_transactions: bool
+    depreciation_under_cladr: bool
+    depreciation_capitalized_under_another_section: bool
+    depreciation_election_made: bool
+    lived_in_residential_rental_before_renting: bool | None
+    public_utility_property: bool
+    assets: tuple[Form3115Asset, ...]
+
+
 @dataclass
 class Scenario:
     config: TaxReturnConfig
@@ -1417,6 +1510,7 @@ class Scenario:
     schedule_c_businesses: list[ScheduleCBusiness] = field(default_factory=list)
     itemized_deductions: ItemizedDeductions | None = None
     form_1095a: Form1095A | None = None
+    form_3115: Form3115 | None = None
     s_corp_return: SCorpReturn | None = None
     ca540: CA540Return | None = None
     # Kept in sync with w2s[*].pdf ONLY by load_scenario's normalization.

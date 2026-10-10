@@ -6,7 +6,8 @@ from pathlib import Path
 import yaml
 
 from tenforty.attestations import (
-    enforce_compute_time, enforce_scoped_refusals,
+    enforce_compute_time, enforce_form_3115_refusals,
+    enforce_named_refusal, enforce_scoped_refusals,
 )
 from tenforty.forms.depreciation.resolver import (
     recon_keys as depreciation_recon_keys,
@@ -79,6 +80,12 @@ from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_f540 import interest_and_penalties_must_be_stated
 from tenforty.mappings.pdf_f540 import AMENDED_RETURN_KEY, AMENDED_RETURN_ON
 from tenforty.mappings.pdf_f1040x import PdfF1040X
+from tenforty.mappings.pdf_f3115 import PdfF3115
+from tenforty.filing.statement_f3115_assets import (
+    render_f3115_asset_statement,
+)
+from tenforty.forms import f3115 as form_f3115
+from tenforty import pdf_packet
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
@@ -1473,6 +1480,9 @@ class ReturnOrchestrator:
         Returns a dict mapping form name to the filled PDF path.
         """
         validate_third_party_designee(scenario.config)
+        # Before anything is written: this method may be handed a Scenario
+        # that never passed the loader or the compute entry.
+        enforce_form_3115_refusals(scenario)
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
 
@@ -1485,12 +1495,64 @@ class ReturnOrchestrator:
             for spec in self._federal_individual_emit_specs(scenario, results)
         }
 
+        # Form 3115 (only when the scenario carries a `form_3115:` block).
+        emitted.update(self._emit_form_3115(scenario, filler, output_dir))
+
         # 1120-S emit (only when scenario.s_corp_return is populated).
         emitted.update(
             self._emit_federal_corporate_pdfs_internal(
                 scenario, results, output_dir))
 
         return emitted
+
+    @staticmethod
+    def _emit_form_3115(
+        scenario: Scenario, filler: PdfFiller, output_dir: Path,
+    ) -> dict[str, Path]:
+        """Emit Form 3115, its Schedule E asset statement, the two together
+        as the duplicate copy to sign, and the filing manifest.
+
+        NOT a ``_FederalFormSpec``: the specs feed the amendment packet's
+        changed-forms selector, and an amendment packet does not carry a Form
+        3115 (``run_amendment_packet`` refuses one). The caller has already
+        run ``enforce_form_3115_refusals``. The form and statement
+        join the federal individual packet (the original is attached to the
+        return); the duplicate copy stays a standalone file because it is
+        signed and filed separately. The manifest is a text file beside them,
+        not an emitted form key.
+        """
+        if scenario.form_3115 is None:
+            return {}
+        from tenforty import years
+        year = scenario.config.year
+        revision = years.REVISION_KEYED_FORM_REVISIONS["f3115"]
+        header = scenario.config.pdf_header()
+
+        form_path = filler.fill(
+            template_path=(
+                _PDFS_ROOT / "federal" / "revision_keyed" / "f3115.pdf"),
+            output_path=output_dir / f"f3115_{year}.pdf",
+            field_mapping=PdfF3115.get_mapping(revision),
+            values=form_f3115.presentation_values(scenario),
+            checkbox_states=PdfF3115.get_checkbox_states(revision),
+        )
+        statement_path = render_f3115_asset_statement(
+            scenario.form_3115, header["taxpayer_name"],
+            header["taxpayer_ssn"],
+            output_dir / f"f3115_asset_statement_{year}.pdf")
+        duplicate_path = pdf_packet.assemble_packet(
+            [form_path, statement_path],
+            output_dir / f"f3115_{year}_duplicate_copy_to_sign.pdf")
+        (output_dir / f"f3115_filing_manifest_{year}.txt").write_text(
+            form_f3115.filing_manifest(
+                scenario, form_file=form_path.name,
+                statement_file=statement_path.name,
+                duplicate_file=duplicate_path.name))
+        return {
+            "f3115": form_path,
+            "f3115_asset_stmt": statement_path,
+            "f3115_duplicate_copy": duplicate_path,
+        }
 
     def _federal_individual_emit_specs(
         self, scenario: Scenario, results: dict,
@@ -2614,6 +2676,11 @@ class ReturnOrchestrator:
         from tenforty import years, selector, amendment
         from tenforty.forms import f1040x as form_f1040x
         from tenforty.forms import schedule_x as form_schedule_x
+
+        # An amendment packet does not carry a Form 3115: refused, not
+        # silently dropped, and before anything is written.
+        enforce_named_refusal("form_3115_in_amendment_packet", {
+            "original": original_scenario, "amended": amended_scenario})
 
         output_dir.mkdir(parents=True, exist_ok=True)
         year = amended_scenario.config.year
