@@ -116,6 +116,10 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_asset_account_unknown",
     "form_3115_asset_amount_negative":
         "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_asset_amount_negative",
+    "form_3115_amount_not_cent_exact":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_amount_not_cent_exact",
+    "form_3115_answer_not_boolean":
+        "tests.test_f3115_emit::NonBooleanAnswerTests::test_emit_refuses_non_boolean_answers",
     "form_3115_correspondence_by_fax_or_email":
         "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_correspondence_by_fax_or_email",
     "form_3115_eligibility_rules_restrict":
@@ -453,6 +457,8 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "form_3115_asset_field_blank",
                 "form_3115_asset_account_unknown",
                 "form_3115_asset_amount_negative",
+                "form_3115_amount_not_cent_exact",
+                "form_3115_answer_not_boolean",
                 "form_3115_correspondence_by_fax_or_email",
                 "form_3115_eligibility_rules_restrict",
                 "form_3115_information_incomplete",

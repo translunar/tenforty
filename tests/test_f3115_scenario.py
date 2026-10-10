@@ -99,6 +99,10 @@ _LOAD_CASES = {
         lambda: fx.scenario_dict(block=_asset_block(
             0, unadjusted_basis=-1.0)),
         ValueError, r"unadjusted_basis"),
+    "form_3115_amount_not_cent_exact": (
+        lambda: fx.scenario_dict(block=_block(
+            section_481a_adjustment=49999.995)),
+        ValueError, r"section_481a_adjustment.*exact to the cent"),
     # --- One answer each: the answer v1 cannot print refuses by name. ---
     "form_3115_correspondence_by_fax_or_email": (
         lambda: fx.scenario_dict(block=_block(
@@ -171,7 +175,10 @@ _LOAD_CASES = {
 }
 
 # Raised directly at the amendment entry; fired in tests/test_f3115_emit.py.
-_FIRED_ELSEWHERE = {"form_3115_in_amendment_packet"}
+# form_3115_answer_not_boolean cannot be reached through the loader (which
+# types every answer first); it is fired on a Scenario built in code.
+_FIRED_ELSEWHERE = {
+    "form_3115_in_amendment_packet", "form_3115_answer_not_boolean"}
 
 
 class LoadingTwinTests(unittest.TestCase):
@@ -291,6 +298,16 @@ class RefusalFiringTests(unittest.TestCase):
             (50000.0, False), (50000.01, False), (0.0, False),
             (-0.01, False), (-31250.0, False),
         ]
+        # An amount finer than a cent cannot be printed as stated, so it
+        # cannot straddle the limit: refused before the election is asked.
+        for adjustment in (49999.995, 49999.999, 0.004, 0.001):
+            block = _block(elect_one_year_spread=True,
+                           section_481a_adjustment=adjustment)
+            with self.subTest(sub_cent=adjustment), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(
+                        ValueError, "exact to the cent"):
+                    fx.load(tmp, fx.scenario_dict(block=block))
         for adjustment, accepted in cases:
             block = _block(elect_one_year_spread=True,
                            section_481a_adjustment=adjustment)
@@ -330,6 +347,173 @@ class RefusalFiringTests(unittest.TestCase):
                 scenario.form_3115, under_examination=True)
             with self.assertRaisesRegex(NotImplementedError, "line 6a"):
                 fx.orchestrator(tmp).compute_federal(scenario)
+
+
+class TextColumnsAreNotCoercedTests(unittest.TestCase):
+    """An unquoted YAML scalar that looks like a number IS a number by the
+    time the loader sees it: `00.11` is 0.11, `0115550100` is octal. A text
+    cell is printed as stated, so a number there refuses instead."""
+
+    def _refuses(self, quoted: str, unquoted: str, where: str):
+        text = fx.scenario_yaml()
+        self.assertGreaterEqual(text.count(quoted), 1, quoted)
+        with tempfile.TemporaryDirectory() as tmp:
+            # The quoted original loads: the twin.
+            fx.load_text(tmp, text)
+            with self.assertRaisesRegex(ValueError, where):
+                fx.load_text(tmp, text.replace(quoted, unquoted, 1))
+
+    def test_unquoted_numeric_text_refuses(self):
+        cases = [
+            ("asset_class: '57.0'", "asset_class: 00.11", "asset_class"),
+            ("asset_class: '57.0'", "asset_class: 00.241", "asset_class"),
+            ("asset_class: '57.0'", "asset_class: 57.00", "asset_class"),
+            ("code_section: '168'", "code_section: 167.10", "code_section"),
+            ("code_section: '168'", "code_section: 168", "code_section"),
+            ("contact_phone: 555-0100", "contact_phone: 0115550100",
+             "contact_phone"),
+            ("principal_business_activity_code: '531110'",
+             "principal_business_activity_code: 531110",
+             "principal_business_activity_code"),
+            ("present_recovery_period: 39 years",
+             "present_recovery_period: 39", "present_recovery_period"),
+        ]
+        for quoted, unquoted, where in cases:
+            with self.subTest(unquoted=unquoted):
+                self._refuses(quoted, unquoted, rf"{where}.*quoted")
+
+    def test_quoted_numeric_text_prints_as_written(self):
+        text = fx.scenario_yaml().replace(
+            "asset_class: '57.0'", "asset_class: '00.11'", 1)
+        with tempfile.TemporaryDirectory() as tmp:
+            form = fx.load_text(tmp, text).form_3115
+        self.assertEqual(form.assets[1].asset_class, "00.11")
+
+    def test_non_text_values_refuse_in_every_text_column(self):
+        block_columns = ("contact_person", "contact_phone", "applicant_type",
+                         "type_of_change", "principal_business_activity_code")
+        asset_columns = (
+            "description", "property_type", "use_in_activity",
+            "tax_credits_or_grants", "present_method",
+            "present_recovery_period", "present_convention",
+            "proposed_method", "proposed_recovery_period",
+            "proposed_convention", "code_section", "asset_class",
+            "asset_account")
+        for value in (7, 5.5, True, ["x"]):
+            for column in block_columns:
+                with self.subTest(column=column, value=value), \
+                        tempfile.TemporaryDirectory() as tmp:
+                    with self.assertRaisesRegex(ValueError, column):
+                        fx.load(tmp, fx.scenario_dict(
+                            block=_block(**{column: value})))
+            for column in asset_columns:
+                with self.subTest(asset_column=column, value=value), \
+                        tempfile.TemporaryDirectory() as tmp:
+                    with self.assertRaisesRegex(
+                            ValueError, rf"assets\[1\]\.{column}"):
+                        fx.load(tmp, fx.scenario_dict(
+                            block=_asset_block(1, **{column: value})))
+
+
+class CentExactAmountTests(unittest.TestCase):
+    def test_amounts_finer_than_a_cent_refuse(self):
+        cases = {
+            "section_481a_adjustment": _block(
+                section_481a_adjustment=-31250.004),
+            "unadjusted_basis": _asset_block(0, unadjusted_basis=240000.004),
+            "depreciation_claimed_present_method": _asset_block(
+                1, depreciation_claimed_present_method=795.001),
+        }
+        for field, block in cases.items():
+            with self.subTest(field=field), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(
+                        ValueError, rf"{field}.*exact to the cent"):
+                    fx.load(tmp, fx.scenario_dict(block=block))
+
+    def test_amounts_stated_to_the_cent_load(self):
+        block = _asset_block(
+            0, unadjusted_basis=240000.25,
+            depreciation_claimed_present_method=41538.1)
+        block["section_481a_adjustment"] = -31250.07
+        with tempfile.TemporaryDirectory() as tmp:
+            form = fx.load(tmp, fx.scenario_dict(block=block)).form_3115
+        self.assertEqual(form.assets[0].unadjusted_basis, 240000.25)
+        self.assertEqual(form.section_481a_adjustment, -31250.07)
+
+
+class RequiredFieldSweepTests(unittest.TestCase):
+    """Each required cell refuses on its OWN blank, naming itself."""
+
+    _TEXT_COLUMNS = (
+        "description", "property_type", "use_in_activity",
+        "tax_credits_or_grants", "present_method", "present_recovery_period",
+        "present_convention", "proposed_method", "proposed_recovery_period",
+        "proposed_convention", "code_section", "asset_class", "asset_account")
+
+    def test_text_columns_are_all_the_asset_text_fields(self):
+        typed = {"date_placed_in_service", "unadjusted_basis",
+                 "depreciation_claimed_present_method",
+                 "special_depreciation_allowance_claimed"}
+        self.assertEqual(
+            set(self._TEXT_COLUMNS) | typed, set(fx.ASSET_BUILDING))
+
+    def test_each_blank_asset_column_refuses_naming_itself(self):
+        for column in self._TEXT_COLUMNS:
+            for blank in ("", "   "):
+                with self.subTest(column=column, blank=blank), \
+                        tempfile.TemporaryDirectory() as tmp:
+                    with self.assertRaisesRegex(
+                            ValueError,
+                            rf"assets\[1\] \(.*\) {column} is blank"):
+                        fx.load(tmp, fx.scenario_dict(
+                            block=_asset_block(1, **{column: blank})))
+
+    def test_each_blank_identity_field_refuses_naming_itself(self):
+        for name in ("first_name", "last_name", "ssn", "address",
+                     "address_city", "address_state", "address_zip"):
+            with self.subTest(field=name), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(
+                        ValueError, rf"config\.{name} is blank"):
+                    fx.load(tmp, fx.scenario_dict(**{name: " "}))
+
+    def test_each_blank_contact_field_refuses_naming_itself(self):
+        for name in ("contact_person", "contact_phone"):
+            with self.subTest(field=name), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(
+                        ValueError, rf"form_3115\.{name} is blank"):
+                    fx.load(tmp, fx.scenario_dict(block=_block(**{name: ""})))
+
+    def test_tax_year_must_end_after_it_begins(self):
+        begins = datetime.date(fx.YEAR, 1, 1)
+        for ends in (begins, datetime.date(fx.YEAR - 1, 12, 31)):
+            with self.subTest(ends=ends), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(
+                        ValueError, r"tax_year_ends .* is not after"):
+                    fx.load(tmp, fx.scenario_dict(
+                        block=_block(tax_year_ends=ends)))
+
+    def test_tax_year_must_begin_in_the_year_of_change(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(
+                    ValueError, r"tax_year_begins .* is not in the year"):
+                fx.load(tmp, fx.scenario_dict(block=_block(
+                    tax_year_begins=datetime.date(fx.YEAR + 1, 1, 1),
+                    tax_year_ends=datetime.date(fx.YEAR + 1, 12, 31))))
+
+
+class NullBlockTests(unittest.TestCase):
+    def test_a_null_block_is_refused_not_treated_as_absent(self):
+        for text in ("form_3115:\n", "form_3115: null\n", "form_3115: ~\n"):
+            data = fx.scenario_dict()
+            del data["form_3115"]
+            with self.subTest(text=text), \
+                    tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaisesRegex(ValueError, r"form_3115.*empty"):
+                    fx.load_text(tmp, fx.scenario_yaml(data) + text)
 
 
 def _firing_test(build, exc, pattern):
@@ -373,6 +557,7 @@ class RefusalLedgerCoverageTests(unittest.TestCase):
             with self.subTest(refusal=name):
                 self.assertEqual(stages[name], "load")
         self.assertEqual(stages["form_3115_in_amendment_packet"], "emit")
+        self.assertEqual(stages["form_3115_answer_not_boolean"], "load")
 
     def test_ledger_is_silent_without_the_block(self):
         data = fx.scenario_dict()
