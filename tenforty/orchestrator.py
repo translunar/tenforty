@@ -1263,6 +1263,11 @@ class ReturnOrchestrator:
         # schedule_results.get("f8962", {}) and defaults every value to 0.
         if f8962_results is not None:
             results["f8962"] = f8962_results
+        # FAIL-CLOSED: Form 8582's allowed loss is computed above but nothing
+        # downstream applies it (Schedule 1 line 5 takes Schedule E as it
+        # stands). Refuse when the limitation binds rather than hand the
+        # spine a loss the limitation cuts.
+        enforce_scoped_refusals(results, "schedules")
         return results, k1_fanout
 
     def _compute_1040_via_workbook(
@@ -1542,6 +1547,10 @@ class ReturnOrchestrator:
                 "interest in a digital asset)?'). It is left unanswered "
                 "(null) in this scenario."
             )
+        # Emit-stage refusal ledger: returns whose numbers compute but whose
+        # printed forms tenforty cannot complete. Run here, at the shared
+        # chokepoint, before any form is prepared.
+        enforce_scoped_refusals(scenario, "emit")
         specs: list[_FederalFormSpec] = []
 
         def _fed(basename: str) -> Path:
@@ -1660,6 +1669,19 @@ class ReturnOrchestrator:
                     q_values[f"sch_e_{question}"] = q_on
                 sch_e_mapping = {**sch_e_mapping, "scalars": q_scalars}
                 sch_e_spec_values = q_values
+            # Line 27 (prior-year unallowed loss question): answered "No"
+            # whenever Part II is used. A return that would have to answer
+            # "Yes" never reaches here -- the emit-stage refusal ledger
+            # (sch_e_line_27_prior_year_unallowed_loss) stops it first.
+            if self._should_emit_sch_e_part_ii(scenario):
+                l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
+                sch_e_mapping = {
+                    **sch_e_mapping,
+                    "scalars": {**sch_e_mapping["scalars"],
+                                "sch_e_line_27_no": l27_path},
+                }
+                sch_e_spec_values = {
+                    **sch_e_spec_values, "sch_e_line_27_no": l27_on}
             # Line 28 column (e) (basis computation required): written only
             # for rows the compute flags (an S corporation box 1 loss). A
             # year with no cell mapping refuses rather than emit the loss row
@@ -1796,13 +1818,18 @@ class ReturnOrchestrator:
             # emitted (e.g. only passive K-1 activity, no rental property).
             if not sch_e_values:
                 sch_e_values = form_sch_e.compute(scenario, upstream=upstream)
+            f8582_values = form_f8582.compute(scenario, upstream={
+                **upstream, "sch_e": sch_e_values,
+            })
+            # The same refusal the native compute runs, re-checked against
+            # the Form 8582 about to print: `results` may not have come
+            # through the native schedule computes (the workbook path).
+            enforce_scoped_refusals({"f8582": f8582_values}, "schedules")
             specs.append(_FederalFormSpec(
                 name="f8582", template=_fed("f8582.pdf"),
                 output_name=f"f8582_{year}.pdf", kind="flat",
                 mapping=PdfF8582.get_mapping(year)["scalars"],
-                values=form_f8582.compute(scenario, upstream={
-                    **upstream, "sch_e": sch_e_values,
-                }),
+                values=f8582_values,
             ))
 
         return specs

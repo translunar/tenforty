@@ -62,6 +62,8 @@ authority if instructions ever disagree with this module):
     line 24     sum of monthly (e) — total premium tax credit
     line 25     sum of monthly (f) — total APTC
     line 26     net PTC = max(0, line24 - line25)
+                (printed cell: blank when line25 > line24 -- see
+                ``f8962_line_26_printed``)
     line 27     excess APTC repayment (pre-cap) = max(0, line25 - line24)
     line 28     repayment limitation: the cap dollars for line 5's FPL
                 band, from ``params.repayment_caps_single`` (ascending
@@ -228,6 +230,11 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     line_29 = min(line_27, line_28) if line_28 is not None else line_27
 
     result["f8962_line_26_net_ptc"] = line_26
+    # Line 26 as PRINTED (i8962, lines 26 and 27): the difference when line 24
+    # is greater; "enter -0-" when the two are equal; "leave line 26 blank"
+    # when line 25 is greater. `f8962_line_26_net_ptc` above stays a number in
+    # every case because the spine adds it into total payments.
+    result["f8962_line_26_printed"] = None if line_25 > line_24 else line_26
     result["f8962_line_27"] = line_27
     result["f8962_line_28"] = line_28
     result["f8962_line_29_repayment"] = line_29
