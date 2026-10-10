@@ -86,7 +86,8 @@ breaking changes are called out explicitly.
   (26 U.S.C. §168(d)(3)) — every personal-property asset placed that year
   is depreciated under the mid-quarter convention, from the table for the
   quarter it was placed in service (Publication 946 (2025), Appendix A,
-  Tables A-2 through A-5, pp. 71–73). This used to refuse; the
+  Tables A-2 through A-5, pp. 71–73). The comparison is made in whole
+  cents, so bases that are exactly 40% never trip. This used to refuse; the
   `mid_quarter_convention` refusal is retired. The tables are transcribed
   twice, independently, and pinned to each other cell for cell. If an asset
   list places personal property this year while another activity states its

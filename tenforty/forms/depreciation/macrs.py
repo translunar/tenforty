@@ -76,6 +76,19 @@ def method_for(recovery_class: str, *, label: str = "asset") -> str:
     return method
 
 
+def require_answer(mid_quarter) -> None:
+    """Refuse anything but a real True / False for the return's 40% answer.
+
+    The argument has no default, but that alone does not keep a caller from
+    passing None (or some other falsy value) and quietly getting half-year.
+    Every function the answer is threaded through calls this first."""
+    if not isinstance(mid_quarter, bool):
+        raise TypeError(
+            f"mid_quarter must be True or False (the return's answer to the "
+            f"mid-quarter 40% test, from resolver.mid_quarter_applies); got "
+            f"{mid_quarter!r}")
+
+
 def placement_quarter(placed: date) -> int:
     """The quarter (1-4) of a calendar tax year a date falls in."""
     return (placed.month - 1) // 3 + 1
@@ -85,6 +98,7 @@ def convention_for(recovery_class: str, *, mid_quarter: bool,
                    label: str = "asset") -> str:
     """The averaging convention a recovery class takes in a placement year
     whose 40% answer is ``mid_quarter``; real property ignores it."""
+    require_answer(mid_quarter)
     if recovery_class in REAL_PROPERTY_CLASSES:
         return MID_MONTH
     if recovery_class in PERSONAL_PROPERTY_CLASSES:
@@ -100,6 +114,7 @@ def asset_convention(asset: DepreciableAsset, *, return_year: int,
     """``(convention, quarter)`` for ``asset`` on a return for
     ``return_year`` whose own 40% answer is ``mid_quarter``. The quarter is
     None unless the convention is mid-quarter."""
+    require_answer(mid_quarter)
     if asset.recovery_class not in PERSONAL_PROPERTY_CLASSES:
         return convention_for(
             asset.recovery_class, mid_quarter=False, label=label), None
@@ -136,6 +151,7 @@ def macrs_deduction(asset: DepreciableAsset, tax_year: int, *,
     This is the table alone: the limit that keeps lifetime depreciation
     within basis is applied by the resolver, which knows what came before.
     """
+    require_answer(mid_quarter)
     label = f"asset {asset.description!r}"
     if asset.disposed is not None:
         raise_scoped_refusal("asset_disposed", [label])
