@@ -81,7 +81,18 @@ def require_answer(mid_quarter) -> None:
 
     The argument has no default, but that alone does not keep a caller from
     passing None (or some other falsy value) and quietly getting half-year.
-    Every function the answer is threaded through calls this first."""
+    Every function the answer is threaded through calls this first.
+
+    The checks OVERLAP on purpose, so two of them cannot be shown to matter
+    by removing them alone (mutation testing reports both as surviving, and
+    both are equivalent mutants, not gaps):
+      - the check in `resolver.resolve`: the answer it carries onto the
+        single-activity view is checked again by
+        `resolver.mid_quarter_applies` on the same call;
+      - the check in `macrs_deduction`: `asset_convention`, which it calls
+        next, checks the same value.
+    Each is kept so the function refuses at its own door whatever its
+    callees do later."""
     if not isinstance(mid_quarter, bool):
         raise TypeError(
             f"mid_quarter must be True or False (the return's answer to the "
