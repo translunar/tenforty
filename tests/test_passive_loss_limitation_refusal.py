@@ -103,6 +103,28 @@ class LimitationBindsRefusalTests(_Case):
             self.orch.compute_federal(
                 _scenario(wages=100_000, k1s=[_passive_k1(-8_000.0)]))
 
+    def test_passive_k1_rental_loss_beyond_income_plus_allowance_refuses(self):
+        # The shape the Form 8582 oracle and emit tests carried before they
+        # were reshaped: an income rental (net 3,000) and a passive K-1 rental
+        # real estate loss of 30,000. Allowed: 3,000 + 25,000 = 28,000 of
+        # 30,000 -> 2,000 suspended. Native path; fires before any workbook.
+        def shaped(k1_loss: float) -> Scenario:
+            return _scenario(
+                wages=100_000,
+                rentals=[RentalProperty(
+                    address="1 Test St", property_type=1,
+                    fair_rental_days=365, personal_use_days=0,
+                    rents_received=5_000.0, mortgage_interest=2_000.0)],
+                k1s=[ScheduleK1(
+                    entity_name="Example LLC", entity_ein="00-0000000",
+                    entity_type="partnership", material_participation=False,
+                    net_rental_real_estate=k1_loss)])
+        twin = self.orch.compute_federal(shaped(-28_000.0))
+        self.assertEqual(twin["f8582_line_11_oracle"], 28_000)
+        with self.assertRaisesRegex(
+                NotImplementedError, _REFUSAL + r": 2,000 of passive loss"):
+            self.orch.compute_federal(shaped(-30_000.0))
+
     def test_allowed_but_undeducted_carryforward_refuses(self):
         # Passive income 9,000 lets Form 8582 allow the whole 3,000 prior-year
         # loss -- nothing suspended -- but the return never deducts it.
@@ -190,6 +212,84 @@ class LedgerEntryTests(unittest.TestCase):
         text = str(caught.exception)
         self.assertIn("9,000 of passive loss", text)
         self.assertIn("prior-year unallowed loss of 4,000", text)
+
+
+class UnknownMagiRefusalTests(_Case):
+    """Form 8582's special allowance turns on modified AGI. A results dict
+    with no ``magi`` key (the workbook path's) must not be read as 0 -- that
+    grants the maximum allowance. With something to limit, it refuses."""
+
+    _UNKNOWN = r"modified adjusted gross income is unknown"
+
+    def test_form_8582_flags_a_missing_magi_and_not_a_present_one(self):
+        from tenforty.forms import f8582 as form_f8582
+        from tenforty.forms import sch_e as form_sch_e
+        scenario = _scenario(wages=100_000, rentals=[_loss_rental()])
+        sch_e = form_sch_e.compute(scenario, upstream={})
+        missing = form_f8582.compute(
+            scenario, upstream={"f1040": {"wages": 100_000}, "sch_e": sch_e})
+        self.assertIs(missing["f8582_magi_unknown"], True)
+        absent = form_f8582.compute(scenario, upstream={"sch_e": sch_e})
+        self.assertIs(absent["f8582_magi_unknown"], True)
+        present = form_f8582.compute(
+            scenario, upstream={"f1040": {"magi": 0}, "sch_e": sch_e})
+        self.assertNotIn("f8582_magi_unknown", present)
+
+    def test_ledger_refuses_an_unknown_magi_with_a_loss_to_limit(self):
+        with self.assertRaisesRegex(NotImplementedError, self._UNKNOWN):
+            enforce_scoped_refusals({"f8582": {
+                "f8582_magi_unknown": True,
+                "f8582_line_1b_activities_with_loss": 15_000,
+                "f8582_line_1c_prior_year_unallowed_loss": 0,
+                "f8582_line_11_allowed_loss": 15_000,
+            }}, "schedules")
+
+    def test_ledger_refuses_an_unknown_magi_with_a_carryforward(self):
+        with self.assertRaisesRegex(NotImplementedError, self._UNKNOWN):
+            enforce_scoped_refusals({"f8582": {
+                "f8582_magi_unknown": True,
+                "f8582_line_1b_activities_with_loss": 0,
+                "f8582_line_1c_prior_year_unallowed_loss": 2_000,
+                "f8582_line_11_allowed_loss": 2_000,
+            }}, "schedules")
+
+    def test_ledger_is_silent_on_an_unknown_magi_with_nothing_to_limit(self):
+        enforce_scoped_refusals({"f8582": {
+            "f8582_magi_unknown": True,
+            "f8582_line_1b_activities_with_loss": 0,
+            "f8582_line_1c_prior_year_unallowed_loss": 0,
+            "f8582_line_11_allowed_loss": 0,
+        }}, "schedules")
+
+    def test_ledger_is_silent_on_a_known_magi_with_the_loss_allowed(self):
+        enforce_scoped_refusals({"f8582": {
+            "f8582_line_1b_activities_with_loss": 15_000,
+            "f8582_line_1c_prior_year_unallowed_loss": 0,
+            "f8582_line_11_allowed_loss": 15_000,
+        }}, "schedules")
+
+    def test_emit_refuses_a_results_dict_without_magi(self):
+        # The firing case end to end: a loss rental, and a results dict
+        # shaped like the workbook path's (no `magi`). Read as 0 it would
+        # grant the full allowance and print.
+        scenario = _scenario(wages=100_000, rentals=[_loss_rental()])
+        results = self.orch.compute_federal(scenario)
+        self.orch._federal_individual_emit_specs(scenario, results)  # twin
+        without = {k: v for k, v in results.items() if k != "magi"}
+        self.assertNotIn("magi", without)
+        with self.assertRaisesRegex(NotImplementedError, self._UNKNOWN):
+            self.orch._federal_individual_emit_specs(scenario, without)
+
+    def test_emit_without_magi_still_prints_an_income_rental(self):
+        income = RentalProperty(
+            address="1 Test Way", property_type=1, fair_rental_days=365,
+            personal_use_days=0, rents_received=10_000.0,
+            mortgage_interest=4_000.0)
+        scenario = _scenario(wages=100_000, rentals=[income])
+        results = self.orch.compute_federal(scenario)
+        without = {k: v for k, v in results.items() if k != "magi"}
+        specs = self.orch._federal_individual_emit_specs(scenario, without)
+        self.assertIn("sch_e", {s.name for s in specs})
 
 
 class EmitPathRefusalTests(_Case):
