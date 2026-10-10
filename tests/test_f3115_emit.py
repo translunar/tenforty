@@ -13,11 +13,9 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from tenforty import pdf_packet, years
-from tenforty.attestations import raise_scoped_refusal
 from tenforty.forms import f3115 as form_f3115
 from tenforty.mappings.pdf_f3115 import PdfF3115, get_mapping
 from tenforty.models import AmendmentCase
-from tenforty.orchestrator import ReturnOrchestrator
 from tests import _f3115_fixtures as fx
 from tests.helpers import REPO_ROOT
 
@@ -90,7 +88,7 @@ def _emit(tc: unittest.TestCase, block=None, **config_overrides):
     root = Path(tmp.name)
     scenario = fx.load(root, fx.scenario_dict(block=block, **config_overrides))
     out = root / "out"
-    _results, emitted = ReturnOrchestrator().run_full_return(scenario, out)
+    _results, emitted = fx.orchestrator(root).run_full_return(scenario, out)
     return scenario, emitted, out
 
 
@@ -178,9 +176,10 @@ class FilledFormTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             scenario = fx.load(Path(tmp), data)
             out = Path(tmp) / "out"
-            _r, emitted = ReturnOrchestrator().run_full_return(scenario, out)
+            _r, emitted = fx.orchestrator(tmp).run_full_return(scenario, out)
             self.assertNotIn("f3115", emitted)
             self.assertNotIn("f3115_asset_stmt", emitted)
+            self.assertNotIn("f3115_duplicate_copy", emitted)
             self.assertEqual(sorted(p.name for p in out.glob("f3115*")), [])
 
 
@@ -313,6 +312,32 @@ class AssetStatementTests(unittest.TestCase):
                          second["f3115_asset_stmt"].read_bytes())
 
 
+class DuplicateCopyTests(unittest.TestCase):
+    """The copy that is signed and filed separately: the form and its
+    statement in one standalone file, kept out of the return's packet."""
+
+    def test_duplicate_copy_is_the_form_followed_by_the_statement(self):
+        _s, emitted, out = _emit(self)
+        path = emitted["f3115_duplicate_copy"]
+        self.assertEqual(path, out / "f3115_2025_duplicate_copy_to_sign.pdf")
+        reader = PdfReader(path)
+        statement_pages = len(PdfReader(emitted["f3115_asset_stmt"]).pages)
+        self.assertEqual(len(reader.pages), 8 + statement_pages)
+        self.assertIn("Application for Change in Accounting Method",
+                      reader.pages[0].extract_text())
+        self.assertIn("Form 3115, Schedule E", reader.pages[8].extract_text())
+        self.assertEqual(_filled(path), _EXPECTED_BASE)
+
+    def test_duplicate_copy_is_standalone_not_a_packet_member(self):
+        self.assertEqual(
+            pdf_packet.classify_key("f3115_duplicate_copy"), "standalone")
+        _s, emitted, _o = _emit(self)
+        names = [p.name for p in pdf_packet.ordered_members(
+            emitted, pdf_packet.FEDERAL_INDIVIDUAL)]
+        self.assertNotIn("f3115_2025_duplicate_copy_to_sign.pdf", names)
+        self.assertIn("f3115_2025.pdf", names)
+
+
 class ManifestTests(unittest.TestCase):
     def _manifest(self, **kwargs) -> str:
         _s, _emitted, out = _emit(self, **kwargs)
@@ -323,6 +348,7 @@ class ManifestTests(unittest.TestCase):
         self.assertIn("f3115_2025.pdf", text)
         self.assertIn("f3115_asset_statement_2025.pdf", text)
         self.assertIn("Schedule E, lines 4a and 7", text)
+        self.assertIn("f3115_2025_duplicate_copy_to_sign.pdf", text)
 
     def test_manifest_states_the_signed_duplicate_copy_requirement(self):
         text = self._manifest()
@@ -391,7 +417,11 @@ class PacketTests(unittest.TestCase):
         _s, emitted, out = _emit(self)
         combined = pdf_packet.assemble_all(emitted, out, 2025)
         packet = PdfReader(combined["federal_individual"])
-        loose = sum(len(PdfReader(p).pages) for p in emitted.values())
+        loose = sum(
+            len(PdfReader(p).pages) for key, p in emitted.items()
+            if pdf_packet.classify_key(key) == "federal_individual")
+        self.assertEqual(
+            pdf_packet.classify_key("f3115_duplicate_copy"), "standalone")
         self.assertEqual(len(packet.pages), loose)
         tail = packet.pages[-1].extract_text()
         self.assertIn("Form 3115, Schedule E", tail)
@@ -404,7 +434,7 @@ class AmendmentPacketRefusalTests(unittest.TestCase):
         case = AmendmentCase(
             year=2025, explanation="SYNTHETIC-EXPLANATION",
             original_refund_received=0.0, original_refund_applied=0.0)
-        return ReturnOrchestrator().run_amendment_packet(
+        return fx.orchestrator(tmp).run_amendment_packet(
             original, amended, case, Path(tmp) / "filed.yaml", None,
             Path(tmp) / "out")
 
@@ -421,9 +451,19 @@ class AmendmentPacketRefusalTests(unittest.TestCase):
                         self._run(original, amended, tmp)
                     self.assertFalse((Path(tmp) / "out").exists())
 
-    def test_refusal_text_is_the_registered_one(self):
-        with self.assertRaisesRegex(NotImplementedError, "amendment packet"):
-            raise_scoped_refusal("form_3115_in_amendment_packet", ["amended"])
+    def test_refusal_names_the_side_carrying_the_block(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with_block = fx.load(Path(tmp), fx.scenario_dict())
+            without = dataclasses.replace(with_block, form_3115=None)
+            for original, amended, named in (
+                    (without, with_block, "The amended scenario"),
+                    (with_block, without, "The original scenario"),
+                    (with_block, with_block,
+                     "The original and amended scenario")):
+                with self.subTest(named=named):
+                    with self.assertRaises(NotImplementedError) as ctx:
+                        self._run(original, amended, tmp)
+                    self.assertTrue(str(ctx.exception).startswith(named))
 
     def test_twin_without_the_block_gets_past_the_refusal(self):
         """The same call without a Form 3115 reaches the filed-values read
@@ -443,7 +483,7 @@ class EmitPathIsFailClosedTests(unittest.TestCase):
         elsewhere, still refuses before any Form 3115 is written."""
         with tempfile.TemporaryDirectory() as tmp:
             scenario = fx.load(Path(tmp), fx.scenario_dict())
-            orchestrator = ReturnOrchestrator()
+            orchestrator = fx.orchestrator(tmp)
             results = orchestrator.compute_federal(scenario)
             scenario.form_3115 = dataclasses.replace(
                 scenario.form_3115, designated_change_number=8)

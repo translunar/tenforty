@@ -82,6 +82,78 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_passive_loss_limitation_refusal::LimitationBindsRefusalTests::test_suspended_rental_loss_refuses_and_allowed_twin_computes",
     "sch_e_line_27_prior_year_unallowed_loss":
         "tests.test_sch_e_totals_and_line_27::Line27YesRefusalTests::test_nonpassive_k1_carryforward_refuses_the_emit",
+    "form_3115_not_a_mapping":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_not_a_mapping",
+    "form_3115_unknown_key":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_unknown_key",
+    "form_3115_missing_key":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_missing_key",
+    "form_3115_year_of_change_mismatch":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_year_of_change_mismatch",
+    "form_3115_change_number_unsupported":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_change_number_unsupported",
+    "form_3115_tax_year_dates":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_tax_year_dates",
+    "form_3115_applicant_type_unsupported":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_applicant_type_unsupported",
+    "form_3115_type_of_change_unsupported":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_type_of_change_unsupported",
+    "form_3115_joint_filer_unsupported":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_joint_filer_unsupported",
+    "form_3115_applicant_identity_missing":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_applicant_identity_missing",
+    "form_3115_contact_missing":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_contact_missing",
+    "form_3115_business_activity_code_malformed":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_business_activity_code_malformed",
+    "form_3115_one_year_election_ineligible":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_one_year_election_ineligible",
+    "form_3115_no_assets":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_no_assets",
+    "form_3115_asset_field_blank":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_asset_field_blank",
+    "form_3115_asset_account_unknown":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_asset_account_unknown",
+    "form_3115_asset_amount_negative":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_asset_amount_negative",
+    "form_3115_correspondence_by_fax_or_email":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_correspondence_by_fax_or_email",
+    "form_3115_eligibility_rules_restrict":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_eligibility_rules_restrict",
+    "form_3115_information_incomplete":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_information_incomplete",
+    "form_3115_final_year_of_trade_or_business":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_final_year_of_trade_or_business",
+    "form_3115_section_381_principal_method":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_section_381_principal_method",
+    "form_3115_under_examination":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_under_examination",
+    "form_3115_no_audit_protection":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_no_audit_protection",
+    "form_3115_before_appeals_or_court":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_before_appeals_or_court",
+    "form_3115_prior_change_within_five_years":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_prior_change_within_five_years",
+    "form_3115_pending_request":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_pending_request",
+    "form_3115_overall_method_change":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_overall_method_change",
+    "form_3115_cut_off_basis":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_cut_off_basis",
+    "form_3115_prior_adjustment_remaining":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_prior_adjustment_remaining",
+    "form_3115_related_party_adjustment":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_related_party_adjustment",
+    "form_3115_cladr":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_cladr",
+    "form_3115_depreciation_capitalized":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_depreciation_capitalized",
+    "form_3115_depreciation_election":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_depreciation_election",
+    "form_3115_public_utility_property":
+        "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_public_utility_property",
+    "form_3115_in_amendment_packet":
+        "tests.test_f3115_emit::AmendmentPacketRefusalTests::test_amended_scenario_with_the_block_refuses",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -364,6 +436,42 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "passive_loss_allowance_unknown_magi",
                 "passive_loss_limitation_not_applied",
                 "sch_e_line_27_prior_year_unallowed_loss",
+                "form_3115_not_a_mapping",
+                "form_3115_unknown_key",
+                "form_3115_missing_key",
+                "form_3115_year_of_change_mismatch",
+                "form_3115_change_number_unsupported",
+                "form_3115_tax_year_dates",
+                "form_3115_applicant_type_unsupported",
+                "form_3115_type_of_change_unsupported",
+                "form_3115_joint_filer_unsupported",
+                "form_3115_applicant_identity_missing",
+                "form_3115_contact_missing",
+                "form_3115_business_activity_code_malformed",
+                "form_3115_one_year_election_ineligible",
+                "form_3115_no_assets",
+                "form_3115_asset_field_blank",
+                "form_3115_asset_account_unknown",
+                "form_3115_asset_amount_negative",
+                "form_3115_correspondence_by_fax_or_email",
+                "form_3115_eligibility_rules_restrict",
+                "form_3115_information_incomplete",
+                "form_3115_final_year_of_trade_or_business",
+                "form_3115_section_381_principal_method",
+                "form_3115_under_examination",
+                "form_3115_no_audit_protection",
+                "form_3115_before_appeals_or_court",
+                "form_3115_prior_change_within_five_years",
+                "form_3115_pending_request",
+                "form_3115_overall_method_change",
+                "form_3115_cut_off_basis",
+                "form_3115_prior_adjustment_remaining",
+                "form_3115_related_party_adjustment",
+                "form_3115_cladr",
+                "form_3115_depreciation_capitalized",
+                "form_3115_depreciation_election",
+                "form_3115_public_utility_property",
+                "form_3115_in_amendment_packet",
             ])
 
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):

@@ -5,13 +5,13 @@ Every registered `form_3115_*` refusal is fired here through the real path
 twin of each. `RefusalLedgerCoverageTests` proves the sweep table and the
 registry name the same set, so a refusal cannot be registered unfired.
 """
+import dataclasses
 import datetime
 import tempfile
 import unittest
 
 from tenforty import attestations
 from tenforty.models import Form3115, Form3115Asset
-from tenforty.orchestrator import ReturnOrchestrator
 from tests import _f3115_fixtures as fx
 
 
@@ -252,13 +252,9 @@ class LoadingTwinTests(unittest.TestCase):
 class RefusalFiringTests(unittest.TestCase):
     """Each refusal fires through `load_scenario` with its own text."""
 
-    def test_parse_and_load_refusals_fire(self):
-        for name, (build, exc, pattern) in {
-                **_PARSE_CASES, **_LOAD_CASES}.items():
-            with self.subTest(refusal=name), \
-                    tempfile.TemporaryDirectory() as tmp:
-                with self.assertRaisesRegex(exc, pattern):
-                    fx.load(tmp, build())
+    # One `test_fires_<refusal name>` method per registered refusal is
+    # attached below the class (tests/test_scoped_refusals.FIRING_PROOFS
+    # names each, and neuters each refusal to see its own test redden).
 
     def test_message_is_the_registered_one(self):
         """The text raised is the registry entry's own, not a look-alike
@@ -330,11 +326,23 @@ class RefusalFiringTests(unittest.TestCase):
         """A Scenario that never passed the loader is still refused."""
         with tempfile.TemporaryDirectory() as tmp:
             scenario = fx.load(tmp, fx.scenario_dict())
-        import dataclasses
-        scenario.form_3115 = dataclasses.replace(
-            scenario.form_3115, under_examination=True)
-        with self.assertRaisesRegex(NotImplementedError, "line 6a"):
-            ReturnOrchestrator().compute_federal(scenario)
+            scenario.form_3115 = dataclasses.replace(
+                scenario.form_3115, under_examination=True)
+            with self.assertRaisesRegex(NotImplementedError, "line 6a"):
+                fx.orchestrator(tmp).compute_federal(scenario)
+
+
+def _firing_test(build, exc, pattern):
+    def test(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(exc, pattern):
+                fx.load(tmp, build())
+    return test
+
+
+for _name, (_build, _exc, _pattern) in {**_PARSE_CASES, **_LOAD_CASES}.items():
+    setattr(RefusalFiringTests, f"test_fires_{_name}",
+            _firing_test(_build, _exc, _pattern))
 
 
 class RefusalLedgerCoverageTests(unittest.TestCase):
@@ -342,6 +350,12 @@ class RefusalLedgerCoverageTests(unittest.TestCase):
         registered = {r.name for r in attestations._FORM_3115_REFUSALS}
         fired = set(_PARSE_CASES) | set(_LOAD_CASES) | _FIRED_ELSEWHERE
         self.assertEqual(registered, fired)
+
+    def test_every_case_has_its_own_named_test_method(self):
+        for name in {**_PARSE_CASES, **_LOAD_CASES}:
+            with self.subTest(refusal=name):
+                self.assertTrue(callable(
+                    getattr(RefusalFiringTests, f"test_fires_{name}")))
 
     def test_registered_refusals_are_in_the_enforced_ledger(self):
         enforced = {r.name for r in attestations._SCOPED_REFUSALS}

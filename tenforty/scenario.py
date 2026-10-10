@@ -28,6 +28,8 @@ from tenforty.models import (
     EntityType,
     FilingStatus,
     Form1095A,
+    Form3115,
+    Form3115Asset,
     Form1095AMonth,
     Form1098,
     Form1099B,
@@ -111,6 +113,7 @@ _LISTED_PROPERTY_ACK_KEY = "acknowledges_no_listed_property"
 
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
+     _attestations.FORM_3115_KEY,
      _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
@@ -142,6 +145,87 @@ def _load_stated_number(value, where: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError(f"{where} must be a number; got {value!r}")
     return float(value)
+
+
+def _load_stated_int(value, where: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{where} must be a whole number; got {value!r}")
+    return value
+
+
+def _load_stated_text(value, where: str) -> str:
+    """A stated text cell. An unquoted YAML scalar such as `168` or `57.0`
+    arrives as a number and is printed as written; a bool, null or
+    collection is refused."""
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+        raise ValueError(f"{where} must be text; got {value!r}")
+    return str(value)
+
+
+def _load_stated_date(value, where: str) -> datetime.date:
+    try:
+        return _coerce_date(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            f"{where} must be a date (YYYY-MM-DD); got {value!r}") from e
+
+
+_FORM_3115_COLUMN_LOADERS = {
+    bool: _load_stated_bool,
+    int: _load_stated_int,
+    float: _load_stated_number,
+    str: _load_stated_text,
+    datetime.date: _load_stated_date,
+}
+# Fields whose statement may be an explicit null (see Form3115).
+_FORM_3115_NULLABLE: frozenset[str] = frozenset({
+    "principal_business_activity_code",
+    "lived_in_residential_rental_before_renting",
+})
+_FORM_3115_FIELD_TYPES: dict[str, type] = {
+    "year_of_change": int, "designated_change_number": int,
+    "section_481a_adjustment": float,
+    "tax_year_begins": datetime.date, "tax_year_ends": datetime.date,
+    "principal_business_activity_code": str, "contact_person": str,
+    "contact_phone": str, "applicant_type": str, "type_of_change": str,
+}
+_FORM_3115_ASSET_FIELD_TYPES: dict[str, type] = {
+    "date_placed_in_service": datetime.date,
+    "unadjusted_basis": float, "depreciation_claimed_present_method": float,
+    "special_depreciation_allowance_claimed": bool,
+}
+
+
+def _load_form_3115_fields(
+        data: dict, keys, types: dict, default: type, where: str) -> dict:
+    out = {}
+    for key in keys:
+        value = data[key]
+        if value is None and key in _FORM_3115_NULLABLE:
+            out[key] = None
+            continue
+        loader = _FORM_3115_COLUMN_LOADERS[types.get(key, default)]
+        out[key] = loader(value, f"{where}.{key}")
+    return out
+
+
+def _load_form_3115(data) -> Form3115 | None:
+    """Build Form3115 from the `form_3115:` block. Shape -- a mapping, no
+    unknown key, no missing key, `assets` a list of mappings -- is the parse
+    ledger's (`attestations._FORM_3115_REFUSALS`), which has already run;
+    this types each stated value, refusing rather than coercing."""
+    if data is None:
+        return None
+    block_keys = [
+        k for k in _attestations.FORM_3115_BLOCK_KEYS if k != "assets"]
+    fields = _load_form_3115_fields(
+        data, block_keys, _FORM_3115_FIELD_TYPES, bool, "form_3115")
+    assets = tuple(
+        Form3115Asset(**_load_form_3115_fields(
+            row, _attestations.FORM_3115_ASSET_KEYS,
+            _FORM_3115_ASSET_FIELD_TYPES, str, f"form_3115.assets[{i}]"))
+        for i, row in enumerate(data["assets"]))
+    return Form3115(**fields, assets=assets)
 
 
 def _load_depreciable_asset(data, where: str) -> DepreciableAsset:
@@ -1084,6 +1168,7 @@ def load_scenario(path: Path) -> Scenario:
     itemized_deductions = (
         ItemizedDeductions(**itemized_raw) if itemized_raw is not None else None)
     form_1095a = _load_form_1095a(data.get("form_1095a"), config)
+    form_3115 = _load_form_3115(data.get(_attestations.FORM_3115_KEY))
     source_documents = _load_source_documents(form_data["w2s"], path.parent)
     mid_quarter_ack = data.get(_MID_QUARTER_ACK_KEY)
     if mid_quarter_ack is not None:
@@ -1097,6 +1182,7 @@ def load_scenario(path: Path) -> Scenario:
         config=config, s_corp_return=s_corp_return, ca540=ca540,
         acknowledges_no_listed_property=listed_property_ack,
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
+        form_3115=form_3115,
         source_documents=source_documents,
         acknowledges_no_personal_property_behind_stated_depreciation=(
             mid_quarter_ack),
