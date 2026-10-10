@@ -340,9 +340,9 @@ class MethodLabelTests(unittest.TestCase):
     from the convention."""
 
     def test_method_by_class(self):
-        expected = {"3-year": "200DB", "5-year": "200DB", "7-year": "200DB",
-                    "10-year": "200DB", "15-year": "150DB",
-                    "20-year": "150DB", "27.5-year": "S/L", "39-year": "S/L"}
+        expected = {"3-year": "200 DB", "5-year": "200 DB", "7-year": "200 DB",
+                    "10-year": "200 DB", "15-year": "150 DB",
+                    "20-year": "150 DB", "27.5-year": "S/L", "39-year": "S/L"}
         for cls, method in expected.items():
             with self.subTest(recovery_class=cls):
                 self.assertEqual(macrs.method_for(cls), method)

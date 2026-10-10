@@ -20,9 +20,11 @@ Scope: v1 covers recovery classes used by 2025 scenarios.
   - TABLE_A_7a: GDS, straight-line, mid-month
       (39-year nonresidential real property)
 
-Tables A-2..A-5 (the mid-quarter convention, one table per placement
-quarter) live in tenforty.params.macrs_mid_quarter, twin-transcribed and
-pinned. Tables A-8..A-20 (ADS, nonres pre-5/13/1993, etc.) are NOT encoded;
+Tables A-2..A-5 are the mid-quarter convention tables for the same six
+classes, one per quarter the property was placed in service: A-2 first
+quarter (Pub 946 (2025) p. 71), A-3 second and A-4 third (p. 72), A-5 fourth
+(p. 73). They live in tenforty.params.macrs_mid_quarter, twin-transcribed
+and pinned. Tables A-8..A-20 (ADS, nonres pre-5/13/1993, etc.) are NOT encoded;
 add them when a scenario needs them.
 """
 
