@@ -17,6 +17,10 @@ Modes, per activity:
 Refusals are refusal-ledger entries (tenforty.attestations). `resolve` runs
 the ledger over the one activity it was handed, so a caller that bypassed the
 loader and the orchestrator still fails closed, with the ledger's own text.
+
+One fact `resolve` cannot work out from an activity is supplied by every
+caller: the RETURN's answer to the mid-quarter 40% test (`mid_quarter`,
+from `mid_quarter_applies` over the whole scenario). It has no default.
 """
 
 from dataclasses import dataclass
