@@ -5,14 +5,21 @@ PDF assertions pin LITERAL widget paths read off the Rev. December 2022
 template (pdfs/federal/revision_keyed/f3115.pdf), never paths looked up
 through the mapping under test.
 """
+import contextlib
 import dataclasses
+import io
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import yaml
 
 from pypdf import PdfReader
 
 from tenforty import pdf_packet, years
+from tenforty.__main__ import main as cli_main
 from tenforty.forms import f3115 as form_f3115
 from tenforty.mappings.pdf_f3115 import PdfF3115, get_mapping
 from tenforty.models import AmendmentCase
@@ -305,6 +312,28 @@ class AssetStatementTests(unittest.TestCase):
             with self.subTest(asset=i):
                 self.assertEqual(text.count(f"Synthetic asset {i:03d}"), 1)
 
+    def test_one_block_longer_than_a_page_continues_on_the_next(self):
+        words = [f"clause{i:04d}" for i in range(1, 1201)]
+        block = fx.base_block()
+        block["assets"] = [
+            {**fx.ASSET_BUILDING, "use_in_activity": " ".join(words)}]
+        _s, emitted, _o = _emit(self, block=block)
+        reader = PdfReader(emitted["f3115_asset_stmt"])
+        self.assertGreater(len(reader.pages), 1)
+        text = self._text(emitted)
+        for word in (words[0], words[599], words[-1]):
+            with self.subTest(word=word):
+                self.assertEqual(text.count(word), 1)
+        # The columns after the long one still print, once.
+        self.assertEqual(text.count("Asset account: Single asset account"), 1)
+        # Nothing is drawn below the bottom margin of any page.
+        for number, page in enumerate(reader.pages, start=1):
+            lowest = []
+            page.extract_text(visitor_text=lambda t, cm, tm, fd, fs: (
+                lowest.append(tm[5]) if t.strip() else None))
+            with self.subTest(page=number):
+                self.assertGreaterEqual(min(lowest), 0.75 * 72)
+
     def test_statement_is_deterministic(self):
         _s, first, _o = _emit(self)
         _s, second, _o = _emit(self)
@@ -363,6 +392,20 @@ class ManifestTests(unittest.TestCase):
                 "Rev. December 2022"):
             with self.subTest(fragment=fragment):
                 self.assertIn(fragment, text)
+
+    def test_manifest_prints_both_delivery_addresses_whole(self):
+        """The mail and private-delivery addresses share a city line, so
+        each is pinned as its own consecutive block."""
+        lines = [line.strip() for line in self._manifest().splitlines()]
+        mail = lines.index("By mail:              Internal Revenue Service")
+        self.assertEqual(
+            lines[mail + 1:mail + 3], ["Ogden, UT 84201", "M/S 6111"])
+        private = lines.index(
+            "By private delivery:  Internal Revenue Service")
+        self.assertEqual(lines[private + 1:private + 4], [
+            "1973 N. Rulon White Blvd.", "Ogden, UT 84201", "Attn: M/S 6111"])
+        self.assertEqual(lines.count("Ogden, UT 84201"), 2)
+        self.assertIn("By fax:               844-249-8134", lines)
 
     def test_manifest_lists_required_applicant_supplied_attachments(self):
         text = self._manifest()
@@ -475,6 +518,68 @@ class AmendmentPacketRefusalTests(unittest.TestCase):
                 self._run(without, without, tmp)
             self.assertNotIn("Form 3115", str(ctx.exception))
             self.assertNotIsInstance(ctx.exception, NotImplementedError)
+
+
+class CommandLineTests(unittest.TestCase):
+    """`python -m tenforty federal ... --output-dir`: the form rides in the
+    combined return packet, the duplicate copy and manifest stay loose."""
+
+    def _run(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        scenario_path = root / "scenario.yaml"
+        scenario_path.write_text(
+            yaml.safe_dump(fx.scenario_dict(), sort_keys=False))
+        out = root / "out"
+        stdout = io.StringIO()
+        argv = ["tenforty", "federal", str(scenario_path),
+                "--output-dir", str(out)]
+        with mock.patch.object(sys, "argv", argv), \
+                contextlib.redirect_stdout(stdout):
+            code = cli_main()
+        self.assertEqual(code, 0)
+        return out, stdout.getvalue()
+
+    def test_files_left_on_disk(self):
+        out, _printed = self._run()
+        self.assertEqual(sorted(p.name for p in out.iterdir()), [
+            "f1040_2025_complete.pdf",
+            "f3115_2025_duplicate_copy_to_sign.pdf",
+            "f3115_filing_manifest_2025.txt",
+            "f4868_2025.pdf",
+        ])
+        packet = PdfReader(out / "f1040_2025_complete.pdf")
+        self.assertEqual(
+            {k: v for k, v in _filled(out / "f1040_2025_complete.pdf").items()
+             if k in _EXPECTED_BASE and "Page8" in k},
+            {k: v for k, v in _EXPECTED_BASE.items() if "Page8" in k})
+        self.assertIn(
+            "Form 3115, Schedule E", packet.pages[-1].extract_text())
+
+    def test_manifest_and_duplicate_copy_are_announced(self):
+        out, printed = self._run()
+        self.assertIn("=== Form 3115 ===", printed)
+        self.assertIn(
+            str(out / "f3115_filing_manifest_2025.txt"), printed)
+        self.assertIn(
+            str(out / "f3115_2025_duplicate_copy_to_sign.pdf"), printed)
+
+    def test_nothing_is_announced_without_the_block(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        data = fx.scenario_dict()
+        del data["form_3115"]
+        (root / "scenario.yaml").write_text(
+            yaml.safe_dump(data, sort_keys=False))
+        stdout = io.StringIO()
+        argv = ["tenforty", "federal", str(root / "scenario.yaml"),
+                "--output-dir", str(root / "out")]
+        with mock.patch.object(sys, "argv", argv), \
+                contextlib.redirect_stdout(stdout):
+            self.assertEqual(cli_main(), 0)
+        self.assertNotIn("Form 3115", stdout.getvalue())
 
 
 class EmitPathIsFailClosedTests(unittest.TestCase):

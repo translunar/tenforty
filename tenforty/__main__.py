@@ -113,6 +113,21 @@ def _assemble_packets_and_prune(
     return combined, retained
 
 
+def _print_form_3115(output_dir: Path) -> None:
+    """Point at the Form 3115 filing manifest when the run wrote one: it
+    lists the statements the applicant must still attach and where the
+    signed duplicate copy is filed."""
+    manifests = sorted(output_dir.glob("f3115_filing_manifest_*.txt"))
+    if not manifests:
+        return
+    print()
+    print("=== Form 3115 ===")
+    for manifest in manifests:
+        print(f"  Read before filing: {manifest}")
+    for copy in sorted(output_dir.glob("f3115_*_duplicate_copy_to_sign.pdf")):
+        print(f"  Sign and file separately: {copy}")
+
+
 def _print_packets(combined: dict, retained: list[Path],
                     source_documents=()) -> None:
     print()
@@ -258,6 +273,7 @@ def _run_federal(args: argparse.Namespace) -> int:
             emitted, args.output_dir, scenario.config.year,
             scenario.source_documents)
         _print_packets(combined, retained, scenario.source_documents)
+        _print_form_3115(args.output_dir)
 
     return 0
 

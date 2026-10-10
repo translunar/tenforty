@@ -1514,7 +1514,8 @@ class ReturnOrchestrator:
 
         NOT a ``_FederalFormSpec``: the specs feed the amendment packet's
         changed-forms selector, and an amendment packet does not carry a Form
-        3115 (``run_amendment_packet`` refuses one). The form and statement
+        3115 (``run_amendment_packet`` refuses one). The caller has already
+        run ``enforce_form_3115_refusals``. The form and statement
         join the federal individual packet (the original is attached to the
         return); the duplicate copy stays a standalone file because it is
         signed and filed separately. The manifest is a text file beside them,
@@ -1523,7 +1524,6 @@ class ReturnOrchestrator:
         if scenario.form_3115 is None:
             return {}
         from tenforty import years
-        enforce_form_3115_refusals(scenario)
         year = scenario.config.year
         revision = years.REVISION_KEYED_FORM_REVISIONS["f3115"]
         header = scenario.config.pdf_header()

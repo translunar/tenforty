@@ -7,6 +7,22 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Form 3115 (Application for Change in Accounting Method) emits for
+  automatic change number 7.** A top-level `form_3115:` block prints Form
+  3115 (Rev. December 2022) for an individual changing depreciation from an
+  impermissible to a permissible method, with a generated statement for
+  Schedule E lines 4a and 7 built from the block's per-asset rows. Both join
+  the federal packet after Form 4562; the two together are also written as a
+  standalone duplicate copy to sign, and `f3115_filing_manifest_<year>.txt`
+  lists the statements the applicant must still attach and where the signed
+  duplicate is filed. The section 481(a) adjustment is **stated, not
+  computed**, and is not carried onto the return's income. The under-$50,000
+  one-year election is made on the form (line 28 and its de minimis box).
+  Every answer is an explicit attestation with no default; any other change
+  number, applicant type, or answer the form would need more machinery for
+  (under examination, before Appeals or a court, a prior change within five
+  years, and others) refuses by name. An amendment packet refuses a
+  scenario carrying the block.
 - **Depreciable assets are the depreciation source of truth, per activity.**
   Assets now nest under the activity that uses them
   (`rental_properties[n].depreciable_assets`,
