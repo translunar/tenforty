@@ -27,7 +27,7 @@ loss refuses. A loss owes no self-employment tax (forms/sch_se.py), enters
 Form 8995 as a negative QBI component (forms/f8995.py), and is counted by the
 excess-business-loss guard in the orchestrator.
 """
-from tenforty.forms.depreciation.resolver import mid_quarter_years, resolve
+from tenforty.forms.depreciation.resolver import mid_quarter_applies, resolve
 from tenforty.models import Scenario, ScheduleCBusiness
 from tenforty.rounding import irs_round
 
@@ -43,7 +43,7 @@ LINE_13_KEY = "sch_c_line_13_depreciation"
 
 
 def part_ii_lines(biz: ScheduleCBusiness, tax_year: int, *,
-                  mid_quarter_years: frozenset[int]) -> dict[str, float]:
+                  mid_quarter: bool) -> dict[str, float]:
     """Every modeled Part II amount for one business, UNROUNDED, keyed by
     the value key it prints under: the 12 stated categories plus line 13
     from the depreciation resolver.
@@ -56,12 +56,12 @@ def part_ii_lines(biz: ScheduleCBusiness, tax_year: int, *,
     """
     lines = {
         f"sch_c_expense_{name}": getattr(biz, name) for name in _EXPENSE_FIELDS}
-    lines[LINE_13_KEY] = resolve(biz, tax_year, mid_quarter_years=mid_quarter_years).amount
+    lines[LINE_13_KEY] = resolve(biz, tax_year, mid_quarter=mid_quarter).amount
     return lines
 
 
 def net_profit_estimate(biz: ScheduleCBusiness, tax_year: int, *,
-                        mid_quarter_years: frozenset[int]) -> float:
+                        mid_quarter: bool) -> float:
     """Cheap net-profit estimate for the EIC-scope routing gate.
 
     Returns ``gross_receipts - sum(part_ii_lines)``. A pre-compute estimate:
@@ -72,11 +72,11 @@ def net_profit_estimate(biz: ScheduleCBusiness, tax_year: int, *,
     before any estimate is taken.)
     """
     return biz.gross_receipts - sum(
-        part_ii_lines(biz, tax_year, mid_quarter_years=mid_quarter_years).values())
+        part_ii_lines(biz, tax_year, mid_quarter=mid_quarter).values())
 
 
 def printed_net_profit(biz: ScheduleCBusiness, tax_year: int, *,
-                       mid_quarter_years: frozenset[int]) -> int:
+                       mid_quarter: bool) -> int:
     """Line 31 exactly as the form prints it: rounded line 1 less the sum of
     the individually rounded expense lines (unmodeled lines ignored --
     `compute` refuses those). Because entry lines round one by one, this can
@@ -85,7 +85,7 @@ def printed_net_profit(biz: ScheduleCBusiness, tax_year: int, *,
     the guard compares the same figure the page shows."""
     return irs_round(biz.gross_receipts) - sum(
         irs_round(amount)
-        for amount in part_ii_lines(biz, tax_year, mid_quarter_years=mid_quarter_years).values())
+        for amount in part_ii_lines(biz, tax_year, mid_quarter=mid_quarter).values())
 
 
 _REFUSED_AMOUNT_FIELDS = (
@@ -116,7 +116,7 @@ def _guard_unmodeled(biz: ScheduleCBusiness, idx: int) -> None:
 
 def _compute_business(
     biz: ScheduleCBusiness, idx: int, all_investment_at_risk: bool | None,
-    tax_year: int, mid_quarter_years: frozenset[int],
+    tax_year: int, mid_quarter: bool,
 ) -> dict:
     _guard_unmodeled(biz, idx)
     # Line 7 gross income = gross receipts (returns/allowances and COGS are
@@ -128,11 +128,11 @@ def _compute_business(
     # (line 1, each expense category 8-27b) round individually.
     line_1 = irs_round(biz.gross_receipts)
     line_7 = line_1
-    lines = part_ii_lines(biz, tax_year, mid_quarter_years=mid_quarter_years)
+    lines = part_ii_lines(biz, tax_year, mid_quarter=mid_quarter)
     line_13 = irs_round(lines[LINE_13_KEY])
     line_28 = sum(irs_round(amount) for amount in lines.values())
     # tentative profit (line 7 - line 28)
-    line_29 = printed_net_profit(biz, tax_year, mid_quarter_years=mid_quarter_years)
+    line_29 = printed_net_profit(biz, tax_year, mid_quarter=mid_quarter)
     line_31 = line_29                    # line 30 home office refused -> 0
     is_loss = line_31 < 0
     if is_loss and all_investment_at_risk is not True:
@@ -173,9 +173,9 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
     if not businesses:
         return {}
     at_risk = scenario.config.acknowledges_sch_c_all_investment_at_risk
-    mq_years = mid_quarter_years(scenario)
+    mid_quarter = mid_quarter_applies(scenario)
     per_business = [
-        _compute_business(b, i, at_risk, scenario.config.year, mq_years)
+        _compute_business(b, i, at_risk, scenario.config.year, mid_quarter)
         for i, b in enumerate(businesses)]
     total = sum(b["sch_c_line_31_net_profit"] for b in per_business)
     return {
@@ -207,7 +207,7 @@ def emit_values(scenario: Scenario, index: int, line_values: dict) -> dict:
     # unrounded entry below when present.
     for key, amount in part_ii_lines(
             biz, scenario.config.year,
-            mid_quarter_years=mid_quarter_years(scenario)).items():
+            mid_quarter=mid_quarter_applies(scenario)).items():
         if amount:
             out[key] = amount
     # Part V line 48 is the total the "Other expenses (from line 48)" line

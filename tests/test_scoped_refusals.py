@@ -50,6 +50,10 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_asset_nest_loading::BonusHistoryRefusalTests::test_personal_property_without_true_history_field_refuses",
     "missing_prior_depreciation":
         "tests.test_asset_nest_loading::MissingPriorDepreciationRefusalTests::test_prior_year_asset_without_prior_depreciation_refuses",
+    "missing_prior_year_convention":
+        "tests.test_stated_prior_convention::MissingPriorYearConventionTests::test_prior_year_personal_asset_without_a_convention_refuses",
+    "invalid_stated_convention":
+        "tests.test_stated_prior_convention::InvalidStatedConventionTests::test_mid_quarter_without_its_quarter_refuses",
     "dual_source_depreciation":
         "tests.test_asset_nest_loading::DualSourceRefusalTests::test_assets_and_stated_scalar_on_one_activity_refuse",
     "unacknowledged_stated_depreciation":
@@ -422,6 +426,8 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "history_field_on_real_property",
                 "bonus_or_section_179_history",
                 "missing_prior_depreciation",
+                "missing_prior_year_convention",
+                "invalid_stated_convention",
                 "dual_source_depreciation",
                 "unacknowledged_stated_depreciation",
                 "override_outside_asset_mode",

@@ -19,7 +19,7 @@ from datetime import date
 
 from tenforty.attestations import enforce_scoped_refusals
 from tenforty.forms.depreciation.resolver import (
-    mid_quarter_bases, mid_quarter_years, resolve,
+    mid_quarter_applies, mid_quarter_bases, resolve,
 )
 from tenforty.rounding import irs_round
 from tests.test_mid_quarter_engine import _patched, _sentinel
@@ -40,6 +40,7 @@ def _personal(basis: float, month: int, *, year: int = YEAR,
     if year < YEAR:
         asset.acknowledges_prior_depreciation_as_stated = True
         asset.prior_depreciation = 0.0
+        asset.convention = "half-year"
     return asset
 
 
@@ -77,22 +78,22 @@ def _check(scenario) -> None:
     enforce_scoped_refusals(scenario, "load")
 
 
-TRIPS = frozenset({YEAR})
-SILENT = frozenset()
+TRIPS = True
+SILENT = False
 
 
-def _years(scenario) -> frozenset:
-    """The return's mid-quarter placement years, after the load ledger has
-    accepted the scenario (the convention is computed, never refused)."""
+def _answer(scenario) -> bool:
+    """The return's 40% answer, after the load ledger has accepted the
+    scenario (the convention is computed, never refused)."""
     _check(scenario)
-    return mid_quarter_years(scenario)
+    return mid_quarter_applies(scenario)
 
 
 def _amounts(activity, scenario) -> list[int]:
     """Each asset's current-year amount, through the one door, under the
     return's own answer."""
     resolved = resolve(
-        activity, YEAR, mid_quarter_years=mid_quarter_years(scenario))
+        activity, YEAR, mid_quarter=mid_quarter_applies(scenario))
     return [row.amount for row in resolved.per_asset]
 
 
@@ -101,7 +102,7 @@ def _conventions(activity, scenario) -> list[str]:
     convention an asset takes does not depend on any percentage."""
     with _patched():
         resolved = resolve(
-            activity, YEAR, mid_quarter_years=mid_quarter_years(scenario))
+            activity, YEAR, mid_quarter=mid_quarter_applies(scenario))
     return [row.convention for row in resolved.per_asset]
 
 
@@ -183,7 +184,7 @@ class FortyPercentTestTests(unittest.TestCase):
         """4,001 of 10,000: mid-quarter, each asset from its own quarter."""
         rental = _rental(_personal(5_999.0, 3), _personal(4_001.0, 11))
         s = _scenario(rentals=[rental])
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
         self.assertEqual(mid_quarter_bases(s), (4_001.0, 10_000.0))
         self.assertEqual(
             _conventions(rental, s), ["mid-quarter", "mid-quarter"])
@@ -197,7 +198,7 @@ class FortyPercentTestTests(unittest.TestCase):
         trip, and both assets take the half-year table."""
         rental = _rental(_personal(6_000.0, 3), _personal(4_000.0, 11))
         s = _scenario(rentals=[rental])
-        self.assertEqual(_years(s), SILENT)
+        self.assertEqual(_answer(s), SILENT)
         self.assertEqual(_conventions(rental, s), ["half-year", "half-year"])
         self.assertEqual(_amounts(rental, s), [1_200, 800])
 
@@ -206,12 +207,12 @@ class FortyPercentTestTests(unittest.TestCase):
         a cent past it: both trip."""
         for late in (4_001.0, 4_000.01):
             with self.subTest(late=late):
-                self.assertEqual(_years(_scenario(rentals=[_rental(
+                self.assertEqual(_answer(_scenario(rentals=[_rental(
                     _personal(10_000.0 - late, 3),
                     _personal(late, 11))])), TRIPS)
 
     def test_just_under_is_half_year(self):
-        self.assertEqual(_years(_scenario(rentals=[_rental(
+        self.assertEqual(_answer(_scenario(rentals=[_rental(
             _personal(6_001.0, 3), _personal(3_999.0, 11))])), SILENT)
 
     def test_last_three_months_are_october_through_december(self):
@@ -219,18 +220,18 @@ class FortyPercentTestTests(unittest.TestCase):
             with self.subTest(month=month):
                 s = _scenario(rentals=[_rental(
                     _personal(5_000.0, 3), _personal(5_000.0, month))])
-                self.assertEqual(_years(s), TRIPS if trips else SILENT)
+                self.assertEqual(_answer(s), TRIPS if trips else SILENT)
 
     def test_only_property_placed_this_year_counts(self):
         """A prior-year fourth-quarter placement is not in either total."""
         s = _scenario(rentals=[_rental(
             _personal(6_000.0, 3), _personal(4_000.0, 11),
             _personal(50_000.0, 12, year=YEAR - 1, description="Old"))])
-        self.assertEqual(_years(s), SILENT)
+        self.assertEqual(_answer(s), SILENT)
         # Twin: the same asset placed THIS December tips the test.
         s.rental_properties[0].depreciable_assets[2] = _personal(
             50_000.0, 12, description="New")
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
 
     def test_the_whole_cohort_takes_the_convention(self):
         """ "the applicable convention for ALL property ... placed in
@@ -242,7 +243,7 @@ class FortyPercentTestTests(unittest.TestCase):
             _personal(1_000.0, 8, description="Summer"),
             _personal(9_000.0, 12, description="Late"))
         s = _scenario(rentals=[rental])
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
         with _patched():
             self.assertEqual(_amounts(rental, s), [
                 irs_round(1_000.0 * _sentinel(1, 5, 1)),
@@ -250,25 +251,49 @@ class FortyPercentTestTests(unittest.TestCase):
                 irs_round(1_000.0 * _sentinel(3, 5, 1)),
                 irs_round(9_000.0 * _sentinel(4, 5, 1))])
 
-    def test_another_years_placement_keeps_its_own_convention(self):
-        """This year trips; the asset placed last year is not in this
-        year's cohort and still reads the half-year table."""
+    def test_an_earlier_years_asset_keeps_its_stated_convention(self):
+        """This year trips; the asset placed last year states half-year and
+        still reads the half-year table."""
         old = _personal(10_000.0, 12, year=YEAR - 1, description="Old")
         old.prior_depreciation = 2_000.0
         old.acknowledges_prior_depreciation_as_stated = False
         rental = _rental(old, _personal(4_000.0, 11, description="New"))
         s = _scenario(rentals=[rental])
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
         self.assertEqual(
             _conventions(rental, s), ["half-year", "mid-quarter"])
         with _patched():
             self.assertEqual(_amounts(rental, s), [
                 3_200, irs_round(4_000.0 * _sentinel(4, 5, 1))])
 
-    def test_bases_helper_reports_both_totals(self):
-        s = _scenario(rentals=[_rental(
-            _personal(6_000.0, 3), _personal(4_000.0, 11))])
-        self.assertEqual(mid_quarter_bases(s), (4_000.0, 10_000.0))
+    def test_an_earlier_mid_quarter_asset_does_not_make_this_year_trip(self):
+        """The mirror: last year's asset states mid-quarter, this year's
+        placements do not trip. Each keeps its own convention, and the
+        earlier asset is in neither of this year's totals."""
+        old = _personal(10_000.0, 12, year=YEAR - 1, description="Old")
+        old.convention, old.quarter = "mid-quarter", 4
+        with _patched():
+            old.prior_depreciation = float(
+                irs_round(10_000.0 * _sentinel(4, 5, 1)))
+            old.acknowledges_prior_depreciation_as_stated = False
+            rental = _rental(old, _personal(4_000.0, 3, description="New"))
+            s = _scenario(rentals=[rental])
+            self.assertEqual(_answer(s), SILENT)
+            self.assertEqual(mid_quarter_bases(s), (0.0, 4_000.0))
+            self.assertEqual(
+                _conventions(rental, s), ["mid-quarter", "half-year"])
+            self.assertEqual(_amounts(rental, s), [
+                irs_round(10_000.0 * _sentinel(4, 5, 2)), 800])
+
+    def test_no_personal_property_placed_this_year_is_false(self):
+        """Both totals zero: the test is false and nothing is divided."""
+        old = _personal(10_000.0, 12, year=YEAR - 1, description="Old")
+        for rentals in ([], [_rental()], [_rental(old)],
+                        [_rental(_real(200_000.0, 12, "39-year"))]):
+            s = _scenario(rentals=rentals)
+            with self.subTest(assets=len(rentals)):
+                self.assertEqual(mid_quarter_bases(s)[1], 0.0)
+                self.assertIs(_answer(s), False)
 
 
 class TaxpayerWideTests(unittest.TestCase):
@@ -285,18 +310,18 @@ class TaxpayerWideTests(unittest.TestCase):
         business = _business(_personal(1_000.0, 11, description="Laptop"))
         rental = _rental(_personal(9_000.0, 3))
         # Alone the business is 1,000 of 1,000.
-        self.assertEqual(_years(_scenario(businesses=[business])), TRIPS)
+        self.assertEqual(_answer(_scenario(businesses=[business])), TRIPS)
         # On the whole return it is 1,000 of 10,000.
         self.assertEqual(
-            _years(_scenario(rentals=[rental], businesses=[business])),
+            _answer(_scenario(rentals=[rental], businesses=[business])),
             SILENT)
 
     def test_activity_silent_alone_trips_when_pooled(self):
         rental = _rental(_personal(6_000.0, 3), _personal(3_000.0, 11))
         business = _business(_personal(3_000.0, 12, description="Laptop"))
-        self.assertEqual(_years(_scenario(rentals=[rental])), SILENT)
+        self.assertEqual(_answer(_scenario(rentals=[rental])), SILENT)
         pooled = _scenario(rentals=[rental], businesses=[business])
-        self.assertEqual(_years(pooled), TRIPS)       # 6,000 of 12,000
+        self.assertEqual(_answer(pooled), TRIPS)       # 6,000 of 12,000
         self.assertEqual(mid_quarter_bases(pooled), (6_000.0, 12_000.0))
         # Pooled, the RENTAL's assets are mid-quarter too, though the
         # rental alone is under the threshold.
@@ -390,7 +415,7 @@ class ReadersUseTheReturnsAnswerTests(unittest.TestCase):
         s = self._rental_scenario()
         self.assertEqual(
             resolve(s.rental_properties[0], YEAR,
-                    mid_quarter_years=frozenset()).amount,
+                    mid_quarter=False).amount,
             self.HALF_YEAR_AMOUNT)
 
     def test_schedule_e_line_18_and_line_21(self):
@@ -432,9 +457,9 @@ class ReadersUseTheReturnsAnswerTests(unittest.TestCase):
         seen = []
 
         def spy(real):
-            def wrapper(activity, tax_year, *, mid_quarter_years):
+            def wrapper(activity, tax_year, *, mid_quarter):
                 seen.append(real(
-                    activity, tax_year, mid_quarter_years=mid_quarter_years))
+                    activity, tax_year, mid_quarter=mid_quarter))
                 return seen[-1]
             return wrapper
 
@@ -479,7 +504,7 @@ class RealPropertyExcludedTests(unittest.TestCase):
     def test_late_year_real_property_does_not_move_the_share(self):
         for cls in ("27.5-year", "39-year"):
             with self.subTest(recovery_class=cls):
-                self.assertEqual(_years(_scenario(rentals=[_rental(
+                self.assertEqual(_answer(_scenario(rentals=[_rental(
                     _personal(6_000.0, 3), _personal(4_000.0, 11),
                     _real(500_000.0, 12, cls))])), SILENT)
 
@@ -487,7 +512,7 @@ class RealPropertyExcludedTests(unittest.TestCase):
         s = _scenario(rentals=[_rental(
             _personal(6_000.0, 3), _personal(4_000.0, 11),
             _personal(500_000.0, 12, description="Machine"))])
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
 
     def test_current_year_building_is_absent_from_both_totals(self):
         """THE DISCRIMINATING TEST for the statutory reading. A building
@@ -507,7 +532,7 @@ class RealPropertyExcludedTests(unittest.TestCase):
                     _personal(5_999.0, 3), _personal(4_001.0, 11))
                 s = _scenario(rentals=[rental])
                 self.assertEqual(mid_quarter_bases(s), (4_001.0, 10_000.0))
-                self.assertEqual(_years(s), TRIPS)
+                self.assertEqual(_answer(s), TRIPS)
                 # The building stays mid-month in a tripped year.
                 self.assertEqual(
                     _conventions(rental, s),
@@ -516,7 +541,7 @@ class RealPropertyExcludedTests(unittest.TestCase):
     def test_real_property_alone_never_trips(self):
         rental = _rental(_real(200_000.0, 12, "27.5-year"))
         s = _scenario(rentals=[rental])
-        self.assertEqual(_years(s), SILENT)
+        self.assertEqual(_answer(s), SILENT)
         self.assertEqual(_conventions(rental, s), ["mid-month"])
 
 
@@ -555,10 +580,10 @@ class StatedModeInteractionTests(unittest.TestCase):
 
     def test_acknowledgment_does_not_switch_off_the_forty_percent_test(self):
         s = self._shape(acknowledgment=True)
-        self.assertEqual(_years(s), SILENT)
+        self.assertEqual(_answer(s), SILENT)
         s.rental_properties[0].depreciable_assets.append(
             _personal(6_000.0, 11, description="Late"))
-        self.assertEqual(_years(s), TRIPS)
+        self.assertEqual(_answer(s), TRIPS)
 
     def test_silent_when_the_placement_is_real_property_only(self):
         s = self._shape()

@@ -79,6 +79,7 @@ _KNOWN_DEPRECIABLE_ASSET_KEYS: frozenset[str] = frozenset({
     "description", "date_placed_in_service", "basis", "recovery_class",
     "disposed", "prior_depreciation", "no_bonus_or_section_179_history",
     "acknowledges_prior_depreciation_as_stated",
+    "convention", "quarter",
 })
 _REQUIRED_DEPRECIABLE_ASSET_KEYS: tuple[str, ...] = (
     "description", "date_placed_in_service", "basis", "recovery_class")
@@ -246,6 +247,17 @@ def _load_depreciable_asset(data, where: str) -> DepreciableAsset:
     disposed = data.get("disposed")
     prior = data.get("prior_depreciation")
     history = data.get("no_bonus_or_section_179_history")
+    # Carried as stated; whether the values are usable, and whether this
+    # asset may state them at all, is the refusal ledger's business.
+    convention = data.get("convention")
+    if convention is not None and not isinstance(convention, str):
+        raise ValueError(
+            f"{where}.convention must be text; got {convention!r}")
+    quarter = data.get("quarter")
+    if quarter is not None and (
+            isinstance(quarter, bool) or not isinstance(quarter, int)):
+        raise ValueError(
+            f"{where}.quarter must be a whole number; got {quarter!r}")
     return DepreciableAsset(
         description=str(data["description"]),
         date_placed_in_service=_coerce_date(data["date_placed_in_service"]),
@@ -261,6 +273,8 @@ def _load_depreciable_asset(data, where: str) -> DepreciableAsset:
         acknowledges_prior_depreciation_as_stated=_load_stated_bool(
             data.get("acknowledges_prior_depreciation_as_stated", False),
             f"{where}.acknowledges_prior_depreciation_as_stated"),
+        convention=convention,
+        quarter=quarter,
     )
 
 

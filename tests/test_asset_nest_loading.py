@@ -95,13 +95,15 @@ def _doc(**sections) -> dict:
 
 
 class AssetModelTests(unittest.TestCase):
-    def test_asset_has_no_convention_field(self):
-        with self.assertRaises(TypeError):
-            DepreciableAsset(
-                description="Rental building",
-                date_placed_in_service=datetime.date(2019, 6, 1),
-                basis=200_000.0, recovery_class="27.5-year",
-                convention="mid-month")
+    def test_convention_and_quarter_default_to_unstated(self):
+        """Stated only on prior-year personal property
+        (tests/test_stated_prior_convention.py); absent everywhere else."""
+        a = DepreciableAsset(
+            description="Rental building",
+            date_placed_in_service=datetime.date(2019, 6, 1),
+            basis=200_000.0, recovery_class="27.5-year")
+        self.assertIsNone(a.convention)
+        self.assertIsNone(a.quarter)
 
     def test_asset_new_field_defaults(self):
         a = DepreciableAsset(
@@ -338,8 +340,8 @@ class StatedConventionRefusalTests(unittest.TestCase):
                          else _appliance(convention="half-year"))
                 with self.assertRaisesRegex(
                         ValueError,
-                        rf"{section}\[0\]\.depreciable_assets\[0\].*"
-                        r"convention is computed, not stated"):
+                        r"carries `convention` or `quarter`.*the convention "
+                        r"is computed"):
                     _load(_doc(**{section: [
                         activity(depreciable_assets=[asset])]}))
 
@@ -477,6 +479,7 @@ class BonusHistoryRefusalTests(unittest.TestCase):
             "date_placed_in_service": datetime.date(2023, 3, 15),
             "basis": 10_000.0, "recovery_class": "5-year",
             "no_bonus_or_section_179_history": False,
+            "convention": "half-year",
             # Reconciles with the tables (legacy pin), so only the history
             # field is at issue.
             "prior_depreciation": 5_200.0, **extra}
@@ -486,7 +489,9 @@ class BonusHistoryRefusalTests(unittest.TestCase):
         return float(macrs_deduction(DepreciableAsset(
             description="Refrigerator",
             date_placed_in_service=datetime.date(2023, 3, 15),
-            basis=10_000.0, recovery_class="5-year"), YEAR, mid_quarter_years=frozenset()))
+            basis=10_000.0, recovery_class="5-year",
+            convention="half-year"),
+            YEAR, return_year=YEAR, mid_quarter=False))
 
     def test_activity_override_lifts_the_refusal(self):
         """Ruling: the refusal is per asset but the override is per
