@@ -216,6 +216,8 @@ def filing_manifest(
         f"({len(form.assets)} item(s) of property)",
         f"  - {duplicate_file}: the form and that statement together, for "
         "signing and filing as the duplicate copy",
+        "  (The command line folds the first two into the combined return "
+        "packet, after Form 4562.)",
         "",
         "REQUIRED, NOT EMITTED — the applicant must prepare and attach to "
         "BOTH copies:",
