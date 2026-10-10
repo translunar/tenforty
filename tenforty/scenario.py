@@ -154,12 +154,16 @@ def _load_stated_int(value, where: str) -> int:
 
 
 def _load_stated_text(value, where: str) -> str:
-    """A stated text cell. An unquoted YAML scalar such as `168` or `57.0`
-    arrives as a number and is printed as written; a bool, null or
-    collection is refused."""
-    if isinstance(value, bool) or not isinstance(value, (str, int, float)):
-        raise ValueError(f"{where} must be text; got {value!r}")
-    return str(value)
+    """A stated text cell, printed exactly as written. Only a string is
+    accepted: an unquoted YAML scalar that looks like a number has already
+    been rewritten by the time it arrives (`00.11` is 0.11, `57.00` is 57.0,
+    `0115550100` is an octal integer), so it is refused, never stringified."""
+    if not isinstance(value, str):
+        raise ValueError(
+            f"{where} must be quoted text; got {value!r}. YAML reads an "
+            f"unquoted number as a number and drops its leading and trailing "
+            f"zeros (00.11 loads as 0.11), so put the value in quotes.")
+    return value
 
 
 def _load_stated_date(value, where: str) -> datetime.date:

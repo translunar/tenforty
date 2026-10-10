@@ -23,7 +23,9 @@ per-field checks they replace, so existing tests that assert on which error
 fires first for a given scenario remain green."""
 
 import dataclasses
+import math
 import re
+from decimal import Decimal
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
@@ -1797,6 +1799,11 @@ def _raw_form_3115_assets(raw) -> list:
 def _raw_form_3115_not_a_mapping(raw) -> list[str]:
     block = _raw_form_3115(raw)
     if block is None:
+        # A key written with no value is a block the user meant to fill,
+        # not an absent one.
+        if isinstance(raw, dict) and FORM_3115_KEY in raw:
+            return ["form_3115 is present but empty (null); fill the block "
+                    "or remove the key"]
         return []
     if not isinstance(block, dict):
         return [f"form_3115 must be a mapping; got {block!r}"]
@@ -1973,6 +1980,65 @@ def _amendment_scenarios_with_form_3115(subject) -> list[str]:
     return [label for label, s in subject.items() if _f3115(s) is not None]
 
 
+def _is_bool_field(field: dataclasses.Field) -> bool:
+    return field.type is bool or field.type == (bool | None)
+
+
+# Yes/No answers on the block, and whether each may be stated None.
+_FORM_3115_ANSWER_FIELDS: dict[str, bool] = {
+    f.name: f.type != bool
+    for f in dataclasses.fields(Form3115) if _is_bool_field(f)}
+_FORM_3115_ASSET_ANSWER_FIELDS: tuple[str, ...] = tuple(
+    f.name for f in dataclasses.fields(Form3115Asset) if _is_bool_field(f))
+
+
+def _f3115_non_boolean_answers(s: Scenario) -> list[str]:
+    """Answers that are neither True nor False. The loader types every
+    answer, so only a Scenario built in code can carry one; printed, it
+    would check neither box of its Yes/No pair."""
+    f = _f3115(s)
+    if f is None:
+        return []
+    out = []
+    for name, nullable in _FORM_3115_ANSWER_FIELDS.items():
+        value = getattr(f, name)
+        if not (isinstance(value, bool) or (nullable and value is None)):
+            out.append(f"form_3115.{name} ({value!r})")
+    for i, asset in enumerate(f.assets):
+        for name in _FORM_3115_ASSET_ANSWER_FIELDS:
+            value = getattr(asset, name)
+            if not isinstance(value, bool):
+                out.append(f"form_3115.assets[{i}].{name} ({value!r})")
+    return out
+
+
+def _cent_exact(amount) -> bool:
+    """True when ``amount`` is a whole number of cents as written. A
+    non-finite or non-numeric value is not this check's question."""
+    if isinstance(amount, bool) or not isinstance(amount, (int, float)):
+        return True
+    if not math.isfinite(amount):
+        return True
+    value = Decimal(repr(amount))
+    return value == value.quantize(Decimal("0.01"))
+
+
+def _f3115_amounts_not_cent_exact(s: Scenario) -> list[str]:
+    f = _f3115(s)
+    if f is None:
+        return []
+    out = []
+    if not _cent_exact(f.section_481a_adjustment):
+        out.append(
+            f"form_3115.section_481a_adjustment {f.section_481a_adjustment!r}")
+    for i, asset in enumerate(f.assets):
+        for column in _FORM_3115_ASSET_AMOUNT_COLUMNS:
+            if not _cent_exact(getattr(asset, column)):
+                out.append(f"{_f3115_asset_label(i, asset)} {column} "
+                           f"{getattr(asset, column)!r}")
+    return out
+
+
 @dataclass(frozen=True)
 class _Form3115Answer:
     """One Form 3115 answer v1 cannot print: the registry name's suffix, the
@@ -2127,6 +2193,16 @@ _FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
             f"signed under penalties of perjury, so nothing on it is "
             f"assumed and nothing is printed blank."),
     ),
+    # First of the load entries: the predicates below read these answers.
+    ScopedRefusal(
+        name="form_3115_answer_not_boolean",
+        stage="load",
+        offenders=_f3115_non_boolean_answers,
+        message=lambda o: (
+            f"Form 3115: {_join(o)} must be true or false. Each is a Yes/No "
+            f"answer on a signed application; any other value would print "
+            f"with neither box checked."),
+    ),
     ScopedRefusal(
         name="form_3115_year_of_change_mismatch",
         stage="load",
@@ -2216,6 +2292,17 @@ _FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
             f"the form takes the filer's 6-digit principal business "
             f"activity code. State six digits, or null when the filer is "
             f"not a business."),
+    ),
+    # Before the election: its limit is tested on the amount as printed.
+    ScopedRefusal(
+        name="form_3115_amount_not_cent_exact",
+        stage="load",
+        offenders=_f3115_amounts_not_cent_exact,
+        message=lambda o: (
+            f"Form 3115: {_join(o)} is not exact to the cent. Amounts are "
+            f"printed as stated, to the cent at most, so a finer amount "
+            f"would print as a different figure than the one tested "
+            f"against the line 28 limit. State it to the cent."),
     ),
     ScopedRefusal(
         name="form_3115_one_year_election_ineligible",
