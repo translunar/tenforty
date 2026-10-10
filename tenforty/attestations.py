@@ -1603,7 +1603,39 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
     return reasons
 
 
+def _passive_loss_with_unknown_magi(schedule_results) -> list[str]:
+    """What Form 8582 has to limit when it was computed without a modified
+    AGI figure; empty when MAGI was known or there is nothing to limit."""
+    f8582 = schedule_results.get("f8582") or {}
+    if not f8582.get("f8582_magi_unknown"):
+        return []
+    current = f8582.get("f8582_line_1b_activities_with_loss", 0)
+    prior = f8582.get("f8582_line_1c_prior_year_unallowed_loss", 0)
+    found: list[str] = []
+    if current > 0:
+        found.append(f"a current-year passive loss of {current:,.0f}")
+    if prior > 0:
+        found.append(f"a prior-year unallowed loss of {prior:,.0f}")
+    return found
+
+
 _PASSIVE_LOSS_REFUSALS: tuple[ScopedRefusal, ...] = (
+    # FIRST: with MAGI unknown, the allowed-loss figure the next entry reads
+    # means nothing.
+    ScopedRefusal(
+        name="passive_loss_allowance_unknown_magi",
+        stage="schedules",
+        offenders=_passive_loss_with_unknown_magi,
+        message=lambda o: (
+            f"Form 8582 has {_join(o)} to limit, but the return's modified "
+            f"adjusted gross income is unknown: the results this form was "
+            f"computed from carry no `magi` figure. The special allowance "
+            f"for rental real estate (IRC section 469(i)) phases out on "
+            f"modified AGI, so the allowed loss cannot be evaluated, and "
+            f"treating the missing figure as zero would grant the maximum "
+            f"allowance. This return cannot be produced."),
+        exception=NotImplementedError,
+    ),
     ScopedRefusal(
         name="passive_loss_limitation_not_applied",
         stage="schedules",
