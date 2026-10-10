@@ -32,7 +32,7 @@ from tenforty.attestations import (
     has_unattested_bonus_history, stated_convention_problem,
 )
 from tenforty.forms.depreciation.macrs import (
-    asset_convention, macrs_deduction, method_for,
+    asset_convention, macrs_deduction, method_for, require_answer,
 )
 from tenforty.models import (
     PERSONAL_PROPERTY_CLASSES, SUPPORTED_RECOVERY_CLASSES, DepreciableAsset,
@@ -106,6 +106,7 @@ def reconstruct_prior_depreciation(
         asset: DepreciableAsset, tax_year: int, *, mid_quarter: bool) -> int:
     """What the MACRS tables give for every year before ``tax_year``, under
     the asset's convention, each year held to the basis ceiling."""
+    require_answer(mid_quarter)
     taken = 0
     for year in range(asset.date_placed_in_service.year, tax_year):
         taken += _capped(
@@ -120,6 +121,7 @@ def prior_depreciation_mismatch(
         mid_quarter: bool) -> tuple[int, int] | None:
     """``(stated, reconstructed)`` when the asset's stated prior depreciation
     differs from the table reconstruction and is not acknowledged; else None."""
+    require_answer(mid_quarter)
     if asset.prior_depreciation is None:
         return None
     if asset.acknowledges_prior_depreciation_as_stated:
@@ -159,6 +161,7 @@ def asset_amount(asset: DepreciableAsset, tax_year: int, *,
 
 def engine_amount(activity, tax_year: int, *, mid_quarter: bool) -> int:
     """The engine's own figure for an asset-mode activity."""
+    require_answer(mid_quarter)
     return sum(
         asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
         for a in activity.depreciable_assets)
@@ -199,6 +202,7 @@ def resolve(activity, tax_year: int, *,
     the whole scenario), supplied by the caller: one activity cannot answer
     a taxpayer-wide test. It decides the convention of personal property
     placed in service this year and nothing else."""
+    require_answer(mid_quarter)
     enforce_scoped_refusals(
         _one_activity_scenario(activity, tax_year, mid_quarter), "load",
         single_activity=True)
@@ -279,8 +283,11 @@ def personal_property_placed_this_year(scenario) -> list:
 
 def mid_quarter_bases(scenario) -> tuple[float, float]:
     """``(last three months, entire year)`` aggregate bases for the 40%
-    test. `basis` is used as stated: see the test module for why the
-    publication's basis Caution is inert in this model."""
+    test, in dollars, FOR REPORTING. `basis` is used as stated: see the test
+    module for why the publication's basis Caution is inert in this model.
+
+    The test itself does not compare these floats: see
+    `_mid_quarter_bases_in_cents`."""
     assets = [a for _label, a in personal_property_placed_this_year(scenario)]
     last_quarter = sum(
         a.basis for a in assets
@@ -288,19 +295,38 @@ def mid_quarter_bases(scenario) -> tuple[float, float]:
     return last_quarter, sum(a.basis for a in assets)
 
 
+def _cents(amount: float) -> int:
+    """A dollar amount as whole cents."""
+    return round(amount * 100)
+
+
+def _mid_quarter_bases_in_cents(scenario) -> tuple[int, int]:
+    """``(last three months, entire year)`` aggregate bases in WHOLE CENTS:
+    each asset's basis converted once, then summed as integers. The 40%
+    test is decided on these. Binary floats cannot hold most cent amounts
+    exactly, and "exactly 40%" is a comparison where the smallest error
+    flips the answer (20,780.06 * 100 as a float is a hair over
+    2,078,006)."""
+    assets = [a for _label, a in personal_property_placed_this_year(scenario)]
+    last_quarter = sum(
+        _cents(a.basis) for a in assets
+        if a.date_placed_in_service.month in _LAST_THREE_MONTHS)
+    return last_quarter, sum(_cents(a.basis) for a in assets)
+
+
 def mid_quarter_applies(scenario) -> bool:
     """The return's 40% answer: True when the last-three-months bases
     EXCEED 40% of the year's (strictly; no placements at all is False, and
-    nothing is divided). Every reader of a depreciation figure passes this
-    down to the engine.
+    nothing is divided). Decided in integer cents, never on floats. Every
+    reader of a depreciation figure passes this down to the engine.
 
     A one-activity view built by `resolve` carries the answer its caller
     supplied, and that answer is returned as-is: recomputing it from the
     lone activity would turn a taxpayer-wide test into a per-activity one."""
-    carried = getattr(scenario, "mid_quarter", None)
-    if carried is not None:
-        return carried
-    last_quarter, year_total = mid_quarter_bases(scenario)
+    if hasattr(scenario, "mid_quarter"):
+        require_answer(scenario.mid_quarter)
+        return scenario.mid_quarter
+    last_quarter, year_total = _mid_quarter_bases_in_cents(scenario)
     return last_quarter * 100 > MID_QUARTER_THRESHOLD_PERCENT * year_total
 
 

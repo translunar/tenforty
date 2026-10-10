@@ -130,6 +130,130 @@ class ReturnYearConventionTests(unittest.TestCase):
             macrs_deduction(asset, 2025, mid_quarter=False)
 
 
+def _threaded_calls():
+    """``(name, call)`` for EVERY function the return's 40% answer is
+    threaded through. ``call(**kwargs)`` invokes it with valid arguments
+    apart from ``mid_quarter``, which the caller supplies or omits."""
+    from tenforty import orchestrator
+    from tenforty.forms import f4562, sch_c, sch_e
+    from tenforty.forms.depreciation import resolver
+    from tenforty.models import RentalProperty, ScheduleCBusiness
+
+    asset = DepreciableAsset(
+        description="Example asset", date_placed_in_service=date(2025, 5, 1),
+        basis=10_000.0, recovery_class="5-year",
+        no_bonus_or_section_179_history=True)
+    rental = RentalProperty(
+        address="100 Example Street", property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=24_000.0,
+        depreciable_assets=[asset])
+    business = ScheduleCBusiness(
+        description="Consulting", gross_receipts=50_000.0,
+        depreciable_assets=(asset,))
+    return (
+        ("macrs.convention_for",
+         lambda **kw: macrs.convention_for("5-year", **kw)),
+        ("macrs.asset_convention",
+         lambda **kw: asset_convention(asset, return_year=2025, **kw)),
+        ("macrs.macrs_deduction",
+         lambda **kw: macrs_deduction(asset, 2025, return_year=2025, **kw)),
+        ("resolver.reconstruct_prior_depreciation",
+         lambda **kw: resolver.reconstruct_prior_depreciation(
+             asset, 2025, **kw)),
+        ("resolver.prior_depreciation_mismatch",
+         lambda **kw: resolver.prior_depreciation_mismatch(
+             asset, 2025, **kw)),
+        ("resolver.asset_amount",
+         lambda **kw: resolver.asset_amount(asset, 2025, **kw)),
+        ("resolver.engine_amount",
+         lambda **kw: resolver.engine_amount(rental, 2025, **kw)),
+        ("resolver.resolve",
+         lambda **kw: resolver.resolve(rental, 2025, **kw)),
+        ("sch_e._line_18", lambda **kw: sch_e._line_18(rental, 2025, **kw)),
+        ("sch_e._property_a_fields",
+         lambda **kw: sch_e._property_a_fields(rental, 2025, **kw)),
+        ("sch_e.printed_rental_net",
+         lambda **kw: sch_e.printed_rental_net(rental, 2025, **kw)),
+        ("sch_c.part_ii_lines",
+         lambda **kw: sch_c.part_ii_lines(business, 2025, **kw)),
+        ("sch_c.net_profit_estimate",
+         lambda **kw: sch_c.net_profit_estimate(business, 2025, **kw)),
+        ("sch_c.printed_net_profit",
+         lambda **kw: sch_c.printed_net_profit(business, 2025, **kw)),
+        ("sch_c._compute_business",
+         lambda **kw: sch_c._compute_business(
+             business, 0, True, 2025, **kw)),
+        ("orchestrator._rental_net_income",
+         lambda **kw: orchestrator._rental_net_income(rental, 2025, **kw)),
+        ("f4562._line_19_rows",
+         lambda **kw: f4562._line_19_rows([asset], 2025, **kw)),
+    )
+
+
+class AnswerIsRequiredEverywhereTests(unittest.TestCase):
+    """The return's 40% answer has NO default anywhere in the chain, and is
+    a real bool: omitted, None, or any other value refuses rather than
+    quietly meaning half-year."""
+
+    def test_every_threaded_function_works_with_the_answer(self):
+        """Reachability: each call below is otherwise valid."""
+        for name, call in _threaded_calls():
+            for answer in (False, True):
+                with self.subTest(function=name, mid_quarter=answer):
+                    call(mid_quarter=answer)
+
+    def test_every_threaded_function_refuses_without_the_answer(self):
+        for name, call in _threaded_calls():
+            with self.subTest(function=name):
+                # The SIGNATURE's own complaint: a default of any kind,
+                # None included, would not produce it.
+                with self.assertRaisesRegex(
+                        TypeError,
+                        r"missing 1 required (keyword-only|positional) "
+                        r"argument: 'mid_quarter'"):
+                    call()
+
+    def test_an_activity_with_no_assets_still_needs_a_real_answer(self):
+        """Nothing below reaches the engine (there is no asset to compute),
+        so only the function's own check can refuse."""
+        from tenforty.forms.depreciation import resolver
+        from tenforty.models import RentalProperty
+        bare = RentalProperty(
+            address="100 Example Street", property_type=1,
+            fair_rental_days=365, personal_use_days=0, rents_received=0.0)
+        for name, function in (("resolve", resolver.resolve),
+                               ("engine_amount", resolver.engine_amount)):
+            function(bare, 2025, mid_quarter=False)
+            for answer in (None, 0, 1):
+                with self.subTest(function=name, mid_quarter=answer):
+                    with self.assertRaisesRegex(
+                            TypeError, r"mid_quarter must be True or False"):
+                        function(bare, 2025, mid_quarter=answer)
+
+    def test_a_carried_answer_must_be_a_real_bool_too(self):
+        """The one-activity view carries the answer; a view carrying
+        anything else is refused, not recomputed and not read as False."""
+        from types import SimpleNamespace
+        from tenforty.forms.depreciation import resolver
+        for answer in (True, False):
+            self.assertIs(resolver.mid_quarter_applies(
+                SimpleNamespace(mid_quarter=answer)), answer)
+        for answer in (None, 0, 1, "yes"):
+            with self.subTest(mid_quarter=answer):
+                with self.assertRaisesRegex(
+                        TypeError, r"mid_quarter must be True or False"):
+                    resolver.mid_quarter_applies(
+                        SimpleNamespace(mid_quarter=answer))
+
+    def test_every_threaded_function_refuses_a_non_bool_answer(self):
+        for name, call in _threaded_calls():
+            for answer in (None, 1, 0, "yes", "", frozenset({2025})):
+                with self.subTest(function=name, mid_quarter=answer):
+                    with self.assertRaisesRegex(
+                            TypeError, r"mid_quarter must be True or False"):
+                        call(mid_quarter=answer)
+
+
 class PriorYearConventionTests(unittest.TestCase):
     """Property placed before the return year: the convention and quarter
     are STATED on the asset and the return's own answer is not consulted."""

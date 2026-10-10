@@ -211,6 +211,69 @@ class FortyPercentTestTests(unittest.TestCase):
                     _personal(10_000.0 - late, 3),
                     _personal(late, 11))])), TRIPS)
 
+    def test_exactly_forty_percent_in_cents_is_half_year(self):
+        """Money is compared in whole cents, never as floats. 20,780.06 is
+        exactly two fifths of 51,950.15, so the year does not trip -- but
+        as binary floats 20780.06 * 100 comes out a hair over 40 * 51950.15,
+        and a float comparison calls that "more than 40%"."""
+        self.assertGreater(20_780.06 * 100, 2_078_006.0)     # the hazard
+        self.assertEqual(2_078_006 * 100, 40 * 5_195_015)    # exactly 40%
+        rental = _rental(_personal(31_170.09, 3), _personal(20_780.06, 11))
+        s = _scenario(rentals=[rental])
+        self.assertEqual(_answer(s), SILENT)
+        self.assertEqual(_conventions(rental, s), ["half-year", "half-year"])
+        self.assertEqual(_amounts(rental, s), [6_234, 4_156])
+
+    def test_one_cent_over_forty_percent_trips(self):
+        s = _scenario(rentals=[_rental(
+            _personal(31_170.09, 3), _personal(20_780.07, 11))])
+        self.assertEqual(_answer(s), TRIPS)
+
+    def test_one_cent_under_forty_percent_is_half_year(self):
+        s = _scenario(rentals=[_rental(
+            _personal(31_170.09, 3), _personal(20_780.05, 11))])
+        self.assertEqual(_answer(s), SILENT)
+
+    def test_exact_forty_percent_cent_pairs_never_trip(self):
+        """A sweep of exact-40% pairs (late = 2k cents, early = 3k cents):
+        none trips, and each trips with one more cent late."""
+        for k in range(1_000_001, 1_000_400):
+            late, early = 2 * k / 100, 3 * k / 100
+            with self.subTest(late=late):
+                self.assertIs(mid_quarter_applies(_scenario(rentals=[_rental(
+                    _personal(early, 3), _personal(late, 11))])), False)
+                self.assertIs(mid_quarter_applies(_scenario(rentals=[_rental(
+                    _personal(early, 3),
+                    _personal((2 * k + 1) / 100, 11))])), True)
+
+    def test_each_basis_is_converted_to_cents_on_its_own(self):
+        """Ruled: per-asset bases are converted once, then summed as
+        integers. Two late assets of 0.004 each are 0 cents apiece, so
+        4,000.00 of 10,000.00 is exactly 40% and does not trip. Summing the
+        dollars first (4,000.008 -> 400,001 cents of 1,000,001) would."""
+        s = _scenario(rentals=[_rental(
+            _personal(6_000.0, 3), _personal(4_000.0, 11),
+            _personal(0.004, 11, description="Scrap A"),
+            _personal(0.004, 12, description="Scrap B"))])
+        self.assertEqual(round((4_000.0 + 0.004 + 0.004) * 100), 400_001)
+        self.assertIs(mid_quarter_applies(s), False)
+
+    def test_the_year_total_is_summed_in_cents_too(self):
+        """The same rule on the other side of the comparison. Early: 6,000.01
+        plus two assets of 0.006 (one cent apiece) is 600,003 cents; late
+        is 400,002; the total 1,000,005 makes that exactly 40%. Summing the
+        early dollars first (6,000.022 -> 600,002) would lose a cent from
+        the total and trip."""
+        s = _scenario(rentals=[_rental(
+            _personal(6_000.01, 3),
+            _personal(0.006, 2, description="Scrap A"),
+            _personal(0.006, 5, description="Scrap B"),
+            _personal(4_000.02, 11))])
+        self.assertEqual(400_002 * 100, 40 * 1_000_005)
+        self.assertEqual(
+            round((6_000.01 + 0.006 + 0.006 + 4_000.02) * 100), 1_000_004)
+        self.assertIs(mid_quarter_applies(s), False)
+
     def test_just_under_is_half_year(self):
         self.assertEqual(_answer(_scenario(rentals=[_rental(
             _personal(6_001.0, 3), _personal(3_999.0, 11))])), SILENT)
