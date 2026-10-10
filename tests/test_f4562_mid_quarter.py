@@ -1,7 +1,13 @@
-"""Form 4562 under the mid-quarter convention: the convention column.
+"""Form 4562 Section B rows 19a-19f: the convention and method columns,
+and what a personal-property row does and does not print.
 
 A personal-property row prints "MQ" in column (e) when the return year's
-cohort trips the 40% test, "HY" otherwise; real property stays "MM".
+cohort trips the 40% test, "HY" otherwise; real property stays "MM". Column
+(f) prints the class's method, spelled as the instructions spell it:
+"200 DB" for 3-, 5-, 7- and 10-year property, "150 DB" for 15- and 20-year.
+Column (b), month and year placed in service, is shaded on rows 19a-19f of
+every year's form and is left empty there; it is filled only on the
+residential and nonresidential rows.
 
 The widget paths below are LITERALS read off each year's template (the
 row's widgets enumerated left to right, the printed column headers located
@@ -55,20 +61,43 @@ CONVENTION_WIDGETS = {
     },
 }
 
-# Rows 19a-19f on the 2022-2024 layouts, every mapped column, left to right:
-# (b) date, (c) basis, (d) recovery period, (e) convention, (g) deduction.
-# Column (f) Method has a widget on these years that no mapping fills.
-_ROWS_2022_2024 = {
-    "a": ("Line19a", "R4", 26, 27, 28, 30),
-    "b": ("Line19b", "R5", 31, 32, 33, 35),
-    "c": ("Line19c", "R6", 36, 37, 38, 40),
-    "d": ("Line19d", "R7", 41, 42, 43, 45),
-    "e": ("Line19e", "R8", 46, 47, 48, 50),
-    "f": ("Line19f", "R9", 51, 52, 53, 55),
+# Rows 19a-19f, every column the row prints, as literal widget numbers:
+# (subform, shaded (b) date widget -- never filled, (c) basis, (d) recovery
+# period, (e) convention, (f) method, (g) deduction).
+_ROWS_2021_2024 = {
+    "a": ("Line19a", "R4", 26, 27, 28, 29, 30),
+    "b": ("Line19b", "R5", 31, 32, 33, 34, 35),
+    "c": ("Line19c", "R6", 36, 37, 38, 39, 40),
+    "d": ("Line19d", "R7", 41, 42, 43, 44, 45),
+    "e": ("Line19e", "R8", 46, 47, 48, 49, 50),
+    "f": ("Line19f", "R9", 51, 52, 53, 54, 55),
 }
-_COLUMNS_2022_2024 = (
-    "date_placed_in_service", "basis", "recovery_period", "convention",
-    "deduction")
+_ROWS_2025 = {
+    "a": ("Line19a", "f1_26", 27, 28, 29, 30, 31),
+    "b": ("Line19b", "f1_32", 33, 34, 35, 36, 37),
+    "c": ("Line19c", "f1_38", 39, 40, 41, 42, 43),
+    "d": ("Line19d", "f1_44", 45, 46, 47, 48, 49),
+    "e": ("Line19e", "f1_50", 51, 52, 53, 54, 55),
+    "f": ("Line19f", "f1_56", 57, 58, 59, 60, 61),
+}
+ROWS = {2021: _ROWS_2021_2024, 2022: _ROWS_2021_2024, 2023: _ROWS_2021_2024,
+        2024: _ROWS_2021_2024, 2025: _ROWS_2025}
+PRINTED_COLUMNS = (
+    "basis", "recovery_period", "convention", "method", "deduction")
+# The one widget this return's filing depends on, spelled out in full: the
+# 2025 template's 15-year row, column (f) Method.
+METHOD_15_YEAR_2025 = f"{_SB}.Line19e[0].f1_54[0]"
+
+
+def _literal(year: int, row: str, column: str) -> str:
+    subform, _date_widget, *numbers = ROWS[year][row]
+    number = numbers[PRINTED_COLUMNS.index(column)]
+    return f"{_SB}.{subform}[0].f1_{number}[0]"
+
+
+def _date_widget(year: int, row: str) -> str:
+    subform, date_widget, *_numbers = ROWS[year][row]
+    return f"{_SB}.{subform}[0].{date_widget}[0]"
 
 
 def _template(year: int) -> Path:
@@ -195,41 +224,76 @@ class ConventionColumnWidgetTests(unittest.TestCase):
                     self.assertEqual(len(rows[f"Line19{row}[0]"]), 6)
 
 
-class PersonalRowColumnOrderTests(unittest.TestCase):
-    """Every mapped cell of a personal-property row lands in its own
-    column: the mapped widgets are the row's widgets in left-to-right
-    order, (f) Method skipped where the year's mapping has no such key."""
+class PersonalRowColumnTests(unittest.TestCase):
+    """Every printed cell of a personal-property row lands in its own
+    column, on every year's layout."""
 
-    def test_2022_through_2024_literal_paths(self):
-        for year in (2022, 2023, 2024):
-            scalars = Pdf4562.get_mapping(year)["scalars"]
-            for row, (subform, date_widget, *numbers) in (
-                    _ROWS_2022_2024.items()):
-                literals = [f"{_SB}.{subform}[0].{date_widget}[0]"] + [
-                    f"{_SB}.{subform}[0].f1_{n}[0]" for n in numbers]
-                for column, literal in zip(_COLUMNS_2022_2024, literals):
-                    with self.subTest(year=year, row=row, column=column):
-                        self.assertEqual(
-                            scalars[f"f4562_line_19{row}_{column}"], literal)
-
-    def test_mapped_cells_are_the_row_widgets_left_to_right(self):
-        columns = ("date_placed_in_service", "basis", "recovery_period",
-                   "convention", "method", "deduction")
+    def test_literal_paths_for_every_printed_column(self):
         for year in YEARS:
             scalars = Pdf4562.get_mapping(year)["scalars"]
+            for row in PERSONAL_ROWS:
+                for column in PRINTED_COLUMNS:
+                    with self.subTest(year=year, row=row, column=column):
+                        self.assertEqual(
+                            scalars[f"f4562_line_19{row}_{column}"],
+                            _literal(year, row, column))
+
+    def test_convention_literals_agree_with_the_row_literals(self):
+        for year in YEARS:
+            for row in PERSONAL_ROWS:
+                with self.subTest(year=year, row=row):
+                    self.assertEqual(
+                        _literal(year, row, "convention"),
+                        CONVENTION_WIDGETS[year][row])
+
+    def test_literals_are_the_row_widgets_left_to_right(self):
+        """Independent of the mapping: the literals above are the row's own
+        six widgets in page order -- the shaded date cell first, then the
+        five printed columns."""
+        for year in YEARS:
             rows = _row_widgets(year)
             for row in PERSONAL_ROWS:
                 with self.subTest(year=year, row=row):
                     on_page = [path for _x0, _x1, path
                                in rows[f"Line19{row}[0]"]]
-                    mapped = [
-                        scalars.get(f"f4562_line_19{row}_{column}")
-                        for column in columns]
-                    for position, path in enumerate(mapped):
-                        if path is None:
-                            self.assertEqual(columns[position], "method")
-                            continue
-                        self.assertEqual(path, on_page[position])
+                    self.assertEqual(
+                        on_page,
+                        [_date_widget(year, row)] + [
+                            _literal(year, row, column)
+                            for column in PRINTED_COLUMNS])
+
+    def test_method_literal_sits_under_the_method_header(self):
+        for year in YEARS:
+            method_x = _header_x(year, "Method")
+            convention_x = _header_x(year, "Convention")
+            rows = _row_widgets(year)
+            for row in PERSONAL_ROWS:
+                with self.subTest(year=year, row=row):
+                    spans = {path: (x0, x1)
+                             for x0, x1, path in rows[f"Line19{row}[0]"]}
+                    x0, x1 = spans[_literal(year, row, "method")]
+                    self.assertTrue(x0 <= method_x <= x1)
+                    self.assertFalse(x0 <= convention_x <= x1)
+
+    def test_shaded_date_cell_is_not_mapped(self):
+        """Column (b) is shaded on rows 19a-19f: no key, and no other key
+        pointing at the widget."""
+        for year in YEARS:
+            scalars = Pdf4562.get_mapping(year)["scalars"]
+            for row in PERSONAL_ROWS:
+                with self.subTest(year=year, row=row):
+                    self.assertNotIn(
+                        f"f4562_line_19{row}_date_placed_in_service", scalars)
+                    self.assertNotIn(
+                        _date_widget(year, row), scalars.values())
+
+    def test_real_property_rows_keep_their_date(self):
+        for year in YEARS:
+            scalars = Pdf4562.get_mapping(year)["scalars"]
+            for row in ("i", "j"):
+                with self.subTest(year=year, row=row):
+                    self.assertIn(
+                        f"f4562_line_19{row}_date_placed_in_service", scalars)
 
 
 class ComputeTests(unittest.TestCase):
@@ -278,6 +342,93 @@ class ComputeTests(unittest.TestCase):
             result = form_f4562.compute(scenario, upstream={})
         self.assertEqual(result["f4562_line_19i_convention"], "MM")
         self.assertEqual(result["f4562_line_19b_convention"], "MQ")
+
+
+class MethodLabelTests(unittest.TestCase):
+    def test_method_follows_the_class_not_the_convention(self):
+        expected = {"3-year": ("a", "200 DB"), "5-year": ("b", "200 DB"),
+                    "7-year": ("c", "200 DB"), "10-year": ("d", "200 DB"),
+                    "15-year": ("e", "150 DB"), "20-year": ("f", "150 DB")}
+        for month, tripped in ((3, False), (11, True)):
+            scenario = _scenario(2025, *[
+                _asset(cls, cls, month, 1_000.0, 2025) for cls in expected])
+            result = form_f4562.compute(scenario, upstream={})
+            for cls, (row, method) in expected.items():
+                with self.subTest(recovery_class=cls, mid_quarter=tripped):
+                    self.assertEqual(
+                        result[f"f4562_line_19{row}_method"], method)
+                    self.assertEqual(
+                        result[f"f4562_line_19{row}_convention"],
+                        "MQ" if tripped else "HY")
+
+    def test_real_property_is_straight_line(self):
+        result = form_f4562.compute(_scenario(
+            2025, _asset("Building", "27.5-year", 1, 200_000.0, 2025),
+            _asset("Shop", "39-year", 6, 500_000.0, 2025)), upstream={})
+        self.assertEqual(result["f4562_line_19i_method"], "S/L")
+        self.assertEqual(result["f4562_line_19j_method"], "S/L")
+
+    def test_fifteen_year_row_prints_150_db_on_the_2025_template(self):
+        """The filing-visible cell: a fence is 15-year property, and its
+        row's column (f) must read "150 DB"."""
+        result = form_f4562.compute(_scenario(
+            2025, _asset("Fence", "15-year", 5, 12_000.0, 2025)), upstream={})
+        fields = _filled_fields(2025, result)
+        self.assertEqual(fields[METHOD_15_YEAR_2025], "150 DB")
+        self.assertEqual(
+            Pdf4562.get_mapping(2025)["scalars"]["f4562_line_19e_method"],
+            METHOD_15_YEAR_2025)
+        self.assertEqual(fields[f"{_SB}.Line19e[0].f1_53[0]"], "HY")
+        self.assertEqual(fields[f"{_SB}.Line19e[0].f1_51[0]"], "12000")
+        self.assertEqual(fields[f"{_SB}.Line19e[0].f1_52[0]"], "15 yrs.")
+        self.assertEqual(fields[f"{_SB}.Line19e[0].f1_55[0]"], "600")
+        self.assertIn(fields[f"{_SB}.Line19e[0].f1_50[0]"], (None, ""))
+
+    def test_method_prints_in_the_method_column_on_every_layout(self):
+        for year in YEARS:
+            result = form_f4562.compute(_scenario(
+                year,
+                _asset("Laptop", "5-year", 2, 1_000.0, year),
+                _asset("Fence", "15-year", 5, 12_000.0, year)), upstream={})
+            fields = _filled_fields(year, result)
+            with self.subTest(year=year):
+                self.assertEqual(
+                    fields[_literal(year, "b", "method")], "200 DB")
+                self.assertEqual(
+                    fields[_literal(year, "e", "method")], "150 DB")
+
+
+class ShadedDateCellTests(unittest.TestCase):
+    def test_personal_rows_compute_no_date_key(self):
+        result = form_f4562.compute(_untripped(2025), upstream={})
+        self.assertEqual(
+            [k for k in result if k.endswith("_date_placed_in_service")], [])
+
+    def test_real_property_rows_still_compute_one(self):
+        scenario = _untripped(2025)
+        scenario.rental_properties[0].depreciable_assets.append(
+            _asset("Building", "27.5-year", 4, 200_000.0, 2025))
+        result = form_f4562.compute(scenario, upstream={})
+        self.assertEqual(
+            [k for k in result if k.endswith("_date_placed_in_service")],
+            ["f4562_line_19i_date_placed_in_service"])
+        self.assertEqual(
+            result["f4562_line_19i_date_placed_in_service"], "04/2025")
+
+    def test_filled_form_leaves_the_shaded_cell_empty(self):
+        for year in YEARS:
+            fields = _filled_fields(
+                year, form_f4562.compute(_untripped(year), upstream={}))
+            for row in ("b", "c"):
+                with self.subTest(year=year, row=row):
+                    self.assertIn(
+                        fields[_date_widget(year, row)], (None, ""))
+                    self.assertEqual(
+                        fields[_literal(year, row, "recovery_period")],
+                        "5 yrs." if row == "b" else "7 yrs.")
+                    self.assertEqual(
+                        fields[_literal(year, row, "basis")],
+                        "6000" if row == "b" else "4000")
 
 
 class FilledFormTests(unittest.TestCase):

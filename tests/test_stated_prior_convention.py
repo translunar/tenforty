@@ -412,6 +412,62 @@ class SingleActivityRunCarriesTheReturnsAnswerTests(unittest.TestCase):
             resolve(self._business(), YEAR, mid_quarter=True)
 
 
+class UnexpressibleInputsTests(unittest.TestCase):
+    """The tables here are the general depreciation system on a full
+    calendar tax year. The alternative depreciation system and a short tax
+    year would each need different figures -- and neither can be written
+    into a scenario at all, so there is no wrong-number path to refuse.
+    These tests keep it that way: a key for either is rejected by the
+    loader, wherever it is put. (A refusal for an input that cannot be
+    expressed would have nothing to fire on.)
+
+    The corporate return carries its own `tax_year_beginning` /
+    `tax_year_ending` (models.SCorpReturn); that is the entity's header and
+    reaches no asset here."""
+
+    def _doc(self):
+        return _doc(rental_properties=[
+            _rental(depreciable_assets=[_appliance()])])
+
+    def test_the_scenario_loads_without_any_such_key(self):
+        _load(self._doc())
+
+    def test_asset_cannot_state_a_depreciation_system_or_method(self):
+        for key, value in (("ads", True),
+                           ("alternative_depreciation_system", True),
+                           ("depreciation_system", "ADS"),
+                           ("method", "S/L"), ("recovery_period", 12)):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(
+                        ValueError, rf"Unknown key\(s\).*'{key}'"):
+                    _load_rental(_appliance(**{key: value}))
+
+    def test_no_level_accepts_a_short_or_fiscal_tax_year(self):
+        values = (("tax_year_beginning", datetime.date(YEAR, 4, 1)),
+                  ("tax_year_ending", datetime.date(YEAR, 9, 30)),
+                  ("short_tax_year", True), ("fiscal_year_end", "06-30"))
+        for key, value in values:
+            with self.subTest(key=key, where="config"):
+                doc = self._doc()
+                doc["config"][key] = value
+                with self.assertRaisesRegex(TypeError, key):
+                    _load(doc)
+            with self.subTest(key=key, where="top level"):
+                doc = self._doc()
+                doc[key] = value
+                with self.assertRaisesRegex(
+                        ValueError, rf"Unknown top-level key\(s\).*'{key}'"):
+                    _load(doc)
+            with self.subTest(key=key, where="activity"):
+                with self.assertRaisesRegex(TypeError, key):
+                    _load(_doc(rental_properties=[_rental(
+                        depreciable_assets=[_appliance()], **{key: value})]))
+            with self.subTest(key=key, where="asset"):
+                with self.assertRaisesRegex(
+                        ValueError, rf"Unknown key\(s\).*'{key}'"):
+                    _load_rental(_appliance(**{key: value}))
+
+
 class RentalPropertyModelTests(unittest.TestCase):
     def test_model_defaults(self):
         asset = DepreciableAsset(

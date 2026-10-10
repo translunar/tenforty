@@ -68,10 +68,19 @@ _COL_OFFSETS = {
 }
 
 
+# Rows 19a-19f (personal property): column (b) is shaded on the form and is
+# never filled, so those rows have no date key. The first widget of each of
+# those rows (base+0) is that shaded cell.
+_ROWS_WITHOUT_A_DATE = ("a", "b", "c", "d", "e", "f")
+
+
 def _row_fields(label: str) -> dict[str, str]:
     subform, base = _ROW_BASES[label]
     out: dict[str, str] = {}
     for col, offset in _COL_OFFSETS.items():
+        if (col == "date_placed_in_service"
+                and label in _ROWS_WITHOUT_A_DATE):
+            continue
         out[f"f4562_line_19{label}_{col}"] = (
             f"{_SB}.{subform}[0].f1_{base + offset}[0]"
         )
@@ -87,13 +96,15 @@ def _all_row_fields() -> dict[str, str]:
 
 # 2024 Form 4562 Section B row structure differs from 2025:
 #   - Rows a–f: six widgets each, left to right R{n}, f1_{base}..f1_{base+4}
-#     (stride 5, bases 26/31/36/41/46/51; R4..R9). Columns: (b) date = R{n},
-#     (c) basis = base+0, (d) recovery period = base+1, (e) convention =
-#     base+2, (f) method = base+3 (NOT mapped), (g) deduction = base+4.
-#     Read off the template by widget position and pinned literally in
-#     tests/test_f4562_mid_quarter.py. The 2021 tree is identical.
-#   - Row g (25-year): R10 (date), f1_56 (basis), f1_60 (deduction); the
-#     convention and method cells are sub-containers with no text field.
+#     (stride 5, bases 26/31/36/41/46/51; R4..R9). R{n} is column (b), which
+#     is SHADED on these rows and never filled (no key). (c) basis = base+0,
+#     (d) recovery period = base+1, (e) convention = base+2, (f) method =
+#     base+3, (g) deduction = base+4. Read off the template by widget
+#     position and pinned literally in tests/test_f4562_mid_quarter.py. The
+#     2021 tree is identical.
+#   - Row g (25-year): f1_56 (basis), f1_60 (deduction); column (b) is
+#     shaded (R10, no key) and the convention and method cells are
+#     sub-containers with no text field.
 #   - Rows h_1 / h_2 (27.5-year sub-rows): f1_61/f1_62/f1_66 and f1_67/f1_68/f1_72.
 #     Map: date=f1_{x}, basis=f1_{x+1}, deduction=f1_{x+n}.
 #   - Rows i_1 / i_2 (39-year sub-rows): f1_73/f1_74/f1_78 and f1_79/f1_80/f1_84.
@@ -106,35 +117,32 @@ def _all_row_fields_2024() -> dict[str, str]:
     sb = _SB
     out: dict[str, str] = {}
 
-    # Rows a–f (3-year through 20-year): (subform, date widget, first f1_N).
+    # Rows a–f (3-year through 20-year): (subform, first f1_N).
     _simple_rows = {
-        "a": ("Line19a", "R4", 26),
-        "b": ("Line19b", "R5", 31),
-        "c": ("Line19c", "R6", 36),
-        "d": ("Line19d", "R7", 41),
-        "e": ("Line19e", "R8", 46),
-        "f": ("Line19f", "R9", 51),
+        "a": ("Line19a", 26),
+        "b": ("Line19b", 31),
+        "c": ("Line19c", 36),
+        "d": ("Line19d", 41),
+        "e": ("Line19e", 46),
+        "f": ("Line19f", 51),
     }
     _simple_cols = {
         "basis": 0,
         "recovery_period": 1,
         "convention": 2,
-        # method (base+3): the widget exists but is not mapped
+        "method": 3,
         "deduction": 4,
     }
-    for label, (subform, date_widget, base) in _simple_rows.items():
-        out[f"f4562_line_19{label}_date_placed_in_service"] = (
-            f"{sb}.{subform}[0].{date_widget}[0]")
+    for label, (subform, base) in _simple_rows.items():
         for col, offset in _simple_cols.items():
             out[f"f4562_line_19{label}_{col}"] = (
                 f"{sb}.{subform}[0].f1_{base + offset}[0]"
             )
 
-    # Row g (25-year): 3 writeable cells — date, basis, deduction.
+    # Row g (25-year): basis and deduction. Column (b) is shaded;
     # recovery_period, convention, method are inside sub-containers without
     # separate text fields.
     out.update({
-        "f4562_line_19g_date_placed_in_service": f"{sb}.Line19g[0].R10[0]",
         "f4562_line_19g_basis":                  f"{sb}.Line19g[0].f1_56[0]",
         "f4562_line_19g_deduction":              f"{sb}.Line19g[0].f1_60[0]",
     })
@@ -169,37 +177,36 @@ _SCALARS_2021: dict[str, str] = {
     # (printed line number and adjacent text) when line 17 was wired.
     "f4562_line_17": "topmostSubform[0].Page1[0].f1_25[0]",
     "f4562_line_22_total_depreciation": "topmostSubform[0].Page1[0].f1_108[0]",
-    "f4562_line_19a_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].R4[0]",
     "f4562_line_19a_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_26[0]",
     "f4562_line_19a_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_27[0]",
     "f4562_line_19a_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_28[0]",
+    "f4562_line_19a_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_29[0]",
     "f4562_line_19a_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_30[0]",
-    "f4562_line_19b_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].R5[0]",
     "f4562_line_19b_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_31[0]",
     "f4562_line_19b_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_32[0]",
     "f4562_line_19b_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_33[0]",
+    "f4562_line_19b_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_34[0]",
     "f4562_line_19b_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19b[0].f1_35[0]",
-    "f4562_line_19c_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].R6[0]",
     "f4562_line_19c_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_36[0]",
     "f4562_line_19c_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_37[0]",
     "f4562_line_19c_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_38[0]",
+    "f4562_line_19c_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_39[0]",
     "f4562_line_19c_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19c[0].f1_40[0]",
-    "f4562_line_19d_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].R7[0]",
     "f4562_line_19d_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_41[0]",
     "f4562_line_19d_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_42[0]",
     "f4562_line_19d_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_43[0]",
+    "f4562_line_19d_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_44[0]",
     "f4562_line_19d_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19d[0].f1_45[0]",
-    "f4562_line_19e_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].R8[0]",
     "f4562_line_19e_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_46[0]",
     "f4562_line_19e_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_47[0]",
     "f4562_line_19e_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_48[0]",
+    "f4562_line_19e_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_49[0]",
     "f4562_line_19e_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19e[0].f1_50[0]",
-    "f4562_line_19f_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].R9[0]",
     "f4562_line_19f_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_51[0]",
     "f4562_line_19f_recovery_period": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_52[0]",
     "f4562_line_19f_convention": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_53[0]",
+    "f4562_line_19f_method": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_54[0]",
     "f4562_line_19f_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19f[0].f1_55[0]",
-    "f4562_line_19g_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].R10[0]",
     "f4562_line_19g_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].f1_56[0]",
     "f4562_line_19g_deduction": "topmostSubform[0].Page1[0].SectionBTable[0].Line19g[0].f1_60[0]",
     "f4562_line_19i_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19h_1[0].f1_61[0]",
