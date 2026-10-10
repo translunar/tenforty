@@ -1263,6 +1263,11 @@ class ReturnOrchestrator:
         # schedule_results.get("f8962", {}) and defaults every value to 0.
         if f8962_results is not None:
             results["f8962"] = f8962_results
+        # FAIL-CLOSED: Form 8582's allowed loss is computed above but nothing
+        # downstream applies it (Schedule 1 line 5 takes Schedule E as it
+        # stands). Refuse when the limitation binds rather than hand the
+        # spine a loss the limitation cuts.
+        enforce_scoped_refusals(results, "schedules")
         return results, k1_fanout
 
     def _compute_1040_via_workbook(
@@ -1813,13 +1818,18 @@ class ReturnOrchestrator:
             # emitted (e.g. only passive K-1 activity, no rental property).
             if not sch_e_values:
                 sch_e_values = form_sch_e.compute(scenario, upstream=upstream)
+            f8582_values = form_f8582.compute(scenario, upstream={
+                **upstream, "sch_e": sch_e_values,
+            })
+            # The same refusal the native compute runs, re-checked against
+            # the Form 8582 about to print: `results` may not have come
+            # through the native schedule computes (the workbook path).
+            enforce_scoped_refusals({"f8582": f8582_values}, "schedules")
             specs.append(_FederalFormSpec(
                 name="f8582", template=_fed("f8582.pdf"),
                 output_name=f"f8582_{year}.pdf", kind="flat",
                 mapping=PdfF8582.get_mapping(year)["scalars"],
-                values=form_f8582.compute(scenario, upstream={
-                    **upstream, "sch_e": sch_e_values,
-                }),
+                values=f8582_values,
             ))
 
         return specs
