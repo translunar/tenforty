@@ -50,7 +50,7 @@ def _old_building() -> DepreciableAsset:
         description="Rental building", date_placed_in_service=date(2019, 6, 1),
         basis=200_000.0, recovery_class="27.5-year")
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, YEAR))
+        reconstruct_prior_depreciation(asset, YEAR, mid_quarter_years=frozenset()))
     return asset
 
 
@@ -115,7 +115,7 @@ class AssetModeReconTests(_Case):
 class OverriddenReconTests(_Case):
     def _overridden(self):
         building = _old_building()
-        self.engine = macrs_deduction(building, YEAR)
+        self.engine = macrs_deduction(building, YEAR, mid_quarter_years=frozenset())
         self.assertNotEqual(self.engine, 6_500)
         return _scenario(_rental(
             depreciable_assets=[building],
@@ -165,12 +165,12 @@ class LiftedBonusHistoryNoteTests(_Case):
             date_placed_in_service=date(2023, 3, 15), basis=10_000.0,
             recovery_class="5-year", no_bonus_or_section_179_history=history)
         asset.prior_depreciation = float(
-            reconstruct_prior_depreciation(asset, YEAR))
+            reconstruct_prior_depreciation(asset, YEAR, mid_quarter_years=frozenset()))
         return _scenario(_rental(
             depreciable_assets=[asset],
             depreciation_override=DepreciationOverride(
                 amount=400.0,
-                restates_engine_amount=float(macrs_deduction(asset, YEAR)),
+                restates_engine_amount=float(macrs_deduction(asset, YEAR, mid_quarter_years=frozenset())),
                 acknowledgment=True)))
 
     def test_note_present_when_the_refusal_was_lifted(self):

@@ -1190,11 +1190,13 @@ def _assets_placed_after_return_year(s: Scenario) -> list[str]:
 def _prior_depreciation_mismatches(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     year = s.config.year
+    mq_years = resolver.mid_quarter_years(s)
     found = []
     for label, a in _assets(s):
         if not resolver.is_computable(a):
             continue
-        mismatch = resolver.prior_depreciation_mismatch(a, year)
+        mismatch = resolver.prior_depreciation_mismatch(
+            a, year, mid_quarter_years=mq_years)
         if mismatch is not None:
             stated, reconstructed = mismatch
             found.append(
@@ -1215,9 +1217,11 @@ def _computable_overridden_activities(s: Scenario):
 
 def _stale_overrides(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
+    mq_years = resolver.mid_quarter_years(s)
     found = []
     for label, act in _computable_overridden_activities(s):
-        engine = resolver.engine_amount(act, s.config.year)
+        engine = resolver.engine_amount(
+            act, s.config.year, mid_quarter_years=mq_years)
         restated = irs_round(act.depreciation_override.restates_engine_amount)
         if restated != engine:
             found.append(
@@ -1267,14 +1271,6 @@ def _unacknowledged_listed_property(s: Scenario) -> list[str]:
             if a.recovery_class in PERSONAL_PROPERTY_CLASSES]
 
 
-def _mid_quarter_convention(s: Scenario) -> list[str]:
-    from tenforty.forms.depreciation import resolver
-    if not resolver.mid_quarter_applies(s):
-        return []
-    last_quarter, year_total = resolver.mid_quarter_bases(s)
-    return [f"{irs_round(last_quarter):,} of {irs_round(year_total):,}"]
-
-
 def _unverifiable_mid_quarter_test(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     if s.acknowledges_no_personal_property_behind_stated_depreciation is True:
@@ -1308,7 +1304,8 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
         message=lambda o: (
             f"{_join(o)} carries `convention:` -- convention is computed, "
             "not stated. Real property is mid-month by statute; personal "
-            "property is half-year unless the mid-quarter test applies. "
+            "property is half-year, or mid-quarter when the 40% test says "
+            "so. "
             "Remove the key."),
     ),
     # Class first: the property-type predicates below classify by it.
@@ -1513,23 +1510,6 @@ _DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
             "The real resolution is per-activity forms (one Form 4562 per "
             "activity that needs one), which is a later change. Until then "
             "this combination cannot be produced."),
-        exception=NotImplementedError,
-    ),
-    ScopedRefusal(
-        name="mid_quarter_convention",
-        stage="load",
-        whole_return=True,
-        offenders=_mid_quarter_convention,
-        message=lambda o: (
-            f"The mid-quarter convention applies to this return: personal "
-            f"property placed in service in the last three months of the "
-            f"year has aggregate basis {_join(o)} placed in service during "
-            "the year, which is more than 40% (26 U.S.C. 168(d)(3)). "
-            "tenforty has no mid-quarter tables, and the half-year tables "
-            "would compute every asset placed this year wrong. The totals "
-            "run across every activity on the return; real property is in "
-            "neither. This return cannot be produced with these assets "
-            "listed."),
         exception=NotImplementedError,
     ),
     ScopedRefusal(

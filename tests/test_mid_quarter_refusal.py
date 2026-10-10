@@ -233,7 +233,7 @@ class TaxpayerWideTests(unittest.TestCase):
         business = _business(_personal(1_000.0, 11, description="Laptop"))
         rental = _rental(_personal(9_000.0, 3))
         scenario = _scenario(rentals=[rental], businesses=[business])
-        self.assertGreater(resolve(business, YEAR).amount, 0)
+        self.assertGreater(resolve(business, YEAR, mid_quarter_years=frozenset()).amount, 0)
         with tempfile.TemporaryDirectory() as tmp:
             results = ReturnOrchestrator(
                 spreadsheets_dir=SPREADSHEETS_DIR,

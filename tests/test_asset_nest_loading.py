@@ -486,7 +486,7 @@ class BonusHistoryRefusalTests(unittest.TestCase):
         return float(macrs_deduction(DepreciableAsset(
             description="Refrigerator",
             date_placed_in_service=datetime.date(2023, 3, 15),
-            basis=10_000.0, recovery_class="5-year"), YEAR))
+            basis=10_000.0, recovery_class="5-year"), YEAR, mid_quarter_years=frozenset()))
 
     def test_activity_override_lifts_the_refusal(self):
         """Ruling: the refusal is per asset but the override is per
