@@ -162,9 +162,12 @@ class InvalidStatedConventionTests(unittest.TestCase):
 
     def test_each_unusable_value_refuses(self):
         cases = (
-            ({"convention": "mid-quarter", "quarter": 5}, r"`quarter: 5`"),
-            ({"convention": "mid-quarter", "quarter": 0}, r"`quarter: 0`"),
-            ({"convention": "mid-quarter", "quarter": -1}, r"`quarter: -1`"),
+            ({"convention": "mid-quarter", "quarter": 5},
+             r"`quarter: 5`; it must be one of \[1, 2, 3, 4\]"),
+            ({"convention": "mid-quarter", "quarter": 0},
+             r"`quarter: 0`; it must be one of"),
+            ({"convention": "mid-quarter", "quarter": -1},
+             r"`quarter: -1`; it must be one of"),
             ({"convention": "half-year", "quarter": 4},
              r"`quarter` with `convention: half-year`"),
             ({"convention": "mid-month"}, r"`convention: mid-month`"),
