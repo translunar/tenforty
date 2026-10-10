@@ -1,6 +1,6 @@
 """Form 4562 PDF field mapping.
 
-Scope: header (name/SSN), Part III line 17, Part III Section B line 19
+Scope: header (name, business or activity, SSN), Part III line 17, Part III Section B line 19
 rows, and the Part IV line 22 total. Parts I/II/V/VI and Section C ADS are
 not wired.
 
@@ -173,6 +173,9 @@ def _all_row_fields_2024() -> dict[str, str]:
 _SCALARS_2021: dict[str, str] = {
     "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
     "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_3[0]",
+    # Not from that probe either: the middle header box, read off the blank
+    # 2021 template (label order and row geometry).
+    "f4562_business_or_activity": "topmostSubform[0].Page1[0].f1_2[0]",
     # Line 17 is NOT from that probe: it was read off the blank 2021 template
     # (printed line number and adjacent text) when line 17 was wired.
     "f4562_line_17": "topmostSubform[0].Page1[0].f1_25[0]",
@@ -229,8 +232,9 @@ class Pdf4562(PdfFormMapping[dict]):
         2024: {
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
-                # Identifying number is the THIRD header box; f1_2[0] is
-                # "Business or activity to which this form relates".
+                # Header row, left to right: name, business or activity,
+                # identifying number.
+                "f4562_business_or_activity": f"{_P1}.f1_2[0]",
                 "taxpayer_ssn": f"{_P1}.f1_3[0]",
                 "f4562_line_17": f"{_P1}.f1_25[0]",
                 # Line 22 is at the foot of page 1 through 2024.
@@ -242,8 +246,9 @@ class Pdf4562(PdfFormMapping[dict]):
         2025: {
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
-                # Identifying number is the THIRD header box; f1_2[0] is
-                # "Business or activity to which this form relates".
+                # Header row, left to right: name, business or activity,
+                # identifying number.
+                "f4562_business_or_activity": f"{_P1}.f1_2[0]",
                 "taxpayer_ssn": f"{_P1}.f1_3[0]",
                 "f4562_line_17": f"{_P1}.f1_25[0]",
                 "f4562_line_22_total_depreciation": f"{_P2}.f2_2[0]",
