@@ -1,8 +1,20 @@
-"""Form 4562 PDF field mapping (tax year 2025).
+"""Form 4562 PDF field mapping.
 
-v1 scope: header (name/SSN), Part III Section B line 19 rows, and the
-Part IV line 22 total. Parts I/II/V/VI and Section C ADS are not
-wired — add them when a scenario needs them.
+Scope: header (name/SSN), Part III line 17, Part III Section B line 19
+rows, and the Part IV line 22 total. Parts I/II/V/VI and Section C ADS are
+not wired.
+
+Line 17 and line 22, by template year (each read off the blank template:
+the printed line number AND the words beside the widget; pinned as literals
+in tests/test_f4562_prior_asset_line17.py):
+
+  line 17   Page1.f1_25[0]    2021-2025
+  line 22   Page1.f1_108[0]   2021-2024 (Part IV is at the foot of page 1)
+            Page2.f2_2[0]     2025      (Part IV moved to page 2)
+
+Page2.f2_1[0] is NOT line 22 in any year: through 2024 it is the line 25
+box (special depreciation allowance for listed property); in 2025 it is
+line 21.
 
 Form 4562 Part III Section B is row-per-recovery-class. Each row has
 six visible columns: (b) month/year placed, (c) basis, (d) recovery
@@ -86,7 +98,7 @@ def _all_row_fields() -> dict[str, str]:
 #     Map: date=f1_{x}, basis=f1_{x+1}, deduction=f1_{x+n}.
 #   - There is no Line19j (50-year) in 2024; v1 has no 50-year scenario so
 #     row "h" (50-year) from 2025 is omitted here.
-#   - Page2: line 22 total = f2_1[0] (2024) vs f2_2[0] (2025).
+#   - Line 22 total = Page1 f1_108[0] (2024) vs Page2 f2_2[0] (2025).
 
 def _all_row_fields_2024() -> dict[str, str]:
     sb = _SB
@@ -149,11 +161,14 @@ def _all_row_fields_2024() -> dict[str, str]:
 # line_19i (residential 27.5yr) / line_19j (nonresidential 39yr) map to the 2021
 # form's residential/nonresidential rows (containers Line19h_1 / Line19i_1) — the
 # compute's internal 19h=50yr letter is absent on the 2021 form. No 50-year (19h)
-# key. The 42 entries below are transcribed verbatim from the authoritative,
+# key. The 42 probe entries below are transcribed verbatim from the authoritative,
 # controller-verified probe leaves (4562-2021-FINAL-leaves.json); do NOT re-derive.
 _SCALARS_2021: dict[str, str] = {
     "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
     "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_3[0]",
+    # Line 17 is NOT from that probe: it was read off the blank 2021 template
+    # (printed line number and adjacent text) when line 17 was wired.
+    "f4562_line_17": "topmostSubform[0].Page1[0].f1_25[0]",
     "f4562_line_22_total_depreciation": "topmostSubform[0].Page1[0].f1_108[0]",
     "f4562_line_19a_date_placed_in_service": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].R4[0]",
     "f4562_line_19a_basis": "topmostSubform[0].Page1[0].SectionBTable[0].Line19a[0].f1_26[0]",
@@ -209,8 +224,9 @@ class Pdf4562(PdfFormMapping[dict]):
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
                 "taxpayer_ssn": f"{_P1}.f1_2[0]",
-                # Line 22 total depreciation: f2_1[0] in 2024 (f2_2[0] in 2025).
-                "f4562_line_22_total_depreciation": f"{_P2}.f2_1[0]",
+                "f4562_line_17": f"{_P1}.f1_25[0]",
+                # Line 22 is at the foot of page 1 through 2024.
+                "f4562_line_22_total_depreciation": f"{_P1}.f1_108[0]",
                 **_all_row_fields_2024(),
             },
             "repeaters": {},
@@ -219,6 +235,7 @@ class Pdf4562(PdfFormMapping[dict]):
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
                 "taxpayer_ssn": f"{_P1}.f1_2[0]",
+                "f4562_line_17": f"{_P1}.f1_25[0]",
                 "f4562_line_22_total_depreciation": f"{_P2}.f2_2[0]",
                 **_all_row_fields(),
             },
