@@ -17,7 +17,7 @@ line 21 for the single-property case.
 
 import logging
 
-from tenforty.forms.depreciation.resolver import mid_quarter_years, resolve
+from tenforty.forms.depreciation.resolver import mid_quarter_applies, resolve
 from tenforty.models import RentalProperty, Scenario
 from tenforty.rounding import irs_round
 
@@ -47,10 +47,10 @@ _LINE_18_KEY = "sch_e_property_a_depreciation"
 
 
 def _line_18(rp: RentalProperty, tax_year: int, *,
-             mid_quarter_years: frozenset[int]) -> float:
+             mid_quarter: bool) -> float:
     """The property's depreciation as resolved for ``tax_year`` (the stated
     scalar as stated, or the asset-mode / overridden figure)."""
-    return resolve(rp, tax_year, mid_quarter_years=mid_quarter_years).amount
+    return resolve(rp, tax_year, mid_quarter=mid_quarter).amount
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
@@ -62,7 +62,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     rp = scenario.rental_properties[0]
     result.update(_property_a_fields(
         rp, scenario.config.year,
-        mid_quarter_years=mid_quarter_years(scenario)))
+        mid_quarter=mid_quarter_applies(scenario)))
 
     # printed-chain ruling (SE line 12 lineage), 2026-10-04: line 26 is
     # arithmetic over printed line 21 (single property in v1), so it is the
@@ -124,7 +124,7 @@ def _totals_block(printed: dict) -> dict:
 
 
 def _property_a_fields(rp: RentalProperty, tax_year: int, *,
-                       mid_quarter_years: frozenset[int]) -> dict:
+                       mid_quarter: bool) -> dict:
     fields: dict = {
         "sch_e_property_a_address": rp.address,
         "sch_e_property_a_type_code": rp.property_type_code,
@@ -141,7 +141,7 @@ def _property_a_fields(rp: RentalProperty, tax_year: int, *,
         if rounded:
             fields[key] = rounded
         total_expenses += rounded
-    depreciation = irs_round(_line_18(rp, tax_year, mid_quarter_years=mid_quarter_years))
+    depreciation = irs_round(_line_18(rp, tax_year, mid_quarter=mid_quarter))
     if depreciation:
         fields[_LINE_18_KEY] = depreciation
     total_expenses += depreciation
@@ -153,13 +153,13 @@ def _property_a_fields(rp: RentalProperty, tax_year: int, *,
 
 
 def printed_rental_net(rp: RentalProperty, tax_year: int, *,
-                       mid_quarter_years: frozenset[int]) -> int:
+                       mid_quarter: bool) -> int:
     """One property's Schedule E line 21 (income or loss) exactly as the
     form prints it: rounded rents less the sum of the individually rounded
     expense lines. Consumed by the IRC §461(l) excess-business-loss guard
     (orchestrator.aggregate_business_losses)."""
     return _property_a_fields(
-        rp, tax_year, mid_quarter_years=mid_quarter_years)["sch_e_property_a_income_loss"]
+        rp, tax_year, mid_quarter=mid_quarter)["sch_e_property_a_income_loss"]
 
 
 def has_any_net_loss(scenario: Scenario) -> bool:
@@ -169,11 +169,11 @@ def has_any_net_loss(scenario: Scenario) -> bool:
     here keeps the predicate in sync without a second edit; line 18 comes
     from the resolver, as everywhere else."""
     tax_year = scenario.config.year
-    mq_years = mid_quarter_years(scenario)
+    mid_quarter = mid_quarter_applies(scenario)
     for p in scenario.rental_properties:
         expense_total = sum(
             getattr(p, attr) for attr, _key in _EXPENSE_FIELDS
-        ) + _line_18(p, tax_year, mid_quarter_years=mq_years)
+        ) + _line_18(p, tax_year, mid_quarter=mid_quarter)
         if p.rents_received < expense_total:
             return True
     return False

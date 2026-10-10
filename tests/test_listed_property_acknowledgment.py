@@ -36,6 +36,7 @@ def _vehicle(year: int = 2023) -> DepreciableAsset:
     if year < YEAR:
         asset.prior_depreciation = 0.0
         asset.acknowledges_prior_depreciation_as_stated = True
+        asset.convention = "half-year"
     return asset
 
 

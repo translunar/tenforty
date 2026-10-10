@@ -198,8 +198,15 @@ class DepreciableAsset:
     `ScheduleCBusiness.depreciable_assets`).
 
     ``basis`` is the DEPRECIABLE basis: land is already excluded.
-    ``recovery_class`` is one of `SUPPORTED_RECOVERY_CLASSES`. There is no
-    convention field: the convention is computed from the class, never stated.
+    ``recovery_class`` is one of `SUPPORTED_RECOVERY_CLASSES`.
+
+    ``convention`` ("half-year" or "mid-quarter") and ``quarter`` (1-4, only
+    with mid-quarter) are STATED on personal property placed in service
+    before the return year, and only there: the convention such an asset
+    took was settled by the 40% test of the year it was placed in service,
+    over that year's placements, which a later return does not hold. On an
+    asset placed in the return year the convention is computed and stating
+    it refuses; real property is mid-month by statute and never states it.
 
     ``prior_depreciation`` is required when the asset was placed in service
     before the return year. ``no_bonus_or_section_179_history`` must be True
@@ -217,6 +224,8 @@ class DepreciableAsset:
     prior_depreciation: float | None = None
     no_bonus_or_section_179_history: bool | None = None
     acknowledges_prior_depreciation_as_stated: bool = False
+    convention: str | None = None
+    quarter: int | None = None
 
 
 @dataclass(frozen=True)

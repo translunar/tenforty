@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Callable
 import yaml
 
 from tenforty.forms.depreciation.resolver import (
-    mid_quarter_years,
+    mid_quarter_applies,
     resolve as resolve_depreciation,
 )
 from tenforty.models import (
@@ -453,9 +453,9 @@ def has_rental_depreciation(scenario: "Scenario") -> bool:
     """True iff any rental property carries positive depreciation, from
     either source (stated scalar or assets) -- read through the resolver."""
     year = scenario.config.year
-    mq_years = mid_quarter_years(scenario)
+    mid_quarter = mid_quarter_applies(scenario)
     return any(
-        resolve_depreciation(p, year, mid_quarter_years=mq_years).amount > 0
+        resolve_depreciation(p, year, mid_quarter=mid_quarter).amount > 0
         for p in scenario.rental_properties)
 
 

@@ -45,10 +45,19 @@ def _patched():
         macrs_mid_quarter, "TABLES_BY_QUARTER", SENTINEL_TABLES)
 
 
-def _asset(recovery_class: str, placed: date, basis: float = 10_000.0):
+RETURN_YEAR = 2025
+
+
+def _asset(recovery_class: str, placed: date, basis: float = 10_000.0,
+           **stated):
     return DepreciableAsset(
         description="Example asset", date_placed_in_service=placed,
-        basis=basis, recovery_class=recovery_class)
+        basis=basis, recovery_class=recovery_class, **stated)
+
+
+def _deduction(asset, tax_year, *, mid_quarter, return_year=RETURN_YEAR):
+    return macrs_deduction(
+        asset, tax_year, return_year=return_year, mid_quarter=mid_quarter)
 
 
 class PlacementQuarterTests(unittest.TestCase):
@@ -71,69 +80,159 @@ class PlacementQuarterTests(unittest.TestCase):
                     self.assertEqual(placement_quarter(day), quarter)
 
 
-class ConventionSelectionTests(unittest.TestCase):
-    def test_personal_property_in_a_mid_quarter_year(self):
+class ReturnYearConventionTests(unittest.TestCase):
+    """Property placed in the return year: the convention is COMPUTED from
+    the return's 40% answer, the quarter from the placement date."""
+
+    def test_personal_property_follows_the_returns_answer(self):
         for cls in PERSONAL_PROPERTY_CLASSES:
+            asset = _asset(cls, date(2025, 5, 1))
             with self.subTest(recovery_class=cls):
                 self.assertEqual(
                     asset_convention(
-                        _asset(cls, date(2025, 5, 1)),
-                        mid_quarter_years=frozenset({2025})),
-                    MID_QUARTER)
-
-    def test_personal_property_in_any_other_year_is_half_year(self):
-        for years in (frozenset(), frozenset({2024}), frozenset({2026})):
-            with self.subTest(mid_quarter_years=sorted(years)):
+                        asset, return_year=2025, mid_quarter=True),
+                    (MID_QUARTER, 2))
                 self.assertEqual(
                     asset_convention(
-                        _asset("5-year", date(2025, 5, 1)),
-                        mid_quarter_years=years),
-                    HALF_YEAR)
+                        asset, return_year=2025, mid_quarter=False),
+                    (HALF_YEAR, None))
 
-    def test_the_year_that_matters_is_the_placement_year(self):
-        """An asset placed in 2023 is mid-quarter only if 2023 is."""
-        old = _asset("5-year", date(2023, 11, 1))
-        self.assertEqual(
-            asset_convention(old, mid_quarter_years=frozenset({2025})),
-            HALF_YEAR)
-        self.assertEqual(
-            asset_convention(old, mid_quarter_years=frozenset({2023})),
-            MID_QUARTER)
+    def test_quarter_is_the_placement_quarter(self):
+        for month in range(1, 13):
+            with self.subTest(month=month):
+                self.assertEqual(
+                    asset_convention(
+                        _asset("5-year", date(2025, month, 15)),
+                        return_year=2025, mid_quarter=True),
+                    (MID_QUARTER, (month - 1) // 3 + 1))
 
-    def test_real_property_is_mid_month_whatever_the_year(self):
+    def test_real_property_is_mid_month_whatever_the_answer(self):
         for cls in ("27.5-year", "39-year"):
-            for years in (frozenset(), frozenset({2025})):
-                with self.subTest(recovery_class=cls, years=sorted(years)):
-                    self.assertEqual(
-                        asset_convention(
-                            _asset(cls, date(2025, 11, 1)),
-                            mid_quarter_years=years),
-                        MID_MONTH)
+            for placed_year in (2023, 2025):
+                for answer in (True, False):
+                    with self.subTest(recovery_class=cls, year=placed_year,
+                                      mid_quarter=answer):
+                        self.assertEqual(
+                            asset_convention(
+                                _asset(cls, date(placed_year, 11, 1)),
+                                return_year=2025, mid_quarter=answer),
+                            (MID_MONTH, None))
 
     def test_the_answer_must_be_supplied(self):
-        """No default: a caller that does not say which years are
-        mid-quarter cannot silently get half-year."""
+        """No default: a caller that does not say cannot silently get
+        half-year."""
         asset = _asset("5-year", date(2025, 5, 1))
         with self.assertRaises(TypeError):
-            asset_convention(asset)
+            asset_convention(asset, return_year=2025)
         with self.assertRaises(TypeError):
-            macrs_deduction(asset, 2025)
+            macrs_deduction(asset, 2025, return_year=2025)
+        with self.assertRaises(TypeError):
+            macrs_deduction(asset, 2025, mid_quarter=False)
+
+
+class PriorYearConventionTests(unittest.TestCase):
+    """Property placed before the return year: the convention and quarter
+    are STATED on the asset and the return's own answer is not consulted."""
+
+    def test_stated_convention_is_used_whatever_this_years_answer(self):
+        cases = (
+            ({"convention": "half-year"}, (HALF_YEAR, None)),
+            ({"convention": "mid-quarter", "quarter": 4}, (MID_QUARTER, 4)),
+        )
+        for stated, expected in cases:
+            for answer in (True, False):
+                with self.subTest(stated=stated, mid_quarter=answer):
+                    self.assertEqual(
+                        asset_convention(
+                            _asset("5-year", date(2023, 11, 1), **stated),
+                            return_year=2025, mid_quarter=answer),
+                        expected)
+
+    def test_each_stated_quarter(self):
+        for quarter, month in ((1, 2), (2, 5), (3, 8), (4, 11)):
+            with self.subTest(quarter=quarter):
+                self.assertEqual(
+                    asset_convention(
+                        _asset("7-year", date(2022, month, 1),
+                               convention="mid-quarter", quarter=quarter),
+                        return_year=2025, mid_quarter=False),
+                    (MID_QUARTER, quarter))
+
+    def test_missing_convention_refuses(self):
+        """Fail closed: half-year is never assumed for an earlier year."""
+        asset = _asset("5-year", date(2023, 11, 1))
+        for answer in (True, False):
+            with self.subTest(mid_quarter=answer):
+                with self.assertRaisesRegex(
+                        ValueError, r"states no `convention`"):
+                    asset_convention(
+                        asset, return_year=2025, mid_quarter=answer)
+                with self.assertRaisesRegex(
+                        ValueError, r"states no `convention`"):
+                    _deduction(asset, 2025, mid_quarter=answer)
+
+    def test_unusable_stated_values_refuse(self):
+        cases = (
+            ({"convention": "mid-quarter"}, r"without the `quarter`"),
+            ({"convention": "mid-quarter", "quarter": 5}, r"`quarter: 5`"),
+            ({"convention": "mid-quarter", "quarter": 0}, r"`quarter: 0`"),
+            ({"convention": "half-year", "quarter": 4},
+             r"`quarter` with `convention: half-year`"),
+            ({"convention": "mid-month"}, r"`convention: mid-month`"),
+            ({"convention": "mid-quarter", "quarter": 3},
+             r"is in quarter 4"),
+        )
+        for stated, pattern in cases:
+            with self.subTest(stated=stated):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    asset_convention(
+                        _asset("5-year", date(2023, 11, 1), **stated),
+                        return_year=2025, mid_quarter=False)
+
+    def test_the_boundary_is_the_return_year_itself(self):
+        """Placed in the return year: computed, even if a value is stated
+        (the ledger refuses that at load; the engine does not consult it).
+        Placed the year before: stated."""
+        stated = {"convention": "mid-quarter", "quarter": 4}
+        this_year = _asset("5-year", date(2025, 11, 1), **stated)
+        last_year = _asset("5-year", date(2024, 11, 1), **stated)
+        self.assertEqual(
+            asset_convention(this_year, return_year=2025, mid_quarter=False),
+            (HALF_YEAR, None))
+        self.assertEqual(
+            asset_convention(last_year, return_year=2025, mid_quarter=False),
+            (MID_QUARTER, 4))
 
 
 class QuarterTableSelectionTests(unittest.TestCase):
-    def test_each_asset_reads_its_own_quarter_class_and_year(self):
+    def test_return_year_asset_reads_its_own_quarter_class_and_year(self):
         with _patched():
             for month in range(1, 13):
                 quarter = (month - 1) // 3 + 1
                 for cls, class_years in CLASS_YEARS.items():
                     asset = _asset(cls, date(2025, month, 15), 100_000.0)
+                    with self.subTest(month=month, recovery_class=cls):
+                        self.assertEqual(
+                            _deduction(asset, 2025, mid_quarter=True),
+                            irs_round(100_000.0 * _sentinel(
+                                quarter, class_years, 1)))
+
+    def test_prior_year_asset_reads_its_stated_quarter_class_and_year(self):
+        with _patched():
+            for quarter, month in ((1, 2), (2, 5), (3, 8), (4, 11)):
+                for cls, class_years in CLASS_YEARS.items():
                     for recovery_year in SENTINEL_YEARS:
-                        with self.subTest(month=month, recovery_class=cls,
+                        placed = RETURN_YEAR - recovery_year + 1
+                        if placed == RETURN_YEAR:
+                            continue          # that is the computed path
+                        asset = _asset(
+                            cls, date(placed, month, 15), 100_000.0,
+                            convention="mid-quarter", quarter=quarter)
+                        with self.subTest(quarter=quarter, recovery_class=cls,
                                           recovery_year=recovery_year):
                             self.assertEqual(
-                                macrs_deduction(
-                                    asset, 2025 + recovery_year - 1,
-                                    mid_quarter_years=frozenset({2025})),
+                                _deduction(
+                                    asset, RETURN_YEAR, mid_quarter=False),
                                 irs_round(100_000.0 * _sentinel(
                                     quarter, class_years, recovery_year)))
 
@@ -142,81 +241,116 @@ class QuarterTableSelectionTests(unittest.TestCase):
             for before, after in ((3, 4), (6, 7), (9, 10)):
                 with self.subTest(boundary=(before, after)):
                     self.assertNotEqual(
-                        macrs_deduction(
-                            _asset("5-year", date(2025, before, 28)), 2025,
-                            mid_quarter_years=frozenset({2025})),
-                        macrs_deduction(
-                            _asset("5-year", date(2025, after, 2)), 2025,
-                            mid_quarter_years=frozenset({2025})))
+                        _deduction(_asset("5-year", date(2025, before, 28)),
+                                   2025, mid_quarter=True),
+                        _deduction(_asset("5-year", date(2025, after, 2)),
+                                   2025, mid_quarter=True))
 
     def test_months_inside_one_quarter_read_the_same_table(self):
         with _patched():
             for months in ((1, 2, 3), (4, 5, 6), (7, 8, 9), (10, 11, 12)):
                 amounts = {
-                    macrs_deduction(
-                        _asset("7-year", date(2025, month, 10)), 2025,
-                        mid_quarter_years=frozenset({2025}))
+                    _deduction(_asset("7-year", date(2025, month, 10)),
+                               2025, mid_quarter=True)
                     for month in months}
                 with self.subTest(months=months):
                     self.assertEqual(len(amounts), 1)
 
     def test_half_year_asset_does_not_touch_the_quarter_tables(self):
-        """Same asset, placement year not mid-quarter: the half-year table
-        answers and the quarter tables are never read."""
-        asset = _asset("5-year", date(2025, 11, 15))
         with mock.patch.object(
                 macrs_mid_quarter, "TABLES_BY_QUARTER", None):
-            half_year = macrs_deduction(
-                asset, 2025, mid_quarter_years=frozenset())
-        self.assertEqual(half_year, 2_000)
-        with _patched():
-            self.assertNotEqual(
-                macrs_deduction(
-                    asset, 2025, mid_quarter_years=frozenset({2025})),
-                half_year)
+            self.assertEqual(
+                _deduction(_asset("5-year", date(2025, 11, 15)), 2025,
+                           mid_quarter=False), 2_000)
+            self.assertEqual(
+                _deduction(
+                    _asset("5-year", date(2024, 11, 15),
+                           convention="half-year"),
+                    2025, mid_quarter=True), 3_200)
 
     def test_real_property_does_not_touch_the_quarter_tables(self):
         building = _asset("27.5-year", date(2025, 11, 15), 200_000.0)
         with mock.patch.object(
                 macrs_mid_quarter, "TABLES_BY_QUARTER", None):
             self.assertEqual(
-                macrs_deduction(
-                    building, 2025, mid_quarter_years=frozenset({2025})),
-                macrs_deduction(
-                    building, 2025, mid_quarter_years=frozenset()))
+                _deduction(building, 2025, mid_quarter=True),
+                _deduction(building, 2025, mid_quarter=False))
+
+    def test_reconstructing_an_earlier_year_uses_the_same_convention(self):
+        """The return year decides stated-versus-computed; the year being
+        computed only picks the table row."""
+        asset = _asset("5-year", date(2023, 8, 1), 3_333.0,
+                       convention="mid-quarter", quarter=3)
+        with _patched():
+            for tax_year, recovery_year in ((2023, 1), (2024, 2), (2025, 3)):
+                with self.subTest(tax_year=tax_year):
+                    self.assertEqual(
+                        _deduction(asset, tax_year, mid_quarter=False),
+                        irs_round(3_333.0 * _sentinel(3, 5, recovery_year)))
 
 
 class ForwardYearShapeTests(unittest.TestCase):
-    def test_each_year_is_rounded_on_its_own(self):
-        # 3,333 x the sentinel is fractional in every year.
-        asset = _asset("5-year", date(2025, 8, 1), 3_333.0)
-        with _patched():
-            for recovery_year in SENTINEL_YEARS:
-                with self.subTest(recovery_year=recovery_year):
-                    self.assertEqual(
-                        macrs_deduction(
-                            asset, 2024 + recovery_year,
-                            mid_quarter_years=frozenset({2025})),
-                        irs_round(3_333.0 * _sentinel(3, 5, recovery_year)))
-
     def test_zero_before_placement_and_after_the_table_ends(self):
-        asset = _asset("5-year", date(2025, 8, 1))
+        asset = _asset("5-year", date(2021, 8, 1),
+                       convention="mid-quarter", quarter=3)
         with _patched():
-            self.assertEqual(
-                macrs_deduction(
-                    asset, 2024, mid_quarter_years=frozenset({2025})), 0)
-            self.assertGreater(
-                macrs_deduction(
-                    asset, 2028, mid_quarter_years=frozenset({2025})), 0)
+            self.assertEqual(_deduction(asset, 2020, mid_quarter=False), 0)
+            self.assertGreater(_deduction(asset, 2024, mid_quarter=False), 0)
             # The sentinel table ends at recovery year 4.
-            self.assertEqual(
-                macrs_deduction(
-                    asset, 2029, mid_quarter_years=frozenset({2025})), 0)
+            self.assertEqual(_deduction(asset, 2025, mid_quarter=False), 0)
 
     def test_module_exposes_the_convention_names(self):
         self.assertEqual(
             (macrs.HALF_YEAR, macrs.MID_QUARTER, macrs.MID_MONTH),
             ("half-year", "mid-quarter", "mid-month"))
+
+
+class RealTablesAreWiredTests(unittest.TestCase):
+    """Unpatched: the engine reads the landed tables, one per quarter. The
+    expected value is READ from the table module, not restated here -- what
+    the publication prints is pinned by the dual-transcription test."""
+
+    def test_each_quarter_reads_its_own_landed_table(self):
+        for quarter, month in ((1, 2), (2, 5), (3, 8), (4, 11)):
+            table = macrs_mid_quarter.TABLES_BY_QUARTER[quarter]
+            for cls, class_years in CLASS_YEARS.items():
+                asset = _asset(cls, date(2025, month, 15), 100_000.0)
+                with self.subTest(quarter=quarter, recovery_class=cls):
+                    self.assertEqual(
+                        _deduction(asset, 2025, mid_quarter=True),
+                        irs_round(100_000.0 * table[class_years][1]))
+
+    def test_last_printed_year_then_zero(self):
+        last = {"3-year": 4, "5-year": 6, "7-year": 8, "10-year": 11,
+                "15-year": 16, "20-year": 21}
+        for cls, last_year in last.items():
+            asset = _asset(cls, date(2000, 11, 15), 100_000.0,
+                           convention="mid-quarter", quarter=4)
+            with self.subTest(recovery_class=cls):
+                self.assertGreater(
+                    macrs_deduction(asset, 1999 + last_year,
+                                    return_year=2040, mid_quarter=False), 0)
+                self.assertEqual(
+                    macrs_deduction(asset, 2000 + last_year,
+                                    return_year=2040, mid_quarter=False), 0)
+
+
+class MethodLabelTests(unittest.TestCase):
+    """The method derives from the CLASS (Publication 946, Chart 1), never
+    from the convention."""
+
+    def test_method_by_class(self):
+        expected = {"3-year": "200DB", "5-year": "200DB", "7-year": "200DB",
+                    "10-year": "200DB", "15-year": "150DB",
+                    "20-year": "150DB", "27.5-year": "S/L", "39-year": "S/L"}
+        for cls, method in expected.items():
+            with self.subTest(recovery_class=cls):
+                self.assertEqual(macrs.method_for(cls), method)
+
+    def test_unknown_class_refuses(self):
+        with self.assertRaisesRegex(
+                NotImplementedError, r"has recovery_class '25-year'"):
+            macrs.method_for("25-year")
 
 
 if __name__ == "__main__":

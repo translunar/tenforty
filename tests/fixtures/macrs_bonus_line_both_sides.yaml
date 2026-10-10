@@ -69,6 +69,7 @@ rental_properties:
         basis: 12000.0
         recovery_class: "15-year"
         no_bonus_or_section_179_history: true
+        convention: "half-year"
         prior_depreciation: 7395.0
       # Placed after 2017-09-27.
       - description: "Carpet"
@@ -76,4 +77,5 @@ rental_properties:
         basis: 4000.0
         recovery_class: "5-year"
         no_bonus_or_section_179_history: true
+        convention: "half-year"
         prior_depreciation: 3309.0

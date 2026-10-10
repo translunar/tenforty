@@ -25,10 +25,10 @@ from types import SimpleNamespace
 
 from tenforty.attestations import (
     depreciation_activities, enforce_scoped_refusals,
-    has_unattested_bonus_history,
+    has_unattested_bonus_history, stated_convention_problem,
 )
 from tenforty.forms.depreciation.macrs import (
-    asset_convention, macrs_deduction,
+    asset_convention, macrs_deduction, method_for,
 )
 from tenforty.models import (
     PERSONAL_PROPERTY_CLASSES, SUPPORTED_RECOVERY_CLASSES, DepreciableAsset,
@@ -48,6 +48,9 @@ class AssetDepreciation:
     description: str
     recovery_class: str
     convention: str
+    # 1-4 under the mid-quarter convention, else None.
+    quarter: int | None
+    method: str
     date_placed_in_service: date
     basis: float
     amount: int
@@ -69,26 +72,48 @@ class ResolvedDepreciation:
     per_asset: tuple[AssetDepreciation, ...]
 
 
-def is_computable(asset: DepreciableAsset) -> bool:
+def is_computable(asset: DepreciableAsset, tax_year: int) -> bool:
     """False for an asset another ledger entry already refuses outright (no
-    table for its class, or disposed) -- the engine has no figure for it."""
-    return (asset.recovery_class in SUPPORTED_RECOVERY_CLASSES
-            and asset.disposed is None)
+    table for its class, disposed, or a prior-year asset with no usable
+    stated convention) -- the engine has no figure for it."""
+    if (asset.recovery_class not in SUPPORTED_RECOVERY_CLASSES
+            or asset.disposed is not None):
+        return False
+    if (asset.recovery_class in PERSONAL_PROPERTY_CLASSES
+            and asset.date_placed_in_service.year < tax_year):
+        return (asset.convention is not None
+                and stated_convention_problem(asset) is None)
+    return True
+
+
+def _capped(table: int, basis: float, taken: int) -> int:
+    """The BASIS CEILING: a year's deduction is the table amount, but never
+    more than the basis left after what was taken before, and never below
+    zero. Lifetime depreciation therefore never exceeds basis.
+
+    It is asymmetric by ruling. Each year's table amount is rounded on its
+    own, so a lifetime of them can land a dollar over basis (trimmed here,
+    in the last year) or a dollar under (NOT topped up: the table amount
+    stands and the residual is documented behaviour)."""
+    return min(table, max(0, irs_round(basis) - taken))
 
 
 def reconstruct_prior_depreciation(
-        asset: DepreciableAsset, tax_year: int, *,
-        mid_quarter_years: frozenset[int]) -> int:
+        asset: DepreciableAsset, tax_year: int, *, mid_quarter: bool) -> int:
     """What the MACRS tables give for every year before ``tax_year``, under
-    the convention the asset's placement year takes."""
-    return sum(
-        macrs_deduction(asset, year, mid_quarter_years=mid_quarter_years)
-        for year in range(asset.date_placed_in_service.year, tax_year))
+    the asset's convention, each year held to the basis ceiling."""
+    taken = 0
+    for year in range(asset.date_placed_in_service.year, tax_year):
+        taken += _capped(
+            macrs_deduction(
+                asset, year, return_year=tax_year, mid_quarter=mid_quarter),
+            asset.basis, taken)
+    return taken
 
 
 def prior_depreciation_mismatch(
         asset: DepreciableAsset, tax_year: int, *,
-        mid_quarter_years: frozenset[int]) -> tuple[int, int] | None:
+        mid_quarter: bool) -> tuple[int, int] | None:
     """``(stated, reconstructed)`` when the asset's stated prior depreciation
     differs from the table reconstruction and is not acknowledged; else None."""
     if asset.prior_depreciation is None:
@@ -97,48 +122,41 @@ def prior_depreciation_mismatch(
         return None
     stated = irs_round(asset.prior_depreciation)
     reconstructed = reconstruct_prior_depreciation(
-        asset, tax_year, mid_quarter_years=mid_quarter_years)
+        asset, tax_year, mid_quarter=mid_quarter)
     return None if stated == reconstructed else (stated, reconstructed)
 
 
 def asset_amount(asset: DepreciableAsset, tax_year: int, *,
-                 mid_quarter_years: frozenset[int]) -> tuple[int, int]:
+                 mid_quarter: bool) -> tuple[int, int]:
     """``(amount, table amount)`` for one asset in ``tax_year``.
 
-    The amount is the table amount, except on the ACKNOWLEDGED-MISMATCH path
-    (a stated prior that differs from the table reconstruction, accepted via
-    `acknowledges_prior_depreciation_as_stated`). There a BASIS CEILING
-    applies: the deduction is min(table amount, basis - stated prior), never
-    below zero, so a history that ran ahead of the tables cannot depreciate
-    the asset past its basis. Within one return year nothing has yet been
-    taken forward, so the remaining basis is basis less the stated prior.
+    The amount is the table amount held to the basis ceiling (`_capped`):
+    min(table amount, basis - depreciation already taken), never below zero.
 
-    Deliberately NOT applied anywhere else: an asset whose history matches
-    the tables takes the table percentage through its final year, and any
-    small residual against basis from per-year rounding is documented
-    behaviour. Nor does anything top UP a history that ran behind the
-    tables -- that asset is left with unrecovered basis when its table runs
-    out; the remedy is a change of accounting method (Form 3115), which
-    tenforty does not prepare."""
+    "Already taken" is the table reconstruction of the earlier years. On the
+    ACKNOWLEDGED-MISMATCH path (a stated prior that differs from that
+    reconstruction, accepted via `acknowledges_prior_depreciation_as_stated`)
+    it is the stated prior instead, so a history that ran ahead of the
+    tables cannot depreciate the asset past its basis.
+
+    Nothing tops UP: a history that ran behind the tables leaves basis
+    unrecovered when the table runs out, and the remedy is a change of
+    accounting method (Form 3115), which tenforty does not prepare."""
     table = macrs_deduction(
-        asset, tax_year, mid_quarter_years=mid_quarter_years)
-    if not asset.acknowledges_prior_depreciation_as_stated:
-        return table, table
-    if asset.prior_depreciation is None:
-        return table, table
-    stated = irs_round(asset.prior_depreciation)
-    if stated == reconstruct_prior_depreciation(
-            asset, tax_year, mid_quarter_years=mid_quarter_years):
-        return table, table
-    remaining = max(0, irs_round(asset.basis) - stated)
-    return min(table, remaining), table
+        asset, tax_year, return_year=tax_year, mid_quarter=mid_quarter)
+    if (asset.acknowledges_prior_depreciation_as_stated
+            and asset.prior_depreciation is not None):
+        taken = irs_round(asset.prior_depreciation)
+    else:
+        taken = reconstruct_prior_depreciation(
+            asset, tax_year, mid_quarter=mid_quarter)
+    return _capped(table, asset.basis, taken), table
 
 
-def engine_amount(activity, tax_year: int, *,
-                  mid_quarter_years: frozenset[int]) -> int:
+def engine_amount(activity, tax_year: int, *, mid_quarter: bool) -> int:
     """The engine's own figure for an asset-mode activity."""
     return sum(
-        asset_amount(a, tax_year, mid_quarter_years=mid_quarter_years)[0]
+        asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
         for a in activity.depreciable_assets)
 
 
@@ -147,15 +165,14 @@ def placed_this_year(activity, tax_year: int) -> list[DepreciableAsset]:
             if a.date_placed_in_service.year == tax_year]
 
 
-def _one_activity_scenario(
-        activity, tax_year: int, mid_quarter_years: frozenset[int]):
+def _one_activity_scenario(activity, tax_year: int, mid_quarter: bool):
     """A scenario-shaped view holding only ``activity``, for running the
     ledger on a direct call. Unindexed: refusal text names the activity
     without a position, since a lone activity has none to report.
 
-    It CARRIES the return's mid-quarter years: the 40% test is a
-    whole-return question, and re-deriving it from this one activity would
-    answer a different one (see `mid_quarter_years`)."""
+    It CARRIES the return's 40% answer: that is a whole-return question,
+    and re-deriving it from this one activity would answer a different one
+    (see `mid_quarter_applies`)."""
     if isinstance(activity, RentalProperty):
         rentals, businesses = [activity], []
     elif isinstance(activity, ScheduleCBusiness):
@@ -167,18 +184,19 @@ def _one_activity_scenario(
     return SimpleNamespace(
         rental_properties=rentals, schedule_c_businesses=businesses,
         config=SimpleNamespace(year=tax_year), unindexed_activities=True,
-        mid_quarter_years=mid_quarter_years)
+        mid_quarter=mid_quarter)
 
 
 def resolve(activity, tax_year: int, *,
-            mid_quarter_years: frozenset[int]) -> ResolvedDepreciation:
+            mid_quarter: bool) -> ResolvedDepreciation:
     """Resolve one activity's depreciation for ``tax_year``.
 
-    ``mid_quarter_years`` is the RETURN's answer (`mid_quarter_years` over
+    ``mid_quarter`` is the RETURN's 40% answer (`mid_quarter_applies` over
     the whole scenario), supplied by the caller: one activity cannot answer
-    a taxpayer-wide test."""
+    a taxpayer-wide test. It decides the convention of personal property
+    placed in service this year and nothing else."""
     enforce_scoped_refusals(
-        _one_activity_scenario(activity, tax_year, mid_quarter_years), "load",
+        _one_activity_scenario(activity, tax_year, mid_quarter), "load",
         single_activity=True)
 
     assets = activity.depreciable_assets
@@ -192,13 +210,15 @@ def resolve(activity, tax_year: int, *,
 
     rows = []
     for a in assets:
-        amount, table = asset_amount(
-            a, tax_year, mid_quarter_years=mid_quarter_years)
+        amount, table = asset_amount(a, tax_year, mid_quarter=mid_quarter)
+        convention, quarter = asset_convention(
+            a, return_year=tax_year, mid_quarter=mid_quarter)
         rows.append(AssetDepreciation(
             description=a.description,
             recovery_class=a.recovery_class,
-            convention=asset_convention(
-                a, mid_quarter_years=mid_quarter_years),
+            convention=convention,
+            quarter=quarter,
+            method=method_for(a.recovery_class),
             date_placed_in_service=a.date_placed_in_service,
             basis=a.basis,
             amount=amount,
@@ -220,24 +240,29 @@ def resolve(activity, tax_year: int, *,
 # --- The mid-quarter 40% test (taxpayer-wide) ------------------------------
 #
 # 26 U.S.C. 168(d)(3); Pub 946 "Which Convention Applies?". The rule text is
-# transcribed in tests/test_mid_quarter_convention.py. The totals run over the
-# whole return, and the statute's exclusions come out of BOTH of them. The
-# test is asked of one PLACEMENT YEAR at a time: it decides the convention
-# for the personal property placed in service in that year and no other.
+# transcribed in tests/test_mid_quarter_convention.py. The totals run over
+# the whole return, and the statute's exclusions come out of BOTH of them.
+#
+# The test is run EXACTLY ONCE, over the property placed in service in the
+# return year, and decides that property's convention. It is never run over
+# an earlier year: this return's asset list is not that year's complete
+# placements (anything since disposed of is gone from it), and a taxpayer-
+# wide total taken over part of the taxpayer is a wrong total. A prior-year
+# asset states the convention it took (macrs.asset_convention).
 
 MID_QUARTER_THRESHOLD_PERCENT = 40
 _LAST_THREE_MONTHS = (10, 11, 12)   # calendar tax year
 
 
-def personal_property_placed_in(scenario, year: int) -> list:
-    """``(label, asset)`` for every asset in the 40% test for ``year``:
-    personal property placed in service during that year, across every
-    activity.
+def personal_property_placed_this_year(scenario) -> list:
+    """``(label, asset)`` for every asset in the 40% test: personal property
+    placed in service during the return year, across every activity.
 
     Real property is out of both totals (168(d)(3)(B)(i)). The remaining
     statutory exclusions cannot occur: a `disposed` asset and an asset in a
     class with no table both refuse at load, and are skipped here so this
     stays that other refusal's business."""
+    year = scenario.config.year
     return [
         (label, asset)
         for _section, _index, label, activity in depreciation_activities(
@@ -248,49 +273,31 @@ def personal_property_placed_in(scenario, year: int) -> list:
         and asset.date_placed_in_service.year == year]
 
 
-def personal_property_placed_this_year(scenario) -> list:
-    return personal_property_placed_in(scenario, scenario.config.year)
-
-
-def mid_quarter_bases(scenario, year: int | None = None) -> tuple[float, float]:
+def mid_quarter_bases(scenario) -> tuple[float, float]:
     """``(last three months, entire year)`` aggregate bases for the 40%
-    test of placement year ``year`` (the return year when omitted). `basis`
-    is used as stated: see the test module for why the publication's basis
-    Caution is inert in this model."""
-    if year is None:
-        year = scenario.config.year
-    assets = [a for _label, a in personal_property_placed_in(scenario, year)]
+    test. `basis` is used as stated: see the test module for why the
+    publication's basis Caution is inert in this model."""
+    assets = [a for _label, a in personal_property_placed_this_year(scenario)]
     last_quarter = sum(
         a.basis for a in assets
         if a.date_placed_in_service.month in _LAST_THREE_MONTHS)
     return last_quarter, sum(a.basis for a in assets)
 
 
-def mid_quarter_applies(scenario, year: int | None = None) -> bool:
-    """True when the last-three-months bases EXCEED 40% of the year's."""
-    last_quarter, year_total = mid_quarter_bases(scenario, year)
-    return last_quarter * 100 > MID_QUARTER_THRESHOLD_PERCENT * year_total
-
-
-def _tested_placement_years(scenario) -> list[int]:
-    """The placement years whose cohort the 40% test is asked of."""
-    return [scenario.config.year]
-
-
-def mid_quarter_years(scenario) -> frozenset[int]:
-    """The placement years in which the mid-quarter convention applies to
-    this return. Every reader of a personal-property figure passes this
-    down to the engine; it is computed over the WHOLE return.
+def mid_quarter_applies(scenario) -> bool:
+    """The return's 40% answer: True when the last-three-months bases
+    EXCEED 40% of the year's (strictly; no placements at all is False, and
+    nothing is divided). Every reader of a depreciation figure passes this
+    down to the engine.
 
     A one-activity view built by `resolve` carries the answer its caller
     supplied, and that answer is returned as-is: recomputing it from the
     lone activity would turn a taxpayer-wide test into a per-activity one."""
-    carried = getattr(scenario, "mid_quarter_years", None)
+    carried = getattr(scenario, "mid_quarter", None)
     if carried is not None:
         return carried
-    return frozenset(
-        year for year in _tested_placement_years(scenario)
-        if mid_quarter_applies(scenario, year))
+    last_quarter, year_total = mid_quarter_bases(scenario)
+    return last_quarter * 100 > MID_QUARTER_THRESHOLD_PERCENT * year_total
 
 
 def stated_mode_activity_labels(scenario) -> list[str]:
@@ -320,7 +327,7 @@ def recon_keys(scenario) -> dict:
     year = scenario.config.year
     for section, index, label, activity in depreciation_activities(scenario):
         resolved = resolve(
-            activity, year, mid_quarter_years=mid_quarter_years(scenario))
+            activity, year, mid_quarter=mid_quarter_applies(scenario))
         if resolved.mode not in (MODE_ASSETS, MODE_ASSETS_OVERRIDDEN):
             continue
         prefix = f"{RECON_PREFIX}{_RECON_SECTION_SLUGS[section]}_{index}_"
