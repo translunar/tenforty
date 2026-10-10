@@ -106,9 +106,11 @@ def asset_convention(asset: DepreciableAsset, *, return_year: int,
     if asset.date_placed_in_service.year >= return_year:
         # Placed this year: computed. A stated value here is refused at load
         # (`stated_convention`) and is not consulted.
-        if mid_quarter:
+        convention = convention_for(
+            asset.recovery_class, mid_quarter=mid_quarter, label=label)
+        if convention == MID_QUARTER:
             return MID_QUARTER, placement_quarter(asset.date_placed_in_service)
-        return HALF_YEAR, None
+        return convention, None
     # Placed in an earlier year: stated, never re-derived.
     if asset.convention is None:
         raise_scoped_refusal("missing_prior_year_convention", [label])
