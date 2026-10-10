@@ -137,7 +137,7 @@ def _old_building() -> DepreciableAsset:
         description="Rental building", date_placed_in_service=date(2019, 6, 1),
         basis=200_000.0, recovery_class="27.5-year")
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, YEAR))
+        reconstruct_prior_depreciation(asset, YEAR, mid_quarter_years=frozenset()))
     return asset
 
 
@@ -160,7 +160,7 @@ def _rental(*assets, override_amount=None) -> RentalProperty:
         personal_use_days=0, rents_received=24_000.0,
         depreciable_assets=list(assets))
     if override_amount is not None:
-        engine = sum(macrs_deduction(a, YEAR) for a in assets)
+        engine = sum(macrs_deduction(a, YEAR, mid_quarter_years=frozenset()) for a in assets)
         rental.depreciation_override = DepreciationOverride(
             amount=override_amount, restates_engine_amount=float(engine),
             acknowledgment=True)
@@ -282,7 +282,7 @@ class EmitOnlyInAPlacementYearTests(_EmitCase):
 
     def test_ongoing_year_emits_no_form_and_schedule_e_still_carries_it(self):
         building = _old_building()
-        expected = macrs_deduction(building, YEAR)
+        expected = macrs_deduction(building, YEAR, mid_quarter_years=frozenset())
         self.assertGreater(expected, 0)
         emitted = self._emit(_scenario(rentals=[_rental(building)]))
         self.assertNotIn("f4562", emitted)
@@ -305,7 +305,7 @@ class OverriddenActivityTests(_EmitCase):
 
     def test_overridden_mid_stream_rental_emits_no_4562(self):
         building = _old_building()
-        self.assertNotEqual(macrs_deduction(building, YEAR), 7_000)
+        self.assertNotEqual(macrs_deduction(building, YEAR, mid_quarter_years=frozenset()), 7_000)
         emitted = self._emit(_scenario(
             rentals=[_rental(building, override_amount=7_000.0)]))
         self.assertEqual(
@@ -362,7 +362,7 @@ class MergedFormWithOverrideRefusalTests(unittest.TestCase):
         """Whole-return question: not asked of a single activity."""
         from tenforty.forms.depreciation.resolver import resolve
         rental = _rental(_old_building(), override_amount=7_000.0)
-        self.assertEqual(resolve(rental, YEAR).amount, 7_000.0)
+        self.assertEqual(resolve(rental, YEAR, mid_quarter_years=frozenset()).amount, 7_000.0)
 
 
 if __name__ == "__main__":

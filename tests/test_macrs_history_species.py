@@ -66,7 +66,7 @@ class WrongPriorHistoryTests(_FixtureCase):
         scenario = self._load_variant(raw)
         loaded = scenario.rental_properties[0].depreciable_assets[0]
         self.assertEqual(loaded.prior_depreciation, 196.0)
-        expected = macrs_deduction(loaded, YEAR)
+        expected = macrs_deduction(loaded, YEAR, mid_quarter_years=frozenset())
         self.assertGreater(expected, 0)
         results = self._compute(scenario)
         self.assertEqual(
@@ -101,7 +101,7 @@ class SupersededComponentTests(_FixtureCase):
         results = self._compute(scenario)
         self.assertEqual(
             results["depreciation_recon_rental_0_used_amount"],
-            macrs_deduction(replacement, YEAR))
+            macrs_deduction(replacement, YEAR, mid_quarter_years=frozenset()))
 
 
 class BonusLineTests(_FixtureCase):
@@ -120,9 +120,9 @@ class BonusLineTests(_FixtureCase):
     def test_field_true_on_both_sides_computes(self):
         scenario = load_scenario(FIXTURES_DIR / self.NAME)
         assets = scenario.rental_properties[0].depreciable_assets
-        expected = sum(macrs_deduction(a, YEAR) for a in assets)
+        expected = sum(macrs_deduction(a, YEAR, mid_quarter_years=frozenset()) for a in assets)
         for a in assets:
-            self.assertGreater(macrs_deduction(a, YEAR), 0)
+            self.assertGreater(macrs_deduction(a, YEAR, mid_quarter_years=frozenset()), 0)
         results = self._compute(scenario)
         self.assertEqual(
             results["depreciation_recon_rental_0_used_amount"], expected)

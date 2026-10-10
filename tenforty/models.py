@@ -182,8 +182,8 @@ class ScheduleK1:
 
 # MACRS recovery classes the engine has a table for. Real property is
 # straight-line / mid-month by statute; personal property is 200DB (150DB for
-# 15- and 20-year) under the half-year convention unless the mid-quarter test
-# trips, which refuses.
+# 15- and 20-year) under the half-year convention, or the mid-quarter
+# convention when the 40% test trips for the placement year.
 REAL_PROPERTY_CLASSES: tuple[str, ...] = ("27.5-year", "39-year")
 PERSONAL_PROPERTY_CLASSES: tuple[str, ...] = (
     "3-year", "5-year", "7-year", "10-year", "15-year", "20-year")
