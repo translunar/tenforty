@@ -1641,6 +1641,9 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
             f"{suspended:,.0f} of passive loss is not allowed this year "
             f"(Form 8582 allows {allowed:,.0f} of {current + prior:,.0f}), "
             f"yet the return deducts every current-year loss in full")
+    # `current > income` reads CURRENT-YEAR figures only. That is sound only
+    # because any prior-year loss trips the `prior > 0` leg below on its own;
+    # if that leg is ever narrowed, this conjunct must count `prior` too.
     if non_rental_loss > non_rental_income and current > income:
         reasons.append(
             f"non-rental passive losses of {non_rental_loss:,.0f} exceed "
