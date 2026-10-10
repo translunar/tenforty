@@ -114,6 +114,18 @@ class ResolveModeTests(unittest.TestCase):
         self.assertIs(first.placed_this_year, True)
         self.assertEqual(second.convention, "half-year")
         self.assertIs(second.placed_this_year, False)
+        self.assertEqual((first.method, first.quarter), ("S/L", None))
+        self.assertEqual((second.method, second.quarter), ("200DB", None))
+
+    def test_row_method_follows_the_class(self):
+        fence = DepreciableAsset(
+            description="Fence", date_placed_in_service=date(YEAR, 3, 15),
+            basis=12_000.0, recovery_class="15-year",
+            no_bonus_or_section_179_history=True)
+        (row,) = resolve(
+            _rental(depreciable_assets=[fence]), YEAR,
+            mid_quarter=False).per_asset
+        self.assertEqual(row.method, "150DB")
 
     def test_schedule_c_business_resolves_the_same_way(self):
         equipment = _old_equipment()
