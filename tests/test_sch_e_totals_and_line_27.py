@@ -45,6 +45,7 @@ _LINE_23E = _P1 + "f1_81[0]"
 _LINE_24 = _P1 + "f1_82[0]"
 _LINE_25 = _P1 + "f1_83[0]"
 _LINE_26 = _P1 + "f1_84[0]"
+_LINE_22_A = _P1 + "Table_Expenses[0].Line22[0].f1_74[0]"
 _LINE_27_YES = "topmostSubform[0].Page2[0].c2_1[0]"
 _LINE_27_NO = "topmostSubform[0].Page2[0].c2_1[1]"
 
@@ -147,6 +148,47 @@ class PartOneTotalsComputeTests(unittest.TestCase):
         self.assertEqual(r["sch_e_property_a_income_loss"], 0)
         self.assertNotIn("sch_e_line_24_income", r)
 
+    def test_loss_property_prints_lines_22_and_25(self):
+        # Line 22: "Deductible rental real estate loss after limitation, if
+        # any, on Form 8582". Line 25: "Losses. Add royalty losses from line
+        # 21 and rental real estate losses from line 22."
+        #
+        # Line 22 is the property's whole line 21 loss: a return on which
+        # Form 8582 allows LESS than the whole loss never prints (refusal
+        # passive_loss_limitation_not_applied), so on every return that does
+        # print, "after limitation" is the full loss. Both lines sit in
+        # preprinted parentheses, so they are stored positive.
+        #
+        # Line 25's royalty-loss leg is unreachable: nothing is ever printed
+        # as a royalty property (line 4 has no producer), so line 25 is the
+        # line 22 total alone.
+        r = form_sch_e.compute(_scenario(rentals=[_rental(
+            rents_received=6_000.0)]), upstream={})
+        self.assertEqual(r["sch_e_property_a_income_loss"], -10_000)
+        self.assertEqual(r["sch_e_property_a_deductible_loss"], 10_000)
+        self.assertEqual(r["sch_e_line_25_losses"], 10_000)
+        # Line 26 combines lines 24 and 25 and is unchanged by this block.
+        self.assertEqual(r["sch_e_line_26_total"], -10_000)
+
+    def test_income_property_prints_neither_line_22_nor_line_25(self):
+        r = form_sch_e.compute(_scenario(rentals=[_rental()]), upstream={})
+        self.assertNotIn("sch_e_property_a_deductible_loss", r)
+        self.assertNotIn("sch_e_line_25_losses", r)
+        zero = form_sch_e.compute(_scenario(rentals=[_rental(
+            rents_received=16_000.0)]), upstream={})
+        self.assertNotIn("sch_e_property_a_deductible_loss", zero)
+        self.assertNotIn("sch_e_line_25_losses", zero)
+
+    def test_line_26_combines_lines_24_and_25(self):
+        for rents in (24_000.0, 16_000.0, 6_000.0):
+            with self.subTest(rents=rents):
+                r = form_sch_e.compute(_scenario(rentals=[_rental(
+                    rents_received=rents)]), upstream={})
+                self.assertEqual(
+                    r["sch_e_line_26_total"],
+                    r.get("sch_e_line_24_income", 0)
+                    - r.get("sch_e_line_25_losses", 0))
+
     def test_no_rental_property_emits_no_totals(self):
         r = form_sch_e.compute(_scenario(k1s=[_k1()]), upstream={})
         for key in ("sch_e_line_23a_total_rents",
@@ -221,6 +263,40 @@ class PartOneTotalsEmitTests(_EmitCase):
                 self.assertEqual(values[_LINE_23E], "16000")
                 self.assertEqual(values[_LINE_24], "")
 
+    def test_loss_property_prints_lines_22_and_25(self):
+        # Wages 100,000: Form 8582 allows the whole 10,000 loss, so the
+        # return prints. Parenthesized cells carry the loss unsigned.
+        for year in _YEARS:
+            with self.subTest(year=year):
+                values, _ = self._emit_sch_e(
+                    _scenario(year, rentals=[_rental(rents_received=6_000.0)]),
+                    f"l22{year}")
+                self.assertEqual(values[_LINE_22_A], "10000")
+                self.assertEqual(values[_LINE_25], "10000")
+                self.assertEqual(values[_LINE_26], "-10000")
+
+    def test_income_property_leaves_lines_22_and_25_blank(self):
+        for year in _YEARS:
+            with self.subTest(year=year):
+                values, _ = self._emit_sch_e(
+                    _scenario(year, rentals=[_rental()]), f"i22{year}")
+                self.assertEqual(values[_LINE_22_A], "")
+                self.assertEqual(values[_LINE_25], "")
+
+    def test_line_23b_stays_blank(self):
+        # Line 23b totals line 4 (royalties). Nothing ever reaches line 4: a
+        # property loaded with the royalty type code prints its income on
+        # line 3 today (a reported defect, not fixed here), so there is no
+        # royalty total to print -- even for that property.
+        for year in _YEARS:
+            for code in (1, 6):
+                with self.subTest(year=year, property_type=code):
+                    values, _ = self._emit_sch_e(
+                        _scenario(year, rentals=[_rental(property_type=code)]),
+                        f"b{year}_{code}")
+                    self.assertEqual(values[_LINE_23B], "")
+                    self.assertEqual(values[_LINE_23A], "24000")
+
     def test_k1_only_return_leaves_the_part_i_totals_blank(self):
         for year in _YEARS:
             with self.subTest(year=year):
@@ -260,6 +336,35 @@ class TotalsWidgetGeometryTests(unittest.TestCase):
                     self.assertLess(
                         abs(rects[path][1] + 3 - labels[label]), 4,
                         f"{path} is not on the line labelled {label}")
+
+    def test_line_22_property_a_widget_is_the_first_cell_on_row_22(self):
+        for year in _YEARS:
+            with self.subTest(year=year):
+                page = PdfReader(str(
+                    REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+                )).pages[0]
+                rects = {_widget_path(a.get_object()):
+                         [float(v) for v in a.get_object()["/Rect"]]
+                         for a in page.get("/Annots", [])}
+                labels: list[float] = []
+
+                def visit(text, cm, tm, fd, fs):
+                    if text.strip() == "22" and 0 < tm[4] < 60:
+                        labels.append(tm[5])
+
+                page.extract_text(visitor_text=visit)
+                self.assertEqual(len(labels), 1)
+                row = sorted(
+                    (r[0], p) for p, r in rects.items()
+                    if abs(r[1] + 2 - labels[0] + 14) < 4)
+                # Line 22's label is the first of its two text rows; the
+                # cells sit on the second, one row (about 12pt) lower.
+                self.assertEqual(len(row), 3)
+                self.assertEqual(row[0][1], _LINE_22_A)
+                # Property A's line 22 cell is directly below its line 21.
+                line_21 = rects[_P1 + "Table_Expenses[0].Line21[0].f1_71[0]"]
+                self.assertLess(abs(line_21[0] - rects[_LINE_22_A][0]), 6)
+                self.assertGreater(line_21[1], rects[_LINE_22_A][1])
 
     def test_lines_24_25_26_stack_below_23e_and_25_is_the_loss_cell(self):
         for year in _YEARS:
@@ -337,26 +442,34 @@ class Line27YesRefusalTests(_EmitCase):
     """A prior-year unallowed loss would require answering Yes and the line 28
     separate-line treatment, which is not produced: the emit refuses."""
 
-    def test_passive_k1_carryforward_refuses_the_emit(self):
-        clean = _scenario(k1s=[_k1(
-            entity_name="Fake LP", entity_type="partnership",
-            material_participation=False, ordinary_business_income=9_000.0)])
-        self._specs(clean)  # twin: same return, no carryforward, emits
+    def test_nonpassive_k1_carryforward_refuses_the_emit(self):
+        # A carryforward on a materially-participating K-1 is dropped by
+        # compute (it never enters Form 8582), so the numbers compute and the
+        # return reaches the emit -- where line 27 could only be answered Yes.
+        clean = _scenario(k1s=[_k1()])
+        self.orch._federal_individual_emit_specs(
+            clean, self.orch.compute_federal(clean))  # twin: emits
+        carrying = _scenario(k1s=[_k1(
+            prior_year_passive_loss_carryforward=3_000.0)])
+        results = self.orch.compute_federal(carrying)  # compute still runs
+        with self.assertRaisesRegex(
+                NotImplementedError, r"Schedule E line 27.*'Fake S-Corp Inc'"):
+            self.orch._federal_individual_emit_specs(carrying, results)
+
+    def test_passive_k1_carryforward_is_stopped_earlier_at_compute(self):
+        # On a PASSIVE K-1 the carryforward enters Form 8582, whose result is
+        # never applied to the return: the compute-side refusal fires before
+        # any emit. The emit-stage entry would flag the same K-1.
         carrying = _scenario(k1s=[_k1(
             entity_name="Fake LP", entity_type="partnership",
             material_participation=False, ordinary_business_income=9_000.0,
             prior_year_passive_loss_carryforward=3_000.0)])
-        results = self.orch.compute_federal(carrying)  # compute still runs
+        with self.assertRaisesRegex(
+                NotImplementedError, r"Form 8582 limitation.*not applied"):
+            self.orch.compute_federal(carrying)
         with self.assertRaisesRegex(
                 NotImplementedError, r"Schedule E line 27.*'Fake LP'"):
-            self.orch._federal_individual_emit_specs(carrying, results)
-
-    def test_nonpassive_k1_carryforward_also_refuses(self):
-        carrying = _scenario(k1s=[_k1(
-            prior_year_passive_loss_carryforward=1.0)])
-        results = self.orch.compute_federal(carrying)
-        with self.assertRaisesRegex(NotImplementedError, r"Schedule E line 27"):
-            self.orch._federal_individual_emit_specs(carrying, results)
+            enforce_scoped_refusals(carrying, "emit")
 
     def test_refusal_is_an_emit_stage_ledger_entry(self):
         carrying = _scenario(k1s=[_k1(

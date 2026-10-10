@@ -85,7 +85,7 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
     }
 
 
-# Page 1 totals block, lines 23a-24. The leaf names and their top-to-bottom
+# Page 1 totals block, lines 22-25. The leaf names and their top-to-bottom
 # order are the same on the 2021, 2022, 2023, 2024 and 2025 templates
 # (enumerated per year from each template's widget Rects; only the y-offsets
 # differ in 2021). 2022's zero-padding touches single-digit leaves only, so
@@ -94,7 +94,12 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
 #   f1_81 line 23e   f1_82 line 24    f1_83 line 25    f1_84 line 26
 # DELIBERATELY UNMAPPED: f1_78 (line 23b, royalties) -- compute prints nothing
 # on line 4, so there is no royalty total to print.
+# Line 22 has one cell per property column; property A's is the first,
+# Table_Expenses[0].Line22[0].f1_74[0], on all five templates.
 _TOTALS_BLOCK: dict[str, str] = {
+    "sch_e_property_a_deductible_loss":
+        "topmostSubform[0].Page1[0].Table_Expenses[0].Line22[0].f1_74[0]",
+    "sch_e_line_25_losses": "topmostSubform[0].Page1[0].f1_83[0]",
     "sch_e_line_23a_total_rents": "topmostSubform[0].Page1[0].f1_77[0]",
     "sch_e_line_23c_total_mortgage_interest":
         "topmostSubform[0].Page1[0].f1_79[0]",
@@ -172,7 +177,7 @@ def _build_fields() -> dict:
             "sch_e_property_a_income_loss":
                 "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
 
-            # Lines 23a/23c/23d/23e and 24 — page 1 totals block. Leaves
+            # Lines 22, 23a/23c/23d/23e, 24 and 25 — page 1 totals block. Leaves
             # f1_77..f1_84 run 23a, 23b, 23c, 23d, 23e, 24, 25, 26 top to
             # bottom on every template 2021-2025 (see _TOTALS_BLOCK).
             **_TOTALS_BLOCK,

@@ -91,8 +91,8 @@ _LINE_23_TOTALS = (
 
 
 def _totals_block(printed: dict) -> dict:
-    """Lines 23a-23e and 24, taken from the PRINTED property lines so the
-    block foots to the page. Only property A is printed, so each total is
+    """Lines 22, 23a-23e, 24 and 25, taken from the PRINTED property lines so
+    the block foots to the page. Only property A is printed, so each total is
     property A's line.
 
     A total is absent exactly when its source line is (lines 12 and 18 print
@@ -107,6 +107,16 @@ def _totals_block(printed: dict) -> dict:
     line_21 = printed["sch_e_property_a_income_loss"]
     if line_21 > 0:
         totals["sch_e_line_24_income"] = line_21
+    if line_21 < 0:
+        # Line 22 ("Deductible rental real estate loss after limitation, if
+        # any, on Form 8582") is the whole line 21 loss. That is right only
+        # when Form 8582 allows the whole loss -- and a return on which it
+        # does not never prints: the passive_loss_limitation_not_applied
+        # refusal stops it. Line 25 adds royalty losses from line 21 to the
+        # line 22 losses; no royalty property is ever printed, so line 25 is
+        # line 22. Both cells sit in preprinted parentheses: stored positive.
+        totals["sch_e_property_a_deductible_loss"] = -line_21
+        totals["sch_e_line_25_losses"] = -line_21
     return totals
 
 

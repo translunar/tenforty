@@ -975,7 +975,13 @@ def enforce_compute_time(scenario: Scenario) -> None:
 # "emit":  the predicate sees the Scenario when the federal individual forms
 #          are prepared for printing. For a return whose NUMBERS tenforty
 #          computes but whose printed form it cannot complete.
-SCOPED_REFUSAL_STAGES: tuple[str, ...] = ("parse", "load", "compute", "emit")
+# "schedules": the predicate sees a dict of schedule results keyed by
+#          schedule name (not a Scenario), once Form 8582 has been computed:
+#          at the end of the native schedule computes, and again at emit with
+#          the Form 8582 about to print. For a refusal that depends on a
+#          computed figure rather than on the inputs alone.
+SCOPED_REFUSAL_STAGES: tuple[str, ...] = (
+    "parse", "load", "compute", "schedules", "emit")
 
 
 @dataclass(frozen=True)
@@ -1568,6 +1574,54 @@ _DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
+# --- Form 8582: a limitation computed but not applied -----------------------
+
+def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
+    """Why the return's passive-loss deduction differs from what Form 8582
+    allows; empty when the limitation does not bind.
+
+    Schedule 1 line 5 deducts every current-year passive loss in full
+    (Schedule E line 26 + Part II line 32) and no prior-year unallowed loss.
+    Form 8582 allows min(income + allowance, current-year loss + prior-year
+    loss). The two agree only when nothing is suspended AND there is no
+    prior-year loss at all (an allowed one is still never deducted)."""
+    f8582 = schedule_results.get("f8582") or {}
+    current = f8582.get("f8582_line_1b_activities_with_loss", 0)
+    prior = f8582.get("f8582_line_1c_prior_year_unallowed_loss", 0)
+    allowed = f8582.get("f8582_line_11_allowed_loss", 0)
+    reasons: list[str] = []
+    suspended = current + prior - allowed
+    if suspended > 0:
+        reasons.append(
+            f"{suspended:,.0f} of passive loss is not allowed this year "
+            f"(Form 8582 allows {allowed:,.0f} of {current + prior:,.0f}), "
+            f"yet the return deducts every current-year loss in full")
+    if prior > 0:
+        reasons.append(
+            f"a prior-year unallowed loss of {prior:,.0f} enters Form 8582 "
+            f"but is never deducted on the return")
+    return reasons
+
+
+_PASSIVE_LOSS_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="passive_loss_limitation_not_applied",
+        stage="schedules",
+        offenders=_unapplied_passive_loss_limitation,
+        message=lambda o: (
+            f"The Form 8582 limitation is computed but not applied to the "
+            f"return: {'; '.join(o)}. Schedule 1 line 5 takes Schedule E "
+            f"line 26 and Part II line 32 as they stand, so the return's "
+            f"income would not reflect the passive activity loss limitation "
+            f"and this return cannot be produced. Applying the Form 8582 "
+            f"result to Schedule E lines 22, 25 and 26 and to Schedule 1 is "
+            f"tracked as a follow-up; until then tenforty produces only "
+            f"returns on which Form 8582 allows every passive loss and no "
+            f"prior-year unallowed loss is carried in."),
+        exception=NotImplementedError,
+    ),
+)
+
 # --- Schedule E: answers the printed form requires ---------------------------
 
 def _k1s_with_prior_year_unallowed_loss(s: Scenario) -> list[str]:
@@ -1590,8 +1644,10 @@ _SCHEDULE_E_PRINT_REFUSALS: tuple[ScopedRefusal, ...] = (
             f"answers line 27 \"No\" and does not produce the \"Yes\" "
             f"treatment (the separate prior-year line 28 entries the line 27 "
             f"instructions call for), so this Schedule E cannot be emitted. "
-            f"The compute path still produces the numbers; complete the form "
-            f"by hand."),
+            f"A prior-year passive loss is also outside what tenforty "
+            f"computes: the Form 8582 limitation is computed but not applied "
+            f"to the return (see passive_loss_limitation_not_applied), so no "
+            f"prior-year unallowed loss is ever deducted."),
         exception=NotImplementedError,
     ),
 )
@@ -1599,7 +1655,7 @@ _SCHEDULE_E_PRINT_REFUSALS: tuple[ScopedRefusal, ...] = (
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
     + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
-    + _SCHEDULE_E_PRINT_REFUSALS
+    + _PASSIVE_LOSS_REFUSALS + _SCHEDULE_E_PRINT_REFUSALS
 )
 
 
