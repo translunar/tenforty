@@ -86,12 +86,14 @@ def _all_row_fields() -> dict[str, str]:
 
 
 # 2024 Form 4562 Section B row structure differs from 2025:
-#   - Rows a–f: 5 text fields each (stride 5), bases 26/31/36/41/46/51.
-#     Columns: date(0), basis(1), recovery_period(2), convention(3), deduction(4).
-#     The "method" column has no separate text field in 2024 (built-in default).
-#   - Row g (25-year): f1_56/f1_58/f1_60 (non-consecutive; sub-containers for
-#     convention and method mean only 3 writeable text cells per IRS XFA layout).
-#     Map: date=f1_56, basis=f1_58, deduction=f1_60.
+#   - Rows a–f: six widgets each, left to right R{n}, f1_{base}..f1_{base+4}
+#     (stride 5, bases 26/31/36/41/46/51; R4..R9). Columns: (b) date = R{n},
+#     (c) basis = base+0, (d) recovery period = base+1, (e) convention =
+#     base+2, (f) method = base+3 (NOT mapped), (g) deduction = base+4.
+#     Read off the template by widget position and pinned literally in
+#     tests/test_f4562_mid_quarter.py. The 2021 tree is identical.
+#   - Row g (25-year): R10 (date), f1_56 (basis), f1_60 (deduction); the
+#     convention and method cells are sub-containers with no text field.
 #   - Rows h_1 / h_2 (27.5-year sub-rows): f1_61/f1_62/f1_66 and f1_67/f1_68/f1_72.
 #     Map: date=f1_{x}, basis=f1_{x+1}, deduction=f1_{x+n}.
 #   - Rows i_1 / i_2 (39-year sub-rows): f1_73/f1_74/f1_78 and f1_79/f1_80/f1_84.
@@ -104,28 +106,25 @@ def _all_row_fields_2024() -> dict[str, str]:
     sb = _SB
     out: dict[str, str] = {}
 
-    # Rows a–f (3-year through 20-year): 5 text fields each, stride 5.
-    # Columns: date_placed_in_service(0), basis(1), recovery_period(2),
-    #          convention(3), deduction(4).
-    # The "method" column has no separate writeable text field in 2024 —
-    # it is omitted from this mapping.
+    # Rows a–f (3-year through 20-year): (subform, date widget, first f1_N).
     _simple_rows = {
-        "a": ("Line19a", 26),
-        "b": ("Line19b", 31),
-        "c": ("Line19c", 36),
-        "d": ("Line19d", 41),
-        "e": ("Line19e", 46),
-        "f": ("Line19f", 51),
+        "a": ("Line19a", "R4", 26),
+        "b": ("Line19b", "R5", 31),
+        "c": ("Line19c", "R6", 36),
+        "d": ("Line19d", "R7", 41),
+        "e": ("Line19e", "R8", 46),
+        "f": ("Line19f", "R9", 51),
     }
     _simple_cols = {
-        "date_placed_in_service": 0,
-        "basis": 1,
-        "recovery_period": 2,
-        "convention": 3,
-        # method: no text field in 2024 — key omitted (filler skips missing keys)
+        "basis": 0,
+        "recovery_period": 1,
+        "convention": 2,
+        # method (base+3): the widget exists but is not mapped
         "deduction": 4,
     }
-    for label, (subform, base) in _simple_rows.items():
+    for label, (subform, date_widget, base) in _simple_rows.items():
+        out[f"f4562_line_19{label}_date_placed_in_service"] = (
+            f"{sb}.{subform}[0].{date_widget}[0]")
         for col, offset in _simple_cols.items():
             out[f"f4562_line_19{label}_{col}"] = (
                 f"{sb}.{subform}[0].f1_{base + offset}[0]"
@@ -135,8 +134,8 @@ def _all_row_fields_2024() -> dict[str, str]:
     # recovery_period, convention, method are inside sub-containers without
     # separate text fields.
     out.update({
-        "f4562_line_19g_date_placed_in_service": f"{sb}.Line19g[0].f1_56[0]",
-        "f4562_line_19g_basis":                  f"{sb}.Line19g[0].f1_58[0]",
+        "f4562_line_19g_date_placed_in_service": f"{sb}.Line19g[0].R10[0]",
+        "f4562_line_19g_basis":                  f"{sb}.Line19g[0].f1_56[0]",
         "f4562_line_19g_deduction":              f"{sb}.Line19g[0].f1_60[0]",
     })
 

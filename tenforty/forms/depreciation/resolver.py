@@ -220,7 +220,7 @@ def resolve(activity, tax_year: int, *,
 # --- The mid-quarter 40% test (taxpayer-wide) ------------------------------
 #
 # 26 U.S.C. 168(d)(3); Pub 946 "Which Convention Applies?". The rule text is
-# transcribed in tests/test_mid_quarter_refusal.py. The totals run over the
+# transcribed in tests/test_mid_quarter_convention.py. The totals run over the
 # whole return, and the statute's exclusions come out of BOTH of them. The
 # test is asked of one PLACEMENT YEAR at a time: it decides the convention
 # for the personal property placed in service in that year and no other.
