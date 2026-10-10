@@ -229,7 +229,9 @@ class Pdf4562(PdfFormMapping[dict]):
         2024: {
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
-                "taxpayer_ssn": f"{_P1}.f1_2[0]",
+                # Identifying number is the THIRD header box; f1_2[0] is
+                # "Business or activity to which this form relates".
+                "taxpayer_ssn": f"{_P1}.f1_3[0]",
                 "f4562_line_17": f"{_P1}.f1_25[0]",
                 # Line 22 is at the foot of page 1 through 2024.
                 "f4562_line_22_total_depreciation": f"{_P1}.f1_108[0]",
@@ -240,7 +242,9 @@ class Pdf4562(PdfFormMapping[dict]):
         2025: {
             "scalars": {
                 "taxpayer_name": f"{_P1}.f1_1[0]",
-                "taxpayer_ssn": f"{_P1}.f1_2[0]",
+                # Identifying number is the THIRD header box; f1_2[0] is
+                # "Business or activity to which this form relates".
+                "taxpayer_ssn": f"{_P1}.f1_3[0]",
                 "f4562_line_17": f"{_P1}.f1_25[0]",
                 "f4562_line_22_total_depreciation": f"{_P2}.f2_2[0]",
                 **_all_row_fields(),

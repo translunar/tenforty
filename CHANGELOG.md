@@ -232,6 +232,10 @@ breaking changes are called out explicitly.
   amount on line 17 (new result key `f4562_line_17`). Line 22 is their sum
   and is unchanged in amount. Any Form 4562 emitted for such a year should
   be re-emitted.
+- **Form 4562 prints the SSN in the identifying-number box for 2022-2025.**
+  Those years put it in the middle header box ("Business or activity to
+  which this form relates") and left "Identifying number" blank. 2021 was
+  already correct. Any 2022-2025 Form 4562 should be re-emitted.
 - **Form 4562 line 22 prints on line 22 for 2022-2024.** Those years mapped
   the total to the line 25 box on page 2 (special depreciation allowance
   for listed property). 2021 and 2025 were already correct. Any 2022-2024
