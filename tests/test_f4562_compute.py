@@ -91,8 +91,8 @@ class F4562ComputeTests(unittest.TestCase):
         )
         r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
         self.assertEqual(len(r["f4562_part_iii_section_b_rows"]), 1)
-        # Earliest placement drives the row date.
-        self.assertEqual(r["f4562_line_19b_date_placed_in_service"], "03/2025")
+        # Column (b) is shaded on a personal-property row: no date key.
+        self.assertNotIn("f4562_line_19b_date_placed_in_service", r)
         self.assertEqual(r["f4562_line_19b_basis"], 4_000)
         # 20.00% × 4,000 = 800.
         self.assertEqual(r["f4562_line_19b_deduction"], 800)
