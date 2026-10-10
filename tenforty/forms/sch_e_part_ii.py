@@ -101,11 +101,6 @@ def compute(
                 prior_carryforward=float(
                     irs_round(k1.prior_year_passive_loss_carryforward),
                 ),
-                rental_real_estate_only=bool(
-                    k1.net_rental_real_estate
-                    and not (k1.ordinary_business_income
-                             or k1.other_net_rental or k1.royalties
-                             or k1.other_income)),
             ))
 
         if k1.interest_income:
