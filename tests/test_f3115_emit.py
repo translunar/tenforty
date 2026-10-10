@@ -288,6 +288,96 @@ class AssetStatementTests(unittest.TestCase):
         self.assertEqual(text.count("Code section: 168"), 2)
         self.assertEqual(text.count("Tax credits or grants: None"), 2)
 
+    _BUILDING_LINES = [
+        "Type of property: Residential rental property",
+        "Placed in service: 03/01/2019",
+        "Use: Held for rental (Schedule E)",
+        "Tax credits or grants: None",
+        "Unadjusted basis: 240,000",
+        "Depreciation claimed under present method: 41,538",
+        "Code section: 168",
+        "Asset class (Rev. Proc. 87-56): None assigned (residential rental "
+        "property)",
+        "Present method: Straight line",
+        "Present recovery period: 39 years",
+        "Present convention: Mid-month",
+        "Proposed method: Straight line, section 168(b)(3)",
+        "Proposed recovery period: 27.5 years",
+        "Proposed convention: Mid-month",
+        "Special depreciation allowance claimed: No",
+        "Asset account: Single asset account",
+    ]
+    # Every column differs from the building's, and present from proposed,
+    # so no line can stand in for another.
+    _DISTINCT_ASSET = {
+        "description": "Synthetic distinct asset",
+        "property_type": "TYPE-ALPHA",
+        "date_placed_in_service": __import__("datetime").date(2021, 11, 9),
+        "use_in_activity": "USE-BRAVO",
+        "tax_credits_or_grants": "CREDIT-CHARLIE",
+        "unadjusted_basis": 12345.67,
+        "depreciation_claimed_present_method": 890.12,
+        "present_method": "METHOD-PRESENT",
+        "present_recovery_period": "PERIOD-PRESENT",
+        "present_convention": "CONVENTION-PRESENT",
+        "proposed_method": "METHOD-PROPOSED",
+        "proposed_recovery_period": "PERIOD-PROPOSED",
+        "proposed_convention": "CONVENTION-PROPOSED",
+        "code_section": "SECTION-DELTA",
+        "asset_class": "00.11",
+        "special_depreciation_allowance_claimed": True,
+        "asset_account": "multiple",
+    }
+    _DISTINCT_LINES = [
+        "Type of property: TYPE-ALPHA",
+        "Placed in service: 11/09/2021",
+        "Use: USE-BRAVO",
+        "Tax credits or grants: CREDIT-CHARLIE",
+        "Unadjusted basis: 12,345.67",
+        "Depreciation claimed under present method: 890.12",
+        "Code section: SECTION-DELTA",
+        "Asset class (Rev. Proc. 87-56): 00.11",
+        "Present method: METHOD-PRESENT",
+        "Present recovery period: PERIOD-PRESENT",
+        "Present convention: CONVENTION-PRESENT",
+        "Proposed method: METHOD-PROPOSED",
+        "Proposed recovery period: PERIOD-PROPOSED",
+        "Proposed convention: CONVENTION-PROPOSED",
+        "Special depreciation allowance claimed: Yes",
+        "Asset account: Multiple asset account",
+    ]
+
+    def _blocks(self, emitted) -> dict[str, list[str]]:
+        """Printed statement lines per asset, keyed by the block title."""
+        blocks, current = {}, None
+        for line in self._text(emitted).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            if line[:1].isdigit() and ". Synthetic" in line:
+                current = blocks.setdefault(line, [])
+            elif current is not None:
+                current.append(line)
+        return blocks
+
+    def test_asset_lines_are_exactly_the_stated_columns(self):
+        from tenforty.filing.statement_f3115_assets import asset_lines
+        block = fx.base_block()
+        block["assets"] = [fx.ASSET_BUILDING, self._DISTINCT_ASSET]
+        with tempfile.TemporaryDirectory() as tmp:
+            form = fx.load(Path(tmp), fx.scenario_dict(block=block)).form_3115
+        self.assertEqual(asset_lines(form.assets[0]), self._BUILDING_LINES)
+        self.assertEqual(asset_lines(form.assets[1]), self._DISTINCT_LINES)
+
+    def test_printed_statement_carries_every_line_of_every_asset(self):
+        block = fx.base_block()
+        block["assets"] = [fx.ASSET_BUILDING, self._DISTINCT_ASSET]
+        _s, emitted, _o = _emit(self, block=block)
+        self.assertEqual(self._blocks(emitted), {
+            "1. Synthetic rental building": self._BUILDING_LINES,
+            "2. Synthetic distinct asset": self._DISTINCT_LINES,
+        })
+
     def test_special_allowance_and_account_columns_follow_the_row(self):
         block = fx.base_block()
         block["assets"][1]["special_depreciation_allowance_claimed"] = True
@@ -580,6 +670,70 @@ class CommandLineTests(unittest.TestCase):
                 contextlib.redirect_stdout(stdout):
             self.assertEqual(cli_main(), 0)
         self.assertNotIn("Form 3115", stdout.getvalue())
+
+
+class NonBooleanAnswerTests(unittest.TestCase):
+    """A Scenario built in code can carry an answer that is neither true
+    nor false. Printed, it would check NEITHER box of its pair; it refuses."""
+
+    def _scenario(self, tmp, **answers):
+        scenario = fx.load(Path(tmp), fx.scenario_dict())
+        scenario.form_3115 = dataclasses.replace(scenario.form_3115, **answers)
+        return scenario
+
+    def test_emit_refuses_non_boolean_answers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            orchestrator = fx.orchestrator(tmp)
+            results = orchestrator.compute_federal(
+                fx.load(Path(tmp), fx.scenario_dict()))
+            scenario = self._scenario(
+                tmp, under_examination="no", cut_off_basis=0,
+                audit_protection_applies=1, elect_one_year_spread="yes")
+            out = Path(tmp) / "out"
+            with self.assertRaisesRegex(
+                    ValueError, r"under_examination.*true or false"):
+                orchestrator.emit_pdfs(scenario, results, out)
+            self.assertFalse(out.exists())
+
+    def test_every_answer_field_is_checked(self):
+        from tenforty import attestations
+        answers = [k for k, v in fx.BASE_BLOCK.items() if isinstance(v, bool)]
+        self.assertEqual(len(answers), 22)
+        with tempfile.TemporaryDirectory() as tmp:
+            for field in answers:
+                for value in ("no", "yes", 0, 1, None):
+                    if (value is None and field
+                            == "lived_in_residential_rental_before_renting"):
+                        continue
+                    with self.subTest(field=field, value=value):
+                        scenario = self._scenario(tmp, **{field: value})
+                        with self.assertRaisesRegex(
+                                ValueError, rf"{field}.*true or false"):
+                            attestations.enforce_form_3115_refusals(scenario)
+
+    def test_asset_yes_no_column_is_checked(self):
+        from tenforty import attestations
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = fx.load(Path(tmp), fx.scenario_dict())
+            form = scenario.form_3115
+            for value in ("no", 0, None):
+                with self.subTest(value=value):
+                    scenario.form_3115 = dataclasses.replace(form, assets=(
+                        form.assets[0], dataclasses.replace(
+                            form.assets[1],
+                            special_depreciation_allowance_claimed=value)))
+                    with self.assertRaisesRegex(
+                            ValueError,
+                            r"assets\[1\].*special_depreciation_allowance"
+                            r"_claimed.*true or false"):
+                        attestations.enforce_form_3115_refusals(scenario)
+
+    def test_line_4b_stated_none_is_still_accepted(self):
+        from tenforty import attestations
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = self._scenario(
+                tmp, lived_in_residential_rental_before_renting=None)
+            attestations.enforce_form_3115_refusals(scenario)
 
 
 class EmitPathIsFailClosedTests(unittest.TestCase):

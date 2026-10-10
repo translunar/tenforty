@@ -129,3 +129,16 @@ def orchestrator(tmp_dir: Path) -> ReturnOrchestrator:
     work = Path(tmp_dir) / "work"
     work.mkdir(exist_ok=True)
     return ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR, work_dir=work)
+
+
+def load_text(tmp_dir: Path, text: str) -> Scenario:
+    """Load hand-written YAML ``text`` (for unquoted-scalar cases that a
+    dumped mapping cannot express)."""
+    path = Path(tmp_dir) / "scenario.yaml"
+    path.write_text(text)
+    return load_scenario(path)
+
+
+def scenario_yaml(data: dict | None = None) -> str:
+    return yaml.safe_dump(scenario_dict() if data is None else data,
+                          sort_keys=False)
