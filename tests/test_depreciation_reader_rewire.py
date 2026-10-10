@@ -97,8 +97,8 @@ class ScheduleELinesTests(unittest.TestCase):
             date_placed_in_service=date(2019, 6, 1),
             basis=200_000.0, recovery_class="27.5-year")
         old.prior_depreciation = float(
-            reconstruct_prior_depreciation(old, YEAR))
-        engine = macrs_deduction(old, YEAR)
+            reconstruct_prior_depreciation(old, YEAR, mid_quarter=False))
+        engine = macrs_deduction(old, YEAR, return_year=YEAR, mid_quarter=False)
         self.assertNotEqual(engine, 6_500)
         s = _scenario(_rental(
             rents=24_000.0, assets=[old],
@@ -113,7 +113,7 @@ class PrintedRentalNetTests(unittest.TestCase):
     def test_printed_rental_net_reflects_resolved_depreciation(self):
         rp = _rental(rents=5_000.0, assets=[_building()])
         self.assertEqual(
-            sch_e.printed_rental_net(rp, YEAR), 5_000 - BUILDING_DEPRECIATION)
+            sch_e.printed_rental_net(rp, YEAR, mid_quarter=False), 5_000 - BUILDING_DEPRECIATION)
 
     def test_aggregate_business_losses_counts_the_asset_mode_loss(self):
         s = _scenario(_rental(rents=5_000.0, assets=[_building()]))
@@ -169,7 +169,7 @@ class RentalNetIncomeEstimateTests(unittest.TestCase):
     def test_estimate_reflects_resolved_depreciation(self):
         rp = _rental(rents=24_000.0, taxes=3_000.0, assets=[_building()])
         self.assertEqual(
-            _rental_net_income(rp, YEAR),
+            _rental_net_income(rp, YEAR, mid_quarter=False),
             24_000.0 - 3_000.0 - BUILDING_DEPRECIATION)
 
 
@@ -248,8 +248,8 @@ class DownstreamAgreementTests(_OrchestratorCase):
         seen = []
         real = _rental_net_income
 
-        def spy(r, tax_year):
-            seen.append(real(r, tax_year))
+        def spy(r, tax_year, *, mid_quarter):
+            seen.append(real(r, tax_year, mid_quarter=mid_quarter))
             return seen[-1]
 
         with mock.patch("tenforty.orchestrator._rental_net_income", spy):

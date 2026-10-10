@@ -182,8 +182,8 @@ class ScheduleK1:
 
 # MACRS recovery classes the engine has a table for. Real property is
 # straight-line / mid-month by statute; personal property is 200DB (150DB for
-# 15- and 20-year) under the half-year convention unless the mid-quarter test
-# trips, which refuses.
+# 15- and 20-year) under the half-year convention, or the mid-quarter
+# convention when the 40% test trips for the placement year.
 REAL_PROPERTY_CLASSES: tuple[str, ...] = ("27.5-year", "39-year")
 PERSONAL_PROPERTY_CLASSES: tuple[str, ...] = (
     "3-year", "5-year", "7-year", "10-year", "15-year", "20-year")
@@ -198,8 +198,15 @@ class DepreciableAsset:
     `ScheduleCBusiness.depreciable_assets`).
 
     ``basis`` is the DEPRECIABLE basis: land is already excluded.
-    ``recovery_class`` is one of `SUPPORTED_RECOVERY_CLASSES`. There is no
-    convention field: the convention is computed from the class, never stated.
+    ``recovery_class`` is one of `SUPPORTED_RECOVERY_CLASSES`.
+
+    ``convention`` ("half-year" or "mid-quarter") and ``quarter`` (1-4, only
+    with mid-quarter) are STATED on personal property placed in service
+    before the return year, and only there: the convention such an asset
+    took was settled by the 40% test of the year it was placed in service,
+    over that year's placements, which a later return does not hold. On an
+    asset placed in the return year the convention is computed and stating
+    it refuses; real property is mid-month by statute and never states it.
 
     ``prior_depreciation`` is required when the asset was placed in service
     before the return year. ``no_bonus_or_section_179_history`` must be True
@@ -217,6 +224,8 @@ class DepreciableAsset:
     prior_depreciation: float | None = None
     no_bonus_or_section_179_history: bool | None = None
     acknowledges_prior_depreciation_as_stated: bool = False
+    convention: str | None = None
+    quarter: int | None = None
 
 
 @dataclass(frozen=True)

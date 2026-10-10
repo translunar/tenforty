@@ -50,7 +50,7 @@ def _old_building() -> DepreciableAsset:
         description="Rental building", date_placed_in_service=date(2019, 6, 1),
         basis=200_000.0, recovery_class="27.5-year")
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, YEAR))
+        reconstruct_prior_depreciation(asset, YEAR, mid_quarter=False))
     return asset
 
 
@@ -115,7 +115,7 @@ class AssetModeReconTests(_Case):
 class OverriddenReconTests(_Case):
     def _overridden(self):
         building = _old_building()
-        self.engine = macrs_deduction(building, YEAR)
+        self.engine = macrs_deduction(building, YEAR, return_year=YEAR, mid_quarter=False)
         self.assertNotEqual(self.engine, 6_500)
         return _scenario(_rental(
             depreciable_assets=[building],
@@ -163,14 +163,15 @@ class LiftedBonusHistoryNoteTests(_Case):
         asset = DepreciableAsset(
             description="Refrigerator",
             date_placed_in_service=date(2023, 3, 15), basis=10_000.0,
-            recovery_class="5-year", no_bonus_or_section_179_history=history)
+            recovery_class="5-year", no_bonus_or_section_179_history=history,
+            convention="half-year")
         asset.prior_depreciation = float(
-            reconstruct_prior_depreciation(asset, YEAR))
+            reconstruct_prior_depreciation(asset, YEAR, mid_quarter=False))
         return _scenario(_rental(
             depreciable_assets=[asset],
             depreciation_override=DepreciationOverride(
                 amount=400.0,
-                restates_engine_amount=float(macrs_deduction(asset, YEAR)),
+                restates_engine_amount=float(macrs_deduction(asset, YEAR, return_year=YEAR, mid_quarter=False)),
                 acknowledgment=True)))
 
     def test_note_present_when_the_refusal_was_lifted(self):
@@ -201,7 +202,7 @@ class BasisCeilingReconTests(_Case):
             description="Refrigerator",
             date_placed_in_service=date(2023, 3, 15), basis=10_000.0,
             recovery_class="5-year", no_bonus_or_section_179_history=True,
-            prior_depreciation=prior,
+            convention="half-year", prior_depreciation=prior,
             acknowledges_prior_depreciation_as_stated=True)
         return _scenario(_rental(depreciable_assets=[asset]))
 
@@ -230,6 +231,27 @@ class BasisCeilingReconTests(_Case):
         self.assertEqual(
             f4562.compute(scenario, upstream={})[
                 "f4562_line_22_total_depreciation"], line_18)
+
+    def test_rounding_bound_ceiling_has_its_own_note(self):
+        """A table-matching history can hit the ceiling too: on a basis of
+        8, four whole-dollar years (2 + 3 + 2 + 1) recover all of it and
+        the fifth year's table amount of 1 is limited to 0. Nothing was
+        mis-stated, so the note does not send the reader to Form 3115."""
+        asset = DepreciableAsset(
+            description="Stapler",
+            date_placed_in_service=date(2021, 3, 15), basis=8.0,
+            recovery_class="5-year", no_bonus_or_section_179_history=True,
+            convention="half-year", prior_depreciation=8.0)
+        results = self._results(_scenario(_rental(depreciable_assets=[asset])))
+        self.assertIs(results[self.KEY], True)
+        self.assertEqual(
+            results["depreciation_recon_rental_0_used_amount"], 0)
+        self.assertRegex(
+            results[self.NOTE],
+            r"'Stapler' limited to its remaining basis of 0 "
+            r"\(table amount 1\).*rounded to whole dollars on its own.*"
+            r"never exceeds basis")
+        self.assertNotIn("Form 3115", results[self.NOTE])
 
     def test_non_binding_case_carries_neither(self):
         results = self._results(self._messy(1_234.0))

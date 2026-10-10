@@ -98,7 +98,7 @@ def _old_building(year: int) -> DepreciableAsset:
         description="Rental building", date_placed_in_service=date(2019, 6, 1),
         basis=200_000.0, recovery_class="27.5-year")
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, year))
+        reconstruct_prior_depreciation(asset, year, mid_quarter=False))
     return asset
 
 
@@ -111,10 +111,10 @@ def _new_roof(year: int) -> DepreciableAsset:
 def _last_years_equipment(year: int) -> DepreciableAsset:
     asset = DepreciableAsset(
         description="Equipment", date_placed_in_service=date(year - 1, 5, 1),
-        basis=10_000.0, recovery_class="5-year",
+        basis=10_000.0, recovery_class="5-year", convention="half-year",
         no_bonus_or_section_179_history=True)
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, year))
+        reconstruct_prior_depreciation(asset, year, mid_quarter=False))
     return asset
 
 
@@ -192,7 +192,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
                     r["f4562_line_17"] + line_19)
                 self.assertEqual(
                     r["f4562_line_22_total_depreciation"],
-                    resolve(s.rental_properties[0], year).amount)
+                    resolve(s.rental_properties[0], year, mid_quarter=False).amount)
 
     def test_line_17_uses_the_resolvers_figure_under_the_basis_ceiling(self):
         """An acknowledged prior history that ran ahead of the tables caps
@@ -209,7 +209,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
             r["f4562_line_22_total_depreciation"], 1_000 + ROOF_AMOUNT)
         self.assertEqual(
             r["f4562_line_22_total_depreciation"],
-            resolve(s.rental_properties[0], year).amount)
+            resolve(s.rental_properties[0], year, mid_quarter=False).amount)
 
     def test_no_prior_assets_prints_no_line_17(self):
         """The twin: with every asset placed this year there is no line 17

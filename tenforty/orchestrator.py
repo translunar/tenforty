@@ -10,6 +10,7 @@ from tenforty.attestations import (
     enforce_named_refusal, enforce_scoped_refusals,
 )
 from tenforty.forms.depreciation.resolver import (
+    mid_quarter_applies,
     recon_keys as depreciation_recon_keys,
     resolve as resolve_depreciation,
 )
@@ -393,7 +394,8 @@ def _k1_positive_income(k1: ScheduleK1) -> float:
     ))
 
 
-def _rental_net_income(r: RentalProperty, tax_year: int) -> float:
+def _rental_net_income(r: RentalProperty, tax_year: int, *,
+                       mid_quarter: bool) -> float:
     """Net rental income (rents received − all deductible Schedule E expenses).
     Depreciation is the resolved figure for ``tax_year``, never a raw field."""
     return r.rents_received - (
@@ -401,7 +403,8 @@ def _rental_net_income(r: RentalProperty, tax_year: int) -> float:
         + r.commissions + r.insurance + r.legal_and_professional_fees
         + r.management_fees + r.mortgage_interest + r.other_interest
         + r.repairs + r.supplies + r.taxes + r.utilities
-        + resolve_depreciation(r, tax_year).amount + r.other_expenses
+        + resolve_depreciation(r, tax_year, mid_quarter=mid_quarter).amount
+        + r.other_expenses
     )
 
 
@@ -433,13 +436,16 @@ def aggregate_business_losses(scenario: Scenario) -> int:
     and each K-1 loss box is rounded UP (the K-1 row prints its boxes netted
     and its two rental boxes combined, so no per-box rounding matches the
     page; the ceiling is never less than what any of those prints)."""
+    mid_quarter = mid_quarter_applies(scenario)
     sch_c = sum(
-        max(0, -form_sch_c.printed_net_profit(biz, scenario.config.year))
+        max(0, -form_sch_c.printed_net_profit(
+            biz, scenario.config.year, mid_quarter=mid_quarter))
         for biz in scenario.schedule_c_businesses)
     k1 = sum(math.ceil(max(0.0, -getattr(k, box)))
              for k in scenario.schedule_k1s for box in _K1_BUSINESS_BOXES)
     rental = sum(
-        max(0, -form_sch_e.printed_rental_net(r, scenario.config.year))
+        max(0, -form_sch_e.printed_rental_net(
+            r, scenario.config.year, mid_quarter=mid_quarter))
         for r in scenario.rental_properties)
     return sch_c + k1 + rental
 
@@ -797,6 +803,7 @@ class ReturnOrchestrator:
         # workbook, which performs the real EIC math. (Adjustments are ignored,
         # which can only make the estimate higher than true AGI — same safe
         # direction.)
+        mid_quarter = mid_quarter_applies(effective_scenario)
         agi_estimate = (
             earned_income
             + sum(f.interest for f in effective_scenario.form1099_int)
@@ -808,7 +815,8 @@ class ReturnOrchestrator:
                   for g in effective_scenario.form1099_g)
             + sum(_k1_positive_income(k)
                   for k in effective_scenario.schedule_k1s)
-            + sum(max(0.0, _rental_net_income(r, cfg.year))
+            + sum(max(0.0, _rental_net_income(
+                      r, cfg.year, mid_quarter=mid_quarter))
                   for r in effective_scenario.rental_properties)
             + max(0.0, sum(b.proceeds - b.cost_basis
                            for b in effective_scenario.form1099_b))
@@ -822,7 +830,8 @@ class ReturnOrchestrator:
             # the workbook path refuses Schedule C outright (fail-closed).
             # This estimate runs BEFORE sch_c.compute's refusals, so it uses
             # the non-raising estimate.
-            + sum(form_sch_c.net_profit_estimate(biz, cfg.year)
+            + sum(form_sch_c.net_profit_estimate(
+                      biz, cfg.year, mid_quarter=mid_quarter)
                   for biz in effective_scenario.schedule_c_businesses)
         )
         num_children = min(len(cfg.dependents), max(ceilings))

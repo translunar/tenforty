@@ -1046,15 +1046,91 @@ def _raw_top_level_asset_list(raw) -> list:
     return ["depreciable_assets"] if "depreciable_assets" in raw else []
 
 
-def _raw_assets_with_convention(raw) -> list[str]:
+STATED_CONVENTIONS: tuple[str, ...] = ("half-year", "mid-quarter")
+_STATED_QUARTERS: tuple[int, ...] = (1, 2, 3, 4)
+
+
+def _states_a_convention(asset) -> bool:
+    return asset.convention is not None or asset.quarter is not None
+
+
+def _is_prior_year_personal_property(asset, year: int) -> bool:
+    """The only kind of asset that states its convention."""
+    return (asset.recovery_class in PERSONAL_PROPERTY_CLASSES
+            and asset.date_placed_in_service.year < year)
+
+
+def _assets_stating_a_computed_convention(s: Scenario) -> list[str]:
+    """Assets carrying `convention` / `quarter` whose convention is not
+    theirs to state: real property, and anything placed in service in the
+    return year (or after it). An asset in an unknown class is left to that
+    class's own refusal."""
+    year = s.config.year
     found = []
-    for section, _label in _DEPRECIATION_ACTIVITY_SECTIONS:
-        for i, activity in enumerate(raw.get(section) or []):
-            if not isinstance(activity, dict):
-                continue
-            for j, asset in enumerate(activity.get("depreciable_assets") or []):
-                if isinstance(asset, dict) and "convention" in asset:
-                    found.append(f"{section}[{i}].depreciable_assets[{j}]")
+    for label, a in _assets(s):
+        if not _states_a_convention(a):
+            continue
+        if a.recovery_class in REAL_PROPERTY_CLASSES:
+            found.append(
+                f"{label} is {a.recovery_class} real property (mid-month by "
+                f"statute)")
+        elif (a.recovery_class in PERSONAL_PROPERTY_CLASSES
+              and a.date_placed_in_service.year >= year):
+            found.append(
+                f"{label} was placed in service in "
+                f"{a.date_placed_in_service.year}, not before the {year} "
+                f"return year (its convention is computed from this year's "
+                f"placements)")
+    return found
+
+
+def _prior_year_assets_missing_convention(s: Scenario) -> list[str]:
+    year = s.config.year
+    return [
+        f"{label}, placed in service in {a.date_placed_in_service.year}"
+        for label, a in _assets(s)
+        if _is_prior_year_personal_property(a, year)
+        and a.convention is None]
+
+
+def stated_convention_problem(asset) -> str | None:
+    """What is wrong with a prior-year asset's stated `convention` /
+    `quarter`, or None when they are usable. (A missing convention is the
+    separate `missing_prior_year_convention` refusal.)"""
+    if asset.convention is None:
+        return None
+    if asset.convention not in STATED_CONVENTIONS:
+        return (f"states `convention: {asset.convention}`; it must be one "
+                f"of {list(STATED_CONVENTIONS)}")
+    if asset.convention == "half-year":
+        if asset.quarter is not None:
+            return ("states a `quarter` with `convention: half-year`; the "
+                    "quarter belongs to the mid-quarter convention only")
+        return None
+    if asset.quarter is None:
+        return ("states `convention: mid-quarter` without the `quarter` "
+                "(1-4) it was placed in service in")
+    if asset.quarter not in _STATED_QUARTERS:
+        return (f"states `quarter: {asset.quarter}`; it must be one of "
+                f"{list(_STATED_QUARTERS)}")
+    placed = (asset.date_placed_in_service.month - 1) // 3 + 1
+    if asset.quarter != placed:
+        return (f"states `quarter: {asset.quarter}` but its "
+                f"`date_placed_in_service` "
+                f"({asset.date_placed_in_service.isoformat()}) is in quarter "
+                f"{placed}")
+    return None
+
+
+def _prior_year_assets_with_invalid_convention(s: Scenario) -> list[str]:
+    year = s.config.year
+    found = []
+    for label, a in _assets(s):
+        if not _is_prior_year_personal_property(a, year):
+            continue
+        problem = stated_convention_problem(a)
+        if problem is not None:
+            found.append(f"{label} {problem}")
     return found
 
 
@@ -1177,7 +1253,8 @@ def _asset_mode_on_unprinted_rentals(s: Scenario) -> list[str]:
 # The four predicates below need the engine, which lives in
 # forms/depreciation/ and itself imports this module -- hence the imports
 # inside the functions. Each skips an asset the engine has no figure for
-# (unknown class, disposed): those are other entries' refusals.
+# (unknown class, disposed, a prior-year asset with no usable stated
+# convention): those are other entries' refusals.
 
 def _assets_placed_after_return_year(s: Scenario) -> list[str]:
     year = s.config.year
@@ -1190,11 +1267,13 @@ def _assets_placed_after_return_year(s: Scenario) -> list[str]:
 def _prior_depreciation_mismatches(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     year = s.config.year
+    mid_quarter = resolver.mid_quarter_applies(s)
     found = []
     for label, a in _assets(s):
-        if not resolver.is_computable(a):
+        if not resolver.is_computable(a, year):
             continue
-        mismatch = resolver.prior_depreciation_mismatch(a, year)
+        mismatch = resolver.prior_depreciation_mismatch(
+            a, year, mid_quarter=mid_quarter)
         if mismatch is not None:
             stated, reconstructed = mismatch
             found.append(
@@ -1209,15 +1288,18 @@ def _computable_overridden_activities(s: Scenario):
     for _sec, _i, label, act in depreciation_activities(s):
         if act.depreciation_override is None or not act.depreciable_assets:
             continue
-        if all(resolver.is_computable(a) for a in act.depreciable_assets):
+        if all(resolver.is_computable(a, s.config.year)
+               for a in act.depreciable_assets):
             yield label, act
 
 
 def _stale_overrides(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
+    mid_quarter = resolver.mid_quarter_applies(s)
     found = []
     for label, act in _computable_overridden_activities(s):
-        engine = resolver.engine_amount(act, s.config.year)
+        engine = resolver.engine_amount(
+            act, s.config.year, mid_quarter=mid_quarter)
         restated = irs_round(act.depreciation_override.restates_engine_amount)
         if restated != engine:
             found.append(
@@ -1267,14 +1349,6 @@ def _unacknowledged_listed_property(s: Scenario) -> list[str]:
             if a.recovery_class in PERSONAL_PROPERTY_CLASSES]
 
 
-def _mid_quarter_convention(s: Scenario) -> list[str]:
-    from tenforty.forms.depreciation import resolver
-    if not resolver.mid_quarter_applies(s):
-        return []
-    last_quarter, year_total = resolver.mid_quarter_bases(s)
-    return [f"{irs_round(last_quarter):,} of {irs_round(year_total):,}"]
-
-
 def _unverifiable_mid_quarter_test(s: Scenario) -> list[str]:
     from tenforty.forms.depreciation import resolver
     if s.acknowledges_no_personal_property_behind_stated_depreciation is True:
@@ -1298,18 +1372,21 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
             "nothing tied those assets to the activity whose depreciation "
             "they are. Move each asset under its activity -- "
             "`rental_properties[n].depreciable_assets` or "
-            "`schedule_c_businesses[n].depreciable_assets` -- and drop any "
-            "`convention:` key (it is computed)."),
+            "`schedule_c_businesses[n].depreciable_assets`. A `convention:` "
+            "key belongs only on personal property placed in service before "
+            "the return year; drop it everywhere else (it is computed)."),
     ),
     ScopedRefusal(
         name="stated_convention",
-        stage="parse",
-        offenders=_raw_assets_with_convention,
+        stage="load",
+        offenders=_assets_stating_a_computed_convention,
         message=lambda o: (
-            f"{_join(o)} carries `convention:` -- convention is computed, "
-            "not stated. Real property is mid-month by statute; personal "
-            "property is half-year unless the mid-quarter test applies. "
-            "Remove the key."),
+            f"{_join(o)} and carries `convention` or `quarter`. Those are "
+            "stated only on personal property placed in service BEFORE the "
+            "return year. For property placed this year the convention is "
+            "computed -- half-year, or mid-quarter when the 40% test says "
+            "so -- and stating it as well would let the two disagree. "
+            "Remove the key(s)."),
     ),
     # Class first: the property-type predicates below classify by it.
     ScopedRefusal(
@@ -1385,6 +1462,29 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
         message=lambda o: (
             f"{_join(o)}. An asset already in service needs the "
             "depreciation taken in earlier years (state 0 if none was)."),
+    ),
+    ScopedRefusal(
+        name="missing_prior_year_convention",
+        stage="load",
+        offenders=_prior_year_assets_missing_convention,
+        message=lambda o: (
+            f"{_join(o)}, states no `convention`. Personal property placed "
+            "in service in an earlier year took the convention that year's "
+            "40% test gave it (26 U.S.C. 168(d)(3)), over everything placed "
+            "in service that year -- which this return does not list, so "
+            "tenforty cannot work it out and does not assume half-year. "
+            "State what the earlier return used: `convention: half-year`, or "
+            "`convention: mid-quarter` with `quarter:` (1-4) for the quarter "
+            "the asset was placed in service."),
+    ),
+    ScopedRefusal(
+        name="invalid_stated_convention",
+        stage="load",
+        offenders=_prior_year_assets_with_invalid_convention,
+        message=lambda o: (
+            f"{_join(o)}. A prior-year asset states `convention: half-year`, "
+            "or `convention: mid-quarter` together with `quarter:` (1-4), "
+            "the quarter of its own `date_placed_in_service`."),
     ),
     ScopedRefusal(
         name="dual_source_depreciation",
@@ -1513,23 +1613,6 @@ _DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
             "The real resolution is per-activity forms (one Form 4562 per "
             "activity that needs one), which is a later change. Until then "
             "this combination cannot be produced."),
-        exception=NotImplementedError,
-    ),
-    ScopedRefusal(
-        name="mid_quarter_convention",
-        stage="load",
-        whole_return=True,
-        offenders=_mid_quarter_convention,
-        message=lambda o: (
-            f"The mid-quarter convention applies to this return: personal "
-            f"property placed in service in the last three months of the "
-            f"year has aggregate basis {_join(o)} placed in service during "
-            "the year, which is more than 40% (26 U.S.C. 168(d)(3)). "
-            "tenforty has no mid-quarter tables, and the half-year tables "
-            "would compute every asset placed this year wrong. The totals "
-            "run across every activity on the return; real property is in "
-            "neither. This return cannot be produced with these assets "
-            "listed."),
         exception=NotImplementedError,
     ),
     ScopedRefusal(

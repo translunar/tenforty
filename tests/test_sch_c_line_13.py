@@ -108,12 +108,12 @@ class EstimatesSeeLine13Tests(unittest.TestCase):
     def test_net_profit_estimate_includes_line_13(self):
         biz = _biz(supplies=5_000.0, assets=[_equipment()])
         self.assertEqual(
-            sch_c.net_profit_estimate(biz, YEAR), 50_000.0 - 5_000.0 - LINE_13)
+            sch_c.net_profit_estimate(biz, YEAR, mid_quarter=False), 50_000.0 - 5_000.0 - LINE_13)
 
     def test_printed_net_profit_includes_line_13(self):
         biz = _biz(supplies=5_000.0, assets=[_equipment()])
         self.assertEqual(
-            sch_c.printed_net_profit(biz, YEAR), 50_000 - 5_000 - LINE_13)
+            sch_c.printed_net_profit(biz, YEAR, mid_quarter=False), 50_000 - 5_000 - LINE_13)
 
     def test_loss_guard_counts_a_loss_made_by_line_13(self):
         s = _scenario(_biz(gross=1_500.0, assets=[_equipment()]))

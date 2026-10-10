@@ -50,6 +50,10 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_asset_nest_loading::BonusHistoryRefusalTests::test_personal_property_without_true_history_field_refuses",
     "missing_prior_depreciation":
         "tests.test_asset_nest_loading::MissingPriorDepreciationRefusalTests::test_prior_year_asset_without_prior_depreciation_refuses",
+    "missing_prior_year_convention":
+        "tests.test_stated_prior_convention::MissingPriorYearConventionTests::test_prior_year_personal_asset_without_a_convention_refuses",
+    "invalid_stated_convention":
+        "tests.test_stated_prior_convention::InvalidStatedConventionTests::test_mid_quarter_without_its_quarter_refuses",
     "dual_source_depreciation":
         "tests.test_asset_nest_loading::DualSourceRefusalTests::test_assets_and_stated_scalar_on_one_activity_refuse",
     "unacknowledged_stated_depreciation":
@@ -70,10 +74,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_override_with_current_year_placement",
     "merged_4562_with_override":
         "tests.test_f4562_emit_gate::MergedFormWithOverrideRefusalTests::test_placement_on_one_activity_and_override_on_another_refuses",
-    "mid_quarter_convention":
-        "tests.test_mid_quarter_refusal::FortyPercentTestTests::test_fires_over_the_threshold",
     "unverifiable_mid_quarter_test":
-        "tests.test_mid_quarter_refusal::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
+        "tests.test_mid_quarter_convention::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
     "unacknowledged_listed_property":
         "tests.test_listed_property_acknowledgment::ListedPropertyAcknowledgmentTests::test_personal_property_without_the_acknowledgment_refuses",
     "passive_loss_allowance_unknown_magi":
@@ -424,6 +426,8 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "history_field_on_real_property",
                 "bonus_or_section_179_history",
                 "missing_prior_depreciation",
+                "missing_prior_year_convention",
+                "invalid_stated_convention",
                 "dual_source_depreciation",
                 "unacknowledged_stated_depreciation",
                 "override_outside_asset_mode",
@@ -434,7 +438,6 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "stale_depreciation_override",
                 "override_with_current_year_placement",
                 "merged_4562_with_override",
-                "mid_quarter_convention",
                 "unverifiable_mid_quarter_test",
                 "unacknowledged_listed_property",
                 "passive_loss_allowance_unknown_magi",
@@ -483,8 +486,7 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
         self.assertEqual(
             [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
-            ["merged_4562_with_override", "mid_quarter_convention",
-             "unverifiable_mid_quarter_test",
+            ["merged_4562_with_override", "unverifiable_mid_quarter_test",
              "unacknowledged_listed_property"])
 
     def test_names_are_unique(self):
