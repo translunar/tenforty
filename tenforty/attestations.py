@@ -1372,8 +1372,9 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
             "nothing tied those assets to the activity whose depreciation "
             "they are. Move each asset under its activity -- "
             "`rental_properties[n].depreciable_assets` or "
-            "`schedule_c_businesses[n].depreciable_assets` -- and drop any "
-            "`convention:` key (it is computed)."),
+            "`schedule_c_businesses[n].depreciable_assets`. A `convention:` "
+            "key belongs only on personal property placed in service before "
+            "the return year; drop it everywhere else (it is computed)."),
     ),
     ScopedRefusal(
         name="stated_convention",
