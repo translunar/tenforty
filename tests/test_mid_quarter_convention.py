@@ -342,6 +342,139 @@ class TaxpayerWideTests(unittest.TestCase):
                 mid_quarter)
 
 
+class ReadersUseTheReturnsAnswerTests(unittest.TestCase):
+    """Every reader of an activity's depreciation hands the engine the
+    return's answer. One 5-year asset placed in November is the whole
+    cohort, so the year trips: 10,000 x the fourth-quarter sentinel is
+    4,050 where the half-year table gives 2,000. Against 3,000 of income
+    that is a 1,050 loss under mid-quarter and a 1,000 profit under
+    half-year, so a reader that dropped the answer is visible in the sign
+    as well as the amount."""
+
+    MID_QUARTER_AMOUNT = 4_050
+    HALF_YEAR_AMOUNT = 2_000
+
+    def setUp(self):
+        patcher = _patched()
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.assertEqual(
+            irs_round(10_000.0 * _sentinel(4, 5, 1)), self.MID_QUARTER_AMOUNT)
+
+    def _rental_scenario(self):
+        rental = _rental(_personal(10_000.0, 11))
+        rental.rents_received = 3_000.0
+        return _scenario(rentals=[rental])
+
+    def _business_scenario(self):
+        business = ScheduleCBusiness(
+            description="Consulting", gross_receipts=3_000.0,
+            depreciable_assets=(_personal(10_000.0, 11),))
+        s = _scenario(businesses=[business])
+        # The business runs a loss under mid-quarter; line 32 needs this.
+        s.config.acknowledges_sch_c_all_investment_at_risk = True
+        return s
+
+    def _orchestrator(self):
+        import tempfile
+        from pathlib import Path
+        from tenforty.orchestrator import ReturnOrchestrator
+        from tests.helpers import SPREADSHEETS_DIR
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        return ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=Path(tmp.name))
+
+    def test_the_half_year_twin_is_different(self):
+        """What each test below would read if the answer were dropped."""
+        s = self._rental_scenario()
+        self.assertEqual(
+            resolve(s.rental_properties[0], YEAR,
+                    mid_quarter_years=frozenset()).amount,
+            self.HALF_YEAR_AMOUNT)
+
+    def test_schedule_e_line_18_and_line_21(self):
+        from tenforty.forms import sch_e
+        r = sch_e.compute(self._rental_scenario(), upstream={})
+        self.assertEqual(
+            r["sch_e_property_a_depreciation"], self.MID_QUARTER_AMOUNT)
+        self.assertEqual(r["sch_e_property_a_income_loss"], -1_050)
+
+    def test_schedule_e_net_loss_predicate(self):
+        from tenforty.forms import sch_e
+        self.assertTrue(sch_e.has_any_net_loss(self._rental_scenario()))
+
+    def test_schedule_c_line_13_and_line_31(self):
+        from tenforty.forms import sch_c
+        s = self._business_scenario()
+        business = sch_c.compute(s, upstream={})["sch_c_businesses"][0]
+        self.assertEqual(business[sch_c.LINE_13_KEY], self.MID_QUARTER_AMOUNT)
+        self.assertEqual(business["sch_c_line_31_net_profit"], -1_050)
+        emitted = sch_c.emit_values(s, 0, business)
+        self.assertEqual(emitted[sch_c.LINE_13_KEY], self.MID_QUARTER_AMOUNT)
+        # The computed line overwrites emit's own read of line 13; with no
+        # computed lines handed in, emit's own read is what is left.
+        own_read = sch_c.emit_values(s, 0, {})
+        self.assertEqual(
+            irs_round(own_read[sch_c.LINE_13_KEY]), self.MID_QUARTER_AMOUNT)
+
+    def test_excess_business_loss_aggregate(self):
+        from tenforty.orchestrator import aggregate_business_losses
+        self.assertEqual(
+            aggregate_business_losses(self._rental_scenario()), 1_050)
+        self.assertEqual(
+            aggregate_business_losses(self._business_scenario()), 1_050)
+
+    def test_spine_scope_estimates(self):
+        from unittest import mock
+        from tenforty import orchestrator as module
+        from tenforty.forms import sch_c
+        seen = []
+
+        def spy(real):
+            def wrapper(activity, tax_year, *, mid_quarter_years):
+                seen.append(real(
+                    activity, tax_year, mid_quarter_years=mid_quarter_years))
+                return seen[-1]
+            return wrapper
+
+        orchestrator = self._orchestrator()
+        with mock.patch.object(
+                module, "_rental_net_income", spy(module._rental_net_income)):
+            orchestrator._scenario_in_spine_scope(self._rental_scenario())
+        with mock.patch.object(
+                sch_c, "net_profit_estimate", spy(sch_c.net_profit_estimate)):
+            orchestrator._scenario_in_spine_scope(self._business_scenario())
+        self.assertEqual(seen, [-1_050.0, -1_050.0])
+
+    def test_workbook_flattener(self):
+        from tenforty.oracle.flattener import flatten_scenario
+        flat = flatten_scenario(self._rental_scenario())
+        self.assertEqual(flat["sche_depreciation_a"], self.MID_QUARTER_AMOUNT)
+        self.assertEqual(flat["sche_8582_net_loss"], 1_050)
+
+    def test_recon_keys(self):
+        from tenforty.forms.depreciation.resolver import recon_keys
+        keys = recon_keys(self._rental_scenario())
+        self.assertEqual(
+            keys["depreciation_recon_rental_0_engine_amount"],
+            self.MID_QUARTER_AMOUNT)
+
+    def test_california_divergence_trigger(self):
+        """The trigger is a boolean (any depreciation at all), so it is
+        told apart with a table of zeros: mid-quarter then gives no
+        depreciation where half-year would give 2,000."""
+        from unittest import mock
+        from tenforty import ca_divergences
+        from tenforty.params import macrs_mid_quarter
+        s = self._rental_scenario()
+        self.assertTrue(ca_divergences.has_rental_depreciation(s))
+        zeros = {quarter: {5: {1: 0.0}} for quarter in (1, 2, 3, 4)}
+        with mock.patch.object(
+                macrs_mid_quarter, "TABLES_BY_QUARTER", zeros):
+            self.assertFalse(ca_divergences.has_rental_depreciation(s))
+
+
 class RealPropertyExcludedTests(unittest.TestCase):
     def test_late_year_real_property_does_not_move_the_share(self):
         for cls in ("27.5-year", "39-year"):
