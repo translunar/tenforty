@@ -1542,6 +1542,10 @@ class ReturnOrchestrator:
                 "interest in a digital asset)?'). It is left unanswered "
                 "(null) in this scenario."
             )
+        # Emit-stage refusal ledger: returns whose numbers compute but whose
+        # printed forms tenforty cannot complete. Run here, at the shared
+        # chokepoint, before any form is prepared.
+        enforce_scoped_refusals(scenario, "emit")
         specs: list[_FederalFormSpec] = []
 
         def _fed(basename: str) -> Path:
@@ -1660,6 +1664,19 @@ class ReturnOrchestrator:
                     q_values[f"sch_e_{question}"] = q_on
                 sch_e_mapping = {**sch_e_mapping, "scalars": q_scalars}
                 sch_e_spec_values = q_values
+            # Line 27 (prior-year unallowed loss question): answered "No"
+            # whenever Part II is used. A return that would have to answer
+            # "Yes" never reaches here -- the emit-stage refusal ledger
+            # (sch_e_line_27_prior_year_unallowed_loss) stops it first.
+            if self._should_emit_sch_e_part_ii(scenario):
+                l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
+                sch_e_mapping = {
+                    **sch_e_mapping,
+                    "scalars": {**sch_e_mapping["scalars"],
+                                "sch_e_line_27_no": l27_path},
+                }
+                sch_e_spec_values = {
+                    **sch_e_spec_values, "sch_e_line_27_no": l27_on}
             # Line 28 column (e) (basis computation required): written only
             # for rows the compute flags (an S corporation box 1 loss). A
             # year with no cell mapping refuses rather than emit the loss row

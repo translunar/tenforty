@@ -972,7 +972,10 @@ def enforce_compute_time(scenario: Scenario) -> None:
 # "load":  the predicate sees the constructed Scenario. Re-checked at compute
 #          entry, because a Scenario built in code never passed the loader.
 # "compute": the predicate sees the (effective) Scenario at compute entry.
-SCOPED_REFUSAL_STAGES: tuple[str, ...] = ("parse", "load", "compute")
+# "emit":  the predicate sees the Scenario when the federal individual forms
+#          are prepared for printing. For a return whose NUMBERS tenforty
+#          computes but whose printed form it cannot complete.
+SCOPED_REFUSAL_STAGES: tuple[str, ...] = ("parse", "load", "compute", "emit")
 
 
 @dataclass(frozen=True)
@@ -1565,9 +1568,38 @@ _DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
     ),
 )
 
+# --- Schedule E: answers the printed form requires ---------------------------
+
+def _k1s_with_prior_year_unallowed_loss(s: Scenario) -> list[str]:
+    """K-1s carrying a prior-year unallowed loss. The one modeled channel is
+    `prior_year_passive_loss_carryforward` (rental properties carry none; the
+    at-risk and basis limitations are attestation-gated and carry no amount)."""
+    return [repr(k1.entity_name) for k1 in s.schedule_k1s
+            if k1.prior_year_passive_loss_carryforward]
+
+
+_SCHEDULE_E_PRINT_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="sch_e_line_27_prior_year_unallowed_loss",
+        stage="emit",
+        offenders=_k1s_with_prior_year_unallowed_loss,
+        message=lambda o: (
+            f"Schedule E line 27 asks whether the return reports any loss "
+            f"not allowed in a prior year, and the K-1 from {_join(o)} "
+            f"carries a `prior_year_passive_loss_carryforward`. tenforty "
+            f"answers line 27 \"No\" and does not produce the \"Yes\" "
+            f"treatment (the separate prior-year line 28 entries the line 27 "
+            f"instructions call for), so this Schedule E cannot be emitted. "
+            f"The compute path still produces the numbers; complete the form "
+            f"by hand."),
+        exception=NotImplementedError,
+    ),
+)
+
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
     + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
+    + _SCHEDULE_E_PRINT_REFUSALS
 )
 
 

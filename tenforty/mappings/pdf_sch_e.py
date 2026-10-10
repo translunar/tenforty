@@ -85,6 +85,25 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
     }
 
 
+# Page 1 totals block, lines 23a-24. The leaf names and their top-to-bottom
+# order are the same on the 2021, 2022, 2023, 2024 and 2025 templates
+# (enumerated per year from each template's widget Rects; only the y-offsets
+# differ in 2021). 2022's zero-padding touches single-digit leaves only, so
+# these two-digit leaves are unchanged there.
+#   f1_77 line 23a   f1_78 line 23b   f1_79 line 23c   f1_80 line 23d
+#   f1_81 line 23e   f1_82 line 24    f1_83 line 25    f1_84 line 26
+# DELIBERATELY UNMAPPED: f1_78 (line 23b, royalties) -- compute prints nothing
+# on line 4, so there is no royalty total to print.
+_TOTALS_BLOCK: dict[str, str] = {
+    "sch_e_line_23a_total_rents": "topmostSubform[0].Page1[0].f1_77[0]",
+    "sch_e_line_23c_total_mortgage_interest":
+        "topmostSubform[0].Page1[0].f1_79[0]",
+    "sch_e_line_23d_total_depreciation": "topmostSubform[0].Page1[0].f1_80[0]",
+    "sch_e_line_23e_total_expenses": "topmostSubform[0].Page1[0].f1_81[0]",
+    "sch_e_line_24_income": "topmostSubform[0].Page1[0].f1_82[0]",
+}
+
+
 def _build_fields() -> dict:
     """Build the Schedule E mapping dict (identical for 2024 and 2025)."""
     return {
@@ -152,6 +171,11 @@ def _build_fields() -> dict:
             # Line 21 — income or (loss) A
             "sch_e_property_a_income_loss":
                 "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
+
+            # Lines 23a/23c/23d/23e and 24 — page 1 totals block. Leaves
+            # f1_77..f1_84 run 23a, 23b, 23c, 23d, 23e, 24, 25, 26 top to
+            # bottom on every template 2021-2025 (see _TOTALS_BLOCK).
+            **_TOTALS_BLOCK,
 
             # Line 26 — total rental real estate / royalty income (page 1 summary)
             "sch_e_line_26_total":
@@ -305,6 +329,7 @@ _FIELDS_2021: dict = {
             "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_68[0]",
         "sch_e_property_a_income_loss":
             "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
+        **_TOTALS_BLOCK,
         "sch_e_line_26_total": "topmostSubform[0].Page1[0].f1_84[0]",
         "taxpayer_name_page2": "topmostSubform[0].Page2[0].f2_1[0]",
         "taxpayer_ssn_page2": "topmostSubform[0].Page2[0].f2_2[0]",
@@ -402,6 +427,19 @@ _Q1099_BY_YEAR: dict[int, dict[str, dict[bool, tuple[str, str]]]] = {
     y: _Q1099_CELLS for y in (2022, 2023, 2024, 2025)}
 
 
+# Page 2 line 27 ("Are you reporting any loss not allowed in a prior year
+# ...?"), federal TY2021-2025: one two-widget checkbox group, c2_1. Yes box
+# left (c2_1[0], export /1), No box right (c2_1[1], export /2), each just left
+# of its printed caption on line 27's last text row. Same path and on-states
+# on all five templates (enumerated per year; the 2021 Rects differ, the
+# names do not).
+_LINE_27_CELLS: dict[bool, tuple[str, str]] = {
+    True: (f"{_P2}.c2_1[0]", "/1"),
+    False: (f"{_P2}.c2_1[1]", "/2"),
+}
+_LINE_27_YEARS = (2021, 2022, 2023, 2024, 2025)
+
+
 # Page 2 line 28 column (e) "Check if basis computation is required", federal
 # TY2022-2025: one checkbox per row, c2_(3,6,9,12), export state /1, inside the
 # Table_Line28a-f row subform (same tree in all four years; 2022 pads only
@@ -424,6 +462,17 @@ class PdfSchE(PdfFormMapping[dict]):
     _MAPPINGS: dict[int, dict] = {
         2021: _FIELDS_2021,
         2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+
+    @classmethod
+    def get_line_27_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
+        """{answer: (field_path, on_state)} for the line 27 Yes/No pair.
+        Additive to the value mapping, like the line A/B cells: the
+        orchestrator writes only the chosen answer's on-state."""
+        if year not in _LINE_27_YEARS:
+            raise ValueError(
+                f"No Schedule E line 27 (prior-year unallowed loss question) "
+                f"cells for year {year}")
+        return _LINE_27_CELLS
 
     @classmethod
     def get_basis_computation_cells(
