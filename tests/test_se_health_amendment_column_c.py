@@ -20,8 +20,8 @@ straight ``compute_federal`` of the amended scenario; the 1040-X grid is
 ``form_f1040x.assemble`` over the two dicts (the soffice-free assembly path —
 no PDF fill, no LibreOffice).
 
-Single filer throughout (native spine — matches Juno's 2023 case, avoids the
-workbook path's deferred wiring / Task-3 guard). NO Form 1095-A (Juno's 2023
+Single filer throughout (native spine — matches the motivating real-world case, avoids the
+workbook path's deferred wiring / Task-3 guard). NO Form 1095-A (the motivating
 case has none; a 1095-A would trip the Task-2 SE-health x PTC guard). All
 figures are clearly synthetic.
 """

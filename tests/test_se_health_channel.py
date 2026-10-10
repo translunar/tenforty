@@ -29,7 +29,7 @@ from tenforty.params.federal import load
 from tenforty.scenario import load_scenario
 from tests.helpers import REPO_ROOT, make_simple_scenario, scope_out_attestation_defaults
 
-# Clearly synthetic deduction value — NOT Juno's real figure, nor near it.
+# Clearly synthetic deduction value — NOT a real figure, nor near one.
 _V = 7_400
 
 
@@ -358,7 +358,7 @@ class SeHealthPtcGuardTests(unittest.TestCase):
         # The field really moved line 17 through the channel.
         self.assertEqual(sch_1_zero["sch_1_line_17_se_health"], 0)
         self.assertEqual(sch_1_v["sch_1_line_17_se_health"], _V)
-        # The common case (and Juno's motivating no-1095-A case) is not blocked;
+        # The common case (the motivating no-1095-A shape) is not blocked;
         # the deduction lowers AGI by exactly V.
         self.assertEqual(spine_v["agi"], spine_zero["agi"] - _V)
 

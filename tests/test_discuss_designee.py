@@ -1,6 +1,6 @@
 """The "may we discuss this return with the preparer / a designee" questions.
 
-Juno's standing ruling is NO everywhere (self-prepared, no designee); these are
+The standing project ruling is NO everywhere (self-prepared, no designee); these are
 STATED answers, None = blank:
 
 * Form 1120-S page 1 "May the IRS discuss this return with the preparer shown
