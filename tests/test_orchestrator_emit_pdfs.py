@@ -604,8 +604,13 @@ class EmitPdfs8959Tests(unittest.TestCase):
                 recovery_class="27.5-year",
             ),
         ])
+        # The asset's depreciation puts the rental at a loss, so Form 8582
+        # is computed at emit and needs a modified AGI to evaluate the
+        # special allowance (a results dict without one refuses:
+        # passive_loss_allowance_unknown_magi). 90,000 matches the sample
+        # wages and is under the phaseout, so the loss is allowed in full.
         emitted = self.orchestrator.emit_pdfs(
-            scenario, SAMPLE_RESULTS, self.output_dir,
+            scenario, {**SAMPLE_RESULTS, "magi": 90_000}, self.output_dir,
         )
         self.assertIn("f4562", emitted)
         self.assertEqual(emitted["f4562"].name, "f4562_2025.pdf")

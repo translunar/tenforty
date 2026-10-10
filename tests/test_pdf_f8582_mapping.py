@@ -83,7 +83,11 @@ class PdfF8582RoundTripTests(unittest.TestCase):
         s.schedule_k1s = [ScheduleK1(
             entity_name="Example LLC", entity_ein="00-0000000",
             entity_type="partnership", material_participation=False,
-            net_rental_real_estate=-30_000.0,
+            # 28,000 = rental income 3,000 + the 25,000 special allowance:
+            # Form 8582 allows the whole loss. A larger loss is suspended in
+            # part and the return refuses (pinned in the fast tier:
+            # tests/test_passive_loss_limitation_refusal.py).
+            net_rental_real_estate=-28_000.0,
         )]
         s.rental_properties = [RentalProperty(
             address="1 Test St", property_type=1, fair_rental_days=365,
