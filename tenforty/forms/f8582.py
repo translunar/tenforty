@@ -71,6 +71,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             "income": a.income,
             "loss": a.loss,
             "prior_carryforward": a.prior_carryforward,
+            "rental_real_estate": a.rental_real_estate_only,
         }
         for a in fanout.passive_activities
     ]
@@ -83,12 +84,22 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             "income": max(0, rental_net),
             "loss": max(0, -rental_net),
             "prior_carryforward": 0,
+            "rental_real_estate": True,
         })
 
     passive_income_total = sum(a["income"] for a in passive_activities)
     passive_loss_total = sum(a["loss"] for a in passive_activities)
     prior_carryforward_total = sum(
         a["prior_carryforward"] for a in passive_activities
+    )
+    # KNOWN LIMIT of this module: the special allowance below is applied to
+    # the whole passive-loss pool, though it may only excuse rental real
+    # estate losses. This figure lets the refusal ledger
+    # (passive_loss_limitation_not_applied) stop any return on which
+    # non-rental passive losses exceed passive income -- the only case where
+    # that over-allowance changes the answer.
+    non_rental_loss_total = sum(
+        a["loss"] for a in passive_activities if not a["rental_real_estate"]
     )
 
     # Form 8582 MAGI (line 6) = AGI minus net passive activity. Subtracting a
@@ -154,6 +165,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         ),
         "f8582_line_11_allowed_loss": allowed_loss,
         "f8582_special_allowance": allowance,
+        "f8582_non_rental_passive_loss": non_rental_loss_total,
         "per_activity_carryforwards": per_activity_carryforwards,
         # Present only when unknown, so a known-MAGI result is unchanged.
         **({} if magi_known else {"f8582_magi_unknown": True}),

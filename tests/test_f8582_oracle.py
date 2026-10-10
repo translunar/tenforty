@@ -17,8 +17,15 @@ from tests.helpers import REPO_ROOT, make_k1_scenario, needs_libreoffice
 
 def _scenario(k1_rental_loss: float):
     """An income rental (net 3,000) and one passive partnership K-1 whose
-    rental real estate box is ``k1_rental_loss``. Invented figures."""
+    rental real estate box is ``k1_rental_loss``. Invented figures.
+
+    Wages 80,000 keep Form 8582's modified AGI well under the 100,000 start
+    of the special-allowance phaseout in both cases below, so neither
+    comparison turns on which side of that threshold a figure lands."""
     s = make_k1_scenario()
+    s.w2s[0].wages = 80_000
+    s.w2s[0].ss_wages = 80_000
+    s.w2s[0].medicare_wages = 80_000
     s.rental_properties = [RentalProperty(
         address="1 Test St", property_type=1, fair_rental_days=365,
         personal_use_days=0, rents_received=5_000.0, mortgage_interest=2_000.0,
@@ -96,9 +103,11 @@ class F8582OracleTests(unittest.TestCase):
                 orch.compute_federal(s)
             workbook = orch._compute_1040_via_workbook(s)
 
-        # The workbook result carries no `magi` key; Form 8582's modified AGI
-        # input is AGI here (no tax-exempt interest or other add-backs).
-        native = _native_f8582(s, {**workbook, "magi": workbook["agi"]})
+        # The native Form 8582 is fed the workbook's own `magi` figure (the
+        # workbook mapping harvests one), exactly as it is fed the spine's on
+        # the native path.
+        self.assertIsNotNone(workbook.get("magi"))
+        native = _native_f8582(s, workbook)
         self.assertLess(
             native["f8582_line_11_allowed_loss"],
             native["f8582_line_1b_activities_with_loss"])
