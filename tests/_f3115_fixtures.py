@@ -10,8 +10,9 @@ from pathlib import Path
 import yaml
 
 from tenforty.models import Scenario
+from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
-from tests.helpers import FIXTURES_DIR
+from tests.helpers import FIXTURES_DIR, SPREADSHEETS_DIR
 
 YEAR = 2025
 
@@ -25,6 +26,8 @@ IDENTITY = {
     "address_state": "CA",
     "address_zip": "90000",
     "digital_assets": False,
+    # No W-2 source PDFs in a synthetic fixture.
+    "acknowledges_no_source_documents": True,
 }
 
 ASSET_BUILDING = {
@@ -120,3 +123,9 @@ def load(tmp_dir: Path, data: dict) -> Scenario:
     path = Path(tmp_dir) / "scenario.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False))
     return load_scenario(path)
+
+
+def orchestrator(tmp_dir: Path) -> ReturnOrchestrator:
+    work = Path(tmp_dir) / "work"
+    work.mkdir(exist_ok=True)
+    return ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR, work_dir=work)

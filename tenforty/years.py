@@ -141,6 +141,16 @@ AMENDMENT_TEMPLATE_REVISIONS: dict[str, str] = {
 }
 
 
+# Revision-keyed forms OUTSIDE the amendment tier. Like f1040x, each is filed
+# on its current printed revision whatever the tax year, so it owes one pack
+# (template + probe + mapping) against that revision, not one per year. Packs
+# live at pdfs/federal/revision_keyed/<form>.pdf; the mapping resolves
+# get_mapping(revision). The tag matches r"^rev-".
+REVISION_KEYED_FORM_REVISIONS: dict[str, str] = {
+    "f3115": "rev-2022-12",  # Form 3115 (Rev. December 2022)
+}
+
+
 def amendable_federal_years() -> tuple[int, ...]:
     """Federal years an amended return can be prepared for: the full-pack
     years plus the compute-only years (both carry the compute surface a
