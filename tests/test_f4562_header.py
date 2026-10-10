@@ -1,5 +1,12 @@
 """Form 4562 header: which box the name, the activity and the SSN print in.
 
+The middle box carries the activity the form's assets belong to, exactly as
+that activity's own schedule names it: a rental's address (Schedule E line
+1a) or a business's description (Schedule C line A). Nothing is added to
+it, and with no name to print the box stays blank. tenforty emits one
+merged form per return; when its assets span more than one activity there
+is no single activity to name and the box stays blank.
+
 The header row has three boxes, left to right:
 
   Name(s) shown on return | Business or activity to which this form relates
@@ -21,8 +28,12 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from tenforty.forms import f4562
+from tenforty.forms.depreciation.resolver import reconstruct_prior_depreciation
 from tenforty.mappings.pdf_4562 import Pdf4562
-from tenforty.models import DepreciableAsset, RentalProperty
+from tenforty.models import (
+    DepreciableAsset, RentalProperty, ScheduleCBusiness,
+)
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, SPREADSHEETS_DIR, make_simple_scenario
 
@@ -242,6 +253,106 @@ class EmittedHeaderTests(_EmitCase):
                     if FILER_SSN in str(field.get("/V") or "")]
                 self.assertEqual(
                     carrying_ssn, [IDENTIFYING_NUMBER_BOX[year]])
+
+
+ACTIVITY_KEY = "f4562_business_or_activity"
+ADDRESS = "100 Example Street"
+# The one widget in each template's line 1a, row A container.
+SCH_E_LINE_1A_PROPERTY_A = {
+    2021: "topmostSubform[0].Page1[0].Line1[0].Table1a[0].RowA[0].f1_3[0]",
+    2022: "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_03[0]",
+    2023: "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_3[0]",
+    2024: "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_3[0]",
+    2025: "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_3[0]",
+}
+
+
+def _equipment(year: int) -> DepreciableAsset:
+    return DepreciableAsset(
+        description="Equipment", date_placed_in_service=date(year, 2, 1),
+        basis=10_000.0, recovery_class="5-year",
+        no_bonus_or_section_179_history=True)
+
+
+def _old_building(year: int) -> DepreciableAsset:
+    asset = DepreciableAsset(
+        description="Rental building", date_placed_in_service=date(2019, 6, 1),
+        basis=200_000.0, recovery_class="27.5-year")
+    asset.prior_depreciation = float(
+        reconstruct_prior_depreciation(asset, year, mid_quarter=False))
+    return asset
+
+
+def _business(year: int, description: str, *assets) -> ScheduleCBusiness:
+    return ScheduleCBusiness(
+        description=description, gross_receipts=50_000.0,
+        depreciable_assets=tuple(assets))
+
+
+class ActivityBoxComputeTests(unittest.TestCase):
+    def test_a_rental_prints_its_address(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                r = f4562.compute(_scenario(year), upstream={})
+                self.assertEqual(r[ACTIVITY_KEY], ADDRESS)
+
+    def test_a_business_prints_its_description_trimmed(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                s = _scenario(year, rentals=[], businesses=[_business(
+                    year, "  Consulting ", _equipment(year))])
+                r = f4562.compute(s, upstream={})
+                self.assertEqual(r[ACTIVITY_KEY], "Consulting")
+
+    def test_a_business_with_no_description_leaves_the_box_blank(self):
+        s = _scenario(2025, rentals=[], businesses=[_business(
+            2025, "   ", _equipment(2025))])
+        self.assertNotIn(ACTIVITY_KEY, f4562.compute(s, upstream={}))
+
+    def test_an_activity_without_assets_is_not_the_forms_activity(self):
+        """A stated-mode business beside the rental owns none of the form's
+        assets; the rental is still the one activity."""
+        s = _scenario(2025, businesses=[_business(2025, "Consulting")])
+        self.assertEqual(
+            f4562.compute(s, upstream={})[ACTIVITY_KEY], ADDRESS)
+
+    def test_assets_from_two_activities_leave_the_box_blank(self):
+        """No single activity to name, so nothing is printed (never the
+        first one, never a list)."""
+        s = _scenario(2025, businesses=[_business(
+            2025, "Consulting", _equipment(2025))])
+        self.assertNotIn(ACTIVITY_KEY, f4562.compute(s, upstream={}))
+
+
+class ActivityBoxMappingTests(unittest.TestCase):
+    def test_the_key_maps_to_the_activity_box(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    Pdf4562.get_mapping(year)["scalars"].get(ACTIVITY_KEY),
+                    ACTIVITY_BOX[year])
+
+
+class EmittedActivityBoxTests(_EmitCase):
+    def test_rental_form_carries_the_address_schedule_e_line_1a_prints(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                self._n += 1
+                orchestrator = ReturnOrchestrator(
+                    spreadsheets_dir=SPREADSHEETS_DIR,
+                    work_dir=self.tmp / f"work{self._n}")
+                scenario = _scenario(year)
+                emitted = orchestrator.emit_pdfs(
+                    scenario, orchestrator.compute_federal(scenario),
+                    self.tmp / f"out{self._n}")
+                box = _read(emitted["f4562"], ACTIVITY_BOX[year])
+                self.assertEqual(box, ADDRESS)
+                self.assertEqual(
+                    box, _read(
+                        emitted["sch_e"], SCH_E_LINE_1A_PROPERTY_A[year]))
+                self.assertEqual(
+                    _read(emitted["f4562"], IDENTIFYING_NUMBER_BOX[year]),
+                    FILER_SSN)
 
 
 if __name__ == "__main__":
