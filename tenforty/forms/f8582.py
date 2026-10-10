@@ -28,6 +28,14 @@ from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
 
+# The K-1 business boxes that are NOT rental real estate (box 2). Every
+# business box the Schedule E Part II row nets, less `net_rental_real_estate`.
+_NON_RENTAL_REAL_ESTATE_BOXES = (
+    "ordinary_business_income", "other_net_rental", "royalties",
+    "other_income",
+)
+
+
 def special_allowance(
     magi: float,
     filing_status: FilingStatus,
@@ -55,7 +63,14 @@ def special_allowance(
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     fanout = upstream.get("k1_fanout") or K1FanoutData.empty()
-    agi = float(upstream.get("f1040", {}).get("magi", 0))
+    f1040_upstream = upstream.get("f1040", {})
+    # Modified AGI drives the special allowance, and a missing figure is NOT
+    # zero: zero grants the maximum allowance. The arithmetic below still
+    # runs on 0 so the form's other lines exist, but the result is flagged,
+    # and the passive_loss_allowance_unknown_magi refusal stops any return
+    # that has a passive loss to limit.
+    magi_known = "magi" in f1040_upstream
+    agi = float(f1040_upstream.get("magi", 0))
     sch_e_upstream = upstream.get("sch_e", {})
 
     passive_activities: list[dict] = [
@@ -83,6 +98,21 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     prior_carryforward_total = sum(
         a["prior_carryforward"] for a in passive_activities
     )
+    # KNOWN LIMIT of this module: the special allowance below is applied to
+    # the whole passive-loss pool, though it may only excuse a rental real
+    # estate net loss. These two figures let the refusal ledger
+    # (passive_loss_limitation_not_applied) stop the returns on which that
+    # over-allowance can change the answer. They are taken BOX BY BOX across
+    # the passive K-1s, not from the netted Schedule E rows: a K-1 whose
+    # rental real estate income hides an ordinary loss in its row net still
+    # contributes that loss here.
+    non_rental_boxes = [
+        irs_round(getattr(k1, box))
+        for k1 in scenario.schedule_k1s if not k1.material_participation
+        for box in _NON_RENTAL_REAL_ESTATE_BOXES
+    ]
+    non_rental_loss_total = sum(-v for v in non_rental_boxes if v < 0)
+    non_rental_income_total = sum(v for v in non_rental_boxes if v > 0)
 
     # Form 8582 MAGI (line 6) = AGI minus net passive activity. Subtracting a
     # negative net (losses > income) adds the loss back, which is intentional.
@@ -147,5 +177,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         ),
         "f8582_line_11_allowed_loss": allowed_loss,
         "f8582_special_allowance": allowance,
+        "f8582_non_rental_passive_loss": non_rental_loss_total,
+        "f8582_non_rental_passive_income": non_rental_income_total,
         "per_activity_carryforwards": per_activity_carryforwards,
+        # Present only when unknown, so a known-MAGI result is unchanged.
+        **({} if magi_known else {"f8582_magi_unknown": True}),
     }

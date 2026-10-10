@@ -76,6 +76,12 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_mid_quarter_refusal::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
     "unacknowledged_listed_property":
         "tests.test_listed_property_acknowledgment::ListedPropertyAcknowledgmentTests::test_personal_property_without_the_acknowledgment_refuses",
+    "passive_loss_allowance_unknown_magi":
+        "tests.test_passive_loss_limitation_refusal::UnknownMagiRefusalTests::test_emit_refuses_a_results_dict_without_magi",
+    "passive_loss_limitation_not_applied":
+        "tests.test_passive_loss_limitation_refusal::LimitationBindsRefusalTests::test_suspended_rental_loss_refuses_and_allowed_twin_computes",
+    "sch_e_line_27_prior_year_unallowed_loss":
+        "tests.test_sch_e_totals_and_line_27::Line27YesRefusalTests::test_nonpassive_k1_carryforward_refuses_the_emit",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -201,11 +207,11 @@ class ScopedRefusalDispatchTests(unittest.TestCase):
 
     def test_unknown_stage_is_refused(self):
         with self.assertRaisesRegex(ValueError, "stage"):
-            enforce_scoped_refusals(make_simple_scenario(), "emit")
+            enforce_scoped_refusals(make_simple_scenario(), "render")
 
     def test_entry_with_unknown_stage_cannot_be_constructed(self):
         with self.assertRaisesRegex(ValueError, "stage"):
-            _synthetic("bad_stage", "emit")
+            _synthetic("bad_stage", "render")
 
 
 class ScopedRefusalWiringTests(unittest.TestCase):
@@ -355,6 +361,9 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "mid_quarter_convention",
                 "unverifiable_mid_quarter_test",
                 "unacknowledged_listed_property",
+                "passive_loss_allowance_unknown_magi",
+                "passive_loss_limitation_not_applied",
+                "sch_e_line_27_prior_year_unallowed_loss",
             ])
 
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
