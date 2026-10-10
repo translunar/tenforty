@@ -57,9 +57,11 @@ _CLASS_YEARS = {
 # depreciation system uses 200% declining balance for 3-, 5-, 7- and 10-year
 # property, 150% declining balance for 15- and 20-year property, and
 # straight line for residential rental and nonresidential real property.
+# Spelled as the Form 4562 instructions spell them for column (f): "200 DB",
+# "150 DB", "S/L".
 _METHOD_BY_CLASS = {
-    "3-year": "200DB", "5-year": "200DB", "7-year": "200DB",
-    "10-year": "200DB", "15-year": "150DB", "20-year": "150DB",
+    "3-year": "200 DB", "5-year": "200 DB", "7-year": "200 DB",
+    "10-year": "200 DB", "15-year": "150 DB", "20-year": "150 DB",
     "27.5-year": "S/L", "39-year": "S/L",
 }
 

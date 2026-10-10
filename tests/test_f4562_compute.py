@@ -74,7 +74,7 @@ class F4562ComputeTests(unittest.TestCase):
         # 5-year → 19b, 27.5-year → 19i.
         self.assertEqual(r["f4562_line_19b_basis"], 2_500)
         self.assertEqual(r["f4562_line_19b_deduction"], 500)
-        self.assertEqual(r["f4562_line_19b_method"], "200DB")
+        self.assertEqual(r["f4562_line_19b_method"], "200 DB")
         self.assertEqual(r["f4562_line_19b_convention"], "HY")
         self.assertEqual(r["f4562_line_19i_basis"], 200_000)
         self.assertEqual(r["f4562_line_19i_deduction"], 6_970)

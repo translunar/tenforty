@@ -115,7 +115,7 @@ class ResolveModeTests(unittest.TestCase):
         self.assertEqual(second.convention, "half-year")
         self.assertIs(second.placed_this_year, False)
         self.assertEqual((first.method, first.quarter), ("S/L", None))
-        self.assertEqual((second.method, second.quarter), ("200DB", None))
+        self.assertEqual((second.method, second.quarter), ("200 DB", None))
 
     def test_row_method_follows_the_class(self):
         fence = DepreciableAsset(
@@ -125,7 +125,7 @@ class ResolveModeTests(unittest.TestCase):
         (row,) = resolve(
             _rental(depreciable_assets=[fence]), YEAR,
             mid_quarter=False).per_asset
-        self.assertEqual(row.method, "150DB")
+        self.assertEqual(row.method, "150 DB")
 
     def test_schedule_c_business_resolves_the_same_way(self):
         equipment = _old_equipment()
