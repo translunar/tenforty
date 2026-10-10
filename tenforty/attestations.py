@@ -1576,19 +1576,57 @@ _DEPRECIATION_FORM_TRIGGER_REFUSALS: tuple[ScopedRefusal, ...] = (
 
 # --- Form 8582: a limitation computed but not applied -----------------------
 
+# What the two predicates below read from a Form 8582 result block.
+_F8582_BLOCK_KEYS: tuple[str, ...] = (
+    "f8582_line_1a_activities_with_income",
+    "f8582_line_1b_activities_with_loss",
+    "f8582_line_1c_prior_year_unallowed_loss",
+    "f8582_line_11_allowed_loss",
+    "f8582_non_rental_passive_loss",
+)
+
+
+def _f8582_block(schedule_results) -> dict | None:
+    """The Form 8582 result block, or None when the return has none.
+
+    STRICT when the block is present: a figure the predicates read that is
+    missing from it is a wiring defect, and reading it as 0 would wave the
+    return through. That raises ValueError -- deliberately not the refusal's
+    own NotImplementedError, which would describe a defect in tenforty as a
+    limit of scope on the filer's return."""
+    block = schedule_results.get("f8582")
+    if block is None:
+        return None
+    missing = [k for k in _F8582_BLOCK_KEYS if k not in block]
+    if missing:
+        raise ValueError(
+            f"Form 8582 result is missing {', '.join(missing)}; the passive "
+            f"loss refusals cannot be evaluated without it.")
+    return block
+
+
 def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
-    """Why the return's passive-loss deduction differs from what Form 8582
-    allows; empty when the limitation does not bind.
+    """Why the return's passive-loss deduction differs from the allowable
+    one; empty when the limitation does not bind.
 
     Schedule 1 line 5 deducts every current-year passive loss in full
     (Schedule E line 26 + Part II line 32) and no prior-year unallowed loss.
-    Form 8582 allows min(income + allowance, current-year loss + prior-year
-    loss). The two agree only when nothing is suspended AND there is no
-    prior-year loss at all (an allowed one is still never deducted)."""
-    f8582 = schedule_results.get("f8582") or {}
-    current = f8582.get("f8582_line_1b_activities_with_loss", 0)
-    prior = f8582.get("f8582_line_1c_prior_year_unallowed_loss", 0)
-    allowed = f8582.get("f8582_line_11_allowed_loss", 0)
+    That is right only when all three hold:
+      * nothing is suspended by Form 8582's own figure;
+      * there is no prior-year loss at all (an allowed one is never deducted);
+      * non-rental passive losses do not exceed passive income. forms/f8582
+        applies the rental real estate special allowance to the whole loss
+        pool, so its figure can show a non-rental loss as allowed when only
+        passive income may absorb it. With non-rental losses inside passive
+        income the pooled figure equals the correct one."""
+    f8582 = _f8582_block(schedule_results)
+    if f8582 is None:
+        return []
+    income = f8582["f8582_line_1a_activities_with_income"]
+    current = f8582["f8582_line_1b_activities_with_loss"]
+    prior = f8582["f8582_line_1c_prior_year_unallowed_loss"]
+    allowed = f8582["f8582_line_11_allowed_loss"]
+    non_rental = f8582["f8582_non_rental_passive_loss"]
     reasons: list[str] = []
     suspended = current + prior - allowed
     if suspended > 0:
@@ -1596,6 +1634,13 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
             f"{suspended:,.0f} of passive loss is not allowed this year "
             f"(Form 8582 allows {allowed:,.0f} of {current + prior:,.0f}), "
             f"yet the return deducts every current-year loss in full")
+    if non_rental > income:
+        reasons.append(
+            f"non-rental passive losses of {non_rental:,.0f} exceed passive "
+            f"income of {income:,.0f}, and tenforty's Form 8582 applies the "
+            f"rental real estate special allowance to all passive losses "
+            f"alike, so its allowed figure may excuse a loss the allowance "
+            f"does not cover")
     if prior > 0:
         reasons.append(
             f"a prior-year unallowed loss of {prior:,.0f} enters Form 8582 "
@@ -1606,11 +1651,11 @@ def _unapplied_passive_loss_limitation(schedule_results) -> list[str]:
 def _passive_loss_with_unknown_magi(schedule_results) -> list[str]:
     """What Form 8582 has to limit when it was computed without a modified
     AGI figure; empty when MAGI was known or there is nothing to limit."""
-    f8582 = schedule_results.get("f8582") or {}
-    if not f8582.get("f8582_magi_unknown"):
+    f8582 = _f8582_block(schedule_results)
+    if f8582 is None or not f8582.get("f8582_magi_unknown"):
         return []
-    current = f8582.get("f8582_line_1b_activities_with_loss", 0)
-    prior = f8582.get("f8582_line_1c_prior_year_unallowed_loss", 0)
+    current = f8582["f8582_line_1b_activities_with_loss"]
+    prior = f8582["f8582_line_1c_prior_year_unallowed_loss"]
     found: list[str] = []
     if current > 0:
         found.append(f"a current-year passive loss of {current:,.0f}")
@@ -1648,8 +1693,9 @@ _PASSIVE_LOSS_REFUSALS: tuple[ScopedRefusal, ...] = (
             f"and this return cannot be produced. Applying the Form 8582 "
             f"result to Schedule E lines 22, 25 and 26 and to Schedule 1 is "
             f"tracked as a follow-up; until then tenforty produces only "
-            f"returns on which Form 8582 allows every passive loss and no "
-            f"prior-year unallowed loss is carried in."),
+            f"returns on which every passive loss is deductible in full: "
+            f"none suspended, no non-rental passive loss beyond passive "
+            f"income, and no prior-year unallowed loss carried in."),
         exception=NotImplementedError,
     ),
 )
