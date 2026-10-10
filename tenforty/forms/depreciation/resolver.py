@@ -347,21 +347,41 @@ def recon_keys(scenario) -> dict:
                 f"engine figure includes {names} with unmodeled bonus / "
                 f"section 179 history: the engine column here is a "
                 f"staleness pin, not a claim of correctness")
-        # Present only when the basis ceiling bound on the
-        # acknowledged-mismatch path (see `asset_amount`).
-        capped = [row for row in resolved.per_asset if row.basis_ceiling_bound]
+        # Present only when the basis ceiling bound (see `asset_amount`).
+        # Rows are in asset order. Two notes, because the cause differs: a
+        # stated prior that ran ahead of the tables, or the tables' own
+        # per-year rounding.
+        capped = [
+            (row, asset.acknowledges_prior_depreciation_as_stated
+             and asset.prior_depreciation is not None)
+            for row, asset in zip(
+                resolved.per_asset, activity.depreciable_assets)
+            if row.basis_ceiling_bound]
         if capped:
             keys[prefix + "basis_ceiling_bound"] = True
-            detail = ", ".join(
+
+        def detail(rows):
+            return ", ".join(
                 f"{row.description!r} limited to its remaining basis of "
                 f"{row.amount:,} (table amount {row.table_amount:,})"
-                for row in capped)
+                for row in rows)
+
+        stated = [row for row, acknowledged in capped if acknowledged]
+        if stated:
             notes.append(
-                f"{detail}: the stated prior depreciation leaves less basis "
-                f"than the table amount. A stated prior BELOW the tables is "
-                f"not topped up and leaves basis unrecovered when the table "
-                f"ends; correcting either history is a change of accounting "
-                f"method (Form 3115), which tenforty does not prepare")
+                f"{detail(stated)}: the stated prior depreciation leaves "
+                f"less basis than the table amount. A stated prior BELOW "
+                f"the tables is not topped up and leaves basis unrecovered "
+                f"when the table ends; correcting either history is a "
+                f"change of accounting method (Form 3115), which tenforty "
+                f"does not prepare")
+        rounded = [row for row, acknowledged in capped if not acknowledged]
+        if rounded:
+            notes.append(
+                f"{detail(rounded)}: each year's table amount is rounded to "
+                f"whole dollars on its own, and the years already taken "
+                f"leave less basis than this year's table amount. Lifetime "
+                f"depreciation never exceeds basis")
         if notes:
             keys[prefix + "note"] = "; ".join(notes)
     return keys

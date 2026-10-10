@@ -232,6 +232,27 @@ class BasisCeilingReconTests(_Case):
             f4562.compute(scenario, upstream={})[
                 "f4562_line_22_total_depreciation"], line_18)
 
+    def test_rounding_bound_ceiling_has_its_own_note(self):
+        """A table-matching history can hit the ceiling too: on a basis of
+        8, four whole-dollar years (2 + 3 + 2 + 1) recover all of it and
+        the fifth year's table amount of 1 is limited to 0. Nothing was
+        mis-stated, so the note does not send the reader to Form 3115."""
+        asset = DepreciableAsset(
+            description="Stapler",
+            date_placed_in_service=date(2021, 3, 15), basis=8.0,
+            recovery_class="5-year", no_bonus_or_section_179_history=True,
+            convention="half-year", prior_depreciation=8.0)
+        results = self._results(_scenario(_rental(depreciable_assets=[asset])))
+        self.assertIs(results[self.KEY], True)
+        self.assertEqual(
+            results["depreciation_recon_rental_0_used_amount"], 0)
+        self.assertRegex(
+            results[self.NOTE],
+            r"'Stapler' limited to its remaining basis of 0 "
+            r"\(table amount 1\).*rounded to whole dollars on its own.*"
+            r"never exceeds basis")
+        self.assertNotIn("Form 3115", results[self.NOTE])
+
     def test_non_binding_case_carries_neither(self):
         results = self._results(self._messy(1_234.0))
         self.assertNotIn(self.KEY, results)
