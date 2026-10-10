@@ -1,30 +1,71 @@
-"""MACRS mid-quarter percentage tables (Publication 946, Appendix A).
+"""MACRS mid-quarter percentage tables transcribed from IRS Publication 946
+(2025 revision), "How To Depreciate Property", Appendix A. Transcription
+copy A (2026-10-10), verified against rendered page images.
 
-PENDING. The transcribed tables have not landed in this module yet. Until
-they do, `TABLES_BY_QUARTER` refuses every read: no mid-quarter deduction
-can be computed from a placeholder.
+3-, 5-, 7-, 10-, 15- and 20-year property, mid-quarter convention, one table
+per quarter the property was placed in service (printed page == PDF page):
+  Table A-2  placed in service in first quarter   -> p. 71
+  Table A-3  placed in service in second quarter  -> p. 72
+  Table A-4  placed in service in third quarter   -> p. 72
+  Table A-5  placed in service in fourth quarter  -> p. 73
 
-Shape the engine reads:
-    TABLES_BY_QUARTER[placement quarter 1..4][class years][recovery year]
+Shape: TABLE_A_n[class years][recovery year]. Values are the printed
+percentages divided by 100 as exact decimal shifts (58.33% -> 0.5833), not
+rounded or computed. Blank cells in the printed tables are omitted (absent
+keys). Printed quirk kept as-is: Table A-5's 15-year column prints 5.90 for
+years 7, 8 and 9, where Tables A-2..A-4 alternate 5.90 / 5.91.
+
+A second, independent transcription lives in
+tests/params_attestations/macrs_mid_quarter_pub946.py and is pinned to this
+one, cell for cell, by tests/test_macrs_mid_quarter_table_attestation.py.
 """
 
+TABLE_A_2 = {
+    3: {1: 0.5833, 2: 0.2778, 3: 0.1235, 4: 0.0154},
+    5: {1: 0.35, 2: 0.26, 3: 0.156, 4: 0.1101, 5: 0.1101, 6: 0.0138},
+    7: {1: 0.25, 2: 0.2143, 3: 0.1531, 4: 0.1093, 5: 0.0875, 6: 0.0874, 7: 0.0875, 8: 0.0109},
+    10: {1: 0.175, 2: 0.165, 3: 0.132, 4: 0.1056, 5: 0.0845, 6: 0.0676, 7: 0.0655, 8: 0.0655, 9: 0.0656, 10: 0.0655, 11: 0.0082},
+    15: {1: 0.0875, 2: 0.0913, 3: 0.0821, 4: 0.0739, 5: 0.0665, 6: 0.0599, 7: 0.059, 8: 0.0591, 9: 0.059, 10: 0.0591, 11: 0.059, 12: 0.0591, 13: 0.059, 14: 0.0591, 15: 0.059, 16: 0.0074},
+    20: {1: 0.06563, 2: 0.07, 3: 0.06482, 4: 0.05996, 5: 0.05546, 6: 0.0513, 7: 0.04746, 8: 0.04459, 9: 0.04459, 10: 0.04459, 11: 0.04459, 12: 0.0446, 13: 0.04459, 14: 0.0446, 15: 0.04459, 16: 0.0446, 17: 0.04459, 18: 0.0446, 19: 0.04459, 20: 0.0446, 21: 0.00565},
+}
 
-class MidQuarterTablesNotLanded(RuntimeError):
-    """A mid-quarter percentage was read before the tables landed."""
+TABLE_A_3 = {
+    3: {1: 0.4167, 2: 0.3889, 3: 0.1414, 4: 0.053},
+    5: {1: 0.25, 2: 0.3, 3: 0.18, 4: 0.1137, 5: 0.1137, 6: 0.0426},
+    7: {1: 0.1785, 2: 0.2347, 3: 0.1676, 4: 0.1197, 5: 0.0887, 6: 0.0887, 7: 0.0887, 8: 0.0334},
+    10: {1: 0.125, 2: 0.175, 3: 0.14, 4: 0.112, 5: 0.0896, 6: 0.0717, 7: 0.0655, 8: 0.0655, 9: 0.0656, 10: 0.0655, 11: 0.0246},
+    15: {1: 0.0625, 2: 0.0938, 3: 0.0844, 4: 0.0759, 5: 0.0683, 6: 0.0615, 7: 0.0591, 8: 0.059, 9: 0.0591, 10: 0.059, 11: 0.0591, 12: 0.059, 13: 0.0591, 14: 0.059, 15: 0.0591, 16: 0.0221},
+    20: {1: 0.04688, 2: 0.07148, 3: 0.06612, 4: 0.06116, 5: 0.05658, 6: 0.05233, 7: 0.04841, 8: 0.04478, 9: 0.04463, 10: 0.04463, 11: 0.04463, 12: 0.04463, 13: 0.04463, 14: 0.04463, 15: 0.04462, 16: 0.04463, 17: 0.04462, 18: 0.04463, 19: 0.04462, 20: 0.04463, 21: 0.01673},
+}
 
+TABLE_A_4 = {
+    3: {1: 0.25, 2: 0.5, 3: 0.1667, 4: 0.0833},
+    5: {1: 0.15, 2: 0.34, 3: 0.204, 4: 0.1224, 5: 0.113, 6: 0.0706},
+    7: {1: 0.1071, 2: 0.2551, 3: 0.1822, 4: 0.1302, 5: 0.093, 6: 0.0885, 7: 0.0886, 8: 0.0553},
+    10: {1: 0.075, 2: 0.185, 3: 0.148, 4: 0.1184, 5: 0.0947, 6: 0.0758, 7: 0.0655, 8: 0.0655, 9: 0.0656, 10: 0.0655, 11: 0.041},
+    15: {1: 0.0375, 2: 0.0963, 3: 0.0866, 4: 0.078, 5: 0.0702, 6: 0.0631, 7: 0.059, 8: 0.059, 9: 0.0591, 10: 0.059, 11: 0.0591, 12: 0.059, 13: 0.0591, 14: 0.059, 15: 0.0591, 16: 0.0369},
+    20: {1: 0.02813, 2: 0.07289, 3: 0.06742, 4: 0.06237, 5: 0.05769, 6: 0.05336, 7: 0.04936, 8: 0.04566, 9: 0.0446, 10: 0.0446, 11: 0.0446, 12: 0.0446, 13: 0.04461, 14: 0.0446, 15: 0.04461, 16: 0.0446, 17: 0.04461, 18: 0.0446, 19: 0.04461, 20: 0.0446, 21: 0.02788},
+}
 
-class _NotLanded:
-    """Stands where the tables will be; any read of it raises."""
+TABLE_A_5 = {
+    3: {1: 0.0833, 2: 0.6111, 3: 0.2037, 4: 0.1019},
+    5: {1: 0.05, 2: 0.38, 3: 0.228, 4: 0.1368, 5: 0.1094, 6: 0.0958},
+    7: {1: 0.0357, 2: 0.2755, 3: 0.1968, 4: 0.1406, 5: 0.1004, 6: 0.0873, 7: 0.0873, 8: 0.0764},
+    10: {1: 0.025, 2: 0.195, 3: 0.156, 4: 0.1248, 5: 0.0998, 6: 0.0799, 7: 0.0655, 8: 0.0655, 9: 0.0656, 10: 0.0655, 11: 0.0574},
+    15: {1: 0.0125, 2: 0.0988, 3: 0.0889, 4: 0.08, 5: 0.072, 6: 0.0648, 7: 0.059, 8: 0.059, 9: 0.059, 10: 0.0591, 11: 0.059, 12: 0.0591, 13: 0.059, 14: 0.0591, 15: 0.059, 16: 0.0517},
+    20: {1: 0.00938, 2: 0.0743, 3: 0.06872, 4: 0.06357, 5: 0.0588, 6: 0.05439, 7: 0.05031, 8: 0.04654, 9: 0.04458, 10: 0.04458, 11: 0.04458, 12: 0.04458, 13: 0.04458, 14: 0.04458, 15: 0.04458, 16: 0.04458, 17: 0.04458, 18: 0.04459, 19: 0.04458, 20: 0.04459, 21: 0.03901},
+}
 
-    def _refuse(self, *_args, **_kwargs):
-        raise MidQuarterTablesNotLanded(
-            "The MACRS mid-quarter tables have not landed in "
-            "tenforty.params.macrs_mid_quarter. No mid-quarter depreciation "
-            "can be computed until the transcribed tables replace this "
-            "placeholder.")
+# What the engine reads: placement quarter (1-4) -> that quarter's table.
+TABLES_BY_QUARTER = {
+    1: TABLE_A_2,
+    2: TABLE_A_3,
+    3: TABLE_A_4,
+    4: TABLE_A_5,
+}
 
-    __getitem__ = __iter__ = __len__ = __contains__ = _refuse
-    get = keys = values = items = _refuse
-
-
-TABLES_BY_QUARTER = _NotLanded()
+SOURCES: tuple[str, ...] = (
+    "IRS Publication 946 (2025 revision), How To Depreciate Property, "
+    "Appendix A, Table A-2 (p. 71), Table A-3 (p. 72), Table A-4 (p. 72), "
+    "Table A-5 (p. 73). Transcription copy A, 2026-10-10.",
+)
