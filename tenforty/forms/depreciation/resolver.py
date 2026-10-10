@@ -79,7 +79,12 @@ class ResolvedDepreciation:
 def is_computable(asset: DepreciableAsset, tax_year: int) -> bool:
     """False for an asset another ledger entry already refuses outright (no
     table for its class, disposed, or a prior-year asset with no usable
-    stated convention) -- the engine has no figure for it."""
+    stated convention) -- the engine has no figure for it.
+
+    The prior-year-convention clause keeps the ledger's engine predicates
+    from re-raising another entry's refusal. Without it the return still
+    refuses, through the engine, with a less specific label; so removing it
+    changes no outcome (an equivalent mutant under mutation testing)."""
     if (asset.recovery_class not in SUPPORTED_RECOVERY_CLASSES
             or asset.disposed is not None):
         return False
