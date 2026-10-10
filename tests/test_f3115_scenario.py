@@ -232,8 +232,21 @@ class LoadingTwinTests(unittest.TestCase):
         for key in ("under_examination", "elect_one_year_spread",
                     "lived_in_residential_rental_before_renting"):
             with self.subTest(key=key), tempfile.TemporaryDirectory() as tmp:
-                with self.assertRaisesRegex(ValueError, key):
+                # The loader's own text: it types the answer before the
+                # ledger's boolean check could see it.
+                with self.assertRaisesRegex(
+                        ValueError,
+                        rf"^form_3115\.{key} must be true or false; "
+                        rf"got 'no'$"):
                     fx.load(tmp, fx.scenario_dict(block=_block(**{key: "no"})))
+        block = _asset_block(
+            0, special_depreciation_allowance_claimed="no")
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(
+                    ValueError,
+                    r"^form_3115\.assets\[0\]\.special_depreciation_"
+                    r"allowance_claimed must be true or false; got 'no'$"):
+                fx.load(tmp, fx.scenario_dict(block=block))
 
     def test_non_numeric_adjustment_refuses(self):
         with tempfile.TemporaryDirectory() as tmp:

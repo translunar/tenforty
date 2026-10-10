@@ -18,6 +18,9 @@ breaking changes are called out explicitly.
   duplicate is filed. The section 481(a) adjustment is **stated, not
   computed**, and is not carried onto the return's income. The under-$50,000
   one-year election is made on the form (line 28 and its de minimis box).
+  Text cells must be quoted strings (an unquoted `00.11` is a number to
+  YAML and would print as `0.11`), amounts must be exact to the cent, and an
+  empty `form_3115:` key refuses rather than being read as absent.
   Every answer is an explicit attestation with no default; any other change
   number, applicant type, or answer the form would need more machinery for
   (under examination, before Appeals or a court, a prior change within five
