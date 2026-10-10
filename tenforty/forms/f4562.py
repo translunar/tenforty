@@ -25,8 +25,19 @@ bases and deductions sum). Row labels:
   19i: residential rental (27.5-year)
   19j: nonresidential real (39-year)
 
-There is no mixed-convention guard, by design: the convention is computed
-from the recovery class, so one class cannot carry two conventions.
+A personal-property row (19a-19f) prints basis, recovery period, convention,
+method and deduction. Column (b), month and year placed in service, is
+shaded on those rows and is left empty: the form asks for it only on the
+residential and nonresidential rows (19i, 19j here).
+
+Every personal-property asset placed in the return year takes the same
+convention -- half-year, or mid-quarter when the return's 40% test trips --
+so a class row carries exactly one; `_row_convention` refuses rather than
+print one of two if that ever fails to hold. Under the mid-quarter
+convention same-class assets placed in different quarters still share the
+class row: the row prints MQ, their bases summed, and the sum of their
+per-asset deductions, each from its own quarter's table. The method comes
+from the class, never from the convention.
 
 Only rows whose class has at least one asset placed this year are emitted,
 and line 17 only when its amount is nonzero (no phantom zeros). 19i and 19j
@@ -36,8 +47,11 @@ each have two placement sub-rows on the PDF; only the first is filled.
 from collections import defaultdict
 
 from tenforty.attestations import depreciation_activities
-from tenforty.forms.depreciation.macrs import convention_for
-from tenforty.forms.depreciation.resolver import asset_amount
+from tenforty.forms.depreciation.macrs import asset_convention, method_for
+from tenforty.forms.depreciation.resolver import (
+    asset_amount, mid_quarter_applies,
+)
+from tenforty.models import REAL_PROPERTY_CLASSES
 from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
@@ -54,13 +68,6 @@ _CLASS_TO_ROW: dict[str, str] = {
     "27.5-year": "i",
     "39-year": "j",
 }
-
-_PROPERTY_METHOD = {
-    "half-year": "200DB",
-    "mid-quarter": "200DB",
-    "mid-month": "S/L",
-}
-
 
 def scenario_assets(scenario: Scenario) -> list:
     """Every asset on the return, flattened across activities.
@@ -106,10 +113,27 @@ def is_required(scenario: Scenario) -> bool:
 LINE_17_KEY = "f4562_line_17"
 
 
-def _line_19_rows(placed_this_year: list, tax_year: int) -> list[dict]:
+def _row_convention(recovery_class: str, assets: list, tax_year: int,
+                    mid_quarter: bool) -> str:
+    """The one convention a class's row prints. Every asset here was placed
+    in service in ``tax_year``, so each takes the return year's convention
+    and they cannot differ; this refuses if they ever do."""
+    conventions = {
+        asset_convention(a, return_year=tax_year, mid_quarter=mid_quarter)[0]
+        for a in assets}
+    if len(conventions) != 1:
+        raise NotImplementedError(
+            f"Form 4562 line 19 row for recovery_class={recovery_class!r} "
+            f"would carry more than one convention ({sorted(conventions)}); "
+            f"a row prints exactly one.")
+    return conventions.pop()
+
+
+def _line_19_rows(placed_this_year: list, tax_year: int, *,
+                  mid_quarter: bool) -> list[dict]:
     """One Section B row per recovery class, over the assets placed in
     service during ``tax_year``. Every printed column of a row is decided
-    here."""
+    here. ``mid_quarter`` is the return's 40% answer."""
     assets_by_class: dict[str, list] = defaultdict(list)
     for asset in placed_this_year:
         assets_by_class[asset.recovery_class].append(asset)
@@ -123,21 +147,23 @@ def _line_19_rows(placed_this_year: list, tax_year: int) -> list[dict]:
                 f"{recovery_class!r}. v1 supports "
                 f"{sorted(_CLASS_TO_ROW)}."
             )
-        # The convention is computed from the class (the One Door helper),
-        # so a class has exactly one.
-        convention = convention_for(recovery_class)
+        # Through the resolver's per-asset figure, not the raw table, so
+        # this form cannot disagree with the line the activity prints. Each
+        # asset's amount comes from its own quarter's table under the
+        # mid-quarter convention; the row prints their sum.
+        deduction = sum(
+            asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
+            for a in assets)
         rows.append({
             "row_label": row_label,
             "recovery_class": recovery_class,
             "date_placed_in_service": min(
                 a.date_placed_in_service for a in assets),
             "basis": sum(a.basis for a in assets),
-            "convention": convention,
-            "method": _PROPERTY_METHOD[convention],
-            # Through the resolver's per-asset figure, not the raw table, so
-            # this form cannot disagree with the line the activity prints.
-            "deduction": sum(
-                asset_amount(a, tax_year)[0] for a in assets),
+            "convention": _row_convention(
+                recovery_class, assets, tax_year, mid_quarter),
+            "method": method_for(recovery_class),
+            "deduction": deduction,
         })
     return rows
 
@@ -145,10 +171,15 @@ def _line_19_rows(placed_this_year: list, tax_year: int) -> list[dict]:
 def _line_19_row_fields(row: dict) -> dict:
     """Scalar field keys for one Section B row, for the PDF mapping."""
     prefix = f"f4562_line_19{row['row_label']}"
-    earliest = row["date_placed_in_service"]
+    fields: dict = {}
+    # Column (b) is shaded on the personal-property rows; only the
+    # residential and nonresidential rows state month and year.
+    if row["recovery_class"] in REAL_PROPERTY_CLASSES:
+        earliest = row["date_placed_in_service"]
+        fields[f"{prefix}_date_placed_in_service"] = (
+            f"{earliest.month:02d}/{earliest.year:04d}")
     return {
-        f"{prefix}_date_placed_in_service": (
-            f"{earliest.month:02d}/{earliest.year:04d}"),
+        **fields,
         # irs_round rather than built-in round: IRS always rounds .5 up,
         # while Python's round() uses banker's (half-to-even) which diverges
         # at .5 boundaries (e.g. round(200_000.5) == 200_000, not 200_001).
@@ -163,6 +194,7 @@ def _line_19_row_fields(row: dict) -> dict:
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     tax_year = scenario.config.year
+    mid_quarter = mid_quarter_applies(scenario)
     result: dict = {**scenario.config.pdf_header()}
     placed_this_year, placed_earlier = [], []
     for asset in scenario_assets(scenario):
@@ -173,11 +205,14 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     # Line 17: one amount for every asset placed in an earlier tax year, at
     # the resolver's per-asset figure (so the basis ceiling carries through).
-    line_17 = sum(asset_amount(a, tax_year)[0] for a in placed_earlier)
+    # Each such asset reads the convention it STATES, not this year's.
+    line_17 = sum(
+        asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
+        for a in placed_earlier)
     if line_17:
         result[LINE_17_KEY] = line_17
 
-    rows = _line_19_rows(placed_this_year, tax_year)
+    rows = _line_19_rows(placed_this_year, tax_year, mid_quarter=mid_quarter)
     for row in rows:
         result.update(_line_19_row_fields(row))
 

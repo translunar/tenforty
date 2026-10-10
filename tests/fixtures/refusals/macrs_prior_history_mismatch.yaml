@@ -69,4 +69,5 @@ rental_properties:
         basis: 1800.0
         recovery_class: "5-year"
         no_bonus_or_section_179_history: true
+        convention: "half-year"
         prior_depreciation: 196.0

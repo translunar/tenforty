@@ -115,7 +115,7 @@ class F4562RoundTripTests(unittest.TestCase):
             s = mapping["scalars"]
             self.assertEqual(fields[s["f4562_line_19b_basis"]]["/V"], "2500")
             self.assertEqual(fields[s["f4562_line_19b_deduction"]]["/V"], "500")
-            self.assertEqual(fields[s["f4562_line_19b_method"]]["/V"], "200DB")
+            self.assertEqual(fields[s["f4562_line_19b_method"]]["/V"], "200 DB")
             self.assertEqual(fields[s["f4562_line_19i_basis"]]["/V"], "200000")
             self.assertEqual(
                 fields[s["f4562_line_22_total_depreciation"]]["/V"], "7470",

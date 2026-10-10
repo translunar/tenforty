@@ -51,7 +51,7 @@ class SchCNetProfitEstimateHelperTests(unittest.TestCase):
             supplies=_SUPPLIES, advertising=1_000.0, utilities=500.0,
         )
         self.assertEqual(
-            form_sch_c.net_profit_estimate(biz, 2025),
+            form_sch_c.net_profit_estimate(biz, 2025, mid_quarter=False),
             _GROSS - (_SUPPLIES + 1_000.0 + 500.0),
         )
 
@@ -64,7 +64,7 @@ class SchCNetProfitEstimateHelperTests(unittest.TestCase):
             supplies=9_000.0,
         )
         self.assertEqual(
-            form_sch_c.net_profit_estimate(biz, 2025), 1_000.0 - 9_000.0)
+            form_sch_c.net_profit_estimate(biz, 2025, mid_quarter=False), 1_000.0 - 9_000.0)
 
 
 class SchCEicScopeRoutingTests(unittest.TestCase):

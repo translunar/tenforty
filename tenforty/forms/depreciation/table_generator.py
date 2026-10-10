@@ -11,7 +11,8 @@ Methods implemented:
   - Straight-line, mid-month convention, 27.5-year (TABLE A-6)
   - Straight-line, mid-month convention, 39-year (TABLE A-7a)
 
-Not implemented: 150%-DB (A-2/A-3), mid-quarter (A-4/A-5), ADS.
+Not implemented: the mid-quarter tables (A-2..A-5; those are pinned by a
+second transcription instead), ADS.
 """
 
 import math

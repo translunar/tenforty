@@ -31,10 +31,14 @@ class Pdf4562MappingTests(unittest.TestCase):
         s = Pdf4562.get_mapping(2025)["scalars"]
         for label in ("a", "b", "c", "d", "e", "f", "g", "h", "i", "j"):
             for col in (
-                "date_placed_in_service", "basis", "recovery_period",
+                "basis", "recovery_period",
                 "convention", "method", "deduction",
             ):
                 self.assertIn(f"f4562_line_19{label}_{col}", s)
+        # Column (b) is shaded on the personal-property rows 19a-19f and
+        # has no key there (tests/test_f4562_mid_quarter.py).
+        for label in ("g", "h", "i", "j"):
+            self.assertIn(f"f4562_line_19{label}_date_placed_in_service", s)
 
     def test_no_repeaters_in_v1(self):
         m = Pdf4562.get_mapping(2025)
@@ -89,17 +93,17 @@ class Pdf45622021EmitRoundTripTests(unittest.TestCase):
             "taxpayer_name": "Distinct 4562 Filer",
             "taxpayer_ssn": "222-00-2021",
             "f4562_line_22_total_depreciation": 22_022,
-            # A full 19a row (3-year).
-            "f4562_line_19a_date_placed_in_service": "01/2021",
+            # A full 19a row (3-year). Column (b) is shaded on 19a-19f.
             "f4562_line_19a_basis": 19_001,
             "f4562_line_19a_recovery_period": "3",
             "f4562_line_19a_convention": "HY",
+            "f4562_line_19a_method": "200 DB",
             "f4562_line_19a_deduction": 19_003,
             # A full 19f row (20-year).
-            "f4562_line_19f_date_placed_in_service": "06/2021",
             "f4562_line_19f_basis": 19_601,
             "f4562_line_19f_recovery_period": "20",
             "f4562_line_19f_convention": "MM",
+            "f4562_line_19f_method": "150 DB",
             "f4562_line_19f_deduction": 19_603,
             # Offset row: residential-rental 27.5yr → 2021 container Line19h_1.
             "f4562_line_19i_basis": 27_500,

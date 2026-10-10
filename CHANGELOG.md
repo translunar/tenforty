@@ -66,22 +66,70 @@ breaking changes are called out explicitly.
   correctness); real property must not carry the field. A `disposed` asset,
   an unsupported recovery class, and asset mode on any rental other than the
   first all refuse.
-- **Basis ceiling on an acknowledged mismatched history.** When
-  `acknowledges_prior_depreciation_as_stated` accepts a prior figure that
-  differs from the tables, this year's deduction is the lesser of the table
-  amount and the basis left after the stated prior. When the ceiling binds,
-  the reconciliation says so (`depreciation_recon_*_basis_ceiling_bound`).
-  A stated prior below the tables is not topped up.
-- **Mid-quarter convention refuses.** When personal property placed in
+- **Basis ceiling: lifetime depreciation never exceeds basis.** A year's
+  deduction is the lesser of the table amount and the basis left after the
+  depreciation already taken — the table reconstruction of the earlier
+  years, or the stated prior when `acknowledges_prior_depreciation_as_stated`
+  accepts one that differs from the tables. Each year's table amount is
+  rounded to whole dollars on its own, so a lifetime of them can come out a
+  dollar over basis; the last year is trimmed. It is asymmetric: an
+  undershoot (rounding, or a stated prior below the tables) is not topped
+  up. When the ceiling binds, the reconciliation says so
+  (`depreciation_recon_*_basis_ceiling_bound`) and says which cause it was.
+  The reconstruction that `prior_depreciation` is checked against is held
+  to the same ceiling, so a fully depreciated asset's stated prior may need
+  to drop by a dollar to keep reconciling.
+- **Mid-quarter convention is computed.** When personal property placed in
   service in the last three months of the year exceeds 40% of all personal
   property placed in service that year — across every activity on the
-  return, real property excluded from both totals (26 U.S.C. §168(d)(3)) —
-  the return refuses: there are no mid-quarter tables. If an asset list
-  places personal property this year while another activity states its
-  depreciation as a single figure, the test cannot be verified and the
-  return refuses unless the top-level scenario key
+  return, real property excluded from both totals, strictly more than 40%
+  (26 U.S.C. §168(d)(3)) — every personal-property asset placed that year
+  is depreciated under the mid-quarter convention, from the table for the
+  quarter it was placed in service (Publication 946 (2025), Appendix A,
+  Tables A-2 through A-5, pp. 71–73). The comparison is made in whole
+  cents, so bases that are exactly 40% never trip. This used to refuse; the
+  `mid_quarter_convention` refusal is retired. The tables are transcribed
+  twice, independently, and pinned to each other cell for cell. If an asset
+  list places personal property this year while another activity states its
+  depreciation as a single figure, the test still cannot be verified and
+  the return refuses unless the top-level scenario key
   `acknowledges_no_personal_property_behind_stated_depreciation: true` is
   set.
+- **Breaking: personal property placed in an earlier year states its
+  convention.** The 40% test is run once, over the property placed in
+  service in the return year. It is never run over an earlier year: this
+  return's asset list is not that year's complete placements. So an asset
+  in a 3-, 5-, 7-, 10-, 15- or 20-year class placed before the return year
+  must state `convention: half-year`, or `convention: mid-quarter` with
+  `quarter:` (1–4, the quarter of its own `date_placed_in_service`).
+  Half-year is no longer assumed: a missing convention refuses, as does an
+  unusable one. Its `prior_depreciation` is checked against the tables of
+  the convention it states. Stating either key on real property (mid-month
+  by statute) or on an asset placed in the return year (computed) refuses.
+  **Every existing scenario with prior-year personal property needs the
+  key added.**
+- **Form 4562 column (f) prints the method the class takes**, spelled as
+  the form's instructions spell it: `200 DB` for 3-, 5-, 7- and 10-year
+  property, `150 DB` for 15- and 20-year property, `S/L` for real property
+  (Publication 946, Chart 1). It previously printed `200DB` for every
+  personal-property class — wrong for 15- and 20-year property — and only
+  on the 2025 form; it is now filled on 2021–2024 as well. Column (e)
+  prints `MQ` under the mid-quarter convention; under it, same-class assets
+  placed in different quarters share their class row, with bases summed
+  and the deduction the sum of the per-asset amounts.
+- **Form 4562 rows 19a–19f print in the right columns on 2022–2024, and no
+  year fills their shaded date cell.** On the 2022, 2023 and 2024 forms a
+  personal-property row was written one column too far right (the date in
+  the basis column, the basis under recovery period, the recovery period
+  under convention, the convention under method). Separately, column (b),
+  month and year placed in service, is shaded on rows 19a–19f — the form
+  asks for it only on the residential and nonresidential rows — and the
+  2021 and 2025 mappings wrote a date into it. Both are fixed on all five
+  years. Any Form 4562 with a personal-property row should be re-emitted.
+- **Outside the input space, by design: the alternative depreciation system
+  and short tax years.** No scenario key can express either, the loader
+  rejects any attempt to add one, and so there is no refusal for them and
+  no path by which either could yield a wrong figure.
 - **Breaking: Form 4562 is emitted only in a year property is placed in
   service** (Instructions for Form 4562, "Who Must File"). A return whose
   assets were all placed in earlier years no longer emits the form; its
