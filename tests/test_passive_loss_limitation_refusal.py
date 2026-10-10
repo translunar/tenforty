@@ -21,6 +21,7 @@ from tenforty.models import (
     RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.scenario import load_scenario
 from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
 
 _REFUSAL = r"Form 8582 limitation.*not applied to the return"
@@ -124,6 +125,27 @@ class LimitationBindsRefusalTests(_Case):
                 with self.assertRaisesRegex(NotImplementedError, _REFUSAL):
                     self.orch.compute_federal(_scenario(
                         wages=200_000, rentals=[_loss_rental()], year=year))
+
+
+class ShippedFixtureTests(_Case):
+    """tests/fixtures/k1_partnership_passive.yaml produced a return before
+    this refusal existed (passive K-1, prior-year carryforward 2,000). It now
+    lives under fixtures/refusals/ as a firing case."""
+
+    def test_passive_carryforward_fixture_loads_but_refuses_to_compute(self):
+        scenario = load_scenario(
+            REPO_ROOT / "tests" / "fixtures" / "refusals"
+            / "k1_partnership_passive.yaml")
+        self.assertEqual(
+            scenario.schedule_k1s[0].prior_year_passive_loss_carryforward,
+            2_000.0)
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                _REFUSAL + r": a prior-year unallowed loss of 2,000"):
+            self.orch.compute_federal(scenario)
+        with self.assertRaisesRegex(
+                NotImplementedError, r"Schedule E line 27.*'Example LLC'"):
+            enforce_scoped_refusals(scenario, "emit")
 
 
 class LedgerEntryTests(unittest.TestCase):
