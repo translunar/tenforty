@@ -170,6 +170,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_direct_deposit::LoadRefusalTests::test_account_type_must_be_checking_or_savings",
     "direct_deposit_in_amendment_packet":
         "tests.test_direct_deposit::AmendmentPacketRefusalTests::test_fields_on_either_scenario_refuse",
+    "depreciation_audit_unbuildable":
+        "tests.test_depreciation_audit_refusal::UnbuildableRefusalTests::test_mirror_mismatch_fires",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -496,13 +498,15 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "direct_deposit_account_number_invalid",
                 "direct_deposit_account_type_invalid",
                 "direct_deposit_in_amendment_packet",
+                "depreciation_audit_unbuildable",
             ])
 
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
         self.assertEqual(
             [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
             ["merged_4562_with_override", "unverifiable_mid_quarter_test",
-             "unacknowledged_listed_property"])
+             "unacknowledged_listed_property",
+             "depreciation_audit_unbuildable"])
 
     def test_names_are_unique(self):
         names = [r.name for r in attestations._SCOPED_REFUSALS]
