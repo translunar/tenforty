@@ -395,6 +395,7 @@ class ElapsedScheduleTests(_WorkbookCase):
                 self.assertEqual(
                     dw.cell_value(workbook, "Year-by-year", f"E{r}"), 0)
         self.assertEqual(dw.cell_value(workbook, "Year-by-year", "F12"), 3_000)
+        self.assertEqual(dw.cell_value(workbook, "Assets", "H2"), 0)
         self.assertEqual(dw.cell_value(workbook, "Assets", "K2"), 0)
         self.assertEqual(dw.cell_value(workbook, "Tie-outs", "F2"), "PASS")
 
@@ -645,6 +646,7 @@ class EvaluatorTests(unittest.TestCase):
 
     def test_an_empty_cell_is_zero(self):
         self.assertEqual(self.ev("=A1+Z99"), 10)
+        self.assertEqual(self.ev("=Z99"), 0)
 
     def test_text_in_arithmetic_is_refused(self):
         with self.assertRaises(dw.FormulaError):
