@@ -523,6 +523,21 @@ class TaxReturnConfig:
     # Shared Responsibility penalty (FTB 3853) is not modeled, so the CA
     # forms layer raises NotImplementedError instead of assuming a 0 penalty.
     full_year_health_care_coverage: bool | None = None
+    # Direct deposit of a refund (Form 1040 lines 35b-35d, CA Form 540 line
+    # 116). All three or none. They are return-level intent -- "where a
+    # refund exists, deposit it here" -- shared by both returns: a form that
+    # shows a refund prints them, a form that shows none leaves its deposit
+    # boxes blank. So on a return with no refund on either form they print
+    # nowhere, silently and by design. Routing and account numbers are
+    # STRINGS (quote them in YAML: an unquoted number loses leading zeros
+    # and is refused); the routing number is 9 digits passing the ABA
+    # checksum, the account number 4-17 digits, the type "checking" or
+    # "savings". Validated at load (ledger: `direct_deposit_*`). An
+    # amendment packet refuses them: no direct deposit on a paper-filed
+    # amended return.
+    refund_routing_number: str | None = None
+    refund_account_number: str | None = None
+    refund_account_type: str | None = None
     # Sch B Part III (FBAR) scope-out attestation. None → scenario omitted it
     # and load_scenario raises; True → raises NotImplementedError; False → OK.
     has_foreign_accounts: bool | None = None

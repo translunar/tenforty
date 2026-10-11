@@ -160,6 +160,16 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_f3115_scenario::RefusalFiringTests::test_fires_form_3115_public_utility_property",
     "form_3115_in_amendment_packet":
         "tests.test_f3115_emit::AmendmentPacketRefusalTests::test_amended_scenario_with_the_block_refuses",
+    "direct_deposit_incomplete":
+        "tests.test_direct_deposit::LoadRefusalTests::test_a_partial_set_refuses_naming_what_is_missing",
+    "direct_deposit_routing_number_invalid":
+        "tests.test_direct_deposit::LoadRefusalTests::test_routing_number_must_be_nine_digits_passing_the_checksum",
+    "direct_deposit_account_number_invalid":
+        "tests.test_direct_deposit::LoadRefusalTests::test_account_number_must_be_four_to_seventeen_digits",
+    "direct_deposit_account_type_invalid":
+        "tests.test_direct_deposit::LoadRefusalTests::test_account_type_must_be_checking_or_savings",
+    "direct_deposit_in_amendment_packet":
+        "tests.test_direct_deposit::AmendmentPacketRefusalTests::test_fields_on_either_scenario_refuse",
 }
 
 # The config-field registry as it stood before the ledger was added. A literal,
@@ -481,6 +491,11 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "form_3115_depreciation_election",
                 "form_3115_public_utility_property",
                 "form_3115_in_amendment_packet",
+                "direct_deposit_incomplete",
+                "direct_deposit_routing_number_invalid",
+                "direct_deposit_account_number_invalid",
+                "direct_deposit_account_type_invalid",
+                "direct_deposit_in_amendment_packet",
             ])
 
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):

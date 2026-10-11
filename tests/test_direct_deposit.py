@@ -460,16 +460,23 @@ class NoRefund1040Tests(_FederalEmitCase):
 
 
 class Mapping540Tests(unittest.TestCase):
-    def test_routing_and_account_keys_map_to_the_anchored_literals(self):
+    def test_line_116_cells_are_gated_derivations_not_plain_mappings(self):
+        """A plain key -> cell mapping would print the numbers whether or
+        not the return shows a refund. Each line 116 cell is instead a
+        derivation at the anchored literal, and no `f540_refund_*` key is
+        mapped straight to a cell."""
         for year in YEARS:
-            mapping = PdfF540.get_mapping(year)
             with self.subTest(year=year):
+                mapping = PdfF540.get_mapping(year)
+                derivations = PdfF540.get_derivations(year)
                 self.assertEqual(
-                    mapping.get("f540_refund_routing_number"),
-                    F540[year]["routing"])
-                self.assertEqual(
-                    mapping.get("f540_refund_account_number"),
-                    F540[year]["account"])
+                    [key for key in mapping if key.startswith("f540_refund_")],
+                    [])
+                paths = F540[year]
+                for name in (paths["routing"], paths["account"],
+                             paths["amount"], *paths["type"]):
+                    self.assertIn(name, derivations)
+                    self.assertNotIn(name, mapping.values())
 
     def test_nothing_maps_or_derives_line_117(self):
         for year in YEARS:
