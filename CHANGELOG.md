@@ -226,7 +226,12 @@ breaking changes are called out explicitly.
   that is not 4–17 digits, and any other account type. Out of scope: a
   split refund (Form 8888; Form 540 line 117), and amended returns — an
   amendment packet refuses the fields, because there is no direct deposit
-  on a paper-filed amended return.
+  on a paper-filed amended return. To amend a return whose original
+  scenario carries the fields, remove them from that scenario first.
+  Account numbers are digits only; an alphanumeric account number is
+  refused. A results snapshot (`write_results_snapshot`) never contains a
+  routing or account number: keys ending `_routing_number` or
+  `_account_number` are left out.
 
 ### Changed
 
