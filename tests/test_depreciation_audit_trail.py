@@ -6,13 +6,20 @@ Expected figures are hand-computed in tests/_audit_workbook_fixtures.py.
 import dataclasses
 import unittest
 from datetime import date
+from decimal import ROUND_HALF_UP, Decimal
 
 from tenforty.forms.depreciation import macrs, resolver
 from tenforty.forms.depreciation.tables import TABLE_A_1, TABLE_A_6, TABLE_A_7a
 from tenforty.models import DepreciableAsset
 from tenforty.params import macrs_mid_quarter
-from tenforty.rounding import irs_round
 from tests import _audit_workbook_fixtures as fx
+
+
+def _exact(amount: float, rate: float) -> int:
+    """amount x rate, half up, from the exact decimal product -- worked here
+    independently of the engine's helper."""
+    product = Decimal(str(amount)) * Decimal(str(rate))
+    return int(product.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def _trail(scenario):
@@ -116,7 +123,7 @@ class AuditTrailTests(unittest.TestCase):
                 with self.subTest(asset=audit.description, year=year.tax_year):
                     self.assertIsNotNone(year.rate)
                     self.assertEqual(
-                        irs_round(audit.basis * year.rate), year.table_amount)
+                        _exact(audit.basis, year.rate), year.table_amount)
                     seen += 1
         self.assertEqual(seen, 7 + 3 + 1)
 
@@ -191,7 +198,8 @@ class AuditTrailTests(unittest.TestCase):
 
 
 class MacrsRateRefactorTests(unittest.TestCase):
-    """`macrs_deduction` is `irs_round(basis x table cell)`, the cell read
+    """`macrs_deduction` is basis x table cell, rounded half up from the
+    exact decimal product (`_exact`, worked here on its own), the cell read
     here straight from the tables (never through `macrs_rate`)."""
 
     BASIS = 123_457.0
@@ -212,7 +220,7 @@ class MacrsRateRefactorTests(unittest.TestCase):
                         macrs.macrs_deduction(
                             asset, tax_year, return_year=2060,
                             mid_quarter=False),
-                        irs_round(self.BASIS * cell))
+                        _exact(self.BASIS, cell))
                     self.assertEqual(
                         macrs.macrs_rate(
                             asset, tax_year, return_year=2060,
@@ -235,7 +243,7 @@ class MacrsRateRefactorTests(unittest.TestCase):
                             macrs.macrs_deduction(
                                 asset, 2000 + recovery_year - 1,
                                 return_year=2060, mid_quarter=False),
-                            irs_round(self.BASIS * cell))
+                            _exact(self.BASIS, cell))
                         checked += 1
         self.assertEqual(checked, 4 * (4 + 6 + 8 + 11 + 16 + 21))
 
@@ -252,7 +260,7 @@ class MacrsRateRefactorTests(unittest.TestCase):
                             macrs.macrs_deduction(
                                 asset, 2000 + recovery_year - 1,
                                 return_year=2060, mid_quarter=False),
-                            irs_round(self.BASIS * cell))
+                            _exact(self.BASIS, cell))
                         checked += 1
         self.assertEqual(checked, 29 * 12 + 40 * 12)
 
