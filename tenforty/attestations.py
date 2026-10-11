@@ -2468,6 +2468,13 @@ _FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
 # Every asset-mode return emits a workbook that reproduces its depreciation
 # figures from visible inputs (tenforty/audit/depreciation_workbook.py). A
 # return whose workbook cannot be built is not emitted at all.
+#
+# It fires when a workbook formula does not reproduce the engine's figure.
+# Two scenario shapes do that today, both a stated `prior_depreciation` with
+# cents on an asset whose basis ceiling binds: with
+# `acknowledges_prior_depreciation_as_stated` (the engine takes the stated
+# prior rounded) and without it (the stated prior rounds to the table
+# reconstruction, which the engine takes). Whole-dollar priors emit.
 
 def _depreciation_audit_unbuildable(s: Scenario) -> list[str]:
     # The audit module imports the engine, which imports this module.

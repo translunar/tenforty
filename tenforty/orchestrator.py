@@ -1531,9 +1531,12 @@ class ReturnOrchestrator:
         each prepared spec was filled from (never recomputed)."""
         values = {spec.name: spec.values for spec in specs}
         f4562 = values.get("f4562", {})
+        # Keyed by the row letter as PRINTED on this year's form, which
+        # before 2025 differs from the compute key's for real property.
         line_19 = {
-            row["row_label"]: f4562[
-                f"f4562_line_19{row['row_label']}_deduction"]
+            form_4562.printed_row_label(
+                row["recovery_class"], scenario.config.year): f4562[
+                    f"f4562_line_19{row['row_label']}_deduction"]
             for row in f4562.get("f4562_part_iii_section_b_rows", [])}
         activity_lines: dict[tuple[str, int], int] = {}
         line_18 = values.get("sch_e", {}).get(form_sch_e._LINE_18_KEY)

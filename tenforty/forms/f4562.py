@@ -71,6 +71,24 @@ _CLASS_TO_ROW: dict[str, str] = {
     "39-year": "j",
 }
 
+# The row letters above are the 2025 form's, and are what the compute keys
+# carry in every year. The 2025 form added the 50-year row at 19h; through
+# the 2024 form residential rental property prints on 19h and nonresidential
+# real property on 19i, and there is no 19j.
+_FIRST_FORM_YEAR_WITH_50_YEAR_ROW = 2025
+_ROW_BEFORE_50_YEAR_ROW: dict[str, str] = {"i": "h", "j": "i"}
+
+
+def printed_row_label(recovery_class: str, tax_year: int) -> str:
+    """The Section B row letter a recovery class carries on the form for
+    ``tax_year`` AS PRINTED (the compute keys use the 2025 letters in every
+    year; the PDF mapping sends them to the right widgets)."""
+    label = _CLASS_TO_ROW[recovery_class]
+    if tax_year < _FIRST_FORM_YEAR_WITH_50_YEAR_ROW:
+        return _ROW_BEFORE_50_YEAR_ROW.get(label, label)
+    return label
+
+
 def scenario_assets(scenario: Scenario) -> list:
     """Every asset on the return, flattened across activities.
 
