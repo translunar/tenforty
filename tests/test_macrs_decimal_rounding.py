@@ -162,6 +162,26 @@ class ProductRoundingTests(unittest.TestCase):
         self.assertEqual(
             _expected(1_234_567_890_123, 0.03636), 448_888_885)
 
+    def test_amount_is_read_as_the_decimal_it_was_written_as(self):
+        """2.40 x 0.625 = 1.50 exactly -> 2. The float nearest 2.40 is a
+        hair under it, so taking the amount's binary value instead of its
+        written decimal would put the product under the half. (No table
+        percentage reaches this: with these tables a product lands on a
+        half dollar only at whole-dollar bases, which floats hold exactly.
+        The helper is general, so it is pinned at a general rate.)"""
+        self.assertLess(Decimal(2.4), Decimal("2.4"))
+        self.assertEqual(irs_round_product(2.4, 0.625), 2)
+        self.assertEqual(irs_round_product(2.39, 0.625), 1)
+
+    def test_long_products_are_not_shortened_before_rounding(self):
+        """100,000,000,025,000 x 0.0197 = 1,970,000,000,492.50 -> ...493:
+        fourteen significant digits ahead of the half."""
+        self.assertEqual(
+            irs_round_product(100_000_000_025_000.0, 0.0197),
+            1_970_000_000_493)
+        self.assertEqual(
+            _expected(100_000_000_025_000 * 100, 0.0197), 1_970_000_000_493)
+
     def test_agrees_with_plain_rounding_away_from_the_half(self):
         """Where the product is not on a half dollar the old float path was
         already right; the two agree there."""

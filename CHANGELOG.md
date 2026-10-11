@@ -235,6 +235,17 @@ breaking changes are called out explicitly.
 
 ### Changed
 
+- **MACRS table amounts round from the exact decimal product.** A year's
+  table amount is basis × percentage, rounded half-up to whole dollars. The
+  product was taken in binary floating point, which lands a dollar short
+  whenever the true product ends in exactly .50 and the float falls just
+  under it: a 27.5-year asset placed in June on a 25,000 basis is
+  1.970% × 25,000 = 492.50, which printed 492 and now prints 493. The
+  product is now exact decimal arithmetic, rounded once. Affected amounts
+  move up by exactly one dollar; every other amount is unchanged. Because
+  a stated `prior_depreciation` is checked against the same table amounts,
+  an asset whose earlier years include such a product reconstructs a
+  dollar higher per affected year and its stated prior must match.
 - **Both new attestations are required in every scenario config** (load
   refuses when either is unset), like the existing scope-out attestations.
 - **Schedule E lines 30 and 31 now print** on every return with a K-1 (they
