@@ -149,6 +149,56 @@ def asset_convention(asset: DepreciableAsset, *, return_year: int,
     return HALF_YEAR, None
 
 
+# Pub 946 Appendix A table per placement quarter, mid-quarter convention.
+_MID_QUARTER_TABLE_IDS = {1: "A-2", 2: "A-3", 3: "A-4", 4: "A-5"}
+_REAL_PROPERTY_TABLE_IDS = {"27.5-year": "A-6", "39-year": "A-7a"}
+TABLE_IDS: tuple[str, ...] = (
+    "A-1", *_MID_QUARTER_TABLE_IDS.values(),
+    *_REAL_PROPERTY_TABLE_IDS.values())
+
+
+def table_identity(asset: DepreciableAsset, *, return_year: int,
+                   mid_quarter: bool, label: str = "asset") -> str:
+    """The Pub 946 Appendix A table ``asset`` reads (one of `TABLE_IDS`), on
+    a return for ``return_year`` whose 40% answer is ``mid_quarter``."""
+    convention, quarter = asset_convention(
+        asset, return_year=return_year, mid_quarter=mid_quarter, label=label)
+    if convention == MID_MONTH:
+        return _REAL_PROPERTY_TABLE_IDS[asset.recovery_class]
+    if convention == MID_QUARTER:
+        return _MID_QUARTER_TABLE_IDS[quarter]
+    return "A-1"
+
+
+def macrs_rate(asset: DepreciableAsset, tax_year: int, *,
+               return_year: int, mid_quarter: bool) -> float | None:
+    """The table cell ``asset`` reads for ``tax_year``: the one rate lookup,
+    which `macrs_deduction` multiplies by basis.
+
+    None when the table has no cell for that year: the asset was not yet
+    placed in service, or the recovery period has elapsed."""
+    require_answer(mid_quarter)
+    label = f"asset {asset.description!r}"
+    if asset.disposed is not None:
+        raise_scoped_refusal("asset_disposed", [label])
+    convention, quarter = asset_convention(
+        asset, return_year=return_year, mid_quarter=mid_quarter, label=label)
+
+    recovery_year = tax_year - asset.date_placed_in_service.year + 1
+    if recovery_year < 1:
+        return None
+
+    if convention == MID_MONTH:
+        month = asset.date_placed_in_service.month
+        return _REAL_PROPERTY_TABLES[asset.recovery_class].get(
+            recovery_year, {}).get(month)
+    if convention == MID_QUARTER:
+        # Read through the module at call time: the table is its one owner.
+        table = macrs_mid_quarter.TABLES_BY_QUARTER[quarter]
+        return table[_CLASS_YEARS[asset.recovery_class]].get(recovery_year)
+    return TABLE_A_1[asset.recovery_class].get(recovery_year)
+
+
 def macrs_deduction(asset: DepreciableAsset, tax_year: int, *,
                     return_year: int, mid_quarter: bool) -> int:
     """The MACRS TABLE amount (IRS-rounded whole dollars) for ``asset`` in
@@ -164,26 +214,8 @@ def macrs_deduction(asset: DepreciableAsset, tax_year: int, *,
     within basis is applied by the resolver, which knows what came before.
     """
     require_answer(mid_quarter)
-    label = f"asset {asset.description!r}"
-    if asset.disposed is not None:
-        raise_scoped_refusal("asset_disposed", [label])
-    convention, quarter = asset_convention(
-        asset, return_year=return_year, mid_quarter=mid_quarter, label=label)
-
-    recovery_year = tax_year - asset.date_placed_in_service.year + 1
-    if recovery_year < 1:
-        return 0
-
-    if convention == MID_MONTH:
-        month = asset.date_placed_in_service.month
-        pct = _REAL_PROPERTY_TABLES[asset.recovery_class].get(
-            recovery_year, {}).get(month, 0.0)
-    elif convention == MID_QUARTER:
-        # Read through the module at call time: the table is its one owner.
-        table = macrs_mid_quarter.TABLES_BY_QUARTER[quarter]
-        pct = table[_CLASS_YEARS[asset.recovery_class]].get(recovery_year, 0.0)
-    else:
-        pct = TABLE_A_1[asset.recovery_class].get(recovery_year, 0.0)
+    rate = macrs_rate(
+        asset, tax_year, return_year=return_year, mid_quarter=mid_quarter)
     # Exact decimal product, rounded once: never a float product (a float
     # lands just under a true .50 and rounds a dollar short).
-    return irs_round_product(asset.basis, pct)
+    return irs_round_product(asset.basis, rate or 0.0)
