@@ -136,6 +136,60 @@ class WriterRefusalTests(unittest.TestCase):
             openpyxl.load_workbook(self.out).sheetnames[0], "Tie-outs")
 
 
+class MirrorIsFailClosedTests(unittest.TestCase):
+    """A formula the Python mirror cannot read is a refusal, never a cell
+    it skips -- including the cells that have no engine figure to compare
+    (differences, verdicts, running totals)."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.out = Path(tmp.name) / "audit.xlsx"
+        self.trail = resolver.audit_trail(fx.scenario())
+
+    def test_unrecognized_function_in_a_verdict_cell_refuses(self):
+        # The verdict column has no engine figure; it is still evaluated.
+        with mock.patch.object(
+                dw, "VERDICT_FORMULA", '=IFERROR(E{row},"PASS")'):
+            with self.assertRaises(NotImplementedError) as caught:
+                dw.write_depreciation_audit(
+                    self.trail, dw.PrintedFigures(), self.out)
+        message = str(caught.exception)
+        self.assertIn("Tie-outs!F2", message)
+        self.assertIn("unsupported function IFERROR", message)
+        self.assertFalse(self.out.exists())
+
+    def test_unreadable_text_in_a_verdict_cell_refuses(self):
+        with mock.patch.object(dw, "VERDICT_FORMULA", "=E{row}^2"):
+            with self.assertRaisesRegex(
+                    NotImplementedError, r"Tie-outs!F2.*cannot read formula"):
+                dw.write_depreciation_audit(
+                    self.trail, dw.PrintedFigures(), self.out)
+        self.assertFalse(self.out.exists())
+
+    def test_the_predicate_reports_it_before_any_form_is_prepared(self):
+        with mock.patch.object(
+                dw, "VERDICT_FORMULA", '=IFERROR(E{row},"PASS")'):
+            reasons = dw.unbuildable_reasons(fx.scenario())
+            with self.assertRaisesRegex(NotImplementedError, "IFERROR"):
+                enforce_scoped_refusals(fx.scenario(), "emit")
+        self.assertEqual(len(reasons), 1)
+        self.assertIn("Tie-outs!F2", reasons[0])
+
+    def test_every_formula_cell_is_evaluated(self):
+        # The mirror walks the workbook, not a list of expected cells: its
+        # count is the count of formula cells on the sheets.
+        workbook, reasons = dw._build(self.trail, dw.PrintedFigures())
+        on_sheets = sum(
+            1 for sheet in workbook.worksheets for row in sheet.iter_rows()
+            for cell in row if cell.data_type == "f")
+        self.assertEqual(reasons, [])
+        # Assets 3 x (H, K, L); Year-by-year 11 x (A, E, F); Tie-outs one
+        # activity row x (B, E, F).
+        self.assertEqual(on_sheets, 9 + 33 + 3)
+        self.assertEqual(len(dw.formula_cells(workbook)), on_sheets)
+
+
 class EngineTableCoverageTests(unittest.TestCase):
     """Every Pub 946 table the engine can read is one the workbook renders.
     (An engine table added without workbook support fails here.)"""
