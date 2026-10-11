@@ -38,6 +38,16 @@ FURNITURE = DepreciableAsset(
     basis=7_000.0, recovery_class="7-year",
     no_bonus_or_section_179_history=True)
 
+# A building near the end of its schedule: 27.5-year, March 1998, basis
+# 100,000. Table A-6, month 3: year 1 2.879% = 2,879; years 2-9 3.636% =
+# 3,636 each (29,088); years 10-27 alternate 3.637% / 3.636% = nine of 3,637
+# and nine of 3,636 (65,457); prior through 2024 = 97,424. 2025 is year 28:
+# 2.576% = 2,576, which takes the total to exactly 100,000.
+OLD_BUILDING = DepreciableAsset(
+    description="Old building", date_placed_in_service=date(1998, 3, 2),
+    basis=100_000.0, recovery_class="27.5-year", prior_depreciation=97_424.0)
+OLD_BUILDING_2025 = 2_576
+
 LINE_17 = 9_192
 LINE_19C = 1_000
 LINE_22 = 10_192

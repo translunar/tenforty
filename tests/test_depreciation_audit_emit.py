@@ -8,6 +8,7 @@ tests/test_f4562_prior_asset_line17.py and tests/test_depreciation_emit_pins.py
 """
 import dataclasses
 import tempfile
+from datetime import date
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -18,6 +19,8 @@ from pypdf import PdfReader
 from tenforty import pdf_packet
 from tenforty.__main__ import _assemble_packets_and_prune
 from tenforty.audit import depreciation_workbook as dw
+from tenforty.forms import f4562 as form_4562
+from tenforty.models import DepreciableAsset
 from tenforty.orchestrator import ReturnOrchestrator
 from tests import _audit_workbook_fixtures as fx
 from tests.helpers import SPREADSHEETS_DIR
@@ -183,6 +186,76 @@ class WholeEmitRefusalTests(_EmitCase):
                     r"depreciation_audit_2025\.xlsx could not be written"):
                 self.emit(fx.scenario())
         self.assertEqual(list(self.out.glob("*.xlsx")), [])
+
+
+
+_SB = "topmostSubform[0].Page1[0].SectionBTable[0]"
+# Column (g) of the row a building placed this year prints on: the
+# residential rental row is 19h through the 2024 form and 19i on the 2025
+# form (which added a 50-year row above it). Literals, as pinned in
+# tests/test_f4562_prior_asset_line17.py.
+RESIDENTIAL_DEDUCTION = {
+    2021: (f"{_SB}.Line19h_1[0].f1_66[0]", "h"),
+    2024: (f"{_SB}.Line19h_1[0].f1_66[0]", "h"),
+    2025: (f"{_SB}.Line19i_1[0].f1_79[0]", "i"),
+}
+
+
+class Line19LetteringByFormYearTests(_EmitCase):
+    """The tie-out claim cites the row the deduction actually prints on."""
+
+    def _emit_building(self, year):
+        # January, 27.5-year, basis 200,000: 3.485% = 6,970.
+        building = DepreciableAsset(
+            description="Rental building",
+            date_placed_in_service=date(year, 1, 15), basis=200_000.0,
+            recovery_class="27.5-year")
+        return self.emit(fx.scenario(rental_assets=(building,), year=year))
+
+    def test_claim_cites_the_printed_row(self):
+        for year, (field, letter) in RESIDENTIAL_DEDUCTION.items():
+            with self.subTest(year=year):
+                self.out = self.tmp / f"out_{year}"
+                emitted = self._emit_building(year)
+                self.assertEqual(_printed(emitted["f4562"], field), 6_970)
+                workbook = openpyxl.load_workbook(
+                    emitted["depreciation_audit"])
+                tie = workbook["Tie-outs"]
+                self.assertEqual(
+                    [tie[f"A{r}"].value for r in (2, 3)], [
+                        f"Form 4562 line 19{letter}, column (g): "
+                        f"depreciation deduction",
+                        "Form 4562 line 22: total depreciation"])
+                self.assertEqual(
+                    tie["D2"].value,
+                    f"Form 4562 line 19{letter} column (g) as printed")
+                self.assertEqual(tie["C2"].value, 6_970)
+                self.assertEqual(
+                    workbook["Assets"]["M2"].value, f"line 19{letter}")
+                self.assertEqual(
+                    tie["B2"].value,
+                    f'=SUMIF(Assets!M2:M2,"line 19{letter}",Assets!K2:K2)')
+                self.assertEqual(
+                    [dw.cell_value(workbook, "Tie-outs", f"F{r}")
+                     for r in (2, 3, 4)], ["PASS"] * 3)
+
+
+class PrintedRowLabelTests(unittest.TestCase):
+    def test_2025_form_letters(self):
+        self.assertEqual(
+            [form_4562.printed_row_label(c, 2025) for c in (
+                "3-year", "5-year", "7-year", "10-year", "15-year",
+                "20-year", "27.5-year", "39-year")],
+            ["a", "b", "c", "d", "e", "f", "i", "j"])
+
+    def test_through_2024_there_is_no_19j(self):
+        for year in (2021, 2022, 2023, 2024):
+            with self.subTest(year=year):
+                self.assertEqual(
+                    [form_4562.printed_row_label(c, year) for c in (
+                        "3-year", "5-year", "7-year", "10-year", "15-year",
+                        "20-year", "27.5-year", "39-year")],
+                    ["a", "b", "c", "d", "e", "f", "h", "i"])
 
 
 if __name__ == "__main__":
