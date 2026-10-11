@@ -13,6 +13,7 @@ Year-by-year rows 2-8 (building, 2019-2025), 9-11 (appliance, 2023-2025),
 import dataclasses
 import tempfile
 import unittest
+import unittest.mock
 from datetime import date
 from pathlib import Path
 
@@ -169,24 +170,30 @@ class FormulaStringTests(_WorkbookCase):
         # First recovery year of a block: no cumulative above it.
         self.assertEqual(formulas["A2"], "=Assets!C2")
         self.assertEqual(
-            formulas["E2"], "=ROUND(MIN(Assets!$I$2*D2,Assets!$I$2),0)")
+            formulas["E2"],
+            "=ROUND(MAX(0,MIN(Assets!$I$2*D2,Assets!$I$2)),0)")
         self.assertEqual(formulas["F2"], "=E2")
         # Later years: the ceiling is basis less the cumulative above.
         self.assertEqual(
-            formulas["E3"], "=ROUND(MIN(Assets!$I$2*D3,Assets!$I$2-F2),0)")
+            formulas["E3"],
+            "=ROUND(MAX(0,MIN(Assets!$I$2*D3,Assets!$I$2-F2)),0)")
         self.assertEqual(formulas["F3"], "=F2+E3")
         self.assertEqual(
-            formulas["E8"], "=ROUND(MIN(Assets!$I$2*D8,Assets!$I$2-F7),0)")
+            formulas["E8"],
+            "=ROUND(MAX(0,MIN(Assets!$I$2*D8,Assets!$I$2-F7)),0)")
         self.assertEqual(formulas["F8"], "=F7+E8")
         # The next asset's block starts over, against its own basis.
         self.assertEqual(formulas["A9"], "=Assets!C3")
         self.assertEqual(
-            formulas["E9"], "=ROUND(MIN(Assets!$I$3*D9,Assets!$I$3),0)")
+            formulas["E9"],
+            "=ROUND(MAX(0,MIN(Assets!$I$3*D9,Assets!$I$3)),0)")
         self.assertEqual(formulas["F9"], "=E9")
         self.assertEqual(
-            formulas["E10"], "=ROUND(MIN(Assets!$I$3*D10,Assets!$I$3-F9),0)")
+            formulas["E10"],
+            "=ROUND(MAX(0,MIN(Assets!$I$3*D10,Assets!$I$3-F9)),0)")
         self.assertEqual(
-            formulas["E12"], "=ROUND(MIN(Assets!$I$4*D12,Assets!$I$4),0)")
+            formulas["E12"],
+            "=ROUND(MAX(0,MIN(Assets!$I$4*D12,Assets!$I$4)),0)")
         self.assertEqual(
             sorted(formulas),
             sorted(f"{c}{r}" for c in "AEF" for r in range(2, 13)))
@@ -661,6 +668,92 @@ class EvaluatorTests(unittest.TestCase):
             with self.subTest(text=text):
                 with self.assertRaises(dw.FormulaError):
                     self.ev(text)
+
+
+
+class FullRecoveryLengthTests(_WorkbookCase):
+    """A building in the last year of its 27.5-year schedule: 28 year rows,
+    every one evaluated from the cells as written."""
+
+    def setUp(self):
+        super().setUp()
+        self.scenario = fx.scenario(rental_assets=(fx.OLD_BUILDING,))
+        self.workbook = self.write(self.scenario, dw.PrintedFigures(
+            activity_lines={RENTAL: fx.OLD_BUILDING_2025}))
+
+    def test_twenty_eight_year_rows(self):
+        sheet = self.workbook["Year-by-year"]
+        self.assertEqual(sheet.max_row, 29)
+        self.assertEqual(
+            [sheet[f"C{r}"].value for r in (2, 29)], [1998, 2025])
+        self.assertEqual(
+            [sheet[f"D{r}"].value for r in (2, 3, 11, 12, 28, 29)],
+            [0.02879, 0.03636, 0.03637, 0.03636, 0.03636, 0.02576])
+        self.assertEqual(
+            self.formulas(self.workbook, "Year-by-year")["E29"],
+            "=ROUND(MAX(0,MIN(Assets!$I$2*D29,Assets!$I$2-F28)),0)")
+
+    def test_every_year_row_gives_the_hand_figure(self):
+        cache = {}
+        value = lambda c: dw.cell_value(
+            self.workbook, "Year-by-year", c, cache)
+        expected = ([2_879] + [3_636] * 8 + [3_637, 3_636] * 9 + [2_576])
+        self.assertEqual(len(expected), 28)
+        self.assertEqual([value(f"E{r}") for r in range(2, 30)], expected)
+        self.assertEqual(value("F28"), 97_424)
+        self.assertEqual(value("F29"), 100_000)
+
+    def test_the_last_cumulative_cell_is_readable_on_its_own(self):
+        # No shared cache: one call walks the whole chain above it.
+        self.assertEqual(
+            dw.cell_value(self.workbook, "Year-by-year", "F29"), 100_000)
+
+    def test_current_year_and_tie_out(self):
+        self.assertEqual(
+            dw.cell_value(self.workbook, "Assets", "K2"), 2_576)
+        self.assertEqual(
+            dw.cell_value(self.workbook, "Assets", "L2"), 100_000)
+        self.assertEqual(
+            dw.cell_value(self.workbook, "Tie-outs", "F2"), "PASS")
+
+
+class WrittenAsStatedTests(_WorkbookCase):
+    def test_basis_is_written_unrounded(self):
+        # 20% of 1,234.56 = 246.912 -> 247.
+        cents = dataclasses.replace(
+            fx.FURNITURE, basis=1_234.56, recovery_class="5-year")
+        workbook = self.write(
+            fx.scenario(rental_assets=(cents,)), dw.PrintedFigures())
+        self.assertEqual(workbook["Assets"]["I2"].value, 1_234.56)
+        self.assertEqual(dw.cell_value(workbook, "Assets", "K2"), 247)
+
+    def test_stated_prior_is_written_unrounded(self):
+        cents = dataclasses.replace(fx.APPLIANCE, prior_depreciation=5_200.25)
+        workbook = self.write(
+            fx.scenario(rental_assets=(cents,)), dw.PrintedFigures())
+        self.assertEqual(workbook["Assets"]["J2"].value, 5_200.25)
+
+    def test_activity_label_and_claim_starting_with_equals_are_text(self):
+        base = fx.scenario()
+        rental = dataclasses.replace(
+            base.rental_properties[0], address="=1+1")
+        scenario = dataclasses.replace(base, rental_properties=[rental])
+        workbook = self.write(scenario)
+        label = workbook["Assets"]["B2"]
+        self.assertEqual(label.data_type, "s")
+        self.assertEqual(label.value, "rental property #0 ('=1+1')")
+        # A label that IS the hostile text, not merely containing it.
+        with unittest.mock.patch.object(
+                dw, "_SECTION_LINE",
+                {"rental_properties": "=1+1",
+                 "schedule_c_businesses": "=1+1"}):
+            hostile = self.write(scenario, name="hostile.xlsx")
+        claim = hostile["Tie-outs"]["A5"]
+        self.assertEqual(claim.data_type, "s")
+        self.assertTrue(claim.value.startswith("=1+1: depreciation"))
+        source = hostile["Tie-outs"]["D5"]
+        self.assertEqual(source.data_type, "s")
+        self.assertEqual(source.value, "=1+1 as printed")
 
 
 if __name__ == "__main__":
