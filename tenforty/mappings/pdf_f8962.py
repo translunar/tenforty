@@ -95,9 +95,12 @@ _LINES_24_29: dict[str, str] = {
     # Line 26 binds the PRINTED key (blank when line 25 > line 24), not the
     # always-numeric f8962_line_26_net_ptc the spine sums.
     "f8962_line_26_printed":    f"{_ROOT}.f1_93[0]",  # net premium tax credit
-    "f8962_line_27":            f"{_ROOT}.f1_94[0]",  # excess advance payment
-    "f8962_line_28":            f"{_ROOT}.f1_95[0]",  # repayment limitation
-    "f8962_line_29_repayment":  f"{_ROOT}.f1_96[0]",  # excess APTC repayment
+    # Part III binds the PRINTED keys too (blank unless line 25 > line 24:
+    # the form stops at line 26 otherwise), not the always-numeric
+    # f8962_line_27 / f8962_line_28 / f8962_line_29_repayment.
+    "f8962_line_27_printed":    f"{_ROOT}.f1_94[0]",  # excess advance payment
+    "f8962_line_28_printed":    f"{_ROOT}.f1_95[0]",  # repayment limitation
+    "f8962_line_29_printed":    f"{_ROOT}.f1_96[0]",  # excess APTC repayment
 }
 
 # Base scalars — IDENTICAL field paths across 2021-2025 for every mapped

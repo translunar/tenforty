@@ -109,6 +109,11 @@ def _capped_values() -> dict:
         "f8962_line_27": 28,
         "f8962_line_28": 1_500,        # repayment limitation (capped)
         "f8962_line_29_repayment": 28,
+        # Line 25 > line 24 here, so Part III is completed: the PRINTED keys
+        # (what the cells bind) carry the same three figures.
+        "f8962_line_27_printed": 28,
+        "f8962_line_28_printed": 1_500,
+        "f8962_line_29_printed": 28,
     }
 
 
@@ -187,6 +192,8 @@ class FilledEmitReadBackTests(unittest.TestCase):
             "f8962_line_5": 450,          # >= 400% FPL -> uncapped
             "f8962_line_28": None,        # repayment limitation absent
             "f8962_line_29_repayment": 28,
+            "f8962_line_28_printed": None,
+            "f8962_line_29_printed": 28,
         }
         out = _fill(2024, values, self.tmp / "uncapped.pdf")
         read = _read_fields(out)
