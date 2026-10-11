@@ -8,7 +8,7 @@ e.g. ``round(20.5) == 20`` while the IRS expects 21.
 """
 
 import math
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, localcontext
 
 
 def irs_round(amount: float) -> int:
@@ -35,3 +35,29 @@ def round5(amount: float) -> float:
     for any 5-decimal quantize.
     """
     return float(Decimal(repr(amount)).quantize(Decimal("0.00001"), rounding=ROUND_HALF_UP))
+
+
+# Wide enough that no dollars-and-cents amount times a table percentage is
+# ever rounded by the multiplication itself (the default context keeps 28
+# significant digits; this does not depend on it).
+_PRODUCT_PRECISION = 60
+
+
+def irs_round_product(amount: float, rate: float) -> int:
+    """``amount`` x ``rate`` rounded half-up to whole dollars, from the EXACT
+    decimal product.
+
+    Use this, never ``irs_round(amount * rate)``, wherever a dollar amount
+    is multiplied by a published decimal rate and the result is rounded. A
+    binary float cannot hold most decimal fractions exactly, so a product
+    that is truly on the half dollar can come out a hair under it and round
+    DOWN: 25,000 x 0.0197 is 492.50, but as floats it is 492.49999999999994.
+
+    Each operand is read as the decimal it was written as (``str`` of a
+    float is its shortest round-tripping decimal: 0.0197 -> "0.0197"), the
+    two are multiplied exactly, and the product is rounded once. A negative
+    product rounds half away from zero, as `irs_round` does."""
+    with localcontext() as context:
+        context.prec = _PRODUCT_PRECISION
+        product = Decimal(str(amount)) * Decimal(str(rate))
+        return int(product.quantize(Decimal(1), rounding=ROUND_HALF_UP))
