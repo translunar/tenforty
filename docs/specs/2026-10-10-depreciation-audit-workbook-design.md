@@ -163,3 +163,38 @@ No spreadsheet engine anywhere:
   filing-season artifact; this feature takes over from TY2026 emits.
 - Any UNO/LibreOffice verification tier (ruled out 2026-10-10).
 - Per-activity 4562 emission (parked design round owns it).
+
+## Amendments (post-approval rulings, 2026-10-10)
+
+Plan-stage code reading surfaced spec-vs-engine mismatches; team-lead
+ruled (Juno's design intent unchanged — mirror the engine, never regress
+an emitting return to a refusal):
+
+- The resolver did not expose rates/table identity/year rows: an audit
+  trail is added to `resolver.py` / `macrs.py` (two files beyond the new
+  module), with `macrs_deduction` refactored over a single `macrs_rate`
+  lookup and an all-tables equality test.
+- Formulas mirror the engine's arithmetic exactly: year rows
+  `=ROUND(MIN(basis*rate, basis-cum_before),0)`; the Assets current-year
+  cell carries the engine's zero floor `=ROUND(MAX(0,MIN(...)),0)`.
+- A fully depreciated asset renders (rate None, amount 0, "recovery
+  period ended"); it is not a refusal. The unreachable
+  table-without-grid trigger is dropped for an enumeration coverage test
+  (every engine table id has a grid). The refusal's reachable triggers:
+  mirror mismatch (fractional acknowledged prior) and unwritable output.
+- Tie-outs cover every asset-mode activity (Sch E line 18 and Sch C
+  line 13 per business) and 4562 rows 19a–19j; overridden activities tie
+  the printed override (provenance `depreciation_override.amount`) plus
+  a restates row.
+- 481(a) sheet: no Sch E line 3 build-up row (the engine has no
+  cash-rents split and does not carry the adjustment); instead an
+  informational stated-adjustment row (provenance
+  `form_3115.section_481a_adjustment`, manifest language). 3115 asset
+  rows match depreciable assets on exact (description,
+  date_placed_in_service); unmatched rows render input-only with a
+  visible note — never a refusal. The stated-line-26 comparison row may
+  show FAIL as information; stated-figure disagreements never refuse.
+  The claimed field's real name is `depreciation_claimed_present_method`.
+- Amendment packets emit no workbook (deferred); the emit-stage refusal
+  in the shared builder correctly also refuses an unbuildable return's
+  amendment.
