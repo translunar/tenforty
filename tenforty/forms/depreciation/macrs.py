@@ -1,6 +1,7 @@
 """MACRS depreciation — per-asset per-year deduction.
 
-Class → convention → table lookup → percentage × basis → IRS rounding.
+Class → convention → table lookup → percentage × basis → IRS rounding, the
+product taken in exact decimal (rounding.irs_round_product).
 Year-stable; uses the tables in tables.py and, for the mid-quarter
 convention, tenforty.params.macrs_mid_quarter.
 
@@ -36,7 +37,7 @@ from tenforty.models import (
     PERSONAL_PROPERTY_CLASSES, REAL_PROPERTY_CLASSES, DepreciableAsset,
 )
 from tenforty.params import macrs_mid_quarter
-from tenforty.rounding import irs_round
+from tenforty.rounding import irs_round_product
 
 MID_MONTH = "mid-month"
 HALF_YEAR = "half-year"
@@ -183,4 +184,6 @@ def macrs_deduction(asset: DepreciableAsset, tax_year: int, *,
         pct = table[_CLASS_YEARS[asset.recovery_class]].get(recovery_year, 0.0)
     else:
         pct = TABLE_A_1[asset.recovery_class].get(recovery_year, 0.0)
-    return irs_round(asset.basis * pct)
+    # Exact decimal product, rounded once: never a float product (a float
+    # lands just under a true .50 and rounds a dollar short).
+    return irs_round_product(asset.basis, pct)
