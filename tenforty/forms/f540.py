@@ -14,6 +14,7 @@ import datetime
 import math
 from collections.abc import Mapping, Sequence
 
+from tenforty.attestations import refund_direct_deposit
 from tenforty.models import CA540Return, FilingStatus
 from tenforty.params import california as ca_params
 from tenforty.rounding import irs_round
@@ -367,6 +368,12 @@ def presentation_keys(
         out["f540_line10_amount"] = dependent_total
     if w2s:
         out["f540_line12_state_wages"] = irs_round(sum(w.state_wages for w in w2s))
+    # Line 116 direct deposit, as stated; `pdf_f540` prints it only when
+    # line 115 shows a refund.
+    deposit = refund_direct_deposit(config)
+    if deposit is not None:
+        (out["f540_refund_routing_number"], out["f540_refund_account_number"],
+         out["f540_refund_account_type"]) = deposit
     # Drop empty identity strings so a missing field stays blank, never "".
     return {k: v for k, v in out.items() if v != ""}
 

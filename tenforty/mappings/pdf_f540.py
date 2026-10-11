@@ -1220,6 +1220,77 @@ def _install_amount_due(year, mapping, derivations):
     derivations[l115] = lambda c, y=year: _line_115(y, c)
 
 
+# DIRECT DEPOSIT (line 116).
+#
+# Full field names, each read off the template's own tooltip ("Line 116.
+# Enter the account's routing number." / "Account type" / "Account number." /
+# "All or the following amount of my refund (line 115) ..."); pinned as
+# literals in tests/test_direct_deposit.py. The account-type control changes
+# shape across years:
+#   2021-2023  one radio field, states /0 (checking, the upper box) and /1
+#   2024       one radio field, states /Checking and /Savings
+#   2025       two separate checkboxes, each /Yes
+# so the table carries {account type: (field, on-state)} per year.
+#
+# All four cells are DERIVATIONS gated on line 115: they print only when the
+# scenario states direct deposit (``forms.f540.presentation_keys`` supplies
+# the three ``f540_refund_*`` keys) AND the return shows a refund. A return
+# with no refund leaves line 116 blank -- the same fields may still print on
+# the federal return. The amount box is the line 115 figure itself (the whole
+# refund goes to the one account), from `_line_115`, never a second
+# computation.
+#
+# Line 117 (a second account, for a split refund) is out of scope: none of
+# its cells is mapped or derived, so it stays blank.
+_DIRECT_DEPOSIT_CELLS = {
+    # year: (routing, account, amount, {type: (field, on-state)})
+    2021: ("5011", "5013", "5010",
+           {"checking": ("5012 RB", "/0"), "savings": ("5012 RB", "/1")}),
+    2022: ("5009", "5011", "5012",
+           {"checking": ("5010 RB", "/0"), "savings": ("5010 RB", "/1")}),
+    2023: ("5009", "5011", "5012",
+           {"checking": ("5010 RB", "/0"), "savings": ("5010 RB", "/1")}),
+    2024: ("540-5009", "540-5011", "540-5008",
+           {"checking": ("540-5010 RB", "/Checking"),
+            "savings": ("540-5010 RB", "/Savings")}),
+    2025: ("540_form_5008", "540_form_5010", "540_form_5011",
+           {"checking": ("540_form_5009A CB", "/Yes"),
+            "savings": ("540_form_5009B CB", "/Yes")}),
+}
+DIRECT_DEPOSIT_KEYS = (
+    "f540_refund_routing_number", "f540_refund_account_number",
+    "f540_refund_account_type")
+
+
+def _deposit_refund(year: int, c: Mapping[str, object]) -> float | None:
+    """The refund to be deposited: line 115 when the scenario states direct
+    deposit and line 115 is a positive amount, else None."""
+    if any(c.get(key) is None for key in DIRECT_DEPOSIT_KEYS):
+        return None
+    refund = _line_115(year, c)
+    return refund if refund is not None and refund > 0 else None
+
+
+def _install_direct_deposit(year, derivations):
+    routing, account, amount, type_cells = _DIRECT_DEPOSIT_CELLS[year]
+
+    def when_depositing(value_of):
+        return lambda c, y=year: (
+            value_of(c) if _deposit_refund(y, c) is not None else None)
+
+    derivations[routing] = when_depositing(
+        lambda c: c["f540_refund_routing_number"])
+    derivations[account] = when_depositing(
+        lambda c: c["f540_refund_account_number"])
+    derivations[amount] = lambda c, y=year: _deposit_refund(y, c)
+    by_field: dict[str, dict[str, str]] = {}
+    for account_type, (field, state) in type_cells.items():
+        by_field.setdefault(field, {})[account_type] = state
+    for field, states in by_field.items():
+        derivations[field] = when_depositing(
+            lambda c, states=states: states.get(c["f540_refund_account_type"]))
+
+
 for _y, _m, _d in (
     (2021, _MAPPING_2021, _DERIVATIONS_2021),
     (2022, _MAPPING_2022, _DERIVATIONS_2022),
@@ -1229,6 +1300,7 @@ for _y, _m, _d in (
 ):
     _install_presentation(_y, _m, _d)
     _install_amount_due(_y, _m, _d)
+    _install_direct_deposit(_y, _d)
 
 
 PdfF540._MAPPINGS = {

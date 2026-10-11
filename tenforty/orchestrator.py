@@ -7,7 +7,7 @@ import yaml
 
 from tenforty.attestations import (
     enforce_compute_time, enforce_form_3115_refusals,
-    enforce_named_refusal, enforce_scoped_refusals,
+    enforce_named_refusal, enforce_scoped_refusals, refund_direct_deposit,
 )
 from tenforty.forms.depreciation.resolver import (
     mid_quarter_applies,
@@ -1654,7 +1654,8 @@ class ReturnOrchestrator:
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year),
             values={**results, **self._form_1040_checkbox_values(
-                scenario, results)},
+                scenario, results),
+                **self._form_1040_direct_deposit_values(scenario, results)},
             checkbox_states=Pdf1040.get_checkbox_states(year),
             # 1040 line 24 (total tax) is filled by a derivation rather than a
             # result key: no key fills it on the native path, and the single
@@ -2690,6 +2691,9 @@ class ReturnOrchestrator:
         # silently dropped, and before anything is written.
         enforce_named_refusal("form_3115_in_amendment_packet", {
             "original": original_scenario, "amended": amended_scenario})
+        # Nor direct deposit: there is none on a paper-filed amended return.
+        enforce_named_refusal("direct_deposit_in_amendment_packet", {
+            "original": original_scenario, "amended": amended_scenario})
 
         output_dir.mkdir(parents=True, exist_ok=True)
         year = amended_scenario.config.year
@@ -3166,6 +3170,35 @@ class ReturnOrchestrator:
         if scenario.config.third_party_designee is False:
             values["third_party_designee_no"] = True
         return values
+
+    @staticmethod
+    def _form_1040_direct_deposit_values(
+            scenario: Scenario, results: dict) -> dict[str, object]:
+        """Form 1040 lines 35b-35d, from the scenario's direct deposit
+        fields -- only when line 35a shows a refund.
+
+        With no refund on this form the boxes stay blank: bank details on a
+        balance-due return would be an error, and the same fields may still
+        print on the other return (a federal balance due beside a California
+        refund is an ordinary shape). No refusal either way.
+
+        The gate reads `refund` (line 35a), the line the bank details belong
+        to, not `overpaid` (line 34). Today the two are always equal: the
+        spine elects the full refund and nothing produces line 36 (applied
+        to next year's estimated tax), so gating on either gives the same
+        result. Line 35a is the right one once line 36 is wired -- an
+        overpayment applied entirely to estimated tax leaves no refund to
+        deposit."""
+        deposit = refund_direct_deposit(scenario.config)
+        if deposit is None or not (results.get("refund") or 0) > 0:
+            return {}
+        routing, account, account_type = deposit
+        return {
+            "refund_routing_number": routing,
+            "refund_account_number": account,
+            "refund_account_type_checking": account_type == "checking",
+            "refund_account_type_savings": account_type == "savings",
+        }
 
     def _should_emit_sch_d(self, scenario: Scenario) -> bool:
         """Emit Sch D whenever any 1099-B transactions exist in the scenario."""

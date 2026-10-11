@@ -212,6 +212,26 @@ breaking changes are called out explicitly.
   repayment, self-employment tax or Additional Medicare Tax now attaches
   Schedule 2. Re-emitting such a 2021 return produces a packet with one more
   form than before.
+- **Direct deposit of a refund on original returns.** Three optional
+  `config` fields, all or none: `refund_routing_number`,
+  `refund_account_number` (both QUOTED strings — an unquoted number loses
+  leading zeros and is refused) and `refund_account_type` (`"checking"` or
+  `"savings"`). They print on Form 1040 lines 35b–35d and on California
+  Form 540 line 116, whose amount box carries the line 115 refund. The
+  fields are shared by both returns and each form decides for itself: a
+  form showing a refund prints them, a form showing none leaves its deposit
+  boxes blank. On a return with no refund on either form they therefore
+  print nowhere, without a message. Load refuses a partial set, a routing
+  number that is not 9 digits passing the ABA checksum, an account number
+  that is not 4–17 digits, and any other account type. Out of scope: a
+  split refund (Form 8888; Form 540 line 117), and amended returns — an
+  amendment packet refuses the fields, because there is no direct deposit
+  on a paper-filed amended return. To amend a return whose original
+  scenario carries the fields, remove them from that scenario first.
+  Account numbers are digits only; an alphanumeric account number is
+  refused. A results snapshot (`write_results_snapshot`) never contains a
+  routing or account number: keys ending `_routing_number` or
+  `_account_number` are left out.
 
 ### Changed
 
