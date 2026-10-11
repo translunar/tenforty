@@ -27,7 +27,9 @@ from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.forms import sch_se as form_sch_se
+from tenforty.audit import depreciation_workbook
 from tenforty.forms import f4562 as form_4562
+from tenforty.forms.depreciation import resolver as depreciation_resolver
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8962 as form_f8962
 from tenforty.forms import f8995 as form_f8995
@@ -1499,9 +1501,10 @@ class ReturnOrchestrator:
         # historic inline body — the specs just defer rendering), then fill
         # EVERY one. run_amendment_packet drives the same specs but fills only
         # the selector-chosen subset.
+        specs = self._federal_individual_emit_specs(scenario, results)
         emitted: dict[str, Path] = {
             spec.name: self._render_federal_spec(filler, spec, output_dir)
-            for spec in self._federal_individual_emit_specs(scenario, results)
+            for spec in specs
         }
 
         # Form 3115 (only when the scenario carries a `form_3115:` block).
@@ -1512,7 +1515,68 @@ class ReturnOrchestrator:
             self._emit_federal_corporate_pdfs_internal(
                 scenario, results, output_dir))
 
+        # Depreciation audit workbook (only when the return computes
+        # depreciation from `depreciable_assets`). After the forms are
+        # filled: its tie-outs target the values just printed.
+        emitted.update(
+            self._emit_depreciation_audit(scenario, specs, output_dir))
+
         return emitted
+
+    @staticmethod
+    def _printed_depreciation_figures(
+        scenario: Scenario, specs: list[_FederalFormSpec],
+    ) -> depreciation_workbook.PrintedFigures:
+        """The depreciation figures on the forms, read from the very values
+        each prepared spec was filled from (never recomputed)."""
+        values = {spec.name: spec.values for spec in specs}
+        f4562 = values.get("f4562", {})
+        line_19 = {
+            row["row_label"]: f4562[
+                f"f4562_line_19{row['row_label']}_deduction"]
+            for row in f4562.get("f4562_part_iii_section_b_rows", [])}
+        activity_lines: dict[tuple[str, int], int] = {}
+        line_18 = values.get("sch_e", {}).get(form_sch_e._LINE_18_KEY)
+        if line_18 is not None:
+            activity_lines[("rental_properties", 0)] = line_18
+        for index in range(len(scenario.schedule_c_businesses)):
+            line_13 = values.get(f"sch_c_{index + 1}", {}).get(
+                form_sch_c.LINE_13_KEY)
+            if line_13 is not None:
+                activity_lines[("schedule_c_businesses", index)] = line_13
+        form_3115 = None
+        if scenario.form_3115 is not None:
+            form = scenario.form_3115
+            form_3115 = depreciation_workbook.Form3115Figures(
+                line_26=form_f3115.printed_adjustment(form),
+                year_of_change=form.year_of_change,
+                assets=tuple(
+                    (a.description, a.date_placed_in_service,
+                     a.depreciation_claimed_present_method)
+                    for a in form.assets))
+        return depreciation_workbook.PrintedFigures(
+            f4562_line_17=f4562.get(form_4562.LINE_17_KEY),
+            f4562_line_19=line_19,
+            f4562_line_22=f4562.get("f4562_line_22_total_depreciation"),
+            activity_lines=activity_lines,
+            form_3115=form_3115)
+
+    def _emit_depreciation_audit(
+        self, scenario: Scenario, specs: list[_FederalFormSpec],
+        output_dir: Path,
+    ) -> dict[str, Path]:
+        """Write `depreciation_audit_<year>.xlsx` beside the forms. No flag
+        turns it on or off: an asset-mode return always gets one, and a
+        return with no asset-mode depreciation never does. A workbook that
+        cannot be written refuses the emit
+        (`depreciation_audit_unbuildable`)."""
+        resolved = depreciation_resolver.audit_trail(scenario)
+        if not resolved:
+            return {}
+        path = depreciation_workbook.write_depreciation_audit(
+            resolved, self._printed_depreciation_figures(scenario, specs),
+            output_dir / f"depreciation_audit_{scenario.config.year}.xlsx")
+        return {depreciation_workbook.EMITTED_KEY: path}
 
     @staticmethod
     def _emit_form_3115(
