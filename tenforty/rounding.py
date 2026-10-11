@@ -56,7 +56,17 @@ def irs_round_product(amount: float, rate: float) -> int:
     Each operand is read as the decimal it was written as (``str`` of a
     float is its shortest round-tripping decimal: 0.0197 -> "0.0197"), the
     two are multiplied exactly, and the product is rounded once. A negative
-    product rounds half away from zero, as `irs_round` does."""
+    product rounds half away from zero, as `irs_round` does.
+
+    Two changes to this function change no result, so mutation testing
+    reports them as surviving; both are equivalent mutants, not gaps:
+      - quantizing to ``Decimal(10)`` instead of ``Decimal(1)``: `quantize`
+        uses only its argument's exponent, and both have exponent 0;
+      - lowering `_PRODUCT_PRECISION` to any value that still holds every
+        digit of the product. The longest product the tests reach has 14
+        significant digits, so 14 passes them; a float amount carries at
+        most 17 significant digits and a rate here 5, so nothing below 22
+        is safe in general and 60 is deliberate headroom."""
     with localcontext() as context:
         context.prec = _PRODUCT_PRECISION
         product = Decimal(str(amount)) * Decimal(str(rate))
