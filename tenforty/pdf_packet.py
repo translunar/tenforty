@@ -139,7 +139,10 @@ PACKETS: tuple[Packet, ...] = (
 # The Form 3115 duplicate copy (form + statement) is likewise its own filing:
 # it is signed and sent to the IRS separately from the return that carries
 # the original.
-STANDALONE_KEYS: frozenset[str] = frozenset({"4868", "f3115_duplicate_copy"})
+# The depreciation audit workbook (an xlsx, tenforty/audit/) is review matter
+# for the filer: it is kept beside the forms and is never a packet member.
+STANDALONE_KEYS: frozenset[str] = frozenset(
+    {"4868", "f3115_duplicate_copy", "depreciation_audit"})
 
 # Source documents (the taxpayer's real issued PDFs — W-2 Copy B today)
 # splice in immediately after the main form's pages, mirroring the
@@ -187,7 +190,8 @@ def classify_key(key: str) -> str | None:
     """Return which packet claims ``key``.
 
     Returns the packet name, ``"standalone"`` for a standalone-exception key
-    (Form 4868), or ``None`` when no packet or exception claims it — a
+    (`STANDALONE_KEYS`: Form 4868, the Form 3115 duplicate copy, the
+    depreciation audit workbook), or ``None`` when no packet or exception claims it — a
     partition gap that the invariant test surfaces.
     """
     if key in STANDALONE_KEYS:

@@ -2463,6 +2463,36 @@ _FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
 )
 
 
+# --- The depreciation audit workbook ---------------------------------------
+#
+# Every asset-mode return emits a workbook that reproduces its depreciation
+# figures from visible inputs (tenforty/audit/depreciation_workbook.py). A
+# return whose workbook cannot be built is not emitted at all.
+
+def _depreciation_audit_unbuildable(s: Scenario) -> list[str]:
+    # The audit module imports the engine, which imports this module.
+    from tenforty.audit import depreciation_workbook
+    return depreciation_workbook.unbuildable_reasons(s)
+
+
+_DEPRECIATION_AUDIT_REFUSALS: tuple[ScopedRefusal, ...] = (
+    # Also raised directly by `write_depreciation_audit` when the file
+    # cannot be written.
+    ScopedRefusal(
+        name="depreciation_audit_unbuildable",
+        stage="emit",
+        whole_return=True,
+        offenders=_depreciation_audit_unbuildable,
+        message=lambda o: (
+            f"The depreciation audit workbook cannot be built, so this "
+            f"return is not emitted: {_join(o)}. Every return that "
+            f"computes depreciation from `depreciable_assets` is emitted "
+            f"with a workbook whose formulas reproduce the figures on its "
+            f"forms; tenforty does not emit one without the other."),
+        exception=NotImplementedError,
+    ),
+)
+
 
 # --- Direct deposit of a refund --------------------------------------------
 #
@@ -2615,6 +2645,7 @@ _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
     + _PASSIVE_LOSS_REFUSALS + _SCHEDULE_E_PRINT_REFUSALS
     + _FORM_3115_REFUSALS + _DIRECT_DEPOSIT_REFUSALS
+    + _DEPRECIATION_AUDIT_REFUSALS
 )
 
 
