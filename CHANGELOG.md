@@ -291,6 +291,16 @@ breaking changes are called out explicitly.
   business's description (Schedule C line A). It stays blank when that
   activity has no name or when assets are listed on more than one activity
   (new result key `f4562_business_or_activity`).
+- **Form 8962 leaves Part III blank unless there is excess advance PTC.**
+  Lines 27, 28 and 29 used to print on every Form 8962 (0, the repayment
+  limitation, 0) even when line 24 equalled or exceeded line 25, where the
+  form says to stop at line 26. They now print only when line 25 is greater
+  than line 24, in every year 2021-2025. No amount on any return changes:
+  the cells bind new result keys `f8962_line_27_printed`,
+  `f8962_line_28_printed` and `f8962_line_29_printed`, and the numeric
+  `f8962_line_27` / `f8962_line_28` / `f8962_line_29_repayment` are as
+  before. Any Form 8962 emitted for a return with no excess advance PTC
+  should be re-emitted.
 - **Form 4562 line 22 prints on line 22 for 2022-2024.** Those years mapped
   the total to the line 25 box on page 2 (special depreciation allowance
   for listed property). 2021 and 2025 were already correct. Any 2022-2024

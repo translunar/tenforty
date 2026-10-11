@@ -73,6 +73,8 @@ authority if instructions ever disagree with this module):
                 line 5 >= 400% for the standard table without hardcoding
                 that threshold here).
     line 29     repayment = min(line27, line28) when capped, else line27.
+    lines 27-29 (printed cells: blank unless line25 > line24 -- see
+                ``f8962_line_27_printed`` / ``_28_printed`` / ``_29_printed``)
 
 MAGI seam: MAGI (line 2a) is computed by the CALLER as AGI + tax-exempt
 interest (``block.tax_exempt_interest`` — carried on the block but not
@@ -238,6 +240,16 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
     result["f8962_line_27"] = line_27
     result["f8962_line_28"] = line_28
     result["f8962_line_29_repayment"] = line_29
+    # Part III (lines 27-29) as PRINTED. The form reaches it only from line
+    # 26's "If line 25 is greater than line 24, leave this line blank and
+    # continue to line 27"; with line 24 equal ("enter -0-. Stop here.") or
+    # greater (line 26 is the credit) the three lines stay blank. The numeric
+    # keys above are unchanged in every case: the spine reads line 29 for
+    # Schedule 2, and line 28 is the limitation whether or not it binds.
+    part_iii_applies = line_25 > line_24
+    result["f8962_line_27_printed"] = line_27 if part_iii_applies else None
+    result["f8962_line_28_printed"] = line_28 if part_iii_applies else None
+    result["f8962_line_29_printed"] = line_29 if part_iii_applies else None
     result["f8962_ui_box_checked"] = block.received_unemployment_2021
 
     return result
