@@ -768,5 +768,108 @@ class WrittenAsStatedTests(_WorkbookCase):
         self.assertEqual(source.value, "=1+1 as printed")
 
 
+
+class ExactDecimalMirrorTests(unittest.TestCase):
+    """The mirror multiplies as the engine does: exact decimal, each operand
+    read as the decimal it was written as."""
+
+    def setUp(self):
+        self.workbook = openpyxl.Workbook()
+        sheet = self.workbook.active
+        sheet.title = "S"
+        for coordinate, value in {
+                "A1": 25_000.0, "B1": 0.0197, "A2": 90.0, "B2": 0.35,
+                "A3": 138_538_308.63, "B3": 0.07219, "A4": 0.1, "B4": 0.2,
+        }.items():
+            sheet[coordinate] = value
+
+    def ev(self, formula):
+        return dw.evaluate(self.workbook, "S", formula)
+
+    def test_a_product_on_the_half_dollar_rounds_up(self):
+        # As floats these are 492.49999999999994 and 31.499999999999996.
+        self.assertEqual(25_000.0 * 0.0197, 492.49999999999994)
+        self.assertEqual(self.ev("=A1*B1"), 492.5)
+        self.assertEqual(self.ev("=ROUND(A1*B1,0)"), 493)
+        self.assertEqual(self.ev("=ROUND(A2*B2,0)"), 32)
+
+    def test_a_product_just_under_the_half_rounds_down(self):
+        # 10,001,080.4999997 exactly.
+        self.assertEqual(self.ev("=A3*B3"), 10_001_080.4999997)
+        self.assertEqual(self.ev("=ROUND(A3*B3,0)"), 10_001_080)
+
+    def test_sums_are_exact(self):
+        self.assertEqual(self.ev("=A4+B4"), 0.3)
+        self.assertEqual(self.ev("=IF(A4+B4=0.3,1,2)"), 1)
+
+    def test_matches_irs_round_product(self):
+        from tenforty.rounding import irs_round_product
+        for row, (amount, rate) in enumerate(
+                [(25_000.0, 0.0197), (90.0, 0.35),
+                 (138_538_308.63, 0.07219)], start=1):
+            with self.subTest(amount=amount, rate=rate):
+                self.assertEqual(
+                    self.ev(f"=ROUND(A{row}*B{row},0)"),
+                    irs_round_product(amount, rate))
+
+
+class SpreadsheetPrecisionNoteTests(_WorkbookCase):
+    """A product of $100,000,000 or more can need 16 significant digits; a
+    spreadsheet keeps 15, and its ROUND may show a dollar above the engine's
+    exact figure. The row says so. 1,400,008,872.42 x 7.219% (20-year, year
+    2) is 101,066,640.4999998 exactly: the engine and the printed form say
+    101,066,640 (LibreOffice 26.2 shows 101,066,641; verified by probe)."""
+
+    NOTE = (
+        "spreadsheet ROUND may show $1 above the engine's exact figure at "
+        "this magnitude \u2014 the printed form is exact; see module "
+        "docstring")
+
+    def _write(self, basis, prior):
+        asset = DepreciableAsset(
+            description="Large 20-year",
+            date_placed_in_service=date(2024, 6, 3), basis=basis,
+            recovery_class="20-year", prior_depreciation=prior,
+            no_bonus_or_section_179_history=True, convention="half-year")
+        return self.write(
+            fx.scenario(rental_assets=(asset,)), dw.PrintedFigures())
+
+    def test_product_of_100_million_or_more_carries_the_note(self):
+        # Year 1: 3.75% = 52,500,332.72 -> 52,500,333 (under the threshold).
+        workbook = self._write(1_400_008_872.42, 52_500_333.0)
+        self.assertEqual(dw.cell_value(workbook, "Assets", "K2"), 101_066_640)
+        self.assertEqual(workbook["Assets"]["N2"].value, (
+            "Basis: rental_properties[0].depreciable_assets[0].basis. "
+            "Prior accumulated: rental_properties[0].depreciable_assets[0]."
+            "prior_depreciation. Note: " + self.NOTE))
+        years = workbook["Year-by-year"]
+        self.assertEqual(years["G2"].value, "Pub 946 Table A-1")
+        self.assertEqual(
+            years["G3"].value, "Pub 946 Table A-1. Note: " + self.NOTE)
+
+    def test_sub_threshold_twin_carries_no_note(self):
+        # 1,385,000,000 x 7.219% = 99,983,150: under $100,000,000.
+        # Year 1: 3.75% = 51,937,500.
+        workbook = self._write(1_385_000_000.0, 51_937_500.0)
+        self.assertEqual(dw.cell_value(workbook, "Assets", "K2"), 99_983_150)
+        self.assertEqual(workbook["Assets"]["N2"].value, (
+            "Basis: rental_properties[0].depreciable_assets[0].basis. "
+            "Prior accumulated: rental_properties[0].depreciable_assets[0]."
+            "prior_depreciation"))
+        self.assertEqual(
+            workbook["Year-by-year"]["G3"].value, "Pub 946 Table A-1")
+
+    def test_exactly_100_million_carries_the_note(self):
+        # 2,000,000,000 x 5% (15-year, year 1) = 100,000,000 exactly.
+        asset = DepreciableAsset(
+            description="Threshold", date_placed_in_service=date(2025, 6, 3),
+            basis=2_000_000_000.0, recovery_class="15-year",
+            no_bonus_or_section_179_history=True)
+        workbook = self.write(
+            fx.scenario(rental_assets=(asset,)), dw.PrintedFigures())
+        self.assertTrue(
+            workbook["Year-by-year"]["G2"].value.endswith(self.NOTE))
+        self.assertTrue(workbook["Assets"]["N2"].value.endswith(self.NOTE))
+
 if __name__ == "__main__":
     unittest.main()

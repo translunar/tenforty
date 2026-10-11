@@ -258,5 +258,66 @@ class PrintedRowLabelTests(unittest.TestCase):
                     ["a", "b", "c", "d", "e", "f", "h", "i"])
 
 
+
+class ExactHalfDollarProductTests(_EmitCase):
+    """Table products that are exactly on the half dollar. The engine rounds
+    the exact decimal product up; a float product lands a hair under the
+    half and would round down. Engine, mirror and printed form agree:
+      25,000 x 1.970% (27.5-year, June)  = 492.50 -> 493
+      10,000 x 1.605% (39-year, May)     = 160.50 -> 161
+         350 x 35%    (5-year, quarter 1) = 122.50 -> 123
+    (LibreOffice's ROUND gives the same three; verified by probe, not here.)
+    """
+
+    def _tie_outs(self, emitted):
+        workbook = openpyxl.load_workbook(emitted["depreciation_audit"])
+        sheet = workbook["Tie-outs"]
+        rows = range(2, sheet.max_row + 1)
+        return (workbook,
+                [dw.cell_value(workbook, "Tie-outs", f"B{r}") for r in rows],
+                [sheet[f"C{r}"].value for r in rows],
+                [dw.cell_value(workbook, "Tie-outs", f"F{r}") for r in rows])
+
+    def test_real_property_halves(self):
+        emitted = self.emit(fx.scenario(rental_assets=(
+            DepreciableAsset(
+                description="June building",
+                date_placed_in_service=date(2025, 6, 10), basis=25_000.0,
+                recovery_class="27.5-year"),
+            DepreciableAsset(
+                description="May shop",
+                date_placed_in_service=date(2025, 5, 10), basis=10_000.0,
+                recovery_class="39-year"))))
+        workbook, computed, printed, verdicts = self._tie_outs(emitted)
+        self.assertEqual(
+            [dw.cell_value(workbook, "Assets", f"K{r}") for r in (2, 3)],
+            [493, 161])
+        # 19i, 19j, line 22, Schedule E line 18.
+        self.assertEqual(computed, [493, 161, 654, 654])
+        self.assertEqual(printed, [493, 161, 654, 654])
+        self.assertEqual(verdicts, ["PASS"] * 4)
+
+    def test_mid_quarter_half(self):
+        tools = dict(
+            recovery_class="5-year", no_bonus_or_section_179_history=True)
+        emitted = self.emit(fx.scenario(rental_assets=(
+            DepreciableAsset(
+                description="Q1 tools",
+                date_placed_in_service=date(2025, 2, 10), basis=350.0,
+                **tools),
+            DepreciableAsset(
+                description="Q4 tools",
+                date_placed_in_service=date(2025, 11, 10), basis=1_000.0,
+                **tools))))
+        workbook, computed, printed, verdicts = self._tie_outs(emitted)
+        # Quarter 1: 35% of 350; quarter 4: 5% of 1,000.
+        self.assertEqual(
+            [dw.cell_value(workbook, "Assets", f"K{r}") for r in (2, 3)],
+            [123, 50])
+        # 19b, line 22, Schedule E line 18.
+        self.assertEqual(computed, [173, 173, 173])
+        self.assertEqual(printed, [173, 173, 173])
+        self.assertEqual(verdicts, ["PASS"] * 3)
+
 if __name__ == "__main__":
     unittest.main()
