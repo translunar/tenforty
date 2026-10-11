@@ -325,12 +325,14 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
         template = root / "pdfs" / "california" / "2021" / "f540.pdf"
         cls.fields = PdfReader(str(template)).get_fields() or {}
 
-    def test_2021_derivations_count_is_36(self):
+    def test_2021_derivations_count_is_40(self):
         # 22 form-internal derivations + 13 presentation derivations (lines
         # 14/15/16, 4 per-page name + 4 per-page SSN headers, use-tax and
         # third-party-designee radios) + 1: line 114 (total amount due) is now
         # derived. (Was 35; lines 111 and 115 were already counted.)
-        self.assertEqual(len(self.derivations), 22 + 13 + 1)
+        # + 4: line 116 direct deposit (routing, account-type radio, account,
+        # amount), each gated on line 115 showing a refund.
+        self.assertEqual(len(self.derivations), 22 + 13 + 1 + 4)
 
     def test_2021_every_derivation_target_is_a_real_2021_field(self):
         for path in self.derivations:
@@ -508,11 +510,13 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
         template = root / "pdfs" / "california" / "2022" / "f540.pdf"
         cls.fields = PdfReader(str(template)).get_fields() or {}
 
-    def test_2022_derivations_count_is_30(self):
+    def test_2022_derivations_count_is_34(self):
         # 22 form-internal derivations + 7 presentation derivations (lines
         # 14/15/16, one name + one SSN page header, use-tax and designee radios)
         # + 1: line 114 (total amount due) is now derived. (Was 29.)
-        self.assertEqual(len(self.derivations), 22 + 7 + 1)
+        # + 4: line 116 direct deposit (routing, account-type radio, account,
+        # amount), each gated on line 115 showing a refund.
+        self.assertEqual(len(self.derivations), 22 + 7 + 1 + 4)
 
     def test_2022_every_derivation_target_is_a_real_2022_field(self):
         for path in self.derivations:

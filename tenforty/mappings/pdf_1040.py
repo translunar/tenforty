@@ -69,6 +69,8 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
         "third_party_designee_no": "/2",
+        "refund_account_type_checking": "/1",
+        "refund_account_type_savings": "/2",
     },
     2022: {
         "filing_status_single": "/1",
@@ -80,6 +82,8 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
         "third_party_designee_no": "/2",
+        "refund_account_type_checking": "/1",
+        "refund_account_type_savings": "/2",
     },
     2023: {
         "filing_status_single": "/1",
@@ -91,6 +95,8 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
         "third_party_designee_no": "/2",
+        "refund_account_type_checking": "/1",
+        "refund_account_type_savings": "/2",
     },
     2024: {
         "filing_status_single": "/1",
@@ -102,6 +108,8 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
         "third_party_designee_no": "/2",
+        "refund_account_type_checking": "/1",
+        "refund_account_type_savings": "/2",
     },
     2025: {
         "filing_status_single": "/1",
@@ -113,6 +121,8 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "digital_assets_yes": "/1",
         "digital_assets_no": "/2",
         "third_party_designee_no": "/2",
+        "refund_account_type_checking": "/1",
+        "refund_account_type_savings": "/2",
     },
 }
 
@@ -284,7 +294,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "overpaid": "topmostSubform[0].Page2[0].f2_25[0]",
             # Line 35a: Amount of line 34 you want refunded to you
             "refund": "topmostSubform[0].Page2[0].f2_26[0]",
-            # f2_27/f2_28 are RoutingNo/AccountNo (lines 35b/35d).
+            # Lines 35b-35d: direct deposit. Filled only when the scenario
+            # states it AND line 35a shows a refund (orchestrator).
+            "refund_routing_number": "topmostSubform[0].Page2[0].RoutingNo[0].f2_27[0]",
+            "refund_account_type_checking": "topmostSubform[0].Page2[0].c2_06[0]",
+            "refund_account_type_savings": "topmostSubform[0].Page2[0].c2_06[1]",
+            "refund_account_number": "topmostSubform[0].Page2[0].AccountNo[0].f2_28[0]",
             # Line 36: Applied to next year (2022) estimated tax
             "applied_to_next_year": "topmostSubform[0].Page2[0].f2_29[0]",
             # Line 37: Amount you owe (if line 24 > line 33)
@@ -452,7 +467,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "overpaid": "topmostSubform[0].Page2[0].f2_23[0]",
             # Line 35a: Amount of line 34 you want refunded to you
             "refund": "topmostSubform[0].Page2[0].f2_24[0]",
-            # f2_25/f2_26 are RoutingNo/AccountNo (lines 35b/35d).
+            # Lines 35b-35d: direct deposit. Filled only when the scenario
+            # states it AND line 35a shows a refund (orchestrator).
+            "refund_routing_number": "topmostSubform[0].Page2[0].RoutingNo[0].f2_25[0]",
+            "refund_account_type_checking": "topmostSubform[0].Page2[0].c2_05[0]",
+            "refund_account_type_savings": "topmostSubform[0].Page2[0].c2_05[1]",
+            "refund_account_number": "topmostSubform[0].Page2[0].AccountNo[0].f2_26[0]",
             # Line 36: Applied to next year (2023) estimated tax
             "applied_to_next_year": "topmostSubform[0].Page2[0].f2_27[0]",
             # Line 37: Amount you owe (if line 24 > line 33)
@@ -627,7 +647,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "overpaid": "topmostSubform[0].Page2[0].f2_23[0]",
             # Line 35a: Amount of line 34 you want refunded to you
             "refund": "topmostSubform[0].Page2[0].f2_24[0]",
-            # f2_25/f2_26 are RoutingNo/AccountNo (lines 35b/35d).
+            # Lines 35b-35d: direct deposit. Filled only when the scenario
+            # states it AND line 35a shows a refund (orchestrator).
+            "refund_routing_number": "topmostSubform[0].Page2[0].RoutingNo[0].f2_25[0]",
+            "refund_account_type_checking": "topmostSubform[0].Page2[0].c2_5[0]",
+            "refund_account_type_savings": "topmostSubform[0].Page2[0].c2_5[1]",
+            "refund_account_number": "topmostSubform[0].Page2[0].AccountNo[0].f2_26[0]",
             # Line 36: Applied to next year (2024) estimated tax
             "applied_to_next_year": "topmostSubform[0].Page2[0].f2_27[0]",
             # Line 37: Amount you owe (if line 24 > line 33)
@@ -800,7 +825,12 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "overpaid": "topmostSubform[0].Page2[0].f2_23[0]",
             # Line 35a: Amount of line 34 you want refunded to you
             "refund": "topmostSubform[0].Page2[0].f2_24[0]",
-            # f2_25/f2_26 are RoutingNo/AccountNo (lines 35b/35d).
+            # Lines 35b-35d: direct deposit. Filled only when the scenario
+            # states it AND line 35a shows a refund (orchestrator).
+            "refund_routing_number": "topmostSubform[0].Page2[0].RoutingNo[0].f2_25[0]",
+            "refund_account_type_checking": "topmostSubform[0].Page2[0].c2_5[0]",
+            "refund_account_type_savings": "topmostSubform[0].Page2[0].c2_5[1]",
+            "refund_account_number": "topmostSubform[0].Page2[0].AccountNo[0].f2_26[0]",
             # Line 36: Applied to next year (2025) estimated tax
             "applied_to_next_year": "topmostSubform[0].Page2[0].f2_27[0]",
             # Line 37: Amount you owe (if line 24 > line 33)
@@ -963,8 +993,13 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             "overpaid": "topmostSubform[0].Page2[0].f2_30[0]",
             # Line 35a: Amount of line 34 you want refunded to you
             "refund": "topmostSubform[0].Page2[0].f2_31[0]",
+            # Lines 35b-35d: direct deposit. Filled only when the scenario
+            # states it AND line 35a shows a refund (orchestrator).
+            "refund_routing_number": "topmostSubform[0].Page2[0].RoutingNo[0].f2_32[0]",
+            "refund_account_type_checking": "topmostSubform[0].Page2[0].c2_16[0]",
+            "refund_account_type_savings": "topmostSubform[0].Page2[0].c2_16[1]",
+            "refund_account_number": "topmostSubform[0].Page2[0].AccountNo[0].f2_33[0]",
             # f2_31 is "If Form 8888 is attached, check here"
-            # f2_32 is routing number, f2_33 is account number
             # Line 36: Applied to next year estimated tax
             "applied_to_next_year": "topmostSubform[0].Page2[0].f2_34[0]",
             # Line 37: Amount you owe (if line 24 > line 33)

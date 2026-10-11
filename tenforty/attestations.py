@@ -2464,11 +2464,157 @@ _FORM_3115_REFUSALS: tuple["ScopedRefusal", ...] = (
 
 
 
+# --- Direct deposit of a refund --------------------------------------------
+#
+# Three config fields, all or none (see TaxReturnConfig). Refusal text never
+# echoes a stated routing or account number: it says what is wrong with it.
+
+DIRECT_DEPOSIT_FIELDS: tuple[str, ...] = (
+    "refund_routing_number", "refund_account_number", "refund_account_type")
+REFUND_ACCOUNT_TYPES: tuple[str, ...] = ("checking", "savings")
+_ROUTING_NUMBER_DIGITS = 9
+_ROUTING_CHECKSUM_WEIGHTS = (3, 7, 1, 3, 7, 1, 3, 7, 1)
+_ACCOUNT_NUMBER_MIN_DIGITS, _ACCOUNT_NUMBER_MAX_DIGITS = 4, 17
+
+
+def _direct_deposit_fields(subject) -> dict:
+    config = getattr(subject, "config", None)
+    return {name: getattr(config, name, None)
+            for name in DIRECT_DEPOSIT_FIELDS}
+
+
+def _is_digit_string(value) -> bool:
+    return isinstance(value, str) and value.isascii() and value.isdigit()
+
+
+def routing_number_passes_checksum(routing: str) -> bool:
+    """The ABA check: 3-7-1 weights over the nine digits, sum divisible by
+    10."""
+    return sum(
+        weight * int(digit)
+        for weight, digit in zip(_ROUTING_CHECKSUM_WEIGHTS, routing)) % 10 == 0
+
+
+def _direct_deposit_incomplete(s) -> list[str]:
+    stated = _direct_deposit_fields(s)
+    missing = [name for name, value in stated.items() if value is None]
+    if not missing or len(missing) == len(stated):
+        return []
+    return [f"`{name}`" for name in missing]
+
+
+def _direct_deposit_routing_invalid(s) -> list[str]:
+    routing = _direct_deposit_fields(s)["refund_routing_number"]
+    if routing is None:
+        return []
+    if not isinstance(routing, str):
+        return ["it is not a string (an unquoted YAML number)"]
+    if not _is_digit_string(routing):
+        return ["it contains something other than the digits 0-9"]
+    if len(routing) != _ROUTING_NUMBER_DIGITS:
+        return [f"it has {len(routing)} digits"]
+    if not routing_number_passes_checksum(routing):
+        return ["it fails the checksum (a mistyped digit)"]
+    return []
+
+
+def _direct_deposit_account_invalid(s) -> list[str]:
+    account = _direct_deposit_fields(s)["refund_account_number"]
+    if account is None:
+        return []
+    if not isinstance(account, str):
+        return ["it is not a string (an unquoted YAML number)"]
+    if not _is_digit_string(account):
+        return ["it contains something other than the digits 0-9"]
+    if not (_ACCOUNT_NUMBER_MIN_DIGITS <= len(account)
+            <= _ACCOUNT_NUMBER_MAX_DIGITS):
+        return [f"it has {len(account)} digits"]
+    return []
+
+
+def _direct_deposit_type_invalid(s) -> list[str]:
+    account_type = _direct_deposit_fields(s)["refund_account_type"]
+    if account_type is None:
+        return []
+    if (not isinstance(account_type, str)
+            or account_type not in REFUND_ACCOUNT_TYPES):
+        return ["it is neither"]
+    return []
+
+
+def _amendment_scenarios_with_direct_deposit(subject) -> list[str]:
+    """Subject: ``{"original": Scenario, "amended": Scenario}``."""
+    if not isinstance(subject, dict):
+        return []
+    return [label for label, s in subject.items()
+            if any(v is not None for v in _direct_deposit_fields(s).values())]
+
+
+_DIRECT_DEPOSIT_REFUSALS: tuple[ScopedRefusal, ...] = (
+    ScopedRefusal(
+        name="direct_deposit_incomplete",
+        stage="load",
+        offenders=_direct_deposit_incomplete,
+        message=lambda o: (
+            "Direct deposit of a refund takes `refund_routing_number`, "
+            "`refund_account_number` and `refund_account_type` -- all three "
+            f"or none. This scenario's config is missing {_join(o)}. A "
+            "partial set cannot be printed: state the rest, or remove what "
+            "is there."),
+    ),
+    ScopedRefusal(
+        name="direct_deposit_routing_number_invalid",
+        stage="load",
+        offenders=_direct_deposit_routing_invalid,
+        message=lambda o: (
+            "`refund_routing_number` must be a quoted string of exactly 9 "
+            "digits that passes the ABA routing-number checksum; "
+            f"{_join(o)}. Quote it in the YAML: an unquoted number loses "
+            "any leading zero. A number that fails here would send the "
+            "refund nowhere, so it is refused rather than printed."),
+    ),
+    ScopedRefusal(
+        name="direct_deposit_account_number_invalid",
+        stage="load",
+        offenders=_direct_deposit_account_invalid,
+        message=lambda o: (
+            "`refund_account_number` must be a quoted string of 4 to 17 "
+            f"digits, with no spaces, hyphens or letters; {_join(o)}. Quote "
+            "it in the YAML: an unquoted number loses any leading zero."),
+    ),
+    ScopedRefusal(
+        name="direct_deposit_account_type_invalid",
+        stage="load",
+        offenders=_direct_deposit_type_invalid,
+        message=lambda o: (
+            "`refund_account_type` must be exactly \"checking\" or "
+            f"\"savings\"; {_join(o)}."),
+    ),
+    # Asked by name from `run_amendment_packet`, whose subject is a pair of
+    # scenarios; the ordinary emit pass (a lone Scenario) finds nothing.
+    ScopedRefusal(
+        name="direct_deposit_in_amendment_packet",
+        stage="emit",
+        offenders=_amendment_scenarios_with_direct_deposit,
+        message=lambda o: (
+            f"The {' and '.join(o)} scenario of this amendment packet "
+            "carries direct deposit fields (`refund_routing_number`, "
+            "`refund_account_number`, `refund_account_type`). The IRS does "
+            "not offer direct deposit on a paper-filed amended return, and "
+            "tenforty's amended returns are paper-filed, so Form 1040-X and "
+            "the amended Form 540 carry no deposit boxes here. Printing "
+            "nothing silently would leave the impression a deposit was "
+            "requested. Remove the three fields from the scenario."),
+        exception=NotImplementedError,
+    ),
+)
+
+
 _SCOPED_REFUSALS: tuple[ScopedRefusal, ...] = (
     _DEPRECIATION_SHAPE_REFUSALS + _DEPRECIATION_RESOLVER_REFUSALS
     + _DEPRECIATION_CONVENTION_REFUSALS + _DEPRECIATION_FORM_TRIGGER_REFUSALS
     + _PASSIVE_LOSS_REFUSALS + _SCHEDULE_E_PRINT_REFUSALS
-    + _FORM_3115_REFUSALS
+    + _FORM_3115_REFUSALS + _DIRECT_DEPOSIT_REFUSALS
 )
 
 
@@ -2510,6 +2656,37 @@ def enforce_form_3115_refusals(scenario: Scenario) -> None:
         offenders = refusal.offenders(scenario)
         if offenders:
             raise refusal.exception(refusal.message(offenders))
+
+
+_DIRECT_DEPOSIT_REFUSAL_NAMES: frozenset[str] = frozenset(
+    r.name for r in _DIRECT_DEPOSIT_REFUSALS)
+
+
+@dataclass(frozen=True)
+class _ConfigOnly:
+    """A scenario-shaped view holding only a config."""
+    config: object
+
+
+def refund_direct_deposit(config) -> tuple[str, str, str] | None:
+    """``(routing number, account number, account type)`` when the config
+    states direct deposit, else None.
+
+    The one read path for the three fields. It runs their load-stage ledger
+    entries first, so a caller that bypassed the loader still cannot print
+    an incomplete or malformed set."""
+    subject = _ConfigOnly(config)
+    for refusal in _SCOPED_REFUSALS:
+        if (refusal.stage != "load"
+                or refusal.name not in _DIRECT_DEPOSIT_REFUSAL_NAMES):
+            continue
+        offenders = refusal.offenders(subject)
+        if offenders:
+            raise refusal.exception(refusal.message(offenders))
+    stated = _direct_deposit_fields(subject)
+    if stated["refund_routing_number"] is None:
+        return None
+    return tuple(stated[name] for name in DIRECT_DEPOSIT_FIELDS)
 
 
 def enforce_named_refusal(name: str, subject) -> None:
