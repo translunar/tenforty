@@ -166,12 +166,42 @@ class ProductRoundingTests(unittest.TestCase):
         """2.40 x 0.625 = 1.50 exactly -> 2. The float nearest 2.40 is a
         hair under it, so taking the amount's binary value instead of its
         written decimal would put the product under the half. (No table
-        percentage reaches this: with these tables a product lands on a
-        half dollar only at whole-dollar bases, which floats hold exactly.
-        The helper is general, so it is pinned at a general rate.)"""
+        percentage reaches this. With these tables a product lands on a
+        half dollar at whole-dollar bases and at a few quarter-dollar ones
+        -- 8% of 6.25, 14.4% of 31.25, 10.56% of 156.25 -- and a float
+        holds every one of those bases exactly, so reading the binary value
+        changes nothing there. The helper is general, so the hazard is
+        pinned at a general rate.)"""
         self.assertLess(Decimal(2.4), Decimal("2.4"))
         self.assertEqual(irs_round_product(2.4, 0.625), 2)
         self.assertEqual(irs_round_product(2.39, 0.625), 1)
+
+    def test_quarter_dollar_half_products_are_binary_exact(self):
+        """The claim above, checked: these land on a half dollar and their
+        bases are exact in binary."""
+        for basis, rate, expected in ((6.25, 0.08, 1), (31.25, 0.144, 5),
+                                      (31.25, 0.112, 4),
+                                      (156.25, 0.1056, 17),
+                                      (156.25, 0.1184, 19),
+                                      (156.25, 0.1248, 20)):
+            with self.subTest(basis=basis, rate=rate):
+                self.assertEqual(Decimal(basis), Decimal(str(basis)))
+                self.assertEqual(
+                    (round(basis * 100) * _rate_units(rate)) % (100 * SCALE),
+                    50 * SCALE)
+                self.assertEqual(irs_round_product(basis, rate), expected)
+                self.assertEqual(
+                    _expected(round(basis * 100), rate), expected)
+
+    def test_too_little_precision_would_round_the_product_itself(self):
+        """138,538,308.63 x 0.07219 = 10,001,080.4999997 exactly -> ...080.
+        Fifteen significant digits sit ahead of the deciding 7; a
+        multiplication that keeps 14 or fewer rounds the product up to
+        ...080.5 first and then prints ...081."""
+        self.assertEqual(13_853_830_863 * 7_219, 100_010_804_999_997)
+        self.assertEqual(_expected(13_853_830_863, 0.07219), 10_001_080)
+        self.assertEqual(
+            irs_round_product(138_538_308.63, 0.07219), 10_001_080)
 
     def test_long_products_are_not_shortened_before_rounding(self):
         """100,000,000,025,000 x 0.0197 = 1,970,000,000,492.50 -> ...493:
