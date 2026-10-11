@@ -106,7 +106,7 @@ class PartitionInvariantTests(unittest.TestCase):
         # California
         "f540", "sch_ca", "sch_d_540",
         # Standalone
-        "4868",
+        "4868", "depreciation_audit",
     }
 
     def test_every_real_emitted_key_is_claimed_exactly_once(self):
@@ -120,6 +120,15 @@ class PartitionInvariantTests(unittest.TestCase):
 
     def test_4868_is_standalone(self):
         self.assertEqual(pdf_packet.classify_key("4868"), "standalone")
+
+    def test_depreciation_audit_is_standalone(self):
+        # Review matter beside the forms: an xlsx, never a packet member.
+        self.assertEqual(
+            pdf_packet.classify_key("depreciation_audit"), "standalone")
+        for packet in pdf_packet.PACKETS:
+            with self.subTest(packet=packet.name):
+                self.assertNotIn(
+                    "depreciation_audit", [m.key for m in packet.members])
 
     def test_unknown_key_is_unclaimed(self):
         self.assertIsNone(pdf_packet.classify_key("f9999_new_form"))

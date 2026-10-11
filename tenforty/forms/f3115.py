@@ -68,6 +68,12 @@ def signed_adjustment(amount: float) -> str:
     return f"{'+' if amount > 0 else '-'}{money(amount)}"
 
 
+def printed_adjustment(form: Form3115) -> float:
+    """Line 26 as a number: the stated adjustment to the cent, signed, which
+    is what `signed_adjustment` prints."""
+    return round(form.section_481a_adjustment * 100) / 100
+
+
 def _mdy(d) -> str:
     return d.strftime("%m/%d/%Y")
 
