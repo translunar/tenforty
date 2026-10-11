@@ -16,6 +16,18 @@ written cells, and compared with the engine's own figure for that cell. A
 difference of half a cent or more means the workbook would not reproduce the
 filing, and the whole emit is refused (`depreciation_audit_unbuildable`).
 
+Two scenario shapes reach that refusal today, both a stated
+`prior_depreciation` carrying cents on an asset whose basis ceiling binds.
+The engine takes the prior in whole dollars; the workbook's formula reads the
+stated cell, so the remaining basis differs by the cents and can round to a
+different dollar:
+  - ACKNOWLEDGED (`acknowledges_prior_depreciation_as_stated`): the engine
+    takes the stated prior, rounded;
+  - UNACKNOWLEDGED: the stated prior rounds to the table reconstruction, and
+    the engine takes the reconstruction.
+State the prior in whole dollars and the return emits. The refusal also fires
+when the file cannot be written.
+
 Residual risk, stated rather than hidden: `evaluate` rounds as the engine
 does (`irs_round`, half up). A real spreadsheet's ROUND agrees except
 possibly where a product lands within floating-point error of a half
@@ -83,6 +95,7 @@ GRID_TABLES: frozenset[str] = frozenset(_TABLE_CITATIONS)
 # Tie-out tolerance, in dollars: half a cent.
 TOLERANCE = 0.005
 VERDICT_FORMULA = '=IF(ABS(E{row})<0.005,"PASS","FAIL")'
+NET_481A_FORMULA = "=SUM(E2:E{last})"
 
 TIE_OUT_HEADERS = (
     "Claim", "Computed", "Printed on form", "Source of printed figure",
@@ -129,7 +142,8 @@ class PrintedFigures:
     """The depreciation figures the engine filled into the forms this emit.
     A 4562 figure is None / absent when the form did not print it."""
     f4562_line_17: int | None = None
-    # Section B row letter ("a".."j") -> column (g) deduction.
+    # Section B row letter AS PRINTED on that year's form
+    # (`f4562.printed_row_label`) -> column (g) deduction.
     f4562_line_19: Mapping[str, int] = field(default_factory=dict)
     f4562_line_22: int | None = None
     # (section, activity index) -> Schedule E line 18 / Schedule C line 13.
@@ -193,9 +207,10 @@ def _flatten(args) -> list:
 
 
 class _Evaluator:
-    def __init__(self, workbook, sheet: str, text: str):
+    def __init__(self, workbook, sheet: str, text: str, cache: dict):
         self.workbook = workbook
         self.sheet = sheet
+        self.cache = cache
         self.tokens = _tokens(text)
         self.pos = 0
 
@@ -277,13 +292,14 @@ class _Evaluator:
     def _reference(self, sheet: str, first: str):
         first = first.replace("$", "")
         if self._op(":") is None:
-            return cell_value(self.workbook, sheet, first)
+            return cell_value(self.workbook, sheet, first, self.cache)
         last = self._take("cell")[1].replace("$", "")
         min_col, min_row, max_col, max_row = range_boundaries(
             f"{first}:{last}")
         return [
             cell_value(
-                self.workbook, sheet, f"{get_column_letter(col)}{row}")
+                self.workbook, sheet, f"{get_column_letter(col)}{row}",
+                self.cache)
             for row in range(min_row, max_row + 1)
             for col in range(min_col, max_col + 1)]
 
@@ -316,15 +332,25 @@ class _Evaluator:
         raise FormulaError(f"unsupported function {name}")
 
 
-def cell_value(workbook, sheet: str, coordinate: str):
-    """The value of one cell: an input as written, a formula evaluated."""
-    cell = workbook[sheet][coordinate]
-    if cell.data_type == "f":
-        return evaluate(workbook, sheet, cell.value)
-    return cell.value
+def cell_value(workbook, sheet: str, coordinate: str,
+               cache: dict | None = None):
+    """The value of one cell: an input as written, a formula evaluated.
+
+    ``cache`` holds the cells already evaluated, keyed ``(sheet,
+    coordinate)``; pass one dict across calls to share it. It is what keeps
+    the cost linear: each Year-by-year cumulative cell is referenced twice by
+    the row below it, so without it the work doubles with every year row."""
+    cache = {} if cache is None else cache
+    key = (sheet, coordinate)
+    if key not in cache:
+        cell = workbook[sheet][coordinate]
+        cache[key] = (
+            evaluate(workbook, sheet, cell.value, cache)
+            if cell.data_type == "f" else cell.value)
+    return cache[key]
 
 
-def evaluate(workbook, sheet: str, formula: str):
+def evaluate(workbook, sheet: str, formula: str, cache: dict | None = None):
     """Evaluate ``formula`` (text beginning "=") as written on ``sheet`` of
     ``workbook``, following references to other cells and sheets.
 
@@ -333,7 +359,8 @@ def evaluate(workbook, sheet: str, formula: str):
     IF. Anything else raises `FormulaError`."""
     if not formula.startswith("="):
         raise FormulaError(f"not a formula: {formula!r}")
-    value = _Evaluator(workbook, sheet, formula[1:]).result()
+    value = _Evaluator(
+        workbook, sheet, formula[1:], {} if cache is None else cache).result()
     # A formula that is a bare reference to an empty cell shows zero.
     return 0 if value is None else value
 
@@ -374,7 +401,9 @@ def _convention_text(asset: AssetAudit) -> str:
 
 def _form_line(asset: AssetAudit, year: int) -> str:
     if asset.date_placed_in_service.year == year:
-        return f"line 19{form_4562._CLASS_TO_ROW[asset.recovery_class]}"
+        # The letter the row carries on THAT year's form.
+        row = form_4562.printed_row_label(asset.recovery_class, year)
+        return f"line 19{row}"
     return "line 17"
 
 
@@ -496,11 +525,13 @@ class _Builder:
                 sheet[f"C{n}"] = year.tax_year
                 sheet[f"D{n}"] = year.rate
                 if n == first:
-                    sheet[f"E{n}"] = f"=ROUND(MIN({basis}*D{n},{basis}),0)"
+                    sheet[f"E{n}"] = (
+                        f"=ROUND(MAX(0,MIN({basis}*D{n},{basis})),0)")
                     sheet[f"F{n}"] = f"=E{n}"
                 else:
                     sheet[f"E{n}"] = (
-                        f"=ROUND(MIN({basis}*D{n},{basis}-F{n - 1}),0)")
+                        f"=ROUND(MAX(0,MIN({basis}*D{n},"
+                        f"{basis}-F{n - 1})),0)")
                     sheet[f"F{n}"] = f"=F{n - 1}+E{n}"
                 sheet[f"G{n}"] = _year_source(asset, year.rate)
                 subject = f"{_subject(asset)}, tax year {year.tax_year}"
@@ -643,7 +674,7 @@ class _Builder:
         last = r
         net = last + 2
         _text(sheet, f"A{net}", "Net section 481(a) adjustment")
-        sheet[f"E{net}"] = f"=SUM(E2:E{last})" if last >= 2 else 0
+        sheet[f"E{net}"] = NET_481A_FORMULA.format(last=last)
         _text(sheet, f"F{net}", (
             "claimed less allowable, matched assets only; positive is an "
             "increase in income"))
@@ -687,7 +718,8 @@ def formula_cells(workbook) -> list[tuple[str, str]]:
 
 # What evaluating a formula this module did not write can raise.
 _UNREADABLE = (
-    FormulaError, TypeError, ValueError, KeyError, ZeroDivisionError)
+    FormulaError, TypeError, ValueError, KeyError, ZeroDivisionError,
+    RecursionError)
 
 
 def _mirror_mismatches(workbook, expectations) -> list[str]:
@@ -695,11 +727,11 @@ def _mirror_mismatches(workbook, expectations) -> list[str]:
     formula cell on every sheet is evaluated, whether or not the engine has
     a figure for it, and one the mirror cannot read is a reason -- never a
     cell it skips."""
-    reasons, values = [], {}
+    reasons, values, cache = [], {}, {}
     for sheet, coordinate in formula_cells(workbook):
         try:
             values[(sheet, coordinate)] = cell_value(
-                workbook, sheet, coordinate)
+                workbook, sheet, coordinate, cache)
         except _UNREADABLE as error:
             reasons.append(
                 f"the workbook formula at {sheet}!{coordinate} cannot be "

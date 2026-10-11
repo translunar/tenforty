@@ -7,6 +7,24 @@ breaking changes are called out explicitly.
 
 ### Added
 
+- **Depreciation audit workbook emits with every asset-mode return.** A
+  return that computes depreciation from `depreciable_assets` now writes
+  `depreciation_audit_<year>.xlsx` beside its forms (emitted key
+  `depreciation_audit`; a standalone review file, never part of a packet).
+  There is no flag. Every computed figure in it is a spreadsheet formula
+  over visible inputs and Pub 946 table rates, ending in a Tie-outs sheet
+  that compares the formulas against the figures printed on Form 4562
+  (lines 17, 19 and 22), Schedule E line 18 and Schedule C line 13. Inputs
+  carry the scenario field they came from. With a `form_3115:` block a
+  481(a) sheet sets the depreciation claimed on the statement against the
+  table reconstruction; the stated adjustment is shown beside it, not
+  checked. A return with stated depreciation only gets no workbook.
+- **New whole-return refusal `depreciation_audit_unbuildable`.** A return
+  whose workbook formulas would not reproduce the engine's figures, or
+  whose workbook file cannot be written, is not emitted. Today this fires
+  for a `prior_depreciation` stated with cents on an asset whose remaining
+  basis limits the year's deduction; state the prior in whole dollars. It
+  applies to amendment packets too.
 - **Form 3115 (Application for Change in Accounting Method) emits for
   automatic change number 7.** A top-level `form_3115:` block prints Form
   3115 (Rev. December 2022) for an individual changing depreciation from an

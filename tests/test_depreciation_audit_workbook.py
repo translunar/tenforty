@@ -742,6 +742,18 @@ class WrittenAsStatedTests(_WorkbookCase):
         label = workbook["Assets"]["B2"]
         self.assertEqual(label.data_type, "s")
         self.assertEqual(label.value, "rental property #0 ('=1+1')")
+        # The orchestrator's labels always begin with the engine's own words;
+        # the writer takes whatever trail it is handed, so hand it one whose
+        # label IS the hostile text.
+        [activity] = resolver.audit_trail(fx.scenario())
+        bare = dataclasses.replace(activity, label="=1+1", assets=tuple(
+            dataclasses.replace(a, activity_label="=1+1")
+            for a in activity.assets))
+        path = dw.write_depreciation_audit(
+            (bare,), true_printed(), self.tmp / "bare.xlsx")
+        written = openpyxl.load_workbook(path)["Assets"]["B2"]
+        self.assertEqual(written.data_type, "s")
+        self.assertEqual(written.value, "=1+1")
         # A label that IS the hostile text, not merely containing it.
         with unittest.mock.patch.object(
                 dw, "_SECTION_LINE",
