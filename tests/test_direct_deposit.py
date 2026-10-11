@@ -101,19 +101,20 @@ F1040_CHECKING_ON, F1040_SAVINGS_ON = "/1", "/2"
 # for 2025; `on` is (checking, savings) states.
 F540 = {
     2021: {"routing": "5011", "account": "5013", "amount": "5010",
-           "line_115": "5009",
+           "line_115": "5009", "line_99": "3020",
            "type": ("5012 RB",), "on": ("/0", "/1")},
     2022: {"routing": "5009", "account": "5011", "amount": "5012",
-           "line_115": "5008",
+           "line_115": "5008", "line_99": "4004",
            "type": ("5010 RB",), "on": ("/0", "/1")},
     2023: {"routing": "5009", "account": "5011", "amount": "5012",
-           "line_115": "5008",
+           "line_115": "5008", "line_99": "4004",
            "type": ("5010 RB",), "on": ("/0", "/1")},
     2024: {"routing": "540-5009", "account": "540-5011", "amount": "540-5008",
-           "line_115": "540-5007",
+           "line_115": "540-5007", "line_99": "540-4004",
            "type": ("540-5010 RB",), "on": ("/Checking", "/Savings")},
     2025: {"routing": "540_form_5008", "account": "540_form_5010",
            "amount": "540_form_5011", "line_115": "540_form_5007",
+           "line_99": "540_form_4004",
            "type": ("540_form_5009A CB", "540_form_5009B CB"),
            "on": ("/Yes", "/Yes")},
 }
@@ -324,6 +325,9 @@ class TemplateAnchor540Tests(unittest.TestCase):
                 (line_115,) = by_name[F540[year]["line_115"]]
                 self.assertIn("Line 115. Refund or no amount due",
                               line_115["tooltip"])
+                (line_99,) = by_name[F540[year]["line_99"]]
+                self.assertIn("Line 99. Overpaid tax available this year",
+                              line_99["tooltip"])
 
     def test_line_117_is_other_widgets(self):
         for year in YEARS:
@@ -532,6 +536,50 @@ class Emitted540Tests(unittest.TestCase):
                     for name in F540_LINE_117[year]:
                         self.assertIn(values[name], ("", "/Off"), name)
 
+    def test_line_116_amount_follows_line_115_when_it_differs_from_line_99(
+            self):
+        """Interest and penalties (line 112) come out of the refund, so
+        line 115 is 125 less than the line 99 overpayment. The deposit
+        amount is the line 115 figure -- a gate or an amount wired to line
+        99 prints the larger number here."""
+        for year in YEARS:
+            with self.subTest(year=year):
+                scenario = _with_deposit(
+                    make_ca_scenario(year, state_tax_withheld=9_000.0))
+                _results, pdfs = emit_ca(
+                    scenario, ca540={"interest_and_penalties": 125.0})
+                values = _values(pdfs["f540"])
+                paths = F540[year]
+                line_99 = int(values[paths["line_99"]].replace(",", ""))
+                line_115 = int(values[paths["line_115"]].replace(",", ""))
+                self.assertEqual(line_99 - line_115, 125)
+                self.assertEqual(
+                    values[paths["amount"]], values[paths["line_115"]])
+                self.assertNotEqual(
+                    values[paths["amount"]], values[paths["line_99"]])
+                self.assertEqual(values[paths["routing"]], ROUTING)
+
+    def test_interest_that_consumes_the_overpayment_blanks_line_116(self):
+        """Line 99 shows an overpayment, but line 112 is larger, so the
+        return owes (line 114) and line 115 is blank: no deposit boxes,
+        though line 99 alone would have said "refund"."""
+        for year in YEARS:
+            with self.subTest(year=year):
+                scenario = _with_deposit(
+                    make_ca_scenario(year, state_tax_withheld=9_000.0))
+                _results, pdfs = emit_ca(
+                    scenario, ca540={"interest_and_penalties": 50_000.0})
+                values = _values(pdfs["f540"])
+                paths = F540[year]
+                self.assertGreater(
+                    int(values[paths["line_99"]].replace(",", "")), 0)
+                self.assertEqual(values[paths["line_115"]], "")
+                self.assertEqual(values[paths["routing"]], "")
+                self.assertEqual(values[paths["account"]], "")
+                self.assertEqual(values[paths["amount"]], "")
+                for name in paths["type"]:
+                    self.assertIn(values[name], ("", "/Off"))
+
     def test_without_the_fields_line_116_stays_blank(self):
         for year in YEARS:
             with self.subTest(year=year):
@@ -594,6 +642,43 @@ class LoadRefusalTests(unittest.TestCase):
                 self._refuses(
                     rf"all three or none.*missing.*`{key}`",
                     **{missing: None})
+
+    def test_a_single_field_refuses_naming_the_other_two(self):
+        keys = {"routing": "refund_routing_number",
+                "account": "refund_account_number",
+                "account_type": "refund_account_type"}
+        for only in keys:
+            with self.subTest(only=only):
+                fields = {name: None for name in keys if name != only}
+                scenario = _with_deposit(_federal(2025), **fields)
+                with self.assertRaisesRegex(
+                        ValueError, r"all three or none") as cm:
+                    enforce_scoped_refusals(scenario, "load")
+                missing = str(cm.exception).split("missing", 1)[1]
+                for name, key in keys.items():
+                    if name == only:
+                        self.assertNotIn(f"`{key}`", missing)
+                    else:
+                        self.assertIn(f"`{key}`", missing)
+
+    def test_digits_outside_ascii_are_refused(self):
+        """str.isdigit() accepts fullwidth and Arabic-Indic digits; a form
+        cannot carry them. Each value below has a valid length, and the
+        fullwidth routing number is 991234561 digit for digit."""
+        fullwidth_routing = "\uff19\uff19\uff11\uff12\uff13\uff14\uff15\uff16\uff11"
+        arabic_indic_account = "\u0661\u0662\u0663\u0664\u0665\u0666"
+        self.assertTrue(fullwidth_routing.isdigit())
+        self.assertEqual(len(fullwidth_routing), 9)
+        self.assertTrue(arabic_indic_account.isdigit())
+        self._refuses(
+            r"`refund_routing_number`.*other than the digits 0-9",
+            routing=fullwidth_routing)
+        self._refuses(
+            r"`refund_account_number`.*other than the digits 0-9",
+            account=arabic_indic_account)
+        self._refuses(
+            r"`refund_account_number`.*other than the digits 0-9",
+            account="12345\uff16")
 
     def test_routing_number_must_be_nine_digits_passing_the_checksum(self):
         for bad in ("991234562",     # checksum off by one
@@ -696,6 +781,135 @@ class AmendmentPacketRefusalTests(unittest.TestCase):
                     case=None, filed_path=Path(tmp) / "none.pdf",
                     ca_filed_path=Path(tmp) / "none_ca.pdf", output_dir=out)
             self.assertFalse(out.exists())
+
+
+class LoaderBypassedCallerTests(_FederalEmitCase):
+    """A scenario built in memory and handed straight to the emit step never
+    passed the loader. A bad set still cannot print."""
+
+    BAD_SETS = (
+        ("checksum", {"routing": "991234562"}, r"`refund_routing_number`"),
+        ("partial", {"account": None}, r"all three or none"),
+        ("letters", {"account": "ABCD1234"}, r"`refund_account_number`"),
+        ("type", {"account_type": "Checking"}, r"`refund_account_type`"),
+    )
+
+    def test_emit_pdfs_refuses_a_hand_built_bad_set_and_writes_no_1040(self):
+        good = _federal(2025)
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.tmp / "work")
+        results = orchestrator.compute_federal(good)
+        self.assertGreater(results["refund"], 0)
+        for label, fields, pattern in self.BAD_SETS:
+            with self.subTest(bad=label):
+                out = self.tmp / f"out_{label}"
+                with self.assertRaisesRegex(ValueError, pattern):
+                    orchestrator.emit_pdfs(
+                        _with_deposit(good, **fields), results, out)
+                self.assertEqual(list(out.glob("f1040*.pdf")), [])
+        # Twin: the same call with the valid set prints.
+        emitted = orchestrator.emit_pdfs(
+            _with_deposit(good), results, self.tmp / "out_good")
+        self.assertEqual(
+            _values(emitted["1040"])[F1040[2025]["routing"]], ROUTING)
+
+    def test_the_value_builders_themselves_refuse(self):
+        """The guard inside the one read path, with no ledger pass in front
+        of it: the 1040 value builder and the Form 540 presentation keys."""
+        from tenforty.forms import f540 as form_f540
+        for label, fields, pattern in self.BAD_SETS:
+            bad = _with_deposit(_federal(2025), **fields)
+            with self.subTest(bad=label, form="1040"):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    ReturnOrchestrator._form_1040_direct_deposit_values(
+                        bad, {"refund": 100})
+            with self.subTest(bad=label, form="540"):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    form_f540.presentation_keys(bad.config, bad.w2s, 2025)
+        good = _with_deposit(_federal(2025))
+        self.assertEqual(
+            ReturnOrchestrator._form_1040_direct_deposit_values(
+                good, {"refund": 100})["refund_routing_number"], ROUTING)
+        self.assertEqual(
+            form_f540.presentation_keys(good.config, good.w2s, 2025)[
+                "f540_refund_routing_number"], ROUTING)
+
+
+class SnapshotRedactionTests(unittest.TestCase):
+    """`summary.write_results_snapshot` serializes the whole results dict,
+    and the California results carry the deposit numbers on their way to
+    the form. The snapshot never contains them."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_a_deposit_carrying_ca_snapshot_contains_neither_number(self):
+        from tenforty import summary
+        scenario = _with_deposit(
+            make_ca_scenario(2024, state_tax_withheld=9_000.0))
+        results, _pdfs = emit_ca(scenario)
+        # The premise: the numbers ARE in the dict being snapshotted.
+        self.assertEqual(results["f540_refund_routing_number"], ROUTING)
+        self.assertEqual(results["f540_refund_account_number"], ACCOUNT)
+        path = summary.write_results_snapshot(
+            results, self.tmp / "snap.json", year=2024, label="CA")
+        text = path.read_text()
+        self.assertNotIn(ROUTING, text)
+        self.assertNotIn(ACCOUNT, text)
+        loaded = summary.load_results_snapshot(path)["results"]
+        self.assertNotIn("f540_refund_routing_number", loaded)
+        self.assertNotIn("f540_refund_account_number", loaded)
+        # Everything else is still there, including the account type.
+        self.assertEqual(loaded["f540_refund_account_type"], "checking")
+        self.assertEqual(
+            set(results) - set(loaded),
+            {"f540_refund_routing_number", "f540_refund_account_number"})
+        # The caller's dict is not modified.
+        self.assertEqual(results["f540_refund_routing_number"], ROUTING)
+
+    def test_redaction_reaches_any_key_ending_in_the_two_suffixes(self):
+        """By key suffix, at any depth -- so a future field is covered."""
+        from tenforty import summary
+        results = {
+            "refund_routing_number": ROUTING,
+            "some_future_account_number": ACCOUNT,
+            "nested": {"x_routing_number": ROUTING, "kept": 1,
+                       "rows": [{"y_account_number": ACCOUNT, "kept": 2}]},
+            "routing_number_count": 3,          # suffix does not match
+            "account_number_note": "kept",      # suffix does not match
+        }
+        path = summary.write_results_snapshot(
+            results, self.tmp / "snap.json", year=2024, label="x")
+        text = path.read_text()
+        self.assertNotIn(ROUTING, text)
+        self.assertNotIn(ACCOUNT, text)
+        self.assertEqual(summary.load_results_snapshot(path)["results"], {
+            "nested": {"kept": 1, "rows": [{"kept": 2}]},
+            "routing_number_count": 3,
+            "account_number_note": "kept",
+        })
+
+    def test_a_snapshot_without_deposit_keys_is_byte_identical(self):
+        """The twin: with nothing to redact, the file is exactly what the
+        unredacted serialization of the same dict would be."""
+        import json
+        from tenforty import summary
+        results, _pdfs = emit_ca(
+            make_ca_scenario(2024, state_tax_withheld=9_000.0))
+        self.assertEqual(
+            [k for k in results if k.endswith(
+                ("_routing_number", "_account_number"))], [])
+        path = summary.write_results_snapshot(
+            results, self.tmp / "snap.json", year=2024, label="CA")
+        loaded = json.loads(path.read_text())
+        expected = json.dumps({
+            "schema": summary.SNAPSHOT_SCHEMA, "year": 2024, "label": "CA",
+            "created_at": loaded["created_at"], "scenario": None,
+            "emitted": [], "results": dict(results),
+        }, indent=2, default=str) + "\n"
+        self.assertEqual(path.read_text(), expected)
 
 
 if __name__ == "__main__":
