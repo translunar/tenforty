@@ -28,10 +28,27 @@ different dollar:
 State the prior in whole dollars and the return emits. The refusal also fires
 when the file cannot be written.
 
-Residual risk, stated rather than hidden: `evaluate` rounds as the engine
-does (`irs_round`, half up). A real spreadsheet's ROUND agrees except
-possibly where a product lands within floating-point error of a half
-dollar; that cannot be checked without running one.
+THREE ARITHMETICS, AND WHERE THEY AGREE. The engine rounds the exact decimal
+product, half up (`rounding.irs_round_product`): that is the legally correct
+figure and the one on the printed form. The mirror does the same arithmetic
+-- exact decimal, each operand read as the decimal it was written as -- so
+mirror and engine agree wherever the formula is the engine's rule. A real
+spreadsheet multiplies in binary floating point and its ROUND works to 15
+significant digits; that agrees with the exact figure as long as the exact
+product fits in 15 digits. A dollars-and-cents basis times a table rate has
+at most seven decimal places, so agreement is guaranteed while the product
+is under $100,000,000.
+
+At $100,000,000 and above the engine stays exact and a spreadsheet's ROUND
+may display one dollar more. Observed: 1,400,008,872.42 x 0.07219 is
+101,066,640.4999998 exactly; the engine gives 101,066,640 and LibreOffice
+26.2.2.2 shows 101,066,641. That is the spreadsheet's precision ceiling,
+not a defect in the figure, and the return still emits: every row holding
+such a product carries a visible note (`PRECISION_NOTE`), so a tie-out a
+filer sees FAIL in their spreadsheet is explained on the page where the
+discrepancy arises. Below the threshold, agreement with LibreOffice was
+checked by probe on 706 formula cells, including products exactly on the
+half dollar (25,000 x 0.0197 = 492.50 -> 493); no spreadsheet runs here.
 
 FAIL-CLOSED: the mirror evaluates every formula cell on every sheet. A
 formula it cannot read (anything but arithmetic, comparisons, references and
@@ -50,11 +67,11 @@ Activity # column and the zero floor: the deduction is
 the numeric Activity #, never on the activity label: a label is user text and
 could carry SUMIF wildcards.
 """
-import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
+from decimal import ROUND_HALF_UP, Context, Decimal
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -96,6 +113,13 @@ GRID_TABLES: frozenset[str] = frozenset(_TABLE_CITATIONS)
 TOLERANCE = 0.005
 VERDICT_FORMULA = '=IF(ABS(E{row})<0.005,"PASS","FAIL")'
 NET_481A_FORMULA = "=SUM(E2:E{last})"
+
+# A product this large can need 16 significant digits; a spreadsheet keeps 15
+# (see the module docstring).
+SPREADSHEET_EXACT_BELOW = Decimal(100_000_000)
+PRECISION_NOTE = (
+    "spreadsheet ROUND may show $1 above the engine's exact figure at this "
+    "magnitude \u2014 the printed form is exact; see module docstring")
 
 TIE_OUT_HEADERS = (
     "Claim", "Computed", "Printed on form", "Source of printed figure",
@@ -182,21 +206,47 @@ def _tokens(text: str) -> list[tuple[str, str]]:
     return out
 
 
-def _round_half_up(value: float, digits: int) -> float:
-    scale = 10 ** digits
-    scaled = value * scale
-    rounded = (math.floor(scaled + 0.5) if scaled >= 0
-               else -math.floor(-scaled + 0.5))
-    return rounded / scale
+# The mirror's arithmetic is EXACT DECIMAL, read the way the engine reads its
+# own operands (`rounding.irs_round_product`): a float is the decimal it was
+# written as (25000.0 -> 25000, 0.0197 -> 0.0197), products and sums are
+# exact, and ROUND rounds once, half up. Wide enough that no operation here
+# is itself rounded.
+_CONTEXT = Context(prec=60)
 
 
-def _number(value) -> float:
+def _is_number(value) -> bool:
+    return (isinstance(value, (int, float, Decimal))
+            and not isinstance(value, bool))
+
+
+def _number(value) -> Decimal:
     # An empty cell is zero in arithmetic, as in a spreadsheet.
     if value is None:
-        return 0.0
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return Decimal(0)
+    if isinstance(value, Decimal):
+        return value
+    if not _is_number(value):
         raise FormulaError(f"arithmetic on a non-number: {value!r}")
+    return Decimal(str(value))
+
+
+def _round_half_up(value: Decimal, digits) -> Decimal:
+    return value.quantize(
+        Decimal(1).scaleb(-int(digits)), rounding=ROUND_HALF_UP,
+        context=_CONTEXT)
+
+
+def _plain(value):
+    """A mirror value as an ordinary Python number: 500, not Decimal('500')."""
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else float(value)
     return value
+
+
+def _same(left, right) -> bool:
+    if _is_number(left) and _is_number(right):
+        return _number(left) == _number(right)
+    return left == right
 
 
 def _flatten(args) -> list:
@@ -245,25 +295,31 @@ class _Evaluator:
         if op is None:
             return left
         right = self._sum()
+        if op == "=":
+            return _same(left, right)
+        if op == "<>":
+            return not _same(left, right)
+        if _is_number(left) and _is_number(right):
+            left, right = _number(left), _number(right)
         return {
-            "<": left < right, ">": left > right, "<=": left <= right,
-            ">=": left >= right, "=": left == right, "<>": left != right,
-        }[op]
+            "<": lambda: left < right, ">": lambda: left > right,
+            "<=": lambda: left <= right, ">=": lambda: left >= right,
+        }[op]()
 
     def _sum(self):
         value = self._product()
         while (op := self._op("+", "-")) is not None:
             other = _number(self._product())
-            value = _number(value) + other if op == "+" else (
-                _number(value) - other)
+            value = (_CONTEXT.add(_number(value), other) if op == "+"
+                     else _CONTEXT.subtract(_number(value), other))
         return value
 
     def _product(self):
         value = self._unary()
         while (op := self._op("*", "/")) is not None:
             other = _number(self._unary())
-            value = _number(value) * other if op == "*" else (
-                _number(value) / other)
+            value = (_CONTEXT.multiply(_number(value), other) if op == "*"
+                     else _CONTEXT.divide(_number(value), other))
         return value
 
     def _unary(self):
@@ -274,7 +330,7 @@ class _Evaluator:
     def _primary(self):
         kind, text = self._take()
         if kind == "number":
-            return float(text) if "." in text else int(text)
+            return Decimal(text)
         if kind == "string":
             return text
         if kind == "name":
@@ -292,12 +348,12 @@ class _Evaluator:
     def _reference(self, sheet: str, first: str):
         first = first.replace("$", "")
         if self._op(":") is None:
-            return cell_value(self.workbook, sheet, first, self.cache)
+            return _cell(self.workbook, sheet, first, self.cache)
         last = self._take("cell")[1].replace("$", "")
         min_col, min_row, max_col, max_row = range_boundaries(
             f"{first}:{last}")
         return [
-            cell_value(
+            _cell(
                 self.workbook, sheet, f"{get_column_letter(col)}{row}",
                 self.cache)
             for row in range(min_row, max_row + 1)
@@ -320,16 +376,35 @@ class _Evaluator:
             (value,) = args
             return abs(_number(value))
         if name == "SUM":
-            return sum(_number(v) for v in _flatten(args))
+            return sum(
+                (_number(v) for v in _flatten(args)), start=Decimal(0))
         if name == "SUMIF":
             keys, criterion, values = args
             return sum(
-                _number(v) for k, v in zip(keys, values, strict=True)
-                if k == criterion)
+                (_number(v) for k, v in zip(keys, values, strict=True)
+                 if _same(k, criterion)), start=Decimal(0))
         if name == "IF":
             test, when_true, when_false = args
             return when_true if test else when_false
         raise FormulaError(f"unsupported function {name}")
+
+
+def _cell(workbook, sheet: str, coordinate: str, cache: dict):
+    key = (sheet, coordinate)
+    if key not in cache:
+        cell = workbook[sheet][coordinate]
+        cache[key] = (
+            _formula(workbook, sheet, cell.value, cache)
+            if cell.data_type == "f" else cell.value)
+    return cache[key]
+
+
+def _formula(workbook, sheet: str, formula: str, cache: dict):
+    if not formula.startswith("="):
+        raise FormulaError(f"not a formula: {formula!r}")
+    value = _Evaluator(workbook, sheet, formula[1:], cache).result()
+    # A formula that is a bare reference to an empty cell shows zero.
+    return Decimal(0) if value is None else value
 
 
 def cell_value(workbook, sheet: str, coordinate: str,
@@ -340,14 +415,8 @@ def cell_value(workbook, sheet: str, coordinate: str,
     coordinate)``; pass one dict across calls to share it. It is what keeps
     the cost linear: each Year-by-year cumulative cell is referenced twice by
     the row below it, so without it the work doubles with every year row."""
-    cache = {} if cache is None else cache
-    key = (sheet, coordinate)
-    if key not in cache:
-        cell = workbook[sheet][coordinate]
-        cache[key] = (
-            evaluate(workbook, sheet, cell.value, cache)
-            if cell.data_type == "f" else cell.value)
-    return cache[key]
+    return _plain(_cell(
+        workbook, sheet, coordinate, {} if cache is None else cache))
 
 
 def evaluate(workbook, sheet: str, formula: str, cache: dict | None = None):
@@ -356,13 +425,9 @@ def evaluate(workbook, sheet: str, formula: str, cache: dict | None = None):
 
     Reads exactly what this module writes: numbers, strings, cell and range
     references, + - * /, comparisons, and ROUND, MIN, MAX, ABS, SUM, SUMIF,
-    IF. Anything else raises `FormulaError`."""
-    if not formula.startswith("="):
-        raise FormulaError(f"not a formula: {formula!r}")
-    value = _Evaluator(
-        workbook, sheet, formula[1:], {} if cache is None else cache).result()
-    # A formula that is a bare reference to an empty cell shows zero.
-    return 0 if value is None else value
+    IF. Anything else raises `FormulaError`. Arithmetic is exact decimal."""
+    return _plain(_formula(
+        workbook, sheet, formula, {} if cache is None else cache))
 
 
 # --- Layout ----------------------------------------------------------------
@@ -421,6 +486,17 @@ def _asset_provenance(asset: AssetAudit) -> str:
         prior += (" (stated, differs from the tables: "
                   "acknowledges_prior_depreciation_as_stated)")
     return f"{basis}. {prior}"
+
+
+def _precision_note(basis: float, rate) -> str:
+    """The note for a row whose product ``basis`` x ``rate`` is too large
+    for a spreadsheet to round reliably; empty below the threshold."""
+    if rate is None:
+        return ""
+    product = _CONTEXT.multiply(_number(basis), _number(rate))
+    if product < SPREADSHEET_EXACT_BELOW:
+        return ""
+    return f". Note: {PRECISION_NOTE}"
 
 
 def _year_source(asset: AssetAudit, rate) -> str:
@@ -505,7 +581,8 @@ class _Builder:
             sheet[f"K{r}"] = f"=ROUND(MAX(0,MIN(I{r}*H{r},I{r}-J{r})),0)"
             sheet[f"L{r}"] = f"=J{r}+K{r}"
             sheet[f"M{r}"] = _form_line(asset, self.year)
-            _text(sheet, f"N{r}", _asset_provenance(asset))
+            _text(sheet, f"N{r}", _asset_provenance(asset) + _precision_note(
+                asset.basis, asset.current.rate))
             subject = _subject(asset)
             self._expect(sheet, f"H{r}", asset.current.rate or 0.0, subject,
                          "`recovery_class` / `date_placed_in_service`")
@@ -533,7 +610,9 @@ class _Builder:
                         f"=ROUND(MAX(0,MIN({basis}*D{n},"
                         f"{basis}-F{n - 1})),0)")
                     sheet[f"F{n}"] = f"=F{n - 1}+E{n}"
-                sheet[f"G{n}"] = _year_source(asset, year.rate)
+                sheet[f"G{n}"] = (
+                    _year_source(asset, year.rate)
+                    + _precision_note(asset.basis, year.rate))
                 subject = f"{_subject(asset)}, tax year {year.tax_year}"
                 self._expect(sheet, f"E{n}", year.amount, subject, "`basis`")
                 self._expect(sheet, f"F{n}", year.taken_before + year.amount,
@@ -718,7 +797,7 @@ def formula_cells(workbook) -> list[tuple[str, str]]:
 
 # What evaluating a formula this module did not write can raise.
 _UNREADABLE = (
-    FormulaError, TypeError, ValueError, KeyError, ZeroDivisionError,
+    FormulaError, TypeError, ValueError, KeyError, ArithmeticError,
     RecursionError)
 
 
