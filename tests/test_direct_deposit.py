@@ -463,6 +463,28 @@ class NoRefund1040Tests(_FederalEmitCase):
                          if ROUTING in value or ACCOUNT in value], [])
 
 
+class Line35aGateTests(unittest.TestCase):
+    """The gate reads line 35a (`refund`), not line 34 (`overpaid`). No
+    computed return separates the two today (nothing produces line 36), so
+    this asks the value builder directly with results that do."""
+
+    def test_an_overpayment_with_no_refund_prints_nothing(self):
+        scenario = _with_deposit(_federal(2025))
+        builder = ReturnOrchestrator._form_1040_direct_deposit_values
+        self.assertEqual(
+            builder(scenario, {"overpaid": 5_000, "refund": 0}), {})
+        self.assertEqual(builder(scenario, {"overpaid": 5_000}), {})
+        self.assertEqual(
+            builder(scenario, {"overpaid": 5_000, "refund": None}), {})
+        # Twin: a refund prints, whatever line 34 says.
+        self.assertEqual(
+            builder(scenario, {"overpaid": 0, "refund": 5_000}),
+            {"refund_routing_number": ROUTING,
+             "refund_account_number": ACCOUNT,
+             "refund_account_type_checking": True,
+             "refund_account_type_savings": False})
+
+
 class Mapping540Tests(unittest.TestCase):
     def test_line_116_cells_are_gated_derivations_not_plain_mappings(self):
         """A plain key -> cell mapping would print the numbers whether or

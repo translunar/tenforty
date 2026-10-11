@@ -3180,7 +3180,15 @@ class ReturnOrchestrator:
         With no refund on this form the boxes stay blank: bank details on a
         balance-due return would be an error, and the same fields may still
         print on the other return (a federal balance due beside a California
-        refund is an ordinary shape). No refusal either way."""
+        refund is an ordinary shape). No refusal either way.
+
+        The gate reads `refund` (line 35a), the line the bank details belong
+        to, not `overpaid` (line 34). Today the two are always equal: the
+        spine elects the full refund and nothing produces line 36 (applied
+        to next year's estimated tax), so gating on either gives the same
+        result. Line 35a is the right one once line 36 is wired -- an
+        overpayment applied entirely to estimated tax leaves no refund to
+        deposit."""
         deposit = refund_direct_deposit(scenario.config)
         if deposit is None or not (results.get("refund") or 0) > 0:
             return {}

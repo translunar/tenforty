@@ -170,6 +170,36 @@ class CoverOverflowError(ValueError):
 # Snapshots
 # ---------------------------------------------------------------------------
 
+# Result keys never written to a snapshot, by suffix: bank routing and
+# account numbers (the California results carry the direct deposit numbers on
+# their way to Form 540 line 116). A snapshot is a review artifact that gets
+# kept and compared; it has no use for them. Matching by suffix covers any
+# such key added later, at any depth of the results.
+SNAPSHOT_REDACTED_KEY_SUFFIXES: tuple[str, ...] = (
+    "_routing_number", "_account_number")
+
+
+def _without_redacted_keys(value):
+    """``value`` with every mapping key ending in a redacted suffix dropped,
+    recursively through mappings, lists and tuples. Returns ``value`` itself
+    (never a copy) when it holds nothing to drop, so an unaffected snapshot
+    serializes exactly as before."""
+    if isinstance(value, Mapping):
+        kept = {
+            key: _without_redacted_keys(item) for key, item in value.items()
+            if not (isinstance(key, str)
+                    and key.endswith(SNAPSHOT_REDACTED_KEY_SUFFIXES))}
+        unchanged = len(kept) == len(value) and all(
+            kept[key] is value[key] for key in kept)
+        return value if unchanged else kept
+    if isinstance(value, (list, tuple)):
+        items = [_without_redacted_keys(item) for item in value]
+        if all(new is old for new, old in zip(items, value)):
+            return value
+        return type(value)(items) if isinstance(value, tuple) else items
+    return value
+
+
 def write_results_snapshot(
     results: Mapping,
     path,
@@ -188,6 +218,10 @@ def write_results_snapshot(
     mapping (or any iterable of form names); only the names are kept.
     Values JSON cannot represent (paths, dates, decimals, enums) are written
     as their ``str()``.
+
+    Keys ending in `SNAPSHOT_REDACTED_KEY_SUFFIXES` (bank routing and
+    account numbers) are left out, at any depth. ``results`` itself is not
+    modified.
     """
     path = Path(path)
     scenario = None
@@ -205,7 +239,7 @@ def write_results_snapshot(
             timespec="seconds"),
         "scenario": scenario,
         "emitted": sorted(str(name) for name in (emitted or ())),
-        "results": dict(results),
+        "results": dict(_without_redacted_keys(results)),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(snapshot, indent=2, default=str) + "\n")
