@@ -1339,6 +1339,14 @@ def _merged_4562_with_override(s: Scenario) -> list[str]:
             if act.depreciation_override is not None]
 
 
+def activities_with_assets(scenario: Scenario) -> list:
+    """``(label, activity)`` for every activity that lists assets: the
+    activities whose assets a Form 4562 for this return would carry."""
+    return [(label, act)
+            for _sec, _i, label, act in depreciation_activities(scenario)
+            if act.depreciable_assets]
+
+
 def _unacknowledged_listed_property(s: Scenario) -> list[str]:
     """Every personal-property asset on the return, unless the scenario
     states it has no listed property. Real property cannot be listed
