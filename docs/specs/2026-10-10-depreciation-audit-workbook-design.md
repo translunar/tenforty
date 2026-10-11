@@ -86,8 +86,12 @@ write_depreciation_audit(resolved, printed, out_path) -> Path
 - The orchestrator calls it once per return emit, after form fill,
   before the manifest.
 
-The module owns all layout. Nothing in the forms layer knows the workbook
-exists; nothing in the audit module recomputes tax.
+The module owns all layout. The forms layer exposes two generic printed
+facts the workbook reads — `forms/f3115.printed_adjustment` (line 26 as a
+number) and `forms/f4562.printed_row_label` (line 19 lettering by form
+year; 27.5-year prints on 19h and 39-year on 19i through 2024, 19i/19j
+from 2025) — and otherwise knows nothing of the workbook; nothing in the
+audit module recomputes tax.
 
 ## Workbook contents
 
