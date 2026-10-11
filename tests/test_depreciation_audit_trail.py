@@ -224,8 +224,9 @@ class MacrsRateRefactorTests(unittest.TestCase):
         checked = 0
         for quarter, table in macrs_mid_quarter.TABLES_BY_QUARTER.items():
             for class_years, column in table.items():
+                # The stated quarter must be the placement date's own.
                 asset = self._asset(
-                    f"{class_years}-year", date(2000, 6, 1),
+                    f"{class_years}-year", date(2000, quarter * 3 - 1, 1),
                     convention="mid-quarter", quarter=quarter)
                 for recovery_year, cell in column.items():
                     with self.subTest(quarter=quarter, cls=class_years,
@@ -277,7 +278,7 @@ class MacrsRateRefactorTests(unittest.TestCase):
         for quarter, table in ((1, "A-2"), (2, "A-3"), (3, "A-4"), (4, "A-5")):
             with self.subTest(quarter=quarter):
                 self.assertEqual(macrs.table_identity(
-                    self._asset("7-year", date(2000, 6, 1),
+                    self._asset("7-year", date(2000, quarter * 3 - 1, 1),
                                 convention="mid-quarter", quarter=quarter),
                     return_year=2060, mid_quarter=False), table)
 

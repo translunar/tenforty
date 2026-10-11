@@ -32,13 +32,14 @@ from tenforty.attestations import (
     has_unattested_bonus_history, stated_convention_problem,
 )
 from tenforty.forms.depreciation.macrs import (
-    asset_convention, macrs_deduction, method_for, require_answer,
+    asset_convention, macrs_deduction, macrs_rate, method_for,
+    require_answer, table_identity,
 )
 from tenforty.models import (
     PERSONAL_PROPERTY_CLASSES, SUPPORTED_RECOVERY_CLASSES, DepreciableAsset,
     RentalProperty, ScheduleCBusiness,
 )
-from tenforty.rounding import irs_round
+from tenforty.rounding import irs_round, irs_round_product
 
 MODE_NONE = "none"
 MODE_STATED = "stated"
@@ -248,6 +249,134 @@ def resolve(activity, tax_year: int, *,
             engine_amount=engine, per_asset=rows)
     return ResolvedDepreciation(
         amount=engine, mode=MODE_ASSETS, engine_amount=engine, per_asset=rows)
+
+
+# --- Audit trail -----------------------------------------------------------
+#
+# The arithmetic above, exposed step by step for the depreciation audit
+# workbook (tenforty/audit/depreciation_workbook.py) to transcribe. Nothing
+# here computes a figure the forms do not already use: `current` is
+# `asset_amount`, and `years` is `reconstruct_prior_depreciation` unrolled.
+
+@dataclass(frozen=True)
+class AuditYear:
+    recovery_year: int
+    tax_year: int
+    # The table cell; None when the table has none (recovery period ended).
+    rate: float | None
+    table_amount: int
+    # The table amount held to the basis ceiling, given `taken_before`.
+    amount: int
+    taken_before: int
+
+
+@dataclass(frozen=True)
+class AssetAudit:
+    activity_label: str
+    section: str
+    activity_index: int
+    # Position in the activity's `depreciable_assets`.
+    asset_index: int
+    description: str
+    date_placed_in_service: date
+    recovery_class: str
+    method: str
+    convention: str
+    quarter: int | None
+    # Pub 946 Appendix A table (one of `macrs.TABLE_IDS`).
+    table: str
+    basis: float
+    # As stated on the asset (None when placed in the return year).
+    prior_depreciation: float | None
+    prior_acknowledged: bool
+    # Placement year through the return year, by the TABLES alone.
+    years: tuple[AuditYear, ...]
+    # The return year as the forms use it: `taken_before` is the stated
+    # prior on the acknowledged-mismatch path, else the reconstruction.
+    current: AuditYear
+
+
+@dataclass(frozen=True)
+class ActivityAudit:
+    label: str
+    section: str
+    index: int
+    mode: str
+    used_amount: float
+    engine_amount: int
+    override_amount: float | None
+    restates_engine_amount: float | None
+    assets: tuple[AssetAudit, ...]
+
+
+def _asset_audit(asset: DepreciableAsset, tax_year: int, *, mid_quarter: bool,
+                 **identity) -> AssetAudit:
+    def rate_for(year: int) -> float | None:
+        return macrs_rate(
+            asset, year, return_year=tax_year, mid_quarter=mid_quarter)
+
+    placed = asset.date_placed_in_service.year
+    years, taken = [], 0
+    for year in range(placed, tax_year + 1):
+        rate = rate_for(year)
+        table = irs_round_product(asset.basis, rate or 0.0)
+        amount = _capped(table, asset.basis, taken)
+        years.append(AuditYear(
+            recovery_year=year - placed + 1, tax_year=year, rate=rate,
+            table_amount=table, amount=amount, taken_before=taken))
+        taken += amount
+
+    acknowledged = (asset.acknowledges_prior_depreciation_as_stated
+                    and asset.prior_depreciation is not None)
+    amount, table = asset_amount(asset, tax_year, mid_quarter=mid_quarter)
+    current = AuditYear(
+        recovery_year=tax_year - placed + 1, tax_year=tax_year,
+        rate=rate_for(tax_year), table_amount=table, amount=amount,
+        taken_before=(irs_round(asset.prior_depreciation) if acknowledged
+                      else years[-1].taken_before))
+    convention, quarter = asset_convention(
+        asset, return_year=tax_year, mid_quarter=mid_quarter)
+    return AssetAudit(
+        description=asset.description,
+        date_placed_in_service=asset.date_placed_in_service,
+        recovery_class=asset.recovery_class,
+        method=method_for(asset.recovery_class),
+        convention=convention, quarter=quarter,
+        table=table_identity(
+            asset, return_year=tax_year, mid_quarter=mid_quarter),
+        basis=asset.basis,
+        prior_depreciation=asset.prior_depreciation,
+        prior_acknowledged=acknowledged,
+        years=tuple(years), current=current, **identity)
+
+
+def audit_trail(scenario) -> tuple[ActivityAudit, ...]:
+    """One `ActivityAudit` per ASSET-MODE activity on the return (none for a
+    stated-mode or no-depreciation activity), in `depreciation_activities`
+    order. Each activity goes through `resolve` first, so the ledger runs."""
+    year = scenario.config.year
+    mid_quarter = mid_quarter_applies(scenario)
+    trail = []
+    for section, index, label, activity in depreciation_activities(scenario):
+        resolved = resolve(activity, year, mid_quarter=mid_quarter)
+        if resolved.mode not in (MODE_ASSETS, MODE_ASSETS_OVERRIDDEN):
+            continue
+        override = activity.depreciation_override
+        trail.append(ActivityAudit(
+            label=label, section=section, index=index, mode=resolved.mode,
+            used_amount=resolved.amount,
+            engine_amount=resolved.engine_amount,
+            override_amount=None if override is None else override.amount,
+            restates_engine_amount=(
+                None if override is None
+                else override.restates_engine_amount),
+            assets=tuple(
+                _asset_audit(
+                    asset, year, mid_quarter=mid_quarter,
+                    activity_label=label, section=section,
+                    activity_index=index, asset_index=n)
+                for n, asset in enumerate(activity.depreciable_assets))))
+    return tuple(trail)
 
 
 # --- The mid-quarter 40% test (taxpayer-wide) ------------------------------
