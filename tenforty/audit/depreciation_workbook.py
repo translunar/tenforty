@@ -21,8 +21,22 @@ does (`irs_round`, half up). A real spreadsheet's ROUND agrees except
 possibly where a product lands within floating-point error of a half
 dollar; that cannot be checked without running one.
 
+FAIL-CLOSED: the mirror evaluates every formula cell on every sheet. A
+formula it cannot read (anything but arithmetic, comparisons, references and
+ROUND, MIN, MAX, ABS, SUM, SUMIF, IF) is a
+refusal, never a skipped cell.
+
 Sheets, in order: Tie-outs, Assets, Year-by-year, and 481(a) when the
 scenario carries a `form_3115:` block.
+
+Assets columns: A Activity #, B Activity, C Description, D In service,
+E Method, F Life, G Convention, H Rate, I Basis, J Prior accumulated,
+K Deduction, L Accumulated after, M 4562 line, N Provenance. (The design
+spec's example formula `=ROUND(MIN(G2*F2,G2-H2),0)` predates the leading
+Activity # column and the zero floor: the deduction is
+`=ROUND(MAX(0,MIN(I2*H2,I2-J2)),0)` in column K.) Activity tie-outs SUMIF on
+the numeric Activity #, never on the activity label: a label is user text and
+could carry SUMIF wildcards.
 """
 import math
 import re
@@ -663,20 +677,45 @@ def _year_of(resolved: tuple[ActivityAudit, ...]) -> int:
     return resolved[0].assets[0].current.tax_year
 
 
+def formula_cells(workbook) -> list[tuple[str, str]]:
+    """``(sheet, coordinate)`` of every formula cell in ``workbook``."""
+    return [
+        (sheet.title, cell.coordinate)
+        for sheet in workbook.worksheets for row in sheet.iter_rows()
+        for cell in row if cell.data_type == "f"]
+
+
+# What evaluating a formula this module did not write can raise.
+_UNREADABLE = (
+    FormulaError, TypeError, ValueError, KeyError, ZeroDivisionError)
+
+
 def _mirror_mismatches(workbook, expectations) -> list[str]:
-    reasons = []
-    for e in expectations:
+    """Why the workbook does not reproduce the engine. FAIL-CLOSED: every
+    formula cell on every sheet is evaluated, whether or not the engine has
+    a figure for it, and one the mirror cannot read is a reason -- never a
+    cell it skips."""
+    reasons, values = [], {}
+    for sheet, coordinate in formula_cells(workbook):
         try:
-            got = cell_value(workbook, e.sheet, e.coordinate)
-            differs = abs(got - e.expected) >= TOLERANCE
-        except (FormulaError, TypeError) as error:
-            got, differs = f"unreadable ({error})", True
-        if differs:
+            values[(sheet, coordinate)] = cell_value(
+                workbook, sheet, coordinate)
+        except _UNREADABLE as error:
             reasons.append(
-                f"{e.subject}: the workbook formula at "
-                f"{e.sheet}!{e.coordinate} gives {_figure(got)} where the "
-                f"engine's figure is {_figure(e.expected)} (inputs: "
-                f"{e.fields})")
+                f"the workbook formula at {sheet}!{coordinate} cannot be "
+                f"checked: {error}")
+    for e in expectations:
+        if (e.sheet, e.coordinate) not in values:
+            continue        # unreadable: already a reason above
+        got = values[(e.sheet, e.coordinate)]
+        if (isinstance(got, (int, float)) and not isinstance(got, bool)
+                and abs(got - e.expected) < TOLERANCE):
+            continue
+        reasons.append(
+            f"{e.subject}: the workbook formula at "
+            f"{e.sheet}!{e.coordinate} gives {_figure(got)} where the "
+            f"engine's figure is {_figure(e.expected)} (inputs: "
+            f"{e.fields})")
     return reasons
 
 
