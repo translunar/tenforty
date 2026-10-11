@@ -55,18 +55,27 @@ def irs_round_product(amount: float, rate: float) -> int:
 
     Each operand is read as the decimal it was written as (``str`` of a
     float is its shortest round-tripping decimal: 0.0197 -> "0.0197"), the
-    two are multiplied exactly, and the product is rounded once. A negative
-    product rounds half away from zero, as `irs_round` does.
+    two are multiplied exactly, and the product is rounded once.
 
-    Two changes to this function change no result, so mutation testing
-    reports them as surviving; both are equivalent mutants, not gaps:
+    A negative product would round half away from zero, as `irs_round`
+    does. That is UNREACHABLE from the depreciation engine -- a negative
+    basis refuses upstream -- and is untested by design.
+
+    Precision. A float amount carries at most 17 significant digits and a
+    rate here 5, so the exact product can need 22: nothing below 22 is safe
+    in general, and 60 is deliberate headroom. Too little precision is a
+    real defect, not a harmless variation -- the multiplication itself then
+    rounds, and 138,538,308.63 x 0.07219 (10,001,080.4999997 exactly) comes
+    out 10,001,081 at 14 digits. That case is pinned by test and fails
+    every precision below 15; the region from 15 to 21 is not exercised by
+    any test.
+
+    Changes to this function that change no result (mutation testing
+    reports them as surviving; they are equivalent mutants, not gaps):
       - quantizing to ``Decimal(10)`` instead of ``Decimal(1)``: `quantize`
         uses only its argument's exponent, and both have exponent 0;
-      - lowering `_PRODUCT_PRECISION` to any value that still holds every
-        digit of the product. The longest product the tests reach has 14
-        significant digits, so 14 passes them; a float amount carries at
-        most 17 significant digits and a rate here 5, so nothing below 22
-        is safe in general and 60 is deliberate headroom."""
+      - any `_PRODUCT_PRECISION` of 22 or more, the default context's 28
+        included: every digit of every reachable product is kept."""
     with localcontext() as context:
         context.prec = _PRODUCT_PRECISION
         product = Decimal(str(amount)) * Decimal(str(rate))
