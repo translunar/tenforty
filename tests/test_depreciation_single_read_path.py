@@ -63,9 +63,6 @@ ASSET_LIST_MODULES: dict[str, str] = {
     "forms/depreciation/resolver.py": "the one door",
 }
 ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
-    ("forms/f4562.py", "scenario_assets"):
-        "Form 4562's read path: flattens the lists for the form's rows and "
-        "the placement-year rule; amounts come from resolver.asset_amount",
     ("forms/f4562.py", "compute_for"):
         "one Form 4562 copy: splits ONE activity's list into this year's "
         "rows and line 17; amounts come from resolver.asset_amount",
@@ -81,9 +78,6 @@ ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
         "ledger, truthiness only",
     ("attestations.py", "_computable_overridden_activities"):
         "ledger: which overridden activities the engine can compute",
-    ("attestations.py", "activities_with_assets"):
-        "truthiness only: which activities list assets, for Form 4562's "
-        "\"business or activity\" header box",
 }
 MACRS_DEDUCTION_MODULES: dict[str, str] = {
     "forms/depreciation/macrs.py": "defines it",

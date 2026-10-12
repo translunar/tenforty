@@ -1,8 +1,10 @@
-"""forms.f4562.compute — Form 4562 Part III Section B (MACRS by class)."""
+"""forms.f4562.compute_for — one Form 4562 copy: Part III line 17, Section
+B (MACRS by class) and line 22, over one activity's assets."""
 
 import unittest
 from datetime import date
 
+from tenforty import attestations
 from tenforty.forms import f4562 as form_f4562
 from tenforty.models import DepreciableAsset
 from tests import _audit_workbook_fixtures as fx
@@ -30,7 +32,7 @@ def _scenario_with_assets(*assets):
 
 class F4562ComputeTests(unittest.TestCase):
     def test_empty_assets_total_zero(self):
-        r = form_f4562.compute(_scenario_with_assets(), upstream={})
+        r = compute_copy(_scenario_with_assets())
         self.assertEqual(r["f4562_line_22_total_depreciation"], 0)
         self.assertEqual(r["f4562_part_iii_section_b_rows"], [])
 
@@ -41,7 +43,7 @@ class F4562ComputeTests(unittest.TestCase):
             basis=200_000.0,
             recovery_class="27.5-year",
         )
-        r = form_f4562.compute(_scenario_with_assets(asset), upstream={})
+        r = compute_copy(_scenario_with_assets(asset))
         self.assertEqual(len(r["f4562_part_iii_section_b_rows"]), 1)
         row = r["f4562_part_iii_section_b_rows"][0]
         self.assertEqual(row["row_label"], "i")
@@ -70,9 +72,7 @@ class F4562ComputeTests(unittest.TestCase):
             basis=2_500.0,
             recovery_class="5-year",
         )
-        r = form_f4562.compute(
-            _scenario_with_assets(building, laptop), upstream={},
-        )
+        r = compute_copy(_scenario_with_assets(building, laptop))
         # 5-year → 19b, 27.5-year → 19i.
         self.assertEqual(r["f4562_line_19b_basis"], 2_500)
         self.assertEqual(r["f4562_line_19b_deduction"], 500)
@@ -91,7 +91,7 @@ class F4562ComputeTests(unittest.TestCase):
             description="Laptop B", date_placed_in_service=date(2025, 7, 1),
             basis=1_500.0, recovery_class="5-year",
         )
-        r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
+        r = compute_copy(_scenario_with_assets(a, b))
         self.assertEqual(len(r["f4562_part_iii_section_b_rows"]), 1)
         # Column (b) is shaded on a personal-property row: no date key.
         self.assertNotIn("f4562_line_19b_date_placed_in_service", r)
@@ -100,7 +100,7 @@ class F4562ComputeTests(unittest.TestCase):
         self.assertEqual(r["f4562_line_19b_deduction"], 800)
 
     def test_identity_fields_from_config(self):
-        r = form_f4562.compute(_scenario_with_assets(), upstream={})
+        r = compute_copy(_scenario_with_assets())
         self.assertEqual(r["taxpayer_name"], "Test Filer")
         self.assertEqual(r["taxpayer_ssn"], "000-00-0000")
 
@@ -113,7 +113,7 @@ class F4562ComputeTests(unittest.TestCase):
             disposed=date(2025, 6, 1),
         )
         with self.assertRaisesRegex(NotImplementedError, "disposition"):
-            form_f4562.compute(_scenario_with_assets(a), upstream={})
+            compute_copy(_scenario_with_assets(a))
 
     def test_basis_rounding_at_half_boundary_follows_irs_half_up(self):
         # Python's built-in round() uses banker's rounding: round(200_000.5) == 200_000
@@ -128,7 +128,7 @@ class F4562ComputeTests(unittest.TestCase):
             description="Accessory", date_placed_in_service=date(2025, 4, 1),
             basis=0.5, recovery_class="5-year",
         )
-        r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
+        r = compute_copy(_scenario_with_assets(a, b))
         # IRS half-up: 200_000.5 → 200_001. Banker's rounding would yield 200_000.
         self.assertEqual(r["f4562_line_19b_basis"], 200_001)
 
@@ -212,6 +212,19 @@ class OneCopyPerActivityTests(unittest.TestCase):
                     copy[LINE_22],
                     copy[form_f4562.LINE_17_KEY]
                     + sum(row["deduction"] for row in copy[ROWS]))
+
+
+class MergedFormIsGoneTests(unittest.TestCase):
+    """The one-form-per-return computation and its read-path adapter are
+    deleted, not wrapped: no alias, no shim, no passthrough."""
+
+    def test_the_merged_entry_points_do_not_exist(self):
+        for name in ("compute", "scenario_assets", "_business_or_activity"):
+            with self.subTest(name=name):
+                self.assertFalse(hasattr(form_f4562, name))
+        self.assertFalse(hasattr(attestations, "activities_with_assets"))
+        # Twin: the per-activity entry point is there.
+        self.assertTrue(hasattr(form_f4562, "compute_for"))
 
 
 if __name__ == "__main__":

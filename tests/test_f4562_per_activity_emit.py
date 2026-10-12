@@ -41,6 +41,7 @@ from tenforty import pdf_packet
 from tenforty.attestations import enforce_scoped_refusals
 from tenforty.forms import f4562
 from tenforty.forms.depreciation.macrs import macrs_deduction
+from tenforty.forms.depreciation.resolver import resolve
 from tenforty.models import DepreciableAsset, ScheduleCBusiness
 from tests import _audit_workbook_fixtures as fx
 from tests import test_f4562_emit_gate as gate
@@ -298,6 +299,13 @@ class RetirementProofTests(gate._EmitCase):
         # Twin: the same override with no placement on its activity loads.
         enforce_scoped_refusals(
             gate._scenario(rentals=[self._overridden_rental()]), "load")
+
+    def test_resolving_the_overridden_activity_alone_does_not_refuse(self):
+        """Re-homed from the retired refusal's test class: resolving the
+        overridden rental directly gives its override amount."""
+        self.assertEqual(
+            resolve(self._overridden_rental(), YEAR, mid_quarter=False).amount,
+            7_000.0)
 
     def test_override_with_no_placement_anywhere_emits_no_copy(self):
         emitted = self._emit(gate._scenario(

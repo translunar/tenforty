@@ -222,15 +222,16 @@ class BasisCeilingReconTests(_Case):
         self.assertEqual(results["sche_line26"], 24_000 - 1_000)
 
     def test_form_4562_total_agrees_with_schedule_e_when_capped(self):
-        """The legacy one-form 4562 lists every asset; it must carry the
-        same capped figure Schedule E line 18 prints, not the raw table."""
-        from tenforty.forms import f4562, sch_e
+        """The activity's Form 4562 copy must carry the same capped figure
+        Schedule E line 18 prints, not the raw table."""
+        from tenforty.forms import sch_e
+        from tests._f4562_helpers import compute_copy
         scenario = self._messy(9_000.0)
         line_18 = sch_e.compute(scenario, upstream={})[
             "sch_e_property_a_depreciation"]
         self.assertEqual(line_18, 1_000)
         self.assertEqual(
-            f4562.compute(scenario, upstream={})[
+            compute_copy(scenario)[
                 "f4562_line_22_total_depreciation"], line_18)
 
     def test_rounding_bound_ceiling_has_its_own_note(self):

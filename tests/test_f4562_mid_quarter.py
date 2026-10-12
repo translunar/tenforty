@@ -24,10 +24,10 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
-from tenforty.forms import f4562 as form_f4562
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.models import DepreciableAsset, RentalProperty
 from tenforty.rounding import irs_round
+from tests._f4562_helpers import compute_copy
 from tests.helpers import make_simple_scenario
 from tests.test_mid_quarter_engine import _patched, _sentinel
 
@@ -299,7 +299,7 @@ class PersonalRowColumnTests(unittest.TestCase):
 class ComputeTests(unittest.TestCase):
     def test_tripped_year_rows_are_mid_quarter(self):
         with _patched():
-            result = form_f4562.compute(_tripped(2025), upstream={})
+            result = compute_copy(_tripped(2025))
         laptop = irs_round(1_000.0 * _sentinel(1, 5, 1))
         desk = irs_round(9_000.0 * _sentinel(4, 7, 1))
         self.assertEqual(result["f4562_line_19b_convention"], "MQ")
@@ -314,7 +314,7 @@ class ComputeTests(unittest.TestCase):
             ["mid-quarter", "mid-quarter"])
 
     def test_untripped_twin_is_half_year(self):
-        result = form_f4562.compute(_untripped(2025), upstream={})
+        result = compute_copy(_untripped(2025))
         self.assertEqual(result["f4562_line_19b_convention"], "HY")
         self.assertEqual(result["f4562_line_19c_convention"], "HY")
         self.assertEqual(result["f4562_line_19b_deduction"], 1_200)
@@ -326,7 +326,7 @@ class ComputeTests(unittest.TestCase):
             _asset("Printer", "5-year", 8, 1_000.0, 2025),
             _asset("Server", "5-year", 12, 8_000.0, 2025))
         with _patched():
-            result = form_f4562.compute(scenario, upstream={})
+            result = compute_copy(scenario)
         self.assertEqual(result["f4562_line_19b_convention"], "MQ")
         self.assertEqual(
             result["f4562_line_19b_deduction"],
@@ -339,7 +339,7 @@ class ComputeTests(unittest.TestCase):
         scenario.rental_properties[0].depreciable_assets.append(
             _asset("Building", "27.5-year", 12, 200_000.0, 2025))
         with _patched():
-            result = form_f4562.compute(scenario, upstream={})
+            result = compute_copy(scenario)
         self.assertEqual(result["f4562_line_19i_convention"], "MM")
         self.assertEqual(result["f4562_line_19b_convention"], "MQ")
 
@@ -352,7 +352,7 @@ class MethodLabelTests(unittest.TestCase):
         for month, tripped in ((3, False), (11, True)):
             scenario = _scenario(2025, *[
                 _asset(cls, cls, month, 1_000.0, 2025) for cls in expected])
-            result = form_f4562.compute(scenario, upstream={})
+            result = compute_copy(scenario)
             for cls, (row, method) in expected.items():
                 with self.subTest(recovery_class=cls, mid_quarter=tripped):
                     self.assertEqual(
@@ -362,17 +362,17 @@ class MethodLabelTests(unittest.TestCase):
                         "MQ" if tripped else "HY")
 
     def test_real_property_is_straight_line(self):
-        result = form_f4562.compute(_scenario(
+        result = compute_copy(_scenario(
             2025, _asset("Building", "27.5-year", 1, 200_000.0, 2025),
-            _asset("Shop", "39-year", 6, 500_000.0, 2025)), upstream={})
+            _asset("Shop", "39-year", 6, 500_000.0, 2025)))
         self.assertEqual(result["f4562_line_19i_method"], "S/L")
         self.assertEqual(result["f4562_line_19j_method"], "S/L")
 
     def test_fifteen_year_row_prints_150_db_on_the_2025_template(self):
         """The filing-visible cell: a fence is 15-year property, and its
         row's column (f) must read "150 DB"."""
-        result = form_f4562.compute(_scenario(
-            2025, _asset("Fence", "15-year", 5, 12_000.0, 2025)), upstream={})
+        result = compute_copy(_scenario(
+            2025, _asset("Fence", "15-year", 5, 12_000.0, 2025)))
         fields = _filled_fields(2025, result)
         self.assertEqual(fields[METHOD_15_YEAR_2025], "150 DB")
         self.assertEqual(
@@ -386,10 +386,10 @@ class MethodLabelTests(unittest.TestCase):
 
     def test_method_prints_in_the_method_column_on_every_layout(self):
         for year in YEARS:
-            result = form_f4562.compute(_scenario(
+            result = compute_copy(_scenario(
                 year,
                 _asset("Laptop", "5-year", 2, 1_000.0, year),
-                _asset("Fence", "15-year", 5, 12_000.0, year)), upstream={})
+                _asset("Fence", "15-year", 5, 12_000.0, year)))
             fields = _filled_fields(year, result)
             with self.subTest(year=year):
                 self.assertEqual(
@@ -400,7 +400,7 @@ class MethodLabelTests(unittest.TestCase):
 
 class ShadedDateCellTests(unittest.TestCase):
     def test_personal_rows_compute_no_date_key(self):
-        result = form_f4562.compute(_untripped(2025), upstream={})
+        result = compute_copy(_untripped(2025))
         self.assertEqual(
             [k for k in result if k.endswith("_date_placed_in_service")], [])
 
@@ -408,7 +408,7 @@ class ShadedDateCellTests(unittest.TestCase):
         scenario = _untripped(2025)
         scenario.rental_properties[0].depreciable_assets.append(
             _asset("Building", "27.5-year", 4, 200_000.0, 2025))
-        result = form_f4562.compute(scenario, upstream={})
+        result = compute_copy(scenario)
         self.assertEqual(
             [k for k in result if k.endswith("_date_placed_in_service")],
             ["f4562_line_19i_date_placed_in_service"])
@@ -418,7 +418,7 @@ class ShadedDateCellTests(unittest.TestCase):
     def test_filled_form_leaves_the_shaded_cell_empty(self):
         for year in YEARS:
             fields = _filled_fields(
-                year, form_f4562.compute(_untripped(year), upstream={}))
+                year, compute_copy(_untripped(year)))
             for row in ("b", "c"):
                 with self.subTest(year=year, row=row):
                     self.assertIn(
@@ -435,8 +435,8 @@ class FilledFormTests(unittest.TestCase):
     def test_convention_code_prints_in_the_convention_column(self):
         for year in YEARS:
             with _patched():
-                tripped = form_f4562.compute(_tripped(year), upstream={})
-            untripped = form_f4562.compute(_untripped(year), upstream={})
+                tripped = compute_copy(_tripped(year))
+            untripped = compute_copy(_untripped(year))
             mq = _filled_fields(year, tripped)
             hy = _filled_fields(year, untripped)
             for row in ("b", "c"):
