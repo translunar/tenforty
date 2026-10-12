@@ -826,11 +826,29 @@ class PerActivityBasesTests(unittest.TestCase):
         self.assertIs(rental.stated, False)
         self.assertIs(business.stated, False)
 
+    def _every_window_edge_shape(self):
+        """Placements on both sides of the last-quarter boundary (September
+        out, October in) as well as inside it, split across two activities:
+        a window one month too wide or one month too narrow moves a
+        last-quarter sum."""
+        return _scenario(
+            rentals=[_rental(
+                _personal(6_000.0, 3, description="Spring"),
+                _personal(1_000.0, 9, description="September"),
+                _personal(3_000.0, 11, description="November"))],
+            businesses=[_business(
+                _personal(2_000.0, 10, description="October"),
+                _personal(3_000.0, 12, description="December"))])
+
     def test_the_breakdown_sums_exactly_to_the_pair_the_test_decides_on(self):
         def check(scenario, late, total):
             rows = self._rows(scenario)
             sum_late = sum(row.last_quarter_cents for row in rows)
             sum_total = sum(row.full_year_cents for row in rows)
+            # The pair the 40% test is decided on, from production.
+            self.assertEqual(
+                (sum_late, sum_total),
+                resolver._mid_quarter_bases_in_cents(scenario))
             self.assertEqual((sum_late, sum_total), (late, total))
             self.assertIs(
                 sum_late * 100 > 40 * sum_total,
@@ -838,16 +856,26 @@ class PerActivityBasesTests(unittest.TestCase):
 
         check(self._pooled_shape(), 600_000, 1_200_000)
         self.assertIs(mid_quarter_applies(self._pooled_shape()), True)
-        # The exact-40% cent pairs (late = 2k cents, early = 3k cents), the
-        # early basis on the rental and the late one on the business; then
-        # one more cent late.
+        # October + November + December late; September is not.
+        check(self._every_window_edge_shape(), 800_000, 1_500_000)
+        self.assertIs(
+            mid_quarter_applies(self._every_window_edge_shape()), True)
+        # The exact-40% cent pairs (late = 2k cents, early = 3k cents), then
+        # one more cent late. Early is March (k) on the rental and September
+        # (2k) on the business; late is October (k) on the rental and
+        # November (k, plus the extra cent) on the business.
         for k in range(1_000_001, 1_000_400):
             for extra, trips in ((0, False), (1, True)):
                 with self.subTest(k=k, extra=extra):
                     scenario = _scenario(
-                        rentals=[_rental(_personal(3 * k / 100, 3))],
+                        rentals=[_rental(
+                            _personal(k / 100, 3, description="Spring"),
+                            _personal(k / 100, 10, description="October"))],
                         businesses=[_business(
-                            _personal((2 * k + extra) / 100, 11))])
+                            _personal(2 * k / 100, 9,
+                                      description="September"),
+                            _personal((k + extra) / 100, 11,
+                                      description="November"))])
                     check(scenario, 2 * k + extra, 5 * k + extra)
                     self.assertIs(mid_quarter_applies(scenario), trips)
 
