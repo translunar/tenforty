@@ -26,3 +26,4 @@ docs/plans/
 
 # Local agent config/skills — may reference personal context
 .claude/
+docs/specs/
