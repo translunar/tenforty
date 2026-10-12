@@ -26,7 +26,7 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from tenforty.forms import sch_e
+from tenforty.forms import f4562, sch_e
 from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation,
@@ -267,11 +267,13 @@ class _EmitCase(unittest.TestCase):
 class EmitOnlyInAPlacementYearTests(_EmitCase):
     def test_predicate_false_with_only_prior_year_assets(self):
         s = _scenario(rentals=[_rental(_old_building())])
-        self.assertFalse(self.orchestrator._should_emit_4562(s, {}))
+        self.assertIs(
+            f4562.is_required_for(s.rental_properties[0], YEAR), False)
 
     def test_predicate_true_with_a_placement_this_year(self):
         s = _scenario(rentals=[_rental(_old_building(), _new_building())])
-        self.assertTrue(self.orchestrator._should_emit_4562(s, {}))
+        self.assertIs(
+            f4562.is_required_for(s.rental_properties[0], YEAR), True)
 
     def test_predicate_sees_a_placement_on_any_activity(self):
         s = _scenario(
@@ -279,7 +281,12 @@ class EmitOnlyInAPlacementYearTests(_EmitCase):
             businesses=[ScheduleCBusiness(
                 description="Consulting", gross_receipts=50_000.0,
                 depreciable_assets=(_new_equipment(),))])
-        self.assertTrue(self.orchestrator._should_emit_4562(s, {}))
+        # The gate is asked of each activity: the business placing property
+        # this year needs a copy, the rental beside it does not.
+        self.assertIs(
+            f4562.is_required_for(s.schedule_c_businesses[0], YEAR), True)
+        self.assertIs(
+            f4562.is_required_for(s.rental_properties[0], YEAR), False)
 
     def test_ongoing_year_emits_no_form_and_schedule_e_still_carries_it(self):
         building = _old_building()
