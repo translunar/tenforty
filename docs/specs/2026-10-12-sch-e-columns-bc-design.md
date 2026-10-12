@@ -90,9 +90,12 @@ personal-use day prorations beyond what column A supports today.
 This branch owns: the `asset_mode_on_unprinted_rental` narrowing, its
 registry/allowlist edits, the Sch E mapping keys. The 4562 branch owns:
 both merged-form refusal retirements, f4562 allowlist entries, the
-audit hand-off shape, recon-key naming. CHANGELOG conflicts resolve by
-union at rebase; whichever branch merges second re-runs the full gate
-on the rebased tree.
+audit hand-off shape, recon-key naming. The registry literals and
+read-path allowlist live in files both branches edit: like CHANGELOG,
+those conflicts resolve by union at rebase, and the second-to-merge
+branch re-runs the registry consistency tests on the union before its
+gate; whichever branch merges second re-runs the full gate on the
+rebased tree.
 
 ## Process
 
