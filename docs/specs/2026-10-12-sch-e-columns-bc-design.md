@@ -43,6 +43,30 @@ emit a complete packet.
   products (use `tenforty.rounding` helpers where a product feeds a
   printed line).
 
+### Form 8582 and the passive-loss guard (in scope)
+
+Form 8582 today builds a single Schedule E passive activity from
+property A's income/loss and address, and the
+`passive_loss_limitation_not_applied` refusal is computed from those
+figures. With columns summing into line 26, a loss on B or C would
+reach Schedule 1 without the guard ever seeing it — a fail-closed
+violation. This branch generalizes 8582's Schedule E input to one
+passive activity per printed column, built from each column's printed
+line 21, so the refusal sees every column's loss. The
+scenario-to-workbook flattener's 8582 slot loses its
+first-property-only read the same way, with a pin.
+
+### Audit hand-off (population-only edit)
+
+The orchestrator's audit hand-off populates depreciation figures for
+rental 0 only; an asset-mode rental in B or C would tie out against a
+printed zero in the workbook. This branch makes a POPULATION-ONLY
+edit: it reads columns B/C's line 18 keys into the existing mapping,
+changing no shape, with a per-column tie-out test. The 4562 branch
+owns the hand-off's shape and must carry the per-column population
+through its rewrite; the overlap resolves by union at rebase like the
+registry files.
+
 ### Refusals
 
 - `asset_mode_on_unprinted_rental` narrows: today it fires for any
@@ -81,7 +105,11 @@ personal-use day prorations beyond what column A supports today.
    resolver's amount for that property under the return-wide 40%
    answer; a scenario constructed so one property alone would flip the
    convention proves the answer is not recomputed per column.
-5. **Post-rebase 4562 copy tests** (this branch, after rebasing onto
+5. **Passive-loss guard**: a scenario whose only rental loss is on
+   column B (property A at a gain) trips
+   `passive_loss_limitation_not_applied`; the flattener pin covers the
+   8582 slot's per-column read.
+6. **Post-rebase 4562 copy tests** (this branch, after rebasing onto
    the per-activity 4562 merge): copies exist for B/C placements, recon
    keys name them, line 22 ties per column.
 
