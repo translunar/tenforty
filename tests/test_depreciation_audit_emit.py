@@ -171,7 +171,7 @@ class ScheduleCEmitTests(_EmitCase):
             _printed(emitted["sch_c_1"], SCH_C_LINE_13)]
         self.assertEqual(on_paper, [7_272, 1_920])
         self.assertEqual([sheet[f"C{r}"].value for r in (2, 3)], on_paper)
-        self.assertEqual(sheet.max_row, 3)
+        self.assertEqual(sheet.max_row, 6)
         self.assertEqual(
             [dw.cell_value(workbook, "Tie-outs", f"F{r}") for r in (2, 3)],
             ["PASS", "PASS"])

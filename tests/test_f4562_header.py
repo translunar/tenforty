@@ -322,11 +322,10 @@ class ActivityBoxComputeTests(unittest.TestCase):
         self.assertIs(
             f4562.is_required_for(s.rental_properties[0], 2025), True)
 
-    def test_assets_from_two_activities_leave_the_box_blank(self):
-        """(The name is from the one-form-per-return days, when assets on
-        two activities left no single activity to name.) Each activity now
-        gets its own copy, and each copy names its own activity -- never
-        blank, never the other one, never a list."""
+    def test_each_activitys_copy_names_its_own_activity(self):
+        """Assets on two activities: each activity gets its own copy, and
+        each copy names its own activity -- never blank, never the other
+        one, never a list."""
         s = _scenario(2025, businesses=[_business(
             2025, "Consulting", _equipment(2025))])
         self.assertEqual(
