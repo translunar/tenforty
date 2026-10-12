@@ -168,20 +168,26 @@ def _flatten_rental_properties(scenario: Scenario, flat: dict[str, object]) -> N
         if depreciation:
             flat[f"{_RENTAL_DEPRECIATION_KEY}_{letter}"] = depreciation
 
-    # 8582 Part IV slot A: Sch E Part I net income/loss for first rental
-    # property (v1 scope: single property). Income and loss are separate
+    # 8582 Part IV slot A: Sch E Part I net income and net loss. The
+    # workbook has one slot pair, so it takes every property: the sum of the
+    # properties with net income and the sum of those with a net loss, each
+    # property rounded on its own. Income and loss are separate
     # positive-amount cells on the form (columns N and R).
-    if scenario.rental_properties:
-        prop = scenario.rental_properties[0]
+    net_income = net_loss = 0
+    for prop in scenario.rental_properties:
         total_expenses = sum(
             getattr(prop, attr) for attr, _ in _RENTAL_EXPENSE_FIELDS
         ) + resolve_depreciation(
             prop, tax_year, mid_quarter=mid_quarter).amount
         net = prop.rents_received - total_expenses
         if net > 0:
-            flat["sche_8582_net_income"] = round(net)
+            net_income += round(net)
         elif net < 0:
-            flat["sche_8582_net_loss"] = round(-net)
+            net_loss += round(-net)
+    if net_income:
+        flat["sche_8582_net_income"] = net_income
+    if net_loss:
+        flat["sche_8582_net_loss"] = net_loss
 
 
 _K1_ROW_LETTERS = "abcd"

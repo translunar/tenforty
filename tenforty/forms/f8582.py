@@ -9,8 +9,10 @@ v1 scope:
     * mfs, lived APART from spouse ALL year: $12,500 base,
       phaseout $50k-$75k MAGI.
     * mfs, lived WITH spouse any time: $0.
-- Sch E Part I rentals are treated as actively participated rental
-  real estate (v1 has no opt-out flag).
+- Each Sch E Part I rental (one per printed column A/B/C) is its own
+  passive activity, treated as actively participated rental real estate
+  (v1 has no opt-out flag). Income and loss come from that column's
+  printed line 21, so a loss on any column reaches the limitation.
 - K-1 passive activities with net_rental_real_estate nonzero are also
   treated as rental real estate for the §469(i) allowance (active
   participation is a lower standard than material participation; v1
@@ -24,6 +26,7 @@ Consumes upstream["sch_e"] for Sch E Part I results — does NOT
 re-invoke forms.sch_e.compute, avoiding circular layering.
 """
 
+from tenforty.forms import sch_e as form_sch_e
 from tenforty.models import FilingStatus, K1FanoutData, Scenario
 from tenforty.rounding import irs_round
 
@@ -83,11 +86,21 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         for a in fanout.passive_activities
     ]
 
-    # Sch E Part I rental property contributes to passive activities.
-    if scenario.rental_properties:
-        rental_net = int(sch_e_upstream.get("sch_e_property_a_income_loss", 0))
+    # Every Sch E Part I rental is one passive activity, from its own
+    # column's printed line 21. Activities are kept by position, never
+    # merged by name: two rentals may share an address. With no Schedule E
+    # result at all there are no figures to read; with one, a column whose
+    # line 21 is missing is a wiring fault, not a zero.
+    for letter, rp in form_sch_e.printed_columns(scenario):
+        key = form_sch_e.line_21_key(letter)
+        if sch_e_upstream and key not in sch_e_upstream:
+            raise KeyError(
+                f"Form 8582: the Schedule E result carries no {key!r} for "
+                f"rental property {rp.address!r}; its passive income or "
+                f"loss cannot be read.")
+        rental_net = int(sch_e_upstream.get(key, 0))
         passive_activities.append({
-            "entity_name": scenario.rental_properties[0].address,
+            "entity_name": rp.address,
             "income": max(0, rental_net),
             "loss": max(0, -rental_net),
             "prior_carryforward": 0,

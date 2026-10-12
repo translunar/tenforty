@@ -105,6 +105,31 @@ class LimitationBindsRefusalTests(_Case):
             self.orch.compute_federal(
                 _scenario(wages=200_000, rentals=[_loss_rental()]))
 
+    def test_a_loss_only_on_column_b_refuses_beside_a_gain_on_column_a(self):
+        # Column A nets +8,000; column B nets (40,000). Wages 200,000 put
+        # modified AGI over 150,000, so there is no special allowance: Form
+        # 8582 allows 8,000 (the passive income) of the 40,000 loss and
+        # 32,000 is suspended. Column A alone shows no loss at all.
+        gain = RentalProperty(
+            address="100 Example Street", property_type=1,
+            fair_rental_days=365, personal_use_days=0,
+            rents_received=24_000.0, mortgage_interest=16_000.0)
+
+        def second(rents: float) -> RentalProperty:
+            return RentalProperty(
+                address="200 Example Street", property_type=1,
+                fair_rental_days=365, personal_use_days=0,
+                rents_received=rents, mortgage_interest=50_000.0)
+
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"32,000 of passive loss is not allowed"):
+            self.orch.compute_federal(_scenario(
+                wages=200_000, rentals=[gain, second(10_000.0)]))
+        # Twin: the second rental's rents raised so it nets +1,000.
+        self.orch.compute_federal(_scenario(
+            wages=200_000, rentals=[gain, second(51_000.0)]))
+
     def test_partly_suspended_rental_loss_refuses(self):
         # Loss 35,000 against a 25,000 allowance: 10,000 suspended.
         with self.assertRaisesRegex(NotImplementedError, _REFUSAL):

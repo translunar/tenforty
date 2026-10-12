@@ -197,6 +197,17 @@ class FlattenerTests(unittest.TestCase):
         flat = flatten_scenario(_scenario(_rental(rents=5_000.0)))
         self.assertNotIn("sche_depreciation_a", flat)
 
+    def test_8582_slot_reads_every_property(self):
+        # Two stated-depreciation rentals: 24,000 - 16,000 = +8,000 and
+        # 12,000 - 16,000 = (4,000).
+        stated = dict(depreciation=16_000.0,
+                      acknowledges_depreciation_stated_outside_macrs=True)
+        flat = flatten_scenario(_scenario(
+            _rental(rents=24_000.0, **stated),
+            _rental(rents=12_000.0, **stated)))
+        self.assertEqual(flat["sche_8582_net_income"], 8_000)
+        self.assertEqual(flat["sche_8582_net_loss"], 4_000)
+
 
 class CaliforniaTriggerTests(unittest.TestCase):
     def test_asset_mode_rental_trips_the_trigger(self):
