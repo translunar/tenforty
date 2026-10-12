@@ -18,6 +18,7 @@ regression pin (January 27.5-year building on 200,000).
 """
 
 import dataclasses
+import json
 import re
 import tempfile
 import unittest
@@ -32,6 +33,7 @@ from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation,
 )
+from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.models import (
     DepreciableAsset, DepreciationOverride, RentalProperty, ScheduleCBusiness,
 )
@@ -132,24 +134,24 @@ def _read(pdf_path, field_path) -> str:
     return str(fields[field_path].get("/V") or "").replace(",", "").strip()
 
 
-def _old_building() -> DepreciableAsset:
+def _old_building(year: int = YEAR) -> DepreciableAsset:
     asset = DepreciableAsset(
         description="Rental building", date_placed_in_service=date(2019, 6, 1),
         basis=200_000.0, recovery_class="27.5-year")
     asset.prior_depreciation = float(
-        reconstruct_prior_depreciation(asset, YEAR, mid_quarter=False))
+        reconstruct_prior_depreciation(asset, year, mid_quarter=False))
     return asset
 
 
-def _new_building() -> DepreciableAsset:
+def _new_building(year: int = YEAR) -> DepreciableAsset:
     return DepreciableAsset(
-        description="Rental building", date_placed_in_service=date(YEAR, 1, 15),
+        description="Rental building", date_placed_in_service=date(year, 1, 15),
         basis=200_000.0, recovery_class="27.5-year")
 
 
-def _new_equipment() -> DepreciableAsset:
+def _new_equipment(year: int = YEAR) -> DepreciableAsset:
     return DepreciableAsset(
-        description="Equipment", date_placed_in_service=date(YEAR, 2, 1),
+        description="Equipment", date_placed_in_service=date(year, 2, 1),
         basis=10_000.0, recovery_class="5-year",
         no_bonus_or_section_179_history=True)
 
@@ -167,10 +169,10 @@ def _rental(*assets, override_amount=None) -> RentalProperty:
     return rental
 
 
-def _scenario(rentals=(), businesses=()):
+def _scenario(rentals=(), businesses=(), year: int = YEAR):
     base = make_simple_scenario()
     config = dataclasses.replace(
-        base.config, year=YEAR, first_name="Test", last_name="Filer",
+        base.config, year=year, first_name="Test", last_name="Filer",
         ssn="000-00-0000", acknowledges_no_source_documents=True)
     return dataclasses.replace(
         base, config=config, rental_properties=list(rentals),
@@ -328,6 +330,61 @@ class OverriddenActivityTests(_EmitCase):
         self.assertNotEqual(
             f4562.compute(scenario, upstream={})[
                 "f4562_line_22_total_depreciation"], line_18)
+
+
+PINNED_4562 = (
+    Path(__file__).parent / "fixtures" / "f4562_single_activity_pinned.json")
+PINNED_4562_YEARS = tuple(sorted(Pdf4562._MAPPINGS))
+
+
+def filled_fields(pdf_path) -> dict[str, str]:
+    """``{field path: /V}`` for every field of a filled PDF that carries a
+    non-empty value, exactly as written."""
+    fields = PdfReader(str(pdf_path)).get_fields() or {}
+    return {
+        name: str(field.get("/V"))
+        for name, field in sorted(fields.items())
+        if str(field.get("/V") or "").strip()}
+
+
+def single_activity_scenarios(year: int) -> dict:
+    """The two single-activity returns the pin covers, by name."""
+    return {
+        "rental": _scenario(
+            rentals=[_rental(_old_building(year), _new_building(year))],
+            year=year),
+        "business": _scenario(
+            businesses=[ScheduleCBusiness(
+                description="Consulting", gross_receipts=50_000.0,
+                depreciable_assets=(_new_equipment(year),))],
+            year=year),
+    }
+
+
+class SingleActivityStabilityTests(_EmitCase):
+    """A single-activity return's Form 4562 is what it was before per-activity
+    emission: same key, same file name, same value in every field. The
+    fixture was generated once, on the tree before that work, and is never
+    regenerated; if this goes red the code is wrong."""
+
+    def test_single_activity_4562_matches_the_pinned_baseline(self):
+        pinned = json.loads(PINNED_4562.read_text())
+        self.assertEqual(
+            sorted(pinned),
+            sorted(f"{year}/{shape}" for year in PINNED_4562_YEARS
+                   for shape in ("rental", "business")))
+        for year in PINNED_4562_YEARS:
+            for shape, scenario in single_activity_scenarios(year).items():
+                with self.subTest(year=year, shape=shape):
+                    emitted = self._emit(scenario)
+                    self.assertEqual(
+                        [key for key in emitted if key.startswith("f4562")],
+                        ["f4562"])
+                    self.assertEqual(
+                        emitted["f4562"].name, f"f4562_{year}.pdf")
+                    fields = filled_fields(emitted["f4562"])
+                    self.assertTrue(fields)
+                    self.assertEqual(fields, pinned[f"{year}/{shape}"])
 
 
 class MergedFormWithOverrideRefusalTests(unittest.TestCase):
