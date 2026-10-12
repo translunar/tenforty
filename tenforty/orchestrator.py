@@ -1539,9 +1539,11 @@ class ReturnOrchestrator:
                     f"f4562_line_19{row['row_label']}_deduction"]
             for row in f4562.get("f4562_part_iii_section_b_rows", [])}
         activity_lines: dict[tuple[str, int], int] = {}
-        line_18 = values.get("sch_e", {}).get(form_sch_e._LINE_18_KEY)
-        if line_18 is not None:
-            activity_lines[("rental_properties", 0)] = line_18
+        for index, letter in enumerate(form_sch_e.COLUMN_LETTERS):
+            line_18 = values.get("sch_e", {}).get(
+                form_sch_e.line_18_key(letter))
+            if line_18 is not None:
+                activity_lines[("rental_properties", index)] = line_18
         for index in range(len(scenario.schedule_c_businesses)):
             line_13 = values.get(f"sch_c_{index + 1}", {}).get(
                 form_sch_c.LINE_13_KEY)
