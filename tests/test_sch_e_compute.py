@@ -269,6 +269,28 @@ class PropertyColumnsComputeTests(unittest.TestCase):
         self.assertIn("sch_e_line_24_income", mixed)
         self.assertIn("sch_e_line_25_losses", mixed)
 
+    def test_line_25_sums_the_losses_of_two_columns(self):
+        # Line 21 per column: A (3,000), B 9,000, C (5,000). Line 25 is
+        # both losses, 8,000 -- not the last loss column's 5,000.
+        rentals = [
+            _stated("100 Example Street", rents_received=10_000.0,
+                    taxes=13_000.0),
+            _stated("200 Example Street", rents_received=20_000.0,
+                    taxes=11_000.0),
+            _stated("300 Example Street", rents_received=6_000.0,
+                    taxes=11_000.0),
+        ]
+        r = compute(_columns_scenario(rentals), upstream={})
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_income_loss"] for x in "abc"],
+            [-3_000, 9_000, -5_000])
+        self.assertEqual(r["sch_e_property_a_deductible_loss"], 3_000)
+        self.assertNotIn("sch_e_property_b_deductible_loss", r)
+        self.assertEqual(r["sch_e_property_c_deductible_loss"], 5_000)
+        self.assertEqual(r["sch_e_line_24_income"], 9_000)
+        self.assertEqual(r["sch_e_line_25_losses"], 8_000)
+        self.assertEqual(r["sch_e_line_26_total"], 1_000)
+
     def test_an_empty_second_property_prints_its_row_and_changes_no_total(self):
         first = _three_rentals()[0]
         alone = compute(_columns_scenario([first]), upstream={})

@@ -73,7 +73,6 @@ def line_21_key(letter: str) -> str:
 # Line 18 (depreciation) is deliberately NOT in _EXPENSE_FIELDS: it is not a
 # raw field read. It comes from the depreciation resolver -- the one door --
 # through `_line_18`, which every function below uses.
-_LINE_18_KEY = line_18_key("a")
 
 
 def _line_18(rp: RentalProperty, tax_year: int, *,
