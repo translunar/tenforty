@@ -47,10 +47,17 @@ class PacketMember:
     ``key`` is an exact emitted-key by default. When ``family`` is True it is
     a prefix matching ``<key>_<int>`` emitted-keys, contributed in ascending
     numeric order of the integer suffix.
+
+    When ``copies`` is True the slot holds a form emitted once per activity:
+    it matches the exact ``key`` (the lone copy of a return with one) and
+    every ``<key>_<slug>_<int>`` key (one per activity, named by its recon
+    key: ``f4562_rental_0``, ``f4562_sch_c_1``), contributed in ``(slug,
+    int)`` order -- rentals before businesses, each numerically.
     """
 
     key: str
     family: bool = False
+    copies: bool = False
 
 
 @dataclass(frozen=True)
@@ -66,7 +73,8 @@ class Packet:
 #   1040 (main), Sch 1 (01), Sch 2 (02), Sch A (07), Sch B (08), Sch C (09,
 #   one per business), Sch D (12), Form 8949 (12A), Sch E (13), Sch SE (17),
 #   Form 8995 (55), Form 8959 (71), Form 8962 (73), Form 8582 (88),
-#   Form 4562 (179), Form 3115 (315) followed by its Schedule E statement.
+#   Form 4562 (179, one copy per activity that needs one), Form 3115 (315)
+#   followed by its Schedule E statement.
 FEDERAL_INDIVIDUAL = Packet(
     name="federal_individual",
     filename_template="f1040_{year}_complete.pdf",
@@ -85,7 +93,7 @@ FEDERAL_INDIVIDUAL = Packet(
         PacketMember("8959"),
         PacketMember("8962"),
         PacketMember("f8582"),
-        PacketMember("f4562"),
+        PacketMember("f4562", copies=True),
         PacketMember("f3115"),
         PacketMember("f3115_asset_stmt"),
     ),
@@ -164,25 +172,39 @@ def _family_pattern(prefix: str) -> re.Pattern[str]:
     return re.compile(rf"^{re.escape(prefix)}_(\d+)$")
 
 
+def _copies_pattern(prefix: str) -> re.Pattern[str]:
+    return re.compile(rf"^{re.escape(prefix)}_([a-z_]+)_(\d+)$")
+
+
+def _slot_position(member: PacketMember, key: str) -> tuple[str, int] | None:
+    """Where ``key`` sorts within ``member``'s slot, or None when the member
+    does not claim it. An exact key sorts first."""
+    if key == member.key and not member.family:
+        return ("", -1)
+    if member.family:
+        m = _family_pattern(member.key).match(key)
+        return ("", int(m.group(1))) if m else None
+    if member.copies:
+        m = _copies_pattern(member.key).match(key)
+        return (m.group(1), int(m.group(2))) if m else None
+    return None
+
+
 def ordered_members(emitted: dict[str, Path], packet: Packet) -> list[Path]:
     """Return the paths in ``emitted`` belonging to ``packet``, in packet order.
 
     Exact members contribute their path when present; family members
     contribute every matching ``<prefix>_<int>`` path, numerically sorted by
-    the integer suffix. Absent members are skipped.
+    the integer suffix; per-activity copies contribute every matching path
+    in ``(slug, int)`` order. Absent members are skipped.
     """
     paths: list[Path] = []
     for member in packet.members:
-        if member.family:
-            pattern = _family_pattern(member.key)
-            matches: list[tuple[int, Path]] = []
-            for key, path in emitted.items():
-                m = pattern.match(key)
-                if m:
-                    matches.append((int(m.group(1)), path))
-            paths.extend(path for _, path in sorted(matches))
-        elif member.key in emitted:
-            paths.append(emitted[member.key])
+        matches = [
+            (position, path) for key, path in emitted.items()
+            if (position := _slot_position(member, key)) is not None]
+        paths.extend(
+            path for _, path in sorted(matches, key=lambda match: match[0]))
     return paths
 
 
@@ -198,10 +220,7 @@ def classify_key(key: str) -> str | None:
         return "standalone"
     for packet in PACKETS:
         for member in packet.members:
-            if member.family:
-                if _family_pattern(member.key).match(key):
-                    return packet.name
-            elif key == member.key:
+            if _slot_position(member, key) is not None:
                 return packet.name
     return None
 

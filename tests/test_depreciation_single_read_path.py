@@ -19,9 +19,11 @@ PACKAGE = Path(__file__).parent.parent / "tenforty"
 ALLOWED_ATTRIBUTE_READS: dict[tuple[str, str], str] = {
     ("forms/depreciation/resolver.py", "resolve"):
         "the one door: stated mode returns the activity's scalar",
-    ("forms/depreciation/resolver.py", "stated_mode_activity_labels"):
-        "inside the door, truthiness only: which activities are in stated "
-        "mode, for the mid-quarter test's unverifiable-totals refusal",
+    ("forms/depreciation/resolver.py", "_is_stated_mode"):
+        "inside the door, truthiness only: whether an activity is in stated "
+        "mode -- the one predicate behind `stated_mode_activity_labels` (the "
+        "mid-quarter test's unverifiable-totals refusal) and the `stated` "
+        "flag on `mid_quarter_bases_by_activity`'s rows",
     ("attestations.py", "_dual_source_activities"):
         "shape rule, truthiness only: assets AND a stated scalar refuse",
     ("attestations.py", "_negative_stated_depreciation"):
@@ -61,9 +63,9 @@ ASSET_LIST_MODULES: dict[str, str] = {
     "forms/depreciation/resolver.py": "the one door",
 }
 ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
-    ("forms/f4562.py", "scenario_assets"):
-        "Form 4562's read path: flattens the lists for the form's rows and "
-        "the placement-year rule; amounts come from resolver.asset_amount",
+    ("forms/f4562.py", "compute_for"):
+        "one Form 4562 copy: splits ONE activity's list into this year's "
+        "rows and line 17; amounts come from resolver.asset_amount",
     ("attestations.py", "_assets"):
         "ledger: iterates assets for the per-asset shape rules",
     ("attestations.py", "_bonus_history_assets"):
@@ -76,11 +78,6 @@ ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
         "ledger, truthiness only",
     ("attestations.py", "_computable_overridden_activities"):
         "ledger: which overridden activities the engine can compute",
-    ("attestations.py", "_merged_4562_with_override"):
-        "ledger: placement dates only",
-    ("attestations.py", "activities_with_assets"):
-        "truthiness only: which activities list assets, for Form 4562's "
-        "\"business or activity\" header box",
 }
 MACRS_DEDUCTION_MODULES: dict[str, str] = {
     "forms/depreciation/macrs.py": "defines it",

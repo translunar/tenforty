@@ -32,8 +32,9 @@ RENTAL = ("rental_properties", 0)
 def true_printed(**changes) -> dw.PrintedFigures:
     """The figures the forms print for the default fixture."""
     return dataclasses.replace(dw.PrintedFigures(
-        f4562_line_17=fx.LINE_17, f4562_line_19={"c": fx.LINE_19C},
-        f4562_line_22=fx.LINE_22,
+        f4562_copies={"rental_0": dw.CopyFigures(
+            line_17=fx.LINE_17, line_19={"c": fx.LINE_19C},
+            line_22=fx.LINE_22)},
         activity_lines={RENTAL: fx.SCH_E_LINE_18}), **changes)
 
 
@@ -144,7 +145,8 @@ class StructureTests(_WorkbookCase):
         workbook = self.write(
             fx.scenario(rental_assets=(late,)),
             dw.PrintedFigures(
-                f4562_line_19={"c": 250}, f4562_line_22=250,
+                f4562_copies={"rental_0": dw.CopyFigures(
+                    line_17=None, line_19={"c": 250}, line_22=250)},
                 activity_lines={RENTAL: 250}))
         self.assertEqual(
             workbook["Assets"]["G2"].value, "mid-quarter (quarter 4)")
@@ -370,7 +372,8 @@ class MirrorRuleTests(_WorkbookCase):
         workbook = self.write(
             fx.scenario(rental_assets=(tiny,)),
             dw.PrintedFigures(
-                f4562_line_19={"b": 1}, f4562_line_22=1,
+                f4562_copies={"rental_0": dw.CopyFigures(
+                    line_17=None, line_19={"b": 1}, line_22=1)},
                 activity_lines={RENTAL: 1}))
         self.assertEqual(self.value(workbook, "Assets", "K2"), 1)
         self.assertEqual(
@@ -442,8 +445,9 @@ class TieOutTests(_WorkbookCase):
         # Figures deliberately NOT the engine's: column C is what it was
         # handed, never a recomputation.
         printed = dw.PrintedFigures(
-            f4562_line_17=9_199, f4562_line_19={"c": 1_003},
-            f4562_line_22=10_202, activity_lines={RENTAL: 10_207})
+            f4562_copies={"rental_0": dw.CopyFigures(
+                line_17=9_199, line_19={"c": 1_003}, line_22=10_202)},
+            activity_lines={RENTAL: 10_207})
         sheet = self.write(printed=printed)["Tie-outs"]
         self.assertEqual(
             [sheet[f"C{r}"].value for r in (2, 3, 4, 5)],
@@ -467,7 +471,9 @@ class TieOutTests(_WorkbookCase):
 
     def test_a_wrong_printed_value_fails_its_row_only(self):
         workbook = self.write(
-            printed=true_printed(f4562_line_22=fx.LINE_22 + 1))
+            printed=true_printed(f4562_copies={"rental_0": dw.CopyFigures(
+                line_17=fx.LINE_17, line_19={"c": fx.LINE_19C},
+                line_22=fx.LINE_22 + 1)}))
         self.assertEqual(dw.cell_value(workbook, "Tie-outs", "E4"), -1)
         self.assertEqual(
             self.verdicts(workbook), ["PASS", "PASS", "FAIL", "PASS"])
@@ -483,29 +489,87 @@ class TieOutTests(_WorkbookCase):
         self.assertEqual(self.verdicts(workbook)[3], "PASS")
 
     def test_no_4562_rows_when_form_not_emitted(self):
-        # Assets on a rental and on a Schedule C business, none placed this
-        # year: Form 4562 is not filed, and each activity still ties out.
+        """Assets on a rental and on a Schedule C business, none placed
+        this year: no Form 4562 copy is filed, no copy rows appear, and
+        each activity's schedule line still ties out -- against ITS OWN
+        tab. Two activities make this a multi-activity workbook, so each
+        has its own Assets tab and both are listed as having no copy.
+
+        (This test used to pin that two activities sharing ONE Assets sheet
+        were told apart by the numeric Activity # in the SUMIF. With a tab
+        per activity that sheet no longer exists: the separation is
+        structural, and a two-activity trail can no longer be laid out on
+        one sheet at all.)"""
         equipment = dataclasses.replace(fx.APPLIANCE, description="Equipment")
         scenario = fx.scenario(
             rental_assets=(fx.BUILDING,), business_assets=(equipment,))
-        workbook = self.write(scenario, dw.PrintedFigures(activity_lines={
-            RENTAL: 7_272, ("schedule_c_businesses", 0): 1_920}))
+        business = ("schedule_c_businesses", 0)
+        workbook = self.write(scenario, dw.PrintedFigures(
+            activity_lines={RENTAL: 7_272, business: 1_920},
+            convention=dw.ConventionInputs(
+                activities=resolver.mid_quarter_bases_by_activity(scenario),
+                mid_quarter=resolver.mid_quarter_applies(scenario))))
         self.assertEqual(self.claims(workbook), [
             "Schedule E line 18: depreciation, rental property #0 "
             "('100 Example Street')",
             "Schedule C line 13 (business 1): depreciation, Schedule C "
             "business #0 ('Consulting')",
+            "Whole return: rental_0 has no Form 4562 copy (no placement "
+            "this year): Schedule E line 18: depreciation, rental property "
+            "#0 ('100 Example Street')",
+            "Whole return: sch_c_0 has no Form 4562 copy (no placement "
+            "this year): Schedule C line 13 (business 1): depreciation, "
+            "Schedule C business #0 ('Consulting')",
+            "Whole return: Form 4562 copies' line 22 plus no-copy "
+            "activities' schedule lines = total depreciation",
         ])
-        self.assertEqual(self.formulas(workbook, "Tie-outs")["B2"],
-                         "=SUMIF(Assets!A2:A3,1,Assets!K2:K3)")
-        self.assertEqual(self.formulas(workbook, "Tie-outs")["B3"],
-                         "=SUMIF(Assets!A2:A3,2,Assets!K2:K3)")
+        self.assertFalse(any(
+            claim.startswith("Form 4562 copy")
+            for claim in self.claims(workbook)))
         self.assertEqual(
-            [workbook["Assets"][f"A{r}"].value for r in (2, 3)], [1, 2])
+            workbook.sheetnames,
+            ["Tie-outs", "Mid-quarter test", "Assets rental_0",
+             "Years rental_0", "Assets sch_c_0", "Years sch_c_0"])
+        self.assertEqual(
+            self.formulas(workbook, "Tie-outs")["B2"],
+            "=SUMIF('Assets rental_0'!A2:A2,1,'Assets rental_0'!K2:K2)")
+        self.assertEqual(
+            self.formulas(workbook, "Tie-outs")["B3"],
+            "=SUMIF('Assets sch_c_0'!A2:A2,2,'Assets sch_c_0'!K2:K2)")
+        self.assertEqual(
+            [workbook[tab]["A2"].value
+             for tab in ("Assets rental_0", "Assets sch_c_0")], [1, 2])
+        self.assertEqual(
+            [workbook[tab]["C2"].value
+             for tab in ("Assets rental_0", "Assets sch_c_0")],
+            ["Rental building", "Equipment"])
         self.assertEqual(
             [dw.cell_value(workbook, "Tie-outs", f"B{r}") for r in (2, 3)],
             [7_272, 1_920])
-        self.assertEqual(self.verdicts(workbook), ["PASS", "PASS"])
+        sheet = workbook["Tie-outs"]
+        # The no-copy rows carry each activity's printed schedule line...
+        self.assertEqual(
+            [sheet[f"C{r}"].value for r in (4, 5)], [7_272, 1_920])
+        # ...and the whole return is those two lines on both sides.
+        self.assertEqual(sheet["B6"].value, "=C4+C5")
+        self.assertEqual(sheet["C6"].value, "=C4+C5")
+        self.assertEqual(
+            [dw.cell_value(workbook, "Tie-outs", f"{c}6") for c in "BCE"],
+            [9_192, 9_192, 0])
+        self.assertEqual(
+            [dw.cell_value(workbook, "Tie-outs", f"F{r}") for r in (2, 3, 6)],
+            ["PASS", "PASS", "PASS"])
+
+    def test_no_4562_rows_on_a_single_activity_return_without_a_copy(self):
+        """The single-activity case: one rental, nothing placed this year,
+        no Form 4562 -- one schedule-line row and nothing else."""
+        workbook = self.write(
+            fx.scenario(rental_assets=(fx.BUILDING,)),
+            dw.PrintedFigures(activity_lines={RENTAL: 7_272}))
+        self.assertEqual(self.claims(workbook), [
+            "Schedule E line 18: depreciation, rental property #0 "
+            "('100 Example Street')"])
+        self.assertEqual(self.verdicts(workbook), ["PASS"])
 
     def test_an_unprinted_activity_line_compares_as_zero(self):
         workbook = self.write(printed=dw.PrintedFigures())
@@ -905,11 +969,12 @@ class PerColumnTieOutTests(_WorkbookCase):
         specs."""
         orchestrator = ReturnOrchestrator(
             spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.tmp / "work")
-        specs = orchestrator._federal_individual_emit_specs(
+        plan = orchestrator._federal_individual_emit_plan(
             scenario, orchestrator.compute_federal(scenario))
-        (sch_e,) = [spec.values for spec in specs if spec.name == "sch_e"]
+        (sch_e,) = [
+            spec.values for spec in plan.specs if spec.name == "sch_e"]
         return sch_e, orchestrator._printed_depreciation_figures(
-            scenario, specs)
+            scenario, plan)
 
     def test_every_rental_column_hands_its_printed_line_18_to_the_workbook(
             self):

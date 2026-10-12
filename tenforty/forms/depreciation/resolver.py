@@ -396,23 +396,29 @@ MID_QUARTER_THRESHOLD_PERCENT = 40
 _LAST_THREE_MONTHS = (10, 11, 12)   # calendar tax year
 
 
-def personal_property_placed_this_year(scenario) -> list:
-    """``(label, asset)`` for every asset in the 40% test: personal property
-    placed in service during the return year, across every activity.
+def _in_forty_percent_test(asset: DepreciableAsset, year: int) -> bool:
+    """THE MEMBERSHIP RULE of the 40% test, in its one place: personal
+    property placed in service during the return year.
 
     Real property is out of both totals (168(d)(3)(B)(i)). The remaining
     statutory exclusions cannot occur: a `disposed` asset and an asset in a
     class with no table both refuse at load, and are skipped here so this
     stays that other refusal's business."""
+    return (asset.recovery_class in PERSONAL_PROPERTY_CLASSES
+            and asset.disposed is None
+            and asset.date_placed_in_service.year == year)
+
+
+def personal_property_placed_this_year(scenario) -> list:
+    """``(label, asset)`` for every asset in the 40% test
+    (`_in_forty_percent_test`), across every activity."""
     year = scenario.config.year
     return [
         (label, asset)
         for _section, _index, label, activity in depreciation_activities(
             scenario)
         for asset in activity.depreciable_assets
-        if asset.recovery_class in PERSONAL_PROPERTY_CLASSES
-        and asset.disposed is None
-        and asset.date_placed_in_service.year == year]
+        if _in_forty_percent_test(asset, year)]
 
 
 def mid_quarter_bases(scenario) -> tuple[float, float]:
@@ -434,18 +440,73 @@ def _cents(amount: float) -> int:
     return round(amount * 100)
 
 
+def _is_stated_mode(activity) -> bool:
+    """The activity states its depreciation as one figure and lists no
+    assets, so whatever it placed in service is not visible."""
+    return bool(activity.depreciation and not activity.depreciable_assets)
+
+
+@dataclass(frozen=True)
+class ActivityBases:
+    """One depreciation activity's share of the 40% test's two totals."""
+    # How the activity is identified everywhere downstream: "rental_0",
+    # "sch_c_0" (the recon surface's key).
+    recon_key: str
+    section: str
+    index: int
+    # `depreciation_activities`' label, for refusal and disclosure text.
+    label: str
+    # Stated mode: its placements are not visible, so its cents are zero by
+    # construction, not by measurement.
+    stated: bool
+    # Current-year personal property placed October-December, whole cents.
+    last_quarter_cents: int
+    # Current-year personal property placed in the whole year, whole cents.
+    full_year_cents: int
+
+
+def mid_quarter_bases_by_activity(scenario) -> tuple[ActivityBases, ...]:
+    """The 40% test's ``(last three months, entire year)`` bases, per
+    activity, in WHOLE CENTS: each asset's basis converted once, then summed
+    as integers.
+
+    One row per DEPRECIATION activity -- one that lists assets or states a
+    figure -- in `depreciation_activities` order. An activity with no
+    depreciation at all has no row. Zero bases are a real row: an activity
+    whose only placement this year is real property is outside the 40%
+    membership and still on the return. A stated-mode row is flagged and
+    carries zeros.
+
+    The test is decided on this function's column sums
+    (`_mid_quarter_bases_in_cents`), so the breakdown cannot disagree with
+    the answer."""
+    year = scenario.config.year
+    rows = []
+    for section, index, label, activity in depreciation_activities(scenario):
+        stated = _is_stated_mode(activity)
+        if not activity.depreciable_assets and not stated:
+            continue
+        members = [a for a in activity.depreciable_assets
+                   if _in_forty_percent_test(a, year)]
+        rows.append(ActivityBases(
+            recon_key=_recon_key(section, index), section=section,
+            index=index, label=label, stated=stated,
+            last_quarter_cents=sum(
+                _cents(a.basis) for a in members
+                if a.date_placed_in_service.month in _LAST_THREE_MONTHS),
+            full_year_cents=sum(_cents(a.basis) for a in members)))
+    return tuple(rows)
+
+
 def _mid_quarter_bases_in_cents(scenario) -> tuple[int, int]:
     """``(last three months, entire year)`` aggregate bases in WHOLE CENTS:
-    each asset's basis converted once, then summed as integers. The 40%
-    test is decided on these. Binary floats cannot hold most cent amounts
-    exactly, and "exactly 40%" is a comparison where the smallest error
-    flips the answer (20,780.06 * 100 as a float is a hair over
-    2,078,006)."""
-    assets = [a for _label, a in personal_property_placed_this_year(scenario)]
-    last_quarter = sum(
-        _cents(a.basis) for a in assets
-        if a.date_placed_in_service.month in _LAST_THREE_MONTHS)
-    return last_quarter, sum(_cents(a.basis) for a in assets)
+    the column sums of `mid_quarter_bases_by_activity`. The 40% test is
+    decided on these. Binary floats cannot hold most cent amounts exactly,
+    and "exactly 40%" is a comparison where the smallest error flips the
+    answer (20,780.06 * 100 as a float is a hair over 2,078,006)."""
+    rows = mid_quarter_bases_by_activity(scenario)
+    return (sum(row.last_quarter_cents for row in rows),
+            sum(row.full_year_cents for row in rows))
 
 
 def mid_quarter_applies(scenario) -> bool:
@@ -467,7 +528,7 @@ def mid_quarter_applies(scenario) -> bool:
 def stated_mode_activity_labels(scenario) -> list[str]:
     return [label for _section, _index, label, activity
             in depreciation_activities(scenario)
-            if activity.depreciation and not activity.depreciable_assets]
+            if _is_stated_mode(activity)]
 
 
 # --- Recon surface ---------------------------------------------------------
@@ -478,6 +539,12 @@ _RECON_SECTION_SLUGS = {
 RECON_FIELDS = (
     "activity", "mode", "engine_amount", "used_amount", "note",
     "basis_ceiling_bound")
+
+
+def _recon_key(section: str, index: int) -> str:
+    """How one activity is named on the recon surface and everywhere that
+    identifies an activity after it: ``rental_0``, ``sch_c_0``."""
+    return f"{_RECON_SECTION_SLUGS[section]}_{index}"
 
 
 def recon_keys(scenario) -> dict:
@@ -494,7 +561,7 @@ def recon_keys(scenario) -> dict:
             activity, year, mid_quarter=mid_quarter_applies(scenario))
         if resolved.mode not in (MODE_ASSETS, MODE_ASSETS_OVERRIDDEN):
             continue
-        prefix = f"{RECON_PREFIX}{_RECON_SECTION_SLUGS[section]}_{index}_"
+        prefix = f"{RECON_PREFIX}{_recon_key(section, index)}_"
         keys[prefix + "activity"] = label
         keys[prefix + "mode"] = resolved.mode
         keys[prefix + "engine_amount"] = resolved.engine_amount

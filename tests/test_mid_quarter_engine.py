@@ -187,6 +187,8 @@ def _threaded_calls():
          lambda **kw: orchestrator._rental_net_income(rental, 2025, **kw)),
         ("f4562._line_19_rows",
          lambda **kw: f4562._line_19_rows([asset], 2025, **kw)),
+        ("f4562.compute_for",
+         lambda **kw: f4562.compute_for(rental, 2025, {}, **kw)),
     )
 
 
@@ -229,6 +231,21 @@ class AnswerIsRequiredEverywhereTests(unittest.TestCase):
                     with self.assertRaisesRegex(
                             TypeError, r"mid_quarter must be True or False"):
                         function(bare, 2025, mid_quarter=answer)
+
+    def test_a_form_copy_with_no_assets_still_needs_a_real_answer(self):
+        """`f4562.compute_for` checks the answer itself: with no asset to
+        compute, nothing below it would."""
+        from tenforty.forms import f4562
+        from tenforty.models import RentalProperty
+        bare = RentalProperty(
+            address="100 Example Street", property_type=1,
+            fair_rental_days=365, personal_use_days=0, rents_received=0.0)
+        f4562.compute_for(bare, 2025, {}, mid_quarter=False)
+        for answer in (None, 0, 1):
+            with self.subTest(mid_quarter=answer):
+                with self.assertRaisesRegex(
+                        TypeError, r"mid_quarter must be True or False"):
+                    f4562.compute_for(bare, 2025, {}, mid_quarter=answer)
 
     def test_a_carried_answer_must_be_a_real_bool_too(self):
         """The one-activity view carries the answer; a view carrying
