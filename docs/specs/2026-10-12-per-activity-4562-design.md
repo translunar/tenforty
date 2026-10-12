@@ -49,15 +49,23 @@ The resolution is per-activity emission, not refusal.
   computed once by the orchestrator from the full scenario via
   `resolver.mid_quarter_applies`; this function never recomputes it.
   It joins the existing "answer is required everywhere" test battery.
-- The merged `compute(scenario, upstream)` and the `_all_assets`
+- The merged `compute(scenario, upstream)` and the `scenario_assets`
   read-path adapter are **deleted, not wrapped** (the adapter is
-  self-documented as temporary).
-- The resolver and `macrs.py` do not change. The 40% test stays
-  taxpayer-wide in the one place it lives; the resolver's
-  carried-answer view path keeps its single consumer. The form must
-  NOT be routed through one-activity views (no header data; a
-  misbuilt view silently recomputes the 40% test per activity; views
-  cannot name the activity in refusal text).
+  self-documented as temporary; the read-path allowlist entry goes
+  with it).
+- No existing resolver or `macrs.py` behaviour changes. The 40% test
+  stays taxpayer-wide in the one place it lives; the resolver's
+  carried-answer view path keeps its single consumer. One **additive**
+  resolver function is allowed: it returns the per-activity
+  (last-three-months, full-year) placed-in-service bases in integer
+  cents, produced by the same code that feeds `mid_quarter_applies`
+  (same membership rule: current-year personal property in, real
+  property out, refused shapes out) — never a second implementation
+  of that rule — with a pin that the breakdown sums exactly to the
+  pooled pair `mid_quarter_applies` decides on. The form must NOT be
+  routed through one-activity views (no header data; a misbuilt view
+  silently recomputes the 40% test per activity; views cannot name
+  the activity in refusal text).
 
 ### Copy identity
 
@@ -71,16 +79,25 @@ not renumber them.
 - The 4562 block computes `mid_quarter_applies(scenario)` once, before
   the loop, then appends one `_FederalFormSpec` per qualifying activity
   (Ruling A), passing the same answer into every `compute_for` call.
-- Output naming: exactly one copy → `f4562_{year}.pdf`, today's name,
-  byte-for-byte identical output; two or more →
-  `f4562_{year}_{recon_key}.pdf` each.
+  The answer is taken from the same scenario object the schedules
+  compute from, so the two can never diverge if the effective-scenario
+  seam ever grows beyond the K-1 list.
+- Output naming: exactly one copy → `f4562_{year}.pdf` (today's name);
+  two or more → `f4562_{year}_{recon_key}.pdf` each. Byte-for-byte
+  output identity is promised only for single-activity returns (the
+  byte-stability test anchor); a multi-activity return that happens to
+  yield one copy keeps the filename but its content legitimately
+  changes (other activities' prior-year assets leave line 17; the
+  header box fills).
 - Packet assembly stacks all copies at the position the single 4562
   occupies now (matches IRS attachment-sequence grouping).
 - The audit hand-off (today one scalar bundle of line 17 / line 19 rows
   / line 22) becomes a list of per-copy bundles keyed by recon key,
-  plus the return-wide 40% inputs (last-quarter and full-year bases in
-  integer cents) so the workbook lays out the pooled test without
-  recomputing it. This branch owns that interface and the workbook
+  plus the 40% inputs: the PER-ACTIVITY (last-three-months, full-year)
+  bases in integer cents from the additive resolver function, and the
+  boolean answer itself. The workbook lays the pooled test out from
+  these; its deciding cell must reproduce, not re-derive (see the
+  workbook section). This branch owns that interface and the workbook
   changes ride in it.
 
 ### Audit workbook
@@ -89,10 +106,25 @@ One `.xlsx` per return, unchanged for single-activity returns. On
 multi-activity returns:
 
 - Tie-outs stays first and covers the return: one line-22 check per
-  copy against its schedule's printed line, the sum tied to total
-  depreciation, and the mandatory pooled-40% section (Ruling B): each
-  activity's last-quarter and full-year bases, the pooled fraction, and
-  the threshold comparison, in live formulas.
+  copy against its schedule's printed line, and a whole-return
+  reconciliation defined under Ruling A as the copies' line 22s PLUS
+  each no-copy activity's schedule depreciation line — no-copy
+  activities listed by recon key with the reason (no placement this
+  year / stated figure) — tying to the return's total depreciation.
+- The mandatory pooled-40% section (Ruling B) shows each activity's
+  last-quarter and full-year bases in integer cents from the
+  hand-off. The DECIDING cell is integer cross-multiplication —
+  `late_cents * 100 > 40 * total_cents` — never a float fraction: a
+  fraction-vs-threshold formula would recompute the test with
+  spreadsheet float division and disagree with the engine on
+  exact-boundary pairs, and would divide by zero when all placements
+  are real property. A percentage display cell is allowed as display
+  only, guarded for a zero total. A fail-closed emit check requires
+  the workbook's deciding cell to equal the boolean the orchestrator
+  handed every copy. A stated-mode activity appears as a row stating
+  its placements are not visible and the return carries the
+  acknowledgment, so the layout never reads as complete when it rests
+  on an attestation.
 - One Assets + Year-by-year tab pair per activity, mirroring that
   activity's printed copy exactly (today's single-pair layout, per
   activity).
@@ -136,9 +168,14 @@ Red-first anchors, written before implementation:
 1. **Pooled-convention twin**: a rental+business return under 40%
    pooled where the business alone would exceed it — the business's
    copy prints half-year rows; and the mirror (pooled over, alone
-   under, copy prints mid-quarter). This is the test that catches a
-   per-activity recompute inside the form, which the resolver-level
-   pooling tests cannot see.
+   under, copy prints mid-quarter). Asserted **through the
+   orchestrator's emit path on each copy's printed convention column
+   and amounts**, never by calling `compute_for` directly with a
+   hand-picked answer (that proves nothing about who supplied it).
+   This is the test that catches a per-activity recompute anywhere on
+   the path — the named mutant that must die: the 40% answer computed
+   per activity inside the orchestrator loop, or on anything narrower
+   than the whole scenario.
 2. **Byte-stability**: a single-activity scenario's 4562 is identical
    before and after the branch (filename and field values, pinned-emit
    equality style).
@@ -161,8 +198,12 @@ This branch owns: both refusal retirements' registry literals, the
 f4562 read-path allowlist entries, the audit hand-off shape, recon-key
 naming. The Schedule E branch owns: the `asset_mode_on_unprinted_rental`
 narrowing, its own registry/allowlist edits, Sch E mapping keys.
-CHANGELOG conflicts resolve by union at rebase; whichever branch merges
-second re-runs the full gate on the rebased tree.
+Semantic ownership is per-branch as above, but the registry literals
+and the read-path allowlist live in files BOTH branches edit: like
+CHANGELOG, those conflicts resolve by union at rebase, and the
+second-to-merge branch re-runs the registry consistency tests on the
+union before its gate. Whichever branch merges second re-runs the full
+gate on the rebased tree.
 
 ## Process
 
