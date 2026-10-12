@@ -202,7 +202,9 @@ class MultiActivityPacketTests(_EmitCase):
             for address, building in (
                 ("100 Example Street", fx.BUILDING),
                 ("200 Example Street", fx.OLD_BUILDING))])
-        specs = self._specs(scenario)
+        plan = self.orch._federal_individual_emit_plan(
+            scenario, self.orch.compute_federal(scenario))
+        specs = plan.specs
         names = {spec.name for spec in specs}
         self.assertIn("sch_e", names)
         self.assertIn("sch_c_1", names)
@@ -213,7 +215,7 @@ class MultiActivityPacketTests(_EmitCase):
             sch_e["sch_e_property_b_depreciation"], fx.OLD_BUILDING_2025)
         out_dir = self.tmp / "packet"
         out_dir.mkdir()
-        emitted = self.orch._emit_depreciation_audit(scenario, specs, out_dir)
+        emitted = self.orch._emit_depreciation_audit(scenario, plan, out_dir)
         self.assertTrue(emitted[depreciation_workbook.EMITTED_KEY].is_file())
 
 
