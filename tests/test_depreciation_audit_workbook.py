@@ -21,8 +21,10 @@ import openpyxl
 
 from tenforty.audit import depreciation_workbook as dw
 from tenforty.forms.depreciation import resolver
-from tenforty.models import DepreciableAsset
+from tenforty.models import DepreciableAsset, RentalProperty
+from tenforty.orchestrator import ReturnOrchestrator
 from tests import _audit_workbook_fixtures as fx
+from tests.helpers import SPREADSHEETS_DIR
 
 RENTAL = ("rental_properties", 0)
 
@@ -870,6 +872,79 @@ class SpreadsheetPrecisionNoteTests(_WorkbookCase):
         self.assertTrue(
             workbook["Year-by-year"]["G2"].value.endswith(self.NOTE))
         self.assertTrue(workbook["Assets"]["N2"].value.endswith(self.NOTE))
+
+# A third prior-year building: 27.5-year, January 2019, basis 100,000.
+# 2019: 3.485% = 3,485; 2020-2024: 3.636% = 3,636 each; prior through 2024 =
+# 3,485 + 5 x 3,636 = 21,665; 2025 = 3,636.
+_SMALL_BUILDING = DepreciableAsset(
+    description="Small building", date_placed_in_service=date(2019, 1, 15),
+    basis=100_000.0, recovery_class="27.5-year", prior_depreciation=21_665.0)
+
+
+class PerColumnTieOutTests(_WorkbookCase):
+    """Every rental column's printed line 18 reaches the workbook. Three
+    rentals, each with one prior-year building (no Form 4562 is required):
+    line 18 is 7,272 / 2,576 / 3,636."""
+
+    _LINE_18_KEYS = (
+        "sch_e_property_a_depreciation", "sch_e_property_b_depreciation",
+        "sch_e_property_c_depreciation")
+
+    def _scenario(self, assets=((fx.BUILDING,), (fx.OLD_BUILDING,),
+                                (_SMALL_BUILDING,))):
+        base = fx.scenario()
+        return dataclasses.replace(base, rental_properties=[
+            RentalProperty(
+                address=f"{n}00 Example Street", property_type=1,
+                fair_rental_days=365, personal_use_days=0,
+                rents_received=24_000.0, depreciable_assets=list(column))
+            for n, column in enumerate(assets, start=1)])
+
+    def _emit(self, scenario):
+        """(Schedule E spec values, the hand-off) through the real emit
+        specs."""
+        orchestrator = ReturnOrchestrator(
+            spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.tmp / "work")
+        specs = orchestrator._federal_individual_emit_specs(
+            scenario, orchestrator.compute_federal(scenario))
+        (sch_e,) = [spec.values for spec in specs if spec.name == "sch_e"]
+        return sch_e, orchestrator._printed_depreciation_figures(
+            scenario, specs)
+
+    def test_every_rental_column_hands_its_printed_line_18_to_the_workbook(
+            self):
+        sch_e, printed = self._emit(self._scenario())
+        self.assertEqual(
+            [sch_e[key] for key in self._LINE_18_KEYS],
+            [7_272, 2_576, 3_636])
+        self.assertEqual(dict(printed.activity_lines), {
+            ("rental_properties", 0): sch_e["sch_e_property_a_depreciation"],
+            ("rental_properties", 1): sch_e["sch_e_property_b_depreciation"],
+            ("rental_properties", 2): sch_e["sch_e_property_c_depreciation"],
+        })
+
+    def test_each_rental_tie_out_row_passes(self):
+        scenario = self._scenario()
+        sch_e, printed = self._emit(scenario)
+        workbook = self.write(scenario=scenario, printed=printed)
+        sheet = workbook["Tie-outs"]
+        rows = {sheet[f"A{r}"].value: r for r in range(2, sheet.max_row + 1)}
+        for index, key in enumerate(self._LINE_18_KEYS):
+            with self.subTest(rental=index):
+                row = rows[
+                    f"Schedule E line 18: depreciation, rental property "
+                    f"#{index} ('{index + 1}00 Example Street')"]
+                self.assertEqual(sheet[f"C{row}"].value, sch_e[key])
+                self.assertEqual(
+                    dw.cell_value(workbook, "Tie-outs", f"E{row}"), 0)
+
+    def test_a_column_with_no_depreciation_is_absent_from_the_hand_off(self):
+        _, printed = self._emit(self._scenario(
+            assets=((fx.BUILDING,), (), (_SMALL_BUILDING,))))
+        self.assertNotIn(("rental_properties", 1), printed.activity_lines)
+        self.assertIn(("rental_properties", 0), printed.activity_lines)
+        self.assertIn(("rental_properties", 2), printed.activity_lines)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -62,8 +62,8 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_asset_nest_loading::OverrideOutsideAssetModeRefusalTests::test_override_on_an_activity_with_no_assets_refuses",
     "unacknowledged_depreciation_override":
         "tests.test_asset_nest_loading::UnacknowledgedOverrideRefusalTests::test_override_without_acknowledgment_refuses",
-    "asset_mode_on_unprinted_rental":
-        "tests.test_asset_nest_loading::UnprintedRentalRefusalTests::test_assets_on_a_rental_other_than_the_first_refuse",
+    "more_than_three_rental_properties":
+        "tests.test_asset_nest_loading::FourthRentalRefusalTests::test_a_fourth_rental_refuses_naming_its_recon_key",
     "asset_placed_after_return_year":
         "tests.test_depreciation_resolver::AssetPlacedAfterReturnYearTests::test_ledger_fires_and_twin_in_the_return_year_is_silent",
     "prior_depreciation_mismatch":
@@ -444,7 +444,7 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "unacknowledged_stated_depreciation",
                 "override_outside_asset_mode",
                 "unacknowledged_depreciation_override",
-                "asset_mode_on_unprinted_rental",
+                "more_than_three_rental_properties",
                 "asset_placed_after_return_year",
                 "prior_depreciation_mismatch",
                 "stale_depreciation_override",

@@ -39,6 +39,9 @@ ALLOWED_STRING_CONSTANTS: dict[tuple[str, str], str] = {
         "negative-amount refusal at load: a sign check, not an amount read",
     ("scenario.py", "_load_deductions"):
         "s_corp_return.deductions YAML key (Form 1120-S line 14)",
+    ("mappings/pdf_sch_e.py", "_COLUMN_CELLS"):
+        "PDF key suffix table: names line 18's widget per column, reads no "
+        "amount",
 }
 
 
@@ -70,8 +73,6 @@ ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
     ("attestations.py", "_unacknowledged_stated_figures"):
         "ledger, truthiness only",
     ("attestations.py", "_overrides_outside_asset_mode"):
-        "ledger, truthiness only",
-    ("attestations.py", "_asset_mode_on_unprinted_rentals"):
         "ledger, truthiness only",
     ("attestations.py", "_computable_overridden_activities"):
         "ledger: which overridden activities the engine can compute",
