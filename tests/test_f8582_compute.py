@@ -169,5 +169,41 @@ class EveryRentalColumnIsAPassiveActivityTests(unittest.TestCase):
         self.assertEqual(out["f8582_line_1b_activities_with_loss"], 4_000)
 
 
+class MissingColumnLine21Tests(unittest.TestCase):
+    """A Schedule E result that carries some columns' line 21 but not
+    another's is a wiring fault: Form 8582 raises, it does not read zero."""
+
+    _ADDRESSES = ("100 Example Street", "200 Example Street",
+                  "300 Example Street")
+
+    def _compute(self, sch_e: dict) -> dict:
+        s = make_k1_scenario()
+        s.schedule_k1s = []
+        s.rental_properties = _rentals_at(*self._ADDRESSES)
+        return f8582.compute(s, upstream={
+            "f1040": {"magi": 50_000}, "sch_e": sch_e})
+
+    def test_a_column_without_its_line_21_key_raises(self):
+        with self.assertRaises(KeyError) as cm:
+            self._compute({
+                "sch_e_property_a_income_loss": 8_000,
+                "sch_e_property_c_income_loss": 4_000,
+            })
+        message = cm.exception.args[0]
+        self.assertIn("Form 8582", message)
+        self.assertIn("'sch_e_property_b_income_loss'", message)
+        self.assertIn("'200 Example Street'", message)
+
+    def test_the_same_upstream_with_every_column_computes(self):
+        # Twin: the missing key supplied, nothing else changed.
+        out = self._compute({
+            "sch_e_property_a_income_loss": 8_000,
+            "sch_e_property_b_income_loss": -4_000,
+            "sch_e_property_c_income_loss": 4_000,
+        })
+        self.assertEqual(out["f8582_line_1a_activities_with_income"], 12_000)
+        self.assertEqual(out["f8582_line_1b_activities_with_loss"], 4_000)
+
+
 if __name__ == "__main__":
     unittest.main()
