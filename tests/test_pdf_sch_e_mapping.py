@@ -9,6 +9,7 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_e import PdfSchE
 from tests.helpers import REPO_ROOT
+from tests.test_sch_e_totals_and_line_27 import _widget_path
 
 SCH_E_TEMPLATE = (
     Path(__file__).resolve().parents[1]
@@ -383,6 +384,128 @@ class PdfSchELine28PlacementTests(unittest.TestCase):
 
     def test_2025(self):
         self._check_year(2025)
+
+
+
+# ── Property columns A/B/C (page 1, lines 1a-22) ──────────────────────────
+# A literal transcription of the widget table, typed here and NOT imported
+# from the mapping under test: suffix -> (container on the 2022-2025
+# templates, (column A leaf, column B leaf, column C leaf)).
+_PAGE_1 = "topmostSubform[0].Page1[0]."
+_COLUMN_CELLS: dict[str, tuple[str, tuple[int, int, int]]] = {
+    "address": ("Table_Line1a[0].Row{row}[0]", (3, 4, 5)),
+    "type_code": ("Table_Line1b[0].Row{row}[0]", (6, 7, 8)),
+    "fair_rental_days": ("Table_Line2[0].Row{row}[0]", (9, 11, 13)),
+    "personal_use_days": ("Table_Line2[0].Row{row}[0]", (10, 12, 14)),
+    "rents": ("Table_Income[0].Line3[0]", (16, 17, 18)),
+    "advertising": ("Table_Expenses[0].Line5[0]", (22, 23, 24)),
+    "auto_and_travel": ("Table_Expenses[0].Line6[0]", (25, 26, 27)),
+    "cleaning_and_maintenance": ("Table_Expenses[0].Line7[0]", (28, 29, 30)),
+    "commissions": ("Table_Expenses[0].Line8[0]", (31, 32, 33)),
+    "insurance": ("Table_Expenses[0].Line9[0]", (34, 35, 36)),
+    "legal_and_professional_fees":
+        ("Table_Expenses[0].Line10[0]", (37, 38, 39)),
+    "management_fees": ("Table_Expenses[0].Line11[0]", (40, 41, 42)),
+    "mortgage_interest": ("Table_Expenses[0].Line12[0]", (43, 44, 45)),
+    "other_interest": ("Table_Expenses[0].Line13[0]", (46, 47, 48)),
+    "repairs": ("Table_Expenses[0].Line14[0]", (49, 50, 51)),
+    "supplies": ("Table_Expenses[0].Line15[0]", (52, 53, 54)),
+    "taxes": ("Table_Expenses[0].Line16[0]", (55, 56, 57)),
+    "utilities": ("Table_Expenses[0].Line17[0]", (58, 59, 60)),
+    "depreciation": ("Table_Expenses[0].Line18[0]", (61, 62, 63)),
+    "other_expenses": ("Table_Expenses[0].Line19[0]", (65, 66, 67)),
+    "total_expenses": ("Table_Expenses[0].Line20[0]", (68, 69, 70)),
+    "income_loss": ("Table_Expenses[0].Line21[0]", (71, 72, 73)),
+    "deductible_loss": ("Table_Expenses[0].Line22[0]", (74, 75, 76)),
+}
+# The 2021 template nests three of the containers differently.
+_COLUMN_CONTAINERS_2021: dict[str, str] = {
+    "address": "Line1[0].Table1a[0].Row{row}[0]",
+    "type_code": "Line1[0].Table1b[0].Row{row}[0]",
+    "rents": "Table_Income[0].Income[0].Line3[0]",
+}
+# The 2022 template zero-pads its single-digit text leaves.
+_PADDED_LEAVES_2022: dict[int, str] = {
+    3: "f1_03[0]", 4: "f1_04[0]", 5: "f1_05[0]", 6: "f1_06[0]",
+    7: "f1_07[0]", 8: "f1_08[0]", 9: "f1_09[0]",
+}
+_COLUMN_YEARS = (2021, 2022, 2023, 2024, 2025)
+_COLUMN_LETTERS = ("a", "b", "c")
+# Rows that stack A/B/C top to bottom; every other suffix runs left to right.
+_STACKED_SUFFIXES = (
+    "address", "type_code", "fair_rental_days", "personal_use_days")
+
+
+def _literal_column_path(year: int, suffix: str, column: int) -> str:
+    container, leaves = _COLUMN_CELLS[suffix]
+    if year == 2021:
+        container = _COLUMN_CONTAINERS_2021.get(suffix, container)
+    leaf = f"f1_{leaves[column]}[0]"
+    if year == 2022:
+        leaf = _PADDED_LEAVES_2022.get(leaves[column], leaf)
+    return (_PAGE_1 + container.format(row="ABC"[column]) + "." + leaf)
+
+
+class PropertyColumnMappingTests(unittest.TestCase):
+    def test_columns_b_and_c_map_to_their_literal_widgets(self):
+        for year in _COLUMN_YEARS:
+            scalars = PdfSchE.get_mapping(year)["scalars"]
+            for suffix in _COLUMN_CELLS:
+                for column in (1, 2):
+                    key = f"sch_e_property_{_COLUMN_LETTERS[column]}_{suffix}"
+                    with self.subTest(year=year, key=key):
+                        self.assertEqual(
+                            scalars[key],
+                            _literal_column_path(year, suffix, column))
+
+    def test_column_a_paths_are_unchanged(self):
+        for year in _COLUMN_YEARS:
+            scalars = PdfSchE.get_mapping(year)["scalars"]
+            for suffix in _COLUMN_CELLS:
+                key = f"sch_e_property_a_{suffix}"
+                with self.subTest(year=year, key=key):
+                    self.assertEqual(
+                        scalars[key], _literal_column_path(year, suffix, 0))
+
+    def test_each_column_cell_sits_right_of_the_previous_on_the_same_row(self):
+        for year in _COLUMN_YEARS:
+            page = PdfReader(str(
+                REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+            )).pages[0]
+            rects = {_widget_path(a.get_object()):
+                     [float(v) for v in a.get_object()["/Rect"]]
+                     for a in page.get("/Annots", [])}
+            for suffix in _COLUMN_CELLS:
+                with self.subTest(year=year, suffix=suffix):
+                    a, b, c = (
+                        rects[_literal_column_path(year, suffix, column)]
+                        for column in (0, 1, 2))
+                    if suffix in _STACKED_SUFFIXES:
+                        self.assertLess(abs(a[0] - b[0]), 1)
+                        self.assertLess(abs(b[0] - c[0]), 1)
+                        self.assertGreater(a[1], b[1])
+                        self.assertGreater(b[1], c[1])
+                    else:
+                        self.assertLess(abs(a[1] - b[1]), 1)
+                        self.assertLess(abs(b[1] - c[1]), 1)
+                        self.assertLess(a[0], b[0])
+                        self.assertLess(b[0], c[0])
+
+    def test_every_mapped_path_exists_on_its_template_and_none_repeats(self):
+        for year in _COLUMN_YEARS:
+            with self.subTest(year=year):
+                real = set((PdfReader(str(
+                    REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+                )).get_fields() or {}).keys())
+                scalars = PdfSchE.get_mapping(year)["scalars"]
+                for letter in _COLUMN_LETTERS:
+                    for suffix in _COLUMN_CELLS:
+                        self.assertIn(
+                            f"sch_e_property_{letter}_{suffix}", scalars)
+                missing = {k: p for k, p in scalars.items() if p not in real}
+                self.assertEqual(missing, {})
+                paths = list(scalars.values())
+                self.assertEqual(len(paths), len(set(paths)))
 
 
 if __name__ == "__main__":
