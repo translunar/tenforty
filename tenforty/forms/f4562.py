@@ -232,7 +232,7 @@ def _business_or_activity(scenario: Scenario) -> str:
     business's description (Schedule C line A). Nothing is added to it.
 
     Empty when there is nothing to print: the activity has no name, or the
-    assets span more than one activity, so the one merged form has no
+    assets span more than one activity, so a form over all of them has no
     single activity to name. The box then stays blank; no placeholder is
     ever printed."""
     listing = activities_with_assets(scenario)
@@ -277,7 +277,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     return result
 
 
-def _activity_name(activity) -> str:
+def activity_name(activity) -> str:
     """What one copy's header box "Business or activity to which this form
     relates" prints: the activity named exactly as its own schedule names
     it -- a rental's address verbatim (Schedule E line 1a), a business's
@@ -300,7 +300,7 @@ def compute_for(activity, tax_year: int, header: dict, *,
     cannot answer a taxpayer-wide test."""
     require_answer(mid_quarter)
     result: dict = {**header}
-    name = _activity_name(activity)
+    name = activity_name(activity)
     if name:
         result[ACTIVITY_KEY] = name
     this_year, earlier = [], []

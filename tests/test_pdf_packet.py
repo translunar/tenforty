@@ -301,11 +301,19 @@ class SourceDocumentSplicingTests(unittest.TestCase):
         self.assertEqual(len(reader.pages), 2)
 
 
+def _placeholder_sample(part: ast.FormattedValue) -> str:
+    if getattr(part.value, "id", None) == "recon_key":
+        return "rental_0"
+    return "1"
+
+
 def _federal_emit_spec_names() -> set[str]:
     """Every emit-spec name `_federal_individual_emit_specs` can produce,
     read from the orchestrator's SOURCE: the `name=` argument of each
     `_FederalFormSpec(...)` call. An f-string name (the indexed Schedule C
-    family) is sampled with "1" in each placeholder, e.g. "sch_c_1"."""
+    family) is sampled with "1" in each placeholder, e.g. "sch_c_1" --
+    except a `{recon_key}` placeholder (the per-activity Form 4562 copies),
+    which is sampled with a real recon key, "rental_0"."""
     source = (REPO_ROOT / "tenforty" / "orchestrator.py").read_text()
     names: set[str] = set()
     for node in ast.walk(ast.parse(source)):
@@ -320,7 +328,8 @@ def _federal_emit_spec_names() -> set[str]:
                 names.add(value.value)
             elif isinstance(value, ast.JoinedStr):
                 names.add("".join(
-                    part.value if isinstance(part, ast.Constant) else "1"
+                    part.value if isinstance(part, ast.Constant)
+                    else _placeholder_sample(part)
                     for part in value.values))
             else:
                 raise AssertionError(

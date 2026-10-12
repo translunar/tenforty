@@ -27,7 +27,6 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from tenforty.attestations import enforce_scoped_refusals
 from tenforty.forms import f4562, sch_e
 from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
@@ -385,41 +384,6 @@ class SingleActivityStabilityTests(_EmitCase):
                     fields = filled_fields(emitted["f4562"])
                     self.assertTrue(fields)
                     self.assertEqual(fields, pinned[f"{year}/{shape}"])
-
-
-class MergedFormWithOverrideRefusalTests(unittest.TestCase):
-    REFUSAL = (r"Form 4562 is required this year.*one merged form.*"
-               r"per-activity")
-
-    def _business(self, *assets):
-        return ScheduleCBusiness(
-            description="Consulting", gross_receipts=50_000.0,
-            depreciable_assets=tuple(assets))
-
-    def test_placement_on_one_activity_and_override_on_another_refuses(self):
-        s = _scenario(
-            rentals=[_rental(_old_building(), override_amount=7_000.0)],
-            businesses=[self._business(_new_equipment())])
-        with self.assertRaisesRegex(NotImplementedError, self.REFUSAL) as cm:
-            enforce_scoped_refusals(s, "load")
-        self.assertIn("rental property #0 ('100 Example Street')",
-                      str(cm.exception))
-
-    def test_override_with_no_placement_anywhere_is_silent(self):
-        enforce_scoped_refusals(_scenario(
-            rentals=[_rental(_old_building(), override_amount=7_000.0)],
-            businesses=[self._business()]), "load")
-
-    def test_placement_with_no_override_anywhere_is_silent(self):
-        enforce_scoped_refusals(_scenario(
-            rentals=[_rental(_old_building())],
-            businesses=[self._business(_new_equipment())]), "load")
-
-    def test_resolving_the_overridden_activity_alone_does_not_refuse(self):
-        """Whole-return question: not asked of a single activity."""
-        from tenforty.forms.depreciation.resolver import resolve
-        rental = _rental(_old_building(), override_amount=7_000.0)
-        self.assertEqual(resolve(rental, YEAR, mid_quarter=False).amount, 7_000.0)
 
 
 if __name__ == "__main__":

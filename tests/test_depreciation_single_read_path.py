@@ -81,8 +81,6 @@ ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
         "ledger, truthiness only",
     ("attestations.py", "_computable_overridden_activities"):
         "ledger: which overridden activities the engine can compute",
-    ("attestations.py", "_merged_4562_with_override"):
-        "ledger: placement dates only",
     ("attestations.py", "activities_with_assets"):
         "truthiness only: which activities list assets, for Form 4562's "
         "\"business or activity\" header box",

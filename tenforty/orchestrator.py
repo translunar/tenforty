@@ -1899,13 +1899,45 @@ class ReturnOrchestrator:
                 values={**scenario.config.pdf_header(), **sch_se_results},
             ))
 
-        if self._should_emit_4562(scenario, {"f1040": results}):
-            specs.append(_FederalFormSpec(
-                name="f4562", template=_fed("f4562.pdf"),
-                output_name=f"f4562_{year}.pdf", kind="repeater",
-                mapping=Pdf4562.get_mapping(year),
-                values=form_4562.compute(scenario, upstream=upstream),
-            ))
+        # Form 4562 — one copy per activity that ITSELF places property in
+        # service this year, each named by its recon key. The 40% answer is
+        # the RETURN's: worked out once, here, from the same scenario the
+        # schedules above computed from, and handed to every copy. A copy
+        # never works it out and it is never taken from one activity.
+        # Every copy is computed before anything is rendered, so a refusal
+        # on any of them leaves no Form 4562 behind.
+        mid_quarter = mid_quarter_applies(scenario)
+        copies = [
+            (row.recon_key, getattr(scenario, row.section)[row.index])
+            for row in depreciation_resolver.mid_quarter_bases_by_activity(
+                scenario)]
+        copies = [
+            (recon_key, activity) for recon_key, activity in copies
+            if form_4562.is_required_for(activity, year)]
+        for recon_key, activity in copies:
+            try:
+                copy_values = form_4562.compute_for(
+                    activity, year, scenario.config.pdf_header(),
+                    mid_quarter=mid_quarter)
+            except (NotImplementedError, ValueError) as error:
+                raise type(error)(
+                    f"Form 4562 copy {recon_key} "
+                    f"({form_4562.activity_name(activity)!r}): {error}"
+                ) from error
+            if len(copies) == 1:
+                # The lone copy keeps the historic key and file name.
+                specs.append(_FederalFormSpec(
+                    name="f4562", template=_fed("f4562.pdf"),
+                    output_name=f"f4562_{year}.pdf", kind="repeater",
+                    mapping=Pdf4562.get_mapping(year), values=copy_values,
+                ))
+            else:
+                specs.append(_FederalFormSpec(
+                    name=f"f4562_{recon_key}", template=_fed("f4562.pdf"),
+                    output_name=f"f4562_{year}_{recon_key}.pdf",
+                    kind="repeater", mapping=Pdf4562.get_mapping(year),
+                    values=copy_values,
+                ))
 
         if self._should_emit_8959(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
