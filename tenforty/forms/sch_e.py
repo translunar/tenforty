@@ -131,13 +131,15 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
 
 # Lines 23a/23c/23d/23e: "Total of all amounts reported on line N for all
-# ... properties". (total key, suffix of the printed per-column line it
-# totals.)
+# ... properties". (total key, builder of the printed per-column line key it
+# totals.) Line 23d totals line 18, whose key has one owner: line_18_key.
 _LINE_23_TOTALS = (
-    ("sch_e_line_23a_total_rents", "rents"),
-    ("sch_e_line_23c_total_mortgage_interest", "mortgage_interest"),
-    ("sch_e_line_23d_total_depreciation", "depreciation"),
-    ("sch_e_line_23e_total_expenses", "total_expenses"),
+    ("sch_e_line_23a_total_rents", lambda letter: _key(letter, "rents")),
+    ("sch_e_line_23c_total_mortgage_interest",
+     lambda letter: _key(letter, "mortgage_interest")),
+    ("sch_e_line_23d_total_depreciation", line_18_key),
+    ("sch_e_line_23e_total_expenses",
+     lambda letter: _key(letter, "total_expenses")),
 )
 
 
@@ -153,9 +155,9 @@ def _totals_block(printed: dict, letters: list[str]) -> dict:
     (royalties, line 4) has no producer: nothing prints on line 4.
     """
     totals: dict = {}
-    for total_key, suffix in _LINE_23_TOTALS:
-        lines = [printed[_key(letter, suffix)] for letter in letters
-                 if _key(letter, suffix) in printed]
+    for total_key, line_key in _LINE_23_TOTALS:
+        lines = [printed[line_key(letter)] for letter in letters
+                 if line_key(letter) in printed]
         if lines:
             totals[total_key] = sum(lines)
     line_21s = {letter: printed[line_21_key(letter)] for letter in letters}
