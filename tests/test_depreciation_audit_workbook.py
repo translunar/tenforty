@@ -969,11 +969,12 @@ class PerColumnTieOutTests(_WorkbookCase):
         specs."""
         orchestrator = ReturnOrchestrator(
             spreadsheets_dir=SPREADSHEETS_DIR, work_dir=self.tmp / "work")
-        specs = orchestrator._federal_individual_emit_specs(
+        plan = orchestrator._federal_individual_emit_plan(
             scenario, orchestrator.compute_federal(scenario))
-        (sch_e,) = [spec.values for spec in specs if spec.name == "sch_e"]
+        (sch_e,) = [
+            spec.values for spec in plan.specs if spec.name == "sch_e"]
         return sch_e, orchestrator._printed_depreciation_figures(
-            scenario, specs)
+            scenario, plan)
 
     def test_every_rental_column_hands_its_printed_line_18_to_the_workbook(
             self):
