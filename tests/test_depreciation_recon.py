@@ -22,8 +22,9 @@ from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation,
 )
+from tenforty.forms.depreciation import resolver
 from tenforty.models import (
-    DepreciableAsset, DepreciationOverride, RentalProperty,
+    DepreciableAsset, DepreciationOverride, RentalProperty, ScheduleCBusiness,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.summary import write_results_snapshot
@@ -273,6 +274,34 @@ class NoAssetModeTwinTests(_Case):
         results = self._results(_scenario())
         self.assertEqual([k for k in results if k.startswith(PREFIX)], [])
         self.assertNotIn("Depreciation Reconciliation", self._printed(results))
+
+
+class ReconKeyPrefixTests(unittest.TestCase):
+    def test_recon_key_prefixes_match_the_per_activity_rows(self):
+        """The recon surface and the per-activity 40% rows name an activity
+        with the same key."""
+        scenario = _scenario(_rental(depreciable_assets=[_new_building()]))
+        scenario.schedule_c_businesses = [ScheduleCBusiness(
+            description="Consulting", gross_receipts=50_000.0,
+            depreciable_assets=(DepreciableAsset(
+                description="Equipment",
+                date_placed_in_service=date(YEAR, 2, 1), basis=10_000.0,
+                recovery_class="5-year",
+                no_bonus_or_section_179_history=True),))]
+        rows = resolver.mid_quarter_bases_by_activity(scenario)
+        self.assertEqual(
+            [row.recon_key for row in rows], ["rental_0", "sch_c_0"])
+        prefixes = [
+            resolver.RECON_PREFIX + row.recon_key + "_" for row in rows]
+        keys = resolver.recon_keys(scenario)
+        self.assertTrue(keys)
+        for key in keys:
+            with self.subTest(key=key):
+                self.assertTrue(
+                    any(key.startswith(prefix) for prefix in prefixes))
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix):
+                self.assertIn(prefix + "engine_amount", keys)
 
 
 if __name__ == "__main__":

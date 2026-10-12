@@ -19,6 +19,7 @@ from datetime import date
 
 from tenforty.attestations import enforce_scoped_refusals
 from tenforty.forms import sch_e as form_sch_e
+from tenforty.forms.depreciation import resolver
 from tenforty.forms.depreciation.resolver import (
     mid_quarter_applies, mid_quarter_bases, resolve,
 )
@@ -787,6 +788,127 @@ class ScheduleEColumnsUseTheReturnsAnswerTests(unittest.TestCase):
         self.assertEqual(printed, [
             self._line_18(rp, mid_quarter=answer) for rp in rentals])
         self.assertEqual(len(set(printed)), 3)
+
+
+class PerActivityBasesTests(unittest.TestCase):
+    """`mid_quarter_bases_by_activity`: the 40% test's two totals, broken out
+    by activity in whole cents. One row per DEPRECIATION activity (it lists
+    assets or states a figure), keyed by recon key. The pooled pair the test
+    decides on is this breakdown's column sums."""
+
+    def _rows(self, scenario):
+        return resolver.mid_quarter_bases_by_activity(scenario)
+
+    @staticmethod
+    def _cents(row) -> tuple[int, int]:
+        return (row.last_quarter_cents, row.full_year_cents)
+
+    def _pooled_shape(self):
+        return _scenario(
+            rentals=[_rental(_personal(6_000.0, 3), _personal(3_000.0, 11))],
+            businesses=[_business(
+                _personal(3_000.0, 12, description="Laptop"))])
+
+    def test_one_row_per_depreciation_activity_keyed_by_recon_key(self):
+        rental, business = self._rows(self._pooled_shape())
+        self.assertEqual(
+            (rental.recon_key, business.recon_key), ("rental_0", "sch_c_0"))
+        self.assertEqual(self._cents(rental), (300_000, 900_000))
+        self.assertEqual(self._cents(business), (300_000, 300_000))
+        self.assertEqual(
+            (rental.section, rental.index), ("rental_properties", 0))
+        self.assertEqual(
+            (business.section, business.index), ("schedule_c_businesses", 0))
+        self.assertEqual(
+            rental.label, "rental property #0 ('100 Example Street')")
+        self.assertEqual(
+            business.label, "Schedule C business #0 ('Consulting')")
+        self.assertIs(rental.stated, False)
+        self.assertIs(business.stated, False)
+
+    def test_the_breakdown_sums_exactly_to_the_pair_the_test_decides_on(self):
+        def check(scenario, late, total):
+            rows = self._rows(scenario)
+            sum_late = sum(row.last_quarter_cents for row in rows)
+            sum_total = sum(row.full_year_cents for row in rows)
+            self.assertEqual((sum_late, sum_total), (late, total))
+            self.assertIs(
+                sum_late * 100 > 40 * sum_total,
+                mid_quarter_applies(scenario))
+
+        check(self._pooled_shape(), 600_000, 1_200_000)
+        self.assertIs(mid_quarter_applies(self._pooled_shape()), True)
+        # The exact-40% cent pairs (late = 2k cents, early = 3k cents), the
+        # early basis on the rental and the late one on the business; then
+        # one more cent late.
+        for k in range(1_000_001, 1_000_400):
+            for extra, trips in ((0, False), (1, True)):
+                with self.subTest(k=k, extra=extra):
+                    scenario = _scenario(
+                        rentals=[_rental(_personal(3 * k / 100, 3))],
+                        businesses=[_business(
+                            _personal((2 * k + extra) / 100, 11))])
+                    check(scenario, 2 * k + extra, 5 * k + extra)
+                    self.assertIs(mid_quarter_applies(scenario), trips)
+
+    def test_real_property_and_prior_year_assets_are_in_neither_column(self):
+        rental = _rental(
+            _real(200_000.0, 11, "27.5-year"),
+            _personal(5_000.0, 12, year=YEAR - 1, description="Old"))
+        (row,) = self._rows(_scenario(rentals=[rental]))
+        self.assertEqual(self._cents(row), (0, 0))
+        # Twin: personal property placed this November is in both.
+        rental.depreciable_assets.append(
+            _personal(1_000.0, 11, description="New"))
+        (row,) = self._rows(_scenario(rentals=[rental]))
+        self.assertEqual(self._cents(row), (100_000, 100_000))
+
+    def test_an_activity_placing_only_real_property_still_has_a_zero_row(self):
+        rows = self._rows(_scenario(
+            rentals=[_rental(_personal(1_000.0, 3))],
+            businesses=[_business(_real(50_000.0, 6, "39-year"))]))
+        self.assertEqual(
+            [row.recon_key for row in rows], ["rental_0", "sch_c_0"])
+        self.assertEqual(self._cents(rows[0]), (0, 100_000))
+        self.assertEqual(self._cents(rows[1]), (0, 0))
+        self.assertIs(rows[1].stated, False)
+
+    def _stated_business(self):
+        return _business(
+            depreciation=1_200.0,
+            acknowledges_depreciation_stated_outside_macrs=True)
+
+    def test_a_stated_mode_activity_is_a_flagged_zero_row(self):
+        scenario = _scenario(
+            rentals=[_rental(_personal(6_000.0, 3))],
+            businesses=[self._stated_business()], acknowledgment=True)
+        _check(scenario)
+        rental, business = self._rows(scenario)
+        self.assertEqual(
+            (rental.recon_key, rental.stated), ("rental_0", False))
+        self.assertEqual(self._cents(rental), (0, 600_000))
+        self.assertEqual(
+            (business.recon_key, business.stated), ("sch_c_0", True))
+        self.assertEqual(self._cents(business), (0, 0))
+        self.assertEqual(
+            [row.label for row in (rental, business) if row.stated],
+            resolver.stated_mode_activity_labels(scenario))
+        self.assertEqual(
+            resolver.stated_mode_activity_labels(scenario),
+            ["Schedule C business #0 ('Consulting')"])
+
+    def test_two_stated_businesses_with_one_name_are_two_rows(self):
+        rows = self._rows(_scenario(
+            businesses=[self._stated_business(), self._stated_business()]))
+        self.assertEqual(
+            [(row.recon_key, row.stated) for row in rows],
+            [("sch_c_0", True), ("sch_c_1", True)])
+
+    def test_an_activity_with_no_depreciation_has_no_row(self):
+        rows = self._rows(_scenario(
+            rentals=[_rental(_personal(1_000.0, 3))],
+            businesses=[_business()]))
+        self.assertEqual([row.recon_key for row in rows], ["rental_0"])
 
 
 if __name__ == "__main__":
