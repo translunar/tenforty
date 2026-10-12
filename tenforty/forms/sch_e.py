@@ -21,10 +21,11 @@ locally-summed line 26.
 
 import logging
 
-from tenforty.attestations import raise_scoped_refusal
-from tenforty.forms.depreciation.resolver import (
-    _RECON_SECTION_SLUGS, mid_quarter_applies, resolve,
+from tenforty.attestations import (
+    SCHEDULE_E_PROPERTY_COLUMNS, _rentals_beyond_schedule_e_columns,
+    raise_scoped_refusal,
 )
+from tenforty.forms.depreciation.resolver import mid_quarter_applies, resolve
 from tenforty.models import RentalProperty, Scenario
 from tenforty.rounding import irs_round
 
@@ -33,6 +34,7 @@ log = logging.getLogger(__name__)
 
 # One letter per printed property column, in rental_properties order.
 COLUMN_LETTERS: tuple[str, ...] = ("a", "b", "c")
+assert len(COLUMN_LETTERS) == SCHEDULE_E_PROPERTY_COLUMNS
 
 # (RentalProperty attribute, column key suffix) for the entered expense
 # lines 5-17 and 19.
@@ -88,13 +90,10 @@ def printed_columns(scenario: Scenario) -> list[tuple[str, RentalProperty]]:
     fourth rental is refused here as well as at load, so a Scenario built in
     code and handed straight to `compute` can never print three properties
     and silently drop the rest."""
-    rentals = scenario.rental_properties
-    if len(rentals) > len(COLUMN_LETTERS):
-        slug = _RECON_SECTION_SLUGS["rental_properties"]
-        raise_scoped_refusal("more_than_three_rental_properties", [
-            f"{slug}_{i} (rental property #{i}, {rp.address!r})"
-            for i, rp in enumerate(rentals) if i >= len(COLUMN_LETTERS)])
-    return list(zip(COLUMN_LETTERS, rentals))
+    beyond = _rentals_beyond_schedule_e_columns(scenario)
+    if beyond:
+        raise_scoped_refusal("more_than_three_rental_properties", beyond)
+    return list(zip(COLUMN_LETTERS, scenario.rental_properties))
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:

@@ -1244,10 +1244,21 @@ def _unacknowledged_overrides(s: Scenario) -> list[str]:
             and act.depreciation_override.acknowledgment is not True]
 
 
-def _asset_mode_on_unprinted_rentals(s: Scenario) -> list[str]:
-    return [f"rental property #{i} ({rp.address!r})"
+# Schedule E page 1 has three property columns (A, B, C); forms/sch_e.py
+# prints one rental per column and checks its letters against this count.
+SCHEDULE_E_PROPERTY_COLUMNS = 3
+
+
+def _rentals_beyond_schedule_e_columns(s: Scenario) -> list[str]:
+    """Every rental past the third, named by its recon key (the one naming
+    scheme for activities) and its printed address. The only place this
+    offender text is formatted: forms/sch_e.py raises through it too."""
+    # The resolver imports this module, hence the import inside the function.
+    from tenforty.forms.depreciation.resolver import _RECON_SECTION_SLUGS
+    slug = _RECON_SECTION_SLUGS["rental_properties"]
+    return [f"{slug}_{i} (rental property #{i}, {rp.address!r})"
             for i, rp in enumerate(s.rental_properties)
-            if i >= 1 and rp.depreciable_assets]
+            if i >= SCHEDULE_E_PROPERTY_COLUMNS]
 
 
 # The four predicates below need the engine, which lives in
@@ -1539,15 +1550,15 @@ _DEPRECIATION_SHAPE_REFUSALS: tuple[ScopedRefusal, ...] = (
             "explicitly."),
     ),
     ScopedRefusal(
-        name="asset_mode_on_unprinted_rental",
+        name="more_than_three_rental_properties",
         stage="load",
-        offenders=_asset_mode_on_unprinted_rentals,
+        offenders=_rentals_beyond_schedule_e_columns,
         message=lambda o: (
-            f"{_join(o)} carries `depreciable_assets`, but Schedule E prints "
-            "only the first rental property (property A). Asset-mode "
-            "depreciation on a property the schedule does not print would "
-            "compute a deduction no form shows. This refusal lifts when "
-            "Schedule E prints beyond property A."),
+            f"{_join(o)}. Schedule E prints three rental properties "
+            "(columns A, B and C) on its one page, and tenforty does not "
+            "emit a second page, so a return with more than three rental "
+            "properties cannot be produced. Multi-page Schedule E is a "
+            "later feature."),
         exception=NotImplementedError,
     ),
 )

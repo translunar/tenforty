@@ -74,8 +74,6 @@ ALLOWED_ASSET_LIST_READS: dict[tuple[str, str], str] = {
         "ledger, truthiness only",
     ("attestations.py", "_overrides_outside_asset_mode"):
         "ledger, truthiness only",
-    ("attestations.py", "_asset_mode_on_unprinted_rentals"):
-        "ledger, truthiness only",
     ("attestations.py", "_computable_overridden_activities"):
         "ledger: which overridden activities the engine can compute",
     ("attestations.py", "_merged_4562_with_override"):
