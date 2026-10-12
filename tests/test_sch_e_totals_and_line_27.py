@@ -17,6 +17,7 @@ Form text (transcribed from pdfs/federal/<year>/f1040se.pdf, identical
 Every PDF assertion names its widget by literal path. All figures invented.
 """
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -489,6 +490,36 @@ class Line27YesRefusalTests(_EmitCase):
                 with self.assertRaisesRegex(
                         NotImplementedError, r"Schedule E line 27"):
                     self.orch._federal_individual_emit_specs(carrying, results)
+
+
+_SINGLE_PROPERTY_PIN = (
+    REPO_ROOT / "tests" / "fixtures" / "sch_e_single_property_pinned.json")
+
+
+class SinglePropertyStabilityTests(_EmitCase):
+    """A one-rental return computes and prints exactly what it did before
+    Schedule E grew columns B and C. The fixture was captured once, from the
+    tree before that work, and is never regenerated: if this goes red, the
+    code is wrong."""
+
+    def test_single_property_compute_and_emit_match_the_pinned_baseline(self):
+        pinned = json.loads(_SINGLE_PROPERTY_PIN.read_text())
+        cases = (("income", _rental), ("loss", lambda: _rental(
+            rents_received=6_000.0)))
+        self.assertEqual(
+            set(pinned),
+            {f"{year}/{tag}" for year in _YEARS for tag, _ in cases})
+        for year in _YEARS:
+            for tag, make in cases:
+                with self.subTest(year=year, case=tag):
+                    scenario = _scenario(year, rentals=[make()])
+                    computed = dict(
+                        form_sch_e.compute(scenario, upstream={}))
+                    values, _ = self._emit_sch_e(scenario, f"pin{year}{tag}")
+                    printed = {p: v for p, v in values.items() if v != ""}
+                    entry = pinned[f"{year}/{tag}"]
+                    self.assertEqual(computed, entry["compute"])
+                    self.assertEqual(printed, entry["emit"])
 
 
 if __name__ == "__main__":
