@@ -22,8 +22,9 @@ from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation,
 )
+from tenforty.forms.depreciation import resolver
 from tenforty.models import (
-    DepreciableAsset, DepreciationOverride, RentalProperty,
+    DepreciableAsset, DepreciationOverride, RentalProperty, ScheduleCBusiness,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.summary import write_results_snapshot
@@ -221,15 +222,16 @@ class BasisCeilingReconTests(_Case):
         self.assertEqual(results["sche_line26"], 24_000 - 1_000)
 
     def test_form_4562_total_agrees_with_schedule_e_when_capped(self):
-        """The legacy one-form 4562 lists every asset; it must carry the
-        same capped figure Schedule E line 18 prints, not the raw table."""
-        from tenforty.forms import f4562, sch_e
+        """The activity's Form 4562 copy must carry the same capped figure
+        Schedule E line 18 prints, not the raw table."""
+        from tenforty.forms import sch_e
+        from tests._f4562_helpers import compute_copy
         scenario = self._messy(9_000.0)
         line_18 = sch_e.compute(scenario, upstream={})[
             "sch_e_property_a_depreciation"]
         self.assertEqual(line_18, 1_000)
         self.assertEqual(
-            f4562.compute(scenario, upstream={})[
+            compute_copy(scenario)[
                 "f4562_line_22_total_depreciation"], line_18)
 
     def test_rounding_bound_ceiling_has_its_own_note(self):
@@ -273,6 +275,34 @@ class NoAssetModeTwinTests(_Case):
         results = self._results(_scenario())
         self.assertEqual([k for k in results if k.startswith(PREFIX)], [])
         self.assertNotIn("Depreciation Reconciliation", self._printed(results))
+
+
+class ReconKeyPrefixTests(unittest.TestCase):
+    def test_recon_key_prefixes_match_the_per_activity_rows(self):
+        """The recon surface and the per-activity 40% rows name an activity
+        with the same key."""
+        scenario = _scenario(_rental(depreciable_assets=[_new_building()]))
+        scenario.schedule_c_businesses = [ScheduleCBusiness(
+            description="Consulting", gross_receipts=50_000.0,
+            depreciable_assets=(DepreciableAsset(
+                description="Equipment",
+                date_placed_in_service=date(YEAR, 2, 1), basis=10_000.0,
+                recovery_class="5-year",
+                no_bonus_or_section_179_history=True),))]
+        rows = resolver.mid_quarter_bases_by_activity(scenario)
+        self.assertEqual(
+            [row.recon_key for row in rows], ["rental_0", "sch_c_0"])
+        prefixes = [
+            resolver.RECON_PREFIX + row.recon_key + "_" for row in rows]
+        keys = resolver.recon_keys(scenario)
+        self.assertTrue(keys)
+        for key in keys:
+            with self.subTest(key=key):
+                self.assertTrue(
+                    any(key.startswith(prefix) for prefix in prefixes))
+        for prefix in prefixes:
+            with self.subTest(prefix=prefix):
+                self.assertIn(prefix + "engine_amount", keys)
 
 
 if __name__ == "__main__":

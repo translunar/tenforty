@@ -6,6 +6,7 @@ from pathlib import Path
 
 from datetime import date
 
+from tenforty.forms import f4562 as form_f4562
 from tenforty.forms import f8949 as form_f8949
 from tenforty.models import (
     DepreciableAsset, Form1099B, Form1099DIV, Form1099INT, ItemizedDeductions,
@@ -194,10 +195,6 @@ class OrchestratorPredicateTests(unittest.TestCase):
             scenario, {"f1040": {"f8959_required": False}},
         ))
 
-    def test_should_emit_4562_false_when_no_assets(self) -> None:
-        scenario = make_simple_scenario()
-        self.assertFalse(self.orchestrator._should_emit_4562(scenario, {}))
-
     def test_should_emit_8995_follows_the_computed_form(self) -> None:
         emit = self.orchestrator._should_emit_8995
         self.assertFalse(emit({}))
@@ -209,10 +206,12 @@ class OrchestratorPredicateTests(unittest.TestCase):
         self.assertTrue(emit({"f8995_line_15_qbi_deduction": 0,
                               "f8995_line_16_qbi_loss_carryforward": -30_000}))
 
-    def test_should_emit_4562_true_when_an_asset_is_placed_this_year(self) -> None:
-        # Was "true when any asset present". Form 4562 is required only in a
-        # year property is placed in service; the prior-year twin is false.
+    def test_4562_is_required_for_an_activity_only_in_its_placement_year(self) -> None:
+        # Form 4562 is required only in a year the activity places property
+        # in service; the prior-year twin is false. The orchestrator asks
+        # `f4562.is_required_for` of each activity.
         scenario = make_simple_scenario()
+        year = scenario.config.year
         asset = DepreciableAsset(
             description="x",
             date_placed_in_service=date(scenario.config.year, 1, 1),
@@ -220,9 +219,10 @@ class OrchestratorPredicateTests(unittest.TestCase):
             recovery_class="5-year",
         )
         _nest_assets(scenario, [asset])
-        self.assertTrue(self.orchestrator._should_emit_4562(scenario, {}))
-        asset.date_placed_in_service = date(scenario.config.year - 1, 1, 1)
-        self.assertFalse(self.orchestrator._should_emit_4562(scenario, {}))
+        rental = scenario.rental_properties[0]
+        self.assertIs(form_f4562.is_required_for(rental, year), True)
+        asset.date_placed_in_service = date(year - 1, 1, 1)
+        self.assertIs(form_f4562.is_required_for(rental, year), False)
 
 
 class TestShouldCompute8949(unittest.TestCase):

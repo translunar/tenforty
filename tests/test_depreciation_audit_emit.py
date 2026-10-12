@@ -7,8 +7,9 @@ tests/test_f4562_prior_asset_line17.py and tests/test_depreciation_emit_pins.py
 -- not looked up through the mapping.
 """
 import dataclasses
+import json
 import tempfile
-from datetime import date
+from datetime import date, datetime
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -112,6 +113,51 @@ class AssetModeEmitTests(_EmitCase):
             openpyxl.load_workbook(path).sheetnames[0], "Tie-outs")
 
 
+PINNED_WORKBOOK = (
+    Path(__file__).parent / "fixtures"
+    / "depreciation_audit_single_activity_pinned.json")
+
+
+def workbook_cells(path) -> dict:
+    """``{"sheets": [names in order], "cells": {sheet: {coordinate: value}}}``
+    for every non-empty cell: a formula as its text, a date as an ISO
+    string."""
+    def plain(value):
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        return value
+
+    workbook = openpyxl.load_workbook(path)
+    return {
+        "sheets": list(workbook.sheetnames),
+        "cells": {
+            sheet.title: {
+                cell.coordinate: plain(cell.value)
+                for row in sheet.iter_rows() for cell in row
+                if cell.value is not None}
+            for sheet in workbook.worksheets},
+    }
+
+
+class SingleActivityWorkbookStabilityTests(_EmitCase):
+    """A single-activity return's audit workbook is what it was before the
+    per-activity layout: same sheets in the same order, same value or
+    formula in every cell. The fixture was generated once, on the tree
+    before that work, and is never regenerated; if this goes red the code is
+    wrong."""
+
+    def test_single_activity_workbook_matches_the_pinned_baseline(self):
+        pinned = json.loads(PINNED_WORKBOOK.read_text())
+        emitted = self.emit(fx.scenario())
+        found = workbook_cells(emitted["depreciation_audit"])
+        self.assertEqual(
+            found["sheets"], ["Tie-outs", "Assets", "Year-by-year"])
+        self.assertEqual(found["sheets"], pinned["sheets"])
+        self.assertEqual(found["cells"], pinned["cells"])
+
+
 class ScheduleCEmitTests(_EmitCase):
     def test_schedule_c_line_13_ties_out(self):
         equipment = dataclasses.replace(fx.APPLIANCE, description="Equipment")
@@ -125,7 +171,7 @@ class ScheduleCEmitTests(_EmitCase):
             _printed(emitted["sch_c_1"], SCH_C_LINE_13)]
         self.assertEqual(on_paper, [7_272, 1_920])
         self.assertEqual([sheet[f"C{r}"].value for r in (2, 3)], on_paper)
-        self.assertEqual(sheet.max_row, 3)
+        self.assertEqual(sheet.max_row, 6)
         self.assertEqual(
             [dw.cell_value(workbook, "Tie-outs", f"F{r}") for r in (2, 3)],
             ["PASS", "PASS"])

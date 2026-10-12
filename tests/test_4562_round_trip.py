@@ -12,9 +12,9 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
-from tenforty.forms import f4562 as form_f4562
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.models import DepreciableAsset
+from tests._f4562_helpers import compute_copy
 from tests.helpers import make_simple_scenario
 
 def _nest_assets(scenario, assets):
@@ -51,7 +51,7 @@ class F4562RoundTripTests(unittest.TestCase):
     def test_one_rental_fills_19i_and_line_22(self):
         import tempfile
         scenario = _one_rental_scenario()
-        values = form_f4562.compute(scenario, upstream={})
+        values = compute_copy(scenario)
         mapping = Pdf4562.get_mapping(2025)
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -100,7 +100,7 @@ class F4562RoundTripTests(unittest.TestCase):
                 recovery_class="5-year",
             ),
         )
-        values = form_f4562.compute(scenario, upstream={})
+        values = compute_copy(scenario)
         mapping = Pdf4562.get_mapping(2025)
 
         with tempfile.TemporaryDirectory() as tmp:

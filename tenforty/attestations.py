@@ -1187,11 +1187,13 @@ def _bonus_history_assets(s: Scenario) -> list[str]:
     # The refusal is per asset but the out is per activity: a valid override
     # pins the figure the return uses, which keeps the activity's other
     # assets in asset mode. The engine's figure for such an asset is kept
-    # off every printed form by two other rules, not by this one: Form 4562
-    # is emitted only in a year the return places property in service
-    # (forms/f4562.is_required), and `merged_4562_with_override` refuses any
-    # such year when an override exists anywhere on the return. (The recon
-    # carries a note; see forms/depreciation/resolver.recon_keys.)
+    # off every printed form by two other rules, not by this one: a Form
+    # 4562 copy is emitted only for an activity that itself places property
+    # in service this year (forms/f4562.is_required_for), and an overridden
+    # activity is never one (`override_with_current_year_placement` refuses
+    # it) -- so its assets are on no copy, whatever the return's other
+    # activities place. (The recon carries a note; see
+    # forms/depreciation/resolver.recon_keys.)
     return [
         f"asset {a.description!r} on {label} is {a.recovery_class} personal "
         f"property without `no_bonus_or_section_179_history: true`"
@@ -1332,30 +1334,6 @@ def _overrides_with_current_year_placement(s: Scenario) -> list[str]:
                 f"{label} carries a `depreciation_override` and placed "
                 f"{names} in service in {year}")
     return found
-
-
-def _merged_4562_with_override(s: Scenario) -> list[str]:
-    """Activities carrying an override, when the return also places
-    property in service this year (on any activity). A bonus-history lift
-    needs an override, so this covers that case too."""
-    year = s.config.year
-    activities = list(depreciation_activities(s))
-    placed = any(
-        a.date_placed_in_service.year == year
-        for _sec, _i, _label, act in activities
-        for a in act.depreciable_assets)
-    if not placed:
-        return []
-    return [label for _sec, _i, label, act in activities
-            if act.depreciation_override is not None]
-
-
-def activities_with_assets(scenario: Scenario) -> list:
-    """``(label, activity)`` for every activity that lists assets: the
-    activities whose assets a Form 4562 for this return would carry."""
-    return [(label, act)
-            for _sec, _i, label, act in depreciation_activities(scenario)
-            if act.depreciable_assets]
 
 
 def _unacknowledged_listed_property(s: Scenario) -> list[str]:
@@ -1618,22 +1596,6 @@ _DEPRECIATION_RESOLVER_REFUSALS: tuple[ScopedRefusal, ...] = (
 # --- Depreciation: the taxpayer-wide convention test -----------------------
 
 _DEPRECIATION_CONVENTION_REFUSALS: tuple[ScopedRefusal, ...] = (
-    ScopedRefusal(
-        name="merged_4562_with_override",
-        stage="load",
-        whole_return=True,
-        offenders=_merged_4562_with_override,
-        message=lambda o: (
-            "Form 4562 is required this year (property was placed in "
-            f"service), and {_join(o)} carries a `depreciation_override`. "
-            "tenforty still prints one merged form for the whole return, "
-            "listing every asset with the engine's figures, so its total "
-            "would disagree with the override amount that activity claims. "
-            "The real resolution is per-activity forms (one Form 4562 per "
-            "activity that needs one), which is a later change. Until then "
-            "this combination cannot be produced."),
-        exception=NotImplementedError,
-    ),
     ScopedRefusal(
         name="unverifiable_mid_quarter_test",
         stage="load",

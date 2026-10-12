@@ -492,6 +492,24 @@ class _FederalFormSpec:
     field_formats: dict = dataclasses.field(default_factory=dict)
 
 
+@dataclasses.dataclass(frozen=True)
+class _FederalEmitPlan:
+    """What ``_federal_individual_emit_plan`` prepared: the per-form specs,
+    plus the facts about the Form 4562 copies that the depreciation audit
+    workbook is handed exactly as the copies were handed them."""
+
+    specs: list[_FederalFormSpec]
+    # The return's mid-quarter 40% answer: worked out ONCE, handed to every
+    # Form 4562 copy, and handed on unchanged to the audit workbook.
+    mid_quarter: bool
+    # Every depreciation activity's share of that test's two totals, in
+    # whole cents (`resolver.mid_quarter_bases_by_activity`).
+    activity_bases: tuple
+    # recon key -> the values that activity's Form 4562 copy is filled from
+    # (keyed by recon key also when the return has one copy).
+    form_4562_copies: dict[str, dict]
+
+
 # Standing caveat (spec §4): the changed-forms selector compares two
 # tenforty-computed pictures, so it structurally CANNOT see a form the filed
 # return carried that tenforty does not model. Always printed on the manifest.
@@ -1501,10 +1519,10 @@ class ReturnOrchestrator:
         # historic inline body — the specs just defer rendering), then fill
         # EVERY one. run_amendment_packet drives the same specs but fills only
         # the selector-chosen subset.
-        specs = self._federal_individual_emit_specs(scenario, results)
+        plan = self._federal_individual_emit_plan(scenario, results)
         emitted: dict[str, Path] = {
             spec.name: self._render_federal_spec(filler, spec, output_dir)
-            for spec in specs
+            for spec in plan.specs
         }
 
         # Form 3115 (only when the scenario carries a `form_3115:` block).
@@ -1519,25 +1537,34 @@ class ReturnOrchestrator:
         # depreciation from `depreciable_assets`). After the forms are
         # filled: its tie-outs target the values just printed.
         emitted.update(
-            self._emit_depreciation_audit(scenario, specs, output_dir))
+            self._emit_depreciation_audit(scenario, plan, output_dir))
 
         return emitted
 
     @staticmethod
     def _printed_depreciation_figures(
-        scenario: Scenario, specs: list[_FederalFormSpec],
+        scenario: Scenario, plan: _FederalEmitPlan,
     ) -> depreciation_workbook.PrintedFigures:
         """The depreciation figures on the forms, read from the very values
-        each prepared spec was filled from (never recomputed)."""
+        each prepared spec was filled from (never recomputed), one bundle
+        per Form 4562 copy; and the return's 40% test as the copies were
+        handed it -- the per-activity bases and the SAME boolean, passed on
+        from the plan, not worked out again here."""
+        specs = plan.specs
         values = {spec.name: spec.values for spec in specs}
-        f4562 = values.get("f4562", {})
-        # Keyed by the row letter as PRINTED on this year's form, which
-        # before 2025 differs from the compute key's for real property.
-        line_19 = {
-            form_4562.printed_row_label(
-                row["recovery_class"], scenario.config.year): f4562[
-                    f"f4562_line_19{row['row_label']}_deduction"]
-            for row in f4562.get("f4562_part_iii_section_b_rows", [])}
+        year = scenario.config.year
+        f4562_copies = {
+            recon_key: depreciation_workbook.CopyFigures(
+                line_17=copy.get(form_4562.LINE_17_KEY),
+                # Keyed by the row letter as PRINTED on this year's form,
+                # which before 2025 differs from the compute key's for real
+                # property.
+                line_19={
+                    form_4562.printed_row_label(row["recovery_class"], year):
+                        copy[f"f4562_line_19{row['row_label']}_deduction"]
+                    for row in copy["f4562_part_iii_section_b_rows"]},
+                line_22=copy["f4562_line_22_total_depreciation"])
+            for recon_key, copy in plan.form_4562_copies.items()}
         activity_lines: dict[tuple[str, int], int] = {}
         for index, letter in enumerate(form_sch_e.COLUMN_LETTERS):
             line_18 = values.get("sch_e", {}).get(
@@ -1560,14 +1587,15 @@ class ReturnOrchestrator:
                      a.depreciation_claimed_present_method)
                     for a in form.assets))
         return depreciation_workbook.PrintedFigures(
-            f4562_line_17=f4562.get(form_4562.LINE_17_KEY),
-            f4562_line_19=line_19,
-            f4562_line_22=f4562.get("f4562_line_22_total_depreciation"),
+            f4562_copies=f4562_copies,
             activity_lines=activity_lines,
+            convention=depreciation_workbook.ConventionInputs(
+                activities=plan.activity_bases,
+                mid_quarter=plan.mid_quarter),
             form_3115=form_3115)
 
     def _emit_depreciation_audit(
-        self, scenario: Scenario, specs: list[_FederalFormSpec],
+        self, scenario: Scenario, plan: _FederalEmitPlan,
         output_dir: Path,
     ) -> dict[str, Path]:
         """Write `depreciation_audit_<year>.xlsx` beside the forms. No flag
@@ -1579,7 +1607,7 @@ class ReturnOrchestrator:
         if not resolved:
             return {}
         path = depreciation_workbook.write_depreciation_audit(
-            resolved, self._printed_depreciation_figures(scenario, specs),
+            resolved, self._printed_depreciation_figures(scenario, plan),
             output_dir / f"depreciation_audit_{scenario.config.year}.xlsx")
         return {depreciation_workbook.EMITTED_KEY: path}
 
@@ -1635,6 +1663,13 @@ class ReturnOrchestrator:
     def _federal_individual_emit_specs(
         self, scenario: Scenario, results: dict,
     ) -> list[_FederalFormSpec]:
+        """The prepared per-form emit specs (see
+        ``_federal_individual_emit_plan``, which builds them)."""
+        return self._federal_individual_emit_plan(scenario, results).specs
+
+    def _federal_individual_emit_plan(
+        self, scenario: Scenario, results: dict,
+    ) -> _FederalEmitPlan:
         """Prepare each federal individual-return form's emit spec WITHOUT
         rendering — the reusable per-form path shared by ``_emit_pdfs_internal``
         (fill all) and ``run_amendment_packet`` (fill the selector-chosen
@@ -1899,13 +1934,48 @@ class ReturnOrchestrator:
                 values={**scenario.config.pdf_header(), **sch_se_results},
             ))
 
-        if self._should_emit_4562(scenario, {"f1040": results}):
-            specs.append(_FederalFormSpec(
-                name="f4562", template=_fed("f4562.pdf"),
-                output_name=f"f4562_{year}.pdf", kind="repeater",
-                mapping=Pdf4562.get_mapping(year),
-                values=form_4562.compute(scenario, upstream=upstream),
-            ))
+        # Form 4562 — one copy per activity that ITSELF places property in
+        # service this year, each named by its recon key. The 40% answer is
+        # the RETURN's: worked out once, here, from the same scenario the
+        # schedules above computed from, and handed to every copy. A copy
+        # never works it out and it is never taken from one activity.
+        # Every copy is computed before anything is rendered, so a refusal
+        # on any of them leaves no Form 4562 behind.
+        mid_quarter = mid_quarter_applies(scenario)
+        activity_bases = depreciation_resolver.mid_quarter_bases_by_activity(
+            scenario)
+        form_4562_copies: dict[str, dict] = {}
+        copies = [
+            (row.recon_key, getattr(scenario, row.section)[row.index])
+            for row in activity_bases]
+        copies = [
+            (recon_key, activity) for recon_key, activity in copies
+            if form_4562.is_required_for(activity, year)]
+        for recon_key, activity in copies:
+            try:
+                copy_values = form_4562.compute_for(
+                    activity, year, scenario.config.pdf_header(),
+                    mid_quarter=mid_quarter)
+            except (NotImplementedError, ValueError) as error:
+                raise type(error)(
+                    f"Form 4562 copy {recon_key} "
+                    f"({form_4562.activity_name(activity)!r}): {error}"
+                ) from error
+            form_4562_copies[recon_key] = copy_values
+            if len(copies) == 1:
+                # The lone copy keeps the historic key and file name.
+                specs.append(_FederalFormSpec(
+                    name="f4562", template=_fed("f4562.pdf"),
+                    output_name=f"f4562_{year}.pdf", kind="repeater",
+                    mapping=Pdf4562.get_mapping(year), values=copy_values,
+                ))
+            else:
+                specs.append(_FederalFormSpec(
+                    name=f"f4562_{recon_key}", template=_fed("f4562.pdf"),
+                    output_name=f"f4562_{year}_{recon_key}.pdf",
+                    kind="repeater", mapping=Pdf4562.get_mapping(year),
+                    values=copy_values,
+                ))
 
         if self._should_emit_8959(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
@@ -1973,7 +2043,10 @@ class ReturnOrchestrator:
                 values=f8582_values,
             ))
 
-        return specs
+        return _FederalEmitPlan(
+            specs=specs, mid_quarter=mid_quarter,
+            activity_bases=activity_bases,
+            form_4562_copies=form_4562_copies)
 
     @staticmethod
     def _render_federal_spec(
@@ -3280,11 +3353,6 @@ class ReturnOrchestrator:
     def _should_emit_sch_e_part_ii(self, scenario: Scenario) -> bool:
         """Emit Sch E Part II whenever the scenario has any K-1."""
         return bool(scenario.schedule_k1s)
-
-    def _should_emit_4562(self, scenario: Scenario, results: dict) -> bool:
-        """Emit Form 4562 only in a year the return places property in
-        service (see `forms.f4562.is_required` for the instruction cite)."""
-        return form_4562.is_required(scenario)
 
     def _should_emit_8995(self, f8995_values: dict) -> bool:
         """Emit Form 8995 when the computed form claims a QBI deduction

@@ -83,6 +83,36 @@ def scenario(*, rental_assets=(BUILDING, APPLIANCE, FURNITURE),
         schedule_c_businesses=businesses)
 
 
+def equipment(basis: float, month: int,
+              description: str = "Equipment") -> DepreciableAsset:
+    """5-year personal property placed in ``month`` of the return year."""
+    return DepreciableAsset(
+        description=description, date_placed_in_service=date(YEAR, month, 15),
+        basis=basis, recovery_class="5-year",
+        no_bonus_or_section_179_history=True)
+
+
+def business(*assets, stated: float = 0.0, description: str = "Consulting",
+             gross_receipts: float = 50_000.0) -> ScheduleCBusiness:
+    """A Schedule C business listing ``assets``, or stating its depreciation
+    as one figure (``stated``), or neither."""
+    return ScheduleCBusiness(
+        description=description, business_code="541990",
+        gross_receipts=gross_receipts, depreciation=stated,
+        acknowledges_depreciation_stated_outside_macrs=bool(stated),
+        depreciable_assets=tuple(assets))
+
+
+def multi_scenario(*, rental_assets, businesses,
+                   acknowledges_stated: bool | None = None):
+    """The one rental of `scenario` beside any number of businesses."""
+    return dataclasses.replace(
+        scenario(rental_assets=rental_assets),
+        schedule_c_businesses=list(businesses),
+        acknowledges_no_personal_property_behind_stated_depreciation=(
+            acknowledges_stated))
+
+
 def override(amount: float, restates: float) -> DepreciationOverride:
     return DepreciationOverride(
         amount=amount, restates_engine_amount=restates, acknowledgment=True)
