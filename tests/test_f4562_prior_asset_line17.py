@@ -36,13 +36,13 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from tenforty.forms import f4562
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation, resolve,
 )
 from tenforty.mappings.pdf_4562 import Pdf4562
 from tenforty.models import DepreciableAsset, RentalProperty
 from tenforty.orchestrator import ReturnOrchestrator
+from tests._f4562_helpers import compute_copy
 from tests.helpers import REPO_ROOT, SPREADSHEETS_DIR, make_simple_scenario
 from tests.test_f4562_emit_gate import (
     _left_margin_line_numbers, _line_number_of, _page_widgets,
@@ -140,7 +140,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
         for year in YEARS:
             with self.subTest(year=year):
                 s = _scenario(year, _old_building(year), _new_roof(year))
-                r = f4562.compute(s, upstream={})
+                r = compute_copy(s)
                 self.assertEqual(r["f4562_line_17"], BUILDING_AMOUNT)
                 self.assertEqual(
                     r["f4562_line_19i_date_placed_in_service"],
@@ -161,7 +161,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
             with self.subTest(year=year):
                 s = _scenario(
                     year, _last_years_equipment(year), _new_roof(year))
-                r = f4562.compute(s, upstream={})
+                r = compute_copy(s)
                 self.assertEqual(r["f4562_line_17"], EQUIPMENT_AMOUNT)
                 self.assertEqual(
                     [k for k in r if k.startswith("f4562_line_19b")], [])
@@ -180,7 +180,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
                 s = _scenario(
                     year, _old_building(year), _last_years_equipment(year),
                     _new_roof(year))
-                r = f4562.compute(s, upstream={})
+                r = compute_copy(s)
                 line_19 = sum(
                     row["deduction"]
                     for row in r["f4562_part_iii_section_b_rows"])
@@ -203,7 +203,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
         building.prior_depreciation = 199_000.0
         building.acknowledges_prior_depreciation_as_stated = True
         s = _scenario(year, building, _new_roof(year))
-        r = f4562.compute(s, upstream={})
+        r = compute_copy(s)
         self.assertEqual(r["f4562_line_17"], 1_000)
         self.assertEqual(
             r["f4562_line_22_total_depreciation"], 1_000 + ROOF_AMOUNT)
@@ -216,8 +216,7 @@ class PriorAssetsGoOnLine17Tests(unittest.TestCase):
         key at all (no phantom zero), and line 22 is line 19 alone."""
         for year in YEARS:
             with self.subTest(year=year):
-                r = f4562.compute(
-                    _scenario(year, _new_roof(year)), upstream={})
+                r = compute_copy(_scenario(year, _new_roof(year)))
                 self.assertNotIn("f4562_line_17", r)
                 self.assertEqual(
                     r["f4562_line_22_total_depreciation"], ROOF_AMOUNT)

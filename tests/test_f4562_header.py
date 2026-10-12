@@ -3,9 +3,9 @@
 The middle box carries the activity the form's assets belong to, exactly as
 that activity's own schedule names it: a rental's address (Schedule E line
 1a) or a business's description (Schedule C line A). Nothing is added to
-it, and with no name to print the box stays blank. tenforty emits one
-merged form per return; when its assets span more than one activity there
-is no single activity to name and the box stays blank.
+it, and with no name to print the box stays blank. Each activity that
+needs the form gets its own copy, so every copy has exactly one activity to
+name: its own.
 
 The header row has three boxes, left to right:
 
@@ -294,7 +294,7 @@ class ActivityBoxComputeTests(unittest.TestCase):
     def test_a_rental_prints_its_address(self):
         for year in YEARS:
             with self.subTest(year=year):
-                r = f4562.compute(_scenario(year), upstream={})
+                r = compute_copy(_scenario(year))
                 self.assertEqual(r[ACTIVITY_KEY], ADDRESS)
 
     def test_a_business_prints_its_description_trimmed(self):
@@ -302,27 +302,38 @@ class ActivityBoxComputeTests(unittest.TestCase):
             with self.subTest(year=year):
                 s = _scenario(year, rentals=[], businesses=[_business(
                     year, "  Consulting ", _equipment(year))])
-                r = f4562.compute(s, upstream={})
+                r = compute_copy(s, "schedule_c_businesses", 0)
                 self.assertEqual(r[ACTIVITY_KEY], "Consulting")
 
     def test_a_business_with_no_description_leaves_the_box_blank(self):
         s = _scenario(2025, rentals=[], businesses=[_business(
             2025, "   ", _equipment(2025))])
-        self.assertNotIn(ACTIVITY_KEY, f4562.compute(s, upstream={}))
+        self.assertNotIn(
+            ACTIVITY_KEY, compute_copy(s, "schedule_c_businesses", 0))
 
     def test_an_activity_without_assets_is_not_the_forms_activity(self):
-        """A stated-mode business beside the rental owns none of the form's
-        assets; the rental is still the one activity."""
+        """A business with no assets beside the rental needs no copy; the
+        rental's copy names the rental."""
         s = _scenario(2025, businesses=[_business(2025, "Consulting")])
         self.assertEqual(
-            f4562.compute(s, upstream={})[ACTIVITY_KEY], ADDRESS)
+            compute_copy(s, "rental_properties", 0)[ACTIVITY_KEY], ADDRESS)
+        self.assertIs(
+            f4562.is_required_for(s.schedule_c_businesses[0], 2025), False)
+        self.assertIs(
+            f4562.is_required_for(s.rental_properties[0], 2025), True)
 
     def test_assets_from_two_activities_leave_the_box_blank(self):
-        """No single activity to name, so nothing is printed (never the
-        first one, never a list)."""
+        """(The name is from the one-form-per-return days, when assets on
+        two activities left no single activity to name.) Each activity now
+        gets its own copy, and each copy names its own activity -- never
+        blank, never the other one, never a list."""
         s = _scenario(2025, businesses=[_business(
             2025, "Consulting", _equipment(2025))])
-        self.assertNotIn(ACTIVITY_KEY, f4562.compute(s, upstream={}))
+        self.assertEqual(
+            compute_copy(s, "rental_properties", 0)[ACTIVITY_KEY], ADDRESS)
+        self.assertEqual(
+            compute_copy(s, "schedule_c_businesses", 0)[ACTIVITY_KEY],
+            "Consulting")
 
 
 class PerCopyActivityBoxTests(unittest.TestCase):

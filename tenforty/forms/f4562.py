@@ -1,5 +1,13 @@
 """Form 4562 — Depreciation and Amortization.
 
+ONE COPY PER ACTIVITY. The instructions ask for a separate Form 4562 for
+each business or activity, and the header box names exactly one. An activity
+gets a copy only when one of its own assets was placed in service this year
+(`is_required_for`); `compute_for` computes that copy from that activity's
+assets and nothing else. The mid-quarter 40% answer is the exception to
+"nothing else": it is a whole-return fact, so the caller works it out once
+over the return and hands it to every copy -- nothing here computes it.
+
 Scope: the header (name, business or activity, identifying number), Part
 III line 17 (MACRS on assets placed in service in earlier tax
 years), Part III Section B (line 19a..19j, GDS MACRS on assets placed in
@@ -14,8 +22,8 @@ Which line an asset prints on is decided by its in-service year alone:
 
 Section B is headed "Assets Placed in Service During {year} Tax Year", so an
 asset from an earlier year never appears in a line 19 row. Line 22 is line
-17 plus the line 19 column (g) amounts, which is every asset on the return,
-each at the resolver's per-asset figure.
+17 plus the line 19 column (g) amounts, which is every asset of the copy's
+activity, each at the resolver's per-asset figure.
 
 Section B is **row-per-recovery-class**, not row-per-asset. Multiple assets
 placed this year in one recovery class aggregate into the same row (their
@@ -47,14 +55,12 @@ each have two placement sub-rows on the PDF; only the first is filled.
 
 from collections import defaultdict
 
-from tenforty.attestations import (
-    activities_with_assets, depreciation_activities,
-)
+from tenforty.attestations import depreciation_activities
 from tenforty.forms.depreciation.macrs import (
     asset_convention, method_for, require_answer,
 )
 from tenforty.forms.depreciation.resolver import (
-    asset_amount, mid_quarter_applies, placed_this_year,
+    asset_amount, placed_this_year,
 )
 from tenforty.models import REAL_PROPERTY_CLASSES, RentalProperty, Scenario
 from tenforty.rounding import irs_round
@@ -89,19 +95,6 @@ def printed_row_label(recovery_class: str, tax_year: int) -> str:
     if tax_year < _FIRST_FORM_YEAR_WITH_50_YEAR_ROW:
         return _ROW_BEFORE_50_YEAR_ROW.get(label, label)
     return label
-
-
-def scenario_assets(scenario: Scenario) -> list:
-    """Every asset on the return, flattened across activities.
-
-    READ-PATH ADAPTER ONLY: assets now nest under their activity, and this
-    form still emits its legacy one-form-per-return shape. The per-activity
-    form is a later branch."""
-    return [
-        asset
-        for _section, _index, _label, activity in depreciation_activities(
-            scenario)
-        for asset in activity.depreciable_assets]
 
 
 def is_required_for(activity, tax_year: int) -> bool:
@@ -223,58 +216,6 @@ def _line_19_row_fields(row: dict) -> dict:
 
 
 ACTIVITY_KEY = "f4562_business_or_activity"
-
-
-def _business_or_activity(scenario: Scenario) -> str:
-    """What the header box "Business or activity to which this form relates"
-    prints: the one asset-listing activity, named exactly as its own
-    schedule names it -- a rental's address (Schedule E line 1a) or a
-    business's description (Schedule C line A). Nothing is added to it.
-
-    Empty when there is nothing to print: the activity has no name, or the
-    assets span more than one activity, so a form over all of them has no
-    single activity to name. The box then stays blank; no placeholder is
-    ever printed."""
-    listing = activities_with_assets(scenario)
-    if len(listing) != 1:
-        return ""
-    _label, activity = listing[0]
-    if isinstance(activity, RentalProperty):
-        return activity.address
-    return str(activity.description).strip()
-
-
-def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    tax_year = scenario.config.year
-    mid_quarter = mid_quarter_applies(scenario)
-    result: dict = {**scenario.config.pdf_header()}
-    activity = _business_or_activity(scenario)
-    if activity:
-        result[ACTIVITY_KEY] = activity
-    placed_this_year, placed_earlier = [], []
-    for asset in scenario_assets(scenario):
-        if asset.date_placed_in_service.year == tax_year:
-            placed_this_year.append(asset)
-        else:
-            placed_earlier.append(asset)
-
-    # Line 17: one amount for every asset placed in an earlier tax year, at
-    # the resolver's per-asset figure (so the basis ceiling carries through).
-    # Each such asset reads the convention it STATES, not this year's.
-    line_17 = sum(
-        asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
-        for a in placed_earlier)
-    if line_17:
-        result[LINE_17_KEY] = line_17
-
-    rows = _line_19_rows(placed_this_year, tax_year, mid_quarter=mid_quarter)
-    for row in rows:
-        result.update(_line_19_row_fields(row))
-
-    result["f4562_part_iii_section_b_rows"] = rows
-    result["f4562_line_22_total_depreciation"] = line_17 + sum(
-        row["deduction"] for row in rows)
-    return result
 
 
 def activity_name(activity) -> str:

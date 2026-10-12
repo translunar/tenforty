@@ -1,17 +1,16 @@
-"""When Form 4562 is emitted, and when the merged form cannot be.
+"""When a Form 4562 copy is emitted.
 
 Instructions for Form 4562 (2025), page 2, "Who Must File": "complete and
 file Form 4562 if you are claiming any of the following. - Depreciation for
 property placed in service during the 2025 tax year. ..." The other listed
 triggers (a section 179 deduction, listed property, amortization beginning
 this year, a corporate return) are all out of scope and refuse or have no
-input. So: no placement this year anywhere on the return, no Form 4562 --
-the depreciation still prints on Schedule E line 18 / Schedule C line 13.
-
-On this branch the form is still ONE merged form per return listing every
-asset with the engine's figures. That cannot print consistently when any
-activity's deduction is an override amount, so a placement year with an
-override anywhere refuses.
+input. So: an activity that places nothing in service this year gets no
+Form 4562 -- its depreciation still prints on Schedule E line 18 / Schedule
+C line 13 -- and an activity that does gets its own copy, listing its own
+assets with the engine's figures. An overridden activity never gets one: it
+cannot place property this year (`override_with_current_year_placement`).
+Returns with more than one activity: tests/test_f4562_per_activity_emit.py.
 
 Field paths are literals probed on the 2025 templates. 6,970 is a legacy
 regression pin (January 27.5-year building on 200,000).
@@ -27,7 +26,7 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
-from tenforty.forms import f4562, sch_e
+from tenforty.forms import sch_e
 from tenforty.forms.depreciation.macrs import macrs_deduction
 from tenforty.forms.depreciation.resolver import (
     reconstruct_prior_depreciation,
@@ -37,6 +36,7 @@ from tenforty.models import (
     DepreciableAsset, DepreciationOverride, RentalProperty, ScheduleCBusiness,
 )
 from tenforty.orchestrator import ReturnOrchestrator
+from tests._f4562_helpers import compute_copy
 from tests.helpers import SPREADSHEETS_DIR, make_simple_scenario
 
 YEAR = 2025
@@ -314,20 +314,20 @@ class OverriddenActivityTests(_EmitCase):
         self.assertNotIn("f4562", emitted)
 
     def test_no_printed_4562_can_disagree_with_schedule_e(self):
-        """Why the form must be absent for an overridden return: the
-        merged form's engine-only total differs from the depreciation the
-        activity prints. (The emitted-and-equal case is asserted on a
-        placement year in EmitOnlyInAPlacementYearTests.)"""
+        """Why the form must be absent for an overridden activity: a copy
+        prints the engine's figures, and their total differs from the
+        depreciation the activity prints. (The emitted-and-equal case is
+        asserted on a placement year in EmitOnlyInAPlacementYearTests.)"""
         scenario = _scenario(
             rentals=[_rental(_old_building(), override_amount=7_000.0)])
         emitted = self._emit(scenario)
         line_18 = sch_e.compute(scenario, upstream={})[
             "sch_e_property_a_depreciation"]
         self.assertNotIn("f4562", emitted)
-        # The engine-only total the merged form WOULD have printed differs,
-        # which is why it must not be emitted here.
+        # The engine-only total a copy for this activity WOULD have printed
+        # differs, which is why none is emitted here.
         self.assertNotEqual(
-            f4562.compute(scenario, upstream={})[
+            compute_copy(scenario)[
                 "f4562_line_22_total_depreciation"], line_18)
 
 
