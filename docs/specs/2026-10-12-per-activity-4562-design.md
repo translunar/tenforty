@@ -199,8 +199,8 @@ f4562 read-path allowlist entries, the audit hand-off shape, recon-key
 naming. The Schedule E branch owns: the `asset_mode_on_unprinted_rental`
 narrowing, its own registry/allowlist edits, Sch E mapping keys.
 Semantic ownership is per-branch as above, but the registry literals
-and the read-path allowlist live in files BOTH branches edit: like
-CHANGELOG, those conflicts resolve by union at rebase, and the
+and the read-path allowlist live in files BOTH branches edit: those
+conflicts resolve by union at rebase, and the
 second-to-merge branch re-runs the registry consistency tests on the
 union before its gate. Whichever branch merges second re-runs the full
 gate on the rebased tree.
