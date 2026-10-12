@@ -1,7 +1,7 @@
 """PDF field mapping for IRS Schedule E (Supplemental Income and Loss).
 
-v1 scope: single rental property (slot A on Page 1). Property slots B
-and C exist on the form but are not populated by v1 compute.
+Page 1 carries three property columns (A, B, C) for lines 1a-22; all three
+are mapped, on every template 2021-2025 (see _COLUMN_CELLS).
 
 Part II (partnerships, S-corps via K-1) shares the Page 2 table frame.
 The page-2 header fields (taxpayer_name_page2 / taxpayer_ssn_page2)
@@ -85,7 +85,60 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
     }
 
 
-# Page 1 totals block, lines 22-25. The leaf names and their top-to-bottom
+# Page 1 property columns, lines 1a-22: (key suffix, container, column A's
+# leaf number, leaf stride from one column to the next). Column B's leaf is
+# A's plus the stride and column C's is A's plus twice the stride; the stride
+# is 1 everywhere except line 2, whose two day counts alternate along each
+# property row (A f1_9/f1_10, B f1_11/f1_12, C f1_13/f1_14). Lines 1a, 1b
+# and 2 sit in one row subform per property ("{row}" is A, B or C); lines
+# 3-22 sit in one subform per line holding the three column cells. Enumerated
+# from each template's widget Rects; the leaf numbers are the same on the
+# 2021, 2022, 2023, 2024 and 2025 templates.
+# DELIBERATELY UNMAPPED: line 4 (royalties, f1_19..f1_21) -- compute prints
+# nothing there; line 19's description cell (f1_64); the line 2 QJV
+# checkboxes (c1_3..c1_5).
+_COLUMN_LETTERS = ("a", "b", "c")
+_COLUMN_CELLS: tuple[tuple[str, str, int, int], ...] = (
+    ("address", "Table_Line1a[0].Row{row}[0]", 3, 1),
+    ("type_code", "Table_Line1b[0].Row{row}[0]", 6, 1),
+    ("fair_rental_days", "Table_Line2[0].Row{row}[0]", 9, 2),
+    ("personal_use_days", "Table_Line2[0].Row{row}[0]", 10, 2),
+    ("rents", "Table_Income[0].Line3[0]", 16, 1),
+    ("advertising", "Table_Expenses[0].Line5[0]", 22, 1),
+    ("auto_and_travel", "Table_Expenses[0].Line6[0]", 25, 1),
+    ("cleaning_and_maintenance", "Table_Expenses[0].Line7[0]", 28, 1),
+    ("commissions", "Table_Expenses[0].Line8[0]", 31, 1),
+    ("insurance", "Table_Expenses[0].Line9[0]", 34, 1),
+    ("legal_and_professional_fees", "Table_Expenses[0].Line10[0]", 37, 1),
+    ("management_fees", "Table_Expenses[0].Line11[0]", 40, 1),
+    ("mortgage_interest", "Table_Expenses[0].Line12[0]", 43, 1),
+    ("other_interest", "Table_Expenses[0].Line13[0]", 46, 1),
+    ("repairs", "Table_Expenses[0].Line14[0]", 49, 1),
+    ("supplies", "Table_Expenses[0].Line15[0]", 52, 1),
+    ("taxes", "Table_Expenses[0].Line16[0]", 55, 1),
+    ("utilities", "Table_Expenses[0].Line17[0]", 58, 1),
+    ("depreciation", "Table_Expenses[0].Line18[0]", 61, 1),
+    ("other_expenses", "Table_Expenses[0].Line19[0]", 65, 1),
+    ("total_expenses", "Table_Expenses[0].Line20[0]", 68, 1),
+    ("income_loss", "Table_Expenses[0].Line21[0]", 71, 1),
+    ("deductible_loss", "Table_Expenses[0].Line22[0]", 74, 1),
+)
+
+
+def _column_mapping() -> dict[str, str]:
+    """The lines 1a-22 entries for property columns A, B and C (2022-2025
+    container tree; 2021 is the literal transcription in _FIELDS_2021)."""
+    return {
+        f"sch_e_property_{letter}_{suffix}": (
+            "topmostSubform[0].Page1[0]."
+            f"{container.format(row=letter.upper())}"
+            f".f1_{leaf + stride * column}[0]")
+        for suffix, container, leaf, stride in _COLUMN_CELLS
+        for column, letter in enumerate(_COLUMN_LETTERS)
+    }
+
+
+# Page 1 totals block, lines 23a-25. The leaf names and their top-to-bottom
 # order are the same on the 2021, 2022, 2023, 2024 and 2025 templates
 # (enumerated per year from each template's widget Rects; only the y-offsets
 # differ in 2021). 2022's zero-padding touches single-digit leaves only, so
@@ -94,11 +147,9 @@ def _row_mapping(row_letter: str) -> dict[str, str]:
 #   f1_81 line 23e   f1_82 line 24    f1_83 line 25    f1_84 line 26
 # DELIBERATELY UNMAPPED: f1_78 (line 23b, royalties) -- compute prints nothing
 # on line 4, so there is no royalty total to print.
-# Line 22 has one cell per property column; property A's is the first,
-# Table_Expenses[0].Line22[0].f1_74[0], on all five templates.
+# Line 22 has one cell per property column; those are column cells (see
+# _COLUMN_CELLS), not part of this block.
 _TOTALS_BLOCK: dict[str, str] = {
-    "sch_e_property_a_deductible_loss":
-        "topmostSubform[0].Page1[0].Table_Expenses[0].Line22[0].f1_74[0]",
     "sch_e_line_25_losses": "topmostSubform[0].Page1[0].f1_83[0]",
     "sch_e_line_23a_total_rents": "topmostSubform[0].Page1[0].f1_77[0]",
     "sch_e_line_23c_total_mortgage_interest":
@@ -117,67 +168,10 @@ def _build_fields() -> dict:
             "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
             "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_2[0]",
 
-            # Line 1a — property A address
-            "sch_e_property_a_address":
-                "topmostSubform[0].Page1[0].Table_Line1a[0].RowA[0].f1_3[0]",
+            # Lines 1a-22 — property columns A, B and C (generated).
+            **_column_mapping(),
 
-            # Line 1b — property A type code (1-8)
-            "sch_e_property_a_type_code":
-                "topmostSubform[0].Page1[0].Table_Line1b[0].RowA[0].f1_6[0]",
-
-            # Line 2 — fair rental days / personal use days for A
-            "sch_e_property_a_fair_rental_days":
-                "topmostSubform[0].Page1[0].Table_Line2[0].RowA[0].f1_9[0]",
-            "sch_e_property_a_personal_use_days":
-                "topmostSubform[0].Page1[0].Table_Line2[0].RowA[0].f1_10[0]",
-
-            # Line 3 — rents received A
-            "sch_e_property_a_rents":
-                "topmostSubform[0].Page1[0].Table_Income[0].Line3[0].f1_16[0]",
-
-            # Lines 5–18: per-expense property-A amounts
-            "sch_e_property_a_advertising":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line5[0].f1_22[0]",
-            "sch_e_property_a_auto_and_travel":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line6[0].f1_25[0]",
-            "sch_e_property_a_cleaning_and_maintenance":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line7[0].f1_28[0]",
-            "sch_e_property_a_commissions":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line8[0].f1_31[0]",
-            "sch_e_property_a_insurance":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line9[0].f1_34[0]",
-            "sch_e_property_a_legal_and_professional_fees":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line10[0].f1_37[0]",
-            "sch_e_property_a_management_fees":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line11[0].f1_40[0]",
-            "sch_e_property_a_mortgage_interest":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line12[0].f1_43[0]",
-            "sch_e_property_a_other_interest":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line13[0].f1_46[0]",
-            "sch_e_property_a_repairs":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line14[0].f1_49[0]",
-            "sch_e_property_a_supplies":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line15[0].f1_52[0]",
-            "sch_e_property_a_taxes":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line16[0].f1_55[0]",
-            "sch_e_property_a_utilities":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line17[0].f1_58[0]",
-            "sch_e_property_a_depreciation":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_61[0]",
-
-            # Line 19 — "other" A amount
-            "sch_e_property_a_other_expenses":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line19[0].f1_65[0]",
-
-            # Line 20 — total expenses A
-            "sch_e_property_a_total_expenses":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_68[0]",
-
-            # Line 21 — income or (loss) A
-            "sch_e_property_a_income_loss":
-                "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
-
-            # Lines 22, 23a/23c/23d/23e, 24 and 25 — page 1 totals block. Leaves
+            # Lines 23a/23c/23d/23e, 24 and 25 — page 1 totals block. Leaves
             # f1_77..f1_84 run 23a, 23b, 23c, 23d, 23e, 24, 25, 26 top to
             # bottom on every template 2021-2025 (see _TOTALS_BLOCK).
             **_TOTALS_BLOCK,
@@ -334,6 +328,102 @@ _FIELDS_2021: dict = {
             "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_68[0]",
         "sch_e_property_a_income_loss":
             "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_71[0]",
+        "sch_e_property_a_deductible_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line22[0].f1_74[0]",
+        # Property column B, lines 1a-22.
+        "sch_e_property_b_address":
+            "topmostSubform[0].Page1[0].Line1[0].Table1a[0].RowB[0].f1_4[0]",
+        "sch_e_property_b_type_code":
+            "topmostSubform[0].Page1[0].Line1[0].Table1b[0].RowB[0].f1_7[0]",
+        "sch_e_property_b_fair_rental_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowB[0].f1_11[0]",
+        "sch_e_property_b_personal_use_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowB[0].f1_12[0]",
+        "sch_e_property_b_rents":
+            "topmostSubform[0].Page1[0].Table_Income[0].Income[0].Line3[0].f1_17[0]",
+        "sch_e_property_b_advertising":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line5[0].f1_23[0]",
+        "sch_e_property_b_auto_and_travel":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line6[0].f1_26[0]",
+        "sch_e_property_b_cleaning_and_maintenance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line7[0].f1_29[0]",
+        "sch_e_property_b_commissions":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line8[0].f1_32[0]",
+        "sch_e_property_b_insurance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line9[0].f1_35[0]",
+        "sch_e_property_b_legal_and_professional_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line10[0].f1_38[0]",
+        "sch_e_property_b_management_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line11[0].f1_41[0]",
+        "sch_e_property_b_mortgage_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line12[0].f1_44[0]",
+        "sch_e_property_b_other_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line13[0].f1_47[0]",
+        "sch_e_property_b_repairs":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line14[0].f1_50[0]",
+        "sch_e_property_b_supplies":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line15[0].f1_53[0]",
+        "sch_e_property_b_taxes":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line16[0].f1_56[0]",
+        "sch_e_property_b_utilities":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line17[0].f1_59[0]",
+        "sch_e_property_b_depreciation":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_62[0]",
+        "sch_e_property_b_other_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line19[0].f1_66[0]",
+        "sch_e_property_b_total_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_69[0]",
+        "sch_e_property_b_income_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_72[0]",
+        "sch_e_property_b_deductible_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line22[0].f1_75[0]",
+        # Property column C, lines 1a-22.
+        "sch_e_property_c_address":
+            "topmostSubform[0].Page1[0].Line1[0].Table1a[0].RowC[0].f1_5[0]",
+        "sch_e_property_c_type_code":
+            "topmostSubform[0].Page1[0].Line1[0].Table1b[0].RowC[0].f1_8[0]",
+        "sch_e_property_c_fair_rental_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowC[0].f1_13[0]",
+        "sch_e_property_c_personal_use_days":
+            "topmostSubform[0].Page1[0].Table_Line2[0].RowC[0].f1_14[0]",
+        "sch_e_property_c_rents":
+            "topmostSubform[0].Page1[0].Table_Income[0].Income[0].Line3[0].f1_18[0]",
+        "sch_e_property_c_advertising":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line5[0].f1_24[0]",
+        "sch_e_property_c_auto_and_travel":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line6[0].f1_27[0]",
+        "sch_e_property_c_cleaning_and_maintenance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line7[0].f1_30[0]",
+        "sch_e_property_c_commissions":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line8[0].f1_33[0]",
+        "sch_e_property_c_insurance":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line9[0].f1_36[0]",
+        "sch_e_property_c_legal_and_professional_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line10[0].f1_39[0]",
+        "sch_e_property_c_management_fees":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line11[0].f1_42[0]",
+        "sch_e_property_c_mortgage_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line12[0].f1_45[0]",
+        "sch_e_property_c_other_interest":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line13[0].f1_48[0]",
+        "sch_e_property_c_repairs":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line14[0].f1_51[0]",
+        "sch_e_property_c_supplies":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line15[0].f1_54[0]",
+        "sch_e_property_c_taxes":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line16[0].f1_57[0]",
+        "sch_e_property_c_utilities":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line17[0].f1_60[0]",
+        "sch_e_property_c_depreciation":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line18[0].f1_63[0]",
+        "sch_e_property_c_other_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line19[0].f1_67[0]",
+        "sch_e_property_c_total_expenses":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line20[0].f1_70[0]",
+        "sch_e_property_c_income_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line21[0].f1_73[0]",
+        "sch_e_property_c_deductible_loss":
+            "topmostSubform[0].Page1[0].Table_Expenses[0].Line22[0].f1_76[0]",
         **_TOTALS_BLOCK,
         "sch_e_line_26_total": "topmostSubform[0].Page1[0].f1_84[0]",
         "taxpayer_name_page2": "topmostSubform[0].Page2[0].f2_1[0]",

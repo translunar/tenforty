@@ -654,24 +654,58 @@ class UnacknowledgedOverrideRefusalTests(unittest.TestCase):
             s.rental_properties[0].depreciation_override.acknowledgment, True)
 
 
-class UnprintedRentalRefusalTests(unittest.TestCase):
-    def test_assets_on_a_rental_other_than_the_first_refuse(self):
-        second = _rental(address="200 Example Street",
-                         depreciable_assets=[_building()])
-        with self.assertRaisesRegex(
-                NotImplementedError,
-                r"rental property #1 \('200 Example Street'\) carries "
-                r"`depreciable_assets`.*Schedule E prints only the first "
-                r"rental property.*lifts when Schedule E prints beyond "
-                r"property A"):
-            _load(_doc(rental_properties=[_rental(), second]))
+def _rentals(count: int) -> list[dict]:
+    """``count`` rentals at 100, 200, ... Example Street."""
+    return [_rental(address=f"{n}00 Example Street")
+            for n in range(1, count + 1)]
 
-    def test_same_assets_on_the_first_rental_load(self):
-        first = _rental(depreciable_assets=[_building()])
-        s = _load(_doc(rental_properties=[
-            first, _rental(address="200 Example Street")]))
-        self.assertEqual(len(s.rental_properties[0].depreciable_assets), 1)
-        self.assertEqual(len(s.rental_properties[1].depreciable_assets), 0)
+
+_FOURTH_RENTAL_REFUSAL = (
+    r"rental_3 \(rental property #3, '400 Example Street'\)"
+    r".*prints three rental properties"
+    r".*Multi-page Schedule E is a later feature")
+
+
+class FourthRentalRefusalTests(unittest.TestCase):
+    def test_a_fourth_rental_refuses_naming_its_recon_key(self):
+        with self.assertRaisesRegex(
+                NotImplementedError, _FOURTH_RENTAL_REFUSAL):
+            _load(_doc(rental_properties=_rentals(4)))
+
+    def test_three_rentals_load(self):
+        s = _load(_doc(rental_properties=_rentals(3)))
+        self.assertEqual(len(s.rental_properties), 3)
+
+    def test_a_fourth_rental_with_assets_refuses_the_same_way(self):
+        rentals = _rentals(4)
+        rentals[3]["depreciable_assets"] = [_building()]
+        with self.assertRaisesRegex(
+                NotImplementedError, _FOURTH_RENTAL_REFUSAL):
+            _load(_doc(rental_properties=rentals))
+
+    def test_assets_on_the_second_and_third_rentals_now_load(self):
+        # Assets on rental #1 used to refuse (Schedule E printed only the
+        # first property); that shape, and the same on rental #2, now loads.
+        rentals = _rentals(3)
+        rentals[1]["depreciable_assets"] = [_building()]
+        rentals[2]["depreciable_assets"] = [_building()]
+        s = _load(_doc(rental_properties=rentals))
+        self.assertEqual(len(s.rental_properties[1].depreciable_assets), 1)
+        self.assertEqual(len(s.rental_properties[2].depreciable_assets), 1)
+
+    def test_the_offender_key_is_the_recon_key(self):
+        from tenforty import attestations
+        from tenforty.forms.depreciation import resolver
+        s = _load(_doc(rental_properties=_rentals(3)))
+        s.rental_properties.append(RentalProperty(
+            address="400 Example Street", property_type=1,
+            fair_rental_days=365, personal_use_days=0, rents_received=0.0))
+        (offender,) = attestations._rentals_beyond_schedule_e_columns(s)
+        self.assertTrue(offender.startswith(
+            f"{resolver._RECON_SECTION_SLUGS['rental_properties']}_3 "))
+        self.assertEqual(
+            attestations._rentals_beyond_schedule_e_columns(
+                _load(_doc(rental_properties=_rentals(3)))), [])
 
 
 class NegativeAssetAmountRefusalTests(unittest.TestCase):

@@ -18,6 +18,7 @@ import unittest
 from datetime import date
 
 from tenforty.attestations import enforce_scoped_refusals
+from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms.depreciation.resolver import (
     mid_quarter_applies, mid_quarter_bases, resolve,
 )
@@ -721,6 +722,71 @@ class AcknowledgmentLoadingTests(unittest.TestCase):
             "yes")
         with self.assertRaisesRegex(ValueError, "must be true or false"):
             _load(doc)
+
+
+class ScheduleEColumnsUseTheReturnsAnswerTests(unittest.TestCase):
+    """Schedule E hands every column the RETURN's 40% answer. Each scenario
+    is built so one property, taken alone, would answer the other way: a
+    per-column recomputation prints a different line 18."""
+
+    def setUp(self):
+        patcher = _patched()
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    @staticmethod
+    def _rental_at(address: str, *assets) -> RentalProperty:
+        rental = _rental(*assets)
+        rental.address = address
+        return rental
+
+    def _line_18(self, rp, *, mid_quarter: bool) -> int:
+        return irs_round(resolve(rp, YEAR, mid_quarter=mid_quarter).amount)
+
+    def test_a_column_over_alone_prints_half_year_when_the_return_is_under(
+            self):
+        a = _rental(_personal(9_000.0, 3))
+        b = self._rental_at("200 Example Street", _personal(1_000.0, 11))
+        scenario = _scenario(rentals=[a, b])
+        self.assertEqual(_answer(scenario), SILENT)     # 1,000 of 10,000
+        self.assertEqual(_answer(_scenario(rentals=[b])), TRIPS)
+        half_year = self._line_18(b, mid_quarter=False)
+        mid_quarter = self._line_18(b, mid_quarter=True)
+        self.assertNotEqual(half_year, mid_quarter)
+        printed = form_sch_e.compute(scenario, {})[
+            "sch_e_property_b_depreciation"]
+        self.assertEqual(printed, half_year)
+        self.assertNotEqual(printed, mid_quarter)
+
+    def test_a_column_under_alone_prints_mid_quarter_when_the_return_is_over(
+            self):
+        a = _rental(_personal(6_000.0, 3), _personal(3_000.0, 11))
+        b = self._rental_at("200 Example Street", _personal(3_000.0, 12))
+        scenario = _scenario(rentals=[a, b])
+        self.assertEqual(_answer(scenario), TRIPS)      # 6,000 of 12,000
+        self.assertEqual(_answer(_scenario(rentals=[a])), SILENT)
+        half_year = self._line_18(a, mid_quarter=False)
+        mid_quarter = self._line_18(a, mid_quarter=True)
+        self.assertNotEqual(half_year, mid_quarter)
+        printed = form_sch_e.compute(scenario, {})[
+            "sch_e_property_a_depreciation"]
+        self.assertEqual(printed, mid_quarter)
+        self.assertNotEqual(printed, half_year)
+
+    def test_each_columns_line_18_is_the_resolvers_amount(self):
+        rentals = [
+            _rental(_personal(6_000.0, 3)),
+            self._rental_at("200 Example Street", _personal(4_000.0, 8)),
+            self._rental_at("300 Example Street", _personal(5_000.0, 11)),
+        ]
+        scenario = _scenario(rentals=rentals)
+        answer = mid_quarter_applies(scenario)
+        result = form_sch_e.compute(scenario, {})
+        printed = [result[f"sch_e_property_{letter}_depreciation"]
+                   for letter in "abc"]
+        self.assertEqual(printed, [
+            self._line_18(rp, mid_quarter=answer) for rp in rentals])
+        self.assertEqual(len(set(printed)), 3)
 
 
 if __name__ == "__main__":

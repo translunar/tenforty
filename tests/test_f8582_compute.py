@@ -130,5 +130,80 @@ class F8582AllowedLossTests(unittest.TestCase):
         self.assertEqual(carryforwards["Example LLC B"], 20_000)
 
 
+def _rentals_at(*addresses: str) -> list[RentalProperty]:
+    return [RentalProperty(
+        address=address, property_type=1, fair_rental_days=365,
+        personal_use_days=0, rents_received=0.0) for address in addresses]
+
+
+def _run_with_line_21s(addresses, line_21s):
+    """Form 8582 over rentals whose printed Schedule E line 21s are handed
+    in directly, one per column in order."""
+    s = make_k1_scenario()
+    s.schedule_k1s = []
+    s.rental_properties = _rentals_at(*addresses)
+    return f8582.compute(s, upstream={
+        "f1040": {"magi": 50_000},
+        "sch_e": {f"sch_e_property_{letter}_income_loss": net
+                  for letter, net in zip("abc", line_21s)},
+    })
+
+
+class EveryRentalColumnIsAPassiveActivityTests(unittest.TestCase):
+    def test_lines_1a_and_1b_take_each_column_separately(self):
+        out = _run_with_line_21s(
+            ("100 Example Street", "200 Example Street",
+             "300 Example Street"), (8_000, -4_000, 4_000))
+        # Not the netted 8,000 / 0.
+        self.assertEqual(out["f8582_line_1a_activities_with_income"], 12_000)
+        self.assertEqual(out["f8582_line_1b_activities_with_loss"], 4_000)
+
+    def test_two_rentals_sharing_an_address_are_two_activities(self):
+        out = _run_with_line_21s(
+            ("100 Example Street", "100 Example Street"), (-3_000, -2_000))
+        self.assertEqual(out["f8582_line_1b_activities_with_loss"], 5_000)
+
+    def test_a_single_rental_result_is_unchanged(self):
+        out = _run_with_line_21s(("100 Example Street",), (-4_000,))
+        self.assertEqual(out["f8582_line_1a_activities_with_income"], 0)
+        self.assertEqual(out["f8582_line_1b_activities_with_loss"], 4_000)
+
+
+class MissingColumnLine21Tests(unittest.TestCase):
+    """A Schedule E result that carries some columns' line 21 but not
+    another's is a wiring fault: Form 8582 raises, it does not read zero."""
+
+    _ADDRESSES = ("100 Example Street", "200 Example Street",
+                  "300 Example Street")
+
+    def _compute(self, sch_e: dict) -> dict:
+        s = make_k1_scenario()
+        s.schedule_k1s = []
+        s.rental_properties = _rentals_at(*self._ADDRESSES)
+        return f8582.compute(s, upstream={
+            "f1040": {"magi": 50_000}, "sch_e": sch_e})
+
+    def test_a_column_without_its_line_21_key_raises(self):
+        with self.assertRaises(KeyError) as cm:
+            self._compute({
+                "sch_e_property_a_income_loss": 8_000,
+                "sch_e_property_c_income_loss": 4_000,
+            })
+        message = cm.exception.args[0]
+        self.assertIn("Form 8582", message)
+        self.assertIn("'sch_e_property_b_income_loss'", message)
+        self.assertIn("'200 Example Street'", message)
+
+    def test_the_same_upstream_with_every_column_computes(self):
+        # Twin: the missing key supplied, nothing else changed.
+        out = self._compute({
+            "sch_e_property_a_income_loss": 8_000,
+            "sch_e_property_b_income_loss": -4_000,
+            "sch_e_property_c_income_loss": 4_000,
+        })
+        self.assertEqual(out["f8582_line_1a_activities_with_income"], 12_000)
+        self.assertEqual(out["f8582_line_1b_activities_with_loss"], 4_000)
+
+
 if __name__ == "__main__":
     unittest.main()
