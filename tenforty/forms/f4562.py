@@ -50,9 +50,11 @@ from collections import defaultdict
 from tenforty.attestations import (
     activities_with_assets, depreciation_activities,
 )
-from tenforty.forms.depreciation.macrs import asset_convention, method_for
+from tenforty.forms.depreciation.macrs import (
+    asset_convention, method_for, require_answer,
+)
 from tenforty.forms.depreciation.resolver import (
-    asset_amount, mid_quarter_applies,
+    asset_amount, mid_quarter_applies, placed_this_year,
 )
 from tenforty.models import REAL_PROPERTY_CLASSES, RentalProperty, Scenario
 from tenforty.rounding import irs_round
@@ -102,9 +104,10 @@ def scenario_assets(scenario: Scenario) -> list:
         for asset in activity.depreciable_assets]
 
 
-def is_required(scenario: Scenario) -> bool:
-    """True when the return must carry Form 4562: some property was placed
-    in service during the return year, on any activity.
+def is_required_for(activity, tax_year: int) -> bool:
+    """True when this ONE activity must carry a Form 4562: one of its own
+    assets was placed in service during ``tax_year``. Each activity that
+    needs the form gets its own copy.
 
     Instructions for Form 4562 (2025), "Who Must File" (page 2): file the
     form if claiming "Depreciation for property placed in service during the
@@ -121,13 +124,20 @@ def is_required(scenario: Scenario) -> bool:
       - amortization beginning this year: no input exists;
       - a corporate return: Form 1120-S is excluded by the instructions'
         own words, and no other corporate return is modeled.
-    An ongoing year, with only
-    property placed in earlier years, files no Form 4562; the depreciation
-    still prints on Schedule E line 18 / Schedule C line 13."""
+    An activity in an ongoing year, with only property placed in earlier
+    years, gets no Form 4562; its depreciation still prints on Schedule E
+    line 18 / Schedule C line 13."""
+    return bool(placed_this_year(activity, tax_year))
+
+
+def is_required(scenario: Scenario) -> bool:
+    """True when the return carries at least one Form 4562: some activity
+    satisfies `is_required_for`."""
     year = scenario.config.year
     return any(
-        asset.date_placed_in_service.year == year
-        for asset in scenario_assets(scenario))
+        is_required_for(activity, year)
+        for _section, _index, _label, activity in depreciation_activities(
+            scenario))
 
 
 LINE_17_KEY = "f4562_line_17"
@@ -258,6 +268,59 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         result[LINE_17_KEY] = line_17
 
     rows = _line_19_rows(placed_this_year, tax_year, mid_quarter=mid_quarter)
+    for row in rows:
+        result.update(_line_19_row_fields(row))
+
+    result["f4562_part_iii_section_b_rows"] = rows
+    result["f4562_line_22_total_depreciation"] = line_17 + sum(
+        row["deduction"] for row in rows)
+    return result
+
+
+def _activity_name(activity) -> str:
+    """What one copy's header box "Business or activity to which this form
+    relates" prints: the activity named exactly as its own schedule names
+    it -- a rental's address verbatim (Schedule E line 1a), a business's
+    description trimmed (Schedule C line A). Nothing is added to it. Empty
+    when the activity has no name; the box then stays blank, and no
+    placeholder is ever printed."""
+    if isinstance(activity, RentalProperty):
+        return activity.address
+    return str(activity.description).strip()
+
+
+def compute_for(activity, tax_year: int, header: dict, *,
+                mid_quarter: bool) -> dict:
+    """One Form 4562 copy: ``activity``'s own assets and nothing else.
+
+    ``header`` is the return's name and identifying number
+    (`config.pdf_header()`). ``mid_quarter`` is the RETURN's 40% answer,
+    worked out once by the caller over the whole return and handed to every
+    copy. It has no default and is never worked out here: one activity
+    cannot answer a taxpayer-wide test."""
+    require_answer(mid_quarter)
+    result: dict = {**header}
+    name = _activity_name(activity)
+    if name:
+        result[ACTIVITY_KEY] = name
+    this_year, earlier = [], []
+    for asset in activity.depreciable_assets:
+        if asset.date_placed_in_service.year == tax_year:
+            this_year.append(asset)
+        else:
+            earlier.append(asset)
+
+    # Line 17: one amount for every asset of this activity placed in an
+    # earlier tax year, at the resolver's per-asset figure (so the basis
+    # ceiling carries through). Each such asset reads the convention it
+    # STATES, not this year's.
+    line_17 = sum(
+        asset_amount(a, tax_year, mid_quarter=mid_quarter)[0]
+        for a in earlier)
+    if line_17:
+        result[LINE_17_KEY] = line_17
+
+    rows = _line_19_rows(this_year, tax_year, mid_quarter=mid_quarter)
     for row in rows:
         result.update(_line_19_row_fields(row))
 

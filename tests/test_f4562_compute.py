@@ -5,6 +5,8 @@ from datetime import date
 
 from tenforty.forms import f4562 as form_f4562
 from tenforty.models import DepreciableAsset
+from tests import _audit_workbook_fixtures as fx
+from tests._f4562_helpers import compute_copy
 from tests.helpers import make_simple_scenario
 
 def _nest_assets(scenario, assets):
@@ -129,6 +131,87 @@ class F4562ComputeTests(unittest.TestCase):
         r = form_f4562.compute(_scenario_with_assets(a, b), upstream={})
         # IRS half-up: 200_000.5 → 200_001. Banker's rounding would yield 200_000.
         self.assertEqual(r["f4562_line_19b_basis"], 200_001)
+
+
+RENTAL = ("rental_properties", 0)
+BUSINESS = ("schedule_c_businesses", 0)
+LINE_22 = "f4562_line_22_total_depreciation"
+ROWS = "f4562_part_iii_section_b_rows"
+
+# 5-year half-year, placed February 2025, basis 10,000: 20% = 2,000.
+NEW_EQUIPMENT = DepreciableAsset(
+    description="Equipment", date_placed_in_service=date(2025, 2, 1),
+    basis=10_000.0, recovery_class="5-year",
+    no_bonus_or_section_179_history=True)
+
+
+def _two_activity_scenario(business_assets=(fx.APPLIANCE, NEW_EQUIPMENT),
+                           rental_assets=(fx.BUILDING, fx.FURNITURE)):
+    """A rental holding a prior-year building (7,272 this year) and a 7-year
+    asset placed this year (1,000); a business holding a prior-year 5-year
+    asset (1,920) and a 5-year asset placed this year (2,000). Every
+    placement is in the first quarter, so the return is half-year."""
+    return fx.scenario(
+        rental_assets=rental_assets, business_assets=business_assets)
+
+
+class OneCopyPerActivityTests(unittest.TestCase):
+    # What one merged form over both activities would total.
+    MERGED_TOTAL = 7_272 + 1_000 + 1_920 + 2_000
+
+    def test_a_copy_carries_only_its_own_activitys_assets(self):
+        scenario = _two_activity_scenario()
+        rental = compute_copy(scenario, *RENTAL)
+        self.assertEqual(rental[form_f4562.LINE_17_KEY], 7_272)
+        self.assertEqual(
+            [row["recovery_class"] for row in rental[ROWS]], ["7-year"])
+        self.assertEqual(rental["f4562_line_19c_deduction"], 1_000)
+        self.assertNotIn("f4562_line_19b_deduction", rental)
+        self.assertEqual(rental[LINE_22], 8_272)
+
+        business = compute_copy(scenario, *BUSINESS)
+        self.assertEqual(business[form_f4562.LINE_17_KEY], 1_920)
+        self.assertEqual(
+            [row["recovery_class"] for row in business[ROWS]], ["5-year"])
+        self.assertEqual(business["f4562_line_19b_deduction"], 2_000)
+        self.assertNotIn("f4562_line_19c_deduction", business)
+        self.assertEqual(business[LINE_22], 3_920)
+
+        self.assertEqual(self.MERGED_TOTAL, 12_192)
+        self.assertNotEqual(rental[LINE_22], self.MERGED_TOTAL)
+        self.assertNotEqual(business[LINE_22], self.MERGED_TOTAL)
+
+    def test_is_required_for_asks_one_activity(self):
+        scenario = _two_activity_scenario(business_assets=(fx.APPLIANCE,))
+        rental = scenario.rental_properties[0]
+        business = scenario.schedule_c_businesses[0]
+        self.assertIs(form_f4562.is_required_for(rental, fx.YEAR), True)
+        self.assertIs(form_f4562.is_required_for(business, fx.YEAR), False)
+        self.assertIs(form_f4562.is_required(scenario), True)
+        # Twin: no placement this year on either activity.
+        ongoing = _two_activity_scenario(
+            rental_assets=(fx.BUILDING,), business_assets=(fx.APPLIANCE,))
+        self.assertIs(form_f4562.is_required_for(
+            ongoing.rental_properties[0], fx.YEAR), False)
+        self.assertIs(form_f4562.is_required_for(
+            ongoing.schedule_c_businesses[0], fx.YEAR), False)
+        self.assertIs(form_f4562.is_required(ongoing), False)
+
+    def test_line_22_is_line_17_plus_the_rows(self):
+        scenario = _two_activity_scenario()
+        for activity, line_17, rows, line_22 in (
+                (RENTAL, 7_272, [1_000], 8_272),
+                (BUSINESS, 1_920, [2_000], 3_920)):
+            with self.subTest(activity=activity):
+                copy = compute_copy(scenario, *activity)
+                self.assertEqual(copy[form_f4562.LINE_17_KEY], line_17)
+                self.assertEqual(
+                    [row["deduction"] for row in copy[ROWS]], rows)
+                self.assertEqual(copy[LINE_22], line_22)
+                self.assertEqual(
+                    copy[LINE_22],
+                    copy[form_f4562.LINE_17_KEY]
+                    + sum(row["deduction"] for row in copy[ROWS]))
 
 
 if __name__ == "__main__":

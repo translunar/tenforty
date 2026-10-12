@@ -35,6 +35,7 @@ from tenforty.models import (
     DepreciableAsset, RentalProperty, ScheduleCBusiness,
 )
 from tenforty.orchestrator import ReturnOrchestrator
+from tests._f4562_helpers import compute_copy
 from tests.helpers import REPO_ROOT, SPREADSHEETS_DIR, make_simple_scenario
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
@@ -322,6 +323,35 @@ class ActivityBoxComputeTests(unittest.TestCase):
         s = _scenario(2025, businesses=[_business(
             2025, "Consulting", _equipment(2025))])
         self.assertNotIn(ACTIVITY_KEY, f4562.compute(s, upstream={}))
+
+
+class PerCopyActivityBoxTests(unittest.TestCase):
+    """Each copy names its OWN activity, as that activity's schedule names
+    it, whatever else is on the return."""
+
+    def _two_activities(self, description: str):
+        return _scenario(2025, businesses=[_business(
+            2025, description, _equipment(2025))])
+
+    def test_the_rental_copy_prints_its_address(self):
+        copy = compute_copy(
+            self._two_activities("  Consulting "), "rental_properties", 0)
+        self.assertEqual(copy[ACTIVITY_KEY], ADDRESS)
+
+    def test_the_business_copy_prints_its_description_trimmed(self):
+        copy = compute_copy(
+            self._two_activities("  Consulting "),
+            "schedule_c_businesses", 0)
+        self.assertEqual(copy[ACTIVITY_KEY], "Consulting")
+
+    def test_a_blank_description_leaves_that_copys_box_out(self):
+        blank = compute_copy(
+            self._two_activities("   "), "schedule_c_businesses", 0)
+        self.assertNotIn(ACTIVITY_KEY, blank)
+        # Twin: the same business, named.
+        named = compute_copy(
+            self._two_activities("Consulting"), "schedule_c_businesses", 0)
+        self.assertEqual(named[ACTIVITY_KEY], "Consulting")
 
 
 class ActivityBoxMappingTests(unittest.TestCase):
