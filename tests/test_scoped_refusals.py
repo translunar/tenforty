@@ -72,8 +72,6 @@ FIRING_PROOFS: dict[str, str] = {
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_a_stale_override",
     "override_with_current_year_placement":
         "tests.test_depreciation_resolver::ValuePinnedOverrideTests::test_ledger_fires_on_override_with_current_year_placement",
-    "merged_4562_with_override":
-        "tests.test_f4562_emit_gate::MergedFormWithOverrideRefusalTests::test_placement_on_one_activity_and_override_on_another_refuses",
     "unverifiable_mid_quarter_test":
         "tests.test_mid_quarter_convention::StatedModeInteractionTests::test_fires_in_exactly_that_shape",
     "unacknowledged_listed_property":
@@ -449,7 +447,6 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
                 "prior_depreciation_mismatch",
                 "stale_depreciation_override",
                 "override_with_current_year_placement",
-                "merged_4562_with_override",
                 "unverifiable_mid_quarter_test",
                 "unacknowledged_listed_property",
                 "passive_loss_allowance_unknown_magi",
@@ -504,7 +501,7 @@ class ScopedRefusalRegistryTests(unittest.TestCase):
     def test_whole_return_entries_are_exactly_the_return_wide_ones(self):
         self.assertEqual(
             [r.name for r in attestations._SCOPED_REFUSALS if r.whole_return],
-            ["merged_4562_with_override", "unverifiable_mid_quarter_test",
+            ["unverifiable_mid_quarter_test",
              "unacknowledged_listed_property",
              "depreciation_audit_unbuildable"])
 

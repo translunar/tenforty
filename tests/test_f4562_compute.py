@@ -156,7 +156,7 @@ def _two_activity_scenario(business_assets=(fx.APPLIANCE, NEW_EQUIPMENT),
 
 
 class OneCopyPerActivityTests(unittest.TestCase):
-    # What one merged form over both activities would total.
+    # What a single form over both activities would total.
     MERGED_TOTAL = 7_272 + 1_000 + 1_920 + 2_000
 
     def test_a_copy_carries_only_its_own_activitys_assets(self):
