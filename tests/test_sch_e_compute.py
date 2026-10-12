@@ -173,5 +173,141 @@ class SchEEmptyTests(unittest.TestCase):
         self.assertNotIn("sch_e_line_26_total", result)
 
 
+def _stated(address: str, **amounts) -> RentalProperty:
+    return _rental(
+        address=address,
+        acknowledges_depreciation_stated_outside_macrs=True, **amounts)
+
+
+def _three_rentals(**overrides) -> list[RentalProperty]:
+    """Three invented rentals. Per column -- A: rents 24,000, line 12 8,000,
+    line 16 3,000, line 18 5,000 -> line 20 16,000, line 21 8,000.
+    B: rents 12,000, line 16 2,000, line 18 14,000 -> line 20 16,000,
+    line 21 (4,000). C: rents 9,000, line 12 4,000, line 16 1,000 ->
+    line 20 5,000, line 21 4,000. ``overrides`` maps a column letter to
+    field overrides for that property."""
+    columns = {
+        "a": dict(address="100 Example Street", rents_received=24_000.0,
+                  mortgage_interest=8_000.0, taxes=3_000.0,
+                  depreciation=5_000.0),
+        "b": dict(address="200 Example Street", rents_received=12_000.0,
+                  taxes=2_000.0, depreciation=14_000.0),
+        "c": dict(address="300 Example Street", rents_received=9_000.0,
+                  mortgage_interest=4_000.0, taxes=1_000.0),
+    }
+    for letter, fields in overrides.items():
+        columns[letter].update(fields)
+    return [_stated(**columns[letter]) for letter in "abc"]
+
+
+def _columns_scenario(rentals):
+    scenario = make_simple_scenario()
+    scenario.rental_properties = list(rentals)
+    return scenario
+
+
+class PropertyColumnsComputeTests(unittest.TestCase):
+    def test_each_property_fills_its_own_column_in_order(self):
+        r = compute(_columns_scenario(_three_rentals()), upstream={})
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_address"] for x in "abc"],
+            ["100 Example Street", "200 Example Street",
+             "300 Example Street"])
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_rents"] for x in "abc"],
+            [24_000, 12_000, 9_000])
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_total_expenses"] for x in "abc"],
+            [16_000, 16_000, 5_000])
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_income_loss"] for x in "abc"],
+            [8_000, -4_000, 4_000])
+        # Zero lines print nothing; column A's line 12 is the twin.
+        self.assertNotIn("sch_e_property_b_mortgage_interest", r)
+        self.assertNotIn("sch_e_property_c_depreciation", r)
+        self.assertEqual(r["sch_e_property_a_mortgage_interest"], 8_000)
+
+    def test_totals_sum_the_printed_columns(self):
+        r = compute(_columns_scenario(_three_rentals()), upstream={})
+        self.assertEqual(r["sch_e_line_23a_total_rents"], 45_000)
+        self.assertEqual(r["sch_e_line_23c_total_mortgage_interest"], 12_000)
+        self.assertEqual(r["sch_e_line_23d_total_depreciation"], 19_000)
+        self.assertEqual(r["sch_e_line_23e_total_expenses"], 37_000)
+        self.assertEqual(r["sch_e_property_b_deductible_loss"], 4_000)
+        self.assertNotIn("sch_e_property_a_deductible_loss", r)
+        self.assertNotIn("sch_e_property_c_deductible_loss", r)
+        self.assertEqual(r["sch_e_line_24_income"], 12_000)
+        self.assertEqual(r["sch_e_line_25_losses"], 4_000)
+        self.assertEqual(r["sch_e_line_26_total"], 8_000)
+
+    def test_totals_sum_rounded_lines_not_raw_inputs(self):
+        # Line 16 prints 3,001 in column A and 2,001 in column B (each half
+        # dollar rounds up), so each line 20 prints 16,001. Line 23e is the
+        # sum of the printed line 20s: 16,001 + 16,001 + 5,000 -- one more
+        # than the 37,001 the raw amounts (37,001.00) would round to.
+        r = compute(_columns_scenario(_three_rentals(
+            a=dict(taxes=3_000.50), b=dict(taxes=2_000.50))), upstream={})
+        self.assertEqual(r["sch_e_property_a_total_expenses"], 16_001)
+        self.assertEqual(r["sch_e_property_b_total_expenses"], 16_001)
+        self.assertEqual(r["sch_e_line_23e_total_expenses"], 37_002)
+        line_21s = [r[f"sch_e_property_{x}_income_loss"] for x in "abc"]
+        self.assertEqual(line_21s, [7_999, -4_001, 4_000])
+        self.assertEqual(r["sch_e_line_26_total"], sum(line_21s))
+        self.assertEqual(r["sch_e_line_26_total"], 7_998)
+
+    def test_three_break_even_properties_leave_24_and_25_blank(self):
+        even = [_stated(f"{n}00 Example Street", rents_received=5_000.0,
+                        taxes=5_000.0) for n in (1, 2, 3)]
+        r = compute(_columns_scenario(even), upstream={})
+        self.assertEqual(
+            [r[f"sch_e_property_{x}_income_loss"] for x in "abc"], [0, 0, 0])
+        self.assertNotIn("sch_e_line_24_income", r)
+        self.assertNotIn("sch_e_line_25_losses", r)
+        self.assertEqual(r["sch_e_line_26_total"], 0)
+        # Twin: the mixed-sign scenario prints both.
+        mixed = compute(_columns_scenario(_three_rentals()), upstream={})
+        self.assertIn("sch_e_line_24_income", mixed)
+        self.assertIn("sch_e_line_25_losses", mixed)
+
+    def test_an_empty_second_property_prints_its_row_and_changes_no_total(self):
+        first = _three_rentals()[0]
+        alone = compute(_columns_scenario([first]), upstream={})
+        r = compute(_columns_scenario([first, _rental(
+            address="200 Example Street", rents_received=0.0)]), upstream={})
+        self.assertEqual(r["sch_e_property_b_address"], "200 Example Street")
+        self.assertEqual(r["sch_e_property_b_income_loss"], 0)
+        for key, expected in (
+                ("sch_e_line_23a_total_rents", 24_000),
+                ("sch_e_line_23e_total_expenses", 16_000),
+                ("sch_e_line_24_income", 8_000),
+                ("sch_e_line_26_total", 8_000)):
+            with self.subTest(key=key):
+                self.assertEqual(r[key], expected)
+                self.assertEqual(r[key], alone[key])
+
+    def test_a_fourth_property_refuses_rather_than_truncating(self):
+        four = _three_rentals() + [_stated(
+            "400 Example Street", rents_received=1_000.0)]
+        compute(_columns_scenario(four[:3]), upstream={})  # twin: three print
+        with self.assertRaisesRegex(NotImplementedError, r"rental_3"):
+            compute(_columns_scenario(four), upstream={})
+
+    def test_line_26_cross_check_compares_the_summed_total(self):
+        # Property C's rents are 10,000 here, so C nets 5,000 and the three
+        # columns total 9,000 -- a figure that differs from column A's own
+        # line 21 (8,000). With the unmodified table the two coincide and
+        # the check could not tell the summed total from column A.
+        scenario = _columns_scenario(_three_rentals(
+            c=dict(rents_received=10_000.0)))
+        with self.assertNoLogs("tenforty.forms.sch_e", level="WARNING"):
+            r = compute(scenario, upstream={"f1040": {"sche_line26": 9_000}})
+        self.assertEqual(r["sch_e_line_26_total"], 9_000)
+        # Twin: column A's line 21 is not the page total, so it diverges.
+        with self.assertLogs("tenforty.forms.sch_e", level="WARNING") as cm:
+            r = compute(scenario, upstream={"f1040": {"sche_line26": 8_000}})
+        self.assertTrue(
+            any("diverges" in rec.getMessage() for rec in cm.records))
+        self.assertEqual(r["sch_e_line_26_total"], 9_000)
+
 if __name__ == "__main__":
     unittest.main()
