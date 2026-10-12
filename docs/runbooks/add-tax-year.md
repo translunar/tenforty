@@ -2,8 +2,8 @@
 
 The support grid is year × form. This runbook adds a YEAR. To add a
 COMPONENT across years instead, run the same steps with the loop
-inverted — see the design spec's "Component ports: the transpose"
-(docs/specs/2026-07-06-year-extension-harness-design.md).
+inverted (the year-extension harness design round calls this "Component
+ports: the transpose"; it is a local design-round document, not shipped).
 
 Every step ends in a machine check. If a check goes red, the port is not
 done — no step may be satisfied by weakening its check.
@@ -90,8 +90,7 @@ divergence catalog to
 against the new year's FTB Pub 1001, and adjust rows (ids stay stable across
 years) until the schema gates pass — conformity changes are HUMAN JUDGMENT.
 There is no `.fods` regeneration: the catalog YAML is the single
-runtime-loaded source of truth (see the CA divergence catalog redesign,
-docs/specs/2026-07-19-ca-divergence-catalog-redesign.md §3).
+runtime-loaded source of truth (`tenforty/ca_divergences.py` loads it).
 Check: `pytest tests/test_year_completeness_gate.py` green — this is the
 "year is complete" bit flipping on. Attestation-window failures here mean
 a law-scope review (see the gate's message), not a mechanical extension.
