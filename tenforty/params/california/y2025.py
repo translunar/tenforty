@@ -14,6 +14,8 @@ Migrated verbatim from tenforty/constants/california_y2025.py. Sources:
   TY2025 540 booklet was unpublished at extraction time; the credit is
   form-agnostic per FTB §17053.5 — re-source when the booklet lands).
 """
+import datetime
+
 from tenforty.models import FilingStatus
 from tenforty.params.california import CaliforniaParams
 
@@ -73,7 +75,29 @@ PARAMS = CaliforniaParams(
     renter_credit_amount={
         _S: 60, _MFS: 60, _MFJ: 120, _HOH: 120, _QW: 120,
     },
-    # Pending transcription (age-65-params).
-    senior_exemption_credit=None,
+    # 2025 Personal Income Tax Booklet (Form 540).
+    # https://www.ftb.ca.gov/forms/2025/2025-540-booklet.pdf
+    # sha256 b48ee24bd2f9b9e74fe9a5bbc548d15bae0bd1ce53306bef1ff33fc76f8078c1
+    # REV stamp: none printed on the senior-exemption pages (instructions p.12, form
+    # side 1); elsewhere: REV 02-26, REV 04-26.
+    # senior_exemption_credit: Form 540 side 1 (booklet PDF page 39),
+    # line 9 "X $" box; box assigned by rendered-page position (same row as the line 9
+    # label; text layer detaches the boxes from their labels).
+    # The Line 9 instructions (p.12) print no amount.
+    # senior_born_before: no born-before date printed; condition recorded
+    # verbatim below, date left for adjudication.
+    # Line 9 – Senior Exemptions (instructions p.12), verbatim:
+    # If you were 65 years of age or older by December 31, 2025*, you should
+    # claim an additional exemption credit on line 9. If you are married/or
+    # an RDP, each spouse/RDP 65 years of age or older should claim an
+    # additional credit.
+    # *If your 65th birthday is on January 1, 2026, you are considered to be
+    # age 65 on December 31, 2025.
+    # form-page label:
+    # 9 Senior: If you (or your spouse/RDP) are 65 or older, enter 1;
+    # if both are 65 or older, enter 2. See instructions.
+    # Excluded: the Voluntary Contribution Fund Descriptions (code 400) also
+    # restate an age condition; that is a different provision, not a source.
+    senior_exemption_credit=153,
     senior_born_before=None,
 )
