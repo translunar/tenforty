@@ -51,7 +51,7 @@ from tenforty import years as year_manifest
 from tenforty.forms import f8962 as form_f8962
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import (
-    K1FanoutData, Scenario, TaxReturnConfig, parse_filing_status,
+    FilingStatus, K1FanoutData, Scenario, TaxReturnConfig, parse_filing_status,
 )
 from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
@@ -389,6 +389,15 @@ def _first_and_middle(first_name: str, middle_initial: str) -> str:
     return f"{first_name.strip()} {middle_initial.strip()}".strip()
 
 
+# Statuses whose 1040 header carries the spouse block: a joint return names
+# both spouses; married filing separately keeps its long-standing spouse
+# cells. Every other status emits no ``spouse_*`` key at all.
+_SPOUSE_HEADER_STATUSES = frozenset({
+    FilingStatus.MARRIED_FILING_JOINTLY,
+    FilingStatus.MARRIED_FILING_SEPARATELY,
+})
+
+
 def header_values(config: TaxReturnConfig) -> dict[str, str]:
     """The Form 1040 header block — name, SSN, spouse, address — as result keys.
 
@@ -400,22 +409,26 @@ def header_values(config: TaxReturnConfig) -> dict[str, str]:
     depend on which pipeline computed the return. ``first_name`` and
     ``spouse_first_name`` carry the middle initial too, as the form's box is
     "first name and middle initial". ``apt_no`` has no config field and stays
-    blank.
+    blank. The ``spouse_*`` keys are present only for married filing jointly
+    and married filing separately; Single, Head of Household and Qualifying
+    Surviving Spouse headers omit them.
     """
-    return {
+    out = {
         **config.pdf_header(),
         "first_name": _first_and_middle(config.first_name, config.middle_initial),
         "last_name": config.last_name,
         "ssn": _ssn_digits(config.ssn),
-        "spouse_first_name": _first_and_middle(
-            config.spouse_first_name, config.spouse_middle_initial),
-        "spouse_last_name": config.spouse_last_name,
-        "spouse_ssn": _ssn_digits(config.spouse_ssn),
         "address": config.address,
         "city": config.address_city,
         "state": config.address_state,
         "zip_code": config.address_zip,
     }
+    if parse_filing_status(config.filing_status) in _SPOUSE_HEADER_STATUSES:
+        out["spouse_first_name"] = _first_and_middle(
+            config.spouse_first_name, config.spouse_middle_initial)
+        out["spouse_last_name"] = config.spouse_last_name
+        out["spouse_ssn"] = _ssn_digits(config.spouse_ssn)
+    return out
 
 
 def compute_spine(

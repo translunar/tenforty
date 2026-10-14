@@ -990,11 +990,42 @@ def _load_form_1095a(data: dict | None, config: TaxReturnConfig) -> Form1095A | 
     )
 
 
+_SPOUSE_CONFIG_FIELDS: tuple[str, ...] = (
+    "spouse_first_name", "spouse_middle_initial", "spouse_last_name",
+    "spouse_ssn")
+
+_NO_SPOUSE_STATUSES = frozenset({
+    FilingStatus.SINGLE, FilingStatus.HEAD_OF_HOUSEHOLD})
+
+
+def refuse_spouse_fields_without_spouse(cfg: TaxReturnConfig) -> None:
+    """Refuse spouse identity fields on a Single or Head-of-Household scenario.
+
+    Neither return has a spouse block, so a filled spouse field is a
+    data-entry error (wrong status, or a stray spouse) that would otherwise be
+    silently dropped. Pure decision over ``cfg``; whitespace counts as blank.
+    """
+    if cfg.filing_status not in _NO_SPOUSE_STATUSES:
+        return
+    filled = [f for f in _SPOUSE_CONFIG_FIELDS
+              if str(getattr(cfg, f) or "").strip()]
+    if filled:
+        status = FilingStatus(cfg.filing_status).value
+        raise ValueError(
+            "Scenario config sets "
+            + ", ".join(f"`{f}`" for f in filled)
+            + f" but `filing_status` is `{status}`, which has no spouse on "
+            "the return. Remove the spouse field(s), or set the filing status "
+            "the household actually files (e.g. `married_filing_jointly`)."
+        )
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
     recovery) are validated separately because they depend on other config
     values, not on a trigger-predicate over the full scenario."""
+    refuse_spouse_fields_without_spouse(cfg)
     validate_load_time(cfg)
     validate_sche_1099_answers(cfg)
     validate_third_party_designee(cfg)
