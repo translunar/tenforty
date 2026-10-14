@@ -15,8 +15,9 @@ import unittest
 from pathlib import Path
 
 from tenforty import years
-from tenforty.forms.f8962 import compute
+from tenforty.forms.f8962 import compute, ptc_family_refusal
 from tenforty.models import (
+    W2,
     FilingStatus,
     Form1095A,
     Form1095AMonth,
@@ -148,11 +149,25 @@ class F8962FamilySizeTests(unittest.TestCase):
 
     def test_dependents_without_1095a_do_not_trip_the_ptc_refusal(self):
         # Positive control: the refusal is about Form 8962, not dependents.
+        # High wages keep the scenario on the native spine (above every EIC
+        # ceiling), so it computes rather than routing to the workbook.
         scenario = dataclasses.replace(
             _ptc_scenario(FilingStatus.SINGLE, dependents=["Example Child"]),
-            form_1095a=None)
+            form_1095a=None,
+            w2s=[W2(employer="Example Employer", wages=150_000.0,
+                    federal_tax_withheld=20_000.0, ss_wages=150_000.0,
+                    ss_tax_withheld=9_300.0, medicare_wages=150_000.0,
+                    medicare_tax_withheld=2_175.0)])
         results = _orchestrator(self).compute_federal(scenario)
         self.assertNotIn("f8962_line_1", results)
+
+    def test_refusal_is_none_when_family_is_known(self):
+        self.assertIsNone(ptc_family_refusal(_config(FilingStatus.SINGLE)))
+        self.assertIsNone(ptc_family_refusal(_config(_MFJ)))
+        self.assertIsNotNone(ptc_family_refusal(
+            _config(_MFJ, dependents=["Example Child"])))
+        self.assertIsNotNone(ptc_family_refusal(
+            _config(FilingStatus.HEAD_OF_HOUSEHOLD)))
 
     def test_single_unchanged(self):
         expected = json.loads(SINGLE_BASE_SNAPSHOT.read_text())
