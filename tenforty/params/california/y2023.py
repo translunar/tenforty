@@ -49,7 +49,7 @@ PARAMS = CaliforniaParams(
         _S: 144, _MFS: 144, _HOH: 144, _MFJ: 288, _QW: 288,
     },
     dependent_exemption_amount=446,
-    agi_phaseout_threshold=237_035,
+    agi_phaseout_threshold={_S: 237_035},
     rate_schedule={
         _S: _SCHEDULE_X, _MFS: _SCHEDULE_X,
         _MFJ: _SCHEDULE_Y, _QW: _SCHEDULE_Y,

@@ -67,7 +67,7 @@ ATTESTED: dict[str, object] = {
     # phaseout, so non-single filers between their true threshold and this one
     # over-refuse but can never be computed wrongly. Attested = the scalar
     # single/MFS minimum.
-    "agi_phaseout_threshold": 212288,
+    "agi_phaseout_threshold": {"single": 212288},
     "rate_schedule": {
         # "2021 California Tax Rate Schedules", Page 93. Encoded as ascending
         # (LOWER_BOUND, marginal_rate) pairs starting at (0, 0.01). Rates from

@@ -332,7 +332,8 @@ class AgiPhaseoutGateTests(unittest.TestCase):
                     compute(
                         year=year,
                         filing_status=FilingStatus.SINGLE,
-                        federal_agi=params.agi_phaseout_threshold + 1,
+                        federal_agi=params.for_status(
+                            FilingStatus.SINGLE).agi_phaseout_threshold + 1,
                         ca_agi=50_000,
                         ca540=CA540Return(),
                     )
@@ -348,7 +349,8 @@ class AgiPhaseoutGateTests(unittest.TestCase):
                 result = compute(
                     year=year,
                     filing_status=FilingStatus.SINGLE,
-                    federal_agi=params.agi_phaseout_threshold,
+                    federal_agi=params.for_status(
+                        FilingStatus.SINGLE).agi_phaseout_threshold,
                     ca_agi=50_000,
                     ca540=CA540Return(),
                 )
@@ -578,7 +580,7 @@ class California2024ConstantsTests(unittest.TestCase):
         # Source: FTB Form 540 (TY2024) side 2, line 10 ($461 each)
         self.assertEqual(self.params_2024.dependent_exemption_amount, 461)
         # Source: FTB Form 540 (TY2024) side 2, line 32
-        self.assertEqual(self.params_2024.agi_phaseout_threshold, 244_857)
+        self.assertEqual(self.params_2024.agi_phaseout_threshold[FilingStatus.SINGLE.value], 244_857)
 
     def test_rate_schedule_single_endpoints(self):
         # Source: FTB 2024 Tax Rate Schedules (booklet p. 75), Schedule X
