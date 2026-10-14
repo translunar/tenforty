@@ -38,12 +38,12 @@ _LINE_26 = "topmostSubform[0].Page1[0].f1_93[0]"
 def _params() -> F8962Params:
     return F8962Params(
         year=2024,
-        fpl_single_48=10_000,
+        fpl_48_by_family_size={1: 10_000},
         applicable_figures={100: 0.0, 133: 0.0, 150: 0.0, 200: 0.02,
                             250: 0.04, 300: 0.06, 400: 0.085, 500: 0.085},
         applicable_figure_floor_pct=100,
         applicable_figure_ceiling_pct=500,
-        repayment_caps_single=((200, 350), (300, 900), (400, 1500)),
+        repayment_caps={"single": ((200, 350), (300, 900), (400, 1500))},
         unemployment_rule=False,
         line5_400_boundary_inclusive=False,
     )

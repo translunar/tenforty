@@ -530,7 +530,7 @@ def build_ptc_net_credit(year: int) -> Scenario:
     2026-10-03). Do NOT "clean up" to identical months --
     tests/test_spine_battery_parameterization.py pins this.
     """
-    fpl = f8962_params.load(year).fpl_single_48
+    fpl = f8962_params.load(year).fpl_48_by_family_size[1]
     wages = round(2.50 * fpl)
     by_month = {n: (600.0, 550.0, 300.0) for n in range(1, 13)}
     by_month[12] = (601.0, 550.0, 300.0)  # annual-ineligible; see docstring
@@ -553,7 +553,7 @@ def build_ptc_capped_repayment(year: int) -> Scenario:
     more subsidy than they were entitled to — the repayment limitation
     caps the amount owed back instead of it being dollar-for-dollar.
     """
-    fpl = f8962_params.load(year).fpl_single_48
+    fpl = f8962_params.load(year).fpl_48_by_family_size[1]
     wages = round(2.50 * fpl)
     months = _ptc_months({n: (600.0, 550.0, 550.0) for n in range(1, 13)})
     return Scenario(
@@ -574,7 +574,7 @@ def build_ptc_partial_year_401(year: int) -> Scenario:
     Exercises both the 400%-boundary line-5 rule and the partial-year
     monthly-row shape in the same scenario.
     """
-    fpl = f8962_params.load(year).fpl_single_48
+    fpl = f8962_params.load(year).fpl_48_by_family_size[1]
     wages = round(4.50 * fpl)
     months = _ptc_months({n: (600.0, 550.0, 550.0) for n in range(8, 13)})
     return Scenario(
@@ -597,7 +597,7 @@ def build_ptc_2021_ui_flat133(year: int) -> Scenario:
     landing there anyway.
     """
     assert year == 2021, "the 2021 UI flat-133 rule only applies in 2021"
-    fpl = f8962_params.load(year).fpl_single_48
+    fpl = f8962_params.load(year).fpl_48_by_family_size[1]
     wages = round(3.00 * fpl)
     months = _ptc_months({n: (600.0, 550.0, 0.0) for n in range(1, 13)})
     return Scenario(

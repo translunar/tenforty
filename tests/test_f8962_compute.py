@@ -8,12 +8,12 @@ from tenforty.params.f8962 import F8962Params
 def _params(unemployment_rule=False, line5_400_boundary_inclusive=False):
     return F8962Params(
         year=2021 if unemployment_rule else 2024,
-        fpl_single_48=10_000,
+        fpl_48_by_family_size={1: 10_000},
         applicable_figures={100: 0.0, 133: 0.0, 150: 0.0, 200: 0.02,
                             250: 0.04, 300: 0.06, 400: 0.085, 500: 0.085},
         applicable_figure_floor_pct=100,
         applicable_figure_ceiling_pct=500,
-        repayment_caps_single=((200, 350), (300, 900), (400, 1500)),
+        repayment_caps={"single": ((200, 350), (300, 900), (400, 1500))},
         unemployment_rule=unemployment_rule,
         line5_400_boundary_inclusive=line5_400_boundary_inclusive,
     )
@@ -98,7 +98,7 @@ class F8962ComputeTests(unittest.TestCase):
 
     def test_line5_strict_400_pct_boundary(self):
         # Worksheet 2: line 5 = 401 only STRICTLY above 400% FPL (magi >
-        # 4 * fpl_single_48 = 40,000). At exactly 400% it's 400 (not 401);
+        # 4 * size-1 FPL = 40,000). At exactly 400% it's 400 (not 401);
         # just below, it's the ordinary floored percentage (399).
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
 
@@ -120,7 +120,7 @@ class F8962ComputeTests(unittest.TestCase):
         # enter 401 here") is INCLUSIVE of exactly 400%, unlike the
         # 2022-2025 STRICT phrasing ("more than 400% ... enter 401")
         # exercised by test_line5_strict_400_pct_boundary above. With
-        # line5_400_boundary_inclusive=True, magi == 4 * fpl_single_48
+        # line5_400_boundary_inclusive=True, magi == 4 * size-1 FPL
         # (exactly 400% FPL) must itself produce line 5 = 401.
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
         params = _params(line5_400_boundary_inclusive=True)
@@ -145,12 +145,12 @@ class F8962ComputeTests(unittest.TestCase):
         # Integer arithmetic (magi * 100) // fpl avoids the float error.
         params = F8962Params(
             year=2024,
-            fpl_single_48=13_590,
+            fpl_48_by_family_size={1: 13_590},
             applicable_figures={100: 0.0, 133: 0.0, 150: 0.0, 200: 0.02,
                                 250: 0.04, 300: 0.06, 400: 0.085, 500: 0.085},
             applicable_figure_floor_pct=100,
             applicable_figure_ceiling_pct=500,
-            repayment_caps_single=((200, 350), (300, 900), (400, 1500)),
+            repayment_caps={"single": ((200, 350), (300, 900), (400, 1500))},
             unemployment_rule=False,
             line5_400_boundary_inclusive=False,
         )
@@ -159,7 +159,7 @@ class F8962ComputeTests(unittest.TestCase):
         self.assertEqual(r["f8962_line_5"], 230)
 
     def test_line5_below_floor_pct_not_clamped_up(self):
-        # magi=9,000 with fpl_single_48=10,000 -> exactly 90% FPL, below
+        # magi=9,000 with a size-1 FPL of 10,000 -> exactly 90% FPL, below
         # this params set's applicable_figure_floor_pct=100. Line 5 must
         # report the TRUE percentage (90), not the applicable-figure
         # table's floor (previously the clamp raised it to 100).

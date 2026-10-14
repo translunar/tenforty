@@ -6,7 +6,7 @@ Source: 2025 Instructions for Form 8962
 Values were produced by two mutually-blind transcriber subagents, each
 reading ONLY the 2025 Form 8962 instructions above (no tenforty code, no
 other year's data, no shared examples). They agreed on every cell
-(fpl_single_48, the applicable-figure floor/ceiling, the repayment-cap
+(the size-1 FPL (now fpl_48_by_family_size[1]), the applicable-figure floor/ceiling, the repayment-cap
 bands, the unemployment rule, and all 251 applicable-figure rows) at zero
 tolerance. See the independently-transcribed cross-check in
 tests/params_attestations/f8962_y2025.py (wired into
@@ -16,7 +16,7 @@ tests/test_params_attestation.py::F8962AttestationTests).
 through 150% FPL, 0.085 ceiling at 400%+, no 400% subsidy cliff),
 transcribed from this year's OWN instructions, never copied from a prior
 year. The unemployment-compensation special rule does NOT apply in 2025
-(it was a 2021-only ARPA provision). fpl_single_48 is the 2024-published
+(it was a 2021-only ARPA provision). The size-1 FPL is the 2024-published
 guideline (Form 8962 for tax year N uses the FPL guideline published in
 year N-1; the instructions' Table 1-1 prints the correct figure).
 """
@@ -24,7 +24,7 @@ from tenforty.params.f8962 import F8962Params
 
 PARAMS = F8962Params(
     year=2025,
-    fpl_single_48=15060,
+    fpl_48_by_family_size={1: 15060},
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=False,
@@ -33,7 +33,7 @@ PARAMS = F8962Params(
     # the federal poverty line. Enter 401 here and on line 5 of Form
     # 8962." — strict: exactly 400% leaves line 5 at 400.
     line5_400_boundary_inclusive=False,
-    repayment_caps_single=((200, 375), (300, 975), (400, 1625)),
+    repayment_caps={"single": ((200, 375), (300, 975), (400, 1625))},
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,
         156: 0.0024, 157: 0.0028, 158: 0.0032, 159: 0.0036, 160: 0.004, 161: 0.0044,

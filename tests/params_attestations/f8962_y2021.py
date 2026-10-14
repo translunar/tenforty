@@ -24,9 +24,11 @@ SOURCES: tuple[str, ...] = (
 
 ATTESTED: dict[str, object] = {
     "year": 2021,
+    # Not yet transcribed (see PENDING_TRANSCRIPTION).
+    "fpl_48_additional_person": None,
     # Table 1-1: 2021 Form 8962 uses the FPL guideline published in 2020
     # for a household of 1 in the 48 contiguous states + DC.
-    "fpl_single_48": 12760,
+    "fpl_48_by_family_size": {1: 12760},
     # ARPA (American Rescue Plan Act) table domain: 0.00 floor at 150% FPL
     # through the 0.085 ceiling at 400% FPL (no 400% subsidy cliff in 2021).
     "applicable_figure_floor_pct": 150,
@@ -41,7 +43,7 @@ ATTESTED: dict[str, object] = {
     "line5_400_boundary_inclusive": True,
     # Line 28 repayment limitation table, single filing status:
     # <200% FPL -> $325; <300% -> $800; <400% -> $1,350; >=400% -> no limit.
-    "repayment_caps_single": ((200, 325), (300, 800), (400, 1350)),
+    "repayment_caps": {"single": ((200, 325), (300, 800), (400, 1350))},
     # Table 2 (applicable figure), full published domain 150%-400% FPL,
     # transcribed verbatim, all 251 rows.
     "applicable_figures": {
@@ -88,4 +90,15 @@ ATTESTED: dict[str, object] = {
         390: 0.0825, 391: 0.0828, 392: 0.083, 393: 0.0833, 394: 0.0835, 395: 0.0838,
         396: 0.084, 397: 0.0843, 398: 0.0845, 399: 0.0848, 400: 0.085,
     },
+}
+
+
+# Fields whose transcription has not landed. Attested None here, and the
+# params must hold None too (absent on both sides): the field is unset, so
+# fpl_for_family_size refuses every family size outside the table instead
+# of extrapolating. Remove an entry when both A and B have transcribed it.
+PENDING_TRANSCRIPTION: dict[str, str] = {
+    "fpl_48_additional_person": (
+        "Form 8962 instructions' per-additional-person FPL amount; awaiting "
+        "dual transcription (native-filing-statuses round, ptc-family)."),
 }
