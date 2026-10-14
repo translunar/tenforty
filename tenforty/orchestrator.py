@@ -3498,21 +3498,16 @@ class ReturnOrchestrator:
         """Emit 8959 only when the oracle says it's required (F8959_Reqd).
 
         Falls back to a wage-threshold heuristic if the oracle value isn't
-        available in results (e.g. tests that pass ``results={}``). 2025
-        thresholds: $200k single/HoH/QW, $250k MFJ, $125k MFS.
+        available in results (e.g. tests that pass ``results={}``), using
+        the status's ``addl_medicare_threshold`` params column.
         """
         f1040 = results.get("f1040") or {}
         required = f1040.get("f8959_required")
         if required is not None:
             return bool(required)
-        thresholds = {
-            FilingStatus.MARRIED_FILING_JOINTLY: 250_000,
-            FilingStatus.MARRIED_FILING_SEPARATELY: 125_000,
-            FilingStatus.SINGLE: 200_000,
-            FilingStatus.HEAD_OF_HOUSEHOLD: 200_000,
-            FilingStatus.QUALIFYING_WIDOW: 200_000,
-        }
-        threshold = thresholds[scenario.config.filing_status]
+        from tenforty.params.federal import load as load_params
+        threshold = load_params(scenario.config.year).for_status(
+            scenario.config.filing_status).addl_medicare_threshold
         medicare_wages = sum(w.medicare_wages for w in scenario.w2s)
         return medicare_wages > threshold
 
