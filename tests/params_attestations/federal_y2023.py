@@ -36,6 +36,7 @@ ss_wage_base is instead sourced from an irs.gov document (2023 IRS Publication
 15) that states the same statutory figure, satisfying the "official sources
 only: irs.gov, ssa.gov" rule via the irs.gov leg.
 """
+import datetime
 import math
 
 # Fields that are None because they are DELIBERATELY NOT APPLICABLE for this
@@ -262,9 +263,18 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 289000,
         "qualifying_widow": 289000,
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "additional_standard_deduction": None,
-    "aged_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement, incl. team-lead third readings).
+    # Amounts source 2023: Rev. Proc. 2022-38 — https://www.irs.gov/pub/irs-drop/rp-22-38.pdf — sha256 6c20f8a6c9a3bdf4251fcf50dbf2e2382abc8cbeb1e5e2d3eecdc38b2cbf6bbf
+    # Date source 2023: 2023 Instructions for Form 1040 (and 1040-SR) — https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf — sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
+    "additional_standard_deduction": {
+        "single": 1850,
+        "married_filing_jointly": 1500,
+        "married_filing_separately": 1500,
+        "head_of_household": 1850,
+        "qualifying_widow": 1500,
+    },
+    "aged_born_before": datetime.date(1959, 1, 2),
 }
 
 SOURCES: tuple[str, ...] = (
@@ -316,12 +326,4 @@ SOURCES: tuple[str, ...] = (
 )
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "additional_standard_deduction": (
-        "aged additional standard deduction per box, all five statuses; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
-    "aged_born_before": (
-        "aged 'born before' cutoff as the year's own documents state it; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }
