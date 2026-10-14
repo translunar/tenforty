@@ -1,11 +1,10 @@
 """Form 540 per-status rows (MFJ, HoH) for TY2025.
 
-Real-params rows read ``ca_params.load(2025)`` through the status accessor
-where the column exists, and expect UnsupportedStatusError where it doesn't
-yet (``agi_phaseout_threshold`` MFJ/HoH: dual-transcription pending — those
-rows flip when the columns land). Sentinel rows patch the params object so a
-per-status column differs from single's, proving the 540 code reads the
-requested status's column rather than single's. The status-mismatch rows
+Real-params rows read ``ca_params.load(2025)`` through the status accessor.
+Sparse rows patch in single-only phaseout params so the absent-column refusal
+stays reachable however complete the real params are. Sentinel rows patch the
+params object so a per-status column differs from single's, proving the 540
+code reads the requested status's column rather than single's. The status-mismatch rows
 cover run_full_california_return's conform-to-federal refusal.
 """
 import dataclasses
@@ -83,24 +82,68 @@ class StatusRowParamsTests(unittest.TestCase):
                     f540._compute_renters_credit(_YEAR, status, threshold + 1),
                     0)
 
-    def test_phaseout_threshold_column_absent_refuses(self):
+    def test_phaseout_gate_reads_status_column(self):
+        for status in _ROW_STATUSES:
+            threshold = self.params.for_status(status).agi_phaseout_threshold
+            with self.subTest(status=status):
+                self.assertNotEqual(threshold,
+                                    self.single.agi_phaseout_threshold)
+                result = f540.compute(year=_YEAR, filing_status=status,
+                                      federal_agi=threshold, ca_agi=50_000,
+                                      ca540=CA540Return())
+                self.assertIsInstance(result, dict)
+                with self.assertRaises(NotImplementedError) as ctx:
+                    f540.compute(year=_YEAR, filing_status=status,
+                                 federal_agi=threshold + 1, ca_agi=50_000,
+                                 ca540=CA540Return())
+                self.assertNotIsInstance(ctx.exception, UnsupportedStatusError)
+                self.assertIn(f"{threshold}", str(ctx.exception))
+
+
+class SparsePhaseoutColumnRefusalTests(unittest.TestCase):
+    """Synthetic single-only phaseout params: a status with no column must
+    refuse with UnsupportedStatusError, never compute on single's column.
+    Independent of how complete the real params are."""
+
+    _AGI = 50_000
+
+    def setUp(self):
+        real = ca_params.load(_YEAR)
+        single = real.agi_phaseout_threshold[_S.value]
+        self.sparse = dataclasses.replace(
+            real, agi_phaseout_threshold={_S.value: single})
+        # Reachability: the statuses' columns are absent, and the test AGI is
+        # under single's threshold, so a single fallback WOULD compute.
+        for status in _ROW_STATUSES:
+            self.assertNotIn(status.value, self.sparse.agi_phaseout_threshold)
+        self.assertLess(self._AGI, single)
+        patcher = mock.patch.object(ca_params, "load", return_value=self.sparse)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _compute(self, status):
+        return f540.compute(year=_YEAR, filing_status=status,
+                            federal_agi=self._AGI, ca_agi=self._AGI,
+                            ca540=CA540Return())
+
+    def test_single_column_present_computes(self):
+        self.assertIsInstance(self._compute(_S), dict)
+
+    def test_absent_column_view_refuses(self):
         for status in _ROW_STATUSES:
             with self.subTest(status=status):
                 with self.assertRaises(UnsupportedStatusError) as ctx:
-                    self.params.for_status(status).agi_phaseout_threshold
+                    self.sparse.for_status(status).agi_phaseout_threshold
                 self.assertEqual(ctx.exception.field, "agi_phaseout_threshold")
                 self.assertIs(ctx.exception.status, status)
 
-    def test_phaseout_column_absent_refuses_compute_never_uses_single(self):
-        # Federal AGI far below single's threshold: falling back to single's
-        # column would compute; the status column's absence must refuse.
+    def test_absent_column_compute_refuses_never_uses_single(self):
         for status in _ROW_STATUSES:
             with self.subTest(status=status):
                 with self.assertRaises(UnsupportedStatusError) as ctx:
-                    f540.compute(year=_YEAR, filing_status=status,
-                                 federal_agi=50_000, ca_agi=50_000,
-                                 ca540=CA540Return())
+                    self._compute(status)
                 self.assertEqual(ctx.exception.field, "agi_phaseout_threshold")
+                self.assertIs(ctx.exception.status, status)
 
 
 class SentinelColumnReadTests(unittest.TestCase):
