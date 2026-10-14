@@ -114,8 +114,9 @@ class TestW2Owner(unittest.TestCase):
         fields.update(overrides)
         return W2(**fields)
 
-    def _load_with_w2_overrides(self, **w2_overrides):
+    def _load_with_w2_overrides(self, config=None, **w2_overrides):
         data = yaml.safe_load((FIXTURES_DIR / "simple_w2.yaml").read_text())
+        data["config"].update(config or {})
         data["w2s"][0].update(w2_overrides)
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "scn.yaml"
@@ -131,9 +132,14 @@ class TestW2Owner(unittest.TestCase):
                 self.assertEqual(self._make_w2(owner=owner).owner, owner)
 
     def test_owner_valid_values_load_from_yaml(self):
+        # On a joint scenario: `owner: spouse` on any other status refuses
+        # at load (tests/test_excess_social_security_guard.py).
+        joint = {"filing_status": "married_filing_jointly",
+                 "spouse_birthdate": "1986-07-09"}
         for owner in ("taxpayer", "spouse"):
             with self.subTest(owner=owner):
-                scenario = self._load_with_w2_overrides(owner=owner)
+                scenario = self._load_with_w2_overrides(
+                    config=joint, owner=owner)
                 self.assertEqual(scenario.w2s[0].owner, owner)
 
     def test_owner_bogus_value_refused_naming_field(self):

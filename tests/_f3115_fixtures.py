@@ -108,6 +108,10 @@ def scenario_dict(block: dict | None = None, **config_overrides) -> dict:
     data = yaml.safe_load((FIXTURES_DIR / "simple_w2.yaml").read_text())
     data["config"].update(IDENTITY)
     data["config"].update(config_overrides)
+    if data["config"].get("filing_status") == "married_filing_jointly":
+        # A joint return's W-2s must say whose they are (R-excess-ss).
+        for w2 in data["w2s"]:
+            w2["owner"] = "taxpayer"
     data["form_3115"] = copy.deepcopy(BASE_BLOCK if block is None else block)
     return data
 
