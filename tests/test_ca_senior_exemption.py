@@ -18,7 +18,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from pypdf import PdfReader
+
+from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import f540 as form_f540
+from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.models import CA540Return, FilingStatus
 from tenforty.orchestrator import ReturnOrchestrator, form_1040_age_box_values
 from tenforty.params import california as ca_params
@@ -220,6 +224,42 @@ class CaSeniorExemptionTests(unittest.TestCase):
         with mock.patch.object(ca_params, "load", return_value=synthetic):
             with self.assertRaises(form_f540.CaSeniorParamsPendingError):
                 form_f540.presentation_keys(cfg, [], 2025)
+
+
+class CaLine9PlacementTests(unittest.TestCase):
+    """Each year's line 9 keys fill that year's own "Line 9. Senior" count
+    box and its amount cell."""
+
+    def test_mapped_widgets_are_line9_by_their_own_tooltip(self):
+        for year in CA_YEARS:
+            mapping = PdfF540.get_mapping(year)
+            fields = PdfReader(str(
+                REPO_ROOT / "pdfs" / "california" / str(year) / "f540.pdf"
+            )).get_fields()
+            with self.subTest(year=year):
+                count_tu = str(fields[mapping[COUNT_KEY]].get("/TU"))
+                amount_tu = str(fields[mapping[AMOUNT_KEY]].get("/TU"))
+                self.assertTrue(count_tu.startswith("Line 9. Senior"), count_tu)
+                self.assertIn("line 9 box", amount_tu)
+
+    def test_sentinel_fill_reads_back_every_year(self):
+        tmp = Path(tempfile.mkdtemp())
+        for year in CA_YEARS:
+            senior = ca_params.load(year).senior_exemption_credit
+            mapping = PdfF540.get_mapping(year)
+            with self.subTest(year=year):
+                out = tmp / f"f540_line9_{year}.pdf"
+                PdfFiller().fill(
+                    template_path=(REPO_ROOT / "pdfs" / "california"
+                                   / str(year) / "f540.pdf"),
+                    output_path=out, field_mapping=mapping,
+                    values={COUNT_KEY: 2, AMOUNT_KEY: 2 * senior})
+                fields = PdfReader(str(out)).get_fields()
+                self.assertEqual(
+                    str(fields[mapping[COUNT_KEY]].get("/V")), "2")
+                self.assertEqual(
+                    str(fields[mapping[AMOUNT_KEY]].get("/V")).replace(",", ""),
+                    str(2 * senior))
 
 
 class AgedFederalCaConsistencyTests(unittest.TestCase):
