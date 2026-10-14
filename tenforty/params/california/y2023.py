@@ -4,8 +4,8 @@
 Migrated verbatim from tenforty/constants/california_y2023.py. Sources:
 - STANDARD_DEDUCTION / EXEMPTION_CREDIT / DEPENDENT_EXEMPTION / AGI
   phaseout: FTB Form 540 (TY2023), pdfs/california/2023/f540.pdf
-  (side 2 line 18 worksheet; side 1 lines 7-10 multipliers at $144
-  per person; side 2 line 10 at $446 each; side 2 line 32 threshold).
+  (side 2 line 18 worksheet; side 1 lines 7-10 per-person multipliers
+  (amounts: see exemption_credit provenance); side 2 line 10 at $446 each; side 2 line 32 threshold).
 - Rate schedules: pdfs/california/2023/tax_rate_schedules.pdf (2023
   California Tax Rate Schedules, Personal Income Tax Booklet 2023 page
   75); Schedule Z is FTB-published independently and does NOT equal

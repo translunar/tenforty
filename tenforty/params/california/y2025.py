@@ -4,8 +4,8 @@
 Migrated verbatim from tenforty/constants/california_y2025.py. Sources:
 - STANDARD_DEDUCTION / EXEMPTION_CREDIT / DEPENDENT_EXEMPTION / AGI
   phaseout: FTB Form 540 (TY2025), pdfs/california/2025/f540.pdf
-  (side 2 line 18 worksheet; side 1 lines 7-10 multipliers at $153
-  per person; side 2 line 10 at $475 each; side 2 line 32 threshold).
+  (side 2 line 18 worksheet; side 1 lines 7-10 per-person multipliers
+  (amounts: see exemption_credit provenance); side 2 line 10 at $475 each; side 2 line 32 threshold).
 - Rate schedules: pdfs/california/2025/tax_rate_schedules.pdf
   (Schedules X / Y / Z; Schedule Z is FTB-published independently and
   does NOT equal Schedule X × 2 — e.g. HoH first non-zero threshold
