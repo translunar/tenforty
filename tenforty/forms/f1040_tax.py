@@ -57,7 +57,7 @@ def qdcgt_tax(
     ti = max(taxable_income, 0.0)
     preferential = max(min(qualified_dividends + net_capital_gain, ti), 0.0)
     ordinary = ti - preferential                                   # line 7
-    zero_top, fifteen_top = params.qdcgt_breakpoints[filing_status.value]
+    zero_top, fifteen_top = params.for_status(filing_status).qdcgt_breakpoints
 
     # 0% band: fills from ordinary income up to zero_top.
     amt_taxed_0 = max(min(ti, zero_top) - ordinary, 0.0)           # pref in 0% band

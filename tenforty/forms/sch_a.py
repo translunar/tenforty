@@ -38,7 +38,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     f1040 = upstream["f1040"]
     agi = f1040["agi"]
     magi = f1040.get("magi", agi)
-    status = scenario.config.filing_status.value
+    view = params.for_status(scenario.config.filing_status)
 
     state = (scenario.config.state or "").upper()
     if (
@@ -63,9 +63,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         raise NotImplementedError(
             f"SALT phaseout (MAGI > ${params.salt_phaseout_threshold:,}) "
             "not supported in v1. Expected behaviour: cap reduces from "
-            f"{params.salt_cap_starting[status]:,} "
+            f"{view.salt_cap_starting:,} "
             f"at rate {params.salt_phaseout_rate} toward "
-            f"{params.salt_cap_floor[status]:,} "
+            f"{view.salt_cap_floor:,} "
             "per OBBBA. Implement in forms.sch_a.compute when the first "
             "taxpayer above threshold appears."
         )
@@ -92,7 +92,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         + property_tax_line_5b
         + personal_property_tax_line_5c
     )
-    starting_cap = params.salt_cap_starting[status]
+    starting_cap = view.salt_cap_starting
     line_5e_salt_capped = min(line_5d, starting_cap)
 
     other_taxes_line_6 = 0

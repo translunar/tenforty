@@ -275,7 +275,8 @@ def compute_income_preamble(
     # with the below-the-line QBI deduction) and feeds those forms the
     # ACTUAL deduction via resolve_deductions. Kept only for its one
     # remaining test consumer (tests/test_pdf_1040_mapping.py).
-    std_deduction = params.standard_deduction[scenario.config.filing_status.value]
+    std_deduction = params.for_status(
+        scenario.config.filing_status).standard_deduction
     taxable_income_before_qbi_std = max(0, irs_round(agi - std_deduction))
 
     return IncomePreamble(
@@ -330,7 +331,8 @@ def resolve_deductions(
     (CARES §2204 / CAA 2021 §212) with the same refuse-don't-cap guards as
     ``compute_spine``. ``taxable_income_before_qbi`` is floored at 0.
     """
-    std_deduction = params.standard_deduction[scenario.config.filing_status.value]
+    std_deduction = params.for_status(
+        scenario.config.filing_status).standard_deduction
     schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
 
     if schedule_a_total >= std_deduction:

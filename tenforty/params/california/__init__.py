@@ -35,6 +35,14 @@ class CaliforniaParams:
     renter_credit_agi_threshold: dict[str, int]
     renter_credit_amount: dict[str, int]
 
+    def for_status(self, status: "FilingStatus | str") -> "StatusView":
+        """Projection of these params onto one filing status. Per-status
+        fields (PER_STATUS_CALIFORNIA_FIELDS) read that status's column, raising
+        UnsupportedStatusError when it is missing; other fields pass
+        through."""
+        from tenforty.params.status_view import StatusView
+        return StatusView(self, status, PER_STATUS_CALIFORNIA_FIELDS)
+
 
 # Every CaliforniaParams field whose value is a dict keyed by FilingStatus
 # value strings (see PER_STATUS_FEDERAL_FIELDS; same gate, same registry test).

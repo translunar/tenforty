@@ -86,7 +86,7 @@ def compute(
     # When line_16 is a GAIN (>= 0), line 21 is not used on the return;
     # this branch passes line_16 through untouched.
     params = load_federal_params(scenario.config.year)
-    cap = params.capital_loss_limit[scenario.config.filing_status.value]
+    cap = params.for_status(scenario.config.filing_status).capital_loss_limit
     if line_16 >= 0:
         line_21 = line_16
     else:
