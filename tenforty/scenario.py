@@ -1020,6 +1020,32 @@ def refuse_spouse_fields_without_spouse(cfg: TaxReturnConfig) -> None:
         )
 
 
+def validate_w2_owners(cfg: TaxReturnConfig, w2s: list[W2]) -> None:
+    """Pure load-time check of each W-2's `owner` against the filing status
+    (ruling R-excess-ss).
+
+    A joint return's Social Security maximum is per spouse, so every W-2 of
+    a MARRIED_FILING_JOINTLY scenario must say whose it is. On every other
+    status `owner` is optional, but `"spouse"` is refused: no spouse W-2
+    belongs on a return that is not joint, so it is a data-entry error."""
+    status = FilingStatus(cfg.filing_status)
+    for i, w2 in enumerate(w2s):
+        if status is FilingStatus.MARRIED_FILING_JOINTLY and w2.owner is None:
+            raise ValueError(
+                f"W-2 #{i + 1} ('{w2.employer}') has no `owner`. `owner` "
+                "(`taxpayer` or `spouse`) is required on every W-2 when "
+                "`filing_status` is `married_filing_jointly`, because each "
+                "spouse's Social Security withholding is checked against "
+                "their own maximum.")
+        if status is not FilingStatus.MARRIED_FILING_JOINTLY \
+                and w2.owner == "spouse":
+            raise ValueError(
+                f"W-2 #{i + 1} ('{w2.employer}') sets `owner: spouse` but "
+                f"`filing_status` is `{status.value}`, which is not a joint "
+                "return, so no spouse W-2 belongs on it. Remove the W-2 or "
+                "the `owner`, or correct the filing status.")
+
+
 _SPOUSE_BIRTHDATE_REFUSED = frozenset({
     FilingStatus.SINGLE, FilingStatus.HEAD_OF_HOUSEHOLD})
 
@@ -1251,6 +1277,7 @@ def load_scenario(path: Path) -> Scenario:
             _load_depreciation_activity(model_cls, item, f"{yaml_key}[{i}]")
             for i, item in enumerate(data.get(yaml_key) or [])]
 
+    validate_w2_owners(config, form_data["w2s"])
     s_corp_return = _load_s_corp_return(data.get("s_corp_return"))
     if s_corp_return is not None:
         validate_tax_year_dates(s_corp_return, config.year)
