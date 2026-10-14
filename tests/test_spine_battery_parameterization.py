@@ -9,6 +9,8 @@ from pathlib import Path
 from tenforty import years as year_manifest
 from tenforty.forms import f8949 as form_f8949
 from tenforty.forms import sch_d as form_sch_d
+from tenforty.forms.f8962 import tax_family_size
+from tenforty.models import FilingStatus
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import f8962 as f8962_params
 from tenforty.params.federal import load as load_federal_params
@@ -305,3 +307,119 @@ class PTCBatteryRegimeSelfCheckTests(unittest.TestCase):
         self.assertEqual(
             results["f8962_line_26_net_ptc"], 12 * min(600, 550),
         )
+
+
+_STATUSES_2025 = (FilingStatus.MARRIED_FILING_JOINTLY,
+                  FilingStatus.HEAD_OF_HOUSEHOLD)
+_SUFFIX = {FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
+           FilingStatus.HEAD_OF_HOUSEHOLD: "hoh"}
+
+
+class StatusBatteryShapeTests(unittest.TestCase):
+    """The 2025 MFJ/HoH rows sit where their docstrings say, measured
+    against the status's own params column (structural: the spine's MFJ/HoH
+    compute is a later lane, and the workbook parity run is oracle-tier)."""
+
+    def _row(self, status, kind):
+        return dict(battery_for(2025, status))[f"{kind}__{_SUFFIX[status]}"]()
+
+    def _view(self, status):
+        return load_federal_params(2025).for_status(status)
+
+    def test_mfj_identity_and_owner_on_every_w2(self):
+        params = load_federal_params(2025)
+        for name, build in battery_for(2025, FilingStatus.MARRIED_FILING_JOINTLY):
+            with self.subTest(row=name):
+                scenario = build()
+                cfg = scenario.config
+                self.assertEqual(
+                    (cfg.spouse_first_name, cfg.spouse_last_name,
+                     cfg.spouse_ssn),
+                    ("Example", "Spouse", "000-00-0002"))
+                # Younger than the taxpayer, whom no age condition reaches.
+                self.assertGreater(cfg.spouse_birthdate, cfg.birthdate)
+                self.assertEqual(
+                    sorted(w.owner for w in scenario.w2s),
+                    ["spouse", "taxpayer"])
+                for w in scenario.w2s:
+                    self.assertLessEqual(w.wages, params.ss_wage_base)
+
+    def test_hoh_rows_have_no_spouse_and_no_owner(self):
+        for name, build in battery_for(2025, FilingStatus.HEAD_OF_HOUSEHOLD):
+            with self.subTest(row=name):
+                scenario = build()
+                self.assertEqual(scenario.config.spouse_birthdate, "")
+                self.assertEqual(scenario.config.spouse_ssn, "")
+                self.assertTrue(all(w.owner is None for w in scenario.w2s))
+
+    def test_wages_only_lands_inside_the_22_percent_bracket(self):
+        for status in _STATUSES_2025:
+            with self.subTest(status=status):
+                s, view = self._row(status, "wages_only"), self._view(status)
+                ti = sum(w.wages for w in s.w2s) - view.standard_deduction
+                self.assertLess(view.ordinary_brackets[1][0], ti)
+                self.assertLess(ti, view.ordinary_brackets[2][0])
+                self.assertEqual(
+                    (s.form1099_int, s.form1099_div, s.form1099_b), ([], [], []))
+
+    def test_investments_straddle_the_zero_percent_breakpoint(self):
+        for status in _STATUSES_2025:
+            with self.subTest(status=status):
+                s = self._row(status, "investments_qdcgt")
+                view = self._view(status)
+                zero_top, fifteen_top = view.qdcgt_breakpoints
+                ordinary = (sum(w.wages for w in s.w2s)
+                            + sum(f.interest for f in s.form1099_int)
+                            + sum(d.ordinary_dividends - d.qualified_dividends
+                                  for d in s.form1099_div)
+                            - view.standard_deduction)
+                preferential = (sum(d.qualified_dividends for d in s.form1099_div)
+                                + sum(b.proceeds - b.cost_basis
+                                      for b in s.form1099_b))
+                self.assertGreater(ordinary, 0)
+                self.assertLess(ordinary, zero_top)
+                self.assertGreater(ordinary + preferential, zero_top)
+                self.assertLess(ordinary + preferential, fifteen_top)
+
+    def test_qbi_k1_is_below_the_status_threshold(self):
+        for status in _STATUSES_2025:
+            with self.subTest(status=status):
+                s, view = self._row(status, "qbi_k1"), self._view(status)
+                qbi = sum(k.qbi_amount for k in s.schedule_k1s)
+                before_qbi = (sum(w.wages for w in s.w2s) + qbi
+                              - view.standard_deduction)
+                self.assertGreater(qbi, 0)
+                self.assertLess(before_qbi, view.qbi_threshold)
+                # Near the status's threshold, not trivially far below it.
+                self.assertGreater(before_qbi, view.qbi_threshold / 2)
+
+    def test_salt_binds_the_status_cap_and_itemizing_wins(self):
+        params = load_federal_params(2025)
+        for status in _STATUSES_2025:
+            with self.subTest(status=status):
+                s = self._row(status, "itemized_salt_at_cap")
+                view = self._view(status)
+                salt = (sum(w.state_tax_withheld for w in s.w2s)
+                        + sum(f.property_tax for f in s.form1098s))
+                self.assertGreater(salt, view.salt_cap_starting)
+                itemized = (sum(f.mortgage_interest for f in s.form1098s)
+                            + view.salt_cap_starting)
+                self.assertGreater(itemized, view.standard_deduction)
+                self.assertLess(sum(w.wages for w in s.w2s),
+                                params.salt_phaseout_threshold)
+
+    def test_addl_medicare_wages_exceed_the_status_threshold(self):
+        for status in _STATUSES_2025:
+            with self.subTest(status=status):
+                s, view = self._row(status, "addl_medicare"), self._view(status)
+                self.assertGreater(sum(w.medicare_wages for w in s.w2s),
+                                   view.addl_medicare_threshold)
+
+    def test_mfj_ptc_row_uses_the_two_person_family(self):
+        s = self._row(FilingStatus.MARRIED_FILING_JOINTLY, "ptc_reconciliation")
+        self.assertEqual(tax_family_size(s.config), 2)
+        fpl = f8962_params.load(2025).fpl_48_by_family_size[2]
+        # Household income inside the 200-300% FPL band, sized for two.
+        self.assertGreater(sum(w.wages for w in s.w2s), 2 * fpl)
+        self.assertLess(sum(w.wages for w in s.w2s), 3 * fpl)
+        self.assertIsNotNone(s.form_1095a)
