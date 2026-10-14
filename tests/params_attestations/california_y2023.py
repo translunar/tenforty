@@ -42,8 +42,17 @@ ATTESTED: dict[str, object] = {
         "qualifying_widow": 288,     # 2 exemptions x $144
     },
     "dependent_exemption_amount": 446,   # Form 540 Side 2, line 10: X $446 per dependent
-    "agi_phaseout_threshold": {"single": 237035},    # Booklet p.14 AGI Limitation Wksht line b, SINGLE/MFS: $237,035
-                                         #   (MFJ/QSS: $474,075; HoH: $355,558)
+    # Per-status columns attested 2026-10-14 (Transcriber B paste; dual
+    # transcription adjudicated vs Transcriber A with full agreement).
+    # Source: Line 32 table, booklet p.14; REV: none printed anywhere;
+    # sha256 e2d8ef0ba279abf65eec7941a77de6604af9186226e1e79cc80a8ecd2a14d4b9
+    "agi_phaseout_threshold": {
+        "single": 237035,
+        "married_filing_separately": 237035,
+        "married_filing_jointly": 474075,
+        "qualifying_widow": 474075,
+        "head_of_household": 355558,
+    },
     "rate_schedule": {
         # 2023 California Tax Rate Schedules, "over –" (lower bound) column + marginal rate.
         "single": (               # Schedule X (Single or MFS)
