@@ -5,12 +5,9 @@ This module exists to cross-check tenforty's own federal params; it was written
 without reading any tenforty param value, test, tax-table CSV, or git history.
 
 Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
-- `ordinary_brackets` in the schema is a SINGLE (upper_bound, rate) tuple, NOT
-  status-keyed. Federal brackets differ by filing status, so a single stored
-  schedule is ambiguous. Transcribed the SINGLE-filer 2024 schedule as the
-  unqualified default. If tenforty keys this on a different status (e.g. MFJ),
-  the controller must adjudicate — this is a keying question I cannot resolve
-  without reading tenforty (forbidden).
+- `ordinary_brackets` is status-keyed (schema re-keyed 2026-10 in the
+  filing-statuses round; the original transcription was the SINGLE schedule as
+  a bare tuple, values unchanged under the "single" key).
 - `eic_income_ceiling` (dict keyed by children only): per the clarified schema,
   this field is the LARGEST AGI at which ANY filing status can still claim the
   EITC = the MFJ-column maximum by construction. Transcribed the MFJ column of
@@ -140,6 +137,11 @@ ATTESTED: dict[str, object] = {
 
     # IRS Topic no. 560 — statutory 0.9% Additional Medicare Tax thresholds
     # (NOT inflation-adjusted): $250k MFJ, $125k MFS, $200k all others.
+    # Citation UPGRADED 2026-10-14 (R-attest-reuse): fresh dual transcription
+    # from IRC §3101(b)(2), United States Code 2024 Edition (govinfo),
+    # USCODE-2024-title26-...-sec3101.htm, sha256 605deeac4af4495e76016a67
+    # 1d9bdb610f935f985ac71d94a423db83275cec0d — A/B adjudicated with full
+    # agreement, and both agree with this pre-existing Topic-560 attestation.
     "addl_medicare_threshold": {
         "single": 200000,
         "married_filing_jointly": 250000,
