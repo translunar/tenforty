@@ -963,18 +963,21 @@ class ReturnOrchestrator:
             tax_family_size(effective_scenario.config)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
-                # A 1095-A scenario that is out of native-spine scope
-                # (EIC-possible / non-single filer) would route to the XLSX
-                # workbook — which has NO Form 8962. A silent workbook fallback
-                # would drop the Premium Tax Credit entirely. Refuse loudly
-                # until the native spine is extended to this filer class.
+                # Form 8962 is supported only on the native spine. A 1095-A
+                # scenario whose filer class is outside the declared native
+                # grid (or is EIC-possible) is refused, never routed to the
+                # workbook.
+                cfg = effective_scenario.config
                 raise NotImplementedError(
                     "Scenario carries a Form 1095-A (Premium Tax Credit) but is "
-                    "out of native-1040-spine scope (EIC-possible or non-single "
-                    "filer), so it would route to the XLSX workbook path, which "
-                    "does not compute Form 8962. Refusing rather than silently "
-                    "dropping the PTC. Extend the native spine to cover this "
-                    "filer class before enabling 8962 for it."
+                    "out of native-1040-spine scope: its filer class is outside "
+                    "the declared native grid. Either (tax year, filing status) "
+                    f"= ({cfg.year}, "
+                    f"{parse_filing_status(cfg.filing_status).value!r}) is not "
+                    "declared in years.NATIVE_SPINE_STATUSES, or the filer is "
+                    "EIC-possible. Form 8962 is supported only on the native "
+                    "spine, so this return is refused. Declare the filer class "
+                    "on the native grid before enabling 8962 for it."
                 )
             workbook_result = self._compute_1040_via_workbook(effective_scenario)
             # The native spine's f8995.compute refuses (NotImplementedError)
