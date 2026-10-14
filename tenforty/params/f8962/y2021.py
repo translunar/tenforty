@@ -6,7 +6,7 @@ Source: 2021 Instructions for Form 8962
 Values were produced by two mutually-blind transcriber subagents, each
 reading ONLY the 2021 Form 8962 instructions above (no tenforty code, no
 other year's data, no shared examples). They agreed on every cell
-(fpl_single_48, the applicable-figure floor/ceiling, the repayment-cap
+(the size-1 FPL (now fpl_48_by_family_size[1]), the applicable-figure floor/ceiling, the repayment-cap
 bands, the unemployment rule, and all 251 applicable-figure rows) at zero
 tolerance. See the independently-transcribed cross-check in
 tests/params_attestations/f8962_y2021.py (wired into
@@ -23,14 +23,14 @@ from tenforty.params.f8962 import F8962Params
 
 PARAMS = F8962Params(
     year=2021,
-    fpl_single_48=12760,
+    fpl_48_by_family_size={1: 12760},
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=True,
     # Worksheet 2, step 3: "Is the result 400 or more? • Yes. Enter 401
     # here and on line 5 of Form 8962." — inclusive of exactly 400%.
     line5_400_boundary_inclusive=True,
-    repayment_caps_single=((200, 325), (300, 800), (400, 1350)),
+    repayment_caps={"single": ((200, 325), (300, 800), (400, 1350))},
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,
         156: 0.0024, 157: 0.0028, 158: 0.0032, 159: 0.0036, 160: 0.004, 161: 0.0044,

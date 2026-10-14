@@ -30,12 +30,15 @@ from pypdf import PdfReader
 
 from tenforty.forms.f8962 import compute
 from tenforty.mappings.pdf_f8962 import PdfF8962
-from tenforty.models import Form1095A, Form1095AMonth
+from tenforty.models import FilingStatus, Form1095A, Form1095AMonth
 from tests.helpers import REPO_ROOT
 from tests.test_f4562_emit_gate import _widgets_by_printed_line
 from tests.test_f8962_line_26_presentation import (
     Line26EmittedCellTests, _params, _year_block,
 )
+
+# Single filer, tax-family size 1: the scope these synthetic cases pin.
+_SINGLE = dict(filing_status=FilingStatus.SINGLE, family_size=1)
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
@@ -97,7 +100,7 @@ class PartIIIPrintedComputeTests(unittest.TestCase):
     repayment limitation (see the line 26 module for the derivation)."""
 
     def test_equal_lines_stop_before_part_iii(self):
-        r = compute(_equal_block(), 25_000.0, 2024, _params())
+        r = compute(_equal_block(), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 2600))
         for key in PRINTED_KEYS:
             with self.subTest(key=key):
@@ -109,7 +112,7 @@ class PartIIIPrintedComputeTests(unittest.TestCase):
         self.assertEqual(r["f8962_line_29_repayment"], 0)
 
     def test_a_net_credit_leaves_part_iii_blank(self):
-        r = compute(_year_block(250.0, 300.0, 200.0), 25_000.0, 2024, _params())
+        r = compute(_year_block(250.0, 300.0, 200.0), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 2400))
         for key in PRINTED_KEYS:
             with self.subTest(key=key):
@@ -121,7 +124,7 @@ class PartIIIPrintedComputeTests(unittest.TestCase):
 
     def test_excess_advance_payment_completes_part_iii(self):
         """The twin: line 25 greater, so Part III prints its three lines."""
-        r = compute(_year_block(250.0, 300.0, 300.0), 25_000.0, 2024, _params())
+        r = compute(_year_block(250.0, 300.0, 300.0), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 3600))
         self.assertEqual(r["f8962_line_27_printed"], 1000)
         self.assertEqual(r["f8962_line_28_printed"], 900)
@@ -134,7 +137,7 @@ class PartIIIPrintedComputeTests(unittest.TestCase):
         """The boundary from the other side: 2,601 against 2,600."""
         months = list(_equal_block().months)
         months[-1] = Form1095AMonth(premium=250.0, slcsp=300.0, aptc=225.0)
-        r = compute(Form1095A(months=tuple(months)), 25_000.0, 2024, _params())
+        r = compute(Form1095A(months=tuple(months)), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 2601))
         self.assertEqual(r["f8962_line_27_printed"], 1)
         self.assertEqual(r["f8962_line_28_printed"], 900)
@@ -142,7 +145,7 @@ class PartIIIPrintedComputeTests(unittest.TestCase):
 
     def test_uncapped_excess_prints_27_and_29_and_leaves_28_blank(self):
         """MAGI 45,000 -> 450% of the FPL: no repayment limitation."""
-        r = compute(_year_block(250.0, 300.0, 300.0), 45_000.0, 2024, _params())
+        r = compute(_year_block(250.0, 300.0, 300.0), 45_000.0, 2024, _params(), **_SINGLE)
         self.assertGreater(r["f8962_line_25"], r["f8962_line_24"])
         self.assertIsNone(r["f8962_line_28"])
         self.assertEqual(r["f8962_line_27_printed"], r["f8962_line_27"])
