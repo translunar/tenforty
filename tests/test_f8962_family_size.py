@@ -122,9 +122,14 @@ class F8962FamilySizeTests(unittest.TestCase):
         self.assertEqual(joint["f8962_line_29_repayment"], 222)
 
     def test_missing_status_cap_column_refuses(self):
-        # Real params carry no MFJ column until it is transcribed.
+        # Synthetic sparse params: the MFJ column is dropped explicitly, so the
+        # refusal stays exercised however complete the real params are.
+        real = load(2025)
         params = dataclasses.replace(
-            load(2025), fpl_48_by_family_size={1: 10_000, 2: 20_000})
+            real, fpl_48_by_family_size={1: 10_000, 2: 20_000},
+            repayment_caps={k: v for k, v in real.repayment_caps.items()
+                            if k != _MFJ.value})
+        self.assertIn("single", params.repayment_caps)  # only MFJ is absent
         with self.assertRaises(UnsupportedStatusError) as ctx:
             compute(_block(600.0, 550.0, 550.0), 50_000.0, 2025, params,
                     filing_status=_MFJ, family_size=2)
@@ -188,6 +193,19 @@ class F8962FamilySizeTests(unittest.TestCase):
         self.assertEqual(seen, set(expected))
 
 
+def _sparse_fpl_params():
+    """Real 2025 params with the FPL table cut to sizes {1, 3} and no
+    per-person amount: synthetic negative space for the fail-closed
+    refusals, independent of how complete the real table is."""
+    real = load(2025)
+    return dataclasses.replace(
+        real,
+        fpl_48_by_family_size={k: v for k, v in
+                               real.fpl_48_by_family_size.items()
+                               if k in (1, 3)},
+        fpl_48_additional_person=None)
+
+
 class FplForFamilySizeTests(unittest.TestCase):
     def test_size_in_table_reads_the_table(self):
         p = dataclasses.replace(load(2025), fpl_48_by_family_size={1: 7, 2: 9})
@@ -195,16 +213,19 @@ class FplForFamilySizeTests(unittest.TestCase):
         self.assertEqual(fpl_for_family_size(p, 2), 9)
 
     def test_absent_size_refuses_named_error(self):
-        p = load(2025)
-        absent = max(p.fpl_48_by_family_size) + 1
-        with self.assertRaises(FamilySizeNotSupportedError) as ctx:
-            fpl_for_family_size(p, absent)
-        self.assertIsInstance(ctx.exception, NotImplementedError)
-        self.assertEqual(ctx.exception.family_size, absent)
-        self.assertEqual(ctx.exception.year, 2025)
+        # Synthetic sparse params: size 2 missing inside the table, and no
+        # per-person amount to extend beyond it.
+        p = _sparse_fpl_params()
+        for absent in (2, max(p.fpl_48_by_family_size) + 1):
+            with self.subTest(family_size=absent):
+                with self.assertRaises(FamilySizeNotSupportedError) as ctx:
+                    fpl_for_family_size(p, absent)
+                self.assertIsInstance(ctx.exception, NotImplementedError)
+                self.assertEqual(ctx.exception.family_size, absent)
+                self.assertEqual(ctx.exception.year, 2025)
 
     def test_compute_refuses_absent_size(self):
-        p = load(2025)
+        p = _sparse_fpl_params()
         absent = max(p.fpl_48_by_family_size) + 1
         with self.assertRaises(FamilySizeNotSupportedError):
             compute(_block(600.0, 550.0, 0.0), 30_000.0, 2025, p,
