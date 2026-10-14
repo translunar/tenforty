@@ -157,7 +157,8 @@ class HeaderKeyTests(unittest.TestCase):
                 "  filing_status: single\n",
                 "  filing_status: married_filing_jointly\n", 1).replace(
                 "config:\n",
-                "config:\n  middle_initial: Q\n  spouse_middle_initial: Z\n", 1))
+                "config:\n  middle_initial: Q\n  spouse_middle_initial: Z\n"
+                "  spouse_birthdate: \"1986-07-09\"\n", 1))
             cfg = load_scenario(path).config
         self.assertEqual(cfg.middle_initial, "Q")
         self.assertEqual(cfg.spouse_middle_initial, "Z")
