@@ -9,7 +9,7 @@ _BASE = """
 config:
   year: %d
   filing_status: single
-  birthdate: "01-01-1980"
+  birthdate: "1980-01-01"
   state: CA
   has_foreign_accounts: false
   prior_year_itemized: false

@@ -1,7 +1,7 @@
 config:
   year: 2025
   filing_status: single
-  birthdate: 1980-01-01
+  birthdate: "1980-01-01"
   state: CA
   first_name: Test
   last_name: Filer

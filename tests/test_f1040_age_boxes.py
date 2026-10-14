@@ -230,6 +230,17 @@ class AgeBoxValueTests(unittest.TestCase):
             self._values(_config(self.MFJ, AGED, ""))
         self.assertIn("spouse_birthdate", str(ctx.exception))
 
+    def test_non_iso_birthdate_is_refused_naming_the_field(self):
+        # In-memory configs never pass the loader's ISO check.
+        for field, cfg in (
+                ("`birthdate`", _config(FilingStatus.SINGLE, "11-10-1111")),
+                ("`spouse_birthdate`",
+                 _config(self.MFJ, NOT_AGED, "11/10/1111"))):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError) as ctx:
+                    self._values(cfg)
+                self.assertIn(field, str(ctx.exception))
+
     def test_checkbox_values_carry_the_helper_result(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

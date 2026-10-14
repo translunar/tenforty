@@ -264,8 +264,15 @@ def form_1040_age_box_values(
     birthdate is refused (the loader requires it; a config built around the
     loader must not print an unchecked box by default).
     """
-    def born_before(value: str) -> bool:
-        return datetime.date.fromisoformat(value) < aged_born_before
+    def born_before(field: str) -> bool:
+        value = getattr(config, field)
+        try:
+            born = datetime.date.fromisoformat(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Form 1040 age checkboxes need `{field}` as an ISO "
+                f"YYYY-MM-DD date; got {value!r}.") from None
+        return born < aged_born_before
 
     joint = parse_filing_status(config.filing_status) is (
         FilingStatus.MARRIED_FILING_JOINTLY)
@@ -275,9 +282,8 @@ def form_1040_age_box_values(
             "need `spouse_birthdate` (ISO YYYY-MM-DD), which is blank in the "
             "scenario config.")
     return {
-        "age_taxpayer_born_before": born_before(config.birthdate),
-        "age_spouse_born_before": (
-            joint and born_before(config.spouse_birthdate)),
+        "age_taxpayer_born_before": born_before("birthdate"),
+        "age_spouse_born_before": joint and born_before("spouse_birthdate"),
     }
 
 

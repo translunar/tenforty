@@ -63,7 +63,7 @@ def _scenario_yaml_dict(amended=None, extra_scorp=None):
     config = {
         "year": 2025,
         "filing_status": "single",
-        "birthdate": "01-01-1980",
+        "birthdate": "1980-01-01",
         "state": "EX",
         "first_name": "Taxpayer",
         "last_name": "A",
