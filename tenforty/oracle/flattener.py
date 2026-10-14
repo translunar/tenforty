@@ -56,6 +56,12 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
     flat["birthdate_month"] = int(parts[1])
     flat["birthdate_day"] = int(parts[2])
 
+    if config.spouse_birthdate:
+        spouse_parts = config.spouse_birthdate.split("-")
+        flat["spouse_birthdate_year"] = int(spouse_parts[0])
+        flat["spouse_birthdate_month"] = int(spouse_parts[1])
+        flat["spouse_birthdate_day"] = int(spouse_parts[2])
+
     # SALT refund tax-benefit-rule worksheet inputs. Only populate the
     # SALT worksheet cells when a state refund actually exists — setting
     # the filing-status checkboxes when no refund is present can cause

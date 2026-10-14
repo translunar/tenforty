@@ -1020,6 +1020,46 @@ def refuse_spouse_fields_without_spouse(cfg: TaxReturnConfig) -> None:
         )
 
 
+_SPOUSE_BIRTHDATE_REFUSED = frozenset({
+    FilingStatus.SINGLE, FilingStatus.HEAD_OF_HOUSEHOLD})
+
+
+def validate_spouse_birthdate(cfg: TaxReturnConfig) -> None:
+    """Pure load-time check of `spouse_birthdate` against the filing status.
+
+    MARRIED_FILING_JOINTLY requires it (the workbook oracle refuses a joint
+    return without it); MARRIED_FILING_SEPARATELY accepts it without requiring
+    it; SINGLE and HEAD_OF_HOUSEHOLD refuse a non-empty value, because a spouse
+    field on an unmarried status is a data-entry error, not something to
+    silently ignore. Any non-empty value must be a real ISO YYYY-MM-DD date."""
+    value = cfg.spouse_birthdate
+    status = cfg.filing_status
+    if status in _SPOUSE_BIRTHDATE_REFUSED and value:
+        raise ValueError(
+            f"Scenario config field `spouse_birthdate` is set ({value!r}) but "
+            f"`filing_status` is `{status.value}`, which has no spouse. "
+            "Remove it, or correct the filing status.")
+    if status is FilingStatus.MARRIED_FILING_JOINTLY and not value:
+        raise ValueError(
+            "Scenario config field `spouse_birthdate` (ISO YYYY-MM-DD) is "
+            "required when `filing_status` is `married_filing_jointly`.")
+    if value and not isinstance(value, str):
+        # An unquoted YAML date arrives as datetime.date; refuse rather than
+        # coerce, matching how `birthdate` is written (quoted) in fixtures.
+        raise ValueError(
+            "Scenario config field `spouse_birthdate` must be a quoted ISO "
+            f"YYYY-MM-DD string; got {type(value).__name__} {value!r}.")
+    if value:
+        try:
+            parsed = datetime.date.fromisoformat(value)
+        except (TypeError, ValueError):
+            parsed = None
+        if parsed is None or parsed.isoformat() != value:
+            raise ValueError(
+                f"Scenario config field `spouse_birthdate` must be an ISO "
+                f"YYYY-MM-DD date; got {value!r}.")
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
@@ -1132,6 +1172,8 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             f"non-itemizer cap of ${cap}. The amount is carried verbatim or "
             f"refused, never silently capped."
         )
+
+    validate_spouse_birthdate(cfg)
 
 
 def _load_source_documents(
