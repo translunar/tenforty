@@ -21,11 +21,14 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.forms.f8962 import compute
 from tenforty.models import (
-    Form1095A, Form1095AMonth, Scenario, TaxReturnConfig, W2,
+    FilingStatus, Form1095A, Form1095AMonth, Scenario, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.f8962 import F8962Params
 from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
+
+# Single filer, tax-family size 1: the scope these synthetic cases pin.
+_SINGLE = dict(filing_status=FilingStatus.SINGLE, family_size=1)
 
 _YEARS = (2021, 2022, 2023, 2024, 2025)
 
@@ -60,7 +63,7 @@ class Line26PrintedComputeTests(unittest.TestCase):
     Annual method: 11(e) = min(12*250, 12*300 - 1000) = 2,600 = line 24."""
 
     def test_line_24_greater_prints_the_difference(self):
-        r = compute(_year_block(250.0, 300.0, 200.0), 25_000.0, 2024, _params())
+        r = compute(_year_block(250.0, 300.0, 200.0), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 2400))
         self.assertEqual(r["f8962_line_26_printed"], 200)
         self.assertEqual(r["f8962_line_26_net_ptc"], 200)
@@ -70,14 +73,14 @@ class Line26PrintedComputeTests(unittest.TestCase):
         months = [Form1095AMonth(premium=250.0, slcsp=300.0, aptc=216.0)
                   for _ in range(11)]
         months.append(Form1095AMonth(premium=250.0, slcsp=300.0, aptc=224.0))
-        r = compute(Form1095A(months=tuple(months)), 25_000.0, 2024, _params())
+        r = compute(Form1095A(months=tuple(months)), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 2600))
         self.assertIsNotNone(r["f8962_line_26_printed"])
         self.assertEqual(r["f8962_line_26_printed"], 0)
         self.assertEqual(r["f8962_line_26_net_ptc"], 0)
 
     def test_line_25_greater_leaves_line_26_blank(self):
-        r = compute(_year_block(250.0, 300.0, 300.0), 25_000.0, 2024, _params())
+        r = compute(_year_block(250.0, 300.0, 300.0), 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual((r["f8962_line_24"], r["f8962_line_25"]), (2600, 3600))
         self.assertIn("f8962_line_26_printed", r)
         self.assertIsNone(r["f8962_line_26_printed"])

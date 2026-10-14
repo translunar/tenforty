@@ -1,8 +1,11 @@
 import unittest
 
 from tenforty.forms.f8962 import compute
-from tenforty.models import Form1095A, Form1095AMonth
+from tenforty.models import FilingStatus, Form1095A, Form1095AMonth
 from tenforty.params.f8962 import F8962Params
+
+# Single filer, tax-family size 1: the scope these synthetic cases pin.
+_SINGLE = dict(filing_status=FilingStatus.SINGLE, family_size=1)
 
 
 def _params(unemployment_rule=False, line5_400_boundary_inclusive=False):
@@ -36,7 +39,7 @@ class F8962ComputeTests(unittest.TestCase):
         # 11(d)=max(0,3600−1000)=2600, 11(e)=min(3000,2600)=2600,
         # 11(f)=12*200=2400. Line 24=11(e), line 25=11(f), line 26=200.
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
-        r = compute(b, 25_000.0, 2024, _params())
+        r = compute(b, 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r["f8962_line_5"], 250)
         self.assertEqual(r["f8962_line_8b"], 83)
         self.assertEqual(r["f8962_line_24"], 2600)
@@ -50,7 +53,7 @@ class F8962ComputeTests(unittest.TestCase):
         # 996): 11(e) = min(3000, max(0, 3600−1000)) = 2600, 11(f) = 12*300 =
         # 3600 → line 27 = 3600 − 2600 = 1000 → capped at 900.
         b = _block({i: (250.0, 300.0, 300.0) for i in range(12)})
-        r = compute(b, 25_000.0, 2024, _params())
+        r = compute(b, 25_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r["f8962_line_27"], 1000)
         self.assertEqual(r["f8962_line_28"], 900)
         self.assertEqual(r["f8962_line_29_repayment"], 900)
@@ -60,7 +63,7 @@ class F8962ComputeTests(unittest.TestCase):
         # MAGI 45,000 → 450% → ceiling figure .085 → 8b = 319.
         # slcsp 300 < 319 → d=0 → e=0 → full APTC repaid, uncapped.
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
-        r = compute(b, 45_000.0, 2024, _params())
+        r = compute(b, 45_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r["f8962_line_24"], 0)
         self.assertEqual(r["f8962_line_29_repayment"], 2400)
 
@@ -68,7 +71,7 @@ class F8962ComputeTests(unittest.TestCase):
         # Same high MAGI, but UI flag + rule → line 5 = 133 → figure 0
         # → contribution 0 → e = min(premium, slcsp) per month.
         b = _block({i: (250.0, 300.0, 250.0) for i in range(5, 10)}, ui=True)
-        r = compute(b, 45_000.0, 2021, _params(unemployment_rule=True))
+        r = compute(b, 45_000.0, 2021, _params(unemployment_rule=True), **_SINGLE)
         self.assertEqual(r["f8962_line_5"], 133)
         self.assertEqual(r["f8962_line_24"], 5 * 250)
         self.assertEqual(r["f8962_line_25"], 5 * 250)
@@ -81,16 +84,16 @@ class F8962ComputeTests(unittest.TestCase):
         # 2021 UI rule is FLAT ("enter 133 on line 5"), bypassing Worksheet
         # 2 entirely. Line 5 must be 133, not the true 120%.
         b = _block({i: (250.0, 300.0, 250.0) for i in range(5, 10)}, ui=True)
-        r = compute(b, 12_000.0, 2021, _params(unemployment_rule=True))
+        r = compute(b, 12_000.0, 2021, _params(unemployment_rule=True), **_SINGLE)
         self.assertEqual(r["f8962_line_5"], 133)
 
     def test_ui_flag_without_params_rule_refuses(self):
         b = _block({8: (250.0, 300.0, 250.0)}, ui=True)
         with self.assertRaises(ValueError):
-            compute(b, 45_000.0, 2024, _params(unemployment_rule=False))
+            compute(b, 45_000.0, 2024, _params(unemployment_rule=False), **_SINGLE)
 
     def test_all_zero_block_is_all_zero(self):
-        r = compute(_block({}), 45_000.0, 2024, _params())
+        r = compute(_block({}), 45_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r["f8962_line_24"], 0)
         self.assertEqual(r["f8962_line_25"], 0)
         self.assertEqual(r["f8962_line_26_net_ptc"], 0)
@@ -102,13 +105,13 @@ class F8962ComputeTests(unittest.TestCase):
         # just below, it's the ordinary floored percentage (399).
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
 
-        r_at_400 = compute(b, 40_000.0, 2024, _params())
+        r_at_400 = compute(b, 40_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r_at_400["f8962_line_5"], 400)
 
-        r_over_400 = compute(b, 40_001.0, 2024, _params())
+        r_over_400 = compute(b, 40_001.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r_over_400["f8962_line_5"], 401)
 
-        r_under_400 = compute(b, 39_999.0, 2024, _params())
+        r_under_400 = compute(b, 39_999.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r_under_400["f8962_line_5"], 399)
 
         # The 401 vs 400 change is line-5-only: the applicable figure
@@ -125,10 +128,10 @@ class F8962ComputeTests(unittest.TestCase):
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
         params = _params(line5_400_boundary_inclusive=True)
 
-        r_at_400 = compute(b, 40_000.0, params.year, params)
+        r_at_400 = compute(b, 40_000.0, params.year, params, **_SINGLE)
         self.assertEqual(r_at_400["f8962_line_5"], 401)
 
-        r_under_400 = compute(b, 39_999.0, params.year, params)
+        r_under_400 = compute(b, 39_999.0, params.year, params, **_SINGLE)
         self.assertEqual(r_under_400["f8962_line_5"], 399)
 
         # The applicable-figure floor-key lookup lands on the same
@@ -155,7 +158,7 @@ class F8962ComputeTests(unittest.TestCase):
             line5_400_boundary_inclusive=False,
         )
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
-        r = compute(b, 31_257.0, 2024, params)
+        r = compute(b, 31_257.0, 2024, params, **_SINGLE)
         self.assertEqual(r["f8962_line_5"], 230)
 
     def test_line5_below_floor_pct_not_clamped_up(self):
@@ -164,7 +167,7 @@ class F8962ComputeTests(unittest.TestCase):
         # report the TRUE percentage (90), not the applicable-figure
         # table's floor (previously the clamp raised it to 100).
         b = _block({i: (250.0, 300.0, 200.0) for i in range(12)})
-        r = compute(b, 9_000.0, 2024, _params())
+        r = compute(b, 9_000.0, 2024, _params(), **_SINGLE)
         self.assertEqual(r["f8962_line_5"], 90)
         # The applicable-figure lookup still floor-keys into the table's
         # lowest entry (100 -> 0.0) either way, so PTC dollars for this

@@ -28,6 +28,7 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.models import (
+    FilingStatus,
     Form1095A,
     Form1095AMonth,
     Scenario,
@@ -379,7 +380,9 @@ class PartTwoPresentationTests(unittest.TestCase):
         from tenforty.params import f8962 as params_f8962
         blk = Form1095A(months=tuple(
             Form1095AMonth(*m) if m else Form1095AMonth() for m in months))
-        return form_f8962.compute(blk, magi, year, params_f8962.load(year))
+        return form_f8962.compute(blk, magi, year, params_f8962.load(year),
+                                  filing_status=FilingStatus.SINGLE,
+                                  family_size=1)
 
     @staticmethod
     def _field_name(widget) -> str:
