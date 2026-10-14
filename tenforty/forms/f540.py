@@ -15,7 +15,7 @@ import math
 from collections.abc import Mapping, Sequence
 
 from tenforty.attestations import refund_direct_deposit
-from tenforty.models import CA540Return, FilingStatus
+from tenforty.models import CA540Return, FilingStatus, parse_filing_status
 from tenforty.params import california as ca_params
 from tenforty.rounding import irs_round
 
@@ -26,6 +26,56 @@ def compute_standard_deduction(year: int, filing_status: FilingStatus) -> int:
 
 def compute_exemption_credit(year: int, filing_status: FilingStatus) -> int:
     return ca_params.load(year).for_status(filing_status).exemption_credit
+
+
+class CaSeniorParamsPendingError(NotImplementedError):
+    """A Form 540 line 9 (senior exemption) param is pending transcription
+    (None) for the tax year. Refused by name: an untranscribed cutoff or
+    credit must never compute as zero seniors or a zero credit."""
+
+    def __init__(self, field: str, year: int) -> None:
+        self.field = field
+        self.year = year
+        super().__init__(
+            f"California params field {field!r} is pending transcription for "
+            f"tax year {year}; the Form 540 line 9 senior exemption cannot be "
+            "figured, so the return is refused rather than computed without it")
+
+
+def ca_senior_count(config, params: ca_params.CaliforniaParams) -> int:
+    """Form 540 line 9 count: 1 for the taxpayer, plus 1 for the spouse on a
+    joint return, each when born strictly before ``params.senior_born_before``.
+
+    The spouse is counted on married filing jointly only. A joint return
+    without ``spouse_birthdate`` is refused (as the Form 1040 age boxes are),
+    never counted as not-a-senior by default.
+    """
+    cutoff = params.senior_born_before
+    if cutoff is None:
+        raise CaSeniorParamsPendingError("senior_born_before", params.year)
+
+    def born_before(value: str) -> bool:
+        return datetime.date.fromisoformat(value) < cutoff
+
+    joint = parse_filing_status(config.filing_status) is (
+        FilingStatus.MARRIED_FILING_JOINTLY)
+    if joint and not config.spouse_birthdate:
+        raise ValueError(
+            "Form 540 line 9 (senior exemption) for a married_filing_jointly "
+            "return needs `spouse_birthdate` (ISO YYYY-MM-DD), which is blank "
+            "in the scenario config.")
+    count = int(born_before(config.birthdate))
+    if joint:
+        count += int(born_before(config.spouse_birthdate))
+    return count
+
+
+def _senior_exemption_credit(params: ca_params.CaliforniaParams) -> int:
+    """The per-senior line 9 credit; refuses by name while pending."""
+    credit = params.senior_exemption_credit
+    if credit is None:
+        raise CaSeniorParamsPendingError("senior_exemption_credit", params.year)
+    return credit
 
 
 def _walk_rate_schedule(schedule: list[tuple[int, float]], income: float) -> float:
@@ -119,6 +169,7 @@ def compute(
     ca540: CA540Return,
     *,
     num_dependents: int = 0,
+    num_seniors: int = 0,
     ca_itemized: int | None = None,
     renter_credit_eligible: bool = False,
     ca_withholding: int = 0,
@@ -135,6 +186,9 @@ def compute(
     ``ptet_credit``, ``voluntary_contributions``. ``num_dependents``
     stays a separate kwarg because it derives from the federal scenario
     (``len(scenario.config.dependents)``), not from CA540Return.
+    ``num_seniors`` is the Form 540 line 9 count (``ca_senior_count`` over
+    the scenario config, at the orchestrator call-site), a kwarg for the same
+    reason ``num_dependents`` is.
     ``ca_itemized`` stays a separate kwarg because it's a scenario-time
     decision (Sch CA-derived), not stored on CA540Return.
     ``renter_credit_eligible`` likewise stays a kwarg pending its
@@ -183,10 +237,13 @@ def compute(
     taxable_income = max(0, ca_agi - deduction)
     ca_tax = compute_ca_tax(year, filing_status, taxable_income)
 
-    # Exemption credits
+    # Exemption credits: line 7 (personal) + line 9 (senior) + line 10
+    # (dependents); line 8 (blind) is not modeled. The phaseout gate above
+    # guards the whole credit, senior term included.
     base = compute_exemption_credit(year, filing_status)
+    senior = _senior_exemption_credit(params) * num_seniors
     dep = params.dependent_exemption_amount * num_dependents
-    exemption = base + dep
+    exemption = base + senior + dep
 
     # Renter's credit
     renters = _compute_renters_credit(year, filing_status, ca_agi) if renter_credit_eligible else 0
@@ -300,7 +357,7 @@ def presentation_keys(
     Header identity, date of birth, the "address is the same as your principal
     residence" box (only when the scenario states it), the line 92 full-year
     health-care-coverage box (a stated coverage gap raises: FTB 3853 is not
-    modeled), the line 7 / line 10
+    modeled), the line 7 / line 9 / line 10
     exemption count-and-amount boxes, line 11 and line 12. Values here are
     SCENARIO-derived (not compute outputs); the orchestrator merges them into
     the CA results dict and ``pdf_f540`` places them.
@@ -308,10 +365,12 @@ def presentation_keys(
     * Line 7 amount = count x per-person credit, where the per-person credit is
       the year's ``exemption_credit[filing_status]`` split over the count (the
       param table already stores the MFJ/QSS figure as 2 x the single figure).
+    * Line 9 = ``ca_senior_count`` x the year's ``senior_exemption_credit``;
+      omitted entirely at zero (blank-by-design).
     * Line 10 = number of dependents x the year's dependent exemption amount;
-      omitted entirely at zero (blank-by-design). Lines 8 and 9 (blind / senior)
-      are not modeled and stay blank.
-    * Line 11 = line 7 + line 8 + line 9 + line 10, so it equals
+      omitted entirely at zero (blank-by-design). Line 8 (blind) not modeled —
+      no input.
+    * Line 11 = line 7 + line 9 + line 10, so it equals
       ``f540_exemption_credit`` (line 32) by construction.
     * Line 12 = the sum of W-2 box 16 (``W2.state_wages``) across all W-2s, per
       the 540 instruction "State wages from your federal Form(s) W-2, box 16".
@@ -326,6 +385,8 @@ def presentation_keys(
         raise ValueError(
             f"{year} exemption credit {personal_total} for {fs.value} is not a "
             f"multiple of the personal-exemption count {count}")
+    seniors = ca_senior_count(config, params)
+    senior_total = _senior_exemption_credit(params) * seniors
     dependents = len(config.dependents)
     dependent_total = params.dependent_exemption_amount * dependents
 
@@ -341,7 +402,8 @@ def presentation_keys(
         "f540_residence_county": config.county,
         "f540_line7_count": count,
         "f540_line7_amount": personal_total,
-        "f540_line11_exemption_amount": personal_total + dependent_total,
+        "f540_line11_exemption_amount": (
+            personal_total + senior_total + dependent_total),
     }
     # The spouse block follows the filing status, never name presence: a
     # joint return always carries it (a blank spouse identity is refused at
@@ -371,6 +433,9 @@ def presentation_keys(
     if config.address_is_principal_residence:
         # The box's on-state on every year's template (see pdf_f540).
         out["f540_address_is_residence_checkbox"] = "/Yes"
+    if seniors:
+        out["f540_line9_count"] = seniors
+        out["f540_line9_amount"] = senior_total
     if dependents:
         out["f540_line10_count"] = dependents
         out["f540_line10_amount"] = dependent_total

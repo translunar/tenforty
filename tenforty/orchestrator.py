@@ -54,6 +54,7 @@ from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.filing.pdf import PdfFiller
 from tenforty.params import ca_scorp
+from tenforty.params import california as params_california
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import F1040
 from tenforty.mappings.pdf_1040 import Pdf1040
@@ -2915,6 +2916,8 @@ class ReturnOrchestrator:
             ca_agi=sch_ca_results["sch_ca_ca_agi"],
             ca540=effective_ca540,
             num_dependents=len(scenario.config.dependents),
+            num_seniors=form_f540.ca_senior_count(
+                scenario.config, params_california.load(scenario.config.year)),
             ca_itemized=ca_part_ii.get("ca_itemized_total"),
             ca_withholding=int(ca_withholding),
         )
