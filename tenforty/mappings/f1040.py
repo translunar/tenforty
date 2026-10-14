@@ -449,6 +449,10 @@ class F1040(FormMapping):
             "birthdate_month": "YourBirthMonth",
             "birthdate_day": "YourBirthDay",
             "birthdate_year": "YourBirthYear",
+            # Workbook-scoped names, present 2021-2025; the address drifts.
+            "spouse_birthdate_month": "SpouseBirthMonth",
+            "spouse_birthdate_day": "SpouseBirthDay",
+            "spouse_birthdate_year": "SpouseBirthYear",
             "w2_wages_1": "C3",
             "w2_fed_withheld_1": "C4",
             "w2_ss_wages_1": "C5",
@@ -614,6 +618,10 @@ class F1040(FormMapping):
             "birthdate_month": "YourBirthMonth",
             "birthdate_day": "YourBirthDay",
             "birthdate_year": "YourBirthYear",
+            # Workbook-scoped names, present 2021-2025; the address drifts.
+            "spouse_birthdate_month": "SpouseBirthMonth",
+            "spouse_birthdate_day": "SpouseBirthDay",
+            "spouse_birthdate_year": "SpouseBirthYear",
             "w2_wages_1": "C3",
             "w2_fed_withheld_1": "C4",
             "w2_ss_wages_1": "C5",

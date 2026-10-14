@@ -517,6 +517,12 @@ class TaxReturnConfig:
     spouse_last_name: str = ""
     spouse_middle_initial: str = ""
     spouse_ssn: str = ""
+    # Spouse date of birth, ISO YYYY-MM-DD. Required for
+    # MARRIED_FILING_JOINTLY, accepted for MARRIED_FILING_SEPARATELY, refused
+    # for SINGLE / HEAD_OF_HOUSEHOLD (scenario.validate_spouse_birthdate). The
+    # workbook oracle needs it: its `Birthday_Needed` flag blanks line 16 on a
+    # married return whose spouse birth parts are empty.
+    spouse_birthdate: str = ""
     address: str = ""
     address_city: str = ""
     address_state: str = ""

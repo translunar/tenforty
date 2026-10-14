@@ -47,6 +47,11 @@ def _write_yaml(directory: Path, *, filing_status: str) -> Path:
             **scope_out_attestation_defaults(),
         },
     }
+    # Joint filing requires a spouse birthdate at load. Supplied for the
+    # retired joint spelling too, so the positive control and the refusal
+    # differ in the status string alone.
+    if filing_status in ("married_filing_jointly", "married_jointly"):
+        data["config"]["spouse_birthdate"] = "1986-07-09"
     path = directory / "scenario.yaml"
     path.write_text(yaml.safe_dump(data, sort_keys=False))
     return path
