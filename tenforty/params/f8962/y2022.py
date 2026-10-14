@@ -22,7 +22,23 @@ from tenforty.params.f8962 import F8962Params
 
 PARAMS = F8962Params(
     year=2022,
-    fpl_48_by_family_size={1: 12880},
+    # Source: 2022 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2022.pdf),
+    # sha256 de69b83a5d1630b8193f6a61ebf7c140916d1cc3f47bea1634126b9dc182afb0.
+    # Table 1-1 (48 contiguous states + DC), sizes 1-8 as printed.
+    fpl_48_by_family_size={1: 12880,
+                           2: 17420,
+                           3: 21960,
+                           4: 26500,
+                           5: 31040,
+                           6: 35580,
+                           7: 40120,
+                           8: 44660},
+    # Source: 2022 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2022.pdf),
+    # sha256 de69b83a5d1630b8193f6a61ebf7c140916d1cc3f47bea1634126b9dc182afb0.
+    # Table 1-1 footnote: "add $... for each additional person".
+    fpl_48_additional_person=4540,
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=False,
@@ -31,7 +47,16 @@ PARAMS = F8962Params(
     # the federal poverty line. Enter 401 here and on line 5 of Form
     # 8962." — strict: exactly 400% leaves line 5 at 400.
     line5_400_boundary_inclusive=False,
-    repayment_caps={"single": ((200, 325), (300, 825), (400, 1400))},
+    # Source: 2022 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2022.pdf),
+    # sha256 de69b83a5d1630b8193f6a61ebf7c140916d1cc3f47bea1634126b9dc182afb0.
+    # Table 5: "Single" column for single; the "for any other filing
+    # status" column, read for each of the other four statuses.
+    repayment_caps={"single": ((200, 325), (300, 825), (400, 1400)),
+                    "married_filing_jointly": ((200, 650), (300, 1650), (400, 2800)),
+                    "married_filing_separately": ((200, 650), (300, 1650), (400, 2800)),
+                    "head_of_household": ((200, 650), (300, 1650), (400, 2800)),
+                    "qualifying_widow": ((200, 650), (300, 1650), (400, 2800))},
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,
         156: 0.0024, 157: 0.0028, 158: 0.0032, 159: 0.0036, 160: 0.004, 161: 0.0044,

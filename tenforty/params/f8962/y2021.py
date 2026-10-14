@@ -23,14 +23,39 @@ from tenforty.params.f8962 import F8962Params
 
 PARAMS = F8962Params(
     year=2021,
-    fpl_48_by_family_size={1: 12760},
+    # Source: 2021 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2021.pdf),
+    # sha256 e4b4e5fa151c6964ec763c727288efc36672ecec1536a006aa0449f9adb6dd48.
+    # Table 1-1 (48 contiguous states + DC), sizes 1-8 as printed.
+    fpl_48_by_family_size={1: 12760,
+                           2: 17240,
+                           3: 21720,
+                           4: 26200,
+                           5: 30680,
+                           6: 35160,
+                           7: 39640,
+                           8: 44120},
+    # Source: 2021 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2021.pdf),
+    # sha256 e4b4e5fa151c6964ec763c727288efc36672ecec1536a006aa0449f9adb6dd48.
+    # Table 1-1 footnote: "add $... for each additional person".
+    fpl_48_additional_person=4480,
     applicable_figure_floor_pct=150,
     applicable_figure_ceiling_pct=400,
     unemployment_rule=True,
     # Worksheet 2, step 3: "Is the result 400 or more? • Yes. Enter 401
     # here and on line 5 of Form 8962." — inclusive of exactly 400%.
     line5_400_boundary_inclusive=True,
-    repayment_caps={"single": ((200, 325), (300, 800), (400, 1350))},
+    # Source: 2021 Instructions for Form 8962
+    # (https://www.irs.gov/pub/irs-prior/i8962--2021.pdf),
+    # sha256 e4b4e5fa151c6964ec763c727288efc36672ecec1536a006aa0449f9adb6dd48.
+    # Table 5: "Single" column for single; the "for any other filing
+    # status" column, read for each of the other four statuses.
+    repayment_caps={"single": ((200, 325), (300, 800), (400, 1350)),
+                    "married_filing_jointly": ((200, 650), (300, 1600), (400, 2700)),
+                    "married_filing_separately": ((200, 650), (300, 1600), (400, 2700)),
+                    "head_of_household": ((200, 650), (300, 1600), (400, 2700)),
+                    "qualifying_widow": ((200, 650), (300, 1600), (400, 2700))},
     applicable_figures={
         150: 0.0, 151: 0.0004, 152: 0.0008, 153: 0.0012, 154: 0.0016, 155: 0.002,
         156: 0.0024, 157: 0.0028, 158: 0.0032, 159: 0.0036, 160: 0.004, 161: 0.0044,
