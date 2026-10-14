@@ -49,7 +49,18 @@ PARAMS = CaliforniaParams(
         _S: 144, _MFS: 144, _HOH: 144, _MFJ: 288, _QW: 288,
     },
     dependent_exemption_amount=446,
-    agi_phaseout_threshold=237_035,
+    # 2023 Personal Income Tax Booklet (Form 540), Line 32 – Exemption
+    # Credits table, p.14.
+    # https://www.ftb.ca.gov/forms/2023/2023-540-booklet.pdf
+    # REV stamp: none printed on Line 32 page; no REV stamp anywhere.
+    # sha256 e2d8ef0ba279abf65eec7941a77de6604af9186226e1e79cc80a8ecd2a14d4b9
+    agi_phaseout_threshold={
+        _S: 237_035,
+        _MFJ: 474_075,
+        _MFS: 237_035,
+        _HOH: 355_558,
+        _QW: 474_075,
+    },
     rate_schedule={
         _S: _SCHEDULE_X, _MFS: _SCHEDULE_X,
         _MFJ: _SCHEDULE_Y, _QW: _SCHEDULE_Y,

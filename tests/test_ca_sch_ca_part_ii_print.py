@@ -14,7 +14,7 @@ from pypdf import PdfReader
 
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
-from tenforty.models import ItemizedDeductions, W2
+from tenforty.models import FilingStatus, ItemizedDeductions, W2
 from tenforty.params import california as ca_params
 from tests._ca_emit_helpers import CA_YEARS, REPO_ROOT, emit_ca, make_ca_scenario
 from tests._schca_tooltips import part_ii_cells
@@ -186,7 +186,8 @@ class Line29LimitationIsRefusedTests(unittest.TestCase):
 
     def test_itemizer_above_the_threshold_is_refused(self):
         for year in CA_YEARS:
-            wages = float(ca_params.load(year).agi_phaseout_threshold + 1_000)
+            wages = float(ca_params.load(year).for_status(
+                FilingStatus.SINGLE).agi_phaseout_threshold + 1_000)
             scenario = itemizing_scenario(
                 year, wages=wages, ss_wages=wages, medicare_wages=wages,
                 state_wages=wages)
@@ -204,7 +205,8 @@ class Line29LimitationIsRefusedTests(unittest.TestCase):
                 self.assertRegex(tooltip, r"^Line 29\. .*Single")
                 self.assertEqual(
                     int(first_amount.group(1).replace(",", "")),
-                    ca_params.load(year).agi_phaseout_threshold)
+                    ca_params.load(year).for_status(
+                        FilingStatus.SINGLE).agi_phaseout_threshold)
 
 
 if __name__ == "__main__":

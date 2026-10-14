@@ -263,10 +263,12 @@ def compute_part_ii_itemized(sch_a_results: dict) -> dict:
     Line 29 is emitted equal to line 28. The high-income itemized-deduction
     limitation worksheet (Schedule CA instructions, line 29) is NOT modeled.
     That is safe only because ``forms.f540.compute`` refuses every return
-    whose federal AGI exceeds ``CaliforniaParams.agi_phaseout_threshold``,
-    which is the Single/MFS line-29 amount — the lowest of the three filing
-    status thresholds — so no return the limitation could reduce gets this
-    far. If that gate is ever relaxed, line 29 needs the worksheet first.
+    whose federal AGI exceeds its filing status's
+    ``CaliforniaParams.agi_phaseout_threshold`` column, which is that same
+    status's line-29 amount (see the field comment), so no return the
+    limitation could reduce gets this far. If that gate is ever relaxed, or a
+    status's column ever differs from its line-29 amount, line 29 needs the
+    worksheet first.
 
     Raises ``NotImplementedError`` for a nonzero federal line with no Part II
     rule here, and ``ValueError`` naming the line when the printed figures do

@@ -2692,6 +2692,7 @@ class ReturnOrchestrator:
               estimated_payments: 0.0
               ...
             federal_context:        # optional — reserved for post-v1 freshness
+              filing_status: ...    #   if present, must match the scenario's
               ...
 
         v1 gaps (tracked as follow-ups, not addressed in this method):
@@ -2712,11 +2713,21 @@ class ReturnOrchestrator:
             ca_yaml = yaml.safe_load(f) or {}
         # A CA YAML (including a resolved snapshot copied back into place) may
         # carry federal_context.filing_status; it parses through the single
-        # filing-status boundary so a retired v0.1 string refuses loudly.
+        # filing-status boundary so a retired v0.1 string refuses loudly, and
+        # must match the scenario's status (CA conforms to the federal one).
         federal_context = ca_yaml.get("federal_context")
         if (isinstance(federal_context, dict)
                 and federal_context.get("filing_status") is not None):
-            parse_filing_status(federal_context["filing_status"])
+            context_status = parse_filing_status(
+                federal_context["filing_status"])
+            scenario_status = parse_filing_status(
+                scenario.config.filing_status)
+            if context_status is not scenario_status:
+                raise ValueError(
+                    f"CA YAML {ca_yaml_path} federal_context.filing_status is "
+                    f"{context_status.value!r} but the scenario's federal "
+                    f"filing status is {scenario_status.value!r}; the CA 540 "
+                    f"filing status must conform to the federal return's.")
 
         # 2. Freshness check — v1 no-op stub.
         self._verify_ca_yaml_freshness(scenario, ca_yaml_path, ca_yaml)

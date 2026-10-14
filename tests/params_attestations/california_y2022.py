@@ -65,12 +65,18 @@ ATTESTED: dict[str, object] = {
     #   Single or married/RDP filing separately ... $229,908
     #   Married/RDP filing jointly or qualifying surviving spouse/RDP ... $459,821
     #   Head of household ... $344,867
-    # The library carries the MINIMUM (single/MFS) as a conservative refusal
-    # gate: above it the return refuses computation rather than applying a
-    # phaseout, so non-single filers between their true threshold and this one
-    # over-refuse but can never be computed wrongly. Attested = the scalar
-    # single/MFS minimum.
-    "agi_phaseout_threshold": 229908,
+    # Per-status columns attested 2026-10-14 (Transcriber B paste; dual
+    # transcription adjudicated vs Transcriber A with full agreement).
+    # Source: Line 32 table, booklet p.14; REV: none printed on Line 32 page
+    # (elsewhere 02-23, 06-23);
+    # sha256 e7ae8a0a8e4dadf973cdb702b8f9deb1574969d0cda5c6e08882e42e966c804c
+    "agi_phaseout_threshold": {
+        "single": 229908,
+        "married_filing_separately": 229908,
+        "married_filing_jointly": 459821,
+        "qualifying_widow": 459821,
+        "head_of_household": 344867,
+    },
     "rate_schedule": {
         # "2022 California Tax Rate Schedules", Page 93. Encoded as ascending
         # (LOWER_BOUND, marginal_rate) pairs starting at (0, 0.01). Rates from

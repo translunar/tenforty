@@ -51,11 +51,18 @@ ATTESTED: dict[str, object] = {
 
     "dependent_exemption_amount": 461,  # f540 line 10: X $461 per dependent
 
-    # Schema field is a single int. Form 540 line 32 prints $244,857 as the
-    # federal-AGI gate (the Single / MFS threshold). Booklet Line 32
-    # instructions list status-specific thresholds: Single/MFS $244,857,
-    # MFJ/QSS $489,719, HOH $367,291 — see report concern about the scalar.
-    "agi_phaseout_threshold": 244857,   # f540 line 32; booklet p. 12 Line 32
+    # Per-status columns attested 2026-10-14 (Transcriber B paste; dual
+    # transcription adjudicated vs Transcriber A with full agreement; the
+    # prior transcription's prose figures here agreed as well).
+    # Source: Line 32 table, booklet p.14; REV: none printed anywhere;
+    # sha256 446372719f6e1ce90132d550c268d7804fc44cefcf13514e09bf9ac9907ee374
+    "agi_phaseout_threshold": {
+        "single": 244857,
+        "married_filing_separately": 244857,
+        "married_filing_jointly": 489719,
+        "qualifying_widow": 489719,
+        "head_of_household": 367291,
+    },
 
     # 2024 California Tax Rate Schedules (tax_rate_schedules.pdf).
     "rate_schedule": {
