@@ -6,6 +6,7 @@ implementation module. Its sole purpose is to catch transcription errors by
 being derived separately from the same primary sources. One citation comment
 per value.
 """
+import datetime
 import math
 
 SOURCES: tuple[str, ...] = (
@@ -172,9 +173,18 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 262000,
         "qualifying_widow": 262000,
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "additional_standard_deduction": None,
-    "aged_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement, incl. team-lead third readings).
+    # Amounts source 2021: Rev. Proc. 2020-45 — https://www.irs.gov/pub/irs-drop/rp-20-45.pdf — sha256 12cfb00115b86e3bb97937f1a5fc340cf98c0d61b7508c800b9a3a4674aac52d
+    # Date source 2021: 2021 Instructions for Form 1040 (and 1040-SR) — https://www.irs.gov/pub/irs-prior/i1040gi--2021.pdf — sha256 7337e61fe50cd309c260817d23468cd557426c7e5f15cdbdc291f6d2c7c50d90
+    "additional_standard_deduction": {
+        "single": 1700,
+        "married_filing_jointly": 1350,
+        "married_filing_separately": 1350,
+        "head_of_household": 1700,
+        "qualifying_widow": 1350,
+    },
+    "aged_born_before": datetime.date(1957, 1, 2),
 }
 
 NOT_APPLICABLE: dict[str, str] = {
@@ -187,12 +197,4 @@ NOT_APPLICABLE: dict[str, str] = {
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "additional_standard_deduction": (
-        "aged additional standard deduction per box, all five statuses; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
-    "aged_born_before": (
-        "aged 'born before' cutoff as the year's own documents state it; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }
