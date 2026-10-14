@@ -7,9 +7,12 @@ the gates themselves are unit-tested with synthetic loaders (a declared
 column a later edit deletes must surface here, never as a runtime KeyError).
 """
 import dataclasses
+import importlib
 import tempfile
+import types
+import typing
 import unittest
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 from unittest import mock
 
@@ -51,26 +54,44 @@ F8962_GAP_PREFIX = "f8962."
 _STATUS_VALUES = frozenset(s.value for s in FilingStatus)
 
 
+def _federal_pending_transcription(year: int) -> Collection[str]:
+    """Federal fields the year's attestation declares PENDING_TRANSCRIPTION
+    (the attestation gate proves those are None on both sides)."""
+    module = importlib.import_module(
+        f"tests.params_attestations.federal_y{year}")
+    return getattr(module, "PENDING_TRANSCRIPTION", {})
+
+
 def params_gaps(
     grid: Mapping[int, tuple[str, ...]],
     *,
     load_federal: Callable[[int], object],
     load_california: Callable[[int], object],
     load_f8962: Callable[[int], object],
+    federal_pending: Callable[[int], Collection[str]] = (
+        _federal_pending_transcription),
 ) -> list[tuple[int, str, str]]:
     """(year, status, field) for every declared (year, status) whose column
     is missing from a per-status params field. California fields are checked
     only for years California supports, and are reported with the
-    ``california.`` prefix; Form 8962 fields with the ``f8962.`` prefix."""
+    ``california.`` prefix; Form 8962 fields with the ``f8962.`` prefix.
+
+    A federal per-status field that is None is skipped only when the year's
+    attestation declares it pending transcription (``for_status`` refuses it
+    by name); a None that is not declared pending is a gap."""
     ca_years = set(years.CALIFORNIA_YEARS + years.CALIFORNIA_COMPUTE_ONLY_YEARS)
     gaps: list[tuple[int, str, str]] = []
     for year in sorted(grid):
         federal = load_federal(year)
         california = load_california(year) if year in ca_years else None
         f8962 = load_f8962(year)
+        pending = federal_pending(year)
         for status in grid[year]:
             for name in PER_STATUS_FEDERAL_FIELDS:
-                if status not in getattr(federal, name):
+                column = getattr(federal, name)
+                if column is None and name in pending:
+                    continue
+                if column is None or status not in column:
                     gaps.append((year, status, name))
             for name in PER_STATUS_F8962_FIELDS:
                 if status not in getattr(f8962, name):
@@ -109,17 +130,37 @@ def battery_gaps(
     return gaps
 
 
+def _is_optional_str_keyed_dict(annotation) -> bool:
+    """``dict[str, X] | None``: the declared shape of a per-status field
+    still pending transcription."""
+    args = typing.get_args(annotation)
+    if typing.get_origin(annotation) not in (typing.Union, types.UnionType):
+        return False
+    if type(None) not in args:
+        return False
+    return any(typing.get_origin(a) is dict
+               and typing.get_args(a)[:1] == (str,) for a in args)
+
+
 def _status_keyed_fields(params_by_year) -> set[str]:
     """Fields whose value, in SOME year, is a non-empty dict keyed only by
-    FilingStatus value strings."""
+    FilingStatus value strings — plus fields declared ``dict[str, X] | None``
+    that are None in EVERY year (per-status, pending transcription)."""
     keyed: set[str] = set()
+    always_none: set[str] | None = None
     for params in params_by_year:
+        hints = typing.get_type_hints(type(params))
+        none_here = set()
         for f in dataclasses.fields(params):
             value = getattr(params, f.name)
             if (isinstance(value, dict) and value
                     and set(value) <= _STATUS_VALUES):
                 keyed.add(f.name)
-    return keyed
+            if value is None and _is_optional_str_keyed_dict(hints[f.name]):
+                none_here.add(f.name)
+        always_none = (none_here if always_none is None
+                       else always_none & none_here)
+    return keyed | (always_none or set())
 
 
 def _high_income(year: int, status: FilingStatus) -> Scenario:
@@ -271,6 +312,39 @@ class ParamsCompletenessGateTests(unittest.TestCase):
         self.assertEqual(
             f8962_gaps,
             [(2025, "married_filing_jointly", "f8962.repayment_caps")])
+
+
+class PendingPerStatusFieldGateTests(unittest.TestCase):
+    """A None per-status federal field is skipped by params_gaps only while
+    the year's attestation declares it pending transcription."""
+
+    FIELD = "additional_standard_deduction"
+
+    def _gaps(self, *, pending):
+        return params_gaps({2025: ("single",)}, load_federal=load_federal,
+                           load_california=ca_params.load,
+                           load_f8962=f8962_params.load,
+                           federal_pending=lambda year: pending)
+
+    def test_real_field_is_none_and_declared_pending(self):
+        # Precondition: the negative space below is the real field's state.
+        self.assertIsNone(getattr(load_federal(2025), self.FIELD))
+        self.assertIn(self.FIELD, _federal_pending_transcription(2025))
+
+    def test_declared_pending_none_is_not_a_gap(self):
+        self.assertEqual(self._gaps(pending={self.FIELD}), [])
+
+    def test_undeclared_none_is_a_gap(self):
+        self.assertEqual(self._gaps(pending=set()),
+                         [(2025, "single", self.FIELD)])
+
+    def test_registry_counts_an_always_none_per_status_field(self):
+        all_years = years.FEDERAL_YEARS + years.FEDERAL_COMPUTE_ONLY_YEARS
+        self.assertIn(self.FIELD, _status_keyed_fields(
+            load_federal(y) for y in all_years))
+        # A pending scalar never counts as per-status.
+        self.assertNotIn("aged_born_before", _status_keyed_fields(
+            load_federal(y) for y in all_years))
 
 
 class BatteryCompletenessGateTests(unittest.TestCase):

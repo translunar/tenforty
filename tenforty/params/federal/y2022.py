@@ -111,4 +111,7 @@ PARAMS = FederalParams(
         _S: 270_000, _MFJ: 540_000, _HOH: 270_000, _QW: 270_000,
         _MFS: 270_000,
     },
+    # Pending transcription (age-65-params).
+    additional_standard_deduction=None,
+    aged_born_before=None,
 )

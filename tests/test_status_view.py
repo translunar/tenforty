@@ -32,7 +32,9 @@ class StatusViewTests(unittest.TestCase):
                 view = params.for_status(status)
                 for name in PER_STATUS_FEDERAL_FIELDS:
                     column = getattr(params, name)
-                    if status.value not in column:
+                    # None = pending transcription; its refusal is covered by
+                    # tests/test_age_schema.py.
+                    if column is None or status.value not in column:
                         continue
                     with self.subTest(year=year, status=status, field=name):
                         self.assertEqual(getattr(view, name),

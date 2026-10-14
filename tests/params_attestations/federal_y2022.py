@@ -126,6 +126,9 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 270000,
         "qualifying_widow": 270000,
     },
+    # Not yet transcribed (see PENDING_TRANSCRIPTION).
+    "additional_standard_deduction": None,
+    "aged_born_before": None,
 }
 
 NOT_APPLICABLE: dict[str, str] = {
@@ -180,3 +183,14 @@ SOURCES: tuple[str, ...] = (
     "Line 12 is 'Itemized Deductions or Standard Deduction' with no line 12b and no non-itemizer "
     "charitable cash deduction (nonitemizer_charitable_cap None — the 2020-2021-only provision expired).",
 )
+
+PENDING_TRANSCRIPTION: dict[str, str] = {
+    "additional_standard_deduction": (
+        "aged additional standard deduction per box, all five statuses; "
+        "awaiting dual transcription (native-filing-statuses round, "
+        "age-65-params)."),
+    "aged_born_before": (
+        "aged 'born before' cutoff as the year's own documents state it; "
+        "awaiting dual transcription (native-filing-statuses round, "
+        "age-65-params)."),
+}
