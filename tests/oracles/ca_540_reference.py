@@ -54,6 +54,12 @@ FilingStatus = Literal["single", "mfj", "mfs", "hoh", "qss"]
 # tax-form mirror and cross-referenced against the 3% annual indexing pattern
 # applied to TY2024 published values. CPA confirmation required on any figure
 # tagged VERIFY before a downstream consumer trusts it.
+#
+# Re-verified 2026-10-14 against the FTB-direct booklet recorded in
+# CA_540_BOOKLET_2025_PROVENANCE (below): standard deduction chart (p. 13),
+# exemption credit preprints (Form 540 side 1), AGI Limitation Worksheet
+# thresholds (p. 14), Schedules X/Y/Z (p. 75) — all match. Renter's credit
+# AGI limits did NOT match and were corrected (see that block).
 # ---------------------------------------------------------------------------
 
 # SOURCE: FTB 2025 Form 540 instructions, "Standard Deduction" worksheet.
@@ -153,11 +159,14 @@ BHST_THRESHOLD_2025 = 1_000_000.0
 BHST_RATE_2025 = 0.01
 
 # SOURCE: FTB 2025 Form 540 instructions, line 46 (Nonrefundable Renter's
-# Credit). Hard AGI cliff, no phaseout.
+# Credit). Hard AGI cliff, no phaseout. AGI limits re-verified against the
+# FTB-direct booklet (see CA_540_BOOKLET_2025_PROVENANCE), page 25,
+# Nonrefundable Renter's Credit Qualification Record question 2; the earlier
+# mirror-derived limits did not match the booklet and were corrected.
 RENTERS_CREDIT_SINGLE_MFS_2025 = 60.0
 RENTERS_CREDIT_HOUSEHOLD_2025 = 120.0
-RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025 = 52_421.0
-RENTERS_CREDIT_AGI_LIMIT_HOUSEHOLD_2025 = 104_842.0
+RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025 = 53_994.0
+RENTERS_CREDIT_AGI_LIMIT_HOUSEHOLD_2025 = 107_988.0
 
 # SOURCE: FTB 2025 Schedule CA (540) instructions, Part II line 5e.
 # California does NOT apply the federal SALT cap. The federal cap for TY2025
@@ -1287,7 +1296,285 @@ def compute_ca_540(ca: CA540Input) -> dict[str, float | bool]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Hand-worked filing-status cases — TY2025, MFJ and HOH
+#
+# Each case below is worked BY HAND from the published FTB booklet, not by
+# running ``compute_ca_540``. The expected values are whole dollars as they
+# would be entered on the printed Form 540. ``compute_ca_540`` is checked
+# against them (oracle self-consistency) and production is checked against
+# them (cross-check), in tests/test_ca_540_oracle.py.
+#
+# All people and amounts are synthetic.
+# ---------------------------------------------------------------------------
+CA_540_BOOKLET_2025_PROVENANCE: dict[str, str] = {
+    "url": "https://www.ftb.ca.gov/forms/2025/2025-540-booklet.pdf",
+    "edition": (
+        "2025 Personal Income Tax Booklet (540 Forms & Instructions); "
+        "PDF Keywords 'Revised 02/2026 ... Revised 04/2026' (Schedule CA "
+        "instruction pages only, stamped REV 02-26 / REV 04-26); Form 540 "
+        "instructions, tax table and rate schedules carry no REV stamp; "
+        "Form 540 side 1 form code 3101253; PDF ModDate 2026-05-04"
+    ),
+    "sha256": "b48ee24bd2f9b9e74fe9a5bbc548d15bae0bd1ce53306bef1ff33fc76f8078c1",
+    "retrieved": "2026-10-14",
+}
+
+
+@dataclass(frozen=True)
+class HandWorkedCase540:
+    """One hand-worked TY2025 Form 540 scenario.
+
+    Inputs are the raw facts a filer would bring; ``expected`` maps oracle
+    output keys (see ``compute_ca_540``) to the whole-dollar hand result.
+    ``line_31_method`` records which booklet method set line 31: the tax
+    table (line 19 ≤ $100,000, $100-row midpoint lookup) or the tax rate
+    schedules. ``compute_ca_540`` evaluates the rate schedule exactly, so
+    on a tax-table case its line 31 (and every line downstream of it) may
+    differ from the hand value by the table's midpoint rounding.
+    """
+    name: str
+    filing_status: FilingStatus
+    w2_wages: tuple[float, ...]
+    w2_ca_withholding: tuple[float, ...]
+    taxable_interest: float
+    renter_six_months_in_ca: bool
+    line_31_method: Literal["tax_table", "tax_rate_schedule"]
+    expected: dict[str, float]
+
+
+def _zero_balance_tail(*, line_64: float, line_71: float) -> dict[str, float]:
+    """Lines 61–115 for a case with no AMT/BHST/other tax, no estimates,
+    no use tax, no contributions, and payments exceeding tax (refund).
+
+    Booklet p. 16–19: line 64 = 48 + 61 + 62 + 63; line 78 = 71 + … + 77;
+    line 93 = 78 − 91; line 95 = 93 − 92; line 97 = 95 − 64 (overpaid);
+    line 99 = 97 − 98; line 115 = 99 − (110 + 112 + 113).
+    """
+    overpaid = line_71 - line_64
+    assert overpaid > 0, "helper models the refund branch only"
+    return {
+        "f540_line_61_amt": 0.0,
+        "f540_line_62_bhst": 0.0,
+        "f540_line_63_other_taxes": 0.0,
+        "f540_line_64_total_tax": line_64,
+        "f540_line_71_withholding": line_71,
+        "f540_line_72_estimated_payments": 0.0,
+        "f540_line_78_total_payments": line_71,
+        "f540_line_91_use_tax": 0.0,
+        "f540_line_93": line_71,
+        "f540_line_94": 0.0,
+        "f540_line_95": line_71,
+        "f540_line_96": 0.0,
+        "f540_line_97_overpaid": overpaid,
+        "f540_line_98_applied_to_2026": 0.0,
+        "f540_line_99_overpaid_net": overpaid,
+        "f540_line_100_tax_due_pre_contributions": 0.0,
+        "f540_line_110_contributions": 0.0,
+        "f540_line_111_owe_before_penalties": 0.0,
+        "f540_line_114_total_amount_due": 0.0,
+        "f540_line_115_refund": overpaid,
+    }
+
+
+# Case: MFJ, two W-2s, standard deduction, not renters, both under 65.
+#   L12 state wages = 98,400 + 51,300 = 149,700
+#   L13 federal AGI = 149,700 (wages only); L14 = 0; L15 = 149,700; L16 = 0
+#   L17 CA AGI = 149,700
+#   L18 std ded, chart p.13, status 2 = 11,412
+#   L19 = 149,700 − 11,412 = 138,288  (> 100,000 → rate schedule)
+#   L31 Schedule Y, over 115,084: 138,288 − 115,084 = 23,204;
+#       23,204 × 8% = 1,856.32; 3,974.82 + 1,856.32 = 5,831.14 → 5,831
+#   L7 status 2 → 2 × 153 = 306; L8/L9/L10 = 0; L11 = 306
+#   L32: L13 149,700 ≤ 504,411 (p.14) → no AGI limitation; L32 = 306
+#   L33 = 5,831 − 306 = 5,525; L34 = 0; L35 = 5,525
+#   L40/43–45/46 = 0; L47 = 0; L48 = 5,525; L61–63 = 0; L64 = 5,525
+#   L71 = 4,100 + 1,750 = 5,850 = L78 = L93 = L95
+#   L97 = 5,850 − 5,525 = 325 = L99 = L115 refund
+CASE_MFJ_TWO_W2_2025 = HandWorkedCase540(
+    name="mfj_two_w2_wages_only",
+    filing_status="mfj",
+    w2_wages=(98_400.0, 51_300.0),
+    w2_ca_withholding=(4_100.0, 1_750.0),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 2.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 306.0,
+        "f540_line_12_state_wages": 149_700.0,
+        "f540_line_13_federal_agi": 149_700.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 149_700.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 149_700.0,
+        "f540_line_18_deduction": 11_412.0,
+        "f540_line_19_taxable_income": 138_288.0,
+        "f540_line_31_tax": 5_831.0,
+        "f540_line_32_exemption_credits": 306.0,
+        "f540_line_33_tax_after_exemption_credits": 5_525.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 5_525.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 5_525.0,
+        **_zero_balance_tail(line_64=5_525.0, line_71=5_850.0),
+    },
+)
+
+# Case: MFJ, one W-2 + taxable interest, standard deduction, not renters.
+#   L12 state wages = 143,250 (interest is not W-2 box 16)
+#   L13 federal AGI = 143,250 + 2,610 = 145,860
+#   Sch CA: ordinary taxable interest, no US-obligation or non-CA muni
+#   component → no col B/C entry; L14 = 0, L16 = 0; L15 = L17 = 145,860
+#   L18 = 11,412; L19 = 145,860 − 11,412 = 134,448 (> 100,000 → schedule)
+#   L31 Schedule Y, over 115,084: 134,448 − 115,084 = 19,364;
+#       19,364 × 8% = 1,549.12; 3,974.82 + 1,549.12 = 5,523.94 → 5,524
+#   L7 = 2 × 153 = 306 = L11; L13 ≤ 504,411 → L32 = 306
+#   L33 = 5,524 − 306 = 5,218 = L35 = L48 = L64
+#   L71 = 7,900; L97 = 7,900 − 5,218 = 2,682 = L115 refund
+CASE_MFJ_W2_PLUS_INTEREST_2025 = HandWorkedCase540(
+    name="mfj_one_w2_plus_interest",
+    filing_status="mfj",
+    w2_wages=(143_250.0,),
+    w2_ca_withholding=(7_900.0,),
+    taxable_interest=2_610.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 2.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 306.0,
+        "f540_line_12_state_wages": 143_250.0,
+        "f540_line_13_federal_agi": 145_860.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 145_860.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 145_860.0,
+        "f540_line_18_deduction": 11_412.0,
+        "f540_line_19_taxable_income": 134_448.0,
+        "f540_line_31_tax": 5_524.0,
+        "f540_line_32_exemption_credits": 306.0,
+        "f540_line_33_tax_after_exemption_credits": 5_218.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 5_218.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 5_218.0,
+        **_zero_balance_tail(line_64=5_218.0, line_71=7_900.0),
+    },
+)
+
+# Case: HOH, one W-2, renter all year in CA, no dependents listed.
+#   L12 = L13 = L15 = L17 = 67,800; L14 = L16 = 0
+#   L18 = 11,412 (status 4); L19 = 67,800 − 11,412 = 56,388 (≤ 100,000 →
+#   tax table, p.69ff): row "56,351 – 56,450", column "4 Is" = 984
+#     (cross-check: table is Schedule Z at the row midpoint 56,400:
+#      828.87 + (56,400 − 52,530) × 4% = 828.87 + 154.80 = 983.67 → 984)
+#   L7 status 4 → 1 × 153 = 153 = L11; L13 ≤ 378,310 → L32 = 153
+#   L33 = 984 − 153 = 831 = L35
+#   L46 renter's credit (p.25–26): Q1 resident yes; Q2 CA AGI L17 67,800 ≤
+#   107,988 (MFJ/HOH/QSS limit) yes; Q3 rented ≥ half year yes; Q4 not a
+#   dependent; Q6 not exempt property; Q7 no homeowner's exemption; Q8
+#   single (unmarried) → Q11: head of household → 120
+#   L47 = 120; L48 = 831 − 120 = 711 = L64
+#   L71 = 2,480; L97 = 2,480 − 711 = 1,769 = L115 refund
+CASE_HOH_RENTER_2025 = HandWorkedCase540(
+    name="hoh_wages_only_renter",
+    filing_status="hoh",
+    w2_wages=(67_800.0,),
+    w2_ca_withholding=(2_480.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=True,
+    line_31_method="tax_table",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 153.0,
+        "f540_line_12_state_wages": 67_800.0,
+        "f540_line_13_federal_agi": 67_800.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 67_800.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 67_800.0,
+        "f540_line_18_deduction": 11_412.0,
+        "f540_line_19_taxable_income": 56_388.0,
+        "f540_line_31_tax": 984.0,
+        "f540_line_32_exemption_credits": 153.0,
+        "f540_line_33_tax_after_exemption_credits": 831.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 831.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 120.0,
+        "f540_line_47_total_nonrefundable_credits": 120.0,
+        "f540_line_48_tax_after_special_credits": 711.0,
+        **_zero_balance_tail(line_64=711.0, line_71=2_480.0),
+    },
+)
+
+# Case: HOH, one W-2, higher wages, not a renter, no dependents listed.
+#   L12 = L13 = L15 = L17 = 112,000; L14 = L16 = 0
+#   L18 = 11,412; L19 = 112,000 − 11,412 = 100,588 (> 100,000 → schedule)
+#   L31 Schedule Z, over 98,990: 100,588 − 98,990 = 1,598;
+#       1,598 × 9.3% = 148.614 → 148.61 (p.75 step 4: round to two
+#       decimals); 3,616.45 + 148.61 = 3,765.06 → 3,765
+#   L7 = 1 × 153 = 153 = L11; exemption AGI limitation: L13 112,000 ≤
+#   378,310 (HOH, p.14) → phaseout NOT reached; L32 = 153
+#   L33 = 3,765 − 153 = 3,612 = L35 = L48 = L64 (no renter's credit)
+#   L71 = 5,900; L97 = 5,900 − 3,612 = 2,288 = L115 refund
+CASE_HOH_HIGHER_WAGES_2025 = HandWorkedCase540(
+    name="hoh_higher_wages",
+    filing_status="hoh",
+    w2_wages=(112_000.0,),
+    w2_ca_withholding=(5_900.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 153.0,
+        "f540_line_12_state_wages": 112_000.0,
+        "f540_line_13_federal_agi": 112_000.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 112_000.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 112_000.0,
+        "f540_line_18_deduction": 11_412.0,
+        "f540_line_19_taxable_income": 100_588.0,
+        "f540_line_31_tax": 3_765.0,
+        "f540_line_32_exemption_credits": 153.0,
+        "f540_line_33_tax_after_exemption_credits": 3_612.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 3_612.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 3_612.0,
+        **_zero_balance_tail(line_64=3_612.0, line_71=5_900.0),
+    },
+)
+
+HAND_WORKED_STATUS_CASES_2025: tuple[HandWorkedCase540, ...] = (
+    CASE_MFJ_TWO_W2_2025,
+    CASE_MFJ_W2_PLUS_INTEREST_2025,
+    CASE_HOH_RENTER_2025,
+    CASE_HOH_HIGHER_WAGES_2025,
+)
+
+
 __all__ = [
+    # Hand-worked cases
+    "CA_540_BOOKLET_2025_PROVENANCE",
+    "HandWorkedCase540",
+    "HAND_WORKED_STATUS_CASES_2025",
+    "CASE_MFJ_TWO_W2_2025",
+    "CASE_MFJ_W2_PLUS_INTEREST_2025",
+    "CASE_HOH_RENTER_2025",
+    "CASE_HOH_HIGHER_WAGES_2025",
     # Enums / constants
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
