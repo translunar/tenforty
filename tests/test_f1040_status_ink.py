@@ -250,7 +250,10 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
                     self.assertEqual(keys["f540_taxpayer_first_name"], "Filer")
 
     def test_mfj_emits_all_three_spouse_keys_on_both_forms(self):
-        cfg = _config(FilingStatus.MARRIED_FILING_JOINTLY)
+        # A joint return states the spouse's birthdate (540 line 9 refuses
+        # without it); the config's own, not aged.
+        cfg = _config(FilingStatus.MARRIED_FILING_JOINTLY,
+                      spouse_birthdate="1980-01-01")
         got = f1040_spine.header_values(cfg)
         self.assertEqual(
             {k: got[k] for k in _SPOUSE_1040_KEYS},
