@@ -165,7 +165,7 @@ class LoaderTests(unittest.TestCase):
     def _load(self, **cfg):
         config = {
             "year": 2025, "filing_status": "single",
-            "birthdate": "01-01-1980", "state": "EX", "first_name": "T",
+            "birthdate": "1980-01-01", "state": "EX", "first_name": "T",
             "last_name": "A", "ssn": "000-00-0000",
             **scope_out_attestation_defaults(), **cfg}
         f = tempfile.NamedTemporaryFile(

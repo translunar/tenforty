@@ -427,7 +427,7 @@ class K1AddressBlockFormatTests(unittest.TestCase):
             config=TaxReturnConfig(
                 digital_assets=False,
                 year=2025, filing_status=FilingStatus.SINGLE,
-                birthdate="01-01-1980", state="EX",
+                birthdate="1980-01-01", state="EX",
                 first_name="Taxpayer", last_name="A", ssn="000-00-0000",
                 **attestations,
             ),
