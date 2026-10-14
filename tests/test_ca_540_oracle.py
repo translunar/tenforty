@@ -23,15 +23,20 @@ at module top (iron law 4).
 import dataclasses
 import unittest
 
+from tenforty.forms.f540 import compute as f540_compute
 from tenforty.forms.sch_ca import compute as sch_ca_compute
 from tenforty.models import (
     CA540Return,
     CASchCAAdjustment,
     DivergenceDirection,
     DivergenceSource,
+    FilingStatus,
 )
 from tests.oracles.ca_540_reference import (
     AGI_PHASEOUT_THRESHOLD_2025,
+    CA_540_BOOKLET_2025_PROVENANCE,
+    HAND_WORKED_STATUS_CASES_2025,
+    HandWorkedCase540,
     BHST_RATE_2025,
     BHST_THRESHOLD_2025,
     CA540Input,
@@ -743,7 +748,7 @@ class RentersCreditTests(unittest.TestCase):
         )
 
     def test_gate_uses_ca_agi_not_federal_agi(self):
-        # Federal AGI $60,000 is above the single cliff ($52,421) but
+        # Federal AGI $60,000 is above the single cliff (RENTERS_CREDIT_AGI_LIMIT_SINGLE_MFS_2025) but
         # Social Security subtraction of $10,000 on Sch CA Part I line 6
         # col B pulls CA AGI down to $50,000 — eligibility should hold.
         ca = _make_input(
@@ -1117,6 +1122,173 @@ class SchCASectionCProductionParityTests(unittest.TestCase):
             oracle_out["schca_part_1_line_27_col_c"],
             places=2,
         )
+
+
+# ---------------------------------------------------------------------------
+# Hand-worked MFJ / HOH cases (TY2025) — oracle self-consistency
+# ---------------------------------------------------------------------------
+# Lines whose value depends on line 31. On a tax-table case the oracle's
+# exact rate-schedule evaluation differs from the table's midpoint lookup
+# (see ``_tax_from_rate_schedule``), so these lines get the table tolerance.
+_LINE_31_DOWNSTREAM = frozenset({
+    "f540_line_31_tax",
+    "f540_line_33_tax_after_exemption_credits",
+    "f540_line_35_total_tax_before_special_credits",
+    "f540_line_48_tax_after_special_credits",
+    "f540_line_64_total_tax",
+    "f540_line_97_overpaid",
+    "f540_line_99_overpaid_net",
+    "f540_line_115_refund",
+})
+_TAX_TABLE_TOLERANCE = 3.0
+# Hand values are whole dollars; the oracle does not round internally.
+_WHOLE_DOLLAR_TOLERANCE = 0.5
+
+
+def _hand_case_federal_agi(case: HandWorkedCase540) -> float:
+    return sum(case.w2_wages) + case.taxable_interest
+
+
+def _hand_case_oracle_input(case: HandWorkedCase540) -> CA540Input:
+    ca = _make_input(
+        filing_status=case.filing_status,
+        federal_agi=_hand_case_federal_agi(case),
+        state_wages=sum(case.w2_wages),
+    )
+    return dataclasses.replace(
+        ca,
+        payments=dataclasses.replace(
+            ca.payments, line_71_ca_withholding=sum(case.w2_ca_withholding)
+        ),
+        credits=dataclasses.replace(
+            ca.credits, eligible_for_renters_credit=case.renter_six_months_in_ca
+        ),
+    )
+
+
+class HandWorkedStatusCaseOracleTests(unittest.TestCase):
+    """``compute_ca_540`` reproduces each hand-worked booklet case.
+
+    Expected values are worked by hand in ca_540_reference.py from the
+    booklet in ``CA_540_BOOKLET_2025_PROVENANCE``.
+    """
+
+    def test_provenance_is_recorded(self):
+        for key in ("url", "edition", "sha256"):
+            self.assertTrue(CA_540_BOOKLET_2025_PROVENANCE[key])
+        self.assertEqual(len(CA_540_BOOKLET_2025_PROVENANCE["sha256"]), 64)
+
+    def test_four_cases_cover_mfj_and_hoh(self):
+        statuses = sorted(c.filing_status for c in HAND_WORKED_STATUS_CASES_2025)
+        self.assertEqual(statuses, ["hoh", "hoh", "mfj", "mfj"])
+
+    def test_oracle_matches_hand_worked_lines(self):
+        for case in HAND_WORKED_STATUS_CASES_2025:
+            out = compute_ca_540(_hand_case_oracle_input(case))
+            for key, expected in case.expected.items():
+                with self.subTest(case=case.name, line=key):
+                    self.assertIn(key, out)
+                    tol = (
+                        _TAX_TABLE_TOLERANCE
+                        if case.line_31_method == "tax_table"
+                        and key in _LINE_31_DOWNSTREAM
+                        else _WHOLE_DOLLAR_TOLERANCE
+                    )
+                    self.assertAlmostEqual(out[key], expected, delta=tol)
+
+
+# ---------------------------------------------------------------------------
+# Hand-worked MFJ / HOH cases (TY2025) — production full-liability chain
+# ---------------------------------------------------------------------------
+_PRODUCTION_FILING_STATUS = {
+    "mfj": FilingStatus.MARRIED_FILING_JOINTLY,
+    "hoh": FilingStatus.HEAD_OF_HOUSEHOLD,
+}
+
+
+class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
+    """Production CA kernels (Sch CA → Form 540) vs the hand-worked cases.
+
+    Chain: ``forms.sch_ca.compute`` (CA AGI from federal AGI, no divergences)
+    feeds ``forms.f540.compute``. The federal stage is represented by the
+    case's federal AGI (wages + interest) rather than a federal compute run.
+
+    Form 540 lines with no production key (12, 15, 33, 35, 47, 48, 93–99,
+    111) are covered through the keys that consume them: line 64 via the
+    pre-payment liability, lines 97–115 via the signed net balance.
+    """
+
+    def _run_chain(self, case: HandWorkedCase540, *, ca_withholding: int):
+        federal_agi = _hand_case_federal_agi(case)
+        sch = sch_ca_compute(
+            ca540=CA540Return(),
+            federal_results={"agi": federal_agi},
+            year=2025,
+        )
+        f540 = f540_compute(
+            2025,
+            _PRODUCTION_FILING_STATUS[case.filing_status],
+            int(federal_agi),
+            int(sch["sch_ca_ca_agi"]),
+            CA540Return(),
+            num_dependents=0,
+            renter_credit_eligible=case.renter_six_months_in_ca,
+            ca_withholding=ca_withholding,
+        )
+        return sch, f540
+
+    def test_production_chain_matches_hand_worked_lines(self):
+        for case in HAND_WORKED_STATUS_CASES_2025:
+            e = case.expected
+            withholding = int(sum(case.w2_ca_withholding))
+            sch, f540 = self._run_chain(case, ca_withholding=withholding)
+            _, f540_before_payments = self._run_chain(case, ca_withholding=0)
+            rows = [
+                ("sch_ca_federal_agi", sch["sch_ca_federal_agi"],
+                 e["f540_line_13_federal_agi"]),
+                ("sch_ca_total_subtractions", sch["sch_ca_total_subtractions"],
+                 e["f540_line_14_ca_subtractions"]),
+                ("sch_ca_total_additions", sch["sch_ca_total_additions"],
+                 e["f540_line_16_ca_additions"]),
+                ("sch_ca_ca_agi", sch["sch_ca_ca_agi"],
+                 e["f540_line_17_ca_agi"]),
+                ("f540_federal_agi", f540["f540_federal_agi"],
+                 e["f540_line_13_federal_agi"]),
+                ("f540_ca_agi", f540["f540_ca_agi"], e["f540_line_17_ca_agi"]),
+                ("f540_deduction", f540["f540_deduction"],
+                 e["f540_line_18_deduction"]),
+                ("f540_taxable_income", f540["f540_taxable_income"],
+                 e["f540_line_19_taxable_income"]),
+                ("f540_ca_tax", f540["f540_ca_tax"], e["f540_line_31_tax"]),
+                ("f540_exemption_credit", f540["f540_exemption_credit"],
+                 e["f540_line_32_exemption_credits"]),
+                ("f540_renter_credit", f540["f540_renter_credit"],
+                 e["f540_line_46_renters_credit"]),
+                # README: Form 540 total credits are exemption-credit-inclusive.
+                ("f540_total_credits", f540["f540_total_credits"],
+                 e["f540_line_32_exemption_credits"]
+                 + e["f540_line_47_total_nonrefundable_credits"]),
+                ("f540_line71_ca_withholding", f540["f540_line71_ca_withholding"],
+                 e["f540_line_71_withholding"]),
+                ("f540_estimated_payments", f540["f540_estimated_payments"],
+                 e["f540_line_72_estimated_payments"]),
+                ("f540_use_tax", f540["f540_use_tax"], e["f540_line_91_use_tax"]),
+                ("f540_voluntary_contributions",
+                 f540["f540_voluntary_contributions"],
+                 e["f540_line_110_contributions"]),
+                # With no payments, the liability key is line 64 (total tax).
+                ("f540_total_liability[no payments]",
+                 f540_before_payments["f540_total_liability"],
+                 e["f540_line_64_total_tax"]),
+                # With withholding, the liability key is net of payments:
+                # positive = amount due (line 114), negative = refund (115).
+                ("f540_total_liability[net]", f540["f540_total_liability"],
+                 e["f540_line_114_total_amount_due"]
+                 - e["f540_line_115_refund"]),
+            ]
+            for name, got, want in rows:
+                with self.subTest(case=case.name, field=name):
+                    self.assertEqual(got, want)
 
 
 if __name__ == "__main__":
