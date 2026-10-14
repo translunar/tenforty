@@ -32,7 +32,7 @@ from tenforty.forms import f4562 as form_4562
 from tenforty.forms.depreciation import resolver as depreciation_resolver
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8962 as form_f8962
-from tenforty.forms.f8962 import tax_family_size  # noqa: F401  (public)
+from tenforty.forms.f8962 import tax_family_size
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.params import f8962 as params_f8962
