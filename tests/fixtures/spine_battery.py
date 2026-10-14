@@ -12,6 +12,7 @@ All identities and amounts are fully synthetic — no real personal data.
 import functools
 from collections.abc import Callable
 
+from tenforty.forms.f8962 import tax_family_size
 from tenforty.models import (
     FilingStatus,
     Form1095A,
@@ -31,8 +32,10 @@ from tenforty.params import f8962 as f8962_params
 from tests.helpers import scope_out_attestation_defaults
 
 
-def _battery_config(year: int, **overrides) -> TaxReturnConfig:
-    """Single-filer config with all scope-out attestations set."""
+def _battery_config(year: int, status: FilingStatus = FilingStatus.SINGLE,
+                   **overrides) -> TaxReturnConfig:
+    """Battery config with all scope-out attestations set. MFJ adds a
+    synthetic spouse (younger than the taxpayer, under any age condition)."""
     defaults = scope_out_attestation_defaults()
     # prior_year_itemized=False so the state-refund tax-benefit-rule
     # short-circuits cleanly in all battery scenarios.
@@ -47,10 +50,17 @@ def _battery_config(year: int, **overrides) -> TaxReturnConfig:
     # Answered so emit-path battery tests clear the 1040 digital-assets
     # refusal (compute never reads it).
     defaults["digital_assets"] = False
+    if status is FilingStatus.MARRIED_FILING_JOINTLY:
+        defaults.update(
+            spouse_first_name="Example",
+            spouse_last_name="Spouse",
+            spouse_ssn="000-00-0002",
+            spouse_birthdate="1987-06-15",
+        )
     merged = {**defaults, **overrides}
     return TaxReturnConfig(
         year=year,
-        filing_status="single",
+        filing_status=status.value,
         birthdate="1985-03-01",
         state="CA",
         first_name="Example",
@@ -61,7 +71,8 @@ def _battery_config(year: int, **overrides) -> TaxReturnConfig:
 
 
 def _w2(year: int, employer: str, wages: float, federal_tax_withheld: float,
-        state_tax_withheld: float | None = None) -> W2:
+        state_tax_withheld: float | None = None,
+        owner: str | None = None) -> W2:
     """Year-correct synthetic W-2: SS wages capped at the year's OASDI wage
     base, SS/Medicare withholding derived at the statutory rates so the
     fixture can't drift from the year it claims to model."""
@@ -77,6 +88,7 @@ def _w2(year: int, employer: str, wages: float, federal_tax_withheld: float,
         ss_tax_withheld=float(round(ss_wages * 0.062)),
         medicare_wages=wages,
         medicare_tax_withheld=round(wages * 0.0145, 2),
+        owner=owner,
         **extra,
     )
 
@@ -510,6 +522,14 @@ def _ptc_months(
     )
 
 
+def _ptc_net_credit_months() -> tuple[Form1095AMonth, ...]:
+    """build_ptc_net_credit's coverage block (see its docstring for why
+    December's premium differs)."""
+    by_month = {n: (600.0, 550.0, 300.0) for n in range(1, 13)}
+    by_month[12] = (601.0, 550.0, 300.0)  # annual-ineligible; see docstring
+    return _ptc_months(by_month)
+
+
 def build_ptc_net_credit(year: int) -> Scenario:
     """PTC entitlement exceeds APTC received → net credit (Form 8962 line
     26 > 0). Wages = 2.50x the year's FPL (household size 1), landing
@@ -532,9 +552,7 @@ def build_ptc_net_credit(year: int) -> Scenario:
     """
     fpl = f8962_params.load(year).fpl_48_by_family_size[1]
     wages = round(2.50 * fpl)
-    by_month = {n: (600.0, 550.0, 300.0) for n in range(1, 13)}
-    by_month[12] = (601.0, 550.0, 300.0)  # annual-ineligible; see docstring
-    months = _ptc_months(by_month)
+    months = _ptc_net_credit_months()
     return Scenario(
         config=_battery_config(year),
         w2s=[
@@ -628,6 +646,191 @@ def build_charitable_nonitemizer_2021(year: int) -> Scenario:
     )
 
 
+# ---------------------------------------------------------------------------
+# Non-single (MFJ / HoH) battery rows: the six R-battery-n kinds.
+#
+# Every dollar amount below is a dimensionless multiple of a field read off
+# load_params(year).for_status(status) (or, for PTC, the year's FPL table) —
+# no amount is written down, so a params column is the only thing that moves
+# a row. A year/status whose column is missing fails closed with
+# UnsupportedStatusError when the row is built.
+# ---------------------------------------------------------------------------
+
+
+def _status_view(year: int, status: FilingStatus):
+    return load_params(year).for_status(status)
+
+
+def _withholding(view, wages: float) -> float:
+    """Federal withholding at the status's second-bracket rate: plausible,
+    and derived rather than written down."""
+    return float(round(wages * view.ordinary_brackets[1][1]))
+
+
+def _status_w2s(year: int, status: FilingStatus, employer: str,
+                wages: float, *,
+                state_tax_withheld: float | None = None) -> list[W2]:
+    """The return's W-2s. MFJ splits wages (and withholding) evenly across a
+    taxpayer W-2 and a spouse W-2, `owner` set on each (R-excess-ss), and
+    refuses a split that would put either owner over the wage base — the
+    per-owner excess-SS guard must not trip on a battery row. Other
+    statuses get one W-2 with `owner` left unset."""
+    view = _status_view(year, status)
+    fed = _withholding(view, wages)
+    if status is not FilingStatus.MARRIED_FILING_JOINTLY:
+        return [_w2(year, employer=employer, wages=wages,
+                    federal_tax_withheld=fed,
+                    state_tax_withheld=state_tax_withheld)]
+    base = load_params(year).ss_wage_base
+    halves = ((float(round(wages / 2)), "taxpayer"),
+              (wages - float(round(wages / 2)), "spouse"))
+    if any(w > base for w, _ in halves):
+        raise ValueError(
+            f"MFJ battery W-2 split {[w for w, _ in halves]} puts an owner "
+            f"over the {year} wage base; lower the row's wage level")
+    fed_tp = float(round(fed / 2))
+    st_tp = (float(round(state_tax_withheld / 2))
+             if state_tax_withheld is not None else None)
+    return [
+        _w2(year, employer=f"{employer} ({owner})", wages=w,
+            federal_tax_withheld=fed_tp if owner == "taxpayer" else fed - fed_tp,
+            state_tax_withheld=(
+                None if st_tp is None else
+                st_tp if owner == "taxpayer" else state_tax_withheld - st_tp),
+            owner=owner)
+        for w, owner in halves
+    ]
+
+
+def build_wages_only(year: int, status: FilingStatus) -> Scenario:
+    """Wages only, taxable income at the midpoint of the status's 22%
+    bracket (between ordinary_brackets[1] and [2] upper bounds): the
+    standard deduction and the rate schedule, nothing else."""
+    view = _status_view(year, status)
+    lo, hi = view.ordinary_brackets[1][0], view.ordinary_brackets[2][0]
+    wages = float(view.standard_deduction + round((lo + hi) / 2))
+    return Scenario(
+        config=_battery_config(year, status),
+        w2s=_status_w2s(year, status, "Synthetic Employer W", wages),
+    )
+
+
+def build_investments_qdcgt(year: int, status: FilingStatus) -> Scenario:
+    """Wages + interest + qualified dividends + LTCG with BOTH the 0% and
+    15% QDCGT bands active: ordinary taxable income is half the status's
+    0%-band top, preferential income equals that top, so taxable income
+    (1.5x the top) straddles the 0%→15% breakpoint."""
+    view = _status_view(year, status)
+    zero_top = view.qdcgt_breakpoints[0]
+    interest = float(round(zero_top / 20))
+    qualified = float(round(zero_top / 4))
+    ltcg = float(zero_top) - qualified
+    wages = float(view.standard_deduction + round(zero_top / 2)) - interest
+    return Scenario(
+        config=_battery_config(year, status),
+        w2s=_status_w2s(year, status, "Synthetic Employer Q", wages),
+        form1099_int=[Form1099INT(payer="Synthetic Bank", interest=interest)],
+        form1099_div=[Form1099DIV(
+            payer="Synthetic Brokerage",
+            ordinary_dividends=qualified,
+            qualified_dividends=qualified,
+        )],
+        form1099_b=[Form1099B(
+            broker="Synthetic Broker",
+            description="Synthetic Index Fund",
+            date_acquired=f"{year - 2}-04-01",
+            date_sold=f"{year}-09-01",
+            proceeds=2 * ltcg,
+            cost_basis=ltcg,
+            short_term=False,
+            basis_reported_to_irs=True,
+        )],
+    )
+
+
+def build_qbi_k1(year: int, status: FilingStatus) -> Scenario:
+    """S-corp K-1 QBI producing a nonzero Form 8995 deduction: QBI is a
+    quarter of the status's qbi_threshold and taxable income before the
+    QBI deduction is three quarters of it — the simple path, near enough
+    the threshold that the status's column is what decides it."""
+    view = _status_view(year, status)
+    threshold = view.qbi_threshold
+    qbi = float(round(threshold / 4))
+    wages = float(view.standard_deduction + round(threshold * 3 / 4)) - qbi
+    return Scenario(
+        config=_battery_config(
+            year, status,
+            acknowledges_qbi_below_threshold=True,
+            acknowledges_unlimited_at_risk=True,
+            basis_tracked_externally=True,
+            acknowledges_no_partnership_se_earnings=True,
+            acknowledges_no_section_1231_gain=True,
+            acknowledges_no_more_than_four_k1s=True,
+            acknowledges_no_k1_credits=True,
+            acknowledges_no_section_179=True,
+            acknowledges_no_estate_trust_k1=True,
+        ),
+        w2s=_status_w2s(year, status, "Synthetic Employer K", wages),
+        schedule_k1s=[ScheduleK1(
+            entity_name="Synthetic S-Corp QBI Inc", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            ordinary_business_income=qbi, qbi_amount=qbi,
+        )],
+    )
+
+
+def build_itemized_salt_at_cap(year: int, status: FilingStatus) -> Scenario:
+    """Itemizer whose SALT (W-2 box 17 state tax + Form 1098 property tax)
+    is 1.25x the status's salt_cap_starting, so the cap binds; mortgage
+    interest equal to the standard deduction makes itemizing win. Wages put
+    taxable income at the top of the status's 22% bracket — under every
+    year's SALT phaseout threshold (sch_a refuses above it)."""
+    view = _status_view(year, status)
+    cap = view.salt_cap_starting
+    wages = float(view.standard_deduction + view.ordinary_brackets[2][0])
+    return Scenario(
+        config=_battery_config(year, status),
+        w2s=_status_w2s(year, status, "Synthetic Employer S", wages,
+                        state_tax_withheld=float(round(cap * 3 / 4))),
+        form1098s=[Form1098(
+            lender="Synthetic Mortgage Co",
+            mortgage_interest=float(view.standard_deduction),
+            property_tax=float(round(cap / 2)),
+        )],
+    )
+
+
+def build_addl_medicare(year: int, status: FilingStatus) -> Scenario:
+    """Medicare wages 5% over the status's addl_medicare_threshold, so Form
+    8959 computes a nonzero Additional Medicare Tax. MFJ wages split across
+    both spouses (each under the wage base); the threshold is joint."""
+    view = _status_view(year, status)
+    wages = float(round(view.addl_medicare_threshold * 21 / 20))
+    return Scenario(
+        config=_battery_config(year, status),
+        w2s=_status_w2s(year, status, "Synthetic Employer M", wages),
+    )
+
+
+def build_ptc_reconciliation(year: int, status: FilingStatus) -> Scenario:
+    """Form 1095-A reconciliation: the ptc_net_credit coverage block with
+    wages at 2.50x the FPL for the return's tax-family size (Form 8962 line
+    1, per tax_family_size). Head of household is a REFUSAL row (ruling
+    R-hoh-ptc: tax_family_size raises for HoH); its wages use the
+    filer-alone FPL only so the row is buildable — the refusal fires before
+    any family size is read."""
+    config = _battery_config(year, status)
+    family_size = (1 if status is FilingStatus.HEAD_OF_HOUSEHOLD
+                   else tax_family_size(config))
+    fpl = f8962_params.load(year).fpl_48_by_family_size[family_size]
+    wages = float(round(2.50 * fpl))
+    return Scenario(
+        config=config,
+        w2s=_status_w2s(year, status, "Synthetic Employer P", wages),
+        form_1095a=Form1095A(months=_ptc_net_credit_months()),
+    )
+
+
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
@@ -656,6 +859,31 @@ _YEAR_2021_ONLY_BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
 ]
 
 
+# The six kinds' builders, in REQUIRED_STATUS_SCENARIO_KINDS order.
+_STATUS_KIND_BUILDERS: tuple[
+        tuple[str, Callable[[int, FilingStatus], Scenario]], ...] = (
+    ("wages_only", build_wages_only),
+    ("investments_qdcgt", build_investments_qdcgt),
+    ("qbi_k1", build_qbi_k1),
+    ("itemized_salt_at_cap", build_itemized_salt_at_cap),
+    ("addl_medicare", build_addl_medicare),
+    ("ptc_reconciliation", build_ptc_reconciliation),
+)
+
+_STATUS_ROW_SUFFIX: dict[FilingStatus, str] = {
+    FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
+    FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
+}
+
+# (status value, kind) -> the refusal-row kind that covers that cell. Ruling
+# R-hoh-ptc: HoH + Form 1095-A refuses, so HoH's ptc_reconciliation cell is
+# covered by a row that must refuse — for that cell only.
+DECLARED_REFUSAL_CELLS: dict[tuple[str, str], str] = {
+    (FilingStatus.HEAD_OF_HOUSEHOLD.value, "ptc_reconciliation"):
+        "ptc_reconciliation_refused",
+}
+
+
 # Scenario kinds every declared NON-single (year, status) in
 # years.NATIVE_SPINE_STATUSES must carry in its battery (ruling R-battery-n:
 # the six spec §9 kinds). A battery entry's kind is its name prefix before
@@ -677,11 +905,20 @@ def battery_for(
     """The parity battery for a (year, status): (name, zero-arg builder) pairs.
 
     SINGLE: every year gets the shared _BUILDERS set; 2021 additionally gets
-    the 2021-only ARPA unemployment-compensation scenario. Non-single statuses
-    have no battery rows yet (empty list); they land with each status's
-    declaration in years.NATIVE_SPINE_STATUSES.
+    the 2021-only ARPA unemployment-compensation scenario. MFJ / HoH: one
+    `<kind>__mfj` / `<kind>__hoh` row per REQUIRED_STATUS_SCENARIO_KINDS
+    kind, renamed to its DECLARED_REFUSAL_CELLS kind where that cell is a
+    refusal. Rows exist whether or not the (year, status) is declared in
+    years.NATIVE_SPINE_STATUSES; building one for a year whose params lack
+    the status's column raises UnsupportedStatusError. Other statuses: [].
     """
     if status != FilingStatus.SINGLE:
-        return []
+        suffix = _STATUS_ROW_SUFFIX.get(status)
+        if suffix is None:
+            return []
+        return [
+            (f"{DECLARED_REFUSAL_CELLS.get((status.value, kind), kind)}"
+             f"__{suffix}", functools.partial(build, year, status))
+            for kind, build in _STATUS_KIND_BUILDERS]
     builders = _BUILDERS + (_YEAR_2021_ONLY_BUILDERS if year == 2021 else [])
     return [(name, functools.partial(build, year)) for name, build in builders]
