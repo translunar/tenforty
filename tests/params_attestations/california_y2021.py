@@ -16,6 +16,8 @@ pairs starting at (0, 0.01), keyed per status because California publishes three
 distinct schedules (X/Y/Z) covering the five statuses.
 """
 
+import datetime
+
 SOURCES: tuple[str, ...] = (
     # Primary source for every 2021 value below: the FTB 2021 Personal Income
     # Tax Booklet (Form 540 + instructions), fetched directly from ftb.ca.gov.
@@ -156,17 +158,15 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 120,   # "Head of household or qualifying widow(er), enter $120"
         "qualifying_widow": 120,    # "Head of household or qualifying widow(er), enter $120"
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "senior_exemption_credit": None,
-    "senior_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement incl. a third reading of the
+    # amount). Amount: Form 540 line 9 "x $" box (box assigned by
+    # rendered-page position). Date: team-lead words-to-date ruling from the
+    # verbatim Line 9 wording + footnote (both transcribers deferred, as the
+    # booklet prints no born-before date): exclusive cutoff January 2, 1957.
+    "senior_exemption_credit": 129,
+    "senior_born_before": datetime.date(1957, 1, 2),
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "senior_exemption_credit": (
-        "Form 540 senior exemption credit per qualifying senior; awaiting "
-        "dual transcription (native-filing-statuses round, age-65-params)."),
-    "senior_born_before": (
-        "Form 540 senior qualifying cutoff from the year's pinned FTB "
-        "edition; awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }
