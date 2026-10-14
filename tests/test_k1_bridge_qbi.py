@@ -207,6 +207,7 @@ def _mfj(scenario):
             spouse_first_name="Taxpayer",
             spouse_last_name="B",
             spouse_ssn="000-00-0001",
+            spouse_birthdate="1986-07-09",
         ),
     )
 
@@ -263,9 +264,6 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     without soffice by `WorkbookQbiThresholdGuardUnitTests` below, via a
     mocked `_compute_1040_via_workbook`."""
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "Birthday_Needed harvest refusal fires before the QBI guard; "
-        "spouse-birthdate unit restores reachability"))
     @pytest.mark.oracle
     def test_above_threshold_non_single_raises_instead_of_silent_workbook_result(self):
         """400,000 of W-2 wages plus the 70,000 K-1 QBI-bearing income is
@@ -287,19 +285,9 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         which is why the defect cannot make it silently pass for a wrong
         reason.
 
-        STRICT-XFAIL, NOT SKIPPED, AND THE ASSERTION IS KEPT. The QBI guard
-        reads a workbook result that `_compute_1040_via_workbook` must first
-        produce, and that call now REFUSES on MFJ before returning: the
-        `Deduction` named range carries "Birthdate(s) needed.", so
-        `f1040.compute` raises. The refusal is a NotImplementedError too, but
-        with a different message, so `assertRaisesRegex(..., "8995-A|8995A")`
-        fails rather than passing for the wrong reason — which is exactly
-        what the xfail expects. This guard's MFJ coverage is therefore
-        STRUCTURALLY UNREACHABLE until the spouse-birthdate unit lands; the
-        HOH companion below still covers the below-threshold side live.
-        Strict xfail is self-enforcing: when reachability returns this XPASSes,
-        strict-xfail turns that into a suite FAILURE, and whoever lands that
-        unit is forced to restore the live pin."""
+        `_mfj` supplies `spouse_birthdate`, so the workbook's `Birthday_Needed`
+        refusal no longer fires ahead of the QBI guard; this test was
+        strict-xfail until that input existed."""
         scenario = _mfj(_make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0))
         scenario = dataclasses.replace(scenario, w2s=[
