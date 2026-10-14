@@ -878,13 +878,11 @@ class ReturnOrchestrator:
         threshold for the filing status. There is no acknowledge-and-proceed:
         above the threshold the correct deduction needs the unmodeled form.
         """
-        from tenforty.models import FilingStatus
         from tenforty.params.federal import load as load_params
-        thresholds = load_params(
-            scenario.config.year).excess_business_loss_threshold
-        # FilingStatus(...) accepts the enum or its raw string value.
-        status = FilingStatus(scenario.config.filing_status).value
-        threshold = thresholds[status]
+        view = load_params(scenario.config.year).for_status(
+            scenario.config.filing_status)
+        status = view.status.value
+        threshold = view.excess_business_loss_threshold
         losses = aggregate_business_losses(scenario)
         if losses > threshold:
             raise NotImplementedError(
@@ -990,9 +988,8 @@ class ReturnOrchestrator:
             if (qbi_total > 0
                     and not effective_scenario.config
                     .acknowledges_qbi_below_threshold):
-                threshold = params.qbi_threshold[
-                    effective_scenario.config.filing_status.value
-                ]
+                threshold = params.for_status(
+                    effective_scenario.config.filing_status).qbi_threshold
                 # Same figure f8995.compute gates on: taxable income BEFORE
                 # the QBI deduction (form_1040.compute adds the deduction
                 # back onto its own "taxable_income" output under this key).
@@ -3152,7 +3149,8 @@ class ReturnOrchestrator:
         total = sch_a.get("sch_a_line_17_total", 0)
         from tenforty.params.federal import load as _load_federal_params
         _params = _load_federal_params(scenario.config.year)
-        std = _params.standard_deduction[scenario.config.filing_status.value]
+        std = _params.for_status(
+            scenario.config.filing_status).standard_deduction
         return total > std
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:

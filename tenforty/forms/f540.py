@@ -21,11 +21,11 @@ from tenforty.rounding import irs_round
 
 
 def compute_standard_deduction(year: int, filing_status: FilingStatus) -> int:
-    return ca_params.load(year).standard_deduction[filing_status.value]
+    return ca_params.load(year).for_status(filing_status).standard_deduction
 
 
 def compute_exemption_credit(year: int, filing_status: FilingStatus) -> int:
-    return ca_params.load(year).exemption_credit[filing_status.value]
+    return ca_params.load(year).for_status(filing_status).exemption_credit
 
 
 def _walk_rate_schedule(schedule: list[tuple[int, float]], income: float) -> float:
@@ -65,7 +65,7 @@ def compute_ca_tax(
     the FTB Rate Schedule branch directly. Returns the computed
     tax rounded to the nearest dollar (FTB convention).
     """
-    rate_schedule = ca_params.load(year).rate_schedule[filing_status.value]
+    rate_schedule = ca_params.load(year).for_status(filing_status).rate_schedule
 
     if taxable_income <= 0:
         return 0
@@ -105,10 +105,10 @@ def _compute_renters_credit(
     ca_agi: int,
 ) -> int:
     """CA renter's credit. Per oracle Q4: gate uses CA AGI (not federal)."""
-    params = ca_params.load(year)
-    if ca_agi > params.renter_credit_agi_threshold[filing_status.value]:
+    view = ca_params.load(year).for_status(filing_status)
+    if ca_agi > view.renter_credit_agi_threshold:
         return 0
-    return params.renter_credit_amount[filing_status.value]
+    return view.renter_credit_amount
 
 
 def compute(

@@ -80,7 +80,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         itemized = float(scenario.config.prior_year_itemized_deduction_amount or 0)
         standard = float(scenario.config.prior_year_standard_deduction_amount or 0)
         recovery_cap = max(0.0, itemized - standard)
-        cap = float(params.prior_year_salt_cap[scenario.config.filing_status.value])
+        cap = float(params.for_status(
+            scenario.config.filing_status).prior_year_salt_cap)
         # prior_year_salt_paid is required at load whenever prior_year_itemized
         # is True, so it is present here; `or 0.0` is belt-and-suspenders.
         salt_paid = float(scenario.config.prior_year_salt_paid or 0.0)

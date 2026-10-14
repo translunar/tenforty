@@ -22,7 +22,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 
     taxable_income = float(f1040.get("taxable_income_before_qbi_deduction", 0))
     net_cap_gain = float(f1040.get("net_capital_gain", 0))
-    threshold = params.qbi_threshold[scenario.config.filing_status.value]
+    threshold = params.for_status(scenario.config.filing_status).qbi_threshold
 
     # Schedule C QBI component (aggregated, computed once — plan D5). Each
     # sole-proprietor business contributes QBI = net profit less the allocable

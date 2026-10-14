@@ -71,6 +71,14 @@ class FederalParams:
     # un-netted business losses exceed it.
     excess_business_loss_threshold: dict[str, int]
 
+    def for_status(self, status: "FilingStatus | str") -> "StatusView":
+        """Projection of these params onto one filing status. Per-status
+        fields (PER_STATUS_FEDERAL_FIELDS) read that status's column, raising
+        UnsupportedStatusError when it is missing; other fields pass
+        through."""
+        from tenforty.params.status_view import StatusView
+        return StatusView(self, status, PER_STATUS_FEDERAL_FIELDS)
+
 
 # Every FederalParams field whose value is a dict keyed by FilingStatus value
 # strings. The params-completeness gate checks each of these for every
