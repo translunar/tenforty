@@ -27,6 +27,7 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, _FederalFormSpec
+from tenforty.params.federal import load as load_federal_params
 from tenforty.rounding import irs_round
 from tenforty.years import FEDERAL_YEARS
 from tests.helpers import scope_out_attestation_defaults
@@ -34,6 +35,7 @@ from tests.helpers import scope_out_attestation_defaults
 REPO_ROOT = Path(__file__).parent.parent
 
 YEAR = 2025
+_SS_WAGE_BASE = float(load_federal_params(YEAR).ss_wage_base)
 
 
 def _scenario(wages: float, withheld: float, form_1095a=None) -> Scenario:
@@ -53,8 +55,9 @@ def _scenario(wages: float, withheld: float, form_1095a=None) -> Scenario:
                 employer="Acme Corp",
                 wages=wages,
                 federal_tax_withheld=withheld,
-                ss_wages=wages,
-                ss_tax_withheld=round(wages * 0.062),
+                # One employer withholds SS only up to the wage base.
+                ss_wages=min(wages, _SS_WAGE_BASE),
+                ss_tax_withheld=round(min(wages, _SS_WAGE_BASE) * 0.062, 2),
                 medicare_wages=wages,
                 medicare_tax_withheld=round(wages * 0.0145),
             ),
