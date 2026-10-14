@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import math
 from collections.abc import Mapping
 from pathlib import Path
@@ -249,6 +250,35 @@ def refuse_blank_mfj_spouse_identity(config, form: str) -> None:
             "missing field(s), or change `filing_status` if this is not a "
             "joint return."
         )
+
+
+def form_1040_age_box_values(
+        config, aged_born_before: datetime.date) -> dict[str, bool]:
+    """The Form 1040 age checkboxes ("You: Were born before ..." / "Spouse:
+    Was born before ..."), as a pure decision over ``config``.
+
+    ``aged_born_before`` is the year's exclusive cutoff date, passed in by
+    the caller: born strictly before it meets the condition. The taxpayer
+    box follows ``birthdate``; the spouse box is set only on a joint return
+    and follows ``spouse_birthdate``. A joint return without a spouse
+    birthdate is refused (the loader requires it; a config built around the
+    loader must not print an unchecked box by default).
+    """
+    def born_before(value: str) -> bool:
+        return datetime.date.fromisoformat(value) < aged_born_before
+
+    joint = parse_filing_status(config.filing_status) is (
+        FilingStatus.MARRIED_FILING_JOINTLY)
+    if joint and not config.spouse_birthdate:
+        raise ValueError(
+            "Form 1040 age checkboxes for a married_filing_jointly return "
+            "need `spouse_birthdate` (ISO YYYY-MM-DD), which is blank in the "
+            "scenario config.")
+    return {
+        "age_taxpayer_born_before": born_before(config.birthdate),
+        "age_spouse_born_before": (
+            joint and born_before(config.spouse_birthdate)),
+    }
 
 
 def _format_mmddyyyy(d) -> str:
@@ -1804,8 +1834,10 @@ class ReturnOrchestrator:
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year),
+            # aged_born_before stays None until age-65-params is adjudicated;
+            # then it is wired from the year's federal params here.
             values={**results, **self._form_1040_checkbox_values(
-                scenario, results),
+                scenario, results, aged_born_before=None),
                 **self._form_1040_direct_deposit_values(scenario, results)},
             checkbox_states=Pdf1040.get_checkbox_states(year),
             # 1040 line 24 (total tax) is filled by a derivation rather than a
@@ -3345,6 +3377,7 @@ class ReturnOrchestrator:
 
     def _form_1040_checkbox_values(
         self, scenario: Scenario, results: dict,
+        aged_born_before: datetime.date | None = None,
     ) -> dict[str, bool]:
         """The Form 1040's bool checkbox keys, derived from the scenario.
 
@@ -3354,7 +3387,9 @@ class ReturnOrchestrator:
         Schedule D is emitted, so the box and the attachment cannot disagree.
         Digital assets: Yes/No from the config; neither box when unanswered
         (reachable only for 2021, see the refusal in
-        `_federal_individual_emit_specs`).
+        `_federal_individual_emit_specs`). Age boxes: from
+        `form_1040_age_box_values` when the year's cutoff is supplied; with
+        no cutoff (pending transcription) no age key is emitted at all.
         """
         status = scenario.config.filing_status
         keys = {
@@ -3380,6 +3415,9 @@ class ReturnOrchestrator:
         # upstream); unstated leaves the pair blank.
         if scenario.config.third_party_designee is False:
             values["third_party_designee_no"] = True
+        if aged_born_before is not None:
+            values.update(form_1040_age_box_values(
+                scenario.config, aged_born_before))
         return values
 
     @staticmethod
