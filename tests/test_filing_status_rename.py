@@ -189,8 +189,11 @@ class FlattenerStatusKeyTests(unittest.TestCase):
 
 class RetiredLiteralSweepTests(unittest.TestCase):
     ALLOW = {"tenforty/models.py", "tests/test_filing_status_rename.py"}
+    # Lowercase alternatives are unanchored so embedded forms
+    # (`filing_status_married_jointly`) match; `married_filing_*` cannot.
+    # Uppercase stays anchored so MARRIED_FILING_* cannot false-positive.
     PATTERN = re.compile(
-        r"\bMARRIED_(JOINTLY|SEPARATELY)\b|\bmarried_(jointly|separately)\b")
+        r"\bMARRIED_(JOINTLY|SEPARATELY)\b|married_(jointly|separately)")
 
     def test_no_retired_literal_outside_the_refusal_table(self):
         hits = []
