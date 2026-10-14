@@ -99,5 +99,11 @@ PARAMS = CaliforniaParams(
     # Excluded: the Voluntary Contribution Fund Descriptions (code 400) also
     # restate an age condition; that is a different provision, not a source.
     senior_exemption_credit=153,
-    senior_born_before=None,
+    # senior_born_before RULED by team-lead 2026-10-14 (words-to-date
+    # adjudication per plan: both transcribers deferred): the booklet's
+    # "65 years of age or older by December 31, 2025" plus its footnote
+    # (65th birthday on January 1, 2026 counts as 65 on December 31,
+    # 2025) means born on or before January 1, 1961 -- exclusive
+    # born-before cutoff January 2, 1961. Verbatim wording above.
+    senior_born_before=datetime.date(1961, 1, 2),
 )
