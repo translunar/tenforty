@@ -112,8 +112,8 @@ ATTESTED: dict[str, object] = {
     # Source: IRS "New and enhanced deductions for individuals". QSS = MFJ.
     "standard_deduction": {
         "single": 15750,
-        "married_jointly": 31500,
-        "married_separately": 15750,
+        "married_filing_jointly": 31500,
+        "married_filing_separately": 15750,
         "head_of_household": 23625,
         "qualifying_widow": 31500,  # QSS = MFJ standard deduction
     },
@@ -140,8 +140,8 @@ ATTESTED: dict[str, object] = {
     # (0%-rate maximum taxable income, 15%-rate maximum taxable income).
     "qdcgt_breakpoints": {
         "single": (48350, 533400),
-        "married_jointly": (96700, 600050),
-        "married_separately": (48350, 300000),
+        "married_filing_jointly": (96700, 600050),
+        "married_filing_separately": (48350, 300000),
         "head_of_household": (64750, 566700),
         "qualifying_widow": (96700, 600050),  # QSS = MFJ
     },
@@ -159,8 +159,8 @@ ATTESTED: dict[str, object] = {
     # only halved status.
     "capital_loss_limit": {
         "single": 3000,
-        "married_jointly": 3000,
-        "married_separately": 1500,
+        "married_filing_jointly": 3000,
+        "married_filing_separately": 1500,
         "head_of_household": 3000,
         "qualifying_widow": 3000,  # QSS is not MFS -> full $3,000
     },
@@ -169,8 +169,8 @@ ATTESTED: dict[str, object] = {
     # (NOT inflation-adjusted): $250k MFJ, $125k MFS, $200k all others.
     "addl_medicare_threshold": {
         "single": 200000,
-        "married_jointly": 250000,
-        "married_separately": 125000,
+        "married_filing_jointly": 250000,
+        "married_filing_separately": 125000,
         "head_of_household": 200000,
         "qualifying_widow": 200000,  # "all other" case
     },
@@ -185,8 +185,8 @@ ATTESTED: dict[str, object] = {
     # $197,300 all other returns. QSS/HoH/MFS/single = "all other returns".
     "qbi_threshold": {
         "single": 197300,
-        "married_jointly": 394600,
-        "married_separately": 197300,
+        "married_filing_jointly": 394600,
+        "married_filing_separately": 197300,
         "head_of_household": 197300,
         "qualifying_widow": 197300,  # QSS = "all other returns" per Form 8995
     },
@@ -194,8 +194,8 @@ ATTESTED: dict[str, object] = {
     # OBBBA TY2025 SALT cap: $40,000 ($20,000 MFS). Source: 2025 Sch A instr.
     "salt_cap_starting": {
         "single": 40000,
-        "married_jointly": 40000,
-        "married_separately": 20000,
+        "married_filing_jointly": 40000,
+        "married_filing_separately": 20000,
         "head_of_household": 40000,
         "qualifying_widow": 40000,
     },
@@ -210,8 +210,8 @@ ATTESTED: dict[str, object] = {
     # and cannot drop below: $10,000 ($5,000 MFS). Source: 2025 Sch A instr.
     "salt_cap_floor": {
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -223,8 +223,8 @@ ATTESTED: dict[str, object] = {
     # TY2024 cap = $10,000 ($5,000 MFS). Source: 2024 Instructions for Sch A.
     "prior_year_salt_cap": {
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -246,8 +246,8 @@ ATTESTED: dict[str, object] = {
     # jointly takes the single amount.
     "excess_business_loss_threshold": {
         "single": 313000,
-        "married_jointly": 626000,
-        "married_separately": 313000,
+        "married_filing_jointly": 626000,
+        "married_filing_separately": 313000,
         "head_of_household": 313000,
         "qualifying_widow": 313000,
     },

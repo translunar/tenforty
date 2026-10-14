@@ -61,7 +61,7 @@ class F8959AboveThresholdTests(unittest.TestCase):
 
     def test_mfj_threshold_is_250k(self):
         scenario = make_simple_scenario()
-        scenario.config.filing_status = FilingStatus.MARRIED_JOINTLY
+        scenario.config.filing_status = FilingStatus.MARRIED_FILING_JOINTLY
         scenario.w2s = [_w2(300_000)]
         result = compute(scenario, upstream={"f1040": {}})
         self.assertEqual(result["f8959_line_5"], 250000)
@@ -70,7 +70,7 @@ class F8959AboveThresholdTests(unittest.TestCase):
 
     def test_mfs_threshold_is_125k(self):
         scenario = make_simple_scenario()
-        scenario.config.filing_status = FilingStatus.MARRIED_SEPARATELY
+        scenario.config.filing_status = FilingStatus.MARRIED_FILING_SEPARATELY
         scenario.w2s = [_w2(200_000)]
         result = compute(scenario, upstream={"f1040": {}})
         self.assertEqual(result["f8959_line_5"], 125000)

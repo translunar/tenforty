@@ -49,7 +49,7 @@ class XlsxSaltOracleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.sch_a["P16"].value,
-            self.params.salt_cap_starting[FilingStatus.MARRIED_SEPARATELY.value],
+            self.params.salt_cap_starting[FilingStatus.MARRIED_FILING_SEPARATELY.value],
         )
 
     def test_floors_match_constants(self):
@@ -60,7 +60,7 @@ class XlsxSaltOracleTests(unittest.TestCase):
         )
         self.assertEqual(
             self.sch_a["T15"].value,
-            self.params.salt_cap_floor[FilingStatus.MARRIED_SEPARATELY.value],
+            self.params.salt_cap_floor[FilingStatus.MARRIED_FILING_SEPARATELY.value],
         )
 
     def test_phaseout_threshold_and_rate_match_constants(self):

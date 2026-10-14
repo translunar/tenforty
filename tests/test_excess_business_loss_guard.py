@@ -132,7 +132,7 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
                 thresholds = load_federal_params(
                     year).excess_business_loss_threshold
                 self.assertGreater(thresholds["single"], 0)
-                self.assertEqual(thresholds["married_jointly"],
+                self.assertEqual(thresholds["married_filing_jointly"],
                                  2 * thresholds["single"])
 
     def test_schedule_c_loss_over_the_threshold_refuses(self):
@@ -190,9 +190,9 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
         native spine. The guard must refuse it too -- BEFORE the workbook is
         evaluated."""
         scn = _scenario(rentals=[_rental_loss(
-            _threshold(2025, "married_jointly") + 1)])
+            _threshold(2025, "married_filing_jointly") + 1)])
         mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_jointly"))
+            scn.config, filing_status="married_filing_jointly"))
         self.assertFalse(self.orch._scenario_in_spine_scope(mfj))
         with mock.patch.object(
                 self.orch, "_compute_1040_via_workbook",
@@ -208,7 +208,7 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
         # return UNDER the threshold does go to the workbook.
         scn = _scenario(rentals=[_rental_loss(1_000)])
         mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_jointly"))
+            scn.config, filing_status="married_filing_jointly"))
         with mock.patch.object(
                 self.orch, "_compute_1040_via_workbook",
                 return_value={"taxable_income": 0}) as workbook:
@@ -218,11 +218,11 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
                 pass  # downstream of the mocked workbook is not under test
         workbook.assert_called_once()
 
-    def test_married_jointly_uses_its_own_threshold(self):
+    def test_married_filing_jointly_uses_its_own_threshold(self):
         single_limit = _threshold(2025)
         scn = _scenario(k1s=[_k1_loss(single_limit + 1)])
         mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_jointly"))
+            scn.config, filing_status="married_filing_jointly"))
         # Over the single threshold, under the joint one: the guard itself
         # must not fire for the joint filer.
         self.orch._refuse_possible_excess_business_loss(mfj)

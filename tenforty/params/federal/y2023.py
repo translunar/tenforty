@@ -6,8 +6,8 @@ from tenforty.models import FilingStatus
 from tenforty.params.federal import FederalParams
 
 _S   = FilingStatus.SINGLE.value
-_MFJ = FilingStatus.MARRIED_JOINTLY.value
-_MFS = FilingStatus.MARRIED_SEPARATELY.value
+_MFJ = FilingStatus.MARRIED_FILING_JOINTLY.value
+_MFS = FilingStatus.MARRIED_FILING_SEPARATELY.value
 _HOH = FilingStatus.HEAD_OF_HOUSEHOLD.value
 _QW  = FilingStatus.QUALIFYING_WIDOW.value
 

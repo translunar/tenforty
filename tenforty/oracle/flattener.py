@@ -3,14 +3,28 @@ from tenforty.forms.depreciation.resolver import (
     resolve as resolve_depreciation,
 )
 from tenforty.forms.f8949 import BOX_KEYS, adjustment_code_and_amount
-from tenforty.models import Scenario
+from tenforty.models import FilingStatus, Scenario
 
-_FILING_STATUS_KEYS = {
-    "single": "filing_status_single",
-    "married_jointly": "filing_status_married_jointly",
-    "married_separately": "filing_status_married_separately",
-    "head_of_household": "filing_status_head_of_household",
-    "qualifying_widow": "filing_status_qualifying_widow",
+# Both status maps are keyed by FilingStatus member and indexed with [] —
+# fail-closed: a status with no workbook checkbox raises KeyError instead of
+# silently feeding the oracle a status-less return.
+_FILING_STATUS_KEYS: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE: "filing_status_single",
+    FilingStatus.MARRIED_FILING_JOINTLY: "filing_status_married_filing_jointly",
+    FilingStatus.MARRIED_FILING_SEPARATELY:
+        "filing_status_married_filing_separately",
+    FilingStatus.HEAD_OF_HOUSEHOLD: "filing_status_head_of_household",
+    FilingStatus.QUALIFYING_WIDOW: "filing_status_qualifying_widow",
+}
+
+# The SALT worksheet has its own filing-status checkboxes (P6/P8/P10/P12/P14)
+# NOT linked to the main 1040 named ranges.
+_SALT_FILING_STATUS_KEYS: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE: "salt_filing_status_single",
+    FilingStatus.MARRIED_FILING_JOINTLY: "salt_filing_status_mfj",
+    FilingStatus.MARRIED_FILING_SEPARATELY: "salt_filing_status_mfs",
+    FilingStatus.HEAD_OF_HOUSEHOLD: "salt_filing_status_hoh",
+    FilingStatus.QUALIFYING_WIDOW: "salt_filing_status_qw",
 }
 
 
@@ -35,9 +49,7 @@ def flatten_scenario(scenario: Scenario) -> dict[str, object]:
 def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
     config = scenario.config
 
-    status_key = _FILING_STATUS_KEYS.get(config.filing_status)
-    if status_key:
-        flat[status_key] = "X"
+    flat[_FILING_STATUS_KEYS[config.filing_status]] = "X"
 
     parts = config.birthdate.split("-")
     flat["birthdate_year"] = int(parts[0])
@@ -61,17 +73,7 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
                 config.prior_year_itemized_deduction_amount
             )
 
-        # The SALT worksheet has its own filing-status checkboxes
-        # (P6/P8/P10/P12/P14) NOT linked to the main 1040 named ranges.
-        salt_status_key = {
-            "single": "salt_filing_status_single",
-            "married_jointly": "salt_filing_status_mfj",
-            "married_separately": "salt_filing_status_mfs",
-            "head_of_household": "salt_filing_status_hoh",
-            "qualifying_widow": "salt_filing_status_qw",
-        }.get(config.filing_status)
-        if salt_status_key:
-            flat[salt_status_key] = "X"
+        flat[_SALT_FILING_STATUS_KEYS[config.filing_status]] = "X"
 
     # Estimated tax payments (Form 1040 line 26). Conditional (nonzero-only)
     # emission mirrors the W-2 state-withheld style above: existing scenarios

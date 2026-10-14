@@ -173,7 +173,7 @@ class TestNonitemizerCharitableCash(unittest.TestCase):
 
     def test_mfj_nonitemizer_charitable_cash_refused_as_out_of_scope(self) -> None:
         config_body = self._make_config_body(
-            year=2021, filing_status="married_jointly",
+            year=2021, filing_status="married_filing_jointly",
             charitable_cash_nonitemizer=400.0)
         with self.assertRaises(ValueError) as ctx:
             self._load_with_config(config_body)

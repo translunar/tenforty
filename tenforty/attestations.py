@@ -1963,7 +1963,7 @@ def _f3115_joint_filer(s: Scenario) -> list[str]:
     if _f3115(s) is None:
         return []
     status = FilingStatus(s.config.filing_status)
-    return ([status.value] if status is FilingStatus.MARRIED_JOINTLY else [])
+    return ([status.value] if status is FilingStatus.MARRIED_FILING_JOINTLY else [])
 
 
 def _f3115_identity_missing(s: Scenario) -> list[str]:

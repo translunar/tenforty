@@ -1,3 +1,4 @@
+import difflib
 from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import Enum
@@ -351,10 +352,47 @@ class RentalProperty:
 
 class FilingStatus(str, Enum):
     SINGLE = "single"
-    MARRIED_JOINTLY = "married_jointly"
-    MARRIED_SEPARATELY = "married_separately"
+    MARRIED_FILING_JOINTLY = "married_filing_jointly"
+    MARRIED_FILING_SEPARATELY = "married_filing_separately"
     HEAD_OF_HOUSEHOLD = "head_of_household"
     QUALIFYING_WIDOW = "qualifying_widow"
+
+
+# Status strings retired in v0.2.0 (renamed to the IRS's own "married filing
+# ..." wording). Kept ONLY so the parser can refuse them with a pointer to the
+# replacement — never accepted as an alias: a scenario on disk that still says
+# `married_jointly` must be patched, not silently reinterpreted.
+RETIRED_FILING_STATUS_STRINGS: dict[str, FilingStatus] = {
+    "married_jointly": FilingStatus.MARRIED_FILING_JOINTLY,
+    "married_separately": FilingStatus.MARRIED_FILING_SEPARATELY,
+}
+
+
+def parse_filing_status(value: "str | FilingStatus") -> FilingStatus:
+    """The single input boundary for a filing-status value.
+
+    A ``FilingStatus`` member passes through. A valid value string maps to its
+    member. A retired string raises ``ValueError`` naming its replacement; any
+    other unknown string raises ``ValueError`` with a did-you-mean suggestion
+    when one is close (same ``difflib`` pattern as the divergence catalog).
+    """
+    if isinstance(value, FilingStatus):
+        return value
+    try:
+        return FilingStatus(value)
+    except ValueError:
+        pass
+    replacement = RETIRED_FILING_STATUS_STRINGS.get(value)
+    if replacement is not None:
+        raise ValueError(
+            f"filing_status {value!r} was renamed to {replacement.value!r} "
+            f"in v0.2.0; update the scenario to use {replacement.value!r}")
+    valid = [s.value for s in FilingStatus]
+    matches = difflib.get_close_matches(str(value), valid, n=1)
+    suggestion = f"; did you mean {matches[0]!r}?" if matches else ""
+    raise ValueError(
+        f"unknown filing_status {value!r} (valid: {', '.join(valid)})"
+        f"{suggestion}")
 
 
 class EntityType(str, Enum):
@@ -670,7 +708,7 @@ class TaxReturnConfig:
     # tax-benefit-rule compute. None at load raises.
     prior_year_itemized: bool | None = None
     # --- Conditional fields (validated only when sibling is set) ---
-    # Required only when filing_status == MARRIED_SEPARATELY. Per IRC §469(i)(5),
+    # Required only when filing_status == MARRIED_FILING_SEPARATELY. Per IRC §469(i)(5),
     # MFS filers who lived with a spouse at any time during the year have a
     # $0 Form 8582 special allowance for rental real estate.
     mfs_lived_with_spouse_any_time: bool | None = None
@@ -705,8 +743,7 @@ class TaxReturnConfig:
     self_employed_health_insurance_deduction: float = 0.0
 
     def __post_init__(self) -> None:
-        if isinstance(self.filing_status, str):
-            self.filing_status = FilingStatus(self.filing_status)
+        self.filing_status = parse_filing_status(self.filing_status)
 
     @property
     def full_name(self) -> str:

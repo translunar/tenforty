@@ -120,10 +120,10 @@ class TestLine21Cap(unittest.TestCase):
 
     def test_mfs_filing_status_branch(self):
         # -5,000 loss, MFS ($1,500 cap, half the single/MFJ figure).
-        cap = _cap("married_separately")
+        cap = _cap("married_filing_separately")
         self.assertEqual(cap, 1_500)
         out = _compute(short=-5_000, long=0,
-                       filing_status="married_separately",
+                       filing_status="married_filing_separately",
                        taxable_income_unfloored=_POSITIVE_TI)
         self.assertEqual(out["sch_d_line_16_total"], -5_000)
         self.assertEqual(out["sch_d_line_21_allowed_loss"], -cap)

@@ -281,9 +281,9 @@ def compute(
 # can claim you") reduces this, but that box is not modeled, so it stays unset.
 _PERSONAL_EXEMPTION_COUNT: dict[FilingStatus, int] = {
     FilingStatus.SINGLE: 1,
-    FilingStatus.MARRIED_SEPARATELY: 1,
+    FilingStatus.MARRIED_FILING_SEPARATELY: 1,
     FilingStatus.HEAD_OF_HOUSEHOLD: 1,
-    FilingStatus.MARRIED_JOINTLY: 2,
+    FilingStatus.MARRIED_FILING_JOINTLY: 2,
     FilingStatus.QUALIFYING_WIDOW: 2,
 }
 

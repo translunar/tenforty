@@ -32,8 +32,8 @@ ATTESTED: dict[str, object] = {
     # California Standard Deduction Chart for Most People (booklet p. 12).
     "standard_deduction": {
         "single": 5540,               # Chart line 1 – Single
-        "married_jointly": 11080,      # Chart line 2 – Married/RDP filing jointly
-        "married_separately": 5540,    # Chart line 3 – Married/RDP filing separately
+        "married_filing_jointly": 11080,      # Chart line 2 – Married/RDP filing jointly
+        "married_filing_separately": 5540,    # Chart line 3 – Married/RDP filing separately
         "head_of_household": 11080,    # Chart line 4 – Head of household
         "qualifying_widow": 11080,     # Chart line 5 – Qualifying surviving spouse/RDP
     },
@@ -43,8 +43,8 @@ ATTESTED: dict[str, object] = {
     # QSS) claim 2 ($298).
     "exemption_credit": {
         "single": 149,                 # f540 line 7: 1 x $149
-        "married_jointly": 298,        # f540 line 7: 2 x $149
-        "married_separately": 149,     # f540 line 7: 1 x $149
+        "married_filing_jointly": 298,        # f540 line 7: 2 x $149
+        "married_filing_separately": 149,     # f540 line 7: 1 x $149
         "head_of_household": 149,      # f540 line 7: 1 x $149
         "qualifying_widow": 298,       # f540 line 7: 2 x $149
     },
@@ -66,13 +66,13 @@ ATTESTED: dict[str, object] = {
             (721314, 0.123),
         ),  # tax_rate_schedules.pdf Schedule X
         # Schedule Y – Married/RDP filing jointly or Qualifying surviving spouse/RDP
-        "married_jointly": (
+        "married_filing_jointly": (
             (0, 0.01), (21512, 0.02), (50998, 0.04), (80490, 0.06),
             (111732, 0.08), (141212, 0.093), (721318, 0.103), (865574, 0.113),
             (1442628, 0.123),
         ),  # tax_rate_schedules.pdf Schedule Y
         # Schedule X – shared by MFS
-        "married_separately": (
+        "married_filing_separately": (
             (0, 0.01), (10756, 0.02), (25499, 0.04), (40245, 0.06),
             (55866, 0.08), (70606, 0.093), (360659, 0.103), (432787, 0.113),
             (721314, 0.123),
@@ -95,8 +95,8 @@ ATTESTED: dict[str, object] = {
     # AGI (Form 540 line 17) at or below these limits.
     "renter_credit_agi_threshold": {
         "single": 52421,               # "single or married/RDP filing separately"
-        "married_jointly": 104842,     # "MFJ, HOH, or QSS"
-        "married_separately": 52421,   # "single or married/RDP filing separately"
+        "married_filing_jointly": 104842,     # "MFJ, HOH, or QSS"
+        "married_filing_separately": 52421,   # "single or married/RDP filing separately"
         "head_of_household": 104842,   # "MFJ, HOH, or QSS"
         "qualifying_widow": 104842,    # "MFJ, HOH, or QSS"
     },
@@ -104,8 +104,8 @@ ATTESTED: dict[str, object] = {
     # Renter's credit amount entered on Form 540 line 46 (booklet p. 26, q.11).
     "renter_credit_amount": {
         "single": 60,                  # "Single, enter $60"
-        "married_jointly": 120,        # "Married/RDP filing jointly, enter $120"
-        "married_separately": 60,      # "MFS ... may claim half the amount ($60)"
+        "married_filing_jointly": 120,        # "Married/RDP filing jointly, enter $120"
+        "married_filing_separately": 60,      # "MFS ... may claim half the amount ($60)"
         "head_of_household": 120,      # "Head of household ... enter $120"
         "qualifying_widow": 120,       # "qualifying surviving spouse/RDP ... $120"
     },

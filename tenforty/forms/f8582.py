@@ -51,7 +51,7 @@ def special_allowance(
     - mfs, lived apart all year:  base=$12,500, phaseout $50k-$75k MAGI.
     - mfs, lived with spouse any time: $0 (no allowance).
     """
-    if filing_status == FilingStatus.MARRIED_SEPARATELY:
+    if filing_status == FilingStatus.MARRIED_FILING_SEPARATELY:
         if mfs_lived_with_spouse_any_time:
             return 0.0
         base, phaseout_start, phaseout_end = 12_500.0, 50_000.0, 75_000.0

@@ -176,7 +176,7 @@ class TestMFJSpouseSSN(unittest.TestCase):
         config = TaxReturnConfig(
             digital_assets=False,
             year=2025,
-            filing_status=FilingStatus.MARRIED_JOINTLY,
+            filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
             birthdate="1982-03-10",
             state="NY",
             first_name="Carol",

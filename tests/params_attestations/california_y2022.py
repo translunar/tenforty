@@ -38,8 +38,8 @@ ATTESTED: dict[str, object] = {
     "standard_deduction": {
         # "California Standard Deduction Chart for Most People" (Enter On Line 18):
         "single": 5202,               # "1 - Single ... $5,202"
-        "married_jointly": 10404,     # "2 - Married/RDP filing jointly ... $10,404"
-        "married_separately": 5202,   # "3 - Married/RDP filing separately ... $5,202"
+        "married_filing_jointly": 10404,     # "2 - Married/RDP filing jointly ... $10,404"
+        "married_filing_separately": 5202,   # "3 - Married/RDP filing separately ... $5,202"
         "head_of_household": 10404,   # "4 - Head of household ... $10,404"
         "qualifying_widow": 10404,    # "5 - Qualifying surviving spouse/RDP ... $10,404"
     },
@@ -51,9 +51,9 @@ ATTESTED: dict[str, object] = {
         # single/MFS/HoH), so the attested per-status value is the LINE-7 TOTAL
         # = $140 × count.
         "single": 140,               # 1 personal exemption × $140
-        "married_separately": 140,   # 1 × $140
+        "married_filing_separately": 140,   # 1 × $140
         "head_of_household": 140,    # 1 × $140
-        "married_jointly": 280,      # 2 personal exemptions × $140
+        "married_filing_jointly": 280,      # 2 personal exemptions × $140
         "qualifying_widow": 280,     # 2 × $140 (line 7 "box 2 or 5, enter 2")
     },
     # Form 540 Side 1, line 10 "Total dependent exemptions ... X $433".
@@ -88,7 +88,7 @@ ATTESTED: dict[str, object] = {
             (406364, 0.113),   # $406,364 - $677,275 -> 11.30%
             (677275, 0.123),   # $677,275 AND OVER -> 12.30%
         ),
-        "married_separately": (  # Schedule X (same as single)
+        "married_filing_separately": (  # Schedule X (same as single)
             (0, 0.01),
             (10099, 0.02),
             (23942, 0.04),
@@ -100,7 +100,7 @@ ATTESTED: dict[str, object] = {
             (677275, 0.123),
         ),
         # Schedule Y - Married/RDP Filing Jointly or Qualifying Surviving Spouse/RDP:
-        "married_jointly": (
+        "married_filing_jointly": (
             (0, 0.01),         # $0 - $20,198 -> 1.00%
             (20198, 0.02),     # $20,198 - $47,884 -> 2.00%
             (47884, 0.04),     # $47,884 - $75,576 -> 4.00%
@@ -139,8 +139,8 @@ ATTESTED: dict[str, object] = {
         # Nonrefundable Renter's Credit Qualification Record, Q2:
         # "Is your California adjusted gross income the amount on line 17:"
         "single": 49220,              # "$49,220 or less if single or married/RDP filing separately"
-        "married_separately": 49220,  # same clause: "$49,220 or less if single or married/RDP filing separately"
-        "married_jointly": 98440,     # "$98,440 or less if married/RDP filing jointly, head of household, or qualifying surviving spouse/RDP"
+        "married_filing_separately": 49220,  # same clause: "$49,220 or less if single or married/RDP filing separately"
+        "married_filing_jointly": 98440,     # "$98,440 or less if married/RDP filing jointly, head of household, or qualifying surviving spouse/RDP"
         "head_of_household": 98440,   # same clause: $98,440
         "qualifying_widow": 98440,    # same clause: $98,440
     },
@@ -148,8 +148,8 @@ ATTESTED: dict[str, object] = {
         # Nonrefundable Renter's Credit Qualification Record, Q11
         # ("If you are: ... enter $XX on Form 540, line 46"):
         "single": 60,               # "Single, enter $60"
-        "married_separately": 60,   # "Married/RDP filing separately ... each spouse/RDP may claim half the amount ($60 each)"
-        "married_jointly": 120,     # "Married/RDP filing jointly, enter $120"
+        "married_filing_separately": 60,   # "Married/RDP filing separately ... each spouse/RDP may claim half the amount ($60 each)"
+        "married_filing_jointly": 120,     # "Married/RDP filing jointly, enter $120"
         "head_of_household": 120,   # "Head of household or qualifying surviving spouse/RDP, enter $120"
         "qualifying_widow": 120,    # "Head of household or qualifying surviving spouse/RDP, enter $120"
     },

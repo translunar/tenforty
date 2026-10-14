@@ -227,7 +227,7 @@ _REFUSAL = (
     "guessing is worst. In none of these cases are the figures ours to "
     "publish.\n"
     "\n"
-    "CAUSE: for MARRIED_JOINTLY and MARRIED_SEPARATE — which is every return "
+    "CAUSE: for MARRIED_FILING_JOINTLY and MARRIED_FILING_SEPARATELY — which is every return "
     "that reaches this refusal today — tenforty supplies no spouse birthdate "
     "at all, so the workbook's `Birthday_Needed` flag is unconditionally TRUE "
     "and this diagnostic always fires. REMEDY: the spouse-birthdate unit adds "

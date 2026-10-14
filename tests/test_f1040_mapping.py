@@ -26,8 +26,8 @@ class TestF1040Inputs2025(unittest.TestCase):
     def test_filing_status_fields(self):
         inputs = F1040.get_inputs(2025)
         self.assertEqual(inputs["filing_status_single"], "File_Single")
-        self.assertEqual(inputs["filing_status_married_jointly"], "File_Marr_Joint")
-        self.assertEqual(inputs["filing_status_married_separately"], "File_Marr_Sep")
+        self.assertEqual(inputs["filing_status_married_filing_jointly"], "File_Marr_Joint")
+        self.assertEqual(inputs["filing_status_married_filing_separately"], "File_Marr_Sep")
         self.assertEqual(inputs["filing_status_head_of_household"], "File_Head")
 
     def test_birthdate_fields(self):

@@ -442,8 +442,8 @@ class F1040(FormMapping):
     INPUTS: dict[int, dict[str, str]] = {
         2024: {
             "filing_status_single": "File_Single",
-            "filing_status_married_jointly": "File_Marr_Joint",
-            "filing_status_married_separately": "File_Marr_Sep",
+            "filing_status_married_filing_jointly": "File_Marr_Joint",
+            "filing_status_married_filing_separately": "File_Marr_Sep",
             "filing_status_head_of_household": "File_Head",
             "filing_status_qualifying_widow": "File_Qual_Widow",
             "birthdate_month": "YourBirthMonth",
@@ -607,8 +607,8 @@ class F1040(FormMapping):
         },
         2025: {
             "filing_status_single": "File_Single",
-            "filing_status_married_jointly": "File_Marr_Joint",
-            "filing_status_married_separately": "File_Marr_Sep",
+            "filing_status_married_filing_jointly": "File_Marr_Joint",
+            "filing_status_married_filing_separately": "File_Marr_Sep",
             "filing_status_head_of_household": "File_Head",
             "filing_status_qualifying_widow": "File_Qual_Widow",
             "birthdate_month": "YourBirthMonth",

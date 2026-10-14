@@ -36,8 +36,8 @@ ATTESTED: dict[str, object] = {
     "standard_deduction": {
         # "California Standard Deduction Chart for Most People" (Enter On Line 18):
         "single": 4803,              # "1 - Single ... $4,803"
-        "married_jointly": 9606,     # "2 - Married/RDP filing jointly ... $9,606"
-        "married_separately": 4803,  # "3 - Married/RDP filing separately ... $4,803"
+        "married_filing_jointly": 9606,     # "2 - Married/RDP filing jointly ... $9,606"
+        "married_filing_separately": 4803,  # "3 - Married/RDP filing separately ... $4,803"
         "head_of_household": 9606,   # "4 - Head of household ... $9,606"
         "qualifying_widow": 9606,    # "5 - Qualifying widow(er) ... $9,606"
     },
@@ -48,9 +48,9 @@ ATTESTED: dict[str, object] = {
         # enter 2" for MFJ / Qualifying Widow(er); "1" for single/MFS/HoH), so
         # the attested per-status value is the LINE-7 TOTAL = $129 × count.
         "single": 129,               # 1 personal exemption × $129
-        "married_separately": 129,   # 1 × $129
+        "married_filing_separately": 129,   # 1 × $129
         "head_of_household": 129,    # 1 × $129
-        "married_jointly": 258,      # 2 personal exemptions × $129
+        "married_filing_jointly": 258,      # 2 personal exemptions × $129
         "qualifying_widow": 258,     # 2 × $129 (line 7 "box 2 or 5, enter 2")
     },
     # Form 540 Side 1, line 10 "Total dependent exemptions ... X $400".
@@ -85,7 +85,7 @@ ATTESTED: dict[str, object] = {
             (375221, 0.113),   # $375,221 - $625,369 -> 11.30%
             (625369, 0.123),   # $625,369 AND OVER -> 12.30%
         ),
-        "married_separately": (  # Schedule X (same as single)
+        "married_filing_separately": (  # Schedule X (same as single)
             (0, 0.01),
             (9325, 0.02),
             (22107, 0.04),
@@ -97,7 +97,7 @@ ATTESTED: dict[str, object] = {
             (625369, 0.123),
         ),
         # Schedule Y - Married/RDP Filing Jointly or Qualifying Widow(er):
-        "married_jointly": (
+        "married_filing_jointly": (
             (0, 0.01),         # $0 - $18,650 -> 1.00%
             (18650, 0.02),     # $18,650 - $44,214 -> 2.00%
             (44214, 0.04),     # $44,214 - $69,784 -> 4.00%
@@ -136,8 +136,8 @@ ATTESTED: dict[str, object] = {
         # Nonrefundable Renter's Credit Qualification Record, Page 23, Q2:
         # "Is your California adjusted gross income the amount on line 17:"
         "single": 45448,              # "$45,448 or less if single or married/RDP filing separately"
-        "married_separately": 45448,  # same clause: "$45,448 or less if single or married/RDP filing separately"
-        "married_jointly": 90896,     # "$90,896 or less if married/RDP filing jointly, head of household, or qualifying widow(er)"
+        "married_filing_separately": 45448,  # same clause: "$45,448 or less if single or married/RDP filing separately"
+        "married_filing_jointly": 90896,     # "$90,896 or less if married/RDP filing jointly, head of household, or qualifying widow(er)"
         "head_of_household": 90896,   # same clause: $90,896
         "qualifying_widow": 90896,    # same clause: $90,896
     },
@@ -145,8 +145,8 @@ ATTESTED: dict[str, object] = {
         # Nonrefundable Renter's Credit Qualification Record, Page 23, Q11
         # ("If you are: ... enter $XX on Form 540, line 46"):
         "single": 60,               # "Single, enter $60"
-        "married_separately": 60,   # "Married/RDP filing separately ... each spouse/RDP may claim half the amount ($60 each)"
-        "married_jointly": 120,     # "Married/RDP filing jointly, enter $120"
+        "married_filing_separately": 60,   # "Married/RDP filing separately ... each spouse/RDP may claim half the amount ($60 each)"
+        "married_filing_jointly": 120,     # "Married/RDP filing jointly, enter $120"
         "head_of_household": 120,   # "Head of household or qualifying widow(er), enter $120"
         "qualifying_widow": 120,    # "Head of household or qualifying widow(er), enter $120"
     },

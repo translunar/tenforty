@@ -51,8 +51,8 @@ ATTESTED: dict[str, object] = {
 
     "standard_deduction": {
         "single": 5706,               # 2EZ Single table note ($5,706)
-        "married_jointly": 11412,      # 2EZ MFJ/QSS table note ($11,412)
-        "married_separately": 5706,    # sch_ca.pdf line 30 worksheet: "Single or married/RDP filing separately ... $5,706" (verbatim); + ftb.ca.gov 2025 540 instructions "enter $5,706"
+        "married_filing_jointly": 11412,      # 2EZ MFJ/QSS table note ($11,412)
+        "married_filing_separately": 5706,    # sch_ca.pdf line 30 worksheet: "Single or married/RDP filing separately ... $5,706" (verbatim); + ftb.ca.gov 2025 540 instructions "enter $5,706"
         "head_of_household": 11412,    # 2EZ HOH table note ($11,412)
         "qualifying_widow": 11412,     # 2EZ MFJ/QSS table note ($11,412)
     },
@@ -61,8 +61,8 @@ ATTESTED: dict[str, object] = {
     # 1/3/4 (single, MFS, HOH) claim 1 ($153); statuses 2/5 (MFJ, QSS) claim 2.
     "exemption_credit": {
         "single": 153,                 # f540 line 7: 1 x $153
-        "married_jointly": 306,        # f540 line 7: 2 x $153
-        "married_separately": 153,     # f540 line 7: 1 x $153
+        "married_filing_jointly": 306,        # f540 line 7: 2 x $153
+        "married_filing_separately": 153,     # f540 line 7: 1 x $153
         "head_of_household": 153,      # f540 line 7: 1 x $153
         "qualifying_widow": 306,       # f540 line 7: 2 x $153
     },
@@ -83,13 +83,13 @@ ATTESTED: dict[str, object] = {
             (742953, 0.123),
         ),  # tax_rate_schedules.pdf Schedule X
         # Schedule Y – Married/RDP filing jointly or Qualifying surviving spouse/RDP
-        "married_jointly": (
+        "married_filing_jointly": (
             (0, 0.01), (22158, 0.02), (52528, 0.04), (82904, 0.06),
             (115084, 0.08), (145448, 0.093), (742958, 0.103), (891542, 0.113),
             (1485906, 0.123),
         ),  # tax_rate_schedules.pdf Schedule Y
         # Schedule X – shared by MFS
-        "married_separately": (
+        "married_filing_separately": (
             (0, 0.01), (11079, 0.02), (26264, 0.04), (41452, 0.06),
             (57542, 0.08), (72724, 0.093), (371479, 0.103), (445771, 0.113),
             (742953, 0.123),
@@ -112,8 +112,8 @@ ATTESTED: dict[str, object] = {
     # q.2). MFS confirmed to share the single limit via ftb.ca.gov 540 instr.
     "renter_credit_agi_threshold": {
         "single": 53994,              # "$53,994 or less if single"
-        "married_jointly": 107988,     # "$107,988 or less if MFJ, HOH, or QSS"
-        "married_separately": 53994,   # ftb.ca.gov renter's-credit page (curl, verbatim): "$53,994 or less if ... single or married/RDP filing separately"
+        "married_filing_jointly": 107988,     # "$107,988 or less if MFJ, HOH, or QSS"
+        "married_filing_separately": 53994,   # ftb.ca.gov renter's-credit page (curl, verbatim): "$53,994 or less if ... single or married/RDP filing separately"
         "head_of_household": 107988,   # "$107,988 ... MFJ, HOH, or QSS"
         "qualifying_widow": 107988,    # "$107,988 ... MFJ, HOH, or QSS"
     },
@@ -121,8 +121,8 @@ ATTESTED: dict[str, object] = {
     # Renter's credit amount (2EZ booklet p. 13, q.11; MFS via ftb.ca.gov).
     "renter_credit_amount": {
         "single": 60,                  # "Single, enter $60"
-        "married_jointly": 120,        # "Married/RDP filing jointly, enter $120"
-        "married_separately": 60,      # ftb.ca.gov renter's-credit page (curl, verbatim): "$60 credit if you are: Single, Married/RDP filing separately"
+        "married_filing_jointly": 120,        # "Married/RDP filing jointly, enter $120"
+        "married_filing_separately": 60,      # ftb.ca.gov renter's-credit page (curl, verbatim): "$60 credit if you are: Single, Married/RDP filing separately"
         "head_of_household": 120,      # "Head of household ... enter $120"
         "qualifying_widow": 120,       # "qualifying surviving spouse/RDP ... $120"
     },

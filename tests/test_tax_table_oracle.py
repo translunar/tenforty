@@ -22,8 +22,8 @@ from tenforty.tax_table import TABLE_CEILING, load_table, tax_from_table
 
 _CA_COLUMN_STATUS = (
     ("single", FilingStatus.SINGLE),
-    ("mfj", FilingStatus.MARRIED_JOINTLY),
-    ("mfs", FilingStatus.MARRIED_SEPARATELY),
+    ("mfj", FilingStatus.MARRIED_FILING_JOINTLY),
+    ("mfs", FilingStatus.MARRIED_FILING_SEPARATELY),
     ("hoh", FilingStatus.HEAD_OF_HOUSEHOLD),
 )
 

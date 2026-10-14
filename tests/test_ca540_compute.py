@@ -17,36 +17,36 @@ from tenforty.forms.f540 import (
 EXPECTED_STANDARD_DEDUCTION: dict[int, dict[FilingStatus, int]] = {
     2025: {
         FilingStatus.SINGLE: 5_706,
-        FilingStatus.MARRIED_SEPARATELY: 5_706,
-        FilingStatus.MARRIED_JOINTLY: 11_412,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 5_706,
+        FilingStatus.MARRIED_FILING_JOINTLY: 11_412,
         FilingStatus.HEAD_OF_HOUSEHOLD: 11_412,
         FilingStatus.QUALIFYING_WIDOW: 11_412,
     },
     2024: {
         FilingStatus.SINGLE: 5_540,
-        FilingStatus.MARRIED_SEPARATELY: 5_540,
-        FilingStatus.MARRIED_JOINTLY: 11_080,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 5_540,
+        FilingStatus.MARRIED_FILING_JOINTLY: 11_080,
         FilingStatus.HEAD_OF_HOUSEHOLD: 11_080,
         FilingStatus.QUALIFYING_WIDOW: 11_080,
     },
     2023: {
         FilingStatus.SINGLE: 5_363,
-        FilingStatus.MARRIED_SEPARATELY: 5_363,
-        FilingStatus.MARRIED_JOINTLY: 10_726,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 5_363,
+        FilingStatus.MARRIED_FILING_JOINTLY: 10_726,
         FilingStatus.HEAD_OF_HOUSEHOLD: 10_726,
         FilingStatus.QUALIFYING_WIDOW: 10_726,
     },
     2022: {
         FilingStatus.SINGLE: 5_202,
-        FilingStatus.MARRIED_SEPARATELY: 5_202,
-        FilingStatus.MARRIED_JOINTLY: 10_404,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 5_202,
+        FilingStatus.MARRIED_FILING_JOINTLY: 10_404,
         FilingStatus.HEAD_OF_HOUSEHOLD: 10_404,
         FilingStatus.QUALIFYING_WIDOW: 10_404,
     },
     2021: {
         FilingStatus.SINGLE: 4_803,
-        FilingStatus.MARRIED_SEPARATELY: 4_803,
-        FilingStatus.MARRIED_JOINTLY: 9_606,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 4_803,
+        FilingStatus.MARRIED_FILING_JOINTLY: 9_606,
         FilingStatus.HEAD_OF_HOUSEHOLD: 9_606,
         FilingStatus.QUALIFYING_WIDOW: 9_606,
     },
@@ -56,37 +56,37 @@ EXPECTED_STANDARD_DEDUCTION: dict[int, dict[FilingStatus, int]] = {
 EXPECTED_EXEMPTION_CREDIT: dict[int, dict[FilingStatus, int]] = {
     2025: {
         FilingStatus.SINGLE: 153,
-        FilingStatus.MARRIED_SEPARATELY: 153,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 153,
         FilingStatus.HEAD_OF_HOUSEHOLD: 153,
-        FilingStatus.MARRIED_JOINTLY: 306,
+        FilingStatus.MARRIED_FILING_JOINTLY: 306,
         FilingStatus.QUALIFYING_WIDOW: 306,
     },
     2024: {
         FilingStatus.SINGLE: 149,
-        FilingStatus.MARRIED_SEPARATELY: 149,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 149,
         FilingStatus.HEAD_OF_HOUSEHOLD: 149,
-        FilingStatus.MARRIED_JOINTLY: 298,
+        FilingStatus.MARRIED_FILING_JOINTLY: 298,
         FilingStatus.QUALIFYING_WIDOW: 298,
     },
     2023: {
         FilingStatus.SINGLE: 144,
-        FilingStatus.MARRIED_SEPARATELY: 144,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 144,
         FilingStatus.HEAD_OF_HOUSEHOLD: 144,
-        FilingStatus.MARRIED_JOINTLY: 288,
+        FilingStatus.MARRIED_FILING_JOINTLY: 288,
         FilingStatus.QUALIFYING_WIDOW: 288,
     },
     2022: {
         FilingStatus.SINGLE: 140,
-        FilingStatus.MARRIED_SEPARATELY: 140,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 140,
         FilingStatus.HEAD_OF_HOUSEHOLD: 140,
-        FilingStatus.MARRIED_JOINTLY: 280,
+        FilingStatus.MARRIED_FILING_JOINTLY: 280,
         FilingStatus.QUALIFYING_WIDOW: 280,
     },
     2021: {
         FilingStatus.SINGLE: 129,
-        FilingStatus.MARRIED_SEPARATELY: 129,
+        FilingStatus.MARRIED_FILING_SEPARATELY: 129,
         FilingStatus.HEAD_OF_HOUSEHOLD: 129,
-        FilingStatus.MARRIED_JOINTLY: 258,
+        FilingStatus.MARRIED_FILING_JOINTLY: 258,
         FilingStatus.QUALIFYING_WIDOW: 258,
     },
 }
@@ -153,14 +153,14 @@ class UnsupportedYearTests(unittest.TestCase):
 TAX_TABLE_BOUNDARY_ANCHORS_2025: dict[tuple[FilingStatus, int], int] = {
     # $50,000 — bin $49,951-$50,050 (regular 100-wide bin, midpoint $50,000.5)
     (FilingStatus.SINGLE,             50_000): 1_535,
-    (FilingStatus.MARRIED_SEPARATELY, 50_000): 1_535,
-    (FilingStatus.MARRIED_JOINTLY,    50_000):   778,
+    (FilingStatus.MARRIED_FILING_SEPARATELY, 50_000): 1_535,
+    (FilingStatus.MARRIED_FILING_JOINTLY,    50_000):   778,
     (FilingStatus.QUALIFYING_WIDOW,   50_000):   778,
     (FilingStatus.HEAD_OF_HOUSEHOLD,  50_000):   778,
     # $100,000 — bin $99,951-$100,000 (TRUNCATED last bin, midpoint $99,975.5)
     (FilingStatus.SINGLE,            100_000): 5_736,
-    (FilingStatus.MARRIED_SEPARATELY,100_000): 5_736,
-    (FilingStatus.MARRIED_JOINTLY,   100_000): 3_068,
+    (FilingStatus.MARRIED_FILING_SEPARATELY,100_000): 5_736,
+    (FilingStatus.MARRIED_FILING_JOINTLY,   100_000): 3_068,
     (FilingStatus.QUALIFYING_WIDOW,  100_000): 3_068,
     (FilingStatus.HEAD_OF_HOUSEHOLD, 100_000): 3_708,
 }
@@ -182,7 +182,7 @@ EXPECTED_CHRIS_PAT_MFJ_125K: dict[int, int] = {
 RATE_SCHEDULE_BOUNDARY_ANCHORS_2025: dict[FilingStatus, int] = {
     # $100,001 — first dollar above the Tax Table; uses Rate Schedule branch
     FilingStatus.SINGLE:          5_739,
-    FilingStatus.MARRIED_JOINTLY: 3_070,
+    FilingStatus.MARRIED_FILING_JOINTLY: 3_070,
 }
 
 
@@ -220,7 +220,7 @@ class ChrisPatMFJ125KTests(unittest.TestCase):
         for year, expected in EXPECTED_CHRIS_PAT_MFJ_125K.items():
             with self.subTest(year=year):
                 self.assertEqual(
-                    compute_ca_tax(year, FilingStatus.MARRIED_JOINTLY, 125_000),
+                    compute_ca_tax(year, FilingStatus.MARRIED_FILING_JOINTLY, 125_000),
                     expected,
                 )
 
@@ -251,7 +251,7 @@ class HighIncomeBinMidpointTests(unittest.TestCase):
                            taxable_income=70_700),
             3_117)
         self.assertEqual(
-            compute_ca_tax(year=2024, filing_status=FilingStatus.MARRIED_SEPARATELY,
+            compute_ca_tax(year=2024, filing_status=FilingStatus.MARRIED_FILING_SEPARATELY,
                            taxable_income=70_700),
             3_117)
 
@@ -290,7 +290,7 @@ class ComputePipelineWalkTests(unittest.TestCase):
     def test_ty2025_mfj_100k_two_dependents_no_renter(self):
         result = compute(
             year=2025,
-            filing_status=FilingStatus.MARRIED_JOINTLY,
+            filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
             federal_agi=100_000,
             ca_agi=100_000,
             ca540=CA540Return(),
@@ -361,12 +361,12 @@ class ChrisPatMFJ125kFinalLiabilityTests(unittest.TestCase):
     def test_chris_pat_mfj_125k_pipeline_all_years(self):
         for year, expected_ca_tax in EXPECTED_CHRIS_PAT_MFJ_125K.items():
             with self.subTest(year=year):
-                std_ded = EXPECTED_STANDARD_DEDUCTION[year][FilingStatus.MARRIED_JOINTLY]
-                exemption = EXPECTED_EXEMPTION_CREDIT[year][FilingStatus.MARRIED_JOINTLY]
+                std_ded = EXPECTED_STANDARD_DEDUCTION[year][FilingStatus.MARRIED_FILING_JOINTLY]
+                exemption = EXPECTED_EXEMPTION_CREDIT[year][FilingStatus.MARRIED_FILING_JOINTLY]
                 ca_agi = 125_000 + std_ded
                 result = compute(
                     year=year,
-                    filing_status=FilingStatus.MARRIED_JOINTLY,
+                    filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
                     federal_agi=ca_agi,
                     ca_agi=ca_agi,
                     ca540=CA540Return(),
@@ -567,12 +567,12 @@ class California2024ConstantsTests(unittest.TestCase):
     def test_standard_deduction(self):
         # Source: FTB Form 540 (TY2024) side 2, line 18 worksheet
         self.assertEqual(self.params_2024.standard_deduction[FilingStatus.SINGLE.value], 5_540)
-        self.assertEqual(self.params_2024.standard_deduction[FilingStatus.MARRIED_JOINTLY.value], 11_080)
+        self.assertEqual(self.params_2024.standard_deduction[FilingStatus.MARRIED_FILING_JOINTLY.value], 11_080)
 
     def test_exemption_credit(self):
         # Source: FTB Form 540 (TY2024) side 1, lines 7-10; per-person = $149
         self.assertEqual(self.params_2024.exemption_credit[FilingStatus.SINGLE.value], 149)      # 1 × $149
-        self.assertEqual(self.params_2024.exemption_credit[FilingStatus.MARRIED_JOINTLY.value], 298)  # 2 × $149
+        self.assertEqual(self.params_2024.exemption_credit[FilingStatus.MARRIED_FILING_JOINTLY.value], 298)  # 2 × $149
 
     def test_dependent_exemption_and_phaseout(self):
         # Source: FTB Form 540 (TY2024) side 2, line 10 ($461 each)
@@ -593,7 +593,7 @@ class California2024ConstantsTests(unittest.TestCase):
     def test_rate_schedule_mfj_endpoints(self):
         # Source: FTB 2024 Tax Rate Schedules (booklet p. 75), Schedule Y
         # MFJ thresholds are exactly 2× Schedule X
-        sched = self.params_2024.rate_schedule[FilingStatus.MARRIED_JOINTLY.value]
+        sched = self.params_2024.rate_schedule[FilingStatus.MARRIED_FILING_JOINTLY.value]
         self.assertEqual(len(sched), 9)
         self.assertEqual(sched[0], (0, 0.01))
         self.assertEqual(sched[-1][1], 0.123)

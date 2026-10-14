@@ -43,11 +43,11 @@ from tenforty.models import FilingStatus
 
 _FILING_STATUS_RB_STATES: dict[FilingStatus, str] = {
     FilingStatus.SINGLE: "/1 . Single.",
-    FilingStatus.MARRIED_JOINTLY: (
+    FilingStatus.MARRIED_FILING_JOINTLY: (
         "/2 . Married/R D P filing jointly "
         "(even if only one spouse / R D P had income). See instructions."
     ),
-    FilingStatus.MARRIED_SEPARATELY: "/3 . Married or R D P filing separately.",
+    FilingStatus.MARRIED_FILING_SEPARATELY: "/3 . Married or R D P filing separately.",
     FilingStatus.HEAD_OF_HOUSEHOLD: (
         "/4 . Head of household (with qualifying person). See instructions."
     ),
@@ -342,11 +342,11 @@ _CHECKBOX_STATES_2025: dict[str, str] = {}
 
 _FILING_STATUS_RB_STATES_2024: dict[FilingStatus, str] = {
     FilingStatus.SINGLE: "/Box 1 . Single.",
-    FilingStatus.MARRIED_JOINTLY: (
+    FilingStatus.MARRIED_FILING_JOINTLY: (
         "/Box 2 . Married/Registered Domestic Partner filing jointly "
         "(even if only one spouse/Registered Domestic Partner had income). See instructions."
     ),
-    FilingStatus.MARRIED_SEPARATELY: (
+    FilingStatus.MARRIED_FILING_SEPARATELY: (
         "/Box 3 . Married or Registered Domestic Partner filing separately."
     ),
     FilingStatus.HEAD_OF_HOUSEHOLD: (
@@ -530,8 +530,8 @@ _AGGREGATIONS_2023: dict[str, tuple[str, ...]] = {}
 # Source of truth for both the derivations below and the coverage test.
 _FILING_STATUS_CB_2023: dict[FilingStatus, str] = {
     FilingStatus.SINGLE:             "1036 CB",  # Line 1. Single
-    FilingStatus.MARRIED_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
-    FilingStatus.MARRIED_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
+    FilingStatus.MARRIED_FILING_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
+    FilingStatus.MARRIED_FILING_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
     FilingStatus.HEAD_OF_HOUSEHOLD:  "1040 CB",  # Line 4. Head of household
     FilingStatus.QUALIFYING_WIDOW:   "1041 CB",  # Line 5. Qualifying surviving spouse / RDP
 }
@@ -679,8 +679,8 @@ _AGGREGATIONS_2021: dict[str, tuple[str, ...]] = {}
 # ON-state is /Yes per each box's OWN /_States_ (['/Yes', '/Off']).
 _FILING_STATUS_CB_2021: dict[FilingStatus, str] = {
     FilingStatus.SINGLE:             "1029 CB",  # Line 1. Single
-    FilingStatus.MARRIED_JOINTLY:    "1030 CB",  # Line 2. MFJ / RDP jointly
-    FilingStatus.MARRIED_SEPARATELY: "1031 CB",  # Line 3. MFS / RDP separately
+    FilingStatus.MARRIED_FILING_JOINTLY:    "1030 CB",  # Line 2. MFJ / RDP jointly
+    FilingStatus.MARRIED_FILING_SEPARATELY: "1031 CB",  # Line 3. MFS / RDP separately
     FilingStatus.HEAD_OF_HOUSEHOLD:  "1033 CB",  # Line 4. Head of household
     FilingStatus.QUALIFYING_WIDOW:   "1034 CB",  # Line 5. Qualifying widow(er)
 }
@@ -875,8 +875,8 @@ _AGGREGATIONS_2022: dict[str, tuple[str, ...]] = {}
 # per each box's OWN /_States_ (['/Yes', '/Off']).
 _FILING_STATUS_CB_2022: dict[FilingStatus, str] = {
     FilingStatus.SINGLE:             "1036 CB",  # Line 1. Single
-    FilingStatus.MARRIED_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
-    FilingStatus.MARRIED_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
+    FilingStatus.MARRIED_FILING_JOINTLY:    "1037 CB",  # Line 2. MFJ / RDP jointly
+    FilingStatus.MARRIED_FILING_SEPARATELY: "1038 CB",  # Line 3. MFS / RDP separately
     FilingStatus.HEAD_OF_HOUSEHOLD:  "1040 CB",  # Line 4. Head of household
     FilingStatus.QUALIFYING_WIDOW:   "1041 CB",  # Line 5. Qualifying surviving spouse / RDP
 }
