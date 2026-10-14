@@ -544,9 +544,7 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
 # family size and the Table 5 "any other filing status" column, hand-
 # transcribed in tests/oracles/f8962_reference.py. Production side: compute is
 # called with ``family_size=`` / ``filing_status=`` keywords (a FilingStatus
-# member). Rows marked @unittest.expectedFailure are PENDING the ptc-family
-# lane (family size / status not yet implemented in production); the lane
-# removes the marker when they pass.
+# member).
 # ---------------------------------------------------------------------------
 MFJ = FilingStatus.MARRIED_FILING_JOINTLY
 
@@ -625,7 +623,7 @@ class MFJFamilySizeOracleTests(unittest.TestCase):
             (19720, 250, 1972, 164, 11360, 2640, 1900, 1900))
 
     def test_mfj_rows_reach_their_regime_every_year(self):
-        # Reachability of the pending rows' assertions, on the oracle side.
+        # Reachability of the MFJ battery rows' assertions, on the oracle side.
         for year in YEARS:
             with self.subTest(year=year):
                 cap = reference_f8962(mfj_capped_block(), MFJ_SIZE2_MAGI_250[year],
@@ -653,9 +651,8 @@ class MFJFamilySizeOracleTests(unittest.TestCase):
 
 
 class MFJFamilySizeBatteryTests(_FamilyDiffMixin, unittest.TestCase):
-    """compute vs oracle for MFJ, family size 2. PENDING: ptc-family lane."""
+    """compute vs oracle for MFJ, family size 2."""
 
-    @unittest.expectedFailure  # pending: ptc-family lane (family size / status)
     def test_mfj_below_400_repayment_capped(self):
         for year in YEARS:
             with self.subTest(year=year):
@@ -665,7 +662,6 @@ class MFJFamilySizeBatteryTests(_FamilyDiffMixin, unittest.TestCase):
                 self.assertGreater(c["f8962_line_27"], c["f8962_line_28"])
                 self.assertEqual(c["f8962_line_29_repayment"], c["f8962_line_28"])
 
-    @unittest.expectedFailure  # pending: ptc-family lane (family size / status)
     def test_mfj_net_ptc_due(self):
         for year in YEARS:
             with self.subTest(year=year):
