@@ -341,7 +341,13 @@ def presentation_keys(
         "f540_line7_amount": personal_total,
         "f540_line11_exemption_amount": personal_total + dependent_total,
     }
-    if config.spouse_first_name or config.spouse_last_name:
+    # The spouse block follows the filing status, never name presence: a
+    # joint return always carries it (a blank spouse identity is refused at
+    # emit); married filing separately prints it when named, as before; every
+    # other status carries none.
+    if fs == FilingStatus.MARRIED_FILING_JOINTLY or (
+            fs == FilingStatus.MARRIED_FILING_SEPARATELY
+            and (config.spouse_first_name or config.spouse_last_name)):
         out["f540_spouse_first_name"] = config.spouse_first_name
         out["f540_spouse_last_name"] = config.spouse_last_name
         out["f540_spouse_ssn"] = config.spouse_ssn

@@ -151,7 +151,11 @@ class HeaderKeyTests(unittest.TestCase):
         self.assertEqual(load_scenario(base).config.spouse_middle_initial, "")
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "scn.yaml"
+            # Joint return: a spouse field on a single scenario refuses at
+            # load (SpouseIdentityDisciplineTests).
             path.write_text(base.read_text().replace(
+                "  filing_status: single\n",
+                "  filing_status: married_filing_jointly\n", 1).replace(
                 "config:\n",
                 "config:\n  middle_initial: Q\n  spouse_middle_initial: Z\n", 1))
             cfg = load_scenario(path).config
