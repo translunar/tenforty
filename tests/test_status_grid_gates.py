@@ -250,14 +250,22 @@ class ParamsCompletenessGateTests(unittest.TestCase):
         self.assertEqual(f8962_gaps, [(2025, "single", "f8962.repayment_caps")])
 
     def test_gate_names_an_undeclared_status_f8962_column(self):
-        # Declaring a status whose repayment-cap column has not been
-        # transcribed surfaces in the gate, not at runtime.
+        # Declaring a status whose repayment-cap column is absent surfaces in
+        # the gate, not at runtime. The column is dropped synthetically so the
+        # negative space exists however complete the real params are.
+        def fake(year):
+            p = f8962_params.load(year)
+            return dataclasses.replace(p, repayment_caps={
+                k: v for k, v in p.repayment_caps.items()
+                if k != "married_filing_jointly"})
         gaps = params_gaps({2025: ("single", "married_filing_jointly")},
                            load_federal=load_federal,
                            load_california=ca_params.load,
-                           load_f8962=f8962_params.load)
-        self.assertIn((2025, "married_filing_jointly", "f8962.repayment_caps"),
-                      gaps)
+                           load_f8962=fake)
+        f8962_gaps = [g for g in gaps if g[2].startswith(F8962_GAP_PREFIX)]
+        self.assertEqual(
+            f8962_gaps,
+            [(2025, "married_filing_jointly", "f8962.repayment_caps")])
 
 
 class BatteryCompletenessGateTests(unittest.TestCase):
