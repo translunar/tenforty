@@ -13,14 +13,21 @@ signal we want, so nothing describing production was consulted.
 Covered tax years: 2021, 2022, 2023, 2024, 2025.
 
 Scope (matches the brief -- deliberately narrow):
-  * Tax family size 1, single filer, one qualified-health-plan policy.
+  * One qualified-health-plan policy. Default call: tax family size 1, single
+    filer (the original scope, unchanged). Extended (ptc-family lane): any
+    caller-supplied tax family size >= 1 and filing status single,
+    married_filing_jointly, head_of_household or qualifying_widow (the
+    ``tenforty.models.FilingStatus`` value strings). Family size is taken as
+    given (Form 8962 line 1), not derived from the return.
   * 48 contiguous states + DC federal poverty table only (no AK/HI).
   * The monthly grid (Form 8962 lines 12-23) and totals (lines 24-29).
   * The 2021 ARPA unemployment-compensation rule.
 
 Explicitly OUT of scope (not modeled): line 2b (dependents' MAGI), the annual
 line-11 shortcut, Part IV policy allocations, Part V alternative calculation
-for year of marriage, married-filing-separately repayment, the sub-100%-FPL
+for year of marriage, married filing separately (any computation -- its
+eligibility exceptions and allocation rules are out of scope; the oracle
+raises), the sub-100%-FPL
 applicable-taxpayer eligibility gating and the alien/estimated-income
 exceptions (this oracle assumes the caller is an applicable taxpayer and
 proceeds with the form arithmetic), and the AK/HI poverty tables.
@@ -32,9 +39,20 @@ Primary sources (all fetched from irs.gov/pub/irs-prior):
   * 2024 Instructions for Form 8962: https://www.irs.gov/pub/irs-prior/i8962--2024.pdf
   * 2025 Instructions for Form 8962: https://www.irs.gov/pub/irs-prior/i8962--2025.pdf
 
+Family-size / status-keyed provenance (third independent transcription,
+re-downloaded 2026-10-14 from the URLs above; sha256 of the fetched PDF):
+  * 2021: e4b4e5fa151c6964ec763c727288efc36672ecec1536a006aa0449f9adb6dd48
+  * 2022: de69b83a5d1630b8193f6a61ebf7c140916d1cc3f47bea1634126b9dc182afb0
+  * 2023: a9a9e5989ac3a64239afb8aff4ee03c255b998580ef7ced8b86042a5bcd0e787
+  * 2024: c7aade0f20fe7e32a2a34e6af6d30288f563bc46efc43a682626134e48b899b9
+  * 2025: f4ac86ada178e8aaaf98124b3450cad0cd5d84f7b16bcadd2dd47910e07bf9a2
+  The size-1 / Single figures of that transcription agree with the original
+  constants below, which are left untouched.
+
 Result-dict key names returned by ``reference_f8962`` (documented so a separate
 battery author can reconcile them with the production signature):
-  * ``line4_poverty_line``     -- Form 8962 line 4: federal poverty line, family size 1 ($).
+  * ``line1_family_size``      -- Form 8962 line 1: tax family size (as given).
+  * ``line4_poverty_line``     -- Form 8962 line 4: federal poverty line for the family size ($).
   * ``line5_pct``              -- Form 8962 line 5: household income as an integer % of FPL
                                   (401 is the ">=400%" sentinel).
   * ``line7_applicable_figure``-- Form 8962 line 7: applicable figure (4-dp decimal, as float).
@@ -51,7 +69,8 @@ battery author can reconcile them with the production signature):
   * ``line25_total_aptc``   -- Form 8962 line 25: total APTC = sum of column (f).
   * ``line26_net_ptc``      -- Form 8962 line 26: net PTC (0 when line 24 <= line 25).
   * ``line27_excess_aptc``  -- Form 8962 line 27: excess APTC (0 when line 25 <= line 24).
-  * ``line28_repayment_limitation`` -- Form 8962 line 28: repayment limitation from Table 5
+  * ``line28_repayment_limitation`` -- Form 8962 line 28: repayment limitation from Table 5,
+                                  Single column or "any other filing status" column
                                   (``None`` when line 5 >= 400, i.e. "leave line 28 blank").
   * ``line29_excess_aptc_repayment`` -- Form 8962 line 29: excess APTC repayment
                                   = min(line 27, line 28), or line 27 when line 28 is blank.
@@ -113,6 +132,63 @@ _POVERTY_LINE_FAMILY_SIZE_1 = {
     2024: 14580,
     2025: 15060,
 }
+
+
+# --- Table 1-1 (line 4), every printed family size, 48 states + DC ----------
+# SOURCE (each year's "Line 4" / "Table 1-1. Federal Poverty Line for the 48
+# Contiguous States and the District of Columbia", URLs + sha256 in the module
+# docstring). Line 4: "Enter on line 4 the amount from Table 1-1, 1-2, or 1-3
+# that represents the federal poverty line for your state of residence for the
+# family size you entered on line 1 of Form 8962." The table prints sizes 1-8;
+# its footnote gives the increment for each person beyond 8.
+# Verbatim rows, family size 1..8, then the footnote increment:
+#   2021 (2020 lines): $12,760 $17,240 $21,720 $26,200 $30,680 $35,160
+#                      $39,640 $44,120; "add $4,480 for each additional person"
+#   2022 (2021 lines): $12,880 $17,420 $21,960 $26,500 $31,040 $35,580
+#                      $40,120 $44,660; "add $4,540 for each additional person"
+#   2023 (2022 lines): $13,590 $18,310 $23,030 $27,750 $32,470 $37,190
+#                      $41,910 $46,630; "add $4,720 for each additional person"
+#   2024 (2023 lines): $14,580 $19,720 $24,860 $30,000 $35,140 $40,280
+#                      $45,420 $50,560; "add $5,140 for each additional person"
+#   2025 (2024 lines): $15,060 $20,440 $25,820 $31,200 $36,580 $41,960
+#                      $47,340 $52,720; "add $5,380 for each additional person"
+# Footnote worked example, size 11 (verbatim totals, used as a self-check in
+# the battery): 2021 "$57,560"; 2022 "$58,280"; 2023 "$60,790";
+# 2024 "$65,980"; 2025 "$68,860".
+_POVERTY_LINE_TABLE_1_1 = {
+    2021: (12760, 17240, 21720, 26200, 30680, 35160, 39640, 44120),
+    2022: (12880, 17420, 21960, 26500, 31040, 35580, 40120, 44660),
+    2023: (13590, 18310, 23030, 27750, 32470, 37190, 41910, 46630),
+    2024: (14580, 19720, 24860, 30000, 35140, 40280, 45420, 50560),
+    2025: (15060, 20440, 25820, 31200, 36580, 41960, 47340, 52720),
+}
+_POVERTY_LINE_ADDITIONAL_PERSON = {
+    2021: 4480,
+    2022: 4540,
+    2023: 4720,
+    2024: 5140,
+    2025: 5380,
+}
+
+# The two independent size-1 transcriptions must agree (else: stop, report).
+assert all(
+    _POVERTY_LINE_TABLE_1_1[y][0] == _POVERTY_LINE_FAMILY_SIZE_1[y]
+    for y in _SUPPORTED_YEARS
+), "Table 1-1 size-1 transcription disagrees with _POVERTY_LINE_FAMILY_SIZE_1"
+
+
+def _poverty_line(year: int, family_size: int) -> int:
+    """Form 8962 line 4 from Table 1-1 (48 states + DC) for ``family_size``."""
+    if family_size < 1:
+        raise ValueError(f"family_size must be >= 1, got {family_size}")
+    if family_size == 1:
+        return _POVERTY_LINE_FAMILY_SIZE_1[year]  # original constant, unchanged
+    rows = _POVERTY_LINE_TABLE_1_1[year]
+    if family_size <= len(rows):
+        return rows[family_size - 1]
+    # Footnote: "If your family size was more than 8 people, add $X for each
+    # additional person."
+    return rows[-1] + (family_size - len(rows)) * _POVERTY_LINE_ADDITIONAL_PERSON[year]
 
 
 # --- Table 2 (line 7): applicable figure -----------------------------------
@@ -215,6 +291,45 @@ _REPAYMENT_LIMITATION_SINGLE = {
 }
 
 
+# --- Table 5 (line 28): repayment limitation, "any other filing status" -----
+# SOURCE (each year's "Table 5. Repayment Limitation", URLs + sha256 in the
+# module docstring). Column headings, verbatim: "for a filing status of
+# Single--" and "for any other filing status--". Same brackets as Single.
+# Verbatim "any other filing status" column per year (Less than 200 /
+# At least 200 but less than 300 / At least 300 but less than 400 / 400 or
+# more -> "leave line 28 blank"):
+#   2021 -> $650 / $1,600 / $2,700 / blank
+#   2022 -> $650 / $1,650 / $2,800 / blank
+#   2023 -> $700 / $1,800 / $3,000 / blank
+#   2024 -> $750 / $1,900 / $3,150 / blank
+#   2025 -> $750 / $1,950 / $3,250 / blank
+# The re-transcribed Single column matched _REPAYMENT_LIMITATION_SINGLE above.
+_REPAYMENT_LIMITATION_OTHER_STATUS = {
+    2021: (650, 1600, 2700),
+    2022: (650, 1650, 2800),
+    2023: (700, 1800, 3000),
+    2024: (750, 1900, 3150),
+    2025: (750, 1950, 3250),
+}
+
+# FilingStatus value strings (tenforty.models.FilingStatus) accepted here.
+# Married filing separately is out of scope (see module docstring).
+_STATUS_SINGLE = "single"
+_STATUSES_OTHER_COLUMN = (
+    "married_filing_jointly",
+    "head_of_household",
+    "qualifying_widow",
+)
+
+
+def _status_value(filing_status) -> str:
+    """Accept a FilingStatus member or its value string; reject MFS/unknown."""
+    value = getattr(filing_status, "value", filing_status)
+    if value == _STATUS_SINGLE or value in _STATUSES_OTHER_COLUMN:
+        return value
+    raise ValueError(f"filing_status {filing_status!r} is outside oracle scope")
+
+
 def _line5_percentage(magi_whole: int, poverty_line: int, year: int) -> int:
     """Form 8962 line 5: household income as an integer percentage of the FPL.
 
@@ -276,9 +391,15 @@ def _applicable_figure(line5_pct: int) -> Decimal:
     return Decimal(_APPLICABLE_FIGURE[line5_pct])
 
 
-def _repayment_limitation(year: int, line5_pct: int):
-    """Form 8962 line 28 from Table 5 (Single). None => "leave line 28 blank"."""
-    low, mid, high = _REPAYMENT_LIMITATION_SINGLE[year]
+def _repayment_limitation(year: int, line5_pct: int, status: str = _STATUS_SINGLE):
+    """Form 8962 line 28 from Table 5. None => "leave line 28 blank".
+
+    ``status == "single"`` -> Single column; every other in-scope status ->
+    "for any other filing status" column.
+    """
+    table = (_REPAYMENT_LIMITATION_SINGLE if status == _STATUS_SINGLE
+             else _REPAYMENT_LIMITATION_OTHER_STATUS)
+    low, mid, high = table[year]
     if line5_pct < 200:
         return low
     if line5_pct < 300:
@@ -288,7 +409,8 @@ def _repayment_limitation(year: int, line5_pct: int):
     return None  # "400 or more" -> leave line 28 blank (no limitation)
 
 
-def reference_f8962(block: Form1095A, magi: float, year: int) -> dict:
+def reference_f8962(block: Form1095A, magi: float, year: int, *,
+                    family_size: int = 1, filing_status="single") -> dict:
     """Independent Form 8962 result for one tax year, from the IRS instructions.
 
     ``block`` carries the 1095-A monthly rows (premium, SLCSP, APTC per month,
@@ -297,7 +419,10 @@ def reference_f8962(block: Form1095A, magi: float, year: int) -> dict:
     (Form 8962 line 2a household income input) -- taken as given, NOT recomputed
     (tax-exempt interest is already inside ``magi`` per Worksheet 1-1, so
     ``block.tax_exempt_interest`` is not re-added here). Assumes tax family
-    size 1, single filer, one policy, 48 contiguous states + DC.
+    size 1, single filer, one policy, 48 contiguous states + DC, unless
+    ``family_size`` (Form 8962 line 1, as given) and ``filing_status`` (a
+    FilingStatus member or value string; MFS raises) say otherwise. For a joint
+    return ``magi`` is the combined household figure.
 
     Returns a dict; see the module docstring for the key names and meanings.
     """
@@ -306,7 +431,8 @@ def reference_f8962(block: Form1095A, magi: float, year: int) -> dict:
             f"year {year} is outside the supported range {_SUPPORTED_YEARS}"
         )
 
-    poverty_line = _POVERTY_LINE_FAMILY_SIZE_1[year]
+    status = _status_value(filing_status)
+    poverty_line = _poverty_line(year, family_size)
 
     # Line 2a / line 3: household income entered as a whole dollar (no line 2b
     # dependents in scope).
@@ -395,8 +521,8 @@ def reference_f8962(block: Form1095A, magi: float, year: int) -> dict:
         line26 = 0
         line27 = line25 - line24
 
-    # Line 28: repayment limitation (Table 5, Single). None => blank.
-    line28 = _repayment_limitation(year, line5_pct)
+    # Line 28: repayment limitation (Table 5, column by status). None => blank.
+    line28 = _repayment_limitation(year, line5_pct, status)
 
     # Line 29: excess APTC repayment.
     # SOURCE (2024 same URL, Line 29):
@@ -408,6 +534,7 @@ def reference_f8962(block: Form1095A, magi: float, year: int) -> dict:
         line29 = min(line27, line28)
 
     return {
+        "line1_family_size": family_size,
         "line4_poverty_line": poverty_line,
         "line5_pct": line5_pct,
         "line7_applicable_figure": float(applicable_figure),
