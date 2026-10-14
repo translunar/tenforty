@@ -449,6 +449,14 @@ _K1_BUSINESS_BOXES = (
 )
 
 
+def ss_withholding_maximum(year: int) -> float:
+    """One person's maximum Social Security withholding for ``year``: the
+    OASDI wage base times the employee rate, to the cent."""
+    from tenforty.params.federal import load as load_params
+    return round(load_params(year).ss_wage_base * form_sch_se.SS_EMPLOYEE_RATE,
+                 2)
+
+
 def aggregate_business_losses(scenario: Scenario) -> int:
     """Sum of every LOSS-positioned business item on the return, as a
     positive whole-dollar number, with NO netting of business income against
@@ -930,6 +938,36 @@ class ReturnOrchestrator:
                 f"a return whose true excess business loss is zero."
             )
 
+    def _refuse_excess_social_security(self, scenario: Scenario) -> None:
+        """FAIL-CLOSED GUARD -- excess Social Security withholding (ruling
+        R-excess-ss).
+
+        A person whose W-2s together withheld more Social Security tax than
+        the year's maximum is owed the excess as a credit on Schedule 3 line
+        11, which tenforty does not compute. Withholding is summed per
+        `W2.owner`, because on a joint return each spouse has their own
+        maximum. A W-2 with no owner counts toward the taxpayer: load
+        requires `owner` on a joint return, and on any other return the
+        taxpayer is the only owner. One W-2 over the maximum is employer
+        over-withholding and refuses the same way.
+        """
+        maximum = ss_withholding_maximum(scenario.config.year)
+        totals: dict[str, float] = {}
+        for w2 in scenario.w2s:
+            owner = w2.owner or "taxpayer"
+            totals[owner] = totals.get(owner, 0.0) + w2.ss_tax_withheld
+        for owner, total in sorted(totals.items()):
+            if total > maximum:
+                raise NotImplementedError(
+                    f"The {owner}'s W-2s withheld {total:,.2f} of Social "
+                    f"Security tax, more than the tax year "
+                    f"{scenario.config.year} maximum of {maximum:,.2f} for one "
+                    f"person. The excess is a credit on Schedule 3 line 11 "
+                    f"(excess social security tax withheld), which tenforty "
+                    f"does not compute, so this return cannot be produced "
+                    f"without dropping a refund-bearing credit."
+                )
+
     def _compute_1040_pipeline(
         self, effective_scenario: Scenario,
     ) -> dict[str, object]:
@@ -956,6 +994,7 @@ class ReturnOrchestrator:
         params = load_params(effective_scenario.config.year)
         # Before the native/workbook split, so BOTH paths are covered.
         self._refuse_possible_excess_business_loss(effective_scenario)
+        self._refuse_excess_social_security(effective_scenario)
         if effective_scenario.form_1095a is not None:
             # Ruling R-hoh-ptc, ahead of routing so the refusal names its
             # real cause (unknown tax-family size) on every path, including
