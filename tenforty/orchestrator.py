@@ -219,6 +219,37 @@ def _flatten_k1_party(
     return flat
 
 
+_MFJ_SPOUSE_IDENTITY_FIELDS: tuple[str, ...] = (
+    "spouse_first_name", "spouse_last_name", "spouse_ssn")
+
+
+def refuse_blank_mfj_spouse_identity(config, form: str) -> None:
+    """Refuse to print a joint return whose spouse identity is incomplete.
+
+    A married-filing-jointly return names both spouses; printing it with a
+    blank spouse first name, last name or SSN would produce a signed joint
+    return that identifies only one filer. Pure decision over ``config``
+    (whitespace counts as blank); ``form`` names the form in the message.
+    Non-joint statuses are not this refusal's business (Single and Head of
+    Household spouse fields are refused at load, in the scenario loader).
+    """
+    if parse_filing_status(config.filing_status) is not (
+            FilingStatus.MARRIED_FILING_JOINTLY):
+        return
+    blank = [f for f in _MFJ_SPOUSE_IDENTITY_FIELDS
+             if not str(getattr(config, f) or "").strip()]
+    if blank:
+        raise ValueError(
+            f"{form} PDF emission for a married_filing_jointly return needs "
+            "the spouse's identity: "
+            + ", ".join(f"`{f}`" for f in blank)
+            + " is blank in the scenario config. A joint return is printed "
+            "with both spouses' names and SSNs, never half-blank; set the "
+            "missing field(s), or change `filing_status` if this is not a "
+            "joint return."
+        )
+
+
 def _format_mmddyyyy(d) -> str:
     """A date as the IRS printed-form convention MM/DD/YYYY (2020-01-01 ->
     "01/01/2020"), for the 1120-S header items A and E."""
@@ -1727,6 +1758,9 @@ class ReturnOrchestrator:
                 "interest in a digital asset)?'). It is left unanswered "
                 "(null) in this scenario."
             )
+        # Joint return with a blank spouse name/SSN: refuse before any form
+        # is prepared (shared chokepoint for emit_pdfs and amendments).
+        refuse_blank_mfj_spouse_identity(scenario.config, "Form 1040")
         # Emit-stage refusal ledger: returns whose numbers compute but whose
         # printed forms tenforty cannot complete. Run here, at the shared
         # chokepoint, before any form is prepared.
@@ -2293,6 +2327,9 @@ class ReturnOrchestrator:
                 "had full-year health care coverage, check the box'). It is "
                 "left unanswered (null) in this scenario."
             )
+        # Joint return with a blank spouse name/SSN: refuse before any form
+        # is written.
+        refuse_blank_mfj_spouse_identity(scenario.config, "Form 540")
         # Line 112 (interest and penalties). Unstated is fine on a pure refund
         # return, which never reads the line; on any other return it enters
         # the total amount due (line 114) or reduces the refund (line 115), so

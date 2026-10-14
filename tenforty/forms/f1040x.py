@@ -114,7 +114,10 @@ def presentation_keys(config: TaxReturnConfig) -> dict[str, object]:
     the filing-status row (the MFS spouse / non-dependent qualifying child).
     """
     header = header_values(config)
-    out: dict[str, object] = {f"f1040x_{k}": header[k] for k in _HEADER_KEYS}
+    # ``header_values`` omits the spouse cells for a status without a spouse
+    # block; the 1040-X prints them blank there, as it always has.
+    out: dict[str, object] = {
+        f"f1040x_{k}": header.get(k, "") for k in _HEADER_KEYS}
     status = FilingStatus(config.filing_status)
     for fs, suffix in _FILING_STATUS_SUFFIX.items():
         out[f"f1040x_filing_status_{suffix}"] = status is fs
