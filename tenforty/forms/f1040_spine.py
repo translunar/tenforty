@@ -5,8 +5,9 @@ the 1040 line flow year-agnostically: every year-specific value comes
 from ``params`` (a ``FederalParams`` instance). No ``if year ==`` branches
 and no year-specific numeric literals here.
 
-Scoped path: single filers only. Non-single status raises NotImplementedError
-at entry. Multi-status support is a guarded follow-up.
+Scoped path: the (year, filing status) pairs declared in
+``years.NATIVE_SPINE_STATUSES``. An undeclared pair raises
+NotImplementedError at entry.
 
 ``compute_spine`` does NOT invoke the schedules itself; the orchestrator
 calls each schedule's ``compute`` and passes the results as
@@ -46,10 +47,11 @@ CA consumers are unaffected.
 
 from dataclasses import dataclass
 
+from tenforty import years as year_manifest
 from tenforty.forms import f8962 as form_f8962
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import (
-    FilingStatus, K1FanoutData, Scenario, TaxReturnConfig,
+    K1FanoutData, Scenario, TaxReturnConfig, parse_filing_status,
 )
 from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
@@ -432,13 +434,16 @@ def compute_spine(
         Dict of 1040 output fields using OUTPUTS[2025] production key names.
 
     Raises:
-        NotImplementedError: For non-single filing status.
+        NotImplementedError: For a (year, filing status) not declared in
+            years.NATIVE_SPINE_STATUSES.
     """
-    filing_status = scenario.config.filing_status
-    if filing_status is not FilingStatus.SINGLE:
+    filing_status = parse_filing_status(scenario.config.filing_status)
+    if not year_manifest.native_spine_supports(
+            scenario.config.year, filing_status.value):
         raise NotImplementedError(
-            f"compute_spine is scoped to single filers; "
-            f"filing status {filing_status.value!r} is not supported."
+            f"compute_spine: filing status {filing_status.value!r} is not "
+            f"declared for tax year {scenario.config.year} in "
+            f"years.NATIVE_SPINE_STATUSES (the native-spine support grid)."
         )
 
     # Convenience accessors for each schedule sub-dict.

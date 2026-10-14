@@ -775,8 +775,9 @@ class ReturnOrchestrator:
     def _scenario_in_spine_scope(self, effective_scenario: Scenario) -> bool:
         """Return True iff the native 1040 spine (v1) can compute this scenario.
 
-        The spine's v1 scope is single filers whose return does NOT involve
-        the Earned Income Credit (line 27a). Anything outside that scope is
+        The spine's scope is the (year, filing status) pairs declared in
+        ``years.NATIVE_SPINE_STATUSES``, for returns that do NOT involve the
+        Earned Income Credit (line 27a). Anything outside that scope is
         routed to the XLSX oracle, which still covers the full 1040 surface.
 
         The EIC check is a CHEAP published-threshold gate only — it never
@@ -788,10 +789,17 @@ class ReturnOrchestrator:
         filer to the workbook, but never lets an eligible one through the spine
         (which performs no EIC math). The workbook then computes any real EIC.
         """
-        from tenforty.models import FilingStatus
+        from tenforty import years as year_manifest
         from tenforty.params.federal import load as load_params
 
-        if effective_scenario.config.filing_status is not FilingStatus.SINGLE:
+        # (year × status) membership in the native-spine support grid; an
+        # undeclared status is out of scope exactly as non-single was before.
+        # parse_filing_status: config.filing_status may have been assigned a
+        # raw value string after construction (it accepts enum or string).
+        if not year_manifest.native_spine_supports(
+                effective_scenario.config.year,
+                parse_filing_status(
+                    effective_scenario.config.filing_status).value):
             return False
 
         cfg = effective_scenario.config

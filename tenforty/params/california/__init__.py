@@ -36,6 +36,17 @@ class CaliforniaParams:
     renter_credit_amount: dict[str, int]
 
 
+# Every CaliforniaParams field whose value is a dict keyed by FilingStatus
+# value strings (see PER_STATUS_FEDERAL_FIELDS; same gate, same registry test).
+PER_STATUS_CALIFORNIA_FIELDS: tuple[str, ...] = (
+    "standard_deduction",
+    "exemption_credit",
+    "rate_schedule",
+    "renter_credit_agi_threshold",
+    "renter_credit_amount",
+)
+
+
 def load(year: int) -> CaliforniaParams:
     supported = (year_manifest.CALIFORNIA_YEARS
                  + year_manifest.CALIFORNIA_COMPUTE_ONLY_YEARS)
