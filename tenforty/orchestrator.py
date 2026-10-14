@@ -1805,6 +1805,7 @@ class ReturnOrchestrator:
         # loss without the at-risk attestation) are the real guards for everything else and fire below, in
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
+        from tenforty.params.federal import load as load_params
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):
@@ -1876,10 +1877,9 @@ class ReturnOrchestrator:
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year),
-            # aged_born_before stays None until age-65-params is adjudicated;
-            # then it is wired from the year's federal params here.
             values={**results, **self._form_1040_checkbox_values(
-                scenario, results, aged_born_before=None),
+                scenario, results,
+                aged_born_before=load_params(year).aged_born_before),
                 **self._form_1040_direct_deposit_values(scenario, results)},
             checkbox_states=Pdf1040.get_checkbox_states(year),
             # 1040 line 24 (total tax) is filled by a derivation rather than a
