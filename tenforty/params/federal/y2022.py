@@ -7,6 +7,7 @@ Instructions for Schedule A (https://www.irs.gov/pub/irs-prior/i1040sca--2022.pd
 SSA OASDI wage base confirmed against IRS Pub. 15 (Circular E), 2022 revision
 (https://www.irs.gov/pub/irs-prior/p15--2022.pdf).
 """
+import datetime
 import math
 
 from tenforty.models import FilingStatus
@@ -111,7 +112,16 @@ PARAMS = FederalParams(
         _S: 270_000, _MFJ: 540_000, _HOH: 270_000, _QW: 270_000,
         _MFS: 270_000,
     },
-    # Pending transcription (age-65-params).
-    additional_standard_deduction=None,
-    aged_born_before=None,
+    # Rev. Proc. 2021-45, "Aged or blind" paragraph (per-box amount):
+    # https://www.irs.gov/pub/irs-drop/rp-21-45.pdf
+    # sha256 405535647b6287103f5392258d4342cdb70535bf07ff05d89eebc71768083627
+    # Increased amount = unmarried and not a surviving spouse.
+    additional_standard_deduction={
+        _S: 1_750, _HOH: 1_750,
+        _MFJ: 1_400, _MFS: 1_400, _QW: 1_400,
+    },
+    # 2022 Instructions for Form 1040, Age/Blindness checkbox ("born before"):
+    # https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf
+    # sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
+    aged_born_before=datetime.date(1958, 1, 2),
 )

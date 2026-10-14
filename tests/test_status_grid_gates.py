@@ -8,6 +8,7 @@ column a later edit deletes must surface here, never as a runtime KeyError).
 """
 import dataclasses
 import importlib
+import sys
 import tempfile
 import types
 import typing
@@ -316,35 +317,65 @@ class ParamsCompletenessGateTests(unittest.TestCase):
 
 class PendingPerStatusFieldGateTests(unittest.TestCase):
     """A None per-status federal field is skipped by params_gaps only while
-    the year's attestation declares it pending transcription."""
+    the year's attestation declares it pending transcription.
+
+    Every case runs on SYNTHETIC params (the real field forced to None) and a
+    synthetic pending set, so both branches stay tested whatever the real
+    params' transcription state."""
 
     FIELD = "additional_standard_deduction"
+    SCALAR = "aged_born_before"
+    MODULE = "tests.params_attestations.federal_y2025"
 
-    def _gaps(self, *, pending):
-        return params_gaps({2025: ("single",)}, load_federal=load_federal,
+    @classmethod
+    def _pending_federal(cls, year):
+        return dataclasses.replace(load_federal(year), **{cls.FIELD: None})
+
+    def _gaps(self, *, pending, load=None):
+        return params_gaps({2025: ("single",)},
+                           load_federal=load or self._pending_federal,
                            load_california=ca_params.load,
                            load_f8962=f8962_params.load,
                            federal_pending=lambda year: pending)
 
-    def test_real_field_is_none_and_declared_pending(self):
-        # Precondition: the negative space below is the real field's state.
-        self.assertIsNone(getattr(load_federal(2025), self.FIELD))
-        self.assertIn(self.FIELD, _federal_pending_transcription(2025))
+    def test_default_pending_lookup_reads_the_attestation(self):
+        module = types.ModuleType(self.MODULE)
+        module.PENDING_TRANSCRIPTION = {self.FIELD: "synthetic"}
+        with mock.patch.dict(sys.modules, {self.MODULE: module}):
+            self.assertEqual(set(_federal_pending_transcription(2025)),
+                             {self.FIELD})
+        empty = types.ModuleType(self.MODULE)
+        with mock.patch.dict(sys.modules, {self.MODULE: empty}):
+            self.assertEqual(set(_federal_pending_transcription(2025)), set())
 
     def test_declared_pending_none_is_not_a_gap(self):
+        self.assertIsNone(getattr(self._pending_federal(2025), self.FIELD))
         self.assertEqual(self._gaps(pending={self.FIELD}), [])
 
     def test_undeclared_none_is_a_gap(self):
         self.assertEqual(self._gaps(pending=set()),
                          [(2025, "single", self.FIELD)])
 
+    def test_pending_declaration_never_excuses_a_missing_live_column(self):
+        # Only None is skipped: a live column lacking the status is a gap
+        # even with a (stale) pending declaration.
+        def live_without_single(year):
+            return dataclasses.replace(load_federal(year), **{
+                self.FIELD: {FilingStatus.HEAD_OF_HOUSEHOLD.value: object()}})
+        self.assertEqual(
+            self._gaps(pending={self.FIELD}, load=live_without_single),
+            [(2025, "single", self.FIELD)])
+
     def test_registry_counts_an_always_none_per_status_field(self):
         all_years = years.FEDERAL_YEARS + years.FEDERAL_COMPUTE_ONLY_YEARS
-        self.assertIn(self.FIELD, _status_keyed_fields(
-            load_federal(y) for y in all_years))
+        synthetic = [dataclasses.replace(load_federal(y),
+                                         **{self.FIELD: None,
+                                            self.SCALAR: None})
+                     for y in all_years]
+        keyed = _status_keyed_fields(synthetic)
+        self.assertIn(self.FIELD, keyed)
         # A pending scalar never counts as per-status.
-        self.assertNotIn("aged_born_before", _status_keyed_fields(
-            load_federal(y) for y in all_years))
+        self.assertNotIn(self.SCALAR, keyed)
 
 
 class BatteryCompletenessGateTests(unittest.TestCase):

@@ -22,6 +22,7 @@ Sources:
     thresholds.
   - IRC §164(b)(6) — statutory flat SALT cap (pre-OBBBA).
 """
+import datetime
 import math
 
 from tenforty.models import FilingStatus
@@ -162,7 +163,16 @@ PARAMS = FederalParams(
         _S: 262_000, _MFJ: 524_000, _MFS: 262_000, _HOH: 262_000,
         _QSS: 262_000,
     },
-    # Pending transcription (age-65-params).
-    additional_standard_deduction=None,
-    aged_born_before=None,
+    # Rev. Proc. 2020-45, "Aged or blind" paragraph (per-box amount):
+    # https://www.irs.gov/pub/irs-drop/rp-20-45.pdf
+    # sha256 12cfb00115b86e3bb97937f1a5fc340cf98c0d61b7508c800b9a3a4674aac52d
+    # Increased amount = unmarried and not a surviving spouse.
+    additional_standard_deduction={
+        _S: 1_700, _HOH: 1_700,
+        _MFJ: 1_350, _MFS: 1_350, _QSS: 1_350,
+    },
+    # 2021 Instructions for Form 1040, Age/Blindness checkbox ("born before"):
+    # https://www.irs.gov/pub/irs-prior/i1040gi--2021.pdf
+    # sha256 7337e61fe50cd309c260817d23468cd557426c7e5f15cdbdc291f6d2c7c50d90
+    aged_born_before=datetime.date(1957, 1, 2),
 )
