@@ -32,6 +32,7 @@ from tenforty.forms import f4562 as form_4562
 from tenforty.forms.depreciation import resolver as depreciation_resolver
 from tenforty.forms import f8959 as form_8959
 from tenforty.forms import f8962 as form_f8962
+from tenforty.forms.f8962 import tax_family_size
 from tenforty.forms import f8995 as form_f8995
 from tenforty.forms import f8582 as form_f8582
 from tenforty.params import f8962 as params_f8962
@@ -955,6 +956,11 @@ class ReturnOrchestrator:
         params = load_params(effective_scenario.config.year)
         # Before the native/workbook split, so BOTH paths are covered.
         self._refuse_possible_excess_business_loss(effective_scenario)
+        if effective_scenario.form_1095a is not None:
+            # Ruling R-hoh-ptc, ahead of routing so the refusal names its
+            # real cause (unknown tax-family size) on every path, including
+            # statuses the spine grid does not declare yet.
+            tax_family_size(effective_scenario.config)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # A 1095-A scenario that is out of native-spine scope
@@ -1294,6 +1300,8 @@ class ReturnOrchestrator:
                 magi=_preamble.agi + effective_scenario.form_1095a.tax_exempt_interest,
                 year=effective_scenario.config.year,
                 params=params_f8962.load(effective_scenario.config.year),
+                filing_status=effective_scenario.config.filing_status,
+                family_size=tax_family_size(effective_scenario.config),
             )
 
         # --- Step 11: F8995 (needs k1_fanout + f1040 stub) ---

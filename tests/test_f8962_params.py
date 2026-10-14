@@ -39,7 +39,7 @@ class F8962ParamsTests(unittest.TestCase):
 
     def test_repayment_caps_ascending_bands(self):
         for year in (2021, 2022, 2023, 2024, 2025):
-            bands = load(year).repayment_caps_single
+            bands = load(year).repayment_caps["single"]
             bounds = [b for b, _ in bands]
             with self.subTest(year=year):
                 self.assertEqual(bounds, sorted(bounds))

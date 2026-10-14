@@ -850,6 +850,8 @@ def compute_spine(
         _probe = form_f8962.compute(
             block=_block, magi=_probe_magi, year=_year,
             params=params_f8962.load(_year),
+            filing_status=scenario.config.filing_status,
+            family_size=form_f8962.tax_family_size(scenario.config),
         )
         if _probe["f8962_line_24"] != 0:
             raise NotImplementedError(

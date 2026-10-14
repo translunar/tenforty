@@ -40,6 +40,7 @@ def _assert_attested(test: unittest.TestCase, params, params_cls,
     not_applicable = getattr(module, "NOT_APPLICABLE", {})
     test.assertTrue(module.SOURCES, f"{module_name}: SOURCES must cite "
                                     f"the official publications used")
+    pending = getattr(module, "PENDING_TRANSCRIPTION", {})
     field_names = {f.name for f in dataclasses.fields(params_cls)}
     test.assertEqual(set(attested), field_names,
                      f"{module_name}: ATTESTED keys must equal the "
@@ -48,6 +49,19 @@ def _assert_attested(test: unittest.TestCase, params, params_cls,
         with test.subTest(field=name):
             params_value = getattr(params, name)
             attested_value = attested[name]
+            if name in pending:
+                # Transcription not landed yet: absent on BOTH sides. A
+                # pending entry can never bless a live params value, and a
+                # stale pending entry next to a transcribed value fails too.
+                test.assertIsNone(
+                    attested_value,
+                    f"{module_name}.{name}: listed in PENDING_TRANSCRIPTION "
+                    f"but attested a value; remove the pending entry")
+                test.assertIsNone(
+                    params_value,
+                    f"{module_name}.{name}: pending transcription, but the "
+                    f"params hold a live value with no attestation")
+                continue
             if attested_value is None:
                 # None is either "not applicable this year" — allowed ONLY when
                 # the field is declared in NOT_APPLICABLE (rationale present)

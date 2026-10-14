@@ -9,12 +9,15 @@ key exists for the mapping/oracle layer.
 Line disposition (per the printed form; the oracle battery is the
 authority if instructions ever disagree with this module):
 
-    line 1      household size — fixed at 1 (v1 scope: single filer only)
+    line 1      tax-family size — the caller's ``family_size`` (see
+                ``tax_family_size``: filer, plus spouse when married
+                filing jointly; dependents are unmodeled and refused)
     line 2a     MAGI (see MAGI seam note below); line 2b out of scope
     line 3      = line 2a (household income, since line 2b is out of
                 scope)
-    line 4      FPL for household size 1, 48 contiguous states + DC
-                (``params.fpl_single_48``)
+    line 4      FPL for the line-1 family size, 48 contiguous states + DC
+                (``fpl_for_family_size(params, family_size)`` — refuses a
+                size the params cannot price)
     line 5      household income as a percentage of the FPL, per this
                 exact four-part rule:
                   (1) if ``block.received_unemployment_2021`` and
@@ -66,7 +69,8 @@ authority if instructions ever disagree with this module):
                 ``f8962_line_26_printed``)
     line 27     excess APTC repayment (pre-cap) = max(0, line25 - line24)
     line 28     repayment limitation: the cap dollars for line 5's FPL
-                band, from ``params.repayment_caps_single`` (ascending
+                band, from the filing status's column of
+                ``params.repayment_caps`` via ``params.for_status`` (ascending
                 ``(exclusive_upper_bound_pct, cap)`` pairs — the first
                 entry whose bound exceeds line 5). Uncapped (None) when
                 no band's bound exceeds line 5 (this naturally covers
@@ -87,15 +91,64 @@ needed — this is the marked seam.
 
 from dataclasses import astuple
 
-from tenforty.models import Form1095A
-from tenforty.params.f8962 import F8962Params
+from tenforty.models import (
+    FilingStatus,
+    Form1095A,
+    TaxReturnConfig,
+    parse_filing_status,
+)
+from tenforty.params.f8962 import F8962Params, fpl_for_family_size
 from tenforty.rounding import irs_round
 
 _MONTH_CELLS = ("a", "b", "c", "d", "e", "f")
 
 
-def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> dict:
+def ptc_family_refusal(config: TaxReturnConfig) -> str | None:
+    """Ruling R-hoh-ptc: the reason a Form 1095-A cannot be reconciled for
+    this filer, or None when the tax family is known.
+
+    Dependents are unmodeled, so the tax-family size of a return that has
+    any (or that is head of household, whose qualifying person is usually a
+    tax-family member) is unknown. Line 4's poverty line, and with it the
+    applicable figure and the repayment limitation, would be computed for
+    the wrong family size. Pure: reads only ``config``."""
+    status = parse_filing_status(config.filing_status)
+    if status is FilingStatus.HEAD_OF_HOUSEHOLD:
+        return (
+            f"Form 8962 (Premium Tax Credit) with filing status "
+            f"{status.value}: the head-of-household qualifying person is "
+            f"usually a member of the tax family, and dependents are not "
+            f"modeled, so the Form 8962 line 1 family size (and the line 4 "
+            f"poverty line it selects) cannot be determined. Refusing rather "
+            f"than reconcile the credit for the wrong family size; this stays "
+            f"refused until the dependents spec lands.")
+    if config.dependents:
+        return (
+            f"Form 8962 (Premium Tax Credit) on a return listing "
+            f"{len(config.dependents)} dependents (filing status "
+            f"{status.value}): dependents are not modeled, so the Form 8962 "
+            f"line 1 family size (and the line 4 poverty line it selects) "
+            f"cannot be determined. Refusing rather than reconcile the credit "
+            f"for the wrong family size; this stays refused until the "
+            f"dependents spec lands.")
+    return None
+
+
+def tax_family_size(config: TaxReturnConfig) -> int:
+    """Form 8962 line 1: the filer, plus the spouse when married filing
+    jointly. Raises NotImplementedError per ``ptc_family_refusal`` when the
+    family size cannot be determined (head of household, or dependents)."""
+    reason = ptc_family_refusal(config)
+    if reason is not None:
+        raise NotImplementedError(reason)
+    status = parse_filing_status(config.filing_status)
+    return 1 + (1 if status is FilingStatus.MARRIED_FILING_JOINTLY else 0)
+
+
+def compute(block: Form1095A, magi: float, year: int, params: F8962Params,
+            *, filing_status: FilingStatus, family_size: int) -> dict:
     assert params.year == year, f"params.year {params.year} != requested year {year}"
+    view = params.for_status(filing_status)
     if block.received_unemployment_2021 and not params.unemployment_rule:
         raise ValueError(
             "Form1095A.received_unemployment_2021 is set but this year's "
@@ -104,10 +157,10 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
             "tax year 2021)."
         )
 
-    line_1 = 1
+    line_1 = family_size
     line_2a = magi
     line_3 = line_2a
-    line_4 = params.fpl_single_48
+    line_4 = fpl_for_family_size(params, family_size)
 
     if block.received_unemployment_2021 and params.unemployment_rule:
         # 2021 ARPA rule (i8962--2021 line-5 instruction): a filer who
@@ -132,11 +185,11 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
         # percentages (e.g. 31257/13590*100 == 229.99999999999997, which
         # floors to 229 instead of the true 230). irs_round(line_3) matches
         # the whole-dollar line_3 already reported above.
-        line5_raw = (irs_round(line_3) * 100) // params.fpl_single_48
+        line5_raw = (irs_round(line_3) * 100) // line_4
         if params.line5_400_boundary_inclusive:
             over_400 = line5_raw >= 400
         else:
-            over_400 = line_3 > 4 * params.fpl_single_48
+            over_400 = line_3 > 4 * line_4
         # Line 5 reports the TRUE household-income percentage — it is NOT
         # clamped to the applicable-figure table's domain edges (those
         # edges only govern the line-7 lookup below, via
@@ -228,7 +281,7 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params) -> di
 
     line_26 = max(0, line_24 - line_25)
     line_27 = max(0, line_25 - line_24)
-    line_28 = _repayment_cap(params.repayment_caps_single, line_5)
+    line_28 = _repayment_cap(view.repayment_caps, line_5)
     line_29 = min(line_27, line_28) if line_28 is not None else line_27
 
     result["f8962_line_26_net_ptc"] = line_26
