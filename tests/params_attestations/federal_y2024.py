@@ -17,6 +17,7 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
   For QBI (§199A) the official Form 8995 text puts QSS under "all other returns"
   (single amount), NOT the MFJ amount — transcribed accordingly and flagged.
 """
+import datetime
 import math
 
 SOURCES: tuple[str, ...] = (
@@ -230,18 +231,19 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 305000,
         "qualifying_widow": 305000,
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "additional_standard_deduction": None,
-    "aged_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement, incl. team-lead third readings).
+    # Amounts source 2024: Rev. Proc. 2023-34 — https://www.irs.gov/pub/irs-drop/rp-23-34.pdf — sha256 544ba41c7ba64f77da521e0d174a7b7394dc72b5c7c73d10adb19952d5aaae57
+    # Date source 2024: 2024 Instructions for Form 1040 (and 1040-SR) — https://www.irs.gov/pub/irs-prior/i1040gi--2024.pdf — sha256 0ae53ed5020d69e6571d40cd7955b7735f44a28df483626d128628d2810e93d4
+    "additional_standard_deduction": {
+        "single": 1950,
+        "married_filing_jointly": 1550,
+        "married_filing_separately": 1550,
+        "head_of_household": 1950,
+        "qualifying_widow": 1550,
+    },
+    "aged_born_before": datetime.date(1960, 1, 2),
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "additional_standard_deduction": (
-        "aged additional standard deduction per box, all five statuses; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
-    "aged_born_before": (
-        "aged 'born before' cutoff as the year's own documents state it; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }

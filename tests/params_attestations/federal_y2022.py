@@ -10,6 +10,7 @@ every dollar figure below was read verbatim from the official document text.
 Each value carries an inline citation to the exact document and section/table.
 """
 
+import datetime
 import math
 
 ATTESTED: dict[str, object] = {
@@ -126,9 +127,18 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 270000,
         "qualifying_widow": 270000,
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "additional_standard_deduction": None,
-    "aged_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement, incl. team-lead third readings).
+    # Amounts source 2022: Rev. Proc. 2021-45 — https://www.irs.gov/pub/irs-drop/rp-21-45.pdf — sha256 405535647b6287103f5392258d4342cdb70535bf07ff05d89eebc71768083627
+    # Date source 2022: 2022 Instructions for Form 1040 (and 1040-SR) — https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf — sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
+    "additional_standard_deduction": {
+        "single": 1750,
+        "married_filing_jointly": 1400,
+        "married_filing_separately": 1400,
+        "head_of_household": 1750,
+        "qualifying_widow": 1400,
+    },
+    "aged_born_before": datetime.date(1958, 1, 2),
 }
 
 NOT_APPLICABLE: dict[str, str] = {
@@ -185,12 +195,4 @@ SOURCES: tuple[str, ...] = (
 )
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "additional_standard_deduction": (
-        "aged additional standard deduction per box, all five statuses; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
-    "aged_born_before": (
-        "aged 'born before' cutoff as the year's own documents state it; "
-        "awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }
