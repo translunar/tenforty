@@ -16,9 +16,11 @@ Tax brackets, QDCGT breakpoints, §199A QBI threshold, and EIC ceilings for 2025
 were NOT changed by OBBBA and remain the Rev. Proc. 2024-40 inflation amounts.
 
 Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
-- `ordinary_brackets` is a SINGLE (upper_bound, rate) tuple, NOT status-keyed.
-  Transcribed the SINGLE-filer 2025 schedule as the unqualified default; if
-  tenforty keys on a different status the controller must adjudicate.
+- `ordinary_brackets` is status-keyed (schema re-keyed 2026-10 in the
+  filing-statuses round; the original transcription was the SINGLE schedule as
+  a bare tuple, values unchanged under the "single" key). MFJ and HoH columns
+  added 2026-10-14 by independent Transcriber B (Rev. Proc. 2024-40 §2.01
+  Tables 1 and 2); adjudicated against Transcriber A with full agreement.
 - `salt_phaseout_threshold` is a single int in the schema, but the statute uses
   $500,000 for most filers and $250,000 for MFS. Attested $500,000 (the primary
   threshold); MFS $250,000 noted inline for the controller.
@@ -124,20 +126,50 @@ ATTESTED: dict[str, object] = {
     "nonitemizer_charitable_cap": None,
 
     # Rev. Proc. 2024-40 TY2025 Tax Rate Tables (via IR-2024-273).
-    # Status-keyed; single column transcribed — SINGLE-filer 2025.
+    # Status-keyed. Single column: original SINGLE-filer 2025 transcription.
     # See module docstring note. (upper_bound, marginal_rate).
-    "ordinary_brackets": {"single": (
-        (11925.0, 0.10),
-        (48475.0, 0.12),
-        (103350.0, 0.22),
-        (197300.0, 0.24),
-        (250525.0, 0.32),
-        (626350.0, 0.35),
-        (math.inf, 0.37),
-    )},
+    # MFJ/HoH columns: Transcriber B, 2026-10-14 —
+    #   Rev. Proc. 2024-40 §2.01 Table 1 (MFJ) / Table 2 (HoH),
+    #   https://www.irs.gov/pub/irs-drop/rp-24-40.pdf
+    #   sha256 4de9db6b6662b5c305a59100a027051628823b42fd5817ea4e383ad4c302af1f
+    #   Cross-check: 2025 Instructions for Form 1040, i1040gi.pdf
+    #   sha256 482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a
+    "ordinary_brackets": {
+        "single": (
+            (11925.0, 0.10),
+            (48475.0, 0.12),
+            (103350.0, 0.22),
+            (197300.0, 0.24),
+            (250525.0, 0.32),
+            (626350.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        "married_filing_jointly": (
+            (23850, 0.10),
+            (96950, 0.12),
+            (206700, 0.22),
+            (394600, 0.24),
+            (501050, 0.32),
+            (751600, 0.35),
+            (math.inf, 0.37),
+        ),
+        "head_of_household": (
+            (17000, 0.10),
+            (64850, 0.12),
+            (103350, 0.22),
+            (197300, 0.24),
+            (250500, 0.32),
+            (626350, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
 
-    # IRS Topic no. 409 / Rev. Proc. 2024-40 Maximum Capital Gains Rate, TY2025.
+    # IRS Topic no. 409 / Rev. Proc. 2024-40 §2.03 Maximum Capital Gains Rate,
+    # TY2025 (rp-24-40.pdf, sha256 4de9db6b…c302af1f).
     # (0%-rate maximum taxable income, 15%-rate maximum taxable income).
+    # R-attest-reuse closure 2026-10-14: MFJ/HoH re-verified by independent
+    # Transcriber B from the Rev. Proc. itself; full agreement with the
+    # existing entries, which stand unchanged.
     "qdcgt_breakpoints": {
         "single": (48350, 533400),
         "married_filing_jointly": (96700, 600050),
