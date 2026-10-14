@@ -199,6 +199,12 @@ ATTESTED: dict[str, object] = {
 
     # IRS Topic no. 560 — statutory 0.9% Additional Medicare Tax thresholds
     # (NOT inflation-adjusted): $250k MFJ, $125k MFS, $200k all others.
+    # Citation UPGRADED 2026-10-14 (R-attest-reuse): fresh dual transcription
+    # from IRC §3101(b)(2), uscode.house.gov release point PL 119-120
+    # (xml_usc26@119-120.zip, zip sha256 84af19d59b5b6ee347c14da510d4a97f
+    # 6d1d4187e138481352aed0be139b796d; source credits show (b)(2) in force
+    # unchanged for 2025) — A/B adjudicated with full agreement, and both
+    # agree with this pre-existing Topic-560 attestation.
     "addl_medicare_threshold": {
         "single": 200000,
         "married_filing_jointly": 250000,
