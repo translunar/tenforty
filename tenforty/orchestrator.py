@@ -264,8 +264,15 @@ def form_1040_age_box_values(
     birthdate is refused (the loader requires it; a config built around the
     loader must not print an unchecked box by default).
     """
-    def born_before(value: str) -> bool:
-        return datetime.date.fromisoformat(value) < aged_born_before
+    def born_before(field: str) -> bool:
+        value = getattr(config, field)
+        try:
+            born = datetime.date.fromisoformat(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Form 1040 age checkboxes need `{field}` as an ISO "
+                f"YYYY-MM-DD date; got {value!r}.") from None
+        return born < aged_born_before
 
     joint = parse_filing_status(config.filing_status) is (
         FilingStatus.MARRIED_FILING_JOINTLY)
@@ -275,9 +282,8 @@ def form_1040_age_box_values(
             "need `spouse_birthdate` (ISO YYYY-MM-DD), which is blank in the "
             "scenario config.")
     return {
-        "age_taxpayer_born_before": born_before(config.birthdate),
-        "age_spouse_born_before": (
-            joint and born_before(config.spouse_birthdate)),
+        "age_taxpayer_born_before": born_before("birthdate"),
+        "age_spouse_born_before": joint and born_before("spouse_birthdate"),
     }
 
 
@@ -1805,6 +1811,7 @@ class ReturnOrchestrator:
         # loss without the at-risk attestation) are the real guards for everything else and fire below, in
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
+        from tenforty.params.federal import load as load_params
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):
@@ -1876,10 +1883,9 @@ class ReturnOrchestrator:
             name="1040", template=_fed("f1040.pdf"),
             output_name=f"f1040_{year}.pdf", kind="flat",
             mapping=Pdf1040.get_mapping(year),
-            # aged_born_before stays None until age-65-params is adjudicated;
-            # then it is wired from the year's federal params here.
             values={**results, **self._form_1040_checkbox_values(
-                scenario, results, aged_born_before=None),
+                scenario, results,
+                aged_born_before=load_params(year).aged_born_before),
                 **self._form_1040_direct_deposit_values(scenario, results)},
             checkbox_states=Pdf1040.get_checkbox_states(year),
             # 1040 line 24 (total tax) is filled by a derivation rather than a

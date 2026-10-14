@@ -13,7 +13,7 @@ _YAML_WITHOUT_CA540 = textwrap.dedent("""\
     config:
       year: 2025
       filing_status: single
-      birthdate: "01-01-1980"
+      birthdate: "1980-01-01"
       state: CA
       first_name: "Taxpayer"
       last_name: "A"
@@ -65,7 +65,7 @@ _YAML_WITH_CA540 = textwrap.dedent("""\
     config:
       year: 2025
       filing_status: single
-      birthdate: "01-01-1980"
+      birthdate: "1980-01-01"
       state: CA
       first_name: "Taxpayer"
       last_name: "A"
