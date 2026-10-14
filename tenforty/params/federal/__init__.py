@@ -3,6 +3,7 @@
 Year-agnostic spine/tax logic reads everything from FederalParams; there are
 no `if year ==` branches in the math. Adding a year = adding one yNNNN module.
 """
+import datetime
 import importlib
 from dataclasses import dataclass
 
@@ -71,6 +72,14 @@ class FederalParams:
     # trip-wire for the orchestrator's fail-closed refusal when a return's
     # un-netted business losses exceed it.
     excess_business_loss_threshold: dict[str, int]
+    # Aged additional standard deduction (Form 1040 "born before" boxes):
+    # the amount added per checked box, keyed by FilingStatus.value with all
+    # five statuses stored explicitly. None = pending transcription
+    # (age-65-params): for_status refuses it by name rather than read None.
+    additional_standard_deduction: dict[str, int] | None
+    # Exclusive age cutoff for the tax year: a person born strictly before
+    # this date meets the condition. None = pending transcription.
+    aged_born_before: datetime.date | None
 
     def for_status(self, status: "FilingStatus | str") -> "StatusView":
         """Projection of these params onto one filing status. Per-status
@@ -97,6 +106,7 @@ PER_STATUS_FEDERAL_FIELDS: tuple[str, ...] = (
     "prior_year_salt_cap",
     "capital_loss_limit",
     "excess_business_loss_threshold",
+    "additional_standard_deduction",
 )
 
 

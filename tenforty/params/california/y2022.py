@@ -74,4 +74,7 @@ PARAMS = CaliforniaParams(
     renter_credit_amount={
         _S: 60, _MFS: 60, _MFJ: 120, _HOH: 120, _QW: 120,
     },
+    # Pending transcription (age-65-params).
+    senior_exemption_credit=None,
+    senior_born_before=None,
 )
