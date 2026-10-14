@@ -154,11 +154,13 @@ def compute(
     """
     params = ca_params.load(year)
 
-    # AGI phaseout gate
-    if federal_agi > params.agi_phaseout_threshold:
+    # AGI phaseout gate. A status with no threshold column raises
+    # UnsupportedStatusError here — never single's threshold.
+    phaseout_threshold = params.for_status(filing_status).agi_phaseout_threshold
+    if federal_agi > phaseout_threshold:
         raise NotImplementedError(
             f"Federal AGI ${federal_agi} exceeds CA exemption-credit phaseout "
-            f"threshold ${params.agi_phaseout_threshold} for tax year {year}; "
+            f"threshold ${phaseout_threshold} for tax year {year}; "
             f"phaseout formula not implemented in v1."
         )
 

@@ -51,7 +51,19 @@ PARAMS = CaliforniaParams(
         _S: 129, _MFS: 129, _HOH: 129, _MFJ: 258, _QW: 258,
     },
     dependent_exemption_amount=400,
-    agi_phaseout_threshold=212_288,
+    # 2021 Personal Income Tax Booklet (Form 540), Line 32 – Exemption
+    # Credits table, p.14.
+    # https://www.ftb.ca.gov/forms/2021/2021-540-booklet.pdf
+    # REV stamp: none printed on Line 32 page; elsewhere: REV 02-22,
+    # REV 02-23, REV 05-23, REV 07-22.
+    # sha256 88d1d720f72013beb9e6f6928a86fe783d143f760a455485a34bfe6424f52072
+    agi_phaseout_threshold={
+        _S: 212_288,
+        _MFJ: 424_581,
+        _MFS: 212_288,
+        _HOH: 318_437,
+        _QW: 424_581,
+    },
     rate_schedule={
         _S: _SCHEDULE_X, _MFS: _SCHEDULE_X,
         _MFJ: _SCHEDULE_Y, _QW: _SCHEDULE_Y,
