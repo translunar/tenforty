@@ -4,8 +4,8 @@
 Migrated verbatim from tenforty/constants/california_y2021.py. Sources:
 - STANDARD_DEDUCTION / EXEMPTION_CREDIT / DEPENDENT_EXEMPTION / AGI
   phaseout: FTB Form 540 (TY2021), pdfs/california/2021/f540.pdf
-  (side 2 line 18 worksheet; side 1 lines 7-10 multipliers at $129
-  per person; side 2 line 10 at $400 each; side 2 line 32 threshold).
+  (side 2 line 18 worksheet; side 1 lines 7-10 per-person multipliers
+  (amounts: see exemption_credit provenance); side 2 line 10 at $400 each; side 2 line 32 threshold).
 - Rate schedules: pdfs/california/2021/tax_rate_schedules.pdf (2021
   California Tax Rate Schedules, Personal Income Tax Booklet 2021 page
   93); Schedule Z is FTB-published independently and does NOT equal
