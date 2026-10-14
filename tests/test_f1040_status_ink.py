@@ -17,10 +17,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pypdf import PdfReader
+
 from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import f1040_spine
 from tenforty.forms import f540 as form_f540
 from tenforty.mappings.pdf_1040 import Pdf1040
+from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.models import FilingStatus, TaxReturnConfig
 from tenforty import orchestrator as orchestrator_mod
 from tenforty import scenario as scenario_mod
@@ -280,6 +283,56 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
             mfs, spouse_first_name="", spouse_last_name="", spouse_ssn=""),
             [], 2025)
         self.assertNotIn("f540_spouse_first_name", unnamed)
+
+
+class CaSpousePlacementTests(unittest.TestCase):
+    """The 540 spouse cells are placed, not merely present: each key lands
+    on its own field (sentinel fill + read-back), and that field sits in the
+    spouse row directly below the matching taxpayer cell, every CA year.
+    Deleting every year's spouse mappings reddened no other test, hence
+    this class."""
+
+    _PAIRS = (("f540_taxpayer_first_name", "f540_spouse_first_name"),
+              ("f540_taxpayer_last_name", "f540_spouse_last_name"),
+              ("f540_taxpayer_ssn", "f540_spouse_ssn"))
+
+    def _template(self, year: int) -> Path:
+        return REPO_ROOT / "pdfs" / "california" / str(year) / "f540.pdf"
+
+    def test_each_spouse_key_prints_its_own_sentinel_every_year(self):
+        tmp = Path(tempfile.mkdtemp())
+        keys = [k for pair in self._PAIRS for k in pair]
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                mapping = PdfF540.get_mapping(year)
+                values = {k: f"S{i}" for i, k in enumerate(keys)}
+                out = tmp / f"f540_{year}.pdf"
+                PdfFiller().fill(
+                    template_path=self._template(year), output_path=out,
+                    field_mapping=mapping, values=values)
+                read = {n: str(f.get("/V") or "")
+                        for n, f in PdfReader(str(out)).get_fields().items()}
+                for k, v in values.items():
+                    self.assertEqual(read[mapping[k]], v, k)
+                paths = [mapping[k] for k in keys]
+                self.assertEqual(len(paths), len(set(paths)))
+
+    def test_spouse_row_sits_directly_below_the_taxpayer_row(self):
+        for year in CA_YEARS:
+            mapping = PdfF540.get_mapping(year)
+            template = self._template(year)
+            spouse_rows = set()
+            for tp_key, sp_key in self._PAIRS:
+                with self.subTest(year=year, key=sp_key):
+                    tp_page, tp = widget_rect(template, mapping[tp_key])
+                    sp_page, sp = widget_rect(template, mapping[sp_key])
+                    self.assertEqual((tp_page, sp_page), (0, 0))
+                    self.assertLess(abs(tp[0] - sp[0]), 5)   # same column
+                    self.assertLess(sp[3], tp[1] + 1)        # below taxpayer
+                    self.assertLess(tp[1] - sp[3], 20)       # the next row
+                    spouse_rows.add(round(sp[1]))
+            with self.subTest(year=year, check="one spouse row"):
+                self.assertEqual(len(spouse_rows), 1, spouse_rows)
 
 
 if __name__ == "__main__":
