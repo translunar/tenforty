@@ -72,6 +72,24 @@ class FederalParams:
     excess_business_loss_threshold: dict[str, int]
 
 
+# Every FederalParams field whose value is a dict keyed by FilingStatus value
+# strings. The params-completeness gate checks each of these for every
+# declared (year, status) in years.NATIVE_SPINE_STATUSES; a registry test
+# proves this tuple equals the set of status-keyed dict fields, so a new
+# per-status field cannot silently escape the gate.
+PER_STATUS_FEDERAL_FIELDS: tuple[str, ...] = (
+    "standard_deduction",
+    "qdcgt_breakpoints",
+    "addl_medicare_threshold",
+    "qbi_threshold",
+    "salt_cap_starting",
+    "salt_cap_floor",
+    "prior_year_salt_cap",
+    "capital_loss_limit",
+    "excess_business_loss_threshold",
+)
+
+
 def load(year: int) -> FederalParams:
     if (year not in year_manifest.FEDERAL_YEARS
             and year not in year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):

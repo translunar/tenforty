@@ -4,7 +4,8 @@ Implements the marginal-rate ordinary tax and the Qualified Dividends &
 Capital Gain Tax Worksheet. Year-specific values come from FederalParams;
 no `if year ==` branches here.
 """
-from tenforty.models import FilingStatus
+from tenforty import years as year_manifest
+from tenforty.models import FilingStatus, parse_filing_status
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 from tenforty.tax_table import TABLE_CEILING, tax_from_table
@@ -44,11 +45,14 @@ def qdcgt_tax(
     params: FederalParams,
     filing_status: FilingStatus,
 ) -> int:
-    """Qualified Dividends & Capital Gain Tax Worksheet (scoped: single)."""
-    if filing_status is not FilingStatus.SINGLE:
+    """Qualified Dividends & Capital Gain Tax Worksheet (scoped to the
+    statuses declared for the year in years.NATIVE_SPINE_STATUSES)."""
+    filing_status = parse_filing_status(filing_status)
+    if not year_manifest.native_spine_supports(params.year, filing_status.value):
         raise NotImplementedError(
-            "QDCGT worksheet is implemented only for single filers in this "
-            "scope; other statuses are a guarded follow-up."
+            f"QDCGT worksheet: filing status {filing_status.value!r} is not "
+            f"declared for tax year {params.year} in "
+            f"years.NATIVE_SPINE_STATUSES (the native-spine support grid)."
         )
     ti = max(taxable_income, 0.0)
     preferential = max(min(qualified_dividends + net_capital_gain, ti), 0.0)

@@ -13,6 +13,7 @@ import functools
 from collections.abc import Callable
 
 from tenforty.models import (
+    FilingStatus,
     Form1095A,
     Form1095AMonth,
     Form1098,
@@ -655,11 +656,32 @@ _YEAR_2021_ONLY_BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
 ]
 
 
-def battery_for(year: int) -> list[tuple[str, Callable[[], Scenario]]]:
-    """The parity battery for a year: (name, zero-arg builder) pairs.
+# Scenario kinds every declared NON-single (year, status) in
+# years.NATIVE_SPINE_STATUSES must carry in its battery (ruling R-battery-n:
+# the six spec §9 kinds). A battery entry's kind is its name prefix before
+# `__`, e.g. `wages_only__mfj`. Enforced by
+# tests/test_status_grid_gates.py::BatteryCompletenessGateTests.
+REQUIRED_STATUS_SCENARIO_KINDS: tuple[str, ...] = (
+    "wages_only",
+    "investments_qdcgt",
+    "qbi_k1",
+    "itemized_salt_at_cap",
+    "addl_medicare",
+    "ptc_reconciliation",
+)
 
-    Every year gets the shared _BUILDERS set; 2021 additionally gets the
-    2021-only ARPA unemployment-compensation scenario.
+
+def battery_for(
+    year: int, status: FilingStatus = FilingStatus.SINGLE,
+) -> list[tuple[str, Callable[[], Scenario]]]:
+    """The parity battery for a (year, status): (name, zero-arg builder) pairs.
+
+    SINGLE: every year gets the shared _BUILDERS set; 2021 additionally gets
+    the 2021-only ARPA unemployment-compensation scenario. Non-single statuses
+    have no battery rows yet (empty list); they land with each status's
+    declaration in years.NATIVE_SPINE_STATUSES.
     """
+    if status != FilingStatus.SINGLE:
+        return []
     builders = _BUILDERS + (_YEAR_2021_ONLY_BUILDERS if year == 2021 else [])
     return [(name, functools.partial(build, year)) for name, build in builders]

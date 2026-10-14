@@ -23,6 +23,32 @@ FEDERAL_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 # Backfilled to enable filed-return reconciliation for a prior year.
 FEDERAL_COMPUTE_ONLY_YEARS: tuple[int, ...] = ()
 
+# Native-spine (year × status) support grid: which filing statuses each
+# federal year computes on the native 1040 spine. A (year, status) absent here
+# behaves as out of spine scope — workbook route where the workbook supports
+# it, NotImplementedError where it doesn't. Declaring a status is gated at
+# test time: every per-status params column and the required battery kinds
+# must exist for it (tests/test_status_grid_gates.py), so a declaration can
+# never outrun its data. Values are FilingStatus VALUE strings, not members,
+# because this module imports nothing from tenforty (ruling R-grid-strings);
+# a test proves each one is a valid FilingStatus value. MFS and QW are never
+# declared (out of scope). Written out per year on purpose — each year's row
+# changes independently.
+NATIVE_SPINE_STATUSES: dict[int, tuple[str, ...]] = {
+    2021: ("single",),
+    2022: ("single",),
+    2023: ("single",),
+    2024: ("single",),
+    2025: ("single",),
+}
+
+
+def native_spine_supports(year: int, status_value: str) -> bool:
+    """True iff ``status_value`` (a FilingStatus value string) is declared
+    for ``year`` in NATIVE_SPINE_STATUSES."""
+    return status_value in NATIVE_SPINE_STATUSES.get(year, ())
+
+
 # Full California pipeline: 540 compute + PDF emit + divergence catalog.
 CALIFORNIA_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 
