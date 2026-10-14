@@ -1,4 +1,5 @@
 """IRS-published 2025 federal parameters (Rev. Proc. 2024-40, Form 1040 instr.)."""
+import datetime
 import math
 
 from tenforty.models import FilingStatus
@@ -121,7 +122,16 @@ PARAMS = FederalParams(
         _S: 313_000, _MFJ: 626_000, _HOH: 313_000, _QW: 313_000,
         _MFS: 313_000,
     },
-    # Pending transcription (age-65-params).
-    additional_standard_deduction=None,
-    aged_born_before=None,
+    # Rev. Proc. 2024-40, "Aged or blind" paragraph (per-box amount):
+    # https://www.irs.gov/pub/irs-drop/rp-24-40.pdf
+    # sha256 4de9db6b6662b5c305a59100a027051628823b42fd5817ea4e383ad4c302af1f
+    # Increased amount = unmarried and not a surviving spouse.
+    additional_standard_deduction={
+        _S: 2_000, _HOH: 2_000,
+        _MFJ: 1_600, _MFS: 1_600, _QW: 1_600,
+    },
+    # 2025 Instructions for Form 1040, Age/Blindness checkbox ("born before"):
+    # https://www.irs.gov/pub/irs-prior/i1040gi--2025.pdf
+    # sha256 482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a
+    aged_born_before=datetime.date(1961, 1, 2),
 )
