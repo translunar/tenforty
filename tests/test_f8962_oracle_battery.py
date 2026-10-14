@@ -19,7 +19,7 @@ import dataclasses
 import unittest
 
 from tenforty.forms.f8962 import compute
-from tenforty.models import Form1095A, Form1095AMonth
+from tenforty.models import FilingStatus, Form1095A, Form1095AMonth
 from tenforty.params.f8962 import load
 from tests.oracles.f8962_reference import reference_f8962
 
@@ -531,6 +531,143 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
 
         # Restore: unperturbed block reconciles again.
         self.reconcile(blk, magi, year, params=params)
+
+
+# ---------------------------------------------------------------------------
+# Family size + filing status (ptc-family lane). Oracle side: Table 1-1 by
+# family size and the Table 5 "any other filing status" column, hand-
+# transcribed in tests/oracles/f8962_reference.py. Production side: compute is
+# called with ``family_size=`` / ``filing_status=`` keywords (a FilingStatus
+# member). Rows marked @unittest.expectedFailure are PENDING the ptc-family
+# lane (family size / status not yet implemented in production); the lane
+# removes the marker when they pass.
+# ---------------------------------------------------------------------------
+MFJ = FilingStatus.MARRIED_FILING_JOINTLY
+
+# Line 1 now has an oracle analog for these rows.
+FAMILY_SCALAR_RECON = (("f8962_line_1", "line1_family_size"),) + SCALAR_RECON
+
+
+class _FamilyDiffMixin:
+    def reconcile_family(self, blk, magi, year, *, family_size, filing_status):
+        c = compute(blk, magi, year, load(year),
+                    family_size=family_size, filing_status=filing_status)
+        r = reference_f8962(blk, magi, year, family_size=family_size,
+                            filing_status=filing_status)
+        tag = f"year={year} magi={magi} size={family_size} status={filing_status}"
+        for ck, rk in FAMILY_SCALAR_RECON:
+            self.assertEqual(c.get(ck), expected_for(blk, r, rk),
+                             msg=f"{tag} scalar {ck}<->{rk}")
+        if annual_eligible(blk):
+            self.assertTrue(c["f8962_line_10_yes"])
+            for letter, value in zip("abcdef", annual_expected(blk, r)["_line11"]):
+                self.assertEqual(c[f"f8962_line_11_{letter}"], value, msg=tag)
+            self.assertFalse(any(k.startswith("f8962_month_") for k in c))
+            return c, r
+        for n in range(1, 13):
+            om = r["monthly"][n - 1]
+            if om["col_a_premium"] == 0 and om["col_b_slcsp"] == 0:
+                continue
+            for letter, okey in MONTH_CELLS:
+                self.assertEqual(c[f"f8962_month_{n}_{letter}"], om[okey],
+                                 msg=f"{tag} month {n} col_{letter}")
+        return c, r
+
+
+# Synthetic MFJ, tax family size 2 (filer + spouse). MAGI literals are 250% /
+# 180% of each year's Table 1-1 size-2 line (exact multiples, so line 5 lands
+# on the band value with no flooring slack).
+MFJ_SIZE2_MAGI_250 = {2021: 43100, 2022: 43550, 2023: 45775, 2024: 49300, 2025: 51100}
+MFJ_SIZE2_MAGI_180 = {2021: 31032, 2022: 31356, 2023: 32958, 2024: 35496, 2025: 36792}
+
+
+def mfj_capped_block():
+    # Coverage Mar..Dec; APTC above premium-less-contribution every month.
+    months = [month() for _ in range(2)] + [month(1400.0, 1300.0, 1400.0)
+                                            for _ in range(10)]
+    return block(months)
+
+
+def mfj_net_ptc_block():
+    return uniform_block(1400.0, 1300.0, 600.0)
+
+
+class MFJFamilySizeOracleTests(unittest.TestCase):
+    """Oracle-only self-checks against verbatim printed figures (not pending)."""
+
+    def test_table_1_1_footnote_worked_example_size_11(self):
+        # Each year's Table 1-1 footnote works a size-11 example to a printed total.
+        printed = {2021: 57560, 2022: 58280, 2023: 60790, 2024: 65980, 2025: 68860}
+        blk = uniform_block(900.0, 850.0, 500.0)
+        for year, total in printed.items():
+            with self.subTest(year=year):
+                r = reference_f8962(blk, 100000, year, family_size=11,
+                                    filing_status=MFJ)
+                self.assertEqual(r["line4_poverty_line"], total)
+
+    def test_mfj_capped_row_hand_worked_2024(self):
+        # 2024: size-2 FPL 19,720; line 5 = 250; Table 2 -> 0.0400;
+        # 8a 1,972; 8b 164; per month d = 1,300 - 164 = 1,136 = e; x10 = 11,360.
+        # APTC 14,000 -> excess 2,640; Table 5 other-status 200-300 -> 1,900.
+        r = reference_f8962(mfj_capped_block(), MFJ_SIZE2_MAGI_250[2024], 2024,
+                            family_size=2, filing_status=MFJ)
+        self.assertEqual(
+            (r["line4_poverty_line"], r["line5_pct"], r["line8a_annual_contribution"],
+             r["line8b_monthly_contribution"], r["line24_total_ptc"],
+             r["line27_excess_aptc"], r["line28_repayment_limitation"],
+             r["line29_excess_aptc_repayment"]),
+            (19720, 250, 1972, 164, 11360, 2640, 1900, 1900))
+
+    def test_mfj_rows_reach_their_regime_every_year(self):
+        # Reachability of the pending rows' assertions, on the oracle side.
+        for year in YEARS:
+            with self.subTest(year=year):
+                cap = reference_f8962(mfj_capped_block(), MFJ_SIZE2_MAGI_250[year],
+                                      year, family_size=2, filing_status=MFJ)
+                self.assertEqual(cap["line5_pct"], 250)
+                self.assertGreater(cap["line27_excess_aptc"],
+                                   cap["line28_repayment_limitation"])
+                self.assertEqual(cap["line29_excess_aptc_repayment"],
+                                 cap["line28_repayment_limitation"])
+                # Discriminating: the single/size-1 reading gives a different cap.
+                single = reference_f8962(mfj_capped_block(), MFJ_SIZE2_MAGI_250[year],
+                                         year)
+                self.assertNotEqual(single["line28_repayment_limitation"],
+                                    cap["line28_repayment_limitation"])
+                net = reference_f8962(mfj_net_ptc_block(), MFJ_SIZE2_MAGI_180[year],
+                                      year, family_size=2, filing_status=MFJ)
+                self.assertEqual(net["line5_pct"], 180)
+                self.assertGreater(expected_for(mfj_net_ptc_block(), net,
+                                                "line26_net_ptc"), 0)
+
+    def test_mfs_is_out_of_oracle_scope(self):
+        with self.assertRaises(ValueError):
+            reference_f8962(mfj_net_ptc_block(), 30000, 2024, family_size=1,
+                            filing_status=FilingStatus.MARRIED_FILING_SEPARATELY)
+
+
+class MFJFamilySizeBatteryTests(_FamilyDiffMixin, unittest.TestCase):
+    """compute vs oracle for MFJ, family size 2. PENDING: ptc-family lane."""
+
+    @unittest.expectedFailure  # pending: ptc-family lane (family size / status)
+    def test_mfj_below_400_repayment_capped(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                c, r = self.reconcile_family(
+                    mfj_capped_block(), MFJ_SIZE2_MAGI_250[year], year,
+                    family_size=2, filing_status=MFJ)
+                self.assertGreater(c["f8962_line_27"], c["f8962_line_28"])
+                self.assertEqual(c["f8962_line_29_repayment"], c["f8962_line_28"])
+
+    @unittest.expectedFailure  # pending: ptc-family lane (family size / status)
+    def test_mfj_net_ptc_due(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                c, r = self.reconcile_family(
+                    mfj_net_ptc_block(), MFJ_SIZE2_MAGI_180[year], year,
+                    family_size=2, filing_status=MFJ)
+                self.assertGreater(c["f8962_line_26_net_ptc"], 0)
+                self.assertEqual(c["f8962_line_29_repayment"], 0)
 
 
 if __name__ == "__main__":
