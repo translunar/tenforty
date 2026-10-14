@@ -29,6 +29,7 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.models import FilingStatus
 from tenforty import orchestrator as orchestrator_mod
 from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.params.federal import load as load_federal
 from tests._pdf_pixels import checked_widgets, dark_pixels_in_rect, widget_rect
 from tests.helpers import REPO_ROOT, make_simple_scenario
 
@@ -246,6 +247,43 @@ class AgeBoxValueTests(unittest.TestCase):
         # emitted, rather than a guessed False.
         pending = orch._form_1040_checkbox_values(scn, {})
         self.assertEqual([k for k in AGE_KEYS if k in pending], [])
+
+
+class AgeBoxWiringTests(unittest.TestCase):
+    """The emit path feeds the helper the year's REAL params cutoff: an
+    emitted 1040 for a taxpayer born the day before
+    ``aged_born_before`` prints the taxpayer box; one born on it prints
+    neither age box. One year proves the call site; placement and ink above
+    cover every year's mapping."""
+
+    YEAR = 2024
+
+    def _emitted_checked(self, born: datetime.date) -> set[str]:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tmp.name) / "work")
+        scn = make_simple_scenario()
+        scn = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, year=self.YEAR, birthdate=born.isoformat()))
+        out = Path(tmp.name) / "out"
+        orch.emit_pdfs(scn, orch.compute_federal(scn), out)
+        (pdf,) = out.rglob(f"f1040_{self.YEAR}.pdf")
+        return {n for _, n, _, _ in checked_widgets(pdf)}
+
+    def test_emitted_1040_uses_the_params_cutoff(self):
+        cutoff = load_federal(self.YEAR).aged_born_before
+        self.assertIsInstance(cutoff, datetime.date)
+        mapping = Pdf1040.get_mapping(self.YEAR)
+        aged = self._emitted_checked(cutoff - DAY)
+        self.assertIn(mapping[TAXPAYER], aged)
+        self.assertNotIn(mapping[SPOUSE], aged)
+        not_aged = self._emitted_checked(cutoff)
+        self.assertNotIn(mapping[TAXPAYER], not_aged)
+        self.assertNotIn(mapping[SPOUSE], not_aged)
+        # Reachability: the not-aged emit is a real 1040 with marks on it.
+        self.assertIn(mapping["filing_status_single"], not_aged)
 
 
 if __name__ == "__main__":
