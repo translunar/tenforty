@@ -35,8 +35,16 @@ class W2:
     # at the packet-emit gate (acknowledges_no_source_documents) — do not
     # tighten this field.
     pdf: str | None = None
+    # Whose W-2 this is on a joint return (ruling R-excess-ss): "taxpayer" or
+    # "spouse". Optional here; MFJ-requiredness and the per-owner excess
+    # Social Security guard are enforced elsewhere. Not coerced, like `state`.
+    owner: str | None = None
 
     def __post_init__(self) -> None:
+        if self.owner is not None and self.owner not in ("taxpayer", "spouse"):
+            raise ValueError(
+                f"W2.owner must be None, 'taxpayer' or 'spouse', got "
+                f"{self.owner!r}.")
         if self.state is not None and (
             len(self.state) != 2
             or not self.state.isascii()
