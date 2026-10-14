@@ -88,7 +88,7 @@ ATTESTED: dict[str, object] = {
     #   182,100 - 231,250          -> 32%
     #   231,250 - 578,125          -> 35%
     #   over 578,125               -> 37%
-    "ordinary_brackets": (
+    "ordinary_brackets": {"single": (
         (11000, 0.10),
         (44725, 0.12),
         (95375, 0.22),
@@ -96,7 +96,7 @@ ATTESTED: dict[str, object] = {
         (231250, 0.32),
         (578125, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
 
     # IRS Rev. Proc. 2022-38 §3.03 "Maximum Capital Gains Rate", table of
     # "Maximum Zero Rate Amount" / "Maximum 15% Rate Amount" by filing status:

@@ -16,9 +16,9 @@ class FederalParamsTests(unittest.TestCase):
         # Additional Medicare threshold, single.
         self.assertEqual(p.addl_medicare_threshold[single], 200_000)
         # Brackets ascend and terminate at infinity.
-        bounds = [b for b, _ in p.ordinary_brackets]
+        bounds = [b for b, _ in p.ordinary_brackets[single]]
         self.assertEqual(bounds, sorted(bounds))
-        self.assertTrue(math.isinf(p.ordinary_brackets[-1][0]))
+        self.assertTrue(math.isinf(p.ordinary_brackets[single][-1][0]))
 
     def test_2024_single_spot_values(self):
         p = load(2024)
@@ -163,3 +163,23 @@ class CapitalLossLimitAllYearsAllStatusesTests(unittest.TestCase):
             for status in self.NON_MFS_STATUSES:
                 with self.subTest(year=year, status=status):
                     self.assertEqual(p.capital_loss_limit[status], 3_000)
+
+
+class BracketSchemaTests(unittest.TestCase):
+    def test_brackets_are_status_keyed_every_year(self):
+        from tenforty import years
+        statuses = {s.value for s in FilingStatus}
+        for year in years.FEDERAL_YEARS + years.FEDERAL_COMPUTE_ONLY_YEARS:
+            p = load(year)
+            with self.subTest(year=year):
+                self.assertIsInstance(p.ordinary_brackets, dict)
+                self.assertTrue(p.ordinary_brackets)
+                self.assertLessEqual(set(p.ordinary_brackets), statuses)
+                self.assertIn(FilingStatus.SINGLE.value, p.ordinary_brackets)
+            for status, schedule in p.ordinary_brackets.items():
+                with self.subTest(year=year, status=status):
+                    self.assertIsInstance(schedule, tuple)
+                    bounds = [b for b, _ in schedule]
+                    self.assertEqual(bounds, sorted(bounds))
+                    self.assertEqual(len(bounds), len(set(bounds)))
+                    self.assertTrue(math.isinf(schedule[-1][0]))

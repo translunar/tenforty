@@ -7,17 +7,26 @@ no `if year ==` branches here.
 from tenforty import years as year_manifest
 from tenforty.models import FilingStatus, parse_filing_status
 from tenforty.params.federal import FederalParams
+from tenforty.params.status_view import StatusView
 from tenforty.rounding import irs_round
 from tenforty.tax_table import TABLE_CEILING, tax_from_table
 
 
-def tax_from_schedule(taxable_income: float, params: FederalParams) -> int:
-    """Tax on ordinary income from the year's rate schedule."""
+def tax_from_schedule(taxable_income: float, view: StatusView) -> int:
+    """Tax on ordinary income from the year's rate schedule for the view's
+    filing status (``params.for_status(status)``). A raw FederalParams is
+    refused: its ordinary_brackets is status-keyed, and reading it without a
+    status would silently pick nothing meaningful."""
+    if not isinstance(view, StatusView):
+        raise TypeError(
+            "tax_from_schedule takes a per-status view "
+            "(params.for_status(filing_status)), not "
+            f"{type(view).__name__}")
     if taxable_income <= 0:
         return 0
     tax = 0.0
     lower = 0.0
-    for upper, rate in params.ordinary_brackets:
+    for upper, rate in view.ordinary_brackets:
         if taxable_income <= lower:
             break
         slice_top = min(taxable_income, upper)
@@ -35,7 +44,7 @@ def ordinary_tax(taxable_income: float, params: FederalParams,
         return 0
     if taxable_income < TABLE_CEILING:
         return tax_from_table(taxable_income, params.year, filing_status)
-    return tax_from_schedule(taxable_income, params)
+    return tax_from_schedule(taxable_income, params.for_status(filing_status))
 
 
 def qdcgt_tax(

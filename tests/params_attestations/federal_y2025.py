@@ -123,10 +123,10 @@ ATTESTED: dict[str, object] = {
     # OBBBA's replacement (IRC §170(p)) does not begin until TY2026.
     "nonitemizer_charitable_cap": None,
 
-    # Rev. Proc. 2024-40 TY2025 Tax Rate Tables (via IR-2024-273). SCHEMA
-    # STORES ONE SCHEDULE (not status-keyed) — transcribed SINGLE-filer 2025.
+    # Rev. Proc. 2024-40 TY2025 Tax Rate Tables (via IR-2024-273).
+    # Status-keyed; single column transcribed — SINGLE-filer 2025.
     # See module docstring note. (upper_bound, marginal_rate).
-    "ordinary_brackets": (
+    "ordinary_brackets": {"single": (
         (11925.0, 0.10),
         (48475.0, 0.12),
         (103350.0, 0.22),
@@ -134,7 +134,7 @@ ATTESTED: dict[str, object] = {
         (250525.0, 0.32),
         (626350.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
 
     # IRS Topic no. 409 / Rev. Proc. 2024-40 Maximum Capital Gains Rate, TY2025.
     # (0%-rate maximum taxable income, 15%-rate maximum taxable income).

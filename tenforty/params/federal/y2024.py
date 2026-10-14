@@ -21,7 +21,7 @@ PARAMS = FederalParams(
         _S: 14_600, _MFJ: 29_200, _MFS: 14_600, _HOH: 21_900, _QW: 29_200,
     },
     # 2024 single tax-rate schedule: (upper_bound, marginal_rate).
-    ordinary_brackets=(
+    ordinary_brackets={_S: (
         (11_600.0, 0.10),
         (47_150.0, 0.12),
         (100_525.0, 0.22),
@@ -29,7 +29,7 @@ PARAMS = FederalParams(
         (243_725.0, 0.32),
         (609_350.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
     qdcgt_breakpoints={_S: (47_025, 518_900)},
     addl_medicare_threshold={_S: 200_000},
     ss_wage_base=168_600,  # SSA 2024 OASDI wage base

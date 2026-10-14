@@ -48,7 +48,7 @@ PARAMS = FederalParams(
     # Rev. Proc. 2020-45 §.01, Table 3 — Section 1(j)(2)(C), Unmarried
     # Individuals (other than Surviving Spouses and Heads of Households).
     # Single-scoped rate spine: (upper_bound, marginal_rate), ascending.
-    ordinary_brackets=(
+    ordinary_brackets={_S: (
         (9_950.0, 0.10),     # Not over $9,950
         (40_525.0, 0.12),    # $9,950–$40,525
         (86_375.0, 0.22),    # $40,525–$86,375
@@ -56,7 +56,7 @@ PARAMS = FederalParams(
         (209_425.0, 0.32),   # $164,925–$209,425
         (523_600.0, 0.35),   # $209,425–$523,600
         (math.inf, 0.37),    # Over $523,600
-    ),
+    )},
     # Rev. Proc. 2020-45 §.03 Maximum Capital Gains Rate.
     # (Maximum Zero-Rate Amount [§1(h)(1)(B)(i)],
     #  Maximum 15%-Rate Amount [§1(h)(1)(C)(ii)(I)]).

@@ -13,7 +13,8 @@ from tenforty import years as year_manifest
 class FederalParams:
     year: int
     standard_deduction: dict[str, int]
-    ordinary_brackets: tuple[tuple[float, float], ...]  # (upper_bound, rate)
+    # Per-status rate schedules: {status: ((upper_bound, rate), ...)}.
+    ordinary_brackets: dict[str, tuple[tuple[float, float], ...]]
     qdcgt_breakpoints: dict[str, tuple[int, int]]        # (0%-top, 15%-top)
     addl_medicare_threshold: dict[str, int]
     # SSA OASDI (Social Security) wage base for the year. Not used by the
@@ -87,6 +88,7 @@ class FederalParams:
 # per-status field cannot silently escape the gate.
 PER_STATUS_FEDERAL_FIELDS: tuple[str, ...] = (
     "standard_deduction",
+    "ordinary_brackets",
     "qdcgt_breakpoints",
     "addl_medicare_threshold",
     "qbi_threshold",
