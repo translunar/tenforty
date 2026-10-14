@@ -240,7 +240,7 @@ class PTCBatteryRegimeSelfCheckTests(unittest.TestCase):
                 self.assertGreaterEqual(line_5, 200)
                 self.assertLess(line_5, 300)
                 expected_cap = next(
-                    cap for bound, cap in params.repayment_caps_single
+                    cap for bound, cap in params.repayment_caps["single"]
                     if bound > line_5
                 )
                 self.assertEqual(results["f8962_line_29_repayment"], expected_cap)
@@ -295,7 +295,7 @@ class PTCBatteryRegimeSelfCheckTests(unittest.TestCase):
                 # cap" branch both structurally (cap line blank) and
                 # materially (repayment exceeds what any cap would allow).
                 params = f8962_params.load(year)
-                top_cap = max(cap for _bound, cap in params.repayment_caps_single)
+                top_cap = max(cap for _bound, cap in params.repayment_caps["single"])
                 self.assertGreater(results["f8962_line_29_repayment"], top_cap)
 
     def test_ptc_2021_ui_flat133_regime(self):
