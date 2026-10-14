@@ -316,6 +316,8 @@ class SeHealthPtcGuardTests(unittest.TestCase):
             block=block, magi=agi + block.tax_exempt_interest,
             year=scenario.config.year,
             params=params_f8962.load(scenario.config.year),
+            filing_status=scenario.config.filing_status,
+            family_size=form_f8962.tax_family_size(scenario.config),
         )
         return compute_spine(
             scenario, params, {**schedule_results, "f8962": f8962}
