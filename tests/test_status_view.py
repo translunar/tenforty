@@ -91,8 +91,8 @@ class StatusViewTests(unittest.TestCase):
         self.assertEqual(view.eic_income_ceiling, params.eic_income_ceiling)
         ca = ca_params.load(2025)
         self.assertEqual(
-            ca.for_status(FilingStatus.SINGLE).agi_phaseout_threshold,
-            ca.agi_phaseout_threshold)
+            ca.for_status(FilingStatus.SINGLE).dependent_exemption_amount,
+            ca.dependent_exemption_amount)
 
     def test_view_exposes_status_and_year(self):
         view = load_federal(2024).for_status(FilingStatus.SINGLE)

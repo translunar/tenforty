@@ -20,15 +20,16 @@ class CaliforniaParams:
     standard_deduction: dict[str, int]
     exemption_credit: dict[str, int]
     dependent_exemption_amount: int
-    # Form 540 line 32 gate: federal AGI above this triggers the
-    # exemption-credit phaseout; v1 raises NotImplementedError there.
+    # Form 540 line 32 gate, per filing status: federal AGI above the
+    # status's threshold triggers the exemption-credit phaseout; v1 raises
+    # NotImplementedError there.
     # This same threshold ALSO gates the Schedule CA Part II itemized-deduction
     # AGI limitation (Sch CA line 29): the two are printed as the same figure
     # on the 2024–2025 CA tax booklet (verified coincident via the params
     # attestation), so the existing f540 NotImplementedError scopes out the
     # line-29 reduction too. If FTB ever decouples them, this field must split
     # into separate exemption-phaseout and itemized-limitation thresholds.
-    agi_phaseout_threshold: int
+    agi_phaseout_threshold: dict[str, int]
     # (threshold_inclusive, marginal_rate_at_or_above_threshold) entries
     # walked by forms.f540._walk_rate_schedule.
     rate_schedule: dict[str, tuple[tuple[int, float], ...]]
@@ -49,6 +50,7 @@ class CaliforniaParams:
 PER_STATUS_CALIFORNIA_FIELDS: tuple[str, ...] = (
     "standard_deduction",
     "exemption_credit",
+    "agi_phaseout_threshold",
     "rate_schedule",
     "renter_credit_agi_threshold",
     "renter_credit_amount",

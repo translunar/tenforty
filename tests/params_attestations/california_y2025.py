@@ -72,7 +72,7 @@ ATTESTED: dict[str, object] = {
     # Schema field is a single int. Form 540 line 32 prints $252,203 as the
     # federal-AGI gate (the Single / MFS threshold). Status-specific MFJ/QSS
     # and HOH thresholds not separately transcribed — see report concern.
-    "agi_phaseout_threshold": 252203,   # f540 line 32
+    "agi_phaseout_threshold": {"single": 252203},   # f540 line 32
 
     # 2025 California Tax Rate Schedules (tax_rate_schedules.pdf).
     "rate_schedule": {

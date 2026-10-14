@@ -55,7 +55,7 @@ ATTESTED: dict[str, object] = {
     # federal-AGI gate (the Single / MFS threshold). Booklet Line 32
     # instructions list status-specific thresholds: Single/MFS $244,857,
     # MFJ/QSS $489,719, HOH $367,291 — see report concern about the scalar.
-    "agi_phaseout_threshold": 244857,   # f540 line 32; booklet p. 12 Line 32
+    "agi_phaseout_threshold": {"single": 244857},   # f540 line 32; booklet p. 12 Line 32
 
     # 2024 California Tax Rate Schedules (tax_rate_schedules.pdf).
     "rate_schedule": {
