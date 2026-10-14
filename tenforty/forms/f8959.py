@@ -8,11 +8,8 @@ exposes the two summary totals (``F8959_Tax`` = line 18,
 computed natively here and the two totals are cross-checked against the
 oracle with a divergence WARNING on mismatch.
 
-Threshold table (2025, Form 8959 instructions):
-
-    Single / HoH / Qualifying widow(er)   $200,000
-    Married filing jointly                $250,000
-    Married filing separately             $125,000
+The threshold is the filing status's ``addl_medicare_threshold`` params
+column (IRC §3101(b)(2)), read through ``params.for_status(status)``.
 
 Rates: 0.9% additional Medicare tax above the threshold; 1.45% regular
 Medicare tax on all Medicare wages (used in the line 21 reconciliation).
@@ -20,7 +17,8 @@ Medicare tax on all Medicare wages (used in the line 21 reconciliation).
 
 import logging
 
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import Scenario
+from tenforty.params.federal import load as load_federal_params
 from tenforty.rounding import irs_round
 
 log = logging.getLogger(__name__)
@@ -28,18 +26,10 @@ log = logging.getLogger(__name__)
 _ADDITIONAL_MEDICARE_RATE = 0.009
 _REGULAR_MEDICARE_RATE = 0.0145
 
-_THRESHOLDS: dict[FilingStatus, int] = {
-    FilingStatus.SINGLE: 200_000,
-    FilingStatus.HEAD_OF_HOUSEHOLD: 200_000,
-    FilingStatus.QUALIFYING_WIDOW: 200_000,
-    FilingStatus.MARRIED_FILING_JOINTLY: 250_000,
-    FilingStatus.MARRIED_FILING_SEPARATELY: 125_000,
-}
-
-
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     f1040 = upstream.get("f1040", {})
-    threshold = _THRESHOLDS[scenario.config.filing_status]
+    threshold = load_federal_params(scenario.config.year).for_status(
+        scenario.config.filing_status).addl_medicare_threshold
     medicare_wages = sum(w.medicare_wages for w in scenario.w2s)
     medicare_withheld = sum(w.medicare_tax_withheld for w in scenario.w2s)
 

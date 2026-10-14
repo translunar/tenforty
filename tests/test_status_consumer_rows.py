@@ -220,12 +220,7 @@ class QbiThresholdRowTests(_Rows):
 
 
 class AdditionalMedicareThresholdRowTests(_Rows):
-    """Form 8959's line-5 threshold against the status column.
-
-    These rows check values, not the read path: f8959 still carries its own
-    status-keyed threshold dict (the addl-medicare-columns code half has not
-    landed), so these rows pass for as long as that dict agrees with params.
-    """
+    """Form 8959's line-5 threshold against the status column."""
 
     def _f8959(self, status, medicare_wages):
         scenario = Scenario(
