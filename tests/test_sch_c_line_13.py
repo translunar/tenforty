@@ -227,7 +227,7 @@ class WorkbookPathGuardTests(unittest.TestCase):
 
     def test_schedule_c_with_assets_refuses_on_the_workbook_path(self):
         s = _scenario(_biz(assets=[_equipment()]))
-        s.config.filing_status = "married_jointly"
+        s.config.filing_status = "married_filing_jointly"
         with tempfile.TemporaryDirectory() as tmp:
             orchestrator = ReturnOrchestrator(
                 spreadsheets_dir=SPREADSHEETS_DIR, work_dir=Path(tmp))

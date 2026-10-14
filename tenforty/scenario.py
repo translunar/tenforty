@@ -1010,11 +1010,11 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
         )
 
     # Conditional fields — sibling-dependent, not table-driven.
-    if cfg.filing_status == FilingStatus.MARRIED_SEPARATELY:
+    if cfg.filing_status == FilingStatus.MARRIED_FILING_SEPARATELY:
         if cfg.mfs_lived_with_spouse_any_time is None:
             raise ValueError(
                 "Scenario config field `mfs_lived_with_spouse_any_time` is "
-                "required when `filing_status` is `mfs`. Per IRC §469(i)(5), "
+                "required when `filing_status` is `married_filing_separately`. Per IRC §469(i)(5), "
                 "MFS filers who lived with a spouse at any time during the "
                 "year have a $0 Form 8582 special allowance for rental real "
                 "estate; MFS filers who lived apart the entire year have "

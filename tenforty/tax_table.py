@@ -24,11 +24,11 @@ TABLE_CEILING = 100_000
 
 _COLUMN_BY_STATUS: dict[FilingStatus, str] = {
     FilingStatus.SINGLE: "single",
-    FilingStatus.MARRIED_JOINTLY: "mfj",
+    FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
     # The table's MFJ column is headed "Married filing jointly (or
     # Qualifying surviving spouse)".
     FilingStatus.QUALIFYING_WIDOW: "mfj",
-    FilingStatus.MARRIED_SEPARATELY: "mfs",
+    FilingStatus.MARRIED_FILING_SEPARATELY: "mfs",
     FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
 }
 

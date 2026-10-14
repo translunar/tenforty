@@ -126,7 +126,7 @@ class PlanDUnconditionalAttestationLoadTimeTests(unittest.TestCase):
 
 class PlanDConditionalFieldTests(unittest.TestCase):
     def test_mfs_without_mfs_flag_raises(self):
-        cfg = _base_config(filing_status="married_separately")
+        cfg = _base_config(filing_status="married_filing_separately")
         doc = {"config": cfg}
         with tempfile.TemporaryDirectory() as tmp:
             p = _write_yaml(doc, Path(tmp))
@@ -137,7 +137,7 @@ class PlanDConditionalFieldTests(unittest.TestCase):
 
     def test_mfs_with_flag_loads(self):
         cfg = _base_config(
-            filing_status="married_separately",
+            filing_status="married_filing_separately",
             mfs_lived_with_spouse_any_time=False,
         )
         doc = {"config": cfg}

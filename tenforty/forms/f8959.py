@@ -32,8 +32,8 @@ _THRESHOLDS: dict[FilingStatus, int] = {
     FilingStatus.SINGLE: 200_000,
     FilingStatus.HEAD_OF_HOUSEHOLD: 200_000,
     FilingStatus.QUALIFYING_WIDOW: 200_000,
-    FilingStatus.MARRIED_JOINTLY: 250_000,
-    FilingStatus.MARRIED_SEPARATELY: 125_000,
+    FilingStatus.MARRIED_FILING_JOINTLY: 250_000,
+    FilingStatus.MARRIED_FILING_SEPARATELY: 125_000,
 }
 
 

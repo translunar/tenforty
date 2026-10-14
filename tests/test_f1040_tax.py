@@ -47,7 +47,7 @@ class QdcgtWorksheetTests(unittest.TestCase):
 
     def test_non_single_raises(self):
         with self.assertRaises(NotImplementedError):
-            qdcgt_tax(100_000, 0, 0, self.p, FilingStatus.MARRIED_JOINTLY)
+            qdcgt_tax(100_000, 0, 0, self.p, FilingStatus.MARRIED_FILING_JOINTLY)
 
 
 class OrdinaryTaxTableTests(unittest.TestCase):

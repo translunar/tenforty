@@ -50,7 +50,7 @@ class SchASaltTests(unittest.TestCase):
 
     def test_capped_at_20k_mfs_obbba(self):
         scenario = _scenario(
-            filing_status=FilingStatus.MARRIED_SEPARATELY,
+            filing_status=FilingStatus.MARRIED_FILING_SEPARATELY,
             state_income_tax=15_000, property_tax=10_000,
         )
         upstream = {"f1040": {"agi": 200_000, "magi": 200_000}}

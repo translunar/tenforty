@@ -30,7 +30,7 @@ class TestStandardDeductionMFJ(unittest.TestCase):
     ``setUpClass``, not in either test body — pytest applies an xfail marker to
     a setup-phase error, so both methods report XFAIL rather than ERROR.
 
-    WHY: this fixture is MARRIED_JOINTLY, so the workbook's ``Birthday_Needed``
+    WHY: this fixture is MARRIED_FILING_JOINTLY, so the workbook's ``Birthday_Needed``
     flag is unconditionally TRUE (tenforty has no spouse-birthdate input), the
     ``Deduction`` named range holds "Birthdate(s) needed.", and
     ``f1040.compute`` now refuses instead of harvesting a blanked line 16.

@@ -17,8 +17,8 @@ ATTESTED: dict[str, object] = {
     "standard_deduction": {
         # Rev. Proc. 2021-45 §3.15(1) Standard Deduction table (§63(c)(2))
         "single": 12950,             # "Unmarried Individuals (other than Surviving Spouses and Heads of Households)"
-        "married_jointly": 25900,    # "Married Individuals Filing Joint Returns and Surviving Spouses"
-        "married_separately": 12950, # "Married Individuals Filing Separate Returns"
+        "married_filing_jointly": 25900,    # "Married Individuals Filing Joint Returns and Surviving Spouses"
+        "married_filing_separately": 12950, # "Married Individuals Filing Separate Returns"
         "head_of_household": 19400,  # "Heads of Households"
         "qualifying_widow": 25900,   # QSS shares the MFJ / "Surviving Spouses" row per §3.15(1)
     },
@@ -38,8 +38,8 @@ ATTESTED: dict[str, object] = {
         # Rev. Proc. 2021-45 §3.03 Maximum Capital Gains Rate (§1(h)):
         # (Maximum Zero Rate Amount, Maximum 15-percent Rate Amount)
         "single": (41675, 459750),            # "any other individual (other than an estate or trust)"
-        "married_jointly": (83350, 517200),   # "joint return or surviving spouse"
-        "married_separately": (41675, 258600),# "married individual filing a separate return"
+        "married_filing_jointly": (83350, 517200),   # "joint return or surviving spouse"
+        "married_filing_separately": (41675, 258600),# "married individual filing a separate return"
         "head_of_household": (55800, 488500), # "individual who is the head of a household"
         "qualifying_widow": (83350, 517200),  # QSS shares the "surviving spouse" (joint) figures per §3.03
     },
@@ -53,8 +53,8 @@ ATTESTED: dict[str, object] = {
         # separately, ($1,500)". 2022 Instr. Sch. D, "Capital Losses" (page 4)
         # agrees: "$3,000 ($1,500 if married filing separately)".
         "single": 3000,
-        "married_jointly": 3000,
-        "married_separately": 1500,  # only MFS differs, per §1211(b)(1)
+        "married_filing_jointly": 3000,
+        "married_filing_separately": 1500,  # only MFS differs, per §1211(b)(1)
         "head_of_household": 3000,
         "qualifying_widow": 3000,    # QSS is not MFS -> full $3,000
     },
@@ -62,8 +62,8 @@ ATTESTED: dict[str, object] = {
         # 2022 Instructions for Form 8959, "Threshold Amounts for Additional Medicare Tax"
         # (§3101(b)(2)/§1411; note: not indexed for inflation)
         "single": 200000,             # "Single ... $200,000"
-        "married_jointly": 250000,    # "Married filing jointly ... $250,000"
-        "married_separately": 125000, # "Married filing separately ... $125,000"
+        "married_filing_jointly": 250000,    # "Married filing jointly ... $250,000"
+        "married_filing_separately": 125000, # "Married filing separately ... $125,000"
         "head_of_household": 200000,  # "Head of household ... $200,000"
         "qualifying_widow": 200000,   # "Qualifying surviving spouse ... $200,000"
     },
@@ -71,8 +71,8 @@ ATTESTED: dict[str, object] = {
     "qbi_threshold": {
         # Rev. Proc. 2021-45 §3.27 Qualified Business Income, Threshold amount (§199A(e)(2))
         "single": 170050,             # "All Other Returns ... $170,050"
-        "married_jointly": 340100,    # "Married Individuals Filing Joint Returns ... $340,100"
-        "married_separately": 170050, # "Married Individuals Filing Separate Returns ... $170,050"
+        "married_filing_jointly": 340100,    # "Married Individuals Filing Joint Returns ... $340,100"
+        "married_filing_separately": 170050, # "Married Individuals Filing Separate Returns ... $170,050"
         "head_of_household": 170050,  # "All Other Returns ... $170,050"
         "qualifying_widow": 170050,   # QSS takes the "All Other Returns" (single-side) value; §199A is joint-return-keyed
     },
@@ -80,8 +80,8 @@ ATTESTED: dict[str, object] = {
         # IRC §164(b)(6) flat cap, confirmed by 2022 Instructions for Schedule A (Form 1040),
         # Line 5: "generally limited to $10,000 ($5,000 if married filing separately)"
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -91,8 +91,8 @@ ATTESTED: dict[str, object] = {
         # IRC §164(b)(6): the 2022 cap is a flat pre-OBBBA amount with no income phase-down,
         # so the floor equals the flat cap itself ($5,000 MFS). Confirmed by 2022 Sch. A instr., Line 5.
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -100,8 +100,8 @@ ATTESTED: dict[str, object] = {
     "prior_year_salt_cap": {
         # 2021 (prior-year) SALT cap: same flat IRC §164(b)(6) structure, $10,000 ($5,000 MFS)
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -121,8 +121,8 @@ ATTESTED: dict[str, object] = {
     # jointly takes the single amount.
     "excess_business_loss_threshold": {
         "single": 270000,
-        "married_jointly": 540000,
-        "married_separately": 270000,
+        "married_filing_jointly": 540000,
+        "married_filing_separately": 270000,
         "head_of_household": 270000,
         "qualifying_widow": 270000,
     },

@@ -196,8 +196,8 @@ class WorkbookDiagnosticRefusalTests(unittest.TestCase):
         low = message.lower()
         # CAUSE: tenforty supplies no spouse birthdate, for MFJ/MFS.
         self.assertIn("spouse birthdate", low)
-        self.assertIn("married_jointly", low)
-        self.assertIn("married_separate", low)
+        self.assertIn("married_filing_jointly", low)
+        self.assertIn("married_filing_separately", low)
         # REMEDY: the spouse-birthdate unit lifts this.
         self.assertIn("spouse-birthdate unit", low)
         # The refusal also protects line 17, which the SAME blank corrupts

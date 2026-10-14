@@ -49,7 +49,7 @@ class SchCWorkbookGuardTests(unittest.TestCase):
         confirm the routing predicate directly, so the branch is not assumed.
         """
         s = make_simple_scenario()
-        s.config.filing_status = "married_jointly"
+        s.config.filing_status = "married_filing_jointly"
         return s
 
     def test_fires_when_business_set_on_workbook_path(self):

@@ -142,7 +142,7 @@ class TestTaxReturnConfig(unittest.TestCase):
             )
 
     def test_filing_status_accepts_valid(self):
-        for status in ["single", "married_jointly", "married_separately",
+        for status in ["single", "married_filing_jointly", "married_filing_separately",
                         "head_of_household", "qualifying_widow"]:
             config = TaxReturnConfig(
                 year=2025,
@@ -165,7 +165,7 @@ class TestTaxReturnConfig(unittest.TestCase):
 
         populated = TaxReturnConfig(
             year=2025,
-            filing_status="married_jointly",
+            filing_status="married_filing_jointly",
             birthdate="1985-03-20",
             state="TX",
             first_name="Jane",

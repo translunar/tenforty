@@ -66,8 +66,8 @@ ATTESTED: dict[str, object] = {
     # combined MFJ/surviving-spouse row value ($27,700) per the row label.
     "standard_deduction": {
         "single": 13850,
-        "married_jointly": 27700,
-        "married_separately": 13850,
+        "married_filing_jointly": 27700,
+        "married_filing_separately": 13850,
         "head_of_household": 20800,
         "qualifying_widow": 27700,
     },
@@ -108,8 +108,8 @@ ATTESTED: dict[str, object] = {
     # label (same as standard deduction's row grouping).
     "qdcgt_breakpoints": {
         "single": (44625, 492300),
-        "married_jointly": (89250, 553850),
-        "married_separately": (44625, 276900),
+        "married_filing_jointly": (89250, 553850),
+        "married_filing_separately": (44625, 276900),
         "head_of_household": (59750, 523050),
         "qualifying_widow": (89250, 553850),
     },
@@ -129,8 +129,8 @@ ATTESTED: dict[str, object] = {
     # single/HoH/MFJ/QSS all take the full $3,000.
     "capital_loss_limit": {
         "single": 3000,
-        "married_jointly": 3000,
-        "married_separately": 1500,
+        "married_filing_jointly": 3000,
+        "married_filing_separately": 1500,
         "head_of_household": 3000,
         "qualifying_widow": 3000,
     },
@@ -149,8 +149,8 @@ ATTESTED: dict[str, object] = {
     # QSS is grouped with single/HoH at $200,000, NOT the MFJ $250,000 value.
     "addl_medicare_threshold": {
         "single": 200000,
-        "married_jointly": 250000,
-        "married_separately": 125000,
+        "married_filing_jointly": 250000,
+        "married_filing_separately": 125000,
         "head_of_household": 200000,
         "qualifying_widow": 200000,
     },
@@ -175,8 +175,8 @@ ATTESTED: dict[str, object] = {
     # NOT the MFJ value ($364,200).
     "qbi_threshold": {
         "single": 182100,
-        "married_jointly": 364200,
-        "married_separately": 182100,
+        "married_filing_jointly": 364200,
+        "married_filing_separately": 182100,
         "head_of_household": 182100,
         "qualifying_widow": 182100,
     },
@@ -188,8 +188,8 @@ ATTESTED: dict[str, object] = {
     # limited to $10,000 ($5,000 if married filing separately)."
     "salt_cap_starting": {
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -205,8 +205,8 @@ ATTESTED: dict[str, object] = {
     # no phaseout in this pre-OBBBA year.
     "salt_cap_floor": {
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -225,8 +225,8 @@ ATTESTED: dict[str, object] = {
     # $10,000 ($5,000 if married filing separately)."
     "prior_year_salt_cap": {
         "single": 10000,
-        "married_jointly": 10000,
-        "married_separately": 5000,
+        "married_filing_jointly": 10000,
+        "married_filing_separately": 5000,
         "head_of_household": 10000,
         "qualifying_widow": 10000,
     },
@@ -257,8 +257,8 @@ ATTESTED: dict[str, object] = {
     # jointly takes the single amount.
     "excess_business_loss_threshold": {
         "single": 289000,
-        "married_jointly": 578000,
-        "married_separately": 289000,
+        "married_filing_jointly": 578000,
+        "married_filing_separately": 289000,
         "head_of_household": 289000,
         "qualifying_widow": 289000,
     },

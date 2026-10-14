@@ -92,8 +92,8 @@ _HEADER_KEYS: tuple[str, ...] = (
 # Filing status -> the suffix of its ``f1040x_filing_status_<suffix>`` key.
 _FILING_STATUS_SUFFIX: dict[FilingStatus, str] = {
     FilingStatus.SINGLE: "single",
-    FilingStatus.MARRIED_JOINTLY: "mfj",
-    FilingStatus.MARRIED_SEPARATELY: "mfs",
+    FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
+    FilingStatus.MARRIED_FILING_SEPARATELY: "mfs",
     FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
     FilingStatus.QUALIFYING_WIDOW: "qss",
 }

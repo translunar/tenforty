@@ -62,7 +62,7 @@ class F8582SpecialAllowanceSingleTests(unittest.TestCase):
 class F8582SpecialAllowanceMFSTests(unittest.TestCase):
     def _mfs_scenario(self, lived_with_spouse: bool):
         s = make_k1_scenario()
-        s.config.filing_status = FilingStatus.MARRIED_SEPARATELY
+        s.config.filing_status = FilingStatus.MARRIED_FILING_SEPARATELY
         s.config.mfs_lived_with_spouse_any_time = lived_with_spouse
         s.rental_properties = [RentalProperty(
             address="1 Test St", property_type=1, fair_rental_days=365,

@@ -51,8 +51,8 @@ GOLDEN_HEADER_LEAVES = {
 
 _STATUS_KEYS = {
     FilingStatus.SINGLE: "single",
-    FilingStatus.MARRIED_JOINTLY: "mfj",
-    FilingStatus.MARRIED_SEPARATELY: "mfs",
+    FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
+    FilingStatus.MARRIED_FILING_SEPARATELY: "mfs",
     FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
     FilingStatus.QUALIFYING_WIDOW: "qss",
 }
@@ -109,7 +109,7 @@ class HeaderKeyTests(unittest.TestCase):
 
     def _config(self, **kw) -> TaxReturnConfig:
         return TaxReturnConfig(
-            year=2025, filing_status=FilingStatus.MARRIED_JOINTLY,
+            year=2025, filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
             birthdate="1980-01-01", state="TX",
             first_name="Pat", last_name="Example", ssn="000-00-0001",
             spouse_first_name="Sam", spouse_last_name="Example",

@@ -190,10 +190,10 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
 
 def _mfj(scenario):
     """Re-file a `_make_v1_scenario()` fixture (which fixes filing_status=
-    SINGLE) as MARRIED_JOINTLY, leaving every other field untouched.
+    SINGLE) as MARRIED_FILING_JOINTLY, leaving every other field untouched.
 
     Also supplies a synthetic spouse identity so the MFJ scenario is complete
-    at setup: filing MARRIED_JOINTLY with `spouse_first_name` /
+    at setup: filing MARRIED_FILING_JOINTLY with `spouse_first_name` /
     `spouse_last_name` / `spouse_ssn` left empty is an incomplete return, and
     the tests built on this helper must be able to fail only on the guard
     under test, never at setup. The spouse mirrors the fixture's own
@@ -203,7 +203,7 @@ def _mfj(scenario):
         scenario,
         config=dataclasses.replace(
             scenario.config,
-            filing_status=FilingStatus.MARRIED_JOINTLY,
+            filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
             spouse_first_name="Taxpayer",
             spouse_last_name="B",
             spouse_ssn="000-00-0001",
@@ -246,7 +246,7 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
 
     The two halves run on DIFFERENT non-single filing statuses, which is
     deliberate and is explained in each test's own docstring: the
-    above-threshold refusal is pinned on MARRIED_JOINTLY (threshold
+    above-threshold refusal is pinned on MARRIED_FILING_JOINTLY (threshold
     $394,600) and the below-threshold computation on HEAD_OF_HOUSEHOLD
     (threshold $197,300). Both are out of native-spine scope and route
     through the identical `_compute_1040_via_workbook` call, so the pair
@@ -272,7 +272,7 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         470,000 of total income, against the 394,600 MFJ threshold
         (tenforty/params/federal/y2025.py). Without the orchestrator-level
         guard this scenario would route straight to the XLSX workbook
-        (MARRIED_JOINTLY is out of native-spine scope) and compute silently
+        (MARRIED_FILING_JOINTLY is out of native-spine scope) and compute silently
         via the workbook's `8995` sheet, which is not valid above the
         threshold.
 
@@ -339,7 +339,7 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         WHY HOH AND NOT MFJ: this test was originally written on MFJ and
         asserted 38,500 (70,000 minus the 31,500 MFJ standard deduction).
         It failed against the real workbook with 70,000 -- the standard
-        deduction is never subtracted for MARRIED_JOINTLY or
+        deduction is never subtracted for MARRIED_FILING_JOINTLY or
         MARRIED_SEPARATE. That is a real, pre-existing defect unrelated to
         QBI or to this branch: the vendor sheet zeroes line 12 whenever its
         `Birthday_Needed` flag fires, and that flag is permanently TRUE for
@@ -406,7 +406,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
     def _mfj_scenario_with_qbi(self, qbi_amount=70_000.0,
                                acknowledges_qbi_below_threshold=False):
         scenario = make_k1_scenario()
-        scenario.config.filing_status = FilingStatus.MARRIED_JOINTLY
+        scenario.config.filing_status = FilingStatus.MARRIED_FILING_JOINTLY
         # Set EXPLICITLY, never inherited: `make_k1_scenario()` (tests/
         # helpers.py) turns every K-1 gate attestation ON, including
         # `acknowledges_qbi_below_threshold`, so the fixture default here is

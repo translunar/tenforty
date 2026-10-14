@@ -363,9 +363,9 @@ class PresentationKeysTests(unittest.TestCase):
 
     def test_personal_exemption_count_and_amount_per_status(self):
         expected_count = {
-            FilingStatus.SINGLE: 1, FilingStatus.MARRIED_SEPARATELY: 1,
+            FilingStatus.SINGLE: 1, FilingStatus.MARRIED_FILING_SEPARATELY: 1,
             FilingStatus.HEAD_OF_HOUSEHOLD: 1,
-            FilingStatus.MARRIED_JOINTLY: 2, FilingStatus.QUALIFYING_WIDOW: 2,
+            FilingStatus.MARRIED_FILING_JOINTLY: 2, FilingStatus.QUALIFYING_WIDOW: 2,
         }
         for year in CA_YEARS:
             single = ca_params.load(year).exemption_credit["single"]

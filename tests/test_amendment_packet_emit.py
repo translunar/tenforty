@@ -1163,8 +1163,8 @@ _F1040X_ZIP = _X_ADDR + "f1_13[0]"
 # "Amended return filing status" row, left to right: (field, on-state).
 _F1040X_FILING_STATUS_BOXES = {
     FilingStatus.SINGLE: (_X_P1 + "c1_3[0]", "/1"),
-    FilingStatus.MARRIED_JOINTLY: (_X_P1 + "c1_3[1]", "/2"),
-    FilingStatus.MARRIED_SEPARATELY: (_X_P1 + "c1_3[2]", "/3"),
+    FilingStatus.MARRIED_FILING_JOINTLY: (_X_P1 + "c1_3[1]", "/2"),
+    FilingStatus.MARRIED_FILING_SEPARATELY: (_X_P1 + "c1_3[2]", "/3"),
     FilingStatus.HEAD_OF_HOUSEHOLD: (_X_P1 + "c1_3[3]", "/4"),
     FilingStatus.QUALIFYING_WIDOW: (_X_P1 + "c1_3[4]", "/5"),
 }

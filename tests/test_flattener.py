@@ -58,7 +58,7 @@ class TestFlattenScenario(unittest.TestCase):
     def test_filing_status_single(self):
         flat = flatten_scenario(_simple_scenario())
         self.assertEqual(flat["filing_status_single"], "X")
-        self.assertNotIn("filing_status_married_jointly", flat)
+        self.assertNotIn("filing_status_married_filing_jointly", flat)
 
     def test_birthdate_split(self):
         flat = flatten_scenario(_simple_scenario())

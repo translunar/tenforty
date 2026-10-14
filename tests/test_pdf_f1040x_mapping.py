@@ -166,8 +166,8 @@ class FilledEmitReadBackTests(unittest.TestCase):
 _P1 = "topmostSubform[0].Page1[0]."
 _FILING_STATUS_BOXES = {
     FilingStatus.SINGLE: (_P1 + "c1_3[0]", "/1"),
-    FilingStatus.MARRIED_JOINTLY: (_P1 + "c1_3[1]", "/2"),
-    FilingStatus.MARRIED_SEPARATELY: (_P1 + "c1_3[2]", "/3"),
+    FilingStatus.MARRIED_FILING_JOINTLY: (_P1 + "c1_3[1]", "/2"),
+    FilingStatus.MARRIED_FILING_SEPARATELY: (_P1 + "c1_3[2]", "/3"),
     FilingStatus.HEAD_OF_HOUSEHOLD: (_P1 + "c1_3[3]", "/4"),
     FilingStatus.QUALIFYING_WIDOW: (_P1 + "c1_3[4]", "/5"),
 }
@@ -233,7 +233,7 @@ class HeaderFillTests(unittest.TestCase):
 
     def test_joint_return_prints_the_spouse_cells(self):
         fields = self._fill(
-            FilingStatus.MARRIED_JOINTLY,
+            FilingStatus.MARRIED_FILING_JOINTLY,
             spouse_first_name="Wendell", spouse_middle_initial="R",
             spouse_last_name="Probe", spouse_ssn="000-00-0582")
         self.assertEqual(fields[_P1 + "f1_06[0]"], "Wendell R")

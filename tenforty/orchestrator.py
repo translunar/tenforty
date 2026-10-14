@@ -46,7 +46,7 @@ from tenforty.ca_divergences import (
 )
 from tenforty.models import (
     DivergenceSource, validate_sche_1099_answers, validate_tax_year_dates,
-    validate_third_party_designee,
+    validate_third_party_designee, parse_filing_status,
     validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
@@ -2660,6 +2660,13 @@ class ReturnOrchestrator:
         # 1. Load CA YAML (envelope: top-level ca540: required, federal_context: optional).
         with open(ca_yaml_path) as f:
             ca_yaml = yaml.safe_load(f) or {}
+        # A CA YAML (including a resolved snapshot copied back into place) may
+        # carry federal_context.filing_status; it parses through the single
+        # filing-status boundary so a retired v0.1 string refuses loudly.
+        federal_context = ca_yaml.get("federal_context")
+        if (isinstance(federal_context, dict)
+                and federal_context.get("filing_status") is not None):
+            parse_filing_status(federal_context["filing_status"])
 
         # 2. Freshness check — v1 no-op stub.
         self._verify_ca_yaml_freshness(scenario, ca_yaml_path, ca_yaml)
@@ -3290,8 +3297,8 @@ class ReturnOrchestrator:
         status = scenario.config.filing_status
         keys = {
             FilingStatus.SINGLE: "single",
-            FilingStatus.MARRIED_JOINTLY: "mfj",
-            FilingStatus.MARRIED_SEPARATELY: "mfs",
+            FilingStatus.MARRIED_FILING_JOINTLY: "mfj",
+            FilingStatus.MARRIED_FILING_SEPARATELY: "mfs",
             FilingStatus.HEAD_OF_HOUSEHOLD: "hoh",
             FilingStatus.QUALIFYING_WIDOW: "qss",
         }
@@ -3395,8 +3402,8 @@ class ReturnOrchestrator:
         if required is not None:
             return bool(required)
         thresholds = {
-            FilingStatus.MARRIED_JOINTLY: 250_000,
-            FilingStatus.MARRIED_SEPARATELY: 125_000,
+            FilingStatus.MARRIED_FILING_JOINTLY: 250_000,
+            FilingStatus.MARRIED_FILING_SEPARATELY: 125_000,
             FilingStatus.SINGLE: 200_000,
             FilingStatus.HEAD_OF_HOUSEHOLD: 200_000,
             FilingStatus.QUALIFYING_WIDOW: 200_000,

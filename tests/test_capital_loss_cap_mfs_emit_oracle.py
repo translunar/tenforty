@@ -131,7 +131,7 @@ _LINE_7A_FIELD = "topmostSubform[0].Page1[0].f1_70[0]"
 
 def _mfs_cap() -> int:
     """The MFS §1211(b) cap, read from params — never hardcoded as an INPUT."""
-    return load_federal_params(YEAR).capital_loss_limit["married_separately"]
+    return load_federal_params(YEAR).capital_loss_limit["married_filing_separately"]
 
 
 def _mfs_scenario() -> Scenario:
@@ -149,7 +149,7 @@ def _mfs_scenario() -> Scenario:
     kwargs["digital_assets"] = False
     config = TaxReturnConfig(
         year=YEAR,
-        filing_status="married_separately",
+        filing_status="married_filing_separately",
         birthdate="1985-04-20",
         state="CA",
         first_name="Taxpayer",
@@ -237,9 +237,9 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         untouched; this particular assertion needs no workbook.
         """
         params = load_federal_params(YEAR)
-        self.assertEqual(params.capital_loss_limit["married_separately"], 1_500)
+        self.assertEqual(params.capital_loss_limit["married_filing_separately"], 1_500)
         self.assertEqual(
-            params.capital_loss_limit["married_separately"] * 2,
+            params.capital_loss_limit["married_filing_separately"] * 2,
             params.capital_loss_limit["single"],
             "MFS cap must be exactly half the single-filer cap",
         )

@@ -313,11 +313,11 @@ class MFSCapTests(unittest.TestCase):
     """
 
     def test_mfs_total_income_capped_at_1500_not_3000_or_the_full_loss(self):
-        cap = _cap("married_separately")
+        cap = _cap("married_filing_separately")
         self.assertEqual(cap, 1_500)
         wages = 60_000.0
         scenario = Scenario(
-            config=_config("married_separately"),
+            config=_config("married_filing_separately"),
             w2s=[W2(
                 employer="Synthetic Employer", wages=wages,
                 federal_tax_withheld=9_000.0,

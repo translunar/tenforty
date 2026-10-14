@@ -69,7 +69,7 @@ _LOAD_CASES = {
         NotImplementedError, r"type_of_change 'other'"),
     "form_3115_joint_filer_unsupported": (
         lambda: fx.scenario_dict(
-            filing_status="married_jointly", spouse_first_name="Wren",
+            filing_status="married_filing_jointly", spouse_first_name="Wren",
             spouse_last_name="Testcase", spouse_ssn="000-00-0000"),
         NotImplementedError, r"joint"),
     "form_3115_applicant_identity_missing": (
