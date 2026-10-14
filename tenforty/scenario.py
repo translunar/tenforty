@@ -1086,6 +1086,32 @@ def validate_spouse_birthdate(cfg: TaxReturnConfig) -> None:
                 f"YYYY-MM-DD date; got {value!r}.")
 
 
+def validate_birthdate(cfg: TaxReturnConfig) -> None:
+    """Pure load-time check that `birthdate` is a real, quoted ISO
+    YYYY-MM-DD date. Every consumer (the 1040 age checkboxes, the workbook
+    flattener's year/month/day split, the 540 date of birth) reads it as
+    ISO; a month-day-year value must refuse here, not fail or be misread
+    downstream. Mirrors `validate_spouse_birthdate`."""
+    value = cfg.birthdate
+    if not value:
+        raise ValueError(
+            "Scenario config field `birthdate` (ISO YYYY-MM-DD) is required.")
+    if not isinstance(value, str):
+        # An unquoted YAML date arrives as datetime.date; refuse rather than
+        # coerce, matching `spouse_birthdate`.
+        raise ValueError(
+            "Scenario config field `birthdate` must be a quoted ISO "
+            f"YYYY-MM-DD string; got {type(value).__name__} {value!r}.")
+    try:
+        parsed = datetime.date.fromisoformat(value)
+    except (TypeError, ValueError):
+        parsed = None
+    if parsed is None or parsed.isoformat() != value:
+        raise ValueError(
+            f"Scenario config field `birthdate` must be an ISO "
+            f"YYYY-MM-DD date; got {value!r}.")
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
@@ -1199,6 +1225,7 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
             f"refused, never silently capped."
         )
 
+    validate_birthdate(cfg)
     validate_spouse_birthdate(cfg)
 
 

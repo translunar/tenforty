@@ -52,7 +52,7 @@ def _make_scorp_cfg(**overrides) -> TaxReturnConfig:
     base.update(overrides)
     return TaxReturnConfig(
         year=2025, filing_status=FilingStatus.SINGLE,
-        birthdate="01-01-1980", state="EX",
+        birthdate="1980-01-01", state="EX",
         has_foreign_accounts=False, prior_year_itemized=False,
         acknowledges_no_540nr_filing=False,
         acknowledges_no_ca_amt_preferences=False,

@@ -178,6 +178,7 @@ class TestMFJSpouseSSN(unittest.TestCase):
             year=2025,
             filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
             birthdate="1982-03-10",
+            spouse_birthdate="1983-04-11",
             state="NY",
             first_name="Carol",
             last_name="Joint",

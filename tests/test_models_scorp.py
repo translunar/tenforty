@@ -197,7 +197,7 @@ class ScenarioSCorpFieldTests(unittest.TestCase):
         s = Scenario(
             config=TaxReturnConfig(
                 year=2025, filing_status=FilingStatus.SINGLE,
-                birthdate="01-01-1980", state="EX",
+                birthdate="1980-01-01", state="EX",
                 acknowledges_no_540nr_filing=False,
                 acknowledges_no_ca_amt_preferences=False,
                 acknowledges_no_ca_nol_carryover=False,
@@ -218,7 +218,7 @@ class ScenarioSCorpFieldTests(unittest.TestCase):
         s = Scenario(
             config=TaxReturnConfig(
                 year=2025, filing_status=FilingStatus.SINGLE,
-                birthdate="01-01-1980", state="EX",
+                birthdate="1980-01-01", state="EX",
                 acknowledges_no_540nr_filing=False,
                 acknowledges_no_ca_amt_preferences=False,
                 acknowledges_no_ca_nol_carryover=False,

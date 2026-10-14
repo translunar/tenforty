@@ -25,7 +25,7 @@ _MINIMAL_CA_CONFIG = textwrap.dedent("""\
     config:
       year: 2024
       filing_status: single
-      birthdate: "01-01-1980"
+      birthdate: "1980-01-01"
       state: CA
       first_name: "Taxpayer"
       last_name: "A"
