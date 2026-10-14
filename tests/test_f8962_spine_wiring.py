@@ -167,3 +167,31 @@ class F8962SpineWiringTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CarveOutMessageTests(unittest.TestCase):
+    """The out-of-native-scope 1095-A refusal names its real cause: the
+    filer class is outside the declared native grid. It must not claim the
+    workbook lacks Form 8962 (a stale reason this message once gave)."""
+
+    def setUp(self):
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()) / "work",
+        )
+
+    def _message(self):
+        block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.orch.compute_federal(_scenario(10_000, 500, block))
+        return str(ctx.exception)
+
+    def test_message_names_the_declared_native_grid(self):
+        message = self._message()
+        self.assertIn("out of native-1040-spine scope", message)
+        self.assertIn("years.NATIVE_SPINE_STATUSES", message)
+
+    def test_message_drops_the_stale_no_8962_claim(self):
+        message = self._message()
+        self.assertNotIn("does not compute Form 8962", message)
+        self.assertNotIn("NO Form 8962", message)

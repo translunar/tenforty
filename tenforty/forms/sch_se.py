@@ -38,6 +38,11 @@ from tenforty.rounding import irs_round
 
 _NET_EARNINGS_PCT = 0.9235
 _SS_RATE = 0.124
+# The employee's share of the OASDI tax: IRC §3101(a) imposes it at half the
+# self-employment OASDI rate that §1401(a) imposes (_SS_RATE). Both rates are
+# printed in the Code; team-lead verified the relationship against the
+# statute on 2026-10-14. Read by the excess-Social-Security guard.
+SS_EMPLOYEE_RATE = _SS_RATE / 2
 _MEDICARE_RATE = 0.029
 _MIN_NET_EARNINGS = 400.0
 

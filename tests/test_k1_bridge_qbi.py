@@ -12,6 +12,7 @@ from tenforty.models import (
     K1AllocationEntity, K1AllocationShareholder, ScheduleK1, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
+from tenforty.params.federal import load as load_federal_params
 from tests._scorp_fixtures import _make_v1_scenario
 from tests.helpers import make_k1_scenario, needs_libreoffice
 
@@ -115,13 +116,16 @@ class BridgeAboveThresholdTests(unittest.TestCase):
         """
         scenario = _make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0)
+        ss_wage_base = float(
+            load_federal_params(scenario.config.year).ss_wage_base)
         scenario = dataclasses.replace(scenario, w2s=[
             W2(
                 employer="Example Employer Inc.",
                 wages=200_000.0,
                 federal_tax_withheld=40_000.0,
-                ss_wages=200_000.0,
-                ss_tax_withheld=round(200_000.0 * 0.062),
+                # One employer withholds SS only up to the wage base.
+                ss_wages=min(200_000.0, ss_wage_base),
+                ss_tax_withheld=round(min(200_000.0, ss_wage_base) * 0.062, 2),
                 medicare_wages=200_000.0,
                 medicare_tax_withheld=round(200_000.0 * 0.0145),
             ),
