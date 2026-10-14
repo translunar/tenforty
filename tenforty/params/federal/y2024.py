@@ -31,7 +31,15 @@ PARAMS = FederalParams(
         (math.inf, 0.37),
     )},
     qdcgt_breakpoints={_S: (47_025, 518_900)},
-    addl_medicare_threshold={_S: 200_000},
+    addl_medicare_threshold={_S: 200_000,
+        # IRC §3101(b)(2), United States Code 2024 Edition (govinfo):
+        # https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleC-chap21-subchapA-sec3101.htm
+        # sha256 605deeac4af4495e76016a671d9bdb610f935f985ac71d94a423db83275cec0d
+        _MFJ: 250_000,  # (A) joint return
+        _MFS: 125_000,  # (B) ½ of (A)
+        _HOH: 200_000,  # (C) any other case
+        _QW: 200_000,   # (C) any other case
+    },
     ss_wage_base=168_600,  # SSA 2024 OASDI wage base
     # Form 8995 simple-path threshold (Rev. Proc. 2023-34): single $191,950,
     # MFJ = 2× = $383,900 (confirmed against Rev. Proc. 2023-34).
