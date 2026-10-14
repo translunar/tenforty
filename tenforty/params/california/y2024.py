@@ -49,7 +49,18 @@ PARAMS = CaliforniaParams(
         _S: 149, _MFS: 149, _HOH: 149, _MFJ: 298, _QW: 298,
     },
     dependent_exemption_amount=461,
-    agi_phaseout_threshold={_S: 244_857},
+    # 2024 Personal Income Tax Booklet (Form 540), Line 32 – Exemption
+    # Credits table, p.14.
+    # https://www.ftb.ca.gov/forms/2024/2024-540-booklet.pdf
+    # REV stamp: none printed on Line 32 page; no REV stamp anywhere.
+    # sha256 446372719f6e1ce90132d550c268d7804fc44cefcf13514e09bf9ac9907ee374
+    agi_phaseout_threshold={
+        _S: 244_857,
+        _MFJ: 489_719,
+        _MFS: 244_857,
+        _HOH: 367_291,
+        _QW: 489_719,
+    },
     rate_schedule={
         _S: _SCHEDULE_X, _MFS: _SCHEDULE_X,
         _MFJ: _SCHEDULE_Y, _QW: _SCHEDULE_Y,
