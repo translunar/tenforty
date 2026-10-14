@@ -134,4 +134,17 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 120,      # "Head of household ... enter $120"
         "qualifying_widow": 120,       # "qualifying surviving spouse/RDP ... $120"
     },
+    # Not yet transcribed (see PENDING_TRANSCRIPTION).
+    "senior_exemption_credit": None,
+    "senior_born_before": None,
+}
+
+PENDING_TRANSCRIPTION: dict[str, str] = {
+    "senior_exemption_credit": (
+        "Form 540 senior exemption credit per qualifying senior; awaiting "
+        "dual transcription (native-filing-statuses round, age-65-params)."),
+    "senior_born_before": (
+        "Form 540 senior qualifying cutoff from the year's pinned FTB "
+        "edition; awaiting dual transcription (native-filing-statuses round, "
+        "age-65-params)."),
 }
