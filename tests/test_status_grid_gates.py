@@ -23,6 +23,7 @@ from tenforty.models import (
     Form1095AMonth,
     Scenario,
     TaxReturnConfig,
+    parse_filing_status,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import california as ca_params
@@ -32,6 +33,7 @@ from tenforty.params.f8962 import PER_STATUS_F8962_FIELDS
 from tenforty.params.federal import PER_STATUS_FEDERAL_FIELDS
 from tenforty.params.federal import load as load_federal
 from tests.fixtures.spine_battery import (
+    DECLARED_REFUSAL_CELLS,
     REQUIRED_STATUS_SCENARIO_KINDS,
     battery_for,
 )
@@ -88,7 +90,9 @@ def battery_gaps(
 ) -> list[tuple[int, str, str]]:
     """(year, status, kind) for every declared NON-single (year, status)
     missing one of the required scenario kinds (ruling R-battery-n). A
-    battery entry's kind is its name prefix before ``__``."""
+    battery entry's kind is its name prefix before ``__``. A cell listed in
+    DECLARED_REFUSAL_CELLS is also covered by its refusal kind — that cell
+    only (ruling R-hoh-ptc)."""
     gaps: list[tuple[int, str, str]] = []
     for year in sorted(grid):
         for status in grid[year]:
@@ -100,7 +104,8 @@ def battery_gaps(
             gaps.extend(
                 (year, status, kind)
                 for kind in REQUIRED_STATUS_SCENARIO_KINDS
-                if kind not in present)
+                if kind not in present
+                and DECLARED_REFUSAL_CELLS.get((status, kind)) not in present)
     return gaps
 
 
@@ -285,15 +290,69 @@ class BatteryCompletenessGateTests(unittest.TestCase):
                             battery=lambda y, s: [(n, None) for n in names])
         self.assertEqual(gaps, [(2025, "head_of_household", "addl_medicare")])
 
-    def test_non_single_battery_is_empty_today(self):
-        for status in (FilingStatus.MARRIED_FILING_JOINTLY,
-                       FilingStatus.HEAD_OF_HOUSEHOLD):
-            self.assertEqual(battery_for(2025, status), [])
+    def test_declared_refusal_covers_only_its_cell(self):
+        # R-hoh-ptc: ptc_reconciliation_refused__<s> satisfies the
+        # ptc_reconciliation cell for head_of_household and nowhere else.
+        def rows(suffix):
+            return [(f"{kind}__{suffix}", None)
+                    for kind in REQUIRED_STATUS_SCENARIO_KINDS
+                    if kind != "ptc_reconciliation"] + [
+                (f"ptc_reconciliation_refused__{suffix}", None)]
+        self.assertEqual(
+            battery_gaps({2025: ("head_of_household",)},
+                         battery=lambda y, s: rows("hoh")), [])
+        self.assertEqual(
+            battery_gaps({2025: ("married_filing_jointly",)},
+                         battery=lambda y, s: rows("mfj")),
+            [(2025, "married_filing_jointly", "ptc_reconciliation")])
+
+    def test_non_single_rows_carry_their_status(self):
+        for status, suffix in ((FilingStatus.MARRIED_FILING_JOINTLY, "mfj"),
+                               (FilingStatus.HEAD_OF_HOUSEHOLD, "hoh")):
+            rows = battery_for(2025, status)
+            self.assertEqual(len(rows), len(REQUIRED_STATUS_SCENARIO_KINDS))
+            for name, build in rows:
+                with self.subTest(row=name):
+                    self.assertTrue(name.endswith(f"__{suffix}"))
+                    self.assertIs(
+                        parse_filing_status(build().config.filing_status),
+                        status)
         self.assertEqual(
             [name for name, _ in battery_for(2025, FilingStatus.SINGLE)],
             [name for name, _ in battery_for(2025)])
         self.assertTrue(battery_for(2025))
 
+    def test_declared_refusal_row_refuses(self):
+        build = dict(battery_for(2025, FilingStatus.HEAD_OF_HOUSEHOLD))[
+            "ptc_reconciliation_refused__hoh"]
+        orch = _orchestrator(self)
+        with mock.patch.dict(years.NATIVE_SPINE_STATUSES,
+                             {2025: ("single", "married_filing_jointly",
+                                     "head_of_household")}):
+            with self.assertRaisesRegex(
+                    NotImplementedError,
+                    r"^Form 8962 .*head_of_household.*family size"):
+                orch.compute_federal(build())
+
+    def test_status_rows_route_native_once_declared(self):
+        # Wage levels clear the EIC gate: with 2025 MFJ/HoH declared, every
+        # computing row is in spine scope; undeclared, none is.
+        orch = _orchestrator(self)
+        rows = [(name, build)
+                for status in (FilingStatus.MARRIED_FILING_JOINTLY,
+                               FilingStatus.HEAD_OF_HOUSEHOLD)
+                for name, build in battery_for(2025, status)
+                if name.split("__", 1)[0] not in DECLARED_REFUSAL_CELLS.values()]
+        self.assertEqual(len(rows), 2 * len(REQUIRED_STATUS_SCENARIO_KINDS) - 1)
+        for name, build in rows:
+            with self.subTest(row=name):
+                scenario = build()
+                self.assertFalse(orch._scenario_in_spine_scope(scenario))
+                with mock.patch.dict(
+                        years.NATIVE_SPINE_STATUSES,
+                        {2025: ("single", "married_filing_jointly",
+                                "head_of_household")}):
+                    self.assertTrue(orch._scenario_in_spine_scope(scenario))
 
 class SpineGateTests(unittest.TestCase):
     def test_predicate_follows_grid(self):

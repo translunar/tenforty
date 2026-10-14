@@ -96,6 +96,66 @@ class TestW2(unittest.TestCase):
             self._make_w2(state="C1")
 
 
+
+class TestW2Owner(unittest.TestCase):
+    """W2.owner (ruling R-excess-ss): optional, "taxpayer" / "spouse" only.
+    MFJ-requiredness and the per-owner excess-SS guard live elsewhere."""
+
+    def _make_w2(self, **overrides):
+        fields = dict(
+            employer="Acme Corp",
+            wages=50000.00,
+            federal_tax_withheld=5000.00,
+            ss_wages=50000.00,
+            ss_tax_withheld=3100.00,
+            medicare_wages=50000.00,
+            medicare_tax_withheld=725.00,
+        )
+        fields.update(overrides)
+        return W2(**fields)
+
+    def _load_with_w2_overrides(self, **w2_overrides):
+        data = yaml.safe_load((FIXTURES_DIR / "simple_w2.yaml").read_text())
+        data["w2s"][0].update(w2_overrides)
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "scn.yaml"
+            path.write_text(yaml.safe_dump(data))
+            return load_scenario(path)
+
+    def test_owner_defaults_to_none(self):
+        self.assertIsNone(self._make_w2().owner)
+
+    def test_owner_valid_values_construct(self):
+        for owner in ("taxpayer", "spouse"):
+            with self.subTest(owner=owner):
+                self.assertEqual(self._make_w2(owner=owner).owner, owner)
+
+    def test_owner_valid_values_load_from_yaml(self):
+        for owner in ("taxpayer", "spouse"):
+            with self.subTest(owner=owner):
+                scenario = self._load_with_w2_overrides(owner=owner)
+                self.assertEqual(scenario.w2s[0].owner, owner)
+
+    def test_owner_bogus_value_refused_naming_field(self):
+        for bogus in ("Taxpayer", "self", "both", ""):
+            with self.subTest(owner=bogus):
+                with self.assertRaisesRegex(ValueError, r"W2\.owner"):
+                    self._make_w2(owner=bogus)
+
+    def test_owner_bogus_value_refused_at_yaml_load(self):
+        with self.assertRaisesRegex(ValueError, r"W2\.owner"):
+            self._load_with_w2_overrides(owner="partner")
+
+    def test_absent_owner_single_filer_loads_unchanged(self):
+        path = FIXTURES_DIR / "simple_w2.yaml"
+        raw_w2 = yaml.safe_load(path.read_text())["w2s"][0]
+        self.assertNotIn("owner", raw_w2)
+        loaded = load_scenario(path)
+        self.assertEqual(loaded.config.filing_status, FilingStatus.SINGLE)
+        self.assertIsNone(loaded.w2s[0].owner)
+        self.assertEqual(loaded.w2s[0], W2(**raw_w2))
+
+
 class TestForm1099INT(unittest.TestCase):
     def test_create_1099_int(self):
         f = Form1099INT(payer="Bank of Example", interest=250.00)
