@@ -35,6 +35,7 @@ from tenforty.models import (
 from tests.oracles.ca_540_reference import (
     AGI_PHASEOUT_THRESHOLD_2025,
     CA_540_BOOKLET_2025_PROVENANCE,
+    HAND_WORKED_AGED_CASES_2025,
     HAND_WORKED_STATUS_CASES_2025,
     HandWorkedCase540,
     BHST_RATE_2025,
@@ -64,6 +65,8 @@ from tests.oracles.ca_540_reference import (
     _exemption_credits_pre_phaseout,
     _tax_from_rate_schedule,
     compute_ca_540,
+    is_senior_2025,
+    senior_count_2025,
 )
 
 
@@ -1154,6 +1157,8 @@ def _hand_case_oracle_input(case: HandWorkedCase540) -> CA540Input:
         filing_status=case.filing_status,
         federal_agi=_hand_case_federal_agi(case),
         state_wages=sum(case.w2_wages),
+        taxpayer_65=is_senior_2025(case.taxpayer_birth_date),
+        spouse_65=is_senior_2025(case.spouse_birth_date),
     )
     return dataclasses.replace(
         ca,
@@ -1182,8 +1187,19 @@ class HandWorkedStatusCaseOracleTests(unittest.TestCase):
         statuses = sorted(c.filing_status for c in HAND_WORKED_STATUS_CASES_2025)
         self.assertEqual(statuses, ["hoh", "hoh", "mfj", "mfj"])
 
+    def test_aged_cases_cover_single_and_both_mfj_senior_splits(self):
+        shape = [
+            (c.filing_status, senior_count_2025(c))
+            for c in HAND_WORKED_AGED_CASES_2025
+        ]
+        self.assertEqual(shape, [("single", 1), ("mfj", 2), ("mfj", 1)])
+        # spouse-only case: the aged person is the spouse, not the taxpayer
+        spouse_only = HAND_WORKED_AGED_CASES_2025[2]
+        self.assertFalse(is_senior_2025(spouse_only.taxpayer_birth_date))
+        self.assertTrue(is_senior_2025(spouse_only.spouse_birth_date))
+
     def test_oracle_matches_hand_worked_lines(self):
-        for case in HAND_WORKED_STATUS_CASES_2025:
+        for case in HAND_WORKED_STATUS_CASES_2025 + HAND_WORKED_AGED_CASES_2025:
             out = compute_ca_540(_hand_case_oracle_input(case))
             for key, expected in case.expected.items():
                 with self.subTest(case=case.name, line=key):
@@ -1201,6 +1217,7 @@ class HandWorkedStatusCaseOracleTests(unittest.TestCase):
 # Hand-worked MFJ / HOH cases (TY2025) — production full-liability chain
 # ---------------------------------------------------------------------------
 _PRODUCTION_FILING_STATUS = {
+    "single": FilingStatus.SINGLE,
     "mfj": FilingStatus.MARRIED_FILING_JOINTLY,
     "hoh": FilingStatus.HEAD_OF_HOUSEHOLD,
 }
@@ -1232,13 +1249,14 @@ class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
             int(sch["sch_ca_ca_agi"]),
             CA540Return(),
             num_dependents=0,
+            num_seniors=senior_count_2025(case),
             renter_credit_eligible=case.renter_six_months_in_ca,
             ca_withholding=ca_withholding,
         )
         return sch, f540
 
     def test_production_chain_matches_hand_worked_lines(self):
-        for case in HAND_WORKED_STATUS_CASES_2025:
+        for case in HAND_WORKED_STATUS_CASES_2025 + HAND_WORKED_AGED_CASES_2025:
             e = case.expected
             withholding = int(sum(case.w2_ca_withholding))
             sch, f540 = self._run_chain(case, ca_withholding=withholding)
