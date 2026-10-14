@@ -24,7 +24,7 @@ PARAMS = FederalParams(
         _S: 15_750, _MFJ: 31_500, _MFS: 15_750, _HOH: 23_625, _QW: 31_500,
     },
     # 2025 single tax-rate schedule: (upper_bound, marginal_rate).
-    ordinary_brackets=(
+    ordinary_brackets={_S: (
         (11_925.0, 0.10),
         (48_475.0, 0.12),
         (103_350.0, 0.22),
@@ -32,7 +32,7 @@ PARAMS = FederalParams(
         (250_525.0, 0.32),
         (626_350.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
     qdcgt_breakpoints={_S: (48_350, 533_400)},
     addl_medicare_threshold={_S: 200_000},
     ss_wage_base=176_100,  # SSA 2025 OASDI wage base

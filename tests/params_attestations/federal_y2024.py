@@ -98,10 +98,10 @@ ATTESTED: dict[str, object] = {
     # TY2024 (see NOT_APPLICABLE). The 2020-2021-only line 12b provision expired.
     "nonitemizer_charitable_cap": None,
 
-    # Rev. Proc. 2023-34, Tax Rate Tables (§2.01). SCHEMA STORES ONE SCHEDULE
-    # (not status-keyed) — transcribed the SINGLE-filer 2024 schedule.
+    # Rev. Proc. 2023-34, Tax Rate Tables (§2.01). Status-keyed; single
+    # column transcribed — the SINGLE-filer 2024 schedule.
     # See module docstring note. (upper_bound, marginal_rate).
-    "ordinary_brackets": (
+    "ordinary_brackets": {"single": (
         (11600.0, 0.10),
         (47150.0, 0.12),
         (100525.0, 0.22),
@@ -109,7 +109,7 @@ ATTESTED: dict[str, object] = {
         (243725.0, 0.32),
         (609350.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
 
     # Rev. Proc. 2023-34, Maximum Capital Gains Rate (§2.03).
     # (0%-rate maximum taxable income, 15%-rate maximum taxable income).

@@ -23,7 +23,7 @@ ATTESTED: dict[str, object] = {
         "qualifying_widow": 25900,   # QSS shares the MFJ / "Surviving Spouses" row per §3.15(1)
     },
     "nonitemizer_charitable_cap": None,  # Provision expired after 2021 (see NOT_APPLICABLE)
-    "ordinary_brackets": (
+    "ordinary_brackets": {"single": (
         # Rev. Proc. 2021-45 §3.01 TABLE 3 - Section 1(j)(2)(C) - Unmarried Individuals
         # (other than Surviving Spouses and Heads of Households) — the single schedule
         (10275, 0.10),     # Not over $10,275
@@ -33,7 +33,7 @@ ATTESTED: dict[str, object] = {
         (215950, 0.32),    # Over $170,050 but not over $215,950
         (539900, 0.35),    # Over $215,950 but not over $539,900
         (math.inf, 0.37),  # Over $539,900
-    ),
+    )},
     "qdcgt_breakpoints": {
         # Rev. Proc. 2021-45 §3.03 Maximum Capital Gains Rate (§1(h)):
         # (Maximum Zero Rate Amount, Maximum 15-percent Rate Amount)

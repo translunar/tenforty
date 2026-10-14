@@ -38,7 +38,7 @@ PARAMS = FederalParams(
     # 2022 single tax-rate schedule: (upper_bound, marginal_rate).
     # Rev. Proc. 2021-45 §3.01, TABLE 3 (Section 1(j)(2)(C) — Unmarried
     # Individuals other than Surviving Spouses and Heads of Households).
-    ordinary_brackets=(
+    ordinary_brackets={_S: (
         (10_275.0, 0.10),
         (41_775.0, 0.12),
         (89_075.0, 0.22),
@@ -46,7 +46,7 @@ PARAMS = FederalParams(
         (215_950.0, 0.32),
         (539_900.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
     # Rev. Proc. 2021-45 §3.03 (Maximum Capital Gains Rate), each value is
     # (Maximum Zero Rate Amount, Maximum 15% Rate Amount). "Joint return or
     # surviving spouse" = MFJ & QSS ($83,350 / $517,200); MFS ($41,675 /

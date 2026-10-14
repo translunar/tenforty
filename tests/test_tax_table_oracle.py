@@ -4,8 +4,8 @@ params-driven computation for every bin.
 
 Federal: the IRS builds each bin's tax as the rate schedule applied to the
 bin midpoint, rounded — so every row cross-validates BOTH the ingested CSV
-and params.ordinary_brackets. Sweep scope is the single column (the spine's
-ordinary_brackets are single-filer; other statuses are outside spine scope).
+and params.ordinary_brackets. Sweep scope is the single column (the only
+status-keyed column ordinary_brackets carries so far).
 
 California: compute_ca_tax already implements the FTB bin-midpoint method;
 the sweep proves it against the actual published table, all four columns.
@@ -32,7 +32,7 @@ class FederalTableSweepTests(unittest.TestCase):
     def test_every_bin_matches_rate_schedule_at_midpoint(self):
         for year in (year_manifest.FEDERAL_YEARS
                      + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
-            params = load_federal(year)
+            params = load_federal(year).for_status(FilingStatus.SINGLE)
             rows = load_table("federal", year)
             self.assertGreater(len(rows), 1_000)
             mismatches = []

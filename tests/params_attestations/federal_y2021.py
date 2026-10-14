@@ -62,7 +62,7 @@ ATTESTED: dict[str, object] = {
     "nonitemizer_charitable_cap": 300,
     # Rev. Proc. 2020-45 § 3.01, TABLE 3 — Unmarried Individuals (§ 1(j)(2)(C)),
     # the 2021 SINGLE rate schedule; (upper_bound, rate) ascending.
-    "ordinary_brackets": (
+    "ordinary_brackets": {"single": (
         (9950.0, 0.10),     # Not over $9,950 -> 10%
         (40525.0, 0.12),    # Over $9,950, not over $40,525 -> 12%
         (86375.0, 0.22),    # Over $40,525, not over $86,375 -> 22%
@@ -70,7 +70,7 @@ ATTESTED: dict[str, object] = {
         (209425.0, 0.32),   # Over $164,925, not over $209,425 -> 32%
         (523600.0, 0.35),   # Over $209,425, not over $523,600 -> 35%
         (math.inf, 0.37),   # Over $523,600 -> 37%
-    ),
+    )},
     "qdcgt_breakpoints": {
         # Rev. Proc. 2020-45 § 3.03 (Max Zero Rate Amt, Max 15% Rate Amt):
         "single": (40400, 445850),            # any other individual: $40,400 / $445,850

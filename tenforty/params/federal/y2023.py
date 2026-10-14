@@ -31,7 +31,7 @@ PARAMS = FederalParams(
     # 2023 single tax-rate schedule: (upper_bound, marginal_rate).
     # Rev. Proc. 2022-38 §3.01, Table 3 (Section 1(j)(2)(C) — Unmarried
     # Individuals other than Surviving Spouses and Heads of Households).
-    ordinary_brackets=(
+    ordinary_brackets={_S: (
         (11_000.0, 0.10),
         (44_725.0, 0.12),
         (95_375.0, 0.22),
@@ -39,7 +39,7 @@ PARAMS = FederalParams(
         (231_250.0, 0.32),
         (578_125.0, 0.35),
         (math.inf, 0.37),
-    ),
+    )},
     # Rev. Proc. 2022-38 §3.03 (Maximum Capital Gains Rate), each value is
     # (Maximum Zero Rate Amount, Maximum 15% Rate Amount). "Married
     # Individuals Filing Joint Returns and Surviving Spouse" row = MFJ & QSS
