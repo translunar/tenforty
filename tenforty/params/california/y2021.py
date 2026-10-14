@@ -17,6 +17,8 @@ Migrated verbatim from tenforty/constants/california_y2021.py. Sources:
   pdfs/california/2021/booklet.pdf p.23, "Nonrefundable Renter's Credit
   Qualification Record" Q2 (AGI threshold) and Q11 (amount).
 """
+import datetime
+
 from tenforty.models import FilingStatus
 from tenforty.params.california import CaliforniaParams
 
@@ -76,7 +78,35 @@ PARAMS = CaliforniaParams(
     renter_credit_amount={
         _S: 60, _MFS: 60, _MFJ: 120, _HOH: 120, _QW: 120,
     },
-    # Pending transcription (age-65-params).
-    senior_exemption_credit=None,
-    senior_born_before=None,
+    # 2021 Personal Income Tax Booklet (Form 540).
+    # https://www.ftb.ca.gov/forms/2021/2021-540-booklet.pdf
+    # sha256 88d1d720f72013beb9e6f6928a86fe783d143f760a455485a34bfe6424f52072
+    # REV stamp: none printed on the senior-exemption pages (instructions p.12, form
+    # side 1); elsewhere: REV 02-22, REV 02-23, REV 05-23, REV 07-22.
+    # senior_exemption_credit: Form 540 side 1 (booklet PDF page 31),
+    # line 9 "X $" box; box on the same text-layer line as the line 9 label; confirmed
+    # by rendered-page position.
+    # The Line 9 instructions (p.12) print no amount.
+    # senior_born_before: no born-before date printed; condition recorded
+    # verbatim below, date left for adjudication.
+    # Line 9 – Senior Exemptions (instructions p.12), verbatim:
+    # If you were 65 years of age or older by December 31, 2021*, you should
+    # claim an additional exemption credit on line 9. If you are married/or
+    # an RDP, each spouse/RDP 65 years of age or older should claim an
+    # additional credit.
+    # *If your 65th birthday is on January 1, 2022, you are considered to be
+    # age 65 on December 31, 2021.
+    # form-page label:
+    # 9 Senior: If you (or your spouse/RDP) are 65 or older, enter 1;
+    # if both are 65 or older, enter 2. See instructions.
+    # Excluded: the Voluntary Contribution Fund Descriptions (code 400) also
+    # restate an age condition; that is a different provision, not a source.
+    senior_exemption_credit=129,
+    # senior_born_before RULED by team-lead 2026-10-14 (words-to-date
+    # adjudication per plan: both transcribers deferred): the booklet's
+    # "65 years of age or older by December 31, 2021" plus its footnote
+    # (65th birthday on January 1, 2022 counts as 65 on December 31,
+    # 2021) means born on or before January 1, 1957 — exclusive
+    # born-before cutoff January 2, 1957. Verbatim wording above.
+    senior_born_before=datetime.date(1957, 1, 2),
 )

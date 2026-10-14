@@ -15,6 +15,8 @@ amount from the ftb.ca.gov Nonrefundable Renter's Credit page (both ftb.ca.gov
 pages retrieved read-only via curl; nothing saved to disk).
 """
 
+import datetime
+
 SOURCES: tuple[str, ...] = (
     "FTB 2025 Form 540 2EZ Tax Booklet (pdfs/california/2025/booklet_2ez.pdf), "
     "2EZ table header notes ($5,706 std/$153 personal for Single; "
@@ -134,17 +136,15 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 120,      # "Head of household ... enter $120"
         "qualifying_widow": 120,       # "qualifying surviving spouse/RDP ... $120"
     },
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "senior_exemption_credit": None,
-    "senior_born_before": None,
+    # Attested 2026-10-14 (Transcriber B paste; dual transcription adjudicated
+    # vs Transcriber A with full agreement incl. a third reading of the
+    # amount). Amount: Form 540 line 9 "x $" box (box assigned by
+    # rendered-page position). Date: team-lead words-to-date ruling from the
+    # verbatim Line 9 wording + footnote (both transcribers deferred, as the
+    # booklet prints no born-before date): exclusive cutoff January 2, 1961.
+    "senior_exemption_credit": 153,
+    "senior_born_before": datetime.date(1961, 1, 2),
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
-    "senior_exemption_credit": (
-        "Form 540 senior exemption credit per qualifying senior; awaiting "
-        "dual transcription (native-filing-statuses round, age-65-params)."),
-    "senior_born_before": (
-        "Form 540 senior qualifying cutoff from the year's pinned FTB "
-        "edition; awaiting dual transcription (native-filing-statuses round, "
-        "age-65-params)."),
 }
