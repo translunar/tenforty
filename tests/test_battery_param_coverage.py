@@ -51,6 +51,8 @@ WAIVED: dict[str, str] = {
         "scenario over it would refuse by design, and battery scenarios "
         "must compute. Driven at its boundary (at / one over, all three "
         "loss lanes) in tests/test_excess_business_loss_guard.py",
+    "additional_standard_deduction": "pending transcription — age-65-params",
+    "aged_born_before": "pending transcription — age-65-params",
 }
 
 
@@ -83,6 +85,7 @@ PER_STATUS_WAIVED: dict[str, str] = {
     "excess_business_loss_threshold":
         "a fail-closed refusal trip-wire, not a computed value (see WAIVED); "
         "battery rows must compute",
+    "additional_standard_deduction": "pending transcription — age-65-params",
 }
 
 

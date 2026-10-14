@@ -230,4 +230,18 @@ ATTESTED: dict[str, object] = {
         "head_of_household": 305000,
         "qualifying_widow": 305000,
     },
+    # Not yet transcribed (see PENDING_TRANSCRIPTION).
+    "additional_standard_deduction": None,
+    "aged_born_before": None,
+}
+
+PENDING_TRANSCRIPTION: dict[str, str] = {
+    "additional_standard_deduction": (
+        "aged additional standard deduction per box, all five statuses; "
+        "awaiting dual transcription (native-filing-statuses round, "
+        "age-65-params)."),
+    "aged_born_before": (
+        "aged 'born before' cutoff as the year's own documents state it; "
+        "awaiting dual transcription (native-filing-statuses round, "
+        "age-65-params)."),
 }

@@ -8,6 +8,7 @@ module and declaring the year in tenforty/years.py.
 All status-keyed dicts use FilingStatus.value strings, matching the
 FederalParams convention.
 """
+import datetime
 import importlib
 from dataclasses import dataclass
 
@@ -35,6 +36,12 @@ class CaliforniaParams:
     rate_schedule: dict[str, tuple[tuple[int, float], ...]]
     renter_credit_agi_threshold: dict[str, int]
     renter_credit_amount: dict[str, int]
+    # Form 540 senior exemption: the credit per qualifying senior. None =
+    # pending transcription (age-65-params).
+    senior_exemption_credit: int | None
+    # Exclusive age cutoff for the tax year: a person born strictly before
+    # this date qualifies. None = pending transcription.
+    senior_born_before: datetime.date | None
 
     def for_status(self, status: "FilingStatus | str") -> "StatusView":
         """Projection of these params onto one filing status. Per-status
