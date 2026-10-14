@@ -25,6 +25,10 @@ from tests.oracles.f8962_reference import reference_f8962
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
+# compute() requires filing_status + family_size; the original rows are all
+# single filer, tax family size 1.
+SINGLE_SIZE1 = {"filing_status": FilingStatus.SINGLE, "family_size": 1}
+
 # Reconciliation map: (compute key, oracle key). Only these overlapping keys are
 # diffed. f8962_line_1 / 2a / 3 and f8962_ui_box_checked have no oracle analog.
 SCALAR_RECON = (
@@ -71,7 +75,7 @@ def uniform_block(premium, slcsp, aptc, *, ui=False):
 
 def magi_for_pct(pct, year):
     """MAGI (whole dollars) targeting ``pct`` percent of the single FPL."""
-    return round(pct / 100 * load(year).fpl_single_48)
+    return round(pct / 100 * load(year).fpl_48_by_family_size[1])
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +155,7 @@ class _DiffMixin:
         Returns the (compute, oracle) output pair for further invariant checks.
         """
         p = params if params is not None else load(year)
-        c = compute(blk, magi, year, p)
+        c = compute(blk, magi, year, p, **SINGLE_SIZE1)
         r = reference_f8962(blk, magi, year)
 
         for ck, rk in SCALAR_RECON:
@@ -309,11 +313,11 @@ class Boundary400Tests(_DiffMixin, unittest.TestCase):
         # (2021 -> 401 inclusive; 2022-2025 -> 400 strict) -- do NOT hardcode:
         # take the expected from the ORACLE side and assert compute equals it.
         for year in YEARS:
-            fpl = load(year).fpl_single_48
+            fpl = load(year).fpl_48_by_family_size[1]
             for magi in (4 * fpl - 1, 4 * fpl, 4 * fpl + 1):
                 with self.subTest(year=year, magi=magi):
                     blk = uniform_block(800.0, 750.0, 400.0)
-                    c = compute(blk, magi, year, load(year))
+                    c = compute(blk, magi, year, load(year), **SINGLE_SIZE1)
                     r = reference_f8962(blk, magi, year)
                     expected_line5 = r["line5_pct"]
                     self.assertEqual(c["f8962_line_5"], expected_line5)
@@ -324,7 +328,7 @@ class Boundary400Tests(_DiffMixin, unittest.TestCase):
         # Cross-check the oracle's own exact-4*fpl expectation matches the
         # documented per-year rule (inclusive 2021 -> 401, strict -> 400).
         for year in YEARS:
-            fpl = load(year).fpl_single_48
+            fpl = load(year).fpl_48_by_family_size[1]
             r = reference_f8962(uniform_block(800.0, 750.0, 400.0), 4 * fpl, year)
             expected = 401 if year == 2021 else 400
             with self.subTest(year=year):
@@ -356,7 +360,7 @@ class InvariantTests(_DiffMixin, unittest.TestCase):
     def test_invariants_hold_every_scenario(self):
         for blk, magi, year in self._all_scenarios():
             with self.subTest(year=year, magi=magi):
-                c = compute(blk, magi, year, load(year))
+                c = compute(blk, magi, year, load(year), **SINGLE_SIZE1)
 
                 emitted = self._emitted_months(c)
                 if annual_eligible(blk):
@@ -399,7 +403,7 @@ class InvariantTests(_DiffMixin, unittest.TestCase):
         for year in YEARS:
             with self.subTest(year=year):
                 c = compute(block([month() for _ in range(12)]),
-                            magi_for_pct(250, year), year, load(year))
+                            magi_for_pct(250, year), year, load(year), **SINGLE_SIZE1)
                 # No month emitted, and every dollar output is zero.
                 self.assertEqual(self._emitted_months(c), [])
                 for key in ("f8962_line_24", "f8962_line_25",
@@ -417,9 +421,9 @@ class InvariantTests(_DiffMixin, unittest.TestCase):
             with self.subTest(pct=pct):
                 magi = magi_for_pct(pct, 2021)
                 on = compute(uniform_block(900.0, 850.0, 400.0, ui=True),
-                             magi, 2021, load(2021))
+                             magi, 2021, load(2021), **SINGLE_SIZE1)
                 off = compute(uniform_block(900.0, 850.0, 400.0, ui=False),
-                              magi, 2021, load(2021))
+                              magi, 2021, load(2021), **SINGLE_SIZE1)
                 self.assertGreaterEqual(net(on), net(off))
 
 
@@ -435,7 +439,7 @@ class ApplicableFigureSweepTests(_DiffMixin, unittest.TestCase):
                     with self.subTest(year=year, pct=pct):
                         blk = uniform_block(820.0, 780.0, 430.0)
                         magi = magi_for_pct(pct, year)
-                        c = compute(blk, magi, year, load(year))
+                        c = compute(blk, magi, year, load(year), **SINGLE_SIZE1)
                         r = reference_f8962(blk, magi, year)
                         self.assertEqual(
                             c["f8962_line_7"], r["line7_applicable_figure"],
@@ -463,7 +467,7 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
         return dataclasses.replace(base, **overrides)
 
     def test_mutation_bites_on_params_fpl(self):
-        # TARGET 1: params scalar -- bump fpl_single_48 by +1 on the compute
+        # TARGET 1: params scalar -- bump fpl_48_by_family_size[1] by +1 on the compute
         # side only. This shifts line 4 (poverty line) so the diff must fail.
         blk, magi = self._baseline()
         base = load(self.YEAR)
@@ -471,7 +475,9 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
         # Baseline reconciles.
         self.reconcile(blk, magi, self.YEAR, params=base)
 
-        mutated = self._mutated_params(base, fpl_single_48=base.fpl_single_48 + 1)
+        mutated = self._mutated_params(
+            base, fpl_48_by_family_size={**base.fpl_48_by_family_size,
+                                         1: base.fpl_48_by_family_size[1] + 1})
         with self.assertRaises(AssertionError):
             self.reconcile(blk, magi, self.YEAR, params=mutated)
 
@@ -484,7 +490,7 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
         # feeds) must then diverge from the oracle.
         blk, magi = self._baseline()
         base = load(self.YEAR)
-        c = compute(blk, magi, self.YEAR, base)
+        c = compute(blk, magi, self.YEAR, base, **SINGLE_SIZE1)
         pct = c["f8962_line_5"]  # the row actually looked up
         self.assertIn(pct, base.applicable_figures)
 
@@ -522,7 +528,7 @@ class MutationBiteTests(_DiffMixin, unittest.TestCase):
             tax_exempt_interest=blk.tax_exempt_interest,
         )
 
-        c = compute(mutated_block, magi, year, params)
+        c = compute(mutated_block, magi, year, params, **SINGLE_SIZE1)
         r = reference_f8962(blk, magi, year)  # oracle keeps the original block
         with self.assertRaises(AssertionError):
             for ck, rk in SCALAR_RECON:
