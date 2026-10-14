@@ -68,7 +68,17 @@ PARAMS = FederalParams(
         _MFJ: (96_700, 600_050),
         _HOH: (64_750, 566_700),
     },
-    addl_medicare_threshold={_S: 200_000},
+    addl_medicare_threshold={_S: 200_000,
+        # IRC §3101(b)(2), uscode.house.gov release point Pub. L. 119-120
+        # (source credit: last amended 2018, subsec. (a) only):
+        # https://uscode.house.gov/download/releasepoints/us/pl/119/120/xml_usc26@119-120.zip
+        # sha256 (zip) 84af19d59b5b6ee347c14da510d4a97f6d1d4187e138481352aed0be139b796d
+        # sha256 (usc26.xml) c929a4d2001b92dd50a79f04c68ea859dda09dfa186951ae4d38acf44ca19b6b
+        _MFJ: 250_000,  # (A) joint return
+        _MFS: 125_000,  # (B) ½ of (A)
+        _HOH: 200_000,  # (C) any other case
+        _QW: 200_000,   # (C) any other case
+    },
     ss_wage_base=176_100,  # SSA 2025 OASDI wage base
     # Form 8995 simple-path threshold (Rev. Proc. 2024-40).
     # Single/MFS/HoH may use Form 8995; MFJ/QW threshold is exactly double.
