@@ -1,5 +1,6 @@
 """IRS-published 2023 federal parameters (Rev. Proc. 2022-38; SSA 2023 OASDI
 wage-base table)."""
+import datetime
 import math
 
 from tenforty.models import FilingStatus
@@ -98,7 +99,16 @@ PARAMS = FederalParams(
         _S: 289_000, _MFJ: 578_000, _HOH: 289_000, _QW: 289_000,
         _MFS: 289_000,
     },
-    # Pending transcription (age-65-params).
-    additional_standard_deduction=None,
-    aged_born_before=None,
+    # Rev. Proc. 2022-38, "Aged or blind" paragraph (per-box amount):
+    # https://www.irs.gov/pub/irs-drop/rp-22-38.pdf
+    # sha256 6c20f8a6c9a3bdf4251fcf50dbf2e2382abc8cbeb1e5e2d3eecdc38b2cbf6bbf
+    # Increased amount = unmarried and not a surviving spouse.
+    additional_standard_deduction={
+        _S: 1_850, _HOH: 1_850,
+        _MFJ: 1_500, _MFS: 1_500, _QW: 1_500,
+    },
+    # 2023 Instructions for Form 1040, Age/Blindness checkbox ("born before"):
+    # https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf
+    # sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
+    aged_born_before=datetime.date(1959, 1, 2),
 )
