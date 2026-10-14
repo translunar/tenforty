@@ -4,9 +4,13 @@ with an INDEPENDENTLY TRANSCRIBED attestation module. Two air-gapped
 transcriptions agreeing on the same wrong value is the failure mode this
 kills; a disagreement is surfaced for human adjudication, never
 auto-resolved (and never resolved by editing whichever side is easier)."""
+import contextlib
 import dataclasses
 import importlib
+import sys
+import types
 import unittest
+from unittest import mock
 
 from tenforty import years as year_manifest
 from tenforty.params import ca_scorp
@@ -138,3 +142,49 @@ class F8962AttestationTests(unittest.TestCase):
             _assert_attested(
                 self, load_f8962(year), F8962Params,
                 f"tests.params_attestations.f8962_y{year}")
+
+
+@dataclasses.dataclass(frozen=True)
+class _ProbeParams:
+    year: int
+    pending_field: int | None = None
+
+
+class _Probe(unittest.TestCase):
+    """Runs _assert_attested with subTest as a no-op, so a gate failure
+    raises AssertionError here instead of being recorded as a subtest."""
+
+    def subTest(self, msg=None, **params):  # noqa: N802 (unittest API)
+        return contextlib.nullcontext()
+
+    def run_probe(self):  # pragma: no cover - only used as a method name
+        pass
+
+
+class PendingTranscriptionGateTests(unittest.TestCase):
+    """The PENDING_TRANSCRIPTION branch of _assert_attested, on synthetic
+    modules. Real attestation modules no longer list any pending field once
+    transcription lands, so the branch needs its own negative space."""
+
+    MODULE = "tests._synthetic_pending_attestation"
+
+    def _gate(self, *, params_value, attested_value):
+        module = types.ModuleType(self.MODULE)
+        module.SOURCES = ("synthetic",)
+        module.ATTESTED = {"year": 2025, "pending_field": attested_value}
+        module.PENDING_TRANSCRIPTION = {"pending_field": "synthetic"}
+        with mock.patch.dict(sys.modules, {self.MODULE: module}):
+            _assert_attested(_Probe("run_probe"),
+                             _ProbeParams(2025, params_value), _ProbeParams,
+                             self.MODULE)
+
+    def test_pending_absent_on_both_sides_passes(self):
+        self._gate(params_value=None, attested_value=None)
+
+    def test_pending_with_live_params_value_fails(self):
+        with self.assertRaisesRegex(AssertionError, "pending transcription"):
+            self._gate(params_value=7, attested_value=None)
+
+    def test_stale_pending_entry_next_to_attested_value_fails(self):
+        with self.assertRaisesRegex(AssertionError, "remove the pending entry"):
+            self._gate(params_value=7, attested_value=7)
