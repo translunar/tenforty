@@ -1017,6 +1017,19 @@ _YEAR_PRESENTATION = {
            ("540_form_3020 RB", "/0"), ("540_form_6008 RB", "/1")),
 }
 
+# Line 9 (Senior) count box / amount cell, per year. Probed from each year's
+# own template (never a neighbour year): the count is the widget whose /TU
+# opens "Line 9. Senior: If you (or your spouse ...) are 65 or older", the
+# amount the same-row widget "Multiply the number you put in the line 9 box by
+# $<credit>" (that printed credit matches the year's senior_exemption_credit).
+_LINE9_SENIOR = {
+    2021: ("1042", "1043"),
+    2022: ("1049", "1050"),
+    2023: ("1049", "1050"),
+    2024: ("1045", "1046"),
+    2025: ("1045", "1046"),
+}
+
 # Header fields are numbered identically (1003/1005/1015/1018-1020/1024) in every
 # year; only the prefix differs. (Same for the SSN already mapped at 1007.)
 # Lines 14 / 15 / 16 (Sch CA line 27 col B / "13 - 14" / col C) and line 71
@@ -1102,6 +1115,8 @@ def _install_presentation(year, mapping, derivations):
     mapping.update({
         "f540_line7_count": prefix + l7[0],
         "f540_line7_amount": prefix + l7[1],
+        "f540_line9_count": prefix + _LINE9_SENIOR[year][0],
+        "f540_line9_amount": prefix + _LINE9_SENIOR[year][1],
         "f540_line10_count": prefix + l10[0],
         "f540_line10_amount": prefix + l10[1],
         "f540_line11_exemption_amount": prefix + l11,

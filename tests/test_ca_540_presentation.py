@@ -372,6 +372,11 @@ class PresentationKeysTests(unittest.TestCase):
             for fs, count in expected_count.items():
                 with self.subTest(year=year, fs=fs.value):
                     cfg = make_ca_scenario(year, fs).config
+                    if fs is FilingStatus.MARRIED_FILING_JOINTLY:
+                        # A joint return states the spouse's birthdate (line 9
+                        # refuses without it); the fixture's own, not aged.
+                        cfg = dataclasses.replace(
+                            cfg, spouse_birthdate=cfg.birthdate)
                     keys = form_f540.presentation_keys(cfg, [], year)
                     self.assertEqual(keys["f540_line7_count"], count)
                     self.assertEqual(keys["f540_line7_amount"], count * single)
