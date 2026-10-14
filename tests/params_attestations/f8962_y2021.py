@@ -24,11 +24,12 @@ SOURCES: tuple[str, ...] = (
 
 ATTESTED: dict[str, object] = {
     "year": 2021,
-    # Not yet transcribed (see PENDING_TRANSCRIPTION).
-    "fpl_48_additional_person": None,
+    # Transcriber B, 2026-10-14: i8962--2021.pdf Table 1-1 footnote,
+    # sha256 e4b4e5fa151c6964ec763c727288efc36672ecec1536a006aa0449f9adb6dd48
+    "fpl_48_additional_person": 4480,
     # Table 1-1: 2021 Form 8962 uses the FPL guideline published in 2020
     # for a household of 1 in the 48 contiguous states + DC.
-    "fpl_48_by_family_size": {1: 12760},
+    "fpl_48_by_family_size": {1: 12760, 2: 17240, 3: 21720, 4: 26200, 5: 30680, 6: 35160, 7: 39640, 8: 44120},
     # ARPA (American Rescue Plan Act) table domain: 0.00 floor at 150% FPL
     # through the 0.085 ceiling at 400% FPL (no 400% subsidy cliff in 2021).
     "applicable_figure_floor_pct": 150,
@@ -43,7 +44,13 @@ ATTESTED: dict[str, object] = {
     "line5_400_boundary_inclusive": True,
     # Line 28 repayment limitation table, single filing status:
     # <200% FPL -> $325; <300% -> $800; <400% -> $1,350; >=400% -> no limit.
-    "repayment_caps": {"single": ((200, 325), (300, 800), (400, 1350))},
+    "repayment_caps": {
+        "single": ((200, 325), (300, 800), (400, 1350)),
+        "married_filing_jointly": ((200, 650), (300, 1600), (400, 2700)),
+        "married_filing_separately": ((200, 650), (300, 1600), (400, 2700)),
+        "head_of_household": ((200, 650), (300, 1600), (400, 2700)),
+        "qualifying_widow": ((200, 650), (300, 1600), (400, 2700)),
+    },
     # Table 2 (applicable figure), full published domain 150%-400% FPL,
     # transcribed verbatim, all 251 rows.
     "applicable_figures": {
@@ -97,8 +104,4 @@ ATTESTED: dict[str, object] = {
 # params must hold None too (absent on both sides): the field is unset, so
 # fpl_for_family_size refuses every family size outside the table instead
 # of extrapolating. Remove an entry when both A and B have transcribed it.
-PENDING_TRANSCRIPTION: dict[str, str] = {
-    "fpl_48_additional_person": (
-        "Form 8962 instructions' per-additional-person FPL amount; awaiting "
-        "dual transcription (native-filing-statuses round, ptc-family)."),
-}
+PENDING_TRANSCRIPTION: dict[str, str] = {}
