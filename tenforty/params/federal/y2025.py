@@ -32,8 +32,42 @@ PARAMS = FederalParams(
         (250_525.0, 0.32),
         (626_350.0, 0.35),
         (math.inf, 0.37),
-    )},
-    qdcgt_breakpoints={_S: (48_350, 533_400)},
+    ),
+        # Source: Rev. Proc. 2024-40, https://www.irs.gov/pub/irs-drop/rp-24-40.pdf
+        #   sha256 4de9db6b6662b5c305a59100a027051628823b42fd5817ea4e383ad4c302af1f
+        # Cross-check: Instructions for Form 1040 (2025), https://www.irs.gov/pub/irs-pdf/i1040gi.pdf
+        #   sha256 482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a
+        # MFJ: Rev. Proc. 2024-40 sec. 2.01 Table 1; 1040 instr. TCW Section B.
+        _MFJ: (
+            (23_850.0, 0.10),
+            (96_950.0, 0.12),
+            (206_700.0, 0.22),
+            (394_600.0, 0.24),
+            (501_050.0, 0.32),
+            (751_600.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        # HoH: Rev. Proc. 2024-40 sec. 2.01 Table 2; 1040 instr. TCW Section D.
+        _HOH: (
+            (17_000.0, 0.10),
+            (64_850.0, 0.12),
+            (103_350.0, 0.22),
+            (197_300.0, 0.24),
+            (250_500.0, 0.32),
+            (626_350.0, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
+    # Source: Rev. Proc. 2024-40, https://www.irs.gov/pub/irs-drop/rp-24-40.pdf
+    #   sha256 4de9db6b6662b5c305a59100a027051628823b42fd5817ea4e383ad4c302af1f
+    # Cross-check: Instructions for Form 1040 (2025), https://www.irs.gov/pub/irs-pdf/i1040gi.pdf
+    #   sha256 482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a
+    # Rev. Proc. 2024-40 sec. 2.03; 1040 instr. QDCGT Worksheet lines 6 and 13.
+    qdcgt_breakpoints={
+        _S: (48_350, 533_400),
+        _MFJ: (96_700, 600_050),
+        _HOH: (64_750, 566_700),
+    },
     addl_medicare_threshold={_S: 200_000},
     ss_wage_base=176_100,  # SSA 2025 OASDI wage base
     # Form 8995 simple-path threshold (Rev. Proc. 2024-40).
