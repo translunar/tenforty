@@ -27,6 +27,8 @@ from tenforty.models import (
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import california as ca_params
 from tenforty.params.california import PER_STATUS_CALIFORNIA_FIELDS
+from tenforty.params import f8962 as f8962_params
+from tenforty.params.f8962 import PER_STATUS_F8962_FIELDS
 from tenforty.params.federal import PER_STATUS_FEDERAL_FIELDS
 from tenforty.params.federal import load as load_federal
 from tests.fixtures.spine_battery import (
@@ -41,6 +43,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # federal field of the same name (both jurisdictions carry e.g.
 # standard_deduction).
 CALIFORNIA_GAP_PREFIX = "california."
+# Same for Form 8962 per-status fields (e.g. repayment_caps).
+F8962_GAP_PREFIX = "f8962."
 
 _STATUS_VALUES = frozenset(s.value for s in FilingStatus)
 
@@ -50,20 +54,25 @@ def params_gaps(
     *,
     load_federal: Callable[[int], object],
     load_california: Callable[[int], object],
+    load_f8962: Callable[[int], object],
 ) -> list[tuple[int, str, str]]:
     """(year, status, field) for every declared (year, status) whose column
     is missing from a per-status params field. California fields are checked
     only for years California supports, and are reported with the
-    ``california.`` prefix."""
+    ``california.`` prefix; Form 8962 fields with the ``f8962.`` prefix."""
     ca_years = set(years.CALIFORNIA_YEARS + years.CALIFORNIA_COMPUTE_ONLY_YEARS)
     gaps: list[tuple[int, str, str]] = []
     for year in sorted(grid):
         federal = load_federal(year)
         california = load_california(year) if year in ca_years else None
+        f8962 = load_f8962(year)
         for status in grid[year]:
             for name in PER_STATUS_FEDERAL_FIELDS:
                 if status not in getattr(federal, name):
                     gaps.append((year, status, name))
+            for name in PER_STATUS_F8962_FIELDS:
+                if status not in getattr(f8962, name):
+                    gaps.append((year, status, F8962_GAP_PREFIX + name))
             if california is None:
                 continue
             for name in PER_STATUS_CALIFORNIA_FIELDS:
@@ -185,12 +194,20 @@ class PerStatusFieldRegistryTests(unittest.TestCase):
         self.assertEqual(len(PER_STATUS_CALIFORNIA_FIELDS),
                          len(set(PER_STATUS_CALIFORNIA_FIELDS)))
 
+    def test_f8962_registry_equals_status_keyed_dict_fields_every_year(self):
+        all_years = years.amendable_federal_years()
+        expected = _status_keyed_fields(f8962_params.load(y) for y in all_years)
+        self.assertEqual(set(PER_STATUS_F8962_FIELDS), expected)
+        self.assertEqual(len(PER_STATUS_F8962_FIELDS),
+                         len(set(PER_STATUS_F8962_FIELDS)))
+
 
 class ParamsCompletenessGateTests(unittest.TestCase):
     def test_declared_grid_has_every_column(self):
         self.assertEqual(
             params_gaps(years.NATIVE_SPINE_STATUSES, load_federal=load_federal,
-                        load_california=ca_params.load), [])
+                        load_california=ca_params.load,
+                        load_f8962=f8962_params.load), [])
 
     def test_gate_names_a_removed_column(self):
         def fake(year):
@@ -200,7 +217,8 @@ class ParamsCompletenessGateTests(unittest.TestCase):
             return dataclasses.replace(p, standard_deduction={
                 k: v for k, v in p.standard_deduction.items() if k != "single"})
         gaps = params_gaps(years.NATIVE_SPINE_STATUSES, load_federal=fake,
-                           load_california=ca_params.load)
+                           load_california=ca_params.load,
+                           load_f8962=f8962_params.load)
         self.assertIn((2025, "single", "standard_deduction"), gaps)
 
     def test_gate_names_a_removed_california_column(self):
@@ -211,11 +229,35 @@ class ParamsCompletenessGateTests(unittest.TestCase):
             return dataclasses.replace(p, exemption_credit={
                 k: v for k, v in p.exemption_credit.items() if k != "single"})
         gaps = params_gaps(years.NATIVE_SPINE_STATUSES,
-                           load_federal=load_federal, load_california=fake)
+                           load_federal=load_federal, load_california=fake,
+                           load_f8962=f8962_params.load)
         california_gaps = [
             g for g in gaps if g[2].startswith(CALIFORNIA_GAP_PREFIX)]
         self.assertEqual(california_gaps,
                          [(2025, "single", "california.exemption_credit")])
+
+    def test_gate_names_a_removed_f8962_column(self):
+        def fake(year):
+            p = f8962_params.load(year)
+            if year != 2025:
+                return p
+            return dataclasses.replace(p, repayment_caps={
+                k: v for k, v in p.repayment_caps.items() if k != "single"})
+        gaps = params_gaps(years.NATIVE_SPINE_STATUSES,
+                           load_federal=load_federal,
+                           load_california=ca_params.load, load_f8962=fake)
+        f8962_gaps = [g for g in gaps if g[2].startswith(F8962_GAP_PREFIX)]
+        self.assertEqual(f8962_gaps, [(2025, "single", "f8962.repayment_caps")])
+
+    def test_gate_names_an_undeclared_status_f8962_column(self):
+        # Declaring a status whose repayment-cap column has not been
+        # transcribed surfaces in the gate, not at runtime.
+        gaps = params_gaps({2025: ("single", "married_filing_jointly")},
+                           load_federal=load_federal,
+                           load_california=ca_params.load,
+                           load_f8962=f8962_params.load)
+        self.assertIn((2025, "married_filing_jointly", "f8962.repayment_caps"),
+                      gaps)
 
 
 class BatteryCompletenessGateTests(unittest.TestCase):
