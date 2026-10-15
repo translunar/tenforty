@@ -61,18 +61,51 @@ ATTESTED: dict[str, object] = {
     # itemize may deduct cash charitable contributions, "Don't enter more than
     # $300 ($600 if married filing jointly)." SINGLE-filer cap = $300.
     "nonitemizer_charitable_cap": 300,
-    # Rev. Proc. 2020-45 § 3.01, TABLE 3 — Unmarried Individuals (§ 1(j)(2)(C)),
-    # the 2021 SINGLE rate schedule; (upper_bound, rate) ascending.
-    "ordinary_brackets": {"single": (
-        (9950.0, 0.10),     # Not over $9,950 -> 10%
-        (40525.0, 0.12),    # Over $9,950, not over $40,525 -> 12%
-        (86375.0, 0.22),    # Over $40,525, not over $86,375 -> 22%
-        (164925.0, 0.24),   # Over $86,375, not over $164,925 -> 24%
-        (209425.0, 0.32),   # Over $164,925, not over $209,425 -> 32%
-        (523600.0, 0.35),   # Over $209,425, not over $523,600 -> 35%
-        (math.inf, 0.37),   # Over $523,600 -> 37%
-    )},
+    # MFJ (§3.01 Table 1) and HoH (§3.01 Table 2) added 2026-10-15 by dual
+    # transcription (A: worktree params fill; B: isolated scratch, pasted here
+    # by team-lead; mechanical adjudication: full agreement, brackets 7/7 both
+    # statuses). Both sides pinned identical editions:
+    #   rp-20-45.pdf  sha256 12cfb00115b86e3bb97937f1a5fc340cf98c0d61b7508c800b9a3a4674aac52d
+    #   i1040gi--2021.pdf  sha256 7337e61fe50cd309c260817d23468cd557426c7e5f15cdbdc291f6d2c7c50d90
+    # No internal source inconsistency (base-tax arithmetic checked by both
+    # transcribers independently).
+    "ordinary_brackets": {
+        # Rev. Proc. 2020-45 § 3.01, TABLE 3 — Unmarried Individuals (§ 1(j)(2)(C)),
+        # the 2021 SINGLE rate schedule; (upper_bound, rate) ascending.
+        "single": (
+            (9950.0, 0.10),     # Not over $9,950 -> 10%
+            (40525.0, 0.12),    # Over $9,950, not over $40,525 -> 12%
+            (86375.0, 0.22),    # Over $40,525, not over $86,375 -> 22%
+            (164925.0, 0.24),   # Over $86,375, not over $164,925 -> 24%
+            (209425.0, 0.32),   # Over $164,925, not over $209,425 -> 32%
+            (523600.0, 0.35),   # Over $209,425, not over $523,600 -> 35%
+            (math.inf, 0.37),   # Over $523,600 -> 37%
+        ),
+        "married_filing_jointly": (
+            (19900, 0.10),
+            (81050, 0.12),
+            (172750, 0.22),
+            (329850, 0.24),
+            (418850, 0.32),
+            (628300, 0.35),
+            (math.inf, 0.37),
+        ),
+        "head_of_household": (
+            (14200, 0.10),
+            (54200, 0.12),
+            (86350, 0.22),
+            (164900, 0.24),
+            (209400, 0.32),
+            (523600, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
     "qdcgt_breakpoints": {
+        # MFJ and HoH RE-VERIFIED 2026-10-15 by fresh dual transcription from
+        # the pinned editions cited at ordinary_brackets (R-attest-reuse):
+        # fresh B == committed params == this attestation on both statuses;
+        # citation upgraded, values unchanged. (This year's §3.03 is prose,
+        # not a table; it maps one-to-one onto the pair shape.)
         # Rev. Proc. 2020-45 § 3.03 (Max Zero Rate Amt, Max 15% Rate Amt):
         "single": (40400, 445850),            # any other individual: $40,400 / $445,850
         "married_filing_jointly": (80800, 501600),   # joint return: $80,800 / $501,600
