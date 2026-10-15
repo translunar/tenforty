@@ -30,8 +30,46 @@ PARAMS = FederalParams(
         (243_725.0, 0.32),
         (609_350.0, 0.35),
         (math.inf, 0.37),
-    )},
-    qdcgt_breakpoints={_S: (47_025, 518_900)},
+    ),
+        # Rev. Proc. 2023-34 §3.01 Table 1 (MFJ / surviving spouses),
+        # cross-checked vs 2024 Instructions for Form 1040 Schedule Y-1:
+        # https://www.irs.gov/pub/irs-drop/rp-23-34.pdf
+        # sha256 544ba41c7ba64f77da521e0d174a7b7394dc72b5c7c73d10adb19952d5aaae57
+        # https://www.irs.gov/pub/irs-prior/i1040gi--2024.pdf
+        # sha256 0ae53ed5020d69e6571d40cd7955b7735f44a28df483626d128628d2810e93d4
+        _MFJ: (
+            (23_200.0, 0.10),
+            (94_300.0, 0.12),
+            (201_050.0, 0.22),
+            (383_900.0, 0.24),
+            (487_450.0, 0.32),
+            (731_200.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        # Rev. Proc. 2023-34 §3.01 Table 2 (heads of households),
+        # cross-checked vs 2024 Instructions for Form 1040 Schedule Z
+        # (same two files/sha256 as above).
+        _HOH: (
+            (16_550.0, 0.10),
+            (63_100.0, 0.12),
+            (100_500.0, 0.22),
+            (191_950.0, 0.24),
+            (243_700.0, 0.32),
+            (609_350.0, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
+    qdcgt_breakpoints={_S: (47_025, 518_900),
+        # Rev. Proc. 2023-34 §3.03 (max zero-rate, max 15%-rate amounts),
+        # cross-checked vs 2024 Instructions for Form 1040 QDCGT Worksheet
+        # lines 6 and 13:
+        # https://www.irs.gov/pub/irs-drop/rp-23-34.pdf
+        # sha256 544ba41c7ba64f77da521e0d174a7b7394dc72b5c7c73d10adb19952d5aaae57
+        # https://www.irs.gov/pub/irs-prior/i1040gi--2024.pdf
+        # sha256 0ae53ed5020d69e6571d40cd7955b7735f44a28df483626d128628d2810e93d4
+        _MFJ: (94_050, 583_750),
+        _HOH: (63_000, 551_350),
+    },
     addl_medicare_threshold={_S: 200_000,
         # IRC §3101(b)(2), United States Code 2024 Edition (govinfo):
         # https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleC-chap21-subchapA-sec3101.htm
