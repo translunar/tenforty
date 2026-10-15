@@ -235,6 +235,80 @@ WORKBOOK_PROBES_2025: dict[str, _Probe] = {
     "workbook_probe__sch_se__x20": _Probe("Sch. SE", "X20", ""),
 }
 
+# --- Workbook numeric-cell probes (2024) -------------------------------------
+#
+# Same purpose and semantics as WORKBOOK_PROBES_2025 above; keys carry the year
+# (`workbook_probe__y2024__...`) because several cells are probes in both years
+# at different meanings/addresses. Set (workbook-health-2024, team-lead ruled
+# 2026-10-15; docs/plans/2026-10-13-briefs/workbook-health-2024-numeric-cut.md,
+# gitignored): the 77 numeric-path cells of the 2024 inventory, less
+#   * 32 DISPATCH-FAMILY cells (QDCG / Sch. D WS table-vs-schedule dispatch,
+#     unused-worksheet selectors and their bare pass-throughs, the 1040 pair
+#     AY78/AY79) -- removed by a STRUCTURAL rule that reproduces 2025's
+#     dump-ruled removal exactly (32 = 32). For 2024 this is a PREDICTION: the
+#     empirical confirmation is team-lead's 2024 probe dump + oracle run, and a
+#     single texty value among these 39 on a computing row reopens the set;
+#   * 6 RECORDED-NOT-HARVESTED cells holding text in normal operation behind a
+#     textual/ISERROR guard: 'Line 6ab (SS Bene)'!J28 "Stop", '2441'!V112
+#     "STOP", 'Sch. 1, Line 20 (IRA)'!Q22 "Age > 70 1/2", and '1099-R'!O32 /
+#     '8606'!AE76 / '8606'!AE185 (the "- - - -" sentinel, text on EVERY
+#     return). As in 2025 this is a MEMBERSHIP decision, not a string
+#     allowlist: any text in a remaining probe refuses.
+WORKBOOK_PROBES_2024: dict[str, _Probe] = {
+    # --- 1040 ---
+    "workbook_probe__y2024__1040__ad60": _Probe("1040", "AD60", "SocSecBenefits_Taxable"),
+    "workbook_probe__y2024__1040__bc79": _Probe("1040", "BC79", ""),
+    # --- 6251 ---
+    "workbook_probe__y2024__6251__ac26": _Probe("6251", "AC26", ""),
+    "workbook_probe__y2024__6251__ac38": _Probe("6251", "AC38", ""),
+    "workbook_probe__y2024__6251__m88": _Probe("6251", "M88", ""),
+    "workbook_probe__y2024__6251__m94": _Probe("6251", "M94", ""),
+    "workbook_probe__y2024__6251__m101": _Probe("6251", "M101", ""),
+    "workbook_probe__y2024__6251__m103": _Probe("6251", "M103", ""),
+    "workbook_probe__y2024__6251__m110": _Probe("6251", "M110", ""),
+    # --- 8582 ---
+    "workbook_probe__y2024__8582__at18": _Probe("8582", "AT18", ""),
+    "workbook_probe__y2024__8582__x33": _Probe("8582", "X33", ""),
+    # --- 8812 ---
+    "workbook_probe__y2024__8812__al30": _Probe("8812", "AL30", ""),
+    # --- 8863 ---
+    "workbook_probe__y2024__8863__x16": _Probe("8863", "X16", ""),
+    # --- 8959 ---
+    "workbook_probe__y2024__8959__k24": _Probe("8959", "K24", ""),
+    "workbook_probe__y2024__8959__k34": _Probe("8959", "K34", ""),
+    "workbook_probe__y2024__8959__k46": _Probe("8959", "K46", ""),
+    # --- 8960 ---
+    "workbook_probe__y2024__8960__l44": _Probe("8960", "L44", ""),
+    # --- Line 16 (QDCG Tax) ---
+    "workbook_probe__y2024__line_16_qdcg_tax__n65": _Probe("Line 16 (QDCG Tax)", "N65", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__n69": _Probe("Line 16 (QDCG Tax)", "N69", "CGTW_Line24"),
+    "workbook_probe__y2024__line_16_qdcg_tax__n93": _Probe("Line 16 (QDCG Tax)", "N93", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__n97": _Probe("Line 16 (QDCG Tax)", "N97", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__aa104": _Probe("Line 16 (QDCG Tax)", "AA104", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__v109": _Probe("Line 16 (QDCG Tax)", "V109", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__x129": _Probe("Line 16 (QDCG Tax)", "X129", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__x140": _Probe("Line 16 (QDCG Tax)", "X140", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__x158": _Probe("Line 16 (QDCG Tax)", "X158", ""),
+    "workbook_probe__y2024__line_16_qdcg_tax__y163": _Probe("Line 16 (QDCG Tax)", "Y163", ""),
+    # --- Line 6ab (SS Bene) ---
+    "workbook_probe__y2024__line_6ab_ss_bene__j34": _Probe("Line 6ab (SS Bene)", "J34", ""),
+    "workbook_probe__y2024__line_6ab_ss_bene__j54": _Probe("Line 6ab (SS Bene)", "J54", "Tax_SS_Benefits"),
+    # --- Sch. 1, Line 21 (Stu Loan) ---
+    "workbook_probe__y2024__sch_1_line_21_stu_loan__j20": _Probe("Sch. 1, Line 21 (Stu Loan)", "J20", ""),
+    # --- Sch. A ---
+    "workbook_probe__y2024__sch_a__ai10": _Probe("Sch. A", "AI10", ""),
+    # --- Sch. D WS ---
+    "workbook_probe__y2024__sch_d_ws__l91": _Probe("Sch. D WS", "L91", "SchDTW_Line15"),
+    "workbook_probe__y2024__sch_d_ws__l92": _Probe("Sch. D WS", "L92", ""),
+    "workbook_probe__y2024__sch_d_ws__l98": _Probe("Sch. D WS", "L98", "SchDTW_Line19"),
+    "workbook_probe__y2024__sch_d_ws__l110": _Probe("Sch. D WS", "L110", "SchDTW_Line24 / SchDTW_Line26"),
+    "workbook_probe__y2024__sch_d_ws__l111": _Probe("Sch. D WS", "L111", ""),
+    "workbook_probe__y2024__sch_d_ws__p134": _Probe("Sch. D WS", "P134", ""),
+    "workbook_probe__y2024__sch_d_ws__p137": _Probe("Sch. D WS", "P137", ""),
+    # --- Sch. SE ---
+    "workbook_probe__y2024__sch_se__x20": _Probe("Sch. SE", "X20", ""),
+}
+
 class F1040(FormMapping):
     """Mapping for the entire federal 1040 workbook (all sheets).
 
@@ -1546,3 +1620,12 @@ for _year in _W2_SPOUSE_ROW_OFFSET:
         F1040.INPUTS[_year][_key] = _address
         F1040.SHEET_MAP[_year][_key] = "W-2s"
 del _year, _key, _address
+
+
+# 2024 numeric-cell probes (see WORKBOOK_PROBES_2024) -- wired HERE, after every
+# year's maps exist: 2023 (and through it 2022/2021) is built by inheriting
+# 2024's OUTPUTS, so wiring earlier would leak 2024's probes into those years.
+for _key, _probe in WORKBOOK_PROBES_2024.items():
+    F1040.OUTPUTS[2024][_key] = _probe.cell
+    F1040.SHEET_MAP[2024][_key] = _probe.sheet
+del _key, _probe
