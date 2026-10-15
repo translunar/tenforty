@@ -192,27 +192,6 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
         )
 
 
-def _mfs(scenario):
-    """Re-file a `_make_v1_scenario()` fixture as MARRIED_FILING_SEPARATELY
-    -- never declared on the native grid, so it still routes to the XLSX
-    workbook path these tests exist to guard. (declare-2025 put 2025 MFJ and
-    HoH on the native spine, so the MFJ / HoH vehicles these tests used
-    before no longer reach the workbook.) The spouse identity and birthdate are supplied so the
-    workbook's `Birthday_Needed` flag -- which consults the spouse birthdate on
-    the Married-Separate branch -- does not fire ahead of the guard."""
-    return dataclasses.replace(
-        scenario,
-        config=dataclasses.replace(
-            scenario.config,
-            filing_status=FilingStatus.MARRIED_FILING_SEPARATELY,
-            spouse_first_name="Taxpayer",
-            spouse_last_name="B",
-            spouse_ssn="000-00-0001",
-            spouse_birthdate="1986-07-09",
-        ),
-    )
-
-
 def _assert_routes_to_workbook(test, orch, scenario):
     """The guard under test lives on the workbook path only; a scenario that
     routes native would pass these tests for the wrong reason (the native
@@ -221,85 +200,66 @@ def _assert_routes_to_workbook(test, orch, scenario):
     test.assertFalse(orch._scenario_in_spine_scope(eff))
 
 
+def _workbook_qbi_scenario(year, filing_status, *, wages, qbi, **config):
+    """A direct S-corp K-1 (ordinary income == QBI) plus ONE taxpayer W-2 --
+    the shape of test_amendment_packet_emit's `_build_eic_eligible_qbi_
+    scenario`. `acknowledges_qbi_below_threshold` is set False explicitly
+    (`make_k1_scenario` turns it on, which would bypass the guard)."""
+    scenario = make_k1_scenario()
+    base = float(load_federal_params(year).ss_wage_base)
+    ss_wages = min(wages, base)
+    scenario.config = dataclasses.replace(
+        scenario.config, year=year, filing_status=filing_status,
+        acknowledges_qbi_below_threshold=False, **config)
+    scenario.w2s = [W2(
+        employer="Example Employer Inc.", wages=wages,
+        federal_tax_withheld=round(wages * 0.1), ss_wages=ss_wages,
+        ss_tax_withheld=round(ss_wages * 0.062), medicare_wages=wages,
+        medicare_tax_withheld=round(wages * 0.0145), owner="taxpayer")]
+    scenario.schedule_k1s = [ScheduleK1(
+        entity_name="Example S-Corp Inc.", entity_ein="00-0000000",
+        entity_type=EntityType.S_CORP, material_participation=True,
+        ordinary_business_income=qbi, qbi_amount=qbi)]
+    return scenario
+
+
 @needs_libreoffice
-class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
-    """UPDATED at declare-2025: both halves now run on
-    MARRIED_FILING_SEPARATELY (`_mfs`), which stays off the native grid, and
-    each asserts the workbook routing first. The history below describes the
-    MFJ/HoH vehicles they used before 2025 MFJ/HoH were declared native.
+class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
+    """The orchestrator's workbook-path Form 8995 threshold guard, end to end
+    through the real XLSX workbook (soffice). Workbook-routed filers never
+    reach the native spine, where `forms/f8995.py`'s above-threshold refusal
+    lives; the 2025 workbook has an `8995` (simple-path) sheet and no `8995A`
+    sheet, so without the guard an above-threshold return would compute
+    silently on the wrong formula. The guard runs AFTER the workbook (it
+    reads the harvested taxable income before QBI), so a harvest refusal
+    (`Deduction` diagnostic, numeric probe) legitimately preempts it.
 
-    Non-SINGLE filers are out of native-1040-spine scope
-    (`_scenario_in_spine_scope` returns False for any non-SINGLE filing
-    status), so they route to the XLSX workbook path instead of the native
-    spine where `forms/f8995.py`'s above-threshold refusal lives. The 2025
-    workbook has an `8995` (simple-path) sheet and no `8995A` sheet, so
-    before the orchestrator-level guard these scenarios silently computed a
-    workbook-based result with no refusal, using formula that Form 8995-A
-    is supposed to replace above the threshold. These two tests pin both
-    sides of that boundary -- though the above-threshold half is currently
-    STRICT-XFAIL, because the `Deduction`-diagnostic refusal fires on MFJ
-    before the workbook result the guard inspects can exist; see that test's
-    own docstring -- using `_make_v1_scenario`'s default S-corp
-    (gross_receipts=100,000 - compensation_of_officers=30,000 = 70,000
-    ordinary business income / QBI, comfortably under the $250,000
-    Schedule L / M-1 attestation trigger).
-
-    The two halves run on DIFFERENT non-single filing statuses, which is
-    deliberate and is explained in each test's own docstring: the
-    above-threshold refusal is pinned on MARRIED_FILING_JOINTLY (threshold
-    $394,600) and the below-threshold computation on HEAD_OF_HOUSEHOLD
-    (threshold $197,300). Both are out of native-spine scope and route
-    through the identical `_compute_1040_via_workbook` call, so the pair
-    still brackets one boundary; only the filing status differs, because a
-    separate pre-existing defect makes MFJ arithmetic wrong (the standard
-    deduction is never subtracted for MFJ/MFS) while its refusal behaviour
-    is unaffected.
-
-    Oracle-tier (real XLSX workbook via LibreOffice): `_compute_1040_pipeline`
-    only reaches the new guard by actually routing a non-SINGLE scenario
-    through `_compute_1040_via_workbook`, which requires soffice -- see
-    `tests/helpers.py::needs_libreoffice`. The guard's conditional logic
-    itself (independent of the real workbook numbers) is additionally pinned
-    without soffice by `WorkbookQbiThresholdGuardUnitTests` below, via a
-    mocked `_compute_1040_via_workbook`."""
+    Vehicles (team-lead ruling, declare-fallout): each half must route to the
+    workbook AND compute cleanly there.
+      * Below the threshold: a 2025 SINGLE, EIC-POSSIBLE filer (low wages +
+        a K-1) -- EIC is never on the native spine, so this vehicle is
+        permanent.
+      * Above the threshold: 2024 MARRIED_FILING_JOINTLY (undeclared until
+        back-year-2024; ledgered for re-vehicling there), all wages on the
+        taxpayer's W-2. No permanent clean vehicle exists: above the QBI
+        threshold no filer is EIC-possible, and a 2025 MFS workbook return
+        refuses on the lived-apart diagnostic ('Line 6ab (SS Bene)'!L29)
+        before the guard can run.
+    The guard's own logic is pinned without soffice by
+    `WorkbookQbiThresholdGuardUnitTests` below (mocked workbook)."""
 
     @pytest.mark.oracle
-    def test_above_threshold_non_single_raises_instead_of_silent_workbook_result(self):
-        """400,000 of W-2 wages plus the 70,000 K-1 QBI-bearing income is
-        470,000 of total income, against the 394,600 MFJ threshold
-        (tenforty/params/federal/y2025.py). Without the orchestrator-level
-        guard this scenario would route straight to the XLSX workbook
-        (MARRIED_FILING_JOINTLY is out of native-spine scope) and compute silently
-        via the workbook's `8995` sheet, which is not valid above the
-        threshold.
-
-        This one stays on MFJ deliberately, unlike its below-threshold
-        companion. The refusal it pins is robust to the MFJ standard-
-        deduction defect described in that companion's docstring: today the
-        guard would see 470,000 (the deduction is never subtracted), and once
-        the spouse_birthdate unit lands it will see 438,500 (470,000 minus
-        the 31,500 MFJ standard deduction). Both are comfortably above
-        394,600, so this test refuses for the right reason before and after
-        that fix. It asserts only the refusal, never an arithmetic figure,
-        which is why the defect cannot make it silently pass for a wrong
-        reason.
-
-        `_mfs` supplies `spouse_birthdate`, so the workbook's `Birthday_Needed`
-        refusal no longer fires ahead of the QBI guard; this test was
-        strict-xfail until that input existed."""
-        scenario = _mfs(_make_v1_scenario(
-            gross_receipts=100_000.0, compensation_of_officers=30_000.0))
-        scenario = dataclasses.replace(scenario, w2s=[
-            W2(
-                employer="Example Employer Inc.",
-                wages=400_000.0,
-                federal_tax_withheld=80_000.0,
-                ss_wages=176_100.0,
-                ss_tax_withheld=round(176_100.0 * 0.062),
-                medicare_wages=400_000.0,
-                medicare_tax_withheld=round(400_000.0 * 0.0145),
-            ),
-        ])
+    def test_above_threshold_raises_instead_of_silent_workbook_result(self):
+        """400,000 of wages + 70,000 of K-1 QBI income, 2024 MFJ: taxable
+        income before QBI is far above the 2024 MFJ QBI threshold, so the
+        guard refuses naming Form 8995-A."""
+        mfj = FilingStatus.MARRIED_FILING_JOINTLY
+        scenario = _workbook_qbi_scenario(
+            2024, mfj, wages=400_000.0, qbi=70_000.0,
+            spouse_first_name="Taxpayer", spouse_last_name="B",
+            spouse_ssn="000-00-0001", spouse_birthdate="1986-07-09")
+        threshold = load_federal_params(2024).for_status(mfj).qbi_threshold
+        self.assertGreater(400_000.0, threshold)
 
         with tempfile.TemporaryDirectory() as d:
             orch = ReturnOrchestrator(
@@ -311,56 +271,19 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
                 orch.compute_federal(scenario)
 
     @pytest.mark.oracle
-    def test_below_threshold_non_single_still_computes_via_workbook(self):
-        """The below-threshold half of the boundary, on HEAD_OF_HOUSEHOLD.
-
-        No added W-2 income: taxable income before QBI is the 70,000 K-1
-        income minus the 2025 HOH standard deduction (23,625) = 46,375,
-        comfortably below the 197,300 HOH threshold
-        (tenforty/params/federal/y2025.py). QBI is still positive (70,000),
-        so this scenario must NOT be refused -- the workbook's `8995` sheet
-        is valid below the threshold and must keep computing exactly as it
-        does today. Asserts on real computed figures (the exact
-        taxable-income-before-QBI figure, and that a positive QBI deduction
-        was actually subtracted), not merely the absence of an exception.
-
-        WHY HOH AND NOT MFJ: this test was originally written on MFJ and
-        asserted 38,500 (70,000 minus the 31,500 MFJ standard deduction).
-        It failed against the real workbook with 70,000 -- the standard
-        deduction is never subtracted for MARRIED_FILING_JOINTLY or
-        MARRIED_SEPARATE. That is a real, pre-existing defect unrelated to
-        QBI or to this branch: the vendor sheet zeroes line 12 whenever its
-        `Birthday_Needed` flag fires, and that flag is permanently TRUE for
-        MFJ/MFS because tenforty has no spouse-birthdate input to write.
-        The sheet reports "Birthdate(s) needed." in the `Deduction` named
-        range (`'1040'!AU91` in 2025). tenforty NOW HARVESTS that cell and
-        refuses on it (`forms/f1040.py::workbook_refusal`), so an MFJ
-        scenario no longer returns wrong arithmetic -- it raises. The
-        remaining half, supplying a spouse birthdate so the sheet will
-        compute at all, is ticketed as its own unit, which owns the MFJ
-        arithmetic pin as its failing-first test.
-
-        HOH is the right substitute rather than a workaround: this test's
-        subject is the GUARD BOUNDARY -- that a below-threshold scenario on
-        the workbook path still computes instead of being refused -- and HOH
-        is out of native-spine scope exactly as MFJ is, so it exercises the
-        identical routing through `_compute_1040_via_workbook`, with
-        arithmetic the workbook gets right. Substituting the filing status
-        keeps this test's own subject honestly covered while the MFJ defect
-        is pinned where it belongs, in the unit that fixes it.
-
-        HOH is STRUCTURALLY immune, not merely observed to pass:
-        `Birthday_Needed` ('1040'!BI136) consults the spouse-birthdate cells
-        only inside a branch guarded on the Married-Joint or Married-Separate
-        box being checked. For HOH it reduces to "is the FILER's birthdate
-        missing", which `_make_v1_scenario` supplies. So no fixture change
-        short of removing the filer's own birthdate can reawaken the defect
-        here -- this test cannot silently start passing for the wrong
-        reason. The same branch structure is why the blast radius is MFJ and
-        MFS only, and why QUALIFYING_WIDOW is excluded despite sharing the
-        MFJ standard-deduction amount."""
-        scenario = _mfs(_make_v1_scenario(
-            gross_receipts=100_000.0, compensation_of_officers=30_000.0))
+    def test_below_threshold_still_computes_via_workbook(self):
+        """8,000 of wages + 10,000 of K-1 QBI income, 2025 single: the cheap
+        EIC estimate is under the 0-child ceiling, so the return routes to
+        the workbook; taxable income before QBI (wages + K-1 less the single
+        standard deduction, from params) is below the threshold and QBI is
+        positive, so it must compute -- asserted on the real figures."""
+        single = FilingStatus.SINGLE
+        scenario = _workbook_qbi_scenario(
+            2025, single, wages=8_000.0, qbi=10_000.0)
+        view = load_federal_params(2025).for_status(single)
+        expected = 8_000 + 10_000 - view.standard_deduction
+        self.assertGreater(expected, 0)
+        self.assertLess(expected, view.qbi_threshold)
 
         with tempfile.TemporaryDirectory() as d:
             orch = ReturnOrchestrator(
@@ -368,12 +291,6 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
             _assert_routes_to_workbook(self, orch, scenario)
             results = orch.compute_federal(scenario)
 
-        # 70,000 of K-1 income less the MFS standard deduction (read from
-        # params), below the MFS QBI threshold.
-        mfs = load_federal_params(2025).for_status(
-            FilingStatus.MARRIED_FILING_SEPARATELY)
-        expected = 70_000 - mfs.standard_deduction
-        self.assertLess(expected, mfs.qbi_threshold)
         self.assertEqual(
             results["taxable_income_before_qbi_deduction"], expected)
         self.assertGreater(results["qbi_deduction"], 0)
