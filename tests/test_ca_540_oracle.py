@@ -35,9 +35,11 @@ from tenforty.models import (
 )
 from tests.oracles.ca_540_reference import (
     AGI_PHASEOUT_THRESHOLD_2025,
+    CA_540_BOOKLET_2022_PROVENANCE,
     CA_540_BOOKLET_2023_PROVENANCE,
     CA_540_BOOKLET_2024_PROVENANCE,
     CA_540_BOOKLET_2025_PROVENANCE,
+    HAND_WORKED_CASES_2022,
     HAND_WORKED_CASES_2023,
     HAND_WORKED_CASES_2024,
     HAND_WORKED_AGED_CASES_2025,
@@ -70,9 +72,11 @@ from tests.oracles.ca_540_reference import (
     _exemption_credits_pre_phaseout,
     _tax_from_rate_schedule,
     compute_ca_540,
+    is_senior_2022,
     is_senior_2023,
     is_senior_2024,
     is_senior_2025,
+    senior_count_2022,
     senior_count_2023,
     senior_count_2024,
     senior_count_2025,
@@ -1284,8 +1288,39 @@ class HandWorkedCases2023ShapeTests(unittest.TestCase):
         self.assertFalse(is_senior_2023(None))
 
 
+class HandWorkedCases2022ShapeTests(unittest.TestCase):
+    """TY2022 hand-worked cases: provenance and filing-status / senior
+    shape. ``compute_ca_540`` carries TY2025 constants only, so the TY2022
+    cases are checked against production (below), not the oracle."""
+
+    def test_provenance_is_recorded(self):
+        for key in ("url", "edition", "sha256", "retrieved"):
+            self.assertTrue(CA_540_BOOKLET_2022_PROVENANCE[key])
+        self.assertEqual(len(CA_540_BOOKLET_2022_PROVENANCE["sha256"]), 64)
+        self.assertIn("/forms/2022/", CA_540_BOOKLET_2022_PROVENANCE["url"])
+
+    def test_cases_cover_mfj_hoh_and_aged_single(self):
+        shape = [
+            (c.filing_status, senior_count_2022(c))
+            for c in HAND_WORKED_CASES_2022
+        ]
+        self.assertEqual(shape, [("mfj", 0), ("hoh", 0), ("single", 1)])
+        for case in HAND_WORKED_CASES_2022:
+            with self.subTest(case=case.name):
+                self.assertEqual(
+                    case.expected["f540_line_9_senior_exemption_count"],
+                    float(senior_count_2022(case)),
+                )
+
+    def test_senior_cutoff_is_jan_1_birthday_inclusive(self):
+        # 65th birthday on 2023-01-01 counts as 65 on 2022-12-31 (p.12).
+        self.assertTrue(is_senior_2022(date(1958, 1, 1)))
+        self.assertFalse(is_senior_2022(date(1958, 1, 2)))
+        self.assertFalse(is_senior_2022(None))
+
+
 # ---------------------------------------------------------------------------
-# Hand-worked cases (TY2025 + TY2024 + TY2023) — production full-liability chain
+# Hand-worked cases (TY2025 + TY2024 + TY2023 + TY2022) — production chain
 # ---------------------------------------------------------------------------
 _PRODUCTION_FILING_STATUS = {
     "single": FilingStatus.SINGLE,
@@ -1342,6 +1377,10 @@ class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
     def test_production_chain_matches_hand_worked_lines_2023(self):
         for case in HAND_WORKED_CASES_2023:
             self._check_case(case, year=2023, num_seniors=senior_count_2023(case))
+
+    def test_production_chain_matches_hand_worked_lines_2022(self):
+        for case in HAND_WORKED_CASES_2022:
+            self._check_case(case, year=2022, num_seniors=senior_count_2022(case))
 
     def _check_case(self, case: HandWorkedCase540, *, year: int, num_seniors: int):
         e = case.expected

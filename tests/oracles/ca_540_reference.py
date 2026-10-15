@@ -2208,6 +2208,228 @@ HAND_WORKED_CASES_2023: tuple[HandWorkedCase540, ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Hand-worked cases — TY2022 (MFJ, HOH, aged single)
+#
+# Worked by hand from the 2022 booklet in CA_540_BOOKLET_2022_PROVENANCE.
+# ``compute_ca_540`` carries TY2025 constants only, so these cases are NOT
+# run through it; they are checked against the production chain alone.
+#
+# Booklet facts used (2022 booklet page numbers):
+#   - Line 7/8/9 amount: Form 540 side 1 preprint "X $140" on each of
+#     lines 7, 8 and 9 (booklet PDF page 33).
+#   - Line 9 senior condition: see SENIOR_BIRTH_DATE_CUTOFF_2022 (p.12).
+#   - Line 18: Standard Deduction Chart for Most People (p.13): status 1/3
+#     = 5,202; status 2/4/5 = 10,404. Keyed by filing status only; no
+#     age-65 addition.
+#   - Line 31: line 19 > 100,000 → tax rate schedules (p.13); Schedules
+#     X / Y / Z (p.93). Step 4 rounds step 3 to two decimals, adds the
+#     base tax, then the result is rounded to whole dollars.
+#   - Line 32: AGI limitation applies only if line 13 exceeds 229,908
+#     (single/MFS), 459,821 (MFJ/QSS), 344,867 (HOH) (p.14); none of
+#     these cases do.
+#   - Lines 33–115 flow as in ``_zero_balance_tail`` (Form 540: L33 =
+#     L31 − L32; L35 = L33 + L34; L48 = L35 − L47; L64 = L48 + L61 + L62
+#     + L63; L97 = L95 − L64). TY2022 line 62 is the Mental Health
+#     Services Tax (zero here); the ``*_bhst`` and ``*_applied_to_2026``
+#     key names are the harness's year-neutral keys.
+#
+# All people and amounts are synthetic.
+# ---------------------------------------------------------------------------
+CA_540_BOOKLET_2022_PROVENANCE: dict[str, str] = {
+    "url": "https://www.ftb.ca.gov/forms/2022/2022-540-booklet.pdf",
+    "edition": (
+        "2022 California 540 Forms & Instructions Personal Income Tax "
+        "Booklet; 96 PDF pages; mixed printing: booklet p.4 and Schedule "
+        "CA (540) instruction pp.45-47, 51-52 stamped REV 06-23, FTB 3514 "
+        "pages (PDF pp.69, 76, 77) stamped REV 02-23; Form 540 "
+        "instructions, Form 540 and rate schedules carry no REV stamp; "
+        "Form 540 side 1 form code 3101223; PDF CreationDate 2023-01-09, "
+        "ModDate 2023-10-04"
+    ),
+    "sha256": "e7ae8a0a8e4dadf973cdb702b8f9deb1574969d0cda5c6e08882e42e966c804c",
+    "retrieved": "2026-10-15",
+}
+
+# SOURCE: 2022 booklet p.12, "Line 9 – Senior Exemptions": "If you were 65
+# years of age or older by December 31, 2022*" … "* If your 65th birthday
+# is on January 1, 2023, you are considered to be age 65 on December 31,
+# 2022." 65th birthday on or before 2023-01-01 ⇔ born on or before
+# 1958-01-01.
+SENIOR_BIRTH_DATE_CUTOFF_2022 = date(1958, 1, 1)
+
+
+def is_senior_2022(born: date | None) -> bool:
+    """65 or older by 12/31/2022 per the TY2022 line 9 rule above."""
+    return born is not None and born <= SENIOR_BIRTH_DATE_CUTOFF_2022
+
+
+def senior_count_2022(case: HandWorkedCase540) -> int:
+    """TY2022 Form 540 line 9 box count (side 1: "If you (or your
+    spouse/RDP) are 65 or older, enter 1; if both are 65 or older, enter
+    2"). No case is anyone's dependent."""
+    if case.filing_status != "mfj" and case.spouse_birth_date is not None:
+        raise ValueError(f"{case.name}: spouse birthdate on a non-joint case")
+    return sum(
+        is_senior_2022(born)
+        for born in (case.taxpayer_birth_date, case.spouse_birth_date)
+    )
+
+
+# Case: MFJ, two W-2s, standard deduction, not renters, both under 65.
+#   L12 state wages = 101,750 + 49,900 = 151,650
+#   L13 federal AGI = 151,650 (wages only); L14 = 0; L15 = 151,650; L16 = 0
+#   L17 CA AGI = 151,650
+#   L18 std ded, chart p.13, status 2 = 10,404
+#   L19 = 151,650 − 10,404 = 141,246  (> 100,000 → rate schedule)
+#   L31 Schedule Y, over 132,590: 141,246 − 132,590 = 8,656;
+#       8,656 × 9.3% = 805.008 → 805.01; 5,837.82 + 805.01 = 6,642.83
+#       → 6,643
+#   L7 status 2 → 2 × 140 = 280; L8/L9/L10 = 0; L11 = 280
+#   L32: L13 151,650 ≤ 459,821 (p.14) → no AGI limitation; L32 = 280
+#   L33 = 6,643 − 280 = 6,363; L34 = 0; L35 = 6,363
+#   L40/43–45/46 = 0; L47 = 0; L48 = 6,363; L61–63 = 0; L64 = 6,363
+#   L71 = 4,500 + 2,400 = 6,900 = L78 = L93 = L95
+#   L97 = 6,900 − 6,363 = 537 = L99 = L115 refund
+CASE_MFJ_TWO_W2_2022 = HandWorkedCase540(
+    name="mfj_two_w2_wages_only_2022",
+    filing_status="mfj",
+    w2_wages=(101_750.0, 49_900.0),
+    w2_ca_withholding=(4_500.0, 2_400.0),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 2.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 280.0,
+        "f540_line_12_state_wages": 151_650.0,
+        "f540_line_13_federal_agi": 151_650.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 151_650.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 151_650.0,
+        "f540_line_18_deduction": 10_404.0,
+        "f540_line_19_taxable_income": 141_246.0,
+        "f540_line_31_tax": 6_643.0,
+        "f540_line_32_exemption_credits": 280.0,
+        "f540_line_33_tax_after_exemption_credits": 6_363.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 6_363.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 6_363.0,
+        **_zero_balance_tail(line_64=6_363.0, line_71=6_900.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+# Case: HOH, one W-2, not a renter, no dependents listed, not aged.
+#   L12 = L13 = L15 = L17 = 116,250; L14 = L16 = 0
+#   L18 chart status 4 = 10,404
+#   L19 = 116,250 − 10,404 = 105,846 (> 100,000 → schedule)
+#   L31 Schedule Z, over 90,240: 105,846 − 90,240 = 15,606;
+#       15,606 × 9.3% = 1,451.358 → 1,451.36; 3,296.80 + 1,451.36
+#       = 4,748.16 → 4,748
+#   L7 status 4 → 1 × 140 = 140; L8/L9/L10 = 0; L11 = 140
+#   L32: L13 116,250 ≤ 344,867 (HOH, p.14) → no AGI limitation; L32 = 140
+#   L33 = 4,748 − 140 = 4,608 = L35 = L48 = L64 (no special credits)
+#   L71 = 5,100; L97 = 5,100 − 4,608 = 492 = L115 refund
+CASE_HOH_2022 = HandWorkedCase540(
+    name="hoh_wages_only_2022",
+    filing_status="hoh",
+    w2_wages=(116_250.0,),
+    w2_ca_withholding=(5_100.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 140.0,
+        "f540_line_12_state_wages": 116_250.0,
+        "f540_line_13_federal_agi": 116_250.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 116_250.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 116_250.0,
+        "f540_line_18_deduction": 10_404.0,
+        "f540_line_19_taxable_income": 105_846.0,
+        "f540_line_31_tax": 4_748.0,
+        "f540_line_32_exemption_credits": 140.0,
+        "f540_line_33_tax_after_exemption_credits": 4_608.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 4_608.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 4_608.0,
+        **_zero_balance_tail(line_64=4_608.0, line_71=5_100.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+# Case: single, aged, one W-2, not a renter.
+#   Taxpayer born 1955-11-17 ≤ 1958-01-01 cutoff → 67 on 12/31/2022 → senior
+#   L12 = L13 = L15 = L17 = 109,300; L14 = L16 = 0
+#   L18 chart status 1 = 5,202 (no age addition)
+#   L19 = 109,300 − 5,202 = 104,098 (> 100,000 → schedule)
+#   L31 Schedule X, over 66,295: 104,098 − 66,295 = 37,803;
+#       37,803 × 9.3% = 3,515.679 → 3,515.68; 2,918.91 + 3,515.68
+#       = 6,434.59 → 6,435
+#   L7 status 1 → 1 × 140 = 140; L8 = 0; L9 1 × 140 = 140; L10 = 0
+#   L11 = 140 + 140 = 280
+#   L32: L13 109,300 ≤ 229,908 → no AGI limitation; L32 = 280
+#   L33 = 6,435 − 280 = 6,155 = L35 = L48 = L64 (no special credits)
+#   L71 = 6,450; L97 = 6,450 − 6,155 = 295 = L115 refund
+CASE_SINGLE_AGED_2022 = HandWorkedCase540(
+    name="single_aged_2022",
+    filing_status="single",
+    w2_wages=(109_300.0,),
+    w2_ca_withholding=(6_450.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 1.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 280.0,
+        "f540_line_12_state_wages": 109_300.0,
+        "f540_line_13_federal_agi": 109_300.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 109_300.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 109_300.0,
+        "f540_line_18_deduction": 5_202.0,
+        "f540_line_19_taxable_income": 104_098.0,
+        "f540_line_31_tax": 6_435.0,
+        "f540_line_32_exemption_credits": 280.0,
+        "f540_line_33_tax_after_exemption_credits": 6_155.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 6_155.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 6_155.0,
+        **_zero_balance_tail(line_64=6_155.0, line_71=6_450.0),
+    },
+    taxpayer_birth_date=date(1955, 11, 17),
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_CASES_2022: tuple[HandWorkedCase540, ...] = (
+    CASE_MFJ_TWO_W2_2022,
+    CASE_HOH_2022,
+    CASE_SINGLE_AGED_2022,
+)
+
+
 __all__ = [
     # Hand-worked cases
     "CA_540_BOOKLET_2025_PROVENANCE",
@@ -2240,6 +2462,14 @@ __all__ = [
     "SENIOR_BIRTH_DATE_CUTOFF_2023",
     "senior_count_2023",
     "is_senior_2023",
+    "CA_540_BOOKLET_2022_PROVENANCE",
+    "HAND_WORKED_CASES_2022",
+    "CASE_MFJ_TWO_W2_2022",
+    "CASE_HOH_2022",
+    "CASE_SINGLE_AGED_2022",
+    "SENIOR_BIRTH_DATE_CUTOFF_2022",
+    "senior_count_2022",
+    "is_senior_2022",
     # Enums / constants
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
