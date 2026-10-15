@@ -124,6 +124,128 @@ def _f8962_sheet_map(rows: tuple) -> dict[str, str]:
     return out
 
 
+class _Probe(NamedTuple):
+    """A 2025 workbook cell read only to refuse on text (see below)."""
+    sheet: str
+    cell: str
+    defined_name: str   # "" when the cell has none; " / "-joined if several
+
+
+# --- Workbook numeric-cell probes (2025) -------------------------------------
+#
+# Cells whose healthy value is a NUMBER (or blank) but which can hold a
+# plain-English diagnostic ("Filing status?", "Answer question.", ...) that a
+# downstream SUM/MIN/arithmetic then silently skips -- the partial-total
+# species. Each is harvested ONLY so forms/f1040.py::workbook_probe_refusal can
+# refuse when it holds non-empty text or an error marker; there is no string
+# allowlist (a numeric cell's allowlist is empty). Read by cell address via
+# SHEET_MAP; a defined name, where one exists, is recorded for the refusal
+# text, not used to resolve.
+#
+# The set is mechanical (workbook-health-2025, team-lead ruled 2026-10-14):
+# the string-yielding formula cells downstream of a filing-status / spouse /
+# HoH input whose text can reach a harvested OUTPUT through a numeric
+# consumption position (docs/plans/2026-10-13-briefs/workbook-health-2025-
+# numeric-cut.md, gitignored), less three cells recorded-not-harvested
+# because they hold text in normal operation and every numeric consumer is
+# behind a textual guard: 'Line 6ab (SS Bene)'!L23, '2441'!V111,
+# 'Sch. 1, Line 20 (IRA)'!Q21. Pinned by tests/test_workbook_probes.py.
+WORKBOOK_PROBES_2025: dict[str, _Probe] = {
+    # --- 1040 ---
+    "workbook_probe__1040__al71": _Probe("1040", "AL71", "SocSecBenefits_Taxable"),
+    "workbook_probe__1040__bi99": _Probe("1040", "BI99", ""),
+    "workbook_probe__1040__bi100": _Probe("1040", "BI100", ""),
+    "workbook_probe__1040__bm100": _Probe("1040", "BM100", ""),
+    # --- 6251 ---
+    "workbook_probe__6251__ac27": _Probe("6251", "AC27", ""),
+    "workbook_probe__6251__ac39": _Probe("6251", "AC39", ""),
+    "workbook_probe__6251__m89": _Probe("6251", "M89", ""),
+    "workbook_probe__6251__m95": _Probe("6251", "M95", ""),
+    "workbook_probe__6251__m102": _Probe("6251", "M102", ""),
+    "workbook_probe__6251__m104": _Probe("6251", "M104", ""),
+    "workbook_probe__6251__m111": _Probe("6251", "M111", ""),
+    # --- 8582 ---
+    "workbook_probe__8582__at18": _Probe("8582", "AT18", ""),
+    "workbook_probe__8582__x33": _Probe("8582", "X33", ""),
+    # --- 8812 ---
+    "workbook_probe__8812__al30": _Probe("8812", "AL30", ""),
+    # --- 8863 ---
+    "workbook_probe__8863__x16": _Probe("8863", "X16", ""),
+    # --- 8959 ---
+    "workbook_probe__8959__k24": _Probe("8959", "K24", ""),
+    "workbook_probe__8959__k34": _Probe("8959", "K34", ""),
+    "workbook_probe__8959__k46": _Probe("8959", "K46", ""),
+    # --- 8960 ---
+    "workbook_probe__8960__l44": _Probe("8960", "L44", ""),
+    # --- Line 16 (QDCG Tax) ---
+    "workbook_probe__line_16_qdcg_tax__u59": _Probe("Line 16 (QDCG Tax)", "U59", ""),
+    "workbook_probe__line_16_qdcg_tax__u60": _Probe("Line 16 (QDCG Tax)", "U60", ""),
+    "workbook_probe__line_16_qdcg_tax__y60": _Probe("Line 16 (QDCG Tax)", "Y60", ""),
+    "workbook_probe__line_16_qdcg_tax__u66": _Probe("Line 16 (QDCG Tax)", "U66", ""),
+    "workbook_probe__line_16_qdcg_tax__n67": _Probe("Line 16 (QDCG Tax)", "N67", ""),
+    "workbook_probe__line_16_qdcg_tax__u67": _Probe("Line 16 (QDCG Tax)", "U67", ""),
+    "workbook_probe__line_16_qdcg_tax__y67": _Probe("Line 16 (QDCG Tax)", "Y67", ""),
+    "workbook_probe__line_16_qdcg_tax__n71": _Probe("Line 16 (QDCG Tax)", "N71", "CGTW_Line24"),
+    "workbook_probe__line_16_qdcg_tax__u80": _Probe("Line 16 (QDCG Tax)", "U80", ""),
+    "workbook_probe__line_16_qdcg_tax__u81": _Probe("Line 16 (QDCG Tax)", "U81", ""),
+    "workbook_probe__line_16_qdcg_tax__y81": _Probe("Line 16 (QDCG Tax)", "Y81", ""),
+    "workbook_probe__line_16_qdcg_tax__u86": _Probe("Line 16 (QDCG Tax)", "U86", ""),
+    "workbook_probe__line_16_qdcg_tax__u87": _Probe("Line 16 (QDCG Tax)", "U87", ""),
+    "workbook_probe__line_16_qdcg_tax__y87": _Probe("Line 16 (QDCG Tax)", "Y87", ""),
+    "workbook_probe__line_16_qdcg_tax__n95": _Probe("Line 16 (QDCG Tax)", "N95", ""),
+    "workbook_probe__line_16_qdcg_tax__w97": _Probe("Line 16 (QDCG Tax)", "W97", ""),
+    "workbook_probe__line_16_qdcg_tax__w98": _Probe("Line 16 (QDCG Tax)", "W98", ""),
+    "workbook_probe__line_16_qdcg_tax__aa98": _Probe("Line 16 (QDCG Tax)", "AA98", ""),
+    "workbook_probe__line_16_qdcg_tax__n99": _Probe("Line 16 (QDCG Tax)", "N99", ""),
+    "workbook_probe__line_16_qdcg_tax__w105": _Probe("Line 16 (QDCG Tax)", "W105", ""),
+    "workbook_probe__line_16_qdcg_tax__w106": _Probe("Line 16 (QDCG Tax)", "W106", ""),
+    "workbook_probe__line_16_qdcg_tax__aa106": _Probe("Line 16 (QDCG Tax)", "AA106", ""),
+    "workbook_probe__line_16_qdcg_tax__v111": _Probe("Line 16 (QDCG Tax)", "V111", ""),
+    "workbook_probe__line_16_qdcg_tax__v113": _Probe("Line 16 (QDCG Tax)", "V113", ""),
+    "workbook_probe__line_16_qdcg_tax__x131": _Probe("Line 16 (QDCG Tax)", "X131", ""),
+    "workbook_probe__line_16_qdcg_tax__x142": _Probe("Line 16 (QDCG Tax)", "X142", ""),
+    "workbook_probe__line_16_qdcg_tax__x160": _Probe("Line 16 (QDCG Tax)", "X160", ""),
+    "workbook_probe__line_16_qdcg_tax__u164": _Probe("Line 16 (QDCG Tax)", "U164", ""),
+    "workbook_probe__line_16_qdcg_tax__u165": _Probe("Line 16 (QDCG Tax)", "U165", ""),
+    "workbook_probe__line_16_qdcg_tax__y165": _Probe("Line 16 (QDCG Tax)", "Y165", ""),
+    "workbook_probe__line_16_qdcg_tax__x167": _Probe("Line 16 (QDCG Tax)", "X167", ""),
+    "workbook_probe__line_16_qdcg_tax__u171": _Probe("Line 16 (QDCG Tax)", "U171", ""),
+    "workbook_probe__line_16_qdcg_tax__u172": _Probe("Line 16 (QDCG Tax)", "U172", ""),
+    "workbook_probe__line_16_qdcg_tax__y172": _Probe("Line 16 (QDCG Tax)", "Y172", ""),
+    # --- Line 6ab (SS Bene) ---
+    "workbook_probe__line_6ab_ss_bene__l29": _Probe("Line 6ab (SS Bene)", "L29", ""),
+    "workbook_probe__line_6ab_ss_bene__l49": _Probe("Line 6ab (SS Bene)", "L49", "Tax_SS_Benefits"),
+    # --- Sch. 1, Line 21 (Stu Loan) ---
+    "workbook_probe__sch_1_line_21_stu_loan__j20": _Probe("Sch. 1, Line 21 (Stu Loan)", "J20", ""),
+    # --- Sch. 1-A ---
+    # VENDOR BUG (not a diagnostic): AU30 reads 'W-2s'!F$39 -- the
+    # "Spouse's Employer #4" CAPTION -- where every sibling row (AU27-AU29,
+    # AU31-AU32) reads the row-46 SS-tips amount; AY30 passes it on, and the
+    # AV33/AY33 SUMs skip the text, dropping that employer's tips from the
+    # qualified-tips total. Healthy value is "" or a number; the caption is
+    # exactly the corrupting value. NEVER allowlist it.
+    "workbook_probe__sch_1_a__au30": _Probe("Sch. 1-A", "AU30", ""),
+    "workbook_probe__sch_1_a__ay30": _Probe("Sch. 1-A", "AY30", ""),
+    # --- Sch. A ---
+    "workbook_probe__sch_a__ai10": _Probe("Sch. A", "AI10", ""),
+    # --- Sch. D WS ---
+    "workbook_probe__sch_d_ws__l91": _Probe("Sch. D WS", "L91", "SchDTW_Line15"),
+    "workbook_probe__sch_d_ws__l92": _Probe("Sch. D WS", "L92", ""),
+    "workbook_probe__sch_d_ws__l98": _Probe("Sch. D WS", "L98", "SchDTW_Line19"),
+    "workbook_probe__sch_d_ws__l110": _Probe("Sch. D WS", "L110", "SchDTW_Line24 / SchDTW_Line26"),
+    "workbook_probe__sch_d_ws__l111": _Probe("Sch. D WS", "L111", ""),
+    "workbook_probe__sch_d_ws__r134": _Probe("Sch. D WS", "R134", ""),
+    "workbook_probe__sch_d_ws__ad134": _Probe("Sch. D WS", "AD134", ""),
+    "workbook_probe__sch_d_ws__ad135": _Probe("Sch. D WS", "AD135", ""),
+    "workbook_probe__sch_d_ws__ah135": _Probe("Sch. D WS", "AH135", ""),
+    "workbook_probe__sch_d_ws__r137": _Probe("Sch. D WS", "R137", ""),
+    "workbook_probe__sch_d_ws__ad143": _Probe("Sch. D WS", "AD143", ""),
+    "workbook_probe__sch_d_ws__ad144": _Probe("Sch. D WS", "AD144", ""),
+    "workbook_probe__sch_d_ws__ah144": _Probe("Sch. D WS", "AH144", ""),
+    # --- Sch. SE ---
+    "workbook_probe__sch_se__x20": _Probe("Sch. SE", "X20", ""),
+}
+
 class F1040(FormMapping):
     """Mapping for the entire federal 1040 workbook (all sheets).
 
@@ -1127,6 +1249,14 @@ class F1040(FormMapping):
         },
     }
 
+
+# 2025 numeric-cell probes (see WORKBOOK_PROBES_2025): harvested by cell
+# address, routed to their sheet by SHEET_MAP. 2025 only; no prior year
+# inherits from 2025.
+for _key, _probe in WORKBOOK_PROBES_2025.items():
+    F1040.OUTPUTS[2025][_key] = _probe.cell
+    F1040.SHEET_MAP[2025][_key] = _probe.sheet
+del _key, _probe
 
 # --- Federal 2023 workbook wiring -------------------------------------------
 # 2023 inherits the 2024 XLS cell/named-range mapping: the 2024 workbook carries

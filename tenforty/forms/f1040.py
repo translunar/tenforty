@@ -292,6 +292,57 @@ def workbook_refusal(harvested: dict) -> str | None:
     return _REFUSAL.format(diagnostic=diagnostic)
 
 
+# --- Numeric-cell probes ------------------------------------------------------
+#
+# The registry (cells, sheets, defined names, and why each is there) lives in
+# mappings/f1040.py::WORKBOOK_PROBES_2025. A probe's healthy value is a number
+# or blank; NON-EMPTY TEXT OR AN ERROR MARKER means the sheet put a diagnostic
+# where a number belongs, which a downstream SUM/MIN would silently skip (the
+# partial-total species). There is deliberately no string allowlist: for a
+# numeric cell the allowlist is empty, so any text refuses -- including text
+# nobody has seen before. Blank (None / "" / whitespace) passes, matching the
+# `Deduction` precedent, because "" is these cells' ordinary not-applicable
+# value. Booleans refuse: TRUE/FALSE is not a number either.
+WORKBOOK_PROBE_PREFIX = "workbook_probe__"
+
+_PROBE_REFUSAL = (
+    "The 1040 workbook put TEXT where a NUMBER belongs: {where} reads "
+    "{value!r}. That cell feeds the return's arithmetic, and a spreadsheet "
+    "SUM/MIN silently skips text, so the figures computed from it would be a "
+    "partial total presented as a whole one. tenforty declines to emit them. "
+    "The cell is a numeric probe (mappings/f1040.py::WORKBOOK_PROBES_2025): "
+    "its healthy value is a number or blank, so any text is a diagnostic."
+)
+
+
+def workbook_probe_refusal(harvested: dict) -> str | None:
+    """Return a refusal message if any harvested numeric probe holds text or
+    an error marker, else None.
+
+    A pure function of the harvested dict (testable without soffice, like
+    `workbook_refusal`). Passes when no probe key is present.
+    """
+    from tenforty.mappings.f1040 import WORKBOOK_PROBES_2025
+    for key, value in harvested.items():
+        if not key.startswith(WORKBOOK_PROBE_PREFIX):
+            continue
+        if value is None:
+            continue
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        probe = WORKBOOK_PROBES_2025.get(key)
+        if probe is None:
+            where = f"harvested probe key {key!r} (not in the registry)"
+        else:
+            where = f"'{probe.sheet}'!{probe.cell}"
+            if probe.defined_name:
+                where += f" [{probe.defined_name}]"
+        return _PROBE_REFUSAL.format(where=where, value=value)
+    return None
+
+
 def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     """Translate raw engine output into a PDF-ready 1040 result dict."""
     translated: dict = dict(raw_1040)
@@ -309,6 +360,12 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     translated.pop(_DEDUCTION_DIAGNOSTIC_KEY, None)
     if refusal is not None:
         raise NotImplementedError(refusal)
+    # Numeric probes: same listen-then-consume rule as the diagnostic above.
+    probe_refusal = workbook_probe_refusal(translated)
+    for key in [k for k in translated if k.startswith(WORKBOOK_PROBE_PREFIX)]:
+        del translated[key]
+    if probe_refusal is not None:
+        raise NotImplementedError(probe_refusal)
 
     for old, new in _RENAMES.items():
         if old in translated:
