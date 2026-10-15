@@ -324,11 +324,12 @@ def workbook_probe_refusal(harvested: dict) -> str | None:
     `workbook_refusal`). Passes when no probe key is present.
     """
     from tenforty.mappings.f1040 import (
-        WORKBOOK_PROBES_2022, WORKBOOK_PROBES_2023, WORKBOOK_PROBES_2024,
-        WORKBOOK_PROBES_2025,
+        WORKBOOK_PROBES_2021, WORKBOOK_PROBES_2022, WORKBOOK_PROBES_2023,
+        WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
     )
     registry = {**WORKBOOK_PROBES_2025, **WORKBOOK_PROBES_2024,
-                **WORKBOOK_PROBES_2023, **WORKBOOK_PROBES_2022}
+                **WORKBOOK_PROBES_2023, **WORKBOOK_PROBES_2022,
+                **WORKBOOK_PROBES_2021}
     for key, value in harvested.items():
         if not key.startswith(WORKBOOK_PROBE_PREFIX):
             continue
