@@ -22,6 +22,7 @@ at module top (iron law 4).
 
 import dataclasses
 import unittest
+from datetime import date
 
 from tenforty.forms.f540 import compute as f540_compute
 from tenforty.forms.sch_ca import compute as sch_ca_compute
@@ -34,7 +35,9 @@ from tenforty.models import (
 )
 from tests.oracles.ca_540_reference import (
     AGI_PHASEOUT_THRESHOLD_2025,
+    CA_540_BOOKLET_2024_PROVENANCE,
     CA_540_BOOKLET_2025_PROVENANCE,
+    HAND_WORKED_CASES_2024,
     HAND_WORKED_AGED_CASES_2025,
     HAND_WORKED_STATUS_CASES_2025,
     HandWorkedCase540,
@@ -65,7 +68,9 @@ from tests.oracles.ca_540_reference import (
     _exemption_credits_pre_phaseout,
     _tax_from_rate_schedule,
     compute_ca_540,
+    is_senior_2024,
     is_senior_2025,
+    senior_count_2024,
     senior_count_2025,
 )
 
@@ -1213,8 +1218,39 @@ class HandWorkedStatusCaseOracleTests(unittest.TestCase):
                     self.assertAlmostEqual(out[key], expected, delta=tol)
 
 
+class HandWorkedCases2024ShapeTests(unittest.TestCase):
+    """TY2024 hand-worked cases: provenance and filing-status / senior
+    shape. ``compute_ca_540`` carries TY2025 constants only, so the TY2024
+    cases are checked against production (below), not the oracle."""
+
+    def test_provenance_is_recorded(self):
+        for key in ("url", "edition", "sha256", "retrieved"):
+            self.assertTrue(CA_540_BOOKLET_2024_PROVENANCE[key])
+        self.assertEqual(len(CA_540_BOOKLET_2024_PROVENANCE["sha256"]), 64)
+        self.assertIn("/forms/2024/", CA_540_BOOKLET_2024_PROVENANCE["url"])
+
+    def test_cases_cover_mfj_hoh_and_aged_single(self):
+        shape = [
+            (c.filing_status, senior_count_2024(c))
+            for c in HAND_WORKED_CASES_2024
+        ]
+        self.assertEqual(shape, [("mfj", 0), ("hoh", 0), ("single", 1)])
+        for case in HAND_WORKED_CASES_2024:
+            with self.subTest(case=case.name):
+                self.assertEqual(
+                    case.expected["f540_line_9_senior_exemption_count"],
+                    float(senior_count_2024(case)),
+                )
+
+    def test_senior_cutoff_is_jan_1_birthday_inclusive(self):
+        # 65th birthday on 2025-01-01 counts as 65 on 2024-12-31 (p.12).
+        self.assertTrue(is_senior_2024(date(1960, 1, 1)))
+        self.assertFalse(is_senior_2024(date(1960, 1, 2)))
+        self.assertFalse(is_senior_2024(None))
+
+
 # ---------------------------------------------------------------------------
-# Hand-worked MFJ / HOH cases (TY2025) — production full-liability chain
+# Hand-worked cases (TY2025 + TY2024) — production full-liability chain
 # ---------------------------------------------------------------------------
 _PRODUCTION_FILING_STATUS = {
     "single": FilingStatus.SINGLE,
@@ -1235,21 +1271,26 @@ class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
     pre-payment liability, lines 97–115 via the signed net balance.
     """
 
-    def _run_chain(self, case: HandWorkedCase540, *, ca_withholding: int):
+    def _run_chain(
+        self, case: HandWorkedCase540, *, ca_withholding: int,
+        year: int = 2025, num_seniors: int | None = None,
+    ):
         federal_agi = _hand_case_federal_agi(case)
+        if num_seniors is None:
+            num_seniors = senior_count_2025(case)
         sch = sch_ca_compute(
             ca540=CA540Return(),
             federal_results={"agi": federal_agi},
-            year=2025,
+            year=year,
         )
         f540 = f540_compute(
-            2025,
+            year,
             _PRODUCTION_FILING_STATUS[case.filing_status],
             int(federal_agi),
             int(sch["sch_ca_ca_agi"]),
             CA540Return(),
             num_dependents=0,
-            num_seniors=senior_count_2025(case),
+            num_seniors=num_seniors,
             renter_credit_eligible=case.renter_six_months_in_ca,
             ca_withholding=ca_withholding,
         )
@@ -1257,56 +1298,68 @@ class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
 
     def test_production_chain_matches_hand_worked_lines(self):
         for case in HAND_WORKED_STATUS_CASES_2025 + HAND_WORKED_AGED_CASES_2025:
-            e = case.expected
-            withholding = int(sum(case.w2_ca_withholding))
-            sch, f540 = self._run_chain(case, ca_withholding=withholding)
-            _, f540_before_payments = self._run_chain(case, ca_withholding=0)
-            rows = [
-                ("sch_ca_federal_agi", sch["sch_ca_federal_agi"],
-                 e["f540_line_13_federal_agi"]),
-                ("sch_ca_total_subtractions", sch["sch_ca_total_subtractions"],
-                 e["f540_line_14_ca_subtractions"]),
-                ("sch_ca_total_additions", sch["sch_ca_total_additions"],
-                 e["f540_line_16_ca_additions"]),
-                ("sch_ca_ca_agi", sch["sch_ca_ca_agi"],
-                 e["f540_line_17_ca_agi"]),
-                ("f540_federal_agi", f540["f540_federal_agi"],
-                 e["f540_line_13_federal_agi"]),
-                ("f540_ca_agi", f540["f540_ca_agi"], e["f540_line_17_ca_agi"]),
-                ("f540_deduction", f540["f540_deduction"],
-                 e["f540_line_18_deduction"]),
-                ("f540_taxable_income", f540["f540_taxable_income"],
-                 e["f540_line_19_taxable_income"]),
-                ("f540_ca_tax", f540["f540_ca_tax"], e["f540_line_31_tax"]),
-                ("f540_exemption_credit", f540["f540_exemption_credit"],
-                 e["f540_line_32_exemption_credits"]),
-                ("f540_renter_credit", f540["f540_renter_credit"],
-                 e["f540_line_46_renters_credit"]),
-                # README: Form 540 total credits are exemption-credit-inclusive.
-                ("f540_total_credits", f540["f540_total_credits"],
-                 e["f540_line_32_exemption_credits"]
-                 + e["f540_line_47_total_nonrefundable_credits"]),
-                ("f540_line71_ca_withholding", f540["f540_line71_ca_withholding"],
-                 e["f540_line_71_withholding"]),
-                ("f540_estimated_payments", f540["f540_estimated_payments"],
-                 e["f540_line_72_estimated_payments"]),
-                ("f540_use_tax", f540["f540_use_tax"], e["f540_line_91_use_tax"]),
-                ("f540_voluntary_contributions",
-                 f540["f540_voluntary_contributions"],
-                 e["f540_line_110_contributions"]),
-                # With no payments, the liability key is line 64 (total tax).
-                ("f540_total_liability[no payments]",
-                 f540_before_payments["f540_total_liability"],
-                 e["f540_line_64_total_tax"]),
-                # With withholding, the liability key is net of payments:
-                # positive = amount due (line 114), negative = refund (115).
-                ("f540_total_liability[net]", f540["f540_total_liability"],
-                 e["f540_line_114_total_amount_due"]
-                 - e["f540_line_115_refund"]),
-            ]
-            for name, got, want in rows:
-                with self.subTest(case=case.name, field=name):
-                    self.assertEqual(got, want)
+            self._check_case(case, year=2025, num_seniors=senior_count_2025(case))
+
+    def test_production_chain_matches_hand_worked_lines_2024(self):
+        for case in HAND_WORKED_CASES_2024:
+            self._check_case(case, year=2024, num_seniors=senior_count_2024(case))
+
+    def _check_case(self, case: HandWorkedCase540, *, year: int, num_seniors: int):
+        e = case.expected
+        withholding = int(sum(case.w2_ca_withholding))
+        sch, f540 = self._run_chain(
+            case, ca_withholding=withholding,
+            year=year, num_seniors=num_seniors,
+        )
+        _, f540_before_payments = self._run_chain(
+            case, ca_withholding=0, year=year, num_seniors=num_seniors,
+        )
+        rows = [
+            ("sch_ca_federal_agi", sch["sch_ca_federal_agi"],
+             e["f540_line_13_federal_agi"]),
+            ("sch_ca_total_subtractions", sch["sch_ca_total_subtractions"],
+             e["f540_line_14_ca_subtractions"]),
+            ("sch_ca_total_additions", sch["sch_ca_total_additions"],
+             e["f540_line_16_ca_additions"]),
+            ("sch_ca_ca_agi", sch["sch_ca_ca_agi"],
+             e["f540_line_17_ca_agi"]),
+            ("f540_federal_agi", f540["f540_federal_agi"],
+             e["f540_line_13_federal_agi"]),
+            ("f540_ca_agi", f540["f540_ca_agi"], e["f540_line_17_ca_agi"]),
+            ("f540_deduction", f540["f540_deduction"],
+             e["f540_line_18_deduction"]),
+            ("f540_taxable_income", f540["f540_taxable_income"],
+             e["f540_line_19_taxable_income"]),
+            ("f540_ca_tax", f540["f540_ca_tax"], e["f540_line_31_tax"]),
+            ("f540_exemption_credit", f540["f540_exemption_credit"],
+             e["f540_line_32_exemption_credits"]),
+            ("f540_renter_credit", f540["f540_renter_credit"],
+             e["f540_line_46_renters_credit"]),
+            # README: Form 540 total credits are exemption-credit-inclusive.
+            ("f540_total_credits", f540["f540_total_credits"],
+             e["f540_line_32_exemption_credits"]
+             + e["f540_line_47_total_nonrefundable_credits"]),
+            ("f540_line71_ca_withholding", f540["f540_line71_ca_withholding"],
+             e["f540_line_71_withholding"]),
+            ("f540_estimated_payments", f540["f540_estimated_payments"],
+             e["f540_line_72_estimated_payments"]),
+            ("f540_use_tax", f540["f540_use_tax"], e["f540_line_91_use_tax"]),
+            ("f540_voluntary_contributions",
+             f540["f540_voluntary_contributions"],
+             e["f540_line_110_contributions"]),
+            # With no payments, the liability key is line 64 (total tax).
+            ("f540_total_liability[no payments]",
+             f540_before_payments["f540_total_liability"],
+             e["f540_line_64_total_tax"]),
+            # With withholding, the liability key is net of payments:
+            # positive = amount due (line 114), negative = refund (115).
+            ("f540_total_liability[net]", f540["f540_total_liability"],
+             e["f540_line_114_total_amount_due"]
+             - e["f540_line_115_refund"]),
+        ]
+        for name, got, want in rows:
+            with self.subTest(case=case.name, year=year, field=name):
+                self.assertEqual(got, want)
 
 
 if __name__ == "__main__":
