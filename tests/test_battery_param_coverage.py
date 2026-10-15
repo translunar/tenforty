@@ -5,6 +5,7 @@ A field in neither map fails — adding a params field forces this
 conversation instead of silently shipping untested."""
 import dataclasses
 import unittest
+from unittest import mock
 
 from tenforty import years as year_manifest
 from tenforty.models import FilingStatus
@@ -75,10 +76,12 @@ STATUS_KIND_BINDS: dict[str, tuple[str, ...]] = {
     "ptc_reconciliation": (),
     # R-hoh-ptc refusal row: refuses before any params are read.
     "ptc_reconciliation_refused": (),
-    # Aged rows bind the base column only: additional_standard_deduction
-    # stays waived below (see its reason).
-    "std_deduction_aged": ("standard_deduction",),
-    "std_deduction_both_aged": ("standard_deduction",),
+    # Computing aged rows (2021-2024; per-box amount at the cutoff boundary)
+    # bind both the base column and the per-box amount.
+    "std_deduction_aged": ("standard_deduction",
+                           "additional_standard_deduction"),
+    "std_deduction_both_aged": ("standard_deduction",
+                                "additional_standard_deduction"),
     # R-senior-1a refusal rows (Schedule 1-A): refuse before the deduction
     # is computed, so they bind nothing.
     "std_deduction_aged_refused": (),
@@ -97,14 +100,50 @@ PER_STATUS_WAIVED: dict[str, str] = {
     "excess_business_loss_threshold":
         "a fail-closed refusal trip-wire, not a computed value (see WAIVED); "
         "battery rows must compute",
-    "additional_standard_deduction":
+}
+
+# Per-status waivers that apply only in the named years: field -> (years,
+# reason). Ruled at back-year-2024 step 8: a global waiver would under-enforce
+# the back years, whose computing aged rows bind the field. Per year, a
+# year-scoped waiver must NOT coincide with a binding in that year's battery
+# (per_status_waiver_conflicts) -- a waiver may only cover what is truly
+# unbound.
+PER_STATUS_WAIVED_IN_YEARS: dict[str, tuple[frozenset[int], str]] = {
+    "additional_standard_deduction": (
+        frozenset({2025}),
         "2025 aged rows are Schedule 1-A refusal rows (R-senior-1a), which "
         "refuse before reading it; the per-box arithmetic is unit-tested in "
-        "tests/test_age_condition.py::AgedStandardDeductionTests; 2021-2024 "
-        "are bound by std_deduction_aged/std_deduction_both_aged once "
-        "back-year MFJ/HoH declare (the waiver flips at the first back-year "
-        "status declaration)",
+        "tests/test_age_condition.py::AgedStandardDeductionTests"),
 }
+
+
+def _waived(field: str, year: int) -> bool:
+    if field in PER_STATUS_WAIVED:
+        return True
+    years, _ = PER_STATUS_WAIVED_IN_YEARS.get(field, (frozenset(), ""))
+    return year in years
+
+
+def _kinds(year, status, battery):
+    return {name.split("__", 1)[0]
+            for name, _ in battery(year, FilingStatus(status))}
+
+
+def per_status_waiver_conflicts(grid, *, battery=battery_for) -> list[tuple]:
+    """(year, status, field) where a year-scoped waiver covers a field that
+    the year's battery for that status also binds."""
+    conflicts: list[tuple] = []
+    for year in sorted(grid):
+        for status in grid[year]:
+            if status == FilingStatus.SINGLE.value:
+                continue
+            bound = {f for k in _kinds(year, status, battery)
+                     for f in STATUS_KIND_BINDS.get(k, ())}
+            conflicts.extend(
+                (year, status, f)
+                for f, (years, _) in sorted(PER_STATUS_WAIVED_IN_YEARS.items())
+                if year in years and f in bound)
+    return conflicts
 
 
 def per_status_coverage_gaps(grid, *, battery=battery_for) -> list[tuple]:
@@ -116,13 +155,12 @@ def per_status_coverage_gaps(grid, *, battery=battery_for) -> list[tuple]:
         for status in grid[year]:
             if status == FilingStatus.SINGLE.value:
                 continue
-            kinds = {name.split("__", 1)[0]
-                     for name, _ in battery(year, FilingStatus(status))}
+            kinds = _kinds(year, status, battery)
             gaps.extend((year, status, f"unmapped kind {k}")
                         for k in sorted(kinds - set(STATUS_KIND_BINDS)))
             bound = {f for k in kinds for f in STATUS_KIND_BINDS.get(k, ())}
             gaps.extend((year, status, f) for f in PER_STATUS_FEDERAL_FIELDS
-                        if f not in bound and f not in PER_STATUS_WAIVED)
+                        if f not in bound and not _waived(f, year))
     return gaps
 
 
@@ -133,8 +171,13 @@ class PerStatusParamCoverageTests(unittest.TestCase):
 
     def test_per_status_maps_name_real_fields_and_are_disjoint(self):
         bound = {f for fields in STATUS_KIND_BINDS.values() for f in fields}
+        # All-years waivers never overlap a binding; year-scoped waivers are
+        # checked per year below (they cover what is unbound THAT year).
         self.assertEqual(bound & set(PER_STATUS_WAIVED), set())
-        self.assertEqual((bound | set(PER_STATUS_WAIVED))
+        self.assertEqual(set(PER_STATUS_WAIVED)
+                         & set(PER_STATUS_WAIVED_IN_YEARS), set())
+        self.assertEqual((bound | set(PER_STATUS_WAIVED)
+                          | set(PER_STATUS_WAIVED_IN_YEARS))
                          - set(PER_STATUS_FEDERAL_FIELDS), set())
         self.assertEqual(set(REQUIRED_STATUS_SCENARIO_KINDS)
                          - set(STATUS_KIND_BINDS), set())
@@ -155,6 +198,46 @@ class PerStatusParamCoverageTests(unittest.TestCase):
         stray = lambda y, s: battery_for(y, s) + [("mystery__x", None)]
         self.assertIn((2025, grid[2025][0], "unmapped kind mystery"),
                       per_status_coverage_gaps(grid, battery=stray))
+
+
+class YearScopedWaiverTests(unittest.TestCase):
+    """additional_standard_deduction: bound by the computing aged rows in
+    every declared back year, waived (R-senior-1a) only in 2025."""
+
+    GRID_BOTH = {2024: ("married_filing_jointly", "head_of_household"),
+                 2025: ("married_filing_jointly", "head_of_household")}
+
+    def test_no_year_scoped_waiver_shadows_a_binding(self):
+        self.assertEqual(
+            per_status_waiver_conflicts(year_manifest.NATIVE_SPINE_STATUSES),
+            [])
+        self.assertEqual(per_status_waiver_conflicts(self.GRID_BOTH), [])
+
+    def test_conflict_detector_is_live(self):
+        # Waiving the field in 2024 too would shadow the computing aged
+        # rows' binding there -- the detector names exactly those cells.
+        with mock.patch.dict(PER_STATUS_WAIVED_IN_YEARS, {
+                "additional_standard_deduction": (frozenset({2024, 2025}),
+                                                  "test")}):
+            self.assertEqual(
+                per_status_waiver_conflicts(self.GRID_BOTH),
+                [(2024, "married_filing_jointly",
+                  "additional_standard_deduction"),
+                 (2024, "head_of_household",
+                  "additional_standard_deduction")])
+
+    def test_2024_is_bound_by_aged_rows_2025_is_waived(self):
+        without_aged = lambda y, s: [
+            row for row in battery_for(y, s)
+            if "aged" not in row[0].split("__", 1)[0]]
+        gaps = per_status_coverage_gaps(self.GRID_BOTH, battery=without_aged)
+        # Dropping the aged rows leaves the per-box field unbound in 2024
+        # (enforced) but not in 2025 (waived, R-senior-1a).
+        self.assertEqual(
+            [g for g in gaps if g[2] == "additional_standard_deduction"],
+            [(2024, "married_filing_jointly", "additional_standard_deduction"),
+             (2024, "head_of_household", "additional_standard_deduction")])
+        self.assertEqual(per_status_coverage_gaps(self.GRID_BOTH), [])
 
 
 class BatteryParamCoverageTests(unittest.TestCase):
