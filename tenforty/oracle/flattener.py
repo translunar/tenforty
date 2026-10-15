@@ -96,17 +96,25 @@ def _flatten_config(scenario: Scenario, flat: dict[str, object]) -> None:
 
 
 def _flatten_w2s(scenario: Scenario, flat: dict[str, object]) -> None:
-    for i, w2 in enumerate(scenario.w2s, start=1):
-        flat[f"w2_wages_{i}"] = w2.wages
-        flat[f"w2_fed_withheld_{i}"] = w2.federal_tax_withheld
-        flat[f"w2_ss_wages_{i}"] = w2.ss_wages
-        flat[f"w2_ss_withheld_{i}"] = w2.ss_tax_withheld
-        flat[f"w2_medicare_wages_{i}"] = w2.medicare_wages
-        flat[f"w2_medicare_withheld_{i}"] = w2.medicare_tax_withheld
+    """W-2s numbered PER OWNER: the taxpayer's as `w2_<field>_<n>`, a W-2
+    with owner "spouse" as `w2_spouse_<field>_<n>` (the workbook's spouse
+    employer block). A key the year's F1040.INPUTS does not map is refused
+    by the orchestrator, never dropped (see _refuse_unmapped_w2_inputs)."""
+    counts = {"": 0, "spouse_": 0}
+    for w2 in scenario.w2s:
+        prefix = "spouse_" if w2.owner == "spouse" else ""
+        counts[prefix] += 1
+        n = counts[prefix]
+        flat[f"w2_{prefix}wages_{n}"] = w2.wages
+        flat[f"w2_{prefix}fed_withheld_{n}"] = w2.federal_tax_withheld
+        flat[f"w2_{prefix}ss_wages_{n}"] = w2.ss_wages
+        flat[f"w2_{prefix}ss_withheld_{n}"] = w2.ss_tax_withheld
+        flat[f"w2_{prefix}medicare_wages_{n}"] = w2.medicare_wages
+        flat[f"w2_{prefix}medicare_withheld_{n}"] = w2.medicare_tax_withheld
         if w2.state_wages:
-            flat[f"w2_state_wages_{i}"] = w2.state_wages
+            flat[f"w2_{prefix}state_wages_{n}"] = w2.state_wages
         if w2.state_tax_withheld:
-            flat[f"w2_state_withheld_{i}"] = w2.state_tax_withheld
+            flat[f"w2_{prefix}state_withheld_{n}"] = w2.state_tax_withheld
 
 
 def _flatten_1099_int(scenario: Scenario, flat: dict[str, object]) -> None:
