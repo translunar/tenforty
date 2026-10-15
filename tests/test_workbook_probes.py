@@ -20,13 +20,15 @@ import openpyxl
 
 from tenforty.forms import f1040 as form_1040
 from tenforty.mappings.f1040 import (
-    F1040, WORKBOOK_PROBES_2023, WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
+    F1040, WORKBOOK_PROBES_2022, WORKBOOK_PROBES_2023, WORKBOOK_PROBES_2024,
+    WORKBOOK_PROBES_2025,
 )
 from tests.helpers import REPO_ROOT
 
 WORKBOOK_2025 = REPO_ROOT / "spreadsheets" / "federal" / "2025" / "1040.xlsx"
 WORKBOOK_2024 = REPO_ROOT / "spreadsheets" / "federal" / "2024" / "1040.xlsx"
 WORKBOOK_2023 = REPO_ROOT / "spreadsheets" / "federal" / "2023" / "1040.xlsx"
+WORKBOOK_2022 = REPO_ROOT / "spreadsheets" / "federal" / "2022" / "1040.xlsx"
 
 # The cut doc's IN list less the three recorded-not-harvested cells (73),
 # less the 32 dispatch-family cells below: 41.
@@ -151,21 +153,20 @@ class ProbeRegistryTests(unittest.TestCase):
                 self.assertEqual(sheet_map[key], probe.sheet)
 
     def test_probes_are_per_year(self):
-        # Each year's probes in that year only (2023/2024 keys carry the
-        # year); none in 2021-2022 yet (each back-year lane inventories its
-        # own). 2022 inherits 2023's maps and 2023 inherits 2024's, so a
-        # probe wired too early would leak downward -- pinned here.
+        # Each year's probes in that year only (2022/2023/2024 keys carry the
+        # year); none in 2021 yet (its back-year lane inventories its own).
+        # 2021 inherits 2022's maps, 2022 inherits 2023's and 2023 inherits
+        # 2024's, so a probe wired too early would leak downward -- pinned here.
         def probe_keys(year):
             return {k for k in F1040.OUTPUTS[year]
                     if k.startswith(form_1040.WORKBOOK_PROBE_PREFIX)}
-        for year in (2021, 2022):
-            with self.subTest(year=year):
-                self.assertEqual(probe_keys(year), set())
+        self.assertEqual(probe_keys(2021), set())
         self.assertEqual(probe_keys(2025), set(WORKBOOK_PROBES_2025))
         self.assertEqual(probe_keys(2024), set(WORKBOOK_PROBES_2024))
         self.assertEqual(probe_keys(2023), set(WORKBOOK_PROBES_2023))
-        registries = (set(WORKBOOK_PROBES_2023), set(WORKBOOK_PROBES_2024),
-                      set(WORKBOOK_PROBES_2025))
+        self.assertEqual(probe_keys(2022), set(WORKBOOK_PROBES_2022))
+        registries = (set(WORKBOOK_PROBES_2022), set(WORKBOOK_PROBES_2023),
+                      set(WORKBOOK_PROBES_2024), set(WORKBOOK_PROBES_2025))
         for i, a in enumerate(registries):
             for b in registries[i + 1:]:
                 self.assertEqual(a & b, set())
@@ -462,6 +463,140 @@ class ProbeRegistry2023Tests(unittest.TestCase):
                     "not in the registry",
                     form_1040.workbook_probe_refusal({key: "x"}))
 
+
+# ---- 2022 (workbook-health-2022; docs/plans/2026-10-13-briefs/
+# workbook-health-2022-numeric-cut.md, gitignored) -------------------------
+# 74 numeric-path cells - 32 dispatch-family - 4 recorded-not-harvested = 38.
+EXPECTED_PROBE_CELLS_2022: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AC51"),
+    ("1040", "BB70"),
+    ("6251", "AC26"),
+    ("6251", "AC38"),
+    ("6251", "M88"),
+    ("6251", "M94"),
+    ("6251", "M101"),
+    ("6251", "M103"),
+    ("6251", "M110"),
+    ("8582", "AT18"),
+    ("8812", "AL28"),
+    ("8863", "X16"),
+    ("8959", "K24"),
+    ("8959", "K34"),
+    ("8959", "K46"),
+    ("8960", "L44"),
+    ("Line 16 (QDCG Tax)", "AA104"),
+    ("Line 16 (QDCG Tax)", "N64"),
+    ("Line 16 (QDCG Tax)", "N68"),
+    ("Line 16 (QDCG Tax)", "N92"),
+    ("Line 16 (QDCG Tax)", "N96"),
+    ("Line 16 (QDCG Tax)", "V109"),
+    ("Line 16 (QDCG Tax)", "X129"),
+    ("Line 16 (QDCG Tax)", "X140"),
+    ("Line 16 (QDCG Tax)", "X158"),
+    ("Line 16 (QDCG Tax)", "Y163"),
+    ("Line 6ab (SS Bene)", "J31"),
+    ("Line 6ab (SS Bene)", "J51"),
+    ("Sch. 1, Line 21 (Stu Loan)", "J20"),
+    ("Sch. A", "AH10"),
+    ("Sch. D WS", "L91"),
+    ("Sch. D WS", "L92"),
+    ("Sch. D WS", "L98"),
+    ("Sch. D WS", "L110"),
+    ("Sch. D WS", "L111"),
+    ("Sch. D WS", "P134"),
+    ("Sch. D WS", "P137"),
+    ("Sch. SE", "X20"),
+})
+REMOVED_DISPATCH_FAMILY_2022: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AX69"),
+    ("1040", "AX70"),
+    ("Line 16 (QDCG Tax)", "AA96"),
+    ("Line 16 (QDCG Tax)", "U57"),
+    ("Line 16 (QDCG Tax)", "U58"),
+    ("Line 16 (QDCG Tax)", "U64"),
+    ("Line 16 (QDCG Tax)", "U65"),
+    ("Line 16 (QDCG Tax)", "U78"),
+    ("Line 16 (QDCG Tax)", "U79"),
+    ("Line 16 (QDCG Tax)", "U84"),
+    ("Line 16 (QDCG Tax)", "U85"),
+    ("Line 16 (QDCG Tax)", "U162"),
+    ("Line 16 (QDCG Tax)", "U163"),
+    ("Line 16 (QDCG Tax)", "U169"),
+    ("Line 16 (QDCG Tax)", "U170"),
+    ("Line 16 (QDCG Tax)", "V111"),
+    ("Line 16 (QDCG Tax)", "W95"),
+    ("Line 16 (QDCG Tax)", "W96"),
+    ("Line 16 (QDCG Tax)", "W103"),
+    ("Line 16 (QDCG Tax)", "W104"),
+    ("Line 16 (QDCG Tax)", "X165"),
+    ("Line 16 (QDCG Tax)", "Y58"),
+    ("Line 16 (QDCG Tax)", "Y65"),
+    ("Line 16 (QDCG Tax)", "Y79"),
+    ("Line 16 (QDCG Tax)", "Y85"),
+    ("Line 16 (QDCG Tax)", "Y170"),
+    ("Sch. D WS", "AB135"),
+    ("Sch. D WS", "AB144"),
+    ("Sch. D WS", "X134"),
+    ("Sch. D WS", "X135"),
+    ("Sch. D WS", "X143"),
+    ("Sch. D WS", "X144"),
+})
+# Three ratified species + '6251'!P2 (display prompt; its only numeric
+# consumer is the 2022-only vendor typo '6251'!M22, reached only via the
+# override input P22, which tenforty never writes).
+NOT_PROBED_2022: frozenset[tuple[str, str]] = frozenset({
+    ("Line 6ab (SS Bene)", "J25"),
+    ("2441", "V116"),
+    ("Sch. 1, Line 20 (IRA)", "Q22"),
+    ("6251", "P2"),
+})
+
+
+class ProbeRegistry2022Tests(unittest.TestCase):
+    def test_probe_cells_match_the_2022_cut(self):
+        cells = {(p.sheet, p.cell) for p in WORKBOOK_PROBES_2022.values()}
+        self.assertEqual(len(EXPECTED_PROBE_CELLS_2022), 38)
+        self.assertEqual(len(WORKBOOK_PROBES_2022), 38)
+        self.assertEqual(cells, set(EXPECTED_PROBE_CELLS_2022))
+        self.assertEqual(len(REMOVED_DISPATCH_FAMILY_2022), 32)
+        self.assertEqual(len(NOT_PROBED_2022), 4)
+        self.assertEqual(cells & set(REMOVED_DISPATCH_FAMILY_2022), set())
+        self.assertEqual(cells & set(NOT_PROBED_2022), set())
+
+    def test_every_2022_probe_is_a_2022_output_routed_to_its_sheet(self):
+        for key, probe in WORKBOOK_PROBES_2022.items():
+            with self.subTest(key=key):
+                self.assertTrue(key.startswith(
+                    form_1040.WORKBOOK_PROBE_PREFIX + "y2022__"))
+                self.assertEqual(F1040.OUTPUTS[2022][key], probe.cell)
+                self.assertEqual(F1040.SHEET_MAP[2022][key], probe.sheet)
+
+    def test_each_2022_probe_cell_is_a_formula_and_names_match(self):
+        wb = openpyxl.load_workbook(WORKBOOK_2022)
+        names_at: dict[tuple[str, str], set[str]] = {}
+        for name, defn in wb.defined_names.items():
+            for sheet, ref in defn.destinations:
+                names_at.setdefault((sheet, ref.replace("$", "")),
+                                    set()).add(name)
+        for key, probe in WORKBOOK_PROBES_2022.items():
+            with self.subTest(key=key):
+                value = wb[probe.sheet][probe.cell].value
+                self.assertIsInstance(value, str)
+                self.assertTrue(value.startswith("="), value)
+                recorded = {n for n in probe.defined_name.split(" / ") if n}
+                self.assertEqual(
+                    recorded, names_at.get((probe.sheet, probe.cell), set()))
+
+    def test_2022_probe_refusal_names_the_2022_cell(self):
+        key = form_1040.WORKBOOK_PROBE_PREFIX + "y2022__sch_a__ah10"
+        message = form_1040.workbook_probe_refusal({key: "Birthdate needed."})
+        self.assertIsNotNone(message)
+        self.assertIn("'Sch. A'!AH10", message)
+        for key in WORKBOOK_PROBES_2022:
+            with self.subTest(key=key):
+                self.assertNotIn(
+                    "not in the registry",
+                    form_1040.workbook_probe_refusal({key: "x"}))
 
 class ProbeRefusalTests(unittest.TestCase):
     """workbook_probe_refusal over synthetic harvested dicts."""
