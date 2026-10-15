@@ -20,8 +20,8 @@ import openpyxl
 
 from tenforty.forms import f1040 as form_1040
 from tenforty.mappings.f1040 import (
-    F1040, WORKBOOK_PROBES_2022, WORKBOOK_PROBES_2023, WORKBOOK_PROBES_2024,
-    WORKBOOK_PROBES_2025,
+    F1040, WORKBOOK_PROBES_2021, WORKBOOK_PROBES_2022, WORKBOOK_PROBES_2023,
+    WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
 )
 from tests.helpers import REPO_ROOT
 
@@ -29,6 +29,7 @@ WORKBOOK_2025 = REPO_ROOT / "spreadsheets" / "federal" / "2025" / "1040.xlsx"
 WORKBOOK_2024 = REPO_ROOT / "spreadsheets" / "federal" / "2024" / "1040.xlsx"
 WORKBOOK_2023 = REPO_ROOT / "spreadsheets" / "federal" / "2023" / "1040.xlsx"
 WORKBOOK_2022 = REPO_ROOT / "spreadsheets" / "federal" / "2022" / "1040.xlsx"
+WORKBOOK_2021 = REPO_ROOT / "spreadsheets" / "federal" / "2021" / "1040.xlsx"
 
 # The cut doc's IN list less the three recorded-not-harvested cells (73),
 # less the 32 dispatch-family cells below: 41.
@@ -153,20 +154,21 @@ class ProbeRegistryTests(unittest.TestCase):
                 self.assertEqual(sheet_map[key], probe.sheet)
 
     def test_probes_are_per_year(self):
-        # Each year's probes in that year only (2022/2023/2024 keys carry the
-        # year); none in 2021 yet (its back-year lane inventories its own).
-        # 2021 inherits 2022's maps, 2022 inherits 2023's and 2023 inherits
-        # 2024's, so a probe wired too early would leak downward -- pinned here.
+        # Each year's probes in that year only (2021-2024 keys carry the
+        # year). 2021 inherits 2022's maps, 2022 inherits 2023's and 2023
+        # inherits 2024's, so a probe wired too early would leak downward;
+        # and the five registries must be pairwise disjoint -- pinned here.
         def probe_keys(year):
             return {k for k in F1040.OUTPUTS[year]
                     if k.startswith(form_1040.WORKBOOK_PROBE_PREFIX)}
-        self.assertEqual(probe_keys(2021), set())
         self.assertEqual(probe_keys(2025), set(WORKBOOK_PROBES_2025))
         self.assertEqual(probe_keys(2024), set(WORKBOOK_PROBES_2024))
         self.assertEqual(probe_keys(2023), set(WORKBOOK_PROBES_2023))
         self.assertEqual(probe_keys(2022), set(WORKBOOK_PROBES_2022))
-        registries = (set(WORKBOOK_PROBES_2022), set(WORKBOOK_PROBES_2023),
-                      set(WORKBOOK_PROBES_2024), set(WORKBOOK_PROBES_2025))
+        self.assertEqual(probe_keys(2021), set(WORKBOOK_PROBES_2021))
+        registries = (set(WORKBOOK_PROBES_2021), set(WORKBOOK_PROBES_2022),
+                      set(WORKBOOK_PROBES_2023), set(WORKBOOK_PROBES_2024),
+                      set(WORKBOOK_PROBES_2025))
         for i, a in enumerate(registries):
             for b in registries[i + 1:]:
                 self.assertEqual(a & b, set())
@@ -593,6 +595,141 @@ class ProbeRegistry2022Tests(unittest.TestCase):
         self.assertIsNotNone(message)
         self.assertIn("'Sch. A'!AH10", message)
         for key in WORKBOOK_PROBES_2022:
+            with self.subTest(key=key):
+                self.assertNotIn(
+                    "not in the registry",
+                    form_1040.workbook_probe_refusal({key: "x"}))
+
+# ---- 2021 (workbook-health-2021; docs/plans/2026-10-13-briefs/
+# workbook-health-2021-numeric-cut.md, gitignored) -------------------------
+# 77 numeric-path cells - 32 dispatch-family - 3 recorded-not-harvested = 42.
+EXPECTED_PROBE_CELLS_2021: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AC42"),
+    ("1040", "BB55"),
+    ("6251", "AC25"),
+    ("6251", "AC37"),
+    ("6251", "M87"),
+    ("6251", "M93"),
+    ("6251", "M100"),
+    ("6251", "M102"),
+    ("6251", "M109"),
+    ("8812", "AK163"),
+    ("8812", "AK170"),
+    ("8812", "AL28"),
+    ("8863", "X16"),
+    ("8959", "K24"),
+    ("8959", "K34"),
+    ("8959", "K46"),
+    ("8960", "L44"),
+    ("Line 16 (QDCG Tax)", "AA101"),
+    ("Line 16 (QDCG Tax)", "N61"),
+    ("Line 16 (QDCG Tax)", "N65"),
+    ("Line 16 (QDCG Tax)", "N89"),
+    ("Line 16 (QDCG Tax)", "N93"),
+    ("Line 16 (QDCG Tax)", "V106"),
+    ("Line 16 (QDCG Tax)", "X126"),
+    ("Line 16 (QDCG Tax)", "X137"),
+    ("Line 16 (QDCG Tax)", "X155"),
+    ("Line 16 (QDCG Tax)", "Y160"),
+    ("Line 30 (Rebate Credit)", "AH47"),
+    ("Line 30 (Rebate Credit)", "AH66"),
+    ("Line 30 (Rebate Credit)", "AH75"),
+    ("Line 6ab (SS Bene)", "J31"),
+    ("Line 6ab (SS Bene)", "J51"),
+    ("Sch. 1, Line 21 (Stu Loan)", "J20"),
+    ("Sch. A", "AH10"),
+    ("Sch. D WS", "L91"),
+    ("Sch. D WS", "L92"),
+    ("Sch. D WS", "L98"),
+    ("Sch. D WS", "L110"),
+    ("Sch. D WS", "L111"),
+    ("Sch. D WS", "P134"),
+    ("Sch. D WS", "P137"),
+    ("Sch. SE", "X20"),
+})
+REMOVED_DISPATCH_FAMILY_2021: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AX54"),
+    ("1040", "AX55"),
+    ("Line 16 (QDCG Tax)", "AA93"),
+    ("Line 16 (QDCG Tax)", "U54"),
+    ("Line 16 (QDCG Tax)", "U55"),
+    ("Line 16 (QDCG Tax)", "U61"),
+    ("Line 16 (QDCG Tax)", "U62"),
+    ("Line 16 (QDCG Tax)", "U75"),
+    ("Line 16 (QDCG Tax)", "U76"),
+    ("Line 16 (QDCG Tax)", "U81"),
+    ("Line 16 (QDCG Tax)", "U82"),
+    ("Line 16 (QDCG Tax)", "U159"),
+    ("Line 16 (QDCG Tax)", "U160"),
+    ("Line 16 (QDCG Tax)", "U166"),
+    ("Line 16 (QDCG Tax)", "U167"),
+    ("Line 16 (QDCG Tax)", "V108"),
+    ("Line 16 (QDCG Tax)", "W92"),
+    ("Line 16 (QDCG Tax)", "W93"),
+    ("Line 16 (QDCG Tax)", "W100"),
+    ("Line 16 (QDCG Tax)", "W101"),
+    ("Line 16 (QDCG Tax)", "X162"),
+    ("Line 16 (QDCG Tax)", "Y55"),
+    ("Line 16 (QDCG Tax)", "Y62"),
+    ("Line 16 (QDCG Tax)", "Y76"),
+    ("Line 16 (QDCG Tax)", "Y82"),
+    ("Line 16 (QDCG Tax)", "Y167"),
+    ("Sch. D WS", "AB135"),
+    ("Sch. D WS", "AB144"),
+    ("Sch. D WS", "X134"),
+    ("Sch. D WS", "X135"),
+    ("Sch. D WS", "X143"),
+    ("Sch. D WS", "X144"),
+})
+# The three ratified species, re-verified on 2021's own formulas.
+NOT_PROBED_2021: frozenset[tuple[str, str]] = frozenset({
+    ("Line 6ab (SS Bene)", "J25"),
+    ("2441", "R117"),
+    ("Sch. 1, Line 20 (IRA)", "Q22"),
+})
+
+
+class ProbeRegistry2021Tests(unittest.TestCase):
+    def test_probe_cells_match_the_2021_cut(self):
+        cells = {(p.sheet, p.cell) for p in WORKBOOK_PROBES_2021.values()}
+        self.assertEqual(len(EXPECTED_PROBE_CELLS_2021), 42)
+        self.assertEqual(len(WORKBOOK_PROBES_2021), 42)
+        self.assertEqual(cells, set(EXPECTED_PROBE_CELLS_2021))
+        self.assertEqual(len(REMOVED_DISPATCH_FAMILY_2021), 32)
+        self.assertEqual(len(NOT_PROBED_2021), 3)
+        self.assertEqual(cells & set(REMOVED_DISPATCH_FAMILY_2021), set())
+        self.assertEqual(cells & set(NOT_PROBED_2021), set())
+
+    def test_every_2021_probe_is_a_2021_output_routed_to_its_sheet(self):
+        for key, probe in WORKBOOK_PROBES_2021.items():
+            with self.subTest(key=key):
+                self.assertTrue(key.startswith(
+                    form_1040.WORKBOOK_PROBE_PREFIX + "y2021__"))
+                self.assertEqual(F1040.OUTPUTS[2021][key], probe.cell)
+                self.assertEqual(F1040.SHEET_MAP[2021][key], probe.sheet)
+
+    def test_each_2021_probe_cell_is_a_formula_and_names_match(self):
+        wb = openpyxl.load_workbook(WORKBOOK_2021)
+        names_at: dict[tuple[str, str], set[str]] = {}
+        for name, defn in wb.defined_names.items():
+            for sheet, ref in defn.destinations:
+                names_at.setdefault((sheet, ref.replace("$", "")),
+                                    set()).add(name)
+        for key, probe in WORKBOOK_PROBES_2021.items():
+            with self.subTest(key=key):
+                value = wb[probe.sheet][probe.cell].value
+                self.assertIsInstance(value, str)
+                self.assertTrue(value.startswith("="), value)
+                recorded = {n for n in probe.defined_name.split(" / ") if n}
+                self.assertEqual(
+                    recorded, names_at.get((probe.sheet, probe.cell), set()))
+
+    def test_2021_probe_refusal_names_the_2021_cell(self):
+        key = form_1040.WORKBOOK_PROBE_PREFIX + "y2021__sch_a__ah10"
+        message = form_1040.workbook_probe_refusal({key: "Birthdate needed."})
+        self.assertIsNotNone(message)
+        self.assertIn("'Sch. A'!AH10", message)
+        for key in WORKBOOK_PROBES_2021:
             with self.subTest(key=key):
                 self.assertNotIn(
                     "not in the registry",

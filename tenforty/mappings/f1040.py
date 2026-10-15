@@ -462,6 +462,85 @@ WORKBOOK_PROBES_2022: dict[str, _Probe] = {
     "workbook_probe__y2022__sch_se__x20": _Probe("Sch. SE", "X20", ""),
 }
 
+# --- Workbook numeric-cell probes (2021) -------------------------------------
+#
+# Same purpose and semantics as WORKBOOK_PROBES_2025/2024/2023/2022; keys carry
+# the year (`workbook_probe__y2021__...`). Set (workbook-health-2021, team-lead
+# ruled 2026-10-15; docs/plans/2026-10-13-briefs/workbook-health-2021-numeric-
+# cut.md, gitignored): 77 numeric-path cells of the 2021 inventory, less
+#   * 32 DISPATCH-FAMILY cells, removed by the same STRUCTURAL rule as 2022
+#     (2021 has the bare `IF(income>100000, schedule, table)` selector; rule
+#     applied unchanged and re-validated on 2022-2025). For 2021 a PREDICTION
+#     until team-lead's 2021 probe dump + battery run; one texty value among
+#     these 42 on a computing row reopens the set. Floors as 2022: Section A
+#     tests SectA_a3, B-D SectX_a2, every floor VALUE 100,000 = the selector
+#     threshold (verified);
+#   * 3 RECORDED-NOT-HARVESTED cells, the ratified species re-verified on
+#     2021's own formulas: 'Line 6ab (SS Bene)'!J25 "Stop", '2441'!R117
+#     "STOP" (the 2022 V116 analog), 'Sch. 1, Line 20 (IRA)'!Q22
+#     "Age > 70 1/2". 2021 has no "- - - -" sentinel cells and no 6251 P2
+#     trigger. The five 2021-only status diagnostics ('Line 30 (Rebate
+#     Credit)' AH47/AH66/AH75, '8812' AK163/AK170) are probes (8863 X16
+#     precedent). Membership, not a string allowlist: any text in a remaining
+#     probe refuses.
+WORKBOOK_PROBES_2021: dict[str, _Probe] = {
+    # --- 1040 ---
+    "workbook_probe__y2021__1040__ac42": _Probe("1040", "AC42", "SocSecBenefits_Taxable"),
+    "workbook_probe__y2021__1040__bb55": _Probe("1040", "BB55", ""),
+    # --- 6251 ---
+    "workbook_probe__y2021__6251__ac25": _Probe("6251", "AC25", ""),
+    "workbook_probe__y2021__6251__ac37": _Probe("6251", "AC37", ""),
+    "workbook_probe__y2021__6251__m87": _Probe("6251", "M87", ""),
+    "workbook_probe__y2021__6251__m93": _Probe("6251", "M93", ""),
+    "workbook_probe__y2021__6251__m100": _Probe("6251", "M100", ""),
+    "workbook_probe__y2021__6251__m102": _Probe("6251", "M102", ""),
+    "workbook_probe__y2021__6251__m109": _Probe("6251", "M109", ""),
+    # --- 8812 ---
+    "workbook_probe__y2021__8812__al28": _Probe("8812", "AL28", ""),
+    "workbook_probe__y2021__8812__ak163": _Probe("8812", "AK163", ""),
+    "workbook_probe__y2021__8812__ak170": _Probe("8812", "AK170", ""),
+    # --- 8863 ---
+    "workbook_probe__y2021__8863__x16": _Probe("8863", "X16", ""),
+    # --- 8959 ---
+    "workbook_probe__y2021__8959__k24": _Probe("8959", "K24", ""),
+    "workbook_probe__y2021__8959__k34": _Probe("8959", "K34", ""),
+    "workbook_probe__y2021__8959__k46": _Probe("8959", "K46", ""),
+    # --- 8960 ---
+    "workbook_probe__y2021__8960__l44": _Probe("8960", "L44", ""),
+    # --- Line 16 (QDCG Tax) ---
+    "workbook_probe__y2021__line_16_qdcg_tax__n61": _Probe("Line 16 (QDCG Tax)", "N61", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__n65": _Probe("Line 16 (QDCG Tax)", "N65", "CGTW_Line24"),
+    "workbook_probe__y2021__line_16_qdcg_tax__n89": _Probe("Line 16 (QDCG Tax)", "N89", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__n93": _Probe("Line 16 (QDCG Tax)", "N93", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__aa101": _Probe("Line 16 (QDCG Tax)", "AA101", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__v106": _Probe("Line 16 (QDCG Tax)", "V106", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__x126": _Probe("Line 16 (QDCG Tax)", "X126", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__x137": _Probe("Line 16 (QDCG Tax)", "X137", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__x155": _Probe("Line 16 (QDCG Tax)", "X155", ""),
+    "workbook_probe__y2021__line_16_qdcg_tax__y160": _Probe("Line 16 (QDCG Tax)", "Y160", ""),
+    # --- Line 30 (Rebate Credit) ---
+    "workbook_probe__y2021__line_30_rebate_credit__ah47": _Probe("Line 30 (Rebate Credit)", "AH47", ""),
+    "workbook_probe__y2021__line_30_rebate_credit__ah66": _Probe("Line 30 (Rebate Credit)", "AH66", ""),
+    "workbook_probe__y2021__line_30_rebate_credit__ah75": _Probe("Line 30 (Rebate Credit)", "AH75", ""),
+    # --- Line 6ab (SS Bene) ---
+    "workbook_probe__y2021__line_6ab_ss_bene__j31": _Probe("Line 6ab (SS Bene)", "J31", ""),
+    "workbook_probe__y2021__line_6ab_ss_bene__j51": _Probe("Line 6ab (SS Bene)", "J51", "Tax_SS_Benefits"),
+    # --- Sch. 1, Line 21 (Stu Loan) ---
+    "workbook_probe__y2021__sch_1_line_21_stu_loan__j20": _Probe("Sch. 1, Line 21 (Stu Loan)", "J20", ""),
+    # --- Sch. A ---
+    "workbook_probe__y2021__sch_a__ah10": _Probe("Sch. A", "AH10", ""),
+    # --- Sch. D WS ---
+    "workbook_probe__y2021__sch_d_ws__l91": _Probe("Sch. D WS", "L91", "SchDTW_Line15"),
+    "workbook_probe__y2021__sch_d_ws__l92": _Probe("Sch. D WS", "L92", ""),
+    "workbook_probe__y2021__sch_d_ws__l98": _Probe("Sch. D WS", "L98", "SchDTW_Line19"),
+    "workbook_probe__y2021__sch_d_ws__l110": _Probe("Sch. D WS", "L110", "SchDTW_Line24 / SchDTW_Line26"),
+    "workbook_probe__y2021__sch_d_ws__l111": _Probe("Sch. D WS", "L111", ""),
+    "workbook_probe__y2021__sch_d_ws__p134": _Probe("Sch. D WS", "P134", ""),
+    "workbook_probe__y2021__sch_d_ws__p137": _Probe("Sch. D WS", "P137", ""),
+    # --- Sch. SE ---
+    "workbook_probe__y2021__sch_se__x20": _Probe("Sch. SE", "X20", ""),
+}
+
 class F1040(FormMapping):
     """Mapping for the entire federal 1040 workbook (all sheets).
 
@@ -1799,4 +1878,13 @@ del _key, _probe
 for _key, _probe in WORKBOOK_PROBES_2022.items():
     F1040.OUTPUTS[2022][_key] = _probe.cell
     F1040.SHEET_MAP[2022][_key] = _probe.sheet
+del _key, _probe
+
+
+# 2021 numeric-cell probes (see WORKBOOK_PROBES_2021) -- wired here with the
+# others, after every year's maps exist. 2021 is the oldest year (nothing
+# inherits from it); end-of-module placement keeps the pattern uniform.
+for _key, _probe in WORKBOOK_PROBES_2021.items():
+    F1040.OUTPUTS[2021][_key] = _probe.cell
+    F1040.SHEET_MAP[2021][_key] = _probe.sheet
 del _key, _probe
