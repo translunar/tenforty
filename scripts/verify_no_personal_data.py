@@ -108,6 +108,7 @@ def _load_denylist_config(config_path: Path) -> list[str]:
 # Real tax data almost never has perfectly round wages.
 NON_ROUND_DOLLAR_RE = re.compile(r":\s*(\d+\.\d{2})")
 ROUND_THRESHOLD = 50  # must be divisible by this
+PUBLIC_STATUTORY_AMOUNTS = {"10918.20"}  # TY2025 SS employee withholding maximum: 6.2% × $176,100 wage base, published IRS figure (= tenforty ss_withholding_maximum(2025)). Public statutory data, not personal. Juno-approved 2026-10-15; see round ledger.
 
 
 def get_tracked_files() -> list[Path]:
@@ -181,6 +182,8 @@ def check_non_round_amounts(files_content: dict[Path, str]) -> list[str]:
 
         for line_num, line in enumerate(content.split("\n"), start=1):
             for match in NON_ROUND_DOLLAR_RE.finditer(line):
+                if match.group(1) in PUBLIC_STATUTORY_AMOUNTS:
+                    continue
                 amount = float(match.group(1))
                 if amount > 0 and amount % ROUND_THRESHOLD != 0:
                     violations.append(
