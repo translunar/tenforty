@@ -30,6 +30,12 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # test raises there; the "no business" test mocks orch.engine.compute with
     # a sentinel side_effect, so no real soffice is ever invoked.
     "test_sch_c_workbook_guard.py",
+    # W-2 workbook mapping (declare-fallout): every _compute_1040_via_workbook
+    # call runs under mock.patch.object(orch.engine, "compute", ...) -- the
+    # refusal tests expect the unmapped-W-2 refusal BEFORE the engine (the
+    # mock raises if reached), and the six-employer test captures the engine
+    # call's inputs via a raising mock -- so no real soffice is ever invoked.
+    "test_w2_workbook_mapping.py",
 }
 
 
