@@ -387,6 +387,18 @@ class SchedRRefusalTests(unittest.TestCase):
                                             "Schedule R"):
                     orch.compute_federal(scenario)
 
+    def test_limits_pin_the_verified_table(self):
+        # Independent pin of the guard constants (Schedule R instructions
+        # Table 1, team-lead-verified 2026-10-14; ledger row R-sched-r), so
+        # a changed or dropped limit reddens rather than moving both sides.
+        self.assertEqual(self.LIMITS, {
+            (SINGLE.value, 1): 17_500,
+            (HOH.value, 1): 17_500,
+            (QW.value, 1): 17_500,
+            (MFJ.value, 1): 20_000,
+            (MFJ.value, 2): 25_000,
+        })
+
     def test_every_status_and_box_count_at_its_boundary(self):
         # The guard itself, per status and box count (MFJ/HoH/QSS are not
         # declared native in a computing year today, so they are driven
