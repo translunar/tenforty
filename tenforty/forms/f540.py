@@ -415,6 +415,11 @@ def presentation_keys(
         out["f540_spouse_first_name"] = config.spouse_first_name
         out["f540_spouse_last_name"] = config.spouse_last_name
         out["f540_spouse_ssn"] = config.spouse_ssn
+    # Side 1 "Spouse's/RDP's DOB": a joint return only. Its birthdate is
+    # already required above (line 9 refuses a joint return without it), so
+    # the box always backs the spouse's line 9 senior count.
+    if fs == FilingStatus.MARRIED_FILING_JOINTLY:
+        out["f540_spouse_dob"] = _mm_dd_yyyy(config.spouse_birthdate)
     if config.full_year_health_care_coverage is False:
         raise NotImplementedError(
             "`full_year_health_care_coverage` is false: the household did not "

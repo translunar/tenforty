@@ -1030,8 +1030,11 @@ _LINE9_SENIOR = {
     2025: ("1045", "1046"),
 }
 
-# Header fields are numbered identically (1003/1005/1015/1018-1020/1024) in every
-# year; only the prefix differs. (Same for the SSN already mapped at 1007.)
+# Header fields are numbered identically (1003/1005/1015/1018-1020/1024/1025) in
+# every year; only the prefix differs. (Same for the SSN already mapped at 1007.)
+# 1025 is the spouse/RDP date of birth: verified per year against each
+# template's own /TU ("Spouse's or Registered Domestic Partner's Date of Birth"
+# 2021-2024, "Spouse's or R D P's Date of Birth" 2025).
 # Lines 14 / 15 / 16 (Sch CA line 27 col B / "13 - 14" / col C) and line 71
 # (CA withholding) sit at the same numbers in 2022-2025; 2021 is renumbered.
 # Line 78 and line 17 already print the downstream figures, so leaving these
@@ -1056,6 +1059,7 @@ _HEADER_NUMBERS = {
     "f540_taxpayer_first_name": "1003",
     "f540_taxpayer_last_name": "1005",
     "f540_taxpayer_dob": "1024",
+    "f540_spouse_dob": "1025",
     "f540_address_street": "1015",
     "f540_address_city": "1018",
     "f540_address_state": "1019",

@@ -10,7 +10,8 @@ the selected widget, every year and every status, modelled on
 spouse fields on a Single or Head-of-Household scenario refuse at load; a
 joint return with a blank spouse name or SSN refuses at emit (never printed
 half-blank); the 1040 and 540 header keys carry the spouse only for a joint
-return (and, as before, for married filing separately). Synthetic data only.
+return (and, as before, for married filing separately). The 540 spouse date
+of birth prints on a joint return only. Synthetic data only.
 """
 import dataclasses
 import tempfile
@@ -235,7 +236,7 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
         # Built directly (bypassing the loader's refusal) with spouse values
         # present, so a name-presence gate would leak them.
         for fs in (FilingStatus.HEAD_OF_HOUSEHOLD, FilingStatus.SINGLE):
-            cfg = _config(fs)
+            cfg = _config(fs, spouse_birthdate="1979-03-07")
             with self.subTest(fs=fs.value, form="1040"):
                 got = f1040_spine.header_values(cfg)
                 self.assertEqual(
@@ -251,9 +252,10 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
 
     def test_mfj_emits_all_three_spouse_keys_on_both_forms(self):
         # A joint return states the spouse's birthdate (540 line 9 refuses
-        # without it); the config's own, not aged.
+        # without it); not aged, and distinct from the taxpayer's 1980-01-01
+        # so a key that copied the taxpayer's date would fail.
         cfg = _config(FilingStatus.MARRIED_FILING_JOINTLY,
-                      spouse_birthdate="1980-01-01")
+                      spouse_birthdate="1979-03-07")
         got = f1040_spine.header_values(cfg)
         self.assertEqual(
             {k: got[k] for k in _SPOUSE_1040_KEYS},
@@ -268,6 +270,8 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
                     {"f540_spouse_first_name": "Spouse",
                      "f540_spouse_last_name": "Example",
                      "f540_spouse_ssn": "000-00-0002"})
+                self.assertEqual(keys["f540_spouse_dob"], "03/07/1979")
+                self.assertEqual(keys["f540_taxpayer_dob"], "01/01/1980")
 
     def test_mfs_keeps_todays_spouse_behaviour(self):
         mfs = FilingStatus.MARRIED_FILING_SEPARATELY
@@ -280,8 +284,10 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
         self.assertEqual({k: blank[k] for k in _SPOUSE_1040_KEYS},
                          dict.fromkeys(_SPOUSE_1040_KEYS, ""))
         # 540 on MFS: spouse printed when named, omitted when not (as before).
-        named = form_f540.presentation_keys(_config(mfs), [], 2025)
+        named = form_f540.presentation_keys(
+            _config(mfs, spouse_birthdate="1979-03-07"), [], 2025)
         self.assertEqual(named["f540_spouse_first_name"], "Spouse")
+        self.assertNotIn("f540_spouse_dob", named)   # joint return only
         unnamed = form_f540.presentation_keys(_config(
             mfs, spouse_first_name="", spouse_last_name="", spouse_ssn=""),
             [], 2025)
@@ -336,6 +342,57 @@ class CaSpousePlacementTests(unittest.TestCase):
                     spouse_rows.add(round(sp[1]))
             with self.subTest(year=year, check="one spouse row"):
                 self.assertEqual(len(spouse_rows), 1, spouse_rows)
+
+
+class CaSpouseDobPlacementTests(unittest.TestCase):
+    """The 540 Side 1 "Spouse's/RDP's DOB" box, every CA year: the mapped
+    field IS the template's spouse date-of-birth widget (its own /TU, not an
+    assumed number), a filled value reads back and prints ink, and the box
+    sits on the taxpayer DOB's row to its right."""
+
+    def _template(self, year: int) -> Path:
+        return REPO_ROOT / "pdfs" / "california" / str(year) / "f540.pdf"
+
+    def test_mapped_field_is_the_templates_spouse_dob_widget(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                mapping = PdfF540.get_mapping(year)
+                fields = PdfReader(str(self._template(year))).get_fields()
+                sp = str(fields[mapping["f540_spouse_dob"]].get("/TU", ""))
+                tp = str(fields[mapping["f540_taxpayer_dob"]].get("/TU", ""))
+                self.assertRegex(sp, r"^Spouse's or R")
+                self.assertIn("Date of Birth", sp)
+                self.assertIn("Your Date of Birth", tp)
+
+    def test_spouse_dob_reads_back_and_prints_ink_every_year(self):
+        tmp = Path(tempfile.mkdtemp())
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                mapping = PdfF540.get_mapping(year)
+                values = {"f540_taxpayer_dob": "01/01/1980",
+                          "f540_spouse_dob": "03/07/1979"}
+                out = tmp / f"f540_{year}.pdf"
+                PdfFiller().fill(
+                    template_path=self._template(year), output_path=out,
+                    field_mapping=mapping, values=values)
+                read = {n: str(f.get("/V") or "")
+                        for n, f in PdfReader(str(out)).get_fields().items()}
+                self.assertEqual(read[mapping["f540_spouse_dob"]], "03/07/1979")
+                page, rect = widget_rect(out, mapping["f540_spouse_dob"])
+                self.assertGreater(
+                    dark_pixels_in_rect(out, page, rect, inset=1.0), 8)
+
+    def test_spouse_dob_sits_right_of_the_taxpayer_dob_on_its_row(self):
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                mapping = PdfF540.get_mapping(year)
+                tp_page, tp = widget_rect(self._template(year),
+                                          mapping["f540_taxpayer_dob"])
+                sp_page, sp = widget_rect(self._template(year),
+                                          mapping["f540_spouse_dob"])
+                self.assertEqual((tp_page, sp_page), (0, 0))
+                self.assertLess(abs(tp[1] - sp[1]), 2)   # same row
+                self.assertGreater(sp[0], tp[2])          # to its right
 
 
 if __name__ == "__main__":
