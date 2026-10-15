@@ -1990,6 +1990,224 @@ HAND_WORKED_CASES_2024: tuple[HandWorkedCase540, ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Hand-worked cases — TY2023 (MFJ, HOH, aged single)
+#
+# Worked by hand from the 2023 booklet in CA_540_BOOKLET_2023_PROVENANCE.
+# ``compute_ca_540`` carries TY2025 constants only, so these cases are NOT
+# run through it; they are checked against the production chain alone.
+#
+# Booklet facts used (2023 booklet page numbers):
+#   - Line 7/8/9 amount: Form 540 side 1 preprint "X $144" on each of
+#     lines 7, 8 and 9 (booklet PDF page 39).
+#   - Line 9 senior condition: see SENIOR_BIRTH_DATE_CUTOFF_2023 (p.12).
+#   - Line 18: Standard Deduction Chart for Most People (p.13): status 1/3
+#     = 5,363; status 2/4/5 = 10,726. Keyed by filing status only; no
+#     age-65 addition.
+#   - Line 31: line 19 > 100,000 → tax rate schedules (p.13); Schedules
+#     X / Y / Z (p.75). Step 4 rounds step 3 to two decimals, adds the
+#     base tax, then the result is rounded to whole dollars.
+#   - Line 32: AGI limitation applies only if line 13 exceeds 237,035
+#     (single/MFS), 474,075 (MFJ/QSS), 355,558 (HOH) (p.14); none of
+#     these cases do.
+#   - Lines 33–115 flow as in ``_zero_balance_tail`` (Form 540 side 2–4:
+#     L33 = L31 − L32; L35 = L33 + L34; L47 = L40 + … + L46; L48 = L35 −
+#     L47; L64 = L48 + L61 + L62 + L63; L97 = L95 − L64). TY2023 line 62
+#     is the Mental Health Services Tax (zero here); the ``*_bhst`` and
+#     ``*_applied_to_2026`` key names are the harness's year-neutral keys.
+#
+# All people and amounts are synthetic.
+# ---------------------------------------------------------------------------
+CA_540_BOOKLET_2023_PROVENANCE: dict[str, str] = {
+    "url": "https://www.ftb.ca.gov/forms/2023/2023-540-booklet.pdf",
+    "edition": (
+        "2023 California 540 Forms & Instructions Personal Income Tax "
+        "Booklet; 80 PDF pages; Form 540 side 1 form code 3101233; PDF "
+        "CreationDate 2023-10-26, ModDate 2024-03-28"
+    ),
+    "sha256": "e2d8ef0ba279abf65eec7941a77de6604af9186226e1e79cc80a8ecd2a14d4b9",
+    "retrieved": "2026-10-15",
+}
+
+# SOURCE: 2023 booklet p.12, "Line 9 – Senior Exemptions": "If you were 65
+# years of age or older by December 31, 2023*" … "*If your 65th birthday
+# is on January 1, 2024, you are considered to be age 65 on December 31,
+# 2023." 65th birthday on or before 2024-01-01 ⇔ born on or before
+# 1959-01-01.
+SENIOR_BIRTH_DATE_CUTOFF_2023 = date(1959, 1, 1)
+
+
+def is_senior_2023(born: date | None) -> bool:
+    """65 or older by 12/31/2023 per the TY2023 line 9 rule above."""
+    return born is not None and born <= SENIOR_BIRTH_DATE_CUTOFF_2023
+
+
+def senior_count_2023(case: HandWorkedCase540) -> int:
+    """TY2023 Form 540 line 9 box count (side 1: "If you (or your
+    spouse/RDP) are 65 or older, enter 1; if both are 65 or older, enter
+    2"). No case is anyone's dependent."""
+    if case.filing_status != "mfj" and case.spouse_birth_date is not None:
+        raise ValueError(f"{case.name}: spouse birthdate on a non-joint case")
+    return sum(
+        is_senior_2023(born)
+        for born in (case.taxpayer_birth_date, case.spouse_birth_date)
+    )
+
+
+# Case: MFJ, two W-2s, standard deduction, not renters, both under 65.
+#   L12 state wages = 96,300 + 58,250 = 154,550
+#   L13 federal AGI = 154,550 (wages only); L14 = 0; L15 = 154,550; L16 = 0
+#   L17 CA AGI = 154,550
+#   L18 std ded, chart p.13, status 2 = 10,726
+#   L19 = 154,550 − 10,726 = 143,824  (> 100,000 → rate schedule)
+#   L31 Schedule Y, over 136,700: 143,824 − 136,700 = 7,124;
+#       7,124 × 9.3% = 662.532 → 662.53; 6,018.80 + 662.53 = 6,681.33
+#       → 6,681
+#   L7 status 2 → 2 × 144 = 288; L8/L9/L10 = 0; L11 = 288
+#   L32: L13 154,550 ≤ 474,075 (p.14) → no AGI limitation; L32 = 288
+#   L33 = 6,681 − 288 = 6,393; L34 = 0; L35 = 6,393
+#   L40/43–45/46 = 0; L47 = 0; L48 = 6,393; L61–63 = 0; L64 = 6,393
+#   L71 = 4,650 + 2,300 = 6,950 = L78 = L93 = L95
+#   L97 = 6,950 − 6,393 = 557 = L99 = L115 refund
+CASE_MFJ_TWO_W2_2023 = HandWorkedCase540(
+    name="mfj_two_w2_wages_only_2023",
+    filing_status="mfj",
+    w2_wages=(96_300.0, 58_250.0),
+    w2_ca_withholding=(4_650.0, 2_300.0),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 2.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 288.0,
+        "f540_line_12_state_wages": 154_550.0,
+        "f540_line_13_federal_agi": 154_550.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 154_550.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 154_550.0,
+        "f540_line_18_deduction": 10_726.0,
+        "f540_line_19_taxable_income": 143_824.0,
+        "f540_line_31_tax": 6_681.0,
+        "f540_line_32_exemption_credits": 288.0,
+        "f540_line_33_tax_after_exemption_credits": 6_393.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 6_393.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 6_393.0,
+        **_zero_balance_tail(line_64=6_393.0, line_71=6_950.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+# Case: HOH, one W-2, not a renter, no dependents listed, not aged.
+#   L12 = L13 = L15 = L17 = 113,900; L14 = L16 = 0
+#   L18 chart status 4 = 10,726
+#   L19 = 113,900 − 10,726 = 103,174 (> 100,000 → schedule)
+#   L31 Schedule Z, over 93,037: 103,174 − 93,037 = 10,137;
+#       10,137 × 9.3% = 942.741 → 942.74; 3,398.97 + 942.74 = 4,341.71
+#       → 4,342
+#   L7 status 4 → 1 × 144 = 144; L8/L9/L10 = 0; L11 = 144
+#   L32: L13 113,900 ≤ 355,558 (HOH, p.14) → no AGI limitation; L32 = 144
+#   L33 = 4,342 − 144 = 4,198 = L35 = L48 = L64 (no special credits)
+#   L71 = 4,750; L97 = 4,750 − 4,198 = 552 = L115 refund
+CASE_HOH_2023 = HandWorkedCase540(
+    name="hoh_wages_only_2023",
+    filing_status="hoh",
+    w2_wages=(113_900.0,),
+    w2_ca_withholding=(4_750.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 144.0,
+        "f540_line_12_state_wages": 113_900.0,
+        "f540_line_13_federal_agi": 113_900.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 113_900.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 113_900.0,
+        "f540_line_18_deduction": 10_726.0,
+        "f540_line_19_taxable_income": 103_174.0,
+        "f540_line_31_tax": 4_342.0,
+        "f540_line_32_exemption_credits": 144.0,
+        "f540_line_33_tax_after_exemption_credits": 4_198.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 4_198.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 4_198.0,
+        **_zero_balance_tail(line_64=4_198.0, line_71=4_750.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+# Case: single, aged, one W-2, not a renter.
+#   Taxpayer born 1956-09-03 ≤ 1959-01-01 cutoff → 67 on 12/31/2023 → senior
+#   L12 = L13 = L15 = L17 = 112,400; L14 = L16 = 0
+#   L18 chart status 1 = 5,363 (no age addition)
+#   L19 = 112,400 − 5,363 = 107,037 (> 100,000 → schedule)
+#   L31 Schedule X, over 68,350: 107,037 − 68,350 = 38,687;
+#       38,687 × 9.3% = 3,597.891 → 3,597.89; 3,009.40 + 3,597.89
+#       = 6,607.29 → 6,607
+#   L7 status 1 → 1 × 144 = 144; L8 = 0; L9 1 × 144 = 144; L10 = 0
+#   L11 = 144 + 144 = 288
+#   L32: L13 112,400 ≤ 237,035 → no AGI limitation; L32 = 288
+#   L33 = 6,607 − 288 = 6,319 = L35 = L48 = L64 (no special credits)
+#   L71 = 6,600; L97 = 6,600 − 6,319 = 281 = L115 refund
+CASE_SINGLE_AGED_2023 = HandWorkedCase540(
+    name="single_aged_2023",
+    filing_status="single",
+    w2_wages=(112_400.0,),
+    w2_ca_withholding=(6_600.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_rate_schedule",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 1.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 288.0,
+        "f540_line_12_state_wages": 112_400.0,
+        "f540_line_13_federal_agi": 112_400.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 112_400.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 112_400.0,
+        "f540_line_18_deduction": 5_363.0,
+        "f540_line_19_taxable_income": 107_037.0,
+        "f540_line_31_tax": 6_607.0,
+        "f540_line_32_exemption_credits": 288.0,
+        "f540_line_33_tax_after_exemption_credits": 6_319.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 6_319.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 6_319.0,
+        **_zero_balance_tail(line_64=6_319.0, line_71=6_600.0),
+    },
+    taxpayer_birth_date=date(1956, 9, 3),
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_CASES_2023: tuple[HandWorkedCase540, ...] = (
+    CASE_MFJ_TWO_W2_2023,
+    CASE_HOH_2023,
+    CASE_SINGLE_AGED_2023,
+)
+
+
 __all__ = [
     # Hand-worked cases
     "CA_540_BOOKLET_2025_PROVENANCE",
@@ -2014,6 +2232,14 @@ __all__ = [
     "SENIOR_BIRTH_DATE_CUTOFF_2024",
     "senior_count_2024",
     "is_senior_2024",
+    "CA_540_BOOKLET_2023_PROVENANCE",
+    "HAND_WORKED_CASES_2023",
+    "CASE_MFJ_TWO_W2_2023",
+    "CASE_HOH_2023",
+    "CASE_SINGLE_AGED_2023",
+    "SENIOR_BIRTH_DATE_CUTOFF_2023",
+    "senior_count_2023",
+    "is_senior_2023",
     # Enums / constants
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
