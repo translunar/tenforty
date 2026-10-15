@@ -10,8 +10,8 @@ only after a precondition ``assertNotEqual`` on the two params columns.
 Where the columns coincide, the row asserts equality, and its docstring says
 the negative is unreachable for that field and year.
 
-Rows run with 2025 MFJ/HoH declared on the native grid by patch, until
-declare-2025 lands. Identities and amounts are synthetic.
+Rows run on the real grid: 2025 MFJ/HoH are declared native
+(declare-2025). Identities and amounts are synthetic.
 """
 import dataclasses
 import tempfile
@@ -19,7 +19,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tenforty import years
 from tenforty.forms import f1040_tax, f1040x, f8949, f8959, f8995, sch_1, sch_a, sch_d
 from tenforty.models import (
     AmendmentCase, FilingStatus, Form1095A, Form1095AMonth, Form1099G,
@@ -39,13 +38,6 @@ _S = FilingStatus.SINGLE
 _MFJ = FilingStatus.MARRIED_FILING_JOINTLY
 _HOH = FilingStatus.HEAD_OF_HOUSEHOLD
 _ROW_STATUSES = (_MFJ, _HOH)
-_DECLARED = {_YEAR: (_S.value, _MFJ.value, _HOH.value)}
-
-
-def _declared():
-    return mock.patch.dict(years.NATIVE_SPINE_STATUSES, _DECLARED)
-
-
 def _no_workbook():
     """Any route to the workbook fails the row: these rows are native."""
     return mock.patch.object(
@@ -65,7 +57,7 @@ class _Rows(unittest.TestCase):
         return self.params.for_status(status)
 
     def compute(self, scenario):
-        with _declared(), _no_workbook():
+        with _no_workbook():
             return self.orch.compute_federal(scenario)
 
     def config(self, status, **overrides):
@@ -130,11 +122,10 @@ class QdcgtRowTests(_Rows):
                 self.assertGreater(zero_top, single_zero_top)
                 ti = float(single_zero_top + (zero_top - single_zero_top) // 2)
                 preferential = ti - ordinary
-                with _declared():
-                    status_tax = f1040_tax.qdcgt_tax(
-                        ti, preferential, 0.0, self.params, status)
-                    single_tax = f1040_tax.qdcgt_tax(
-                        ti, preferential, 0.0, self.params, _S)
+                status_tax = f1040_tax.qdcgt_tax(
+                    ti, preferential, 0.0, self.params, status)
+                single_tax = f1040_tax.qdcgt_tax(
+                    ti, preferential, 0.0, self.params, _S)
                 self.assertEqual(
                     status_tax,
                     f1040_tax.ordinary_tax(ordinary, self.params, status))

@@ -27,7 +27,7 @@ from tenforty.models import (
 from tenforty import orchestrator as orchestrator_mod
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import federal as federal_params
-from tests.fixtures.spine_battery import aged_refusal_rows, battery_for
+from tests.fixtures.spine_battery import battery_for
 from tests.helpers import REPO_ROOT, make_simple_scenario
 
 DAY = datetime.timedelta(days=1)
@@ -285,15 +285,15 @@ class SeniorDeductionRefusalTests(unittest.TestCase):
                         orch.compute_federal(scenario)
 
     def test_battery_refusal_rows_refuse_naming_schedule_1a(self):
-        # The single row (aged_refusal_rows) and the MFJ/HoH status rows;
-        # MFJ/HoH are undeclared, so this also proves the refusal sits
-        # before the workbook path.
+        # The three aged battery rows (single in battery_for(year), MFJ/HoH
+        # in the status batteries). Neither the workbook nor the native
+        # schedules may run: the refusal sits before the native/workbook
+        # split.
         orch = _orchestrator(self)
         for year in _SENIOR_REFUSAL_YEARS:
-            rows = aged_refusal_rows(year) + [
-                (name, build) for status in (MFJ, HOH)
-                for name, build in battery_for(year, status)
-                if name.split("__", 1)[0].startswith("std_deduction_")]
+            rows = [(name, build) for status in (SINGLE, MFJ, HOH)
+                    for name, build in battery_for(year, status)
+                    if name.split("__", 1)[0].startswith("std_deduction_")]
             self.assertEqual(sorted(n for n, _ in rows), [
                 "std_deduction_aged_refused__hoh",
                 "std_deduction_aged_refused__single",
@@ -301,7 +301,10 @@ class SeniorDeductionRefusalTests(unittest.TestCase):
             for name, build in rows:
                 with self.subTest(year=year, row=name), mock.patch.object(
                         ReturnOrchestrator, "_compute_1040_via_workbook",
-                        side_effect=AssertionError("workbook ran")):
+                        side_effect=AssertionError("workbook ran")), \
+                        mock.patch.object(
+                            ReturnOrchestrator, "_compute_native_schedules",
+                            side_effect=AssertionError("spine ran")):
                     with self.assertRaisesRegex(NotImplementedError,
                                                 "Schedule 1-A"):
                         orch.compute_federal(build())
@@ -484,18 +487,19 @@ class AgedBatteryRowTests(unittest.TestCase):
                     view.standard_deduction
                     + view.additional_standard_deduction)
 
-    def test_refusal_years_keep_the_single_row_out_of_the_parity_battery(self):
+    def test_single_aged_row_is_a_refusal_row_in_refusal_years(self):
+        # declare-2025: the refusal-year single row lives in battery_for
+        # (the parity harness expects `*_refused__*` rows to refuse).
         for year in ALL_YEARS:
             names = [n for n, _ in battery_for(year)]
             with self.subTest(year=year):
                 if year in _SENIOR_REFUSAL_YEARS:
                     self.assertNotIn("std_deduction_aged__single", names)
-                    self.assertEqual(
-                        [n for n, _ in aged_refusal_rows(year)],
-                        ["std_deduction_aged_refused__single"])
+                    self.assertIn("std_deduction_aged_refused__single", names)
                 else:
                     self.assertIn("std_deduction_aged__single", names)
-                    self.assertEqual(aged_refusal_rows(year), [])
+                    self.assertNotIn(
+                        "std_deduction_aged_refused__single", names)
 
 
 class NoSilentAgePathTests(unittest.TestCase):

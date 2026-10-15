@@ -43,14 +43,13 @@ class SchCWorkbookGuardTests(unittest.TestCase):
     def _workbook_path_scenario(self):
         """A scenario that GENUINELY routes to the workbook path.
 
-        Married-filing-jointly is not a single filer, so
+        Married-filing-separately is never declared on the native grid (years.NATIVE_SPINE_STATUSES), so
         `_scenario_in_spine_scope` returns False and `_compute_1040_pipeline`
         routes to `_compute_1040_via_workbook`. The assertions in the tests
         confirm the routing predicate directly, so the branch is not assumed.
         """
         s = make_simple_scenario()
-        s.config.filing_status = "married_filing_jointly"
-        s.config.spouse_birthdate = s.config.birthdate
+        s.config.filing_status = "married_filing_separately"
         return s
 
     def test_fires_when_business_set_on_workbook_path(self):

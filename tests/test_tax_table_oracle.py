@@ -4,8 +4,8 @@ params-driven computation for every bin.
 
 Federal: the IRS builds each bin's tax as the rate schedule applied to the
 bin midpoint, rounded — so every row cross-validates BOTH the ingested CSV
-and params.ordinary_brackets. Sweep scope is the single column (the only
-status-keyed column ordinary_brackets carries so far).
+and params.ordinary_brackets. Sweep scope is every DECLARED status's column
+(years.NATIVE_SPINE_STATUSES), each against that status's own rate schedule.
 
 California: compute_ca_tax already implements the FTB bin-midpoint method;
 the sweep proves it against the actual published table, all four columns.
@@ -28,23 +28,42 @@ _CA_COLUMN_STATUS = (
 )
 
 
+# Published-table column for each declarable filing status.
+_FEDERAL_COLUMN = {
+    FilingStatus.SINGLE.value: "single",
+    FilingStatus.MARRIED_FILING_JOINTLY.value: "mfj",
+    FilingStatus.HEAD_OF_HOUSEHOLD.value: "hoh",
+}
+
+
 class FederalTableSweepTests(unittest.TestCase):
     def test_every_bin_matches_rate_schedule_at_midpoint(self):
         for year in (year_manifest.FEDERAL_YEARS
                      + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
-            params = load_federal(year).for_status(FilingStatus.SINGLE)
             rows = load_table("federal", year)
             self.assertGreater(len(rows), 1_000)
-            mismatches = []
-            for lower, upper, taxes in rows:
-                midpoint = (lower + upper) / 2
-                expected = irs_round(tax_from_schedule(midpoint, params))
-                if expected != taxes["single"]:
-                    mismatches.append((lower, upper, taxes["single"], expected))
-            self.assertEqual(
-                mismatches[:10], [],
-                f"{year}: {len(mismatches)} bins disagree "
-                f"(first shown as (lower, upper, published, computed))")
+            for status in year_manifest.NATIVE_SPINE_STATUSES[year]:
+                column = _FEDERAL_COLUMN[status]
+                params = load_federal(year).for_status(status)
+                mismatches = []
+                for lower, upper, taxes in rows:
+                    midpoint = (lower + upper) / 2
+                    expected = irs_round(tax_from_schedule(midpoint, params))
+                    if expected != taxes[column]:
+                        mismatches.append(
+                            (lower, upper, taxes[column], expected))
+                with self.subTest(year=year, status=status):
+                    self.assertEqual(
+                        mismatches[:10], [],
+                        f"{year} {status}: {len(mismatches)} bins disagree "
+                        f"(first shown as (lower, upper, published, computed))")
+
+    def test_sweep_covers_every_declared_2025_column(self):
+        # declare-2025: MFJ and HoH are swept, not only single.
+        self.assertEqual(
+            sorted(_FEDERAL_COLUMN[s]
+                   for s in year_manifest.NATIVE_SPINE_STATUSES[2025]),
+            ["hoh", "mfj", "single"])
 
     def test_lookup_returns_published_value(self):
         for year in (year_manifest.FEDERAL_YEARS

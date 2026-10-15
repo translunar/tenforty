@@ -22,7 +22,6 @@ from unittest import mock
 
 import yaml
 
-from tenforty import years
 from tenforty.models import FilingStatus, Scenario, W2
 from tenforty.orchestrator import ReturnOrchestrator, ss_withholding_maximum
 from tenforty.scenario import load_scenario
@@ -33,7 +32,6 @@ _YEAR = 2025
 _S = FilingStatus.SINGLE
 _MFJ = FilingStatus.MARRIED_FILING_JOINTLY
 _HOH = FilingStatus.HEAD_OF_HOUSEHOLD
-_DECLARED = {_YEAR: (_S.value, _MFJ.value, _HOH.value)}
 
 
 def _w2_at_maximum(year, employer, owner=None, *, ss_tax_withheld=None):
@@ -61,8 +59,7 @@ class ExcessSocialSecurityGuardTests(unittest.TestCase):
         self.maximum = ss_withholding_maximum(_YEAR)
 
     def _compute(self, scenario):
-        with mock.patch.dict(years.NATIVE_SPINE_STATUSES, _DECLARED):
-            return self.orch.compute_federal(scenario)
+        return self.orch.compute_federal(scenario)
 
     def test_couple_each_under_the_cap_computes(self):
         scenario = _scenario(_MFJ, [

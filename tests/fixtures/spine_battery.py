@@ -879,17 +879,6 @@ def _aged_row(year: int, status: FilingStatus, suffix: str
             functools.partial(build_std_deduction_aged, year, status))
 
 
-def aged_refusal_rows(year: int) -> list[tuple[str, Callable[[], Scenario]]]:
-    """The SINGLE aged refusal row for a refusal year (else []). Kept out of
-    battery_for(year) so the oracle-tier parity run, which computes every
-    single row, stays green; it migrates into battery_for at workbook-health
-    when the parity run learns to expect `*_refused__*` rows (ledgered).
-    MFJ/HoH refusal rows live in their status batteries."""
-    if not aged_rows_refuse(year):
-        return []
-    return [_aged_row(year, FilingStatus.SINGLE, "single")]
-
-
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
@@ -964,9 +953,10 @@ def battery_for(
     """The parity battery for a (year, status): (name, zero-arg builder) pairs.
 
     SINGLE: every year gets the shared _BUILDERS set; 2021 additionally gets
-    the 2021-only ARPA unemployment-compensation scenario; a year whose aged
-    rows compute gets `std_deduction_aged__single` (a refusal year's single
-    aged row is in aged_refusal_rows instead). MFJ / HoH: one
+    the 2021-only ARPA unemployment-compensation scenario; every year gets
+    the aged single row (`std_deduction_aged__single`, or
+    `std_deduction_aged_refused__single` in a refusal year -- the parity
+    harness expects that row to refuse). MFJ / HoH: one
     `<kind>__mfj` / `<kind>__hoh` row per REQUIRED_STATUS_SCENARIO_KINDS
     kind, renamed to its DECLARED_REFUSAL_CELLS kind where that cell is a
     refusal, plus the aged row (`std_deduction_both_aged__mfj` /
@@ -985,6 +975,5 @@ def battery_for(
             _aged_row(year, status, suffix)]
     builders = _BUILDERS + (_YEAR_2021_ONLY_BUILDERS if year == 2021 else [])
     rows = [(name, functools.partial(build, year)) for name, build in builders]
-    if not aged_rows_refuse(year):
-        rows.append(_aged_row(year, FilingStatus.SINGLE, "single"))
+    rows.append(_aged_row(year, FilingStatus.SINGLE, "single"))
     return rows

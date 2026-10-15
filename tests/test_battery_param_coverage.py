@@ -140,8 +140,9 @@ class PerStatusParamCoverageTests(unittest.TestCase):
                          - set(STATUS_KIND_BINDS), set())
 
     def test_gate_is_live_for_the_2025_status_battery(self):
-        # 2025 MFJ/HoH are undeclared today, so the declared-grid test above
-        # is vacuous for them; prove the gate over their actual rows.
+        # Pinned explicitly (declared since declare-2025, so the declared-grid
+        # test above covers them too): the gate is live over their actual
+        # rows, and dropping a kind's row is caught.
         grid = {2025: (FilingStatus.MARRIED_FILING_JOINTLY.value,
                        FilingStatus.HEAD_OF_HOUSEHOLD.value)}
         self.assertEqual(per_status_coverage_gaps(grid), [])
