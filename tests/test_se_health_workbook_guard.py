@@ -48,6 +48,7 @@ class SeHealthWorkbookGuardTests(unittest.TestCase):
         """
         s = make_simple_scenario()
         s.config.filing_status = "married_filing_jointly"
+        s.config.spouse_birthdate = s.config.birthdate
         return s
 
     def test_fires_when_deduction_set_on_workbook_path(self):
