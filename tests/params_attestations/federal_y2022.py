@@ -24,18 +24,51 @@ ATTESTED: dict[str, object] = {
         "qualifying_widow": 25900,   # QSS shares the MFJ / "Surviving Spouses" row per §3.15(1)
     },
     "nonitemizer_charitable_cap": None,  # Provision expired after 2021 (see NOT_APPLICABLE)
-    "ordinary_brackets": {"single": (
-        # Rev. Proc. 2021-45 §3.01 TABLE 3 - Section 1(j)(2)(C) - Unmarried Individuals
-        # (other than Surviving Spouses and Heads of Households) — the single schedule
-        (10275, 0.10),     # Not over $10,275
-        (41775, 0.12),     # Over $10,275 but not over $41,775
-        (89075, 0.22),     # Over $41,775 but not over $89,075
-        (170050, 0.24),    # Over $89,075 but not over $170,050
-        (215950, 0.32),    # Over $170,050 but not over $215,950
-        (539900, 0.35),    # Over $215,950 but not over $539,900
-        (math.inf, 0.37),  # Over $539,900
-    )},
+    # MFJ (§3.01 Table 1) and HoH (§3.01 Table 2) added 2026-10-15 by dual
+    # transcription (A: worktree params fill; B: isolated scratch, pasted here
+    # by team-lead; mechanical adjudication: full agreement, brackets 7/7 both
+    # statuses). Both sides pinned identical editions:
+    #   rp-21-45.pdf  sha256 405535647b6287103f5392258d4342cdb70535bf07ff05d89eebc71768083627
+    #   i1040gi--2022.pdf  sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
+    # No internal source inconsistency (base-tax arithmetic checked by both
+    # transcribers independently).
+    "ordinary_brackets": {
+        "single": (
+            # Rev. Proc. 2021-45 §3.01 TABLE 3 - Section 1(j)(2)(C) - Unmarried Individuals
+            # (other than Surviving Spouses and Heads of Households) — the single schedule
+            (10275, 0.10),     # Not over $10,275
+            (41775, 0.12),     # Over $10,275 but not over $41,775
+            (89075, 0.22),     # Over $41,775 but not over $89,075
+            (170050, 0.24),    # Over $89,075 but not over $170,050
+            (215950, 0.32),    # Over $170,050 but not over $215,950
+            (539900, 0.35),    # Over $215,950 but not over $539,900
+            (math.inf, 0.37),  # Over $539,900
+        ),
+        "married_filing_jointly": (
+            (20550, 0.1),
+            (83550, 0.12),
+            (178150, 0.22),
+            (340100, 0.24),
+            (431900, 0.32),
+            (647850, 0.35),
+            (math.inf, 0.37),
+        ),
+        "head_of_household": (
+            (14650, 0.1),
+            (55900, 0.12),
+            (89050, 0.22),
+            (170050, 0.24),
+            (215950, 0.32),
+            (539900, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
     "qdcgt_breakpoints": {
+        # MFJ and HoH RE-VERIFIED 2026-10-15 by fresh dual transcription from
+        # the pinned editions cited at ordinary_brackets (R-attest-reuse):
+        # fresh B == committed params == this attestation on both statuses;
+        # citation upgraded, values unchanged. (This year's §3.03 is prose,
+        # not a table; it maps one-to-one onto the pair shape.)
         # Rev. Proc. 2021-45 §3.03 Maximum Capital Gains Rate (§1(h)):
         # (Maximum Zero Rate Amount, Maximum 15-percent Rate Amount)
         "single": (41675, 459750),            # "any other individual (other than an estate or trust)"
