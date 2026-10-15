@@ -208,7 +208,8 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
         # return UNDER the threshold does go to the workbook.
         scn = _scenario(rentals=[_rental_loss(1_000)])
         mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_filing_jointly"))
+            scn.config, filing_status="married_filing_jointly",
+            spouse_birthdate=scn.config.birthdate))
         with mock.patch.object(
                 self.orch, "_compute_1040_via_workbook",
                 return_value={"taxable_income": 0}) as workbook:

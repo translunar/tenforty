@@ -399,6 +399,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
                                acknowledges_qbi_below_threshold=False):
         scenario = make_k1_scenario()
         scenario.config.filing_status = FilingStatus.MARRIED_FILING_JOINTLY
+        scenario.config.spouse_birthdate = scenario.config.birthdate
         # Set EXPLICITLY, never inherited: `make_k1_scenario()` (tests/
         # helpers.py) turns every K-1 gate attestation ON, including
         # `acknowledges_qbi_below_threshold`, so the fixture default here is
