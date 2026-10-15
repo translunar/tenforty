@@ -292,6 +292,27 @@ def form_1040_age_box_values(
     return f1040_spine.age_box_values(config, aged_born_before)
 
 
+def _refuse_unmapped_w2_inputs(flat_inputs: dict, year: int) -> None:
+    """FAIL-CLOSED: every flattened W-2 key must have a cell in the year's
+    workbook map. The engine skips unmapped input keys, so an unmapped W-2
+    (a seventh employer, or -- outside the years whose spouse block is
+    mapped -- any spouse W-2 or second employer) would silently drop out of
+    the workbook's wage and withholding totals: a partial total presented
+    as the whole. Refuse instead, naming the keys."""
+    mapped = F1040.INPUTS.get(year, {})
+    unmapped = sorted(k for k in flat_inputs
+                      if k.startswith("w2_") and k not in mapped)
+    if unmapped:
+        raise NotImplementedError(
+            f"This return's W-2s cannot all be written to the tax year "
+            f"{year} 1040 workbook: no workbook cell is mapped for "
+            f"{', '.join(unmapped)}. The workbook holds a limited number of "
+            f"employers per person (and tenforty maps the spouse's W-2 "
+            f"block only for some years), so these W-2s would silently drop "
+            f"out of the wage and withholding totals; the return is refused "
+            f"rather than computed on a partial total.")
+
+
 def _format_mmddyyyy(d) -> str:
     """A date as the IRS printed-form convention MM/DD/YYYY (2020-01-01 ->
     "01/01/2020"), for the 1120-S header items A and E."""
@@ -1582,6 +1603,7 @@ class ReturnOrchestrator:
             )
 
         flat_inputs = flatten_scenario(effective_scenario)
+        _refuse_unmapped_w2_inputs(flat_inputs, year)
         raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,

@@ -1247,6 +1247,49 @@ for _key, _probe in WORKBOOK_PROBES_2025.items():
     F1040.SHEET_MAP[2025][_key] = _probe.sheet
 del _key, _probe
 
+# --- W-2 employers 2..6 and the spouse's W-2 block (2025) -------------------
+#
+# The 'W-2s' sheet holds six employers per person in columns C..H: the
+# taxpayer's block, and the SPOUSE's block -- same row labels, captioned with
+# the spouse's name (Name_1st_Sp) -- at a fixed row offset below it. Before
+# this mapping only the taxpayer's employer #1 (column C) was written, so a
+# spouse's W-2 or a second employer's never reached the sheet: the engine
+# skips unmapped input keys, and the workbook computed a partial total.
+# The flattener numbers W-2s per owner (`w2_<field>_<n>`,
+# `w2_spouse_<field>_<n>`); every taxpayer field gets its spouse twin.
+# 2025 only this round (team-lead ruling): other years map employer #1 alone,
+# and the orchestrator REFUSES any W-2 key a year does not map
+# (`_refuse_unmapped_w2_inputs`). Offsets verified from the workbook labels
+# (2021 +29, 2022-2024 +31, 2025 +37); pinned by
+# tests/test_w2_workbook_mapping.py.
+_W2_FIELDS: tuple[str, ...] = (
+    "wages", "fed_withheld", "ss_wages", "ss_withheld", "medicare_wages",
+    "medicare_withheld", "state_wages", "state_withheld",
+)
+_W2_EMPLOYER_COLUMNS = "CDEFGH"
+_W2_SPOUSE_ROW_OFFSET = {2025: 37}
+
+
+def _w2_block_inputs(year: int) -> dict[str, str]:
+    """Taxpayer employers 1..6 and spouse employers 1..6, every field, from
+    the year's employer-#1 anchors (`w2_<field>_1`) and spouse row offset."""
+    out: dict[str, str] = {}
+    offset = _W2_SPOUSE_ROW_OFFSET[year]
+    for field in _W2_FIELDS:
+        anchor = F1040.INPUTS[year][f"w2_{field}_1"]
+        row = int(anchor[1:])
+        for n, column in enumerate(_W2_EMPLOYER_COLUMNS, start=1):
+            out[f"w2_{field}_{n}"] = f"{column}{row}"
+            out[f"w2_spouse_{field}_{n}"] = f"{column}{row + offset}"
+    return out
+
+
+for _year in _W2_SPOUSE_ROW_OFFSET:
+    for _key, _address in _w2_block_inputs(_year).items():
+        F1040.INPUTS[_year][_key] = _address
+        F1040.SHEET_MAP[_year][_key] = "W-2s"
+del _year, _key, _address
+
 # --- Federal 2023 workbook wiring -------------------------------------------
 # 2023 inherits the 2024 XLS cell/named-range mapping: the 2024 workbook carries
 # the pre-2025 layout (the W-2 sheet's 6-fewer-rows-before-state-fields shift and
