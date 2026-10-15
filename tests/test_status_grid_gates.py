@@ -165,12 +165,17 @@ def _status_keyed_fields(params_by_year) -> set[str]:
 
 
 def _high_income(year: int, status: FilingStatus) -> Scenario:
-    """Synthetic wage earner far above every EIC ceiling."""
+    """Synthetic wage earner far above every EIC ceiling. A joint return
+    carries the taxpayer's own birthdate as the spouse's (the age test
+    refuses a joint return without one)."""
+    birthdate = "1980-01-01"
+    joint = status is FilingStatus.MARRIED_FILING_JOINTLY
     return Scenario(
         config=TaxReturnConfig(
             year=year,
             filing_status=status,
-            birthdate="1980-01-01",
+            birthdate=birthdate,
+            spouse_birthdate=birthdate if joint else "",
             state="TX",
             first_name="Example",
             last_name="Filer",
@@ -415,7 +420,9 @@ class BatteryCompletenessGateTests(unittest.TestCase):
         for status, suffix in ((FilingStatus.MARRIED_FILING_JOINTLY, "mfj"),
                                (FilingStatus.HEAD_OF_HOUSEHOLD, "hoh")):
             rows = battery_for(2025, status)
-            self.assertEqual(len(rows), len(REQUIRED_STATUS_SCENARIO_KINDS))
+            # The six kinds plus the aged row (age-65-spine).
+            self.assertEqual(len(rows),
+                             len(REQUIRED_STATUS_SCENARIO_KINDS) + 1)
             for name, build in rows:
                 with self.subTest(row=name):
                     self.assertTrue(name.endswith(f"__{suffix}"))
@@ -448,7 +455,11 @@ class BatteryCompletenessGateTests(unittest.TestCase):
                                FilingStatus.HEAD_OF_HOUSEHOLD)
                 for name, build in battery_for(2025, status)
                 if name.split("__", 1)[0] not in DECLARED_REFUSAL_CELLS.values()]
-        self.assertEqual(len(rows), 2 * len(REQUIRED_STATUS_SCENARIO_KINDS) - 1)
+        # Six kinds plus the aged row per status, less HoH's PTC refusal
+        # row. The 2025 aged rows refuse at compute (Schedule 1-A), but
+        # route native like any computing row.
+        self.assertEqual(len(rows),
+                         2 * (len(REQUIRED_STATUS_SCENARIO_KINDS) + 1) - 1)
         for name, build in rows:
             with self.subTest(row=name):
                 scenario = build()

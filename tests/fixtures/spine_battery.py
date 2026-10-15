@@ -9,9 +9,11 @@ adding a year adds zero code here.
 
 All identities and amounts are fully synthetic — no real personal data.
 """
+import datetime
 import functools
 from collections.abc import Callable
 
+from tenforty.forms.f1040_spine import standard_deduction_for
 from tenforty.forms.f8962 import tax_family_size
 from tenforty.models import (
     FilingStatus,
@@ -28,6 +30,7 @@ from tenforty.models import (
     W2,
 )
 from tenforty.params.federal import load as load_params
+from tenforty.orchestrator import _SCHEDULE_1A_FIRST_YEAR
 from tenforty.params import f8962 as f8962_params
 from tests.helpers import scope_out_attestation_defaults
 
@@ -831,6 +834,62 @@ def build_ptc_reconciliation(year: int, status: FilingStatus) -> Scenario:
     )
 
 
+def aged_rows_refuse(year: int) -> bool:
+    """True for a year whose aged rows are REFUSAL rows: ruling R-senior-1a
+    (Schedule 1-A, the seniors deduction, is unmodeled)."""
+    return year >= _SCHEDULE_1A_FIRST_YEAR
+
+
+def build_std_deduction_aged(year: int, status: FilingStatus) -> Scenario:
+    """Aged filer(s): the taxpayer (and, on MFJ, the spouse) born the day
+    before the year's ``aged_born_before`` cutoff, so every eligible Form
+    1040 age box is checked. Wages put taxable income at the midpoint of
+    the status's 22% bracket AFTER the aged standard deduction (the
+    wages_only shape), clearing the EIC gate and every Schedule R limit.
+    In a refusal year (``aged_rows_refuse``) the row refuses for Schedule
+    1-A before any of that is computed."""
+    born = (load_params(year).aged_born_before
+            - datetime.timedelta(days=1)).isoformat()
+    spouse = ({"spouse_birthdate": born}
+              if status is FilingStatus.MARRIED_FILING_JOINTLY else {})
+    config = _battery_config(year, status, **spouse)
+    config.birthdate = born
+    view = _status_view(year, status)
+    lo, hi = view.ordinary_brackets[1][0], view.ordinary_brackets[2][0]
+    wages = float(standard_deduction_for(config, load_params(year))
+                  + round((lo + hi) / 2))
+    return Scenario(
+        config=config,
+        w2s=_status_w2s(year, status, "Synthetic Employer Y", wages),
+    )
+
+
+# Aged-row kind per status (MFJ: both spouses aged).
+_AGED_KIND: dict[FilingStatus, str] = {
+    FilingStatus.SINGLE: "std_deduction_aged",
+    FilingStatus.HEAD_OF_HOUSEHOLD: "std_deduction_aged",
+    FilingStatus.MARRIED_FILING_JOINTLY: "std_deduction_both_aged",
+}
+
+
+def _aged_row(year: int, status: FilingStatus, suffix: str
+              ) -> tuple[str, Callable[[], Scenario]]:
+    kind = _AGED_KIND[status] + ("_refused" if aged_rows_refuse(year) else "")
+    return (f"{kind}__{suffix}",
+            functools.partial(build_std_deduction_aged, year, status))
+
+
+def aged_refusal_rows(year: int) -> list[tuple[str, Callable[[], Scenario]]]:
+    """The SINGLE aged refusal row for a refusal year (else []). Kept out of
+    battery_for(year) so the oracle-tier parity run, which computes every
+    single row, stays green; it migrates into battery_for at workbook-health
+    when the parity run learns to expect `*_refused__*` rows (ledgered).
+    MFJ/HoH refusal rows live in their status batteries."""
+    if not aged_rows_refuse(year):
+        return []
+    return [_aged_row(year, FilingStatus.SINGLE, "single")]
+
+
 _BUILDERS: list[tuple[str, Callable[[int], Scenario]]] = [
     ("canonical_wage_investment_rental", build_canonical_wage_investment_rental),
     ("qdcgt_15_to_20_boundary", build_qdcgt_15_to_20_boundary),
@@ -905,10 +964,13 @@ def battery_for(
     """The parity battery for a (year, status): (name, zero-arg builder) pairs.
 
     SINGLE: every year gets the shared _BUILDERS set; 2021 additionally gets
-    the 2021-only ARPA unemployment-compensation scenario. MFJ / HoH: one
+    the 2021-only ARPA unemployment-compensation scenario; a year whose aged
+    rows compute gets `std_deduction_aged__single` (a refusal year's single
+    aged row is in aged_refusal_rows instead). MFJ / HoH: one
     `<kind>__mfj` / `<kind>__hoh` row per REQUIRED_STATUS_SCENARIO_KINDS
     kind, renamed to its DECLARED_REFUSAL_CELLS kind where that cell is a
-    refusal. Rows exist whether or not the (year, status) is declared in
+    refusal, plus the aged row (`std_deduction_both_aged__mfj` /
+    `std_deduction_aged__hoh`, `_refused` in a refusal year). Rows exist whether or not the (year, status) is declared in
     years.NATIVE_SPINE_STATUSES; building one for a year whose params lack
     the status's column raises UnsupportedStatusError. Other statuses: [].
     """
@@ -919,6 +981,10 @@ def battery_for(
         return [
             (f"{DECLARED_REFUSAL_CELLS.get((status.value, kind), kind)}"
              f"__{suffix}", functools.partial(build, year, status))
-            for kind, build in _STATUS_KIND_BUILDERS]
+            for kind, build in _STATUS_KIND_BUILDERS] + [
+            _aged_row(year, status, suffix)]
     builders = _BUILDERS + (_YEAR_2021_ONLY_BUILDERS if year == 2021 else [])
-    return [(name, functools.partial(build, year)) for name, build in builders]
+    rows = [(name, functools.partial(build, year)) for name, build in builders]
+    if not aged_rows_refuse(year):
+        rows.append(_aged_row(year, FilingStatus.SINGLE, "single"))
+    return rows
