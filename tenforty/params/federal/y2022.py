@@ -47,7 +47,36 @@ PARAMS = FederalParams(
         (215_950.0, 0.32),
         (539_900.0, 0.35),
         (math.inf, 0.37),
-    )},
+    ),
+        # Rev. Proc. 2021-45 §3.01 Table 1 (MFJ / surviving spouses),
+        # cross-checked vs 2022 Instructions for Form 1040 Schedule Y-1 and
+        # Tax Computation Worksheet Section B:
+        # https://www.irs.gov/pub/irs-drop/rp-21-45.pdf
+        # sha256 405535647b6287103f5392258d4342cdb70535bf07ff05d89eebc71768083627
+        # https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf
+        # sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
+        _MFJ: (
+            (20_550.0, 0.10),
+            (83_550.0, 0.12),
+            (178_150.0, 0.22),
+            (340_100.0, 0.24),
+            (431_900.0, 0.32),
+            (647_850.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        # Rev. Proc. 2021-45 §3.01 Table 2 (heads of households),
+        # cross-checked vs 2022 Instructions for Form 1040 Schedule Z and
+        # Tax Computation Worksheet Section D (same two files/sha256 as above).
+        _HOH: (
+            (14_650.0, 0.10),
+            (55_900.0, 0.12),
+            (89_050.0, 0.22),
+            (170_050.0, 0.24),
+            (215_950.0, 0.32),
+            (539_900.0, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
     # Rev. Proc. 2021-45 §3.03 (Maximum Capital Gains Rate), each value is
     # (Maximum Zero Rate Amount, Maximum 15% Rate Amount). "Joint return or
     # surviving spouse" = MFJ & QSS ($83,350 / $517,200); MFS ($41,675 /
