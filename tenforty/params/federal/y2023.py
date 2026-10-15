@@ -40,7 +40,36 @@ PARAMS = FederalParams(
         (231_250.0, 0.32),
         (578_125.0, 0.35),
         (math.inf, 0.37),
-    )},
+    ),
+        # Rev. Proc. 2022-38 §3.01 Table 1 (MFJ / surviving spouses),
+        # cross-checked vs 2023 Instructions for Form 1040 Schedule Y-1 and
+        # Tax Computation Worksheet Section B:
+        # https://www.irs.gov/pub/irs-drop/rp-22-38.pdf
+        # sha256 6c20f8a6c9a3bdf4251fcf50dbf2e2382abc8cbeb1e5e2d3eecdc38b2cbf6bbf
+        # https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf
+        # sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
+        _MFJ: (
+            (22_000.0, 0.10),
+            (89_450.0, 0.12),
+            (190_750.0, 0.22),
+            (364_200.0, 0.24),
+            (462_500.0, 0.32),
+            (693_750.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        # Rev. Proc. 2022-38 §3.01 Table 2 (heads of households),
+        # cross-checked vs 2023 Instructions for Form 1040 Schedule Z and
+        # Tax Computation Worksheet Section D (same two files/sha256 as above).
+        _HOH: (
+            (15_700.0, 0.10),
+            (59_850.0, 0.12),
+            (95_350.0, 0.22),
+            (182_100.0, 0.24),
+            (231_250.0, 0.32),
+            (578_100.0, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
     # Rev. Proc. 2022-38 §3.03 (Maximum Capital Gains Rate), each value is
     # (Maximum Zero Rate Amount, Maximum 15% Rate Amount). "Married
     # Individuals Filing Joint Returns and Surviving Spouse" row = MFJ & QSS
