@@ -295,8 +295,8 @@ def workbook_refusal(harvested: dict) -> str | None:
 # --- Numeric-cell probes ------------------------------------------------------
 #
 # The registries (cells, sheets, defined names, and why each is there) live in
-# mappings/f1040.py::WORKBOOK_PROBES_2025 / WORKBOOK_PROBES_2024 (keys are
-# disjoint: 2024's carry `y2024`). A probe's healthy value is a number
+# mappings/f1040.py::WORKBOOK_PROBES_2025 / _2024 / _2023 (keys are disjoint:
+# the back years' carry `y2024` / `y2023`). A probe's healthy value is a number
 # or blank; NON-EMPTY TEXT OR AN ERROR MARKER means the sheet put a diagnostic
 # where a number belongs, which a downstream SUM/MIN would silently skip (the
 # partial-total species). There is deliberately no string allowlist: for a
@@ -324,9 +324,10 @@ def workbook_probe_refusal(harvested: dict) -> str | None:
     `workbook_refusal`). Passes when no probe key is present.
     """
     from tenforty.mappings.f1040 import (
-        WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
+        WORKBOOK_PROBES_2023, WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
     )
-    registry = {**WORKBOOK_PROBES_2025, **WORKBOOK_PROBES_2024}
+    registry = {**WORKBOOK_PROBES_2025, **WORKBOOK_PROBES_2024,
+                **WORKBOOK_PROBES_2023}
     for key, value in harvested.items():
         if not key.startswith(WORKBOOK_PROBE_PREFIX):
             continue
