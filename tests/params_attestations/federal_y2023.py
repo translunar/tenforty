@@ -89,16 +89,49 @@ ATTESTED: dict[str, object] = {
     #   182,100 - 231,250          -> 32%
     #   231,250 - 578,125          -> 35%
     #   over 578,125               -> 37%
-    "ordinary_brackets": {"single": (
-        (11000, 0.10),
-        (44725, 0.12),
-        (95375, 0.22),
-        (182100, 0.24),
-        (231250, 0.32),
-        (578125, 0.35),
-        (math.inf, 0.37),
-    )},
+    # MFJ (§3.01 Table 1) and HoH (§3.01 Table 2) added 2026-10-15 by dual
+    # transcription (A: worktree params fill; B: isolated scratch, pasted here
+    # by team-lead; mechanical adjudication: full agreement, brackets 7/7 both
+    # statuses). Both sides pinned identical editions:
+    #   rp-22-38.pdf  sha256 6c20f8a6c9a3bdf4251fcf50dbf2e2382abc8cbeb1e5e2d3eecdc38b2cbf6bbf
+    #   i1040gi--2023.pdf  sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
+    # No internal source inconsistency this year (each row's base tax equals
+    # the tax accumulated through the lower brackets; both transcribers and
+    # team-lead checked).
+    "ordinary_brackets": {
+        "single": (
+            (11000, 0.10),
+            (44725, 0.12),
+            (95375, 0.22),
+            (182100, 0.24),
+            (231250, 0.32),
+            (578125, 0.35),
+            (math.inf, 0.37),
+        ),
+        "married_filing_jointly": (
+            (22000, 0.1),
+            (89450, 0.12),
+            (190750, 0.22),
+            (364200, 0.24),
+            (462500, 0.32),
+            (693750, 0.35),
+            (math.inf, 0.37),
+        ),
+        "head_of_household": (
+            (15700, 0.1),
+            (59850, 0.12),
+            (95350, 0.22),
+            (182100, 0.24),
+            (231250, 0.32),
+            (578100, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
 
+    # MFJ and HoH RE-VERIFIED 2026-10-15 by fresh dual transcription from the
+    # pinned editions cited at ordinary_brackets (R-attest-reuse): fresh B ==
+    # committed params == this attestation on both statuses; citation
+    # upgraded, values unchanged.
     # IRS Rev. Proc. 2022-38 §3.03 "Maximum Capital Gains Rate", table of
     # "Maximum Zero Rate Amount" / "Maximum 15% Rate Amount" by filing status:
     #   Married Filing Joint Returns and Surviving Spouse: 89,250 / 553,850
