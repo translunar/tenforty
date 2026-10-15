@@ -45,6 +45,7 @@ Output keys match ``F1040.OUTPUTS[2025]`` exactly so PDF mappings and
 CA consumers are unaffected.
 """
 
+import datetime
 from dataclasses import dataclass
 
 from tenforty import years as year_manifest
@@ -56,6 +57,91 @@ from tenforty.models import (
 from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
+
+
+class AgedParamsPendingError(NotImplementedError):
+    """A scalar age param (``aged_born_before``) is pending transcription.
+
+    Subclasses NotImplementedError so the fail-closed refusal handling
+    treats it as an unsupported-scope refusal, never a base-deduction
+    fallback."""
+
+    def __init__(self, field: str, year: int) -> None:
+        self.field = field
+        self.year = year
+        super().__init__(
+            f"Federal params field {field!r} is pending transcription for "
+            f"tax year {year}; the Form 1040 aged standard deduction cannot "
+            f"be figured, so the return is refused rather than computed "
+            f"with the base standard deduction")
+
+
+def age_box_values(config: TaxReturnConfig,
+                   aged_born_before: datetime.date) -> dict[str, bool]:
+    """The Form 1040 age checkboxes ("You: Were born before ..." / "Spouse:
+    Was born before ..."), as a pure decision over ``config``.
+
+    ``aged_born_before`` is the year's exclusive cutoff date: born strictly
+    before it meets the condition. The taxpayer box follows ``birthdate``;
+    the spouse box is set only on a joint return and follows
+    ``spouse_birthdate``. A joint return without a spouse birthdate is
+    refused (the loader requires it; a config built around the loader must
+    not count an aged spouse as not aged by default).
+
+    The one implementation of the age test: the checkbox emit
+    (``orchestrator.form_1040_age_box_values``) and the deduction count
+    (``age_boxes``) both read it.
+    """
+    def born_before(field: str) -> bool:
+        value = getattr(config, field)
+        try:
+            born = datetime.date.fromisoformat(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Form 1040 age checkboxes need `{field}` as an ISO "
+                f"YYYY-MM-DD date; got {value!r}.") from None
+        return born < aged_born_before
+
+    joint = parse_filing_status(config.filing_status) is (
+        FilingStatus.MARRIED_FILING_JOINTLY)
+    if joint and not config.spouse_birthdate:
+        raise ValueError(
+            "Form 1040 age checkboxes for a married_filing_jointly return "
+            "need `spouse_birthdate` (ISO YYYY-MM-DD), which is blank in the "
+            "scenario config.")
+    return {
+        "age_taxpayer_born_before": born_before("birthdate"),
+        "age_spouse_born_before": joint and born_before("spouse_birthdate"),
+    }
+
+
+def age_boxes(config: TaxReturnConfig, params: FederalParams) -> int:
+    """Number of Form 1040 "born before" boxes checked: the taxpayer, plus
+    the spouse on married filing jointly only, each when born strictly
+    before ``params.aged_born_before``. Refuses by name while the cutoff is
+    pending."""
+    cutoff = params.aged_born_before
+    if cutoff is None:
+        raise AgedParamsPendingError("aged_born_before", params.year)
+    return sum(age_box_values(config, cutoff).values())
+
+
+def standard_deduction_for(config: TaxReturnConfig,
+                           params: FederalParams) -> int:
+    """Form 1040 line 12 standard deduction: the filing status's column plus
+    ``age_boxes`` x the status's ``additional_standard_deduction``.
+
+    The ONLY reader of the federal ``standard_deduction`` column (pinned by
+    tests/test_age_condition.py::StandardDeductionChokepointTests), so no
+    consumer can read the base amount for an aged filer. Both age inputs
+    are read unconditionally: either one pending refuses by name
+    (AgedParamsPendingError / UnsupportedStatusError, both
+    NotImplementedError), fail-closed even for a filer who is not aged.
+    """
+    view = params.for_status(config.filing_status)
+    base = view.standard_deduction
+    per_box = view.additional_standard_deduction
+    return base + age_boxes(config, params) * per_box
 
 
 @dataclass(frozen=True)
@@ -275,8 +361,7 @@ def compute_income_preamble(
     # with the below-the-line QBI deduction) and feeds those forms the
     # ACTUAL deduction via resolve_deductions. Kept only for its one
     # remaining test consumer (tests/test_pdf_1040_mapping.py).
-    std_deduction = params.for_status(
-        scenario.config.filing_status).standard_deduction
+    std_deduction = standard_deduction_for(scenario.config, params)
     taxable_income_before_qbi_std = max(0, irs_round(agi - std_deduction))
 
     return IncomePreamble(
@@ -331,8 +416,7 @@ def resolve_deductions(
     (CARES §2204 / CAA 2021 §212) with the same refuse-don't-cap guards as
     ``compute_spine``. ``taxable_income_before_qbi`` is floored at 0.
     """
-    std_deduction = params.for_status(
-        scenario.config.filing_status).standard_deduction
+    std_deduction = standard_deduction_for(scenario.config, params)
     schedule_a_total = sch_a.get("sch_a_line_17_total", 0)
 
     if schedule_a_total >= std_deduction:

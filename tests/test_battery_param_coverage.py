@@ -33,6 +33,12 @@ EXERCISED: dict[str, tuple[str, ...]] = {
     # raises nothing. The scenario drives a $50,000 net capital loss, far
     # past the cap, so the limitation binds by a wide margin.
     "capital_loss_limit": ("capital_loss_over_cap",),
+    # The aged single row (2021-2024; 2025's is a Schedule 1-A refusal row,
+    # R-senior-1a): taxpayer born the day before the cutoff, so both the
+    # cutoff and the per-box amount bind. The cutoff's boundary pair is
+    # driven in tests/test_age_condition.py::AgeConditionBoundaryTests.
+    "additional_standard_deduction": ("std_deduction_aged__single",),
+    "aged_born_before": ("std_deduction_aged__single",),
 }
 
 # field -> reason it is consciously NOT exercised. Shrinking this map is
@@ -51,8 +57,6 @@ WAIVED: dict[str, str] = {
         "scenario over it would refuse by design, and battery scenarios "
         "must compute. Driven at its boundary (at / one over, all three "
         "loss lanes) in tests/test_excess_business_loss_guard.py",
-    "additional_standard_deduction": "pending transcription — age-65-params",
-    "aged_born_before": "pending transcription — age-65-params",
 }
 
 
@@ -71,6 +75,14 @@ STATUS_KIND_BINDS: dict[str, tuple[str, ...]] = {
     "ptc_reconciliation": (),
     # R-hoh-ptc refusal row: refuses before any params are read.
     "ptc_reconciliation_refused": (),
+    # Aged rows bind the base column only: additional_standard_deduction
+    # stays waived below (see its reason).
+    "std_deduction_aged": ("standard_deduction",),
+    "std_deduction_both_aged": ("standard_deduction",),
+    # R-senior-1a refusal rows (Schedule 1-A): refuse before the deduction
+    # is computed, so they bind nothing.
+    "std_deduction_aged_refused": (),
+    "std_deduction_both_aged_refused": (),
 }
 
 PER_STATUS_WAIVED: dict[str, str] = {
@@ -85,7 +97,13 @@ PER_STATUS_WAIVED: dict[str, str] = {
     "excess_business_loss_threshold":
         "a fail-closed refusal trip-wire, not a computed value (see WAIVED); "
         "battery rows must compute",
-    "additional_standard_deduction": "pending transcription — age-65-params",
+    "additional_standard_deduction":
+        "2025 aged rows are Schedule 1-A refusal rows (R-senior-1a), which "
+        "refuse before reading it; the per-box arithmetic is unit-tested in "
+        "tests/test_age_condition.py::AgedStandardDeductionTests; 2021-2024 "
+        "are bound by std_deduction_aged/std_deduction_both_aged once "
+        "back-year MFJ/HoH declare (the waiver flips at the first back-year "
+        "status declaration)",
 }
 
 

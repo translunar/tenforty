@@ -41,11 +41,15 @@ _EXPECTED_NAMES = [
 # (the 2021-only CARES/CAA line-12b non-itemizer charitable deduction);
 # 2022-2025 do not — both scenarios are meaningless outside 2021 and
 # battery_for() must not emit them for any other year.
+# The aged single row computes 2021-2024; 2025's is a Schedule 1-A refusal
+# row (R-senior-1a), kept out of battery_for(2025) (aged_refusal_rows).
+_AGED = ["std_deduction_aged__single"]
 _EXPECTED_NAMES_BY_YEAR = {
-    2021: _EXPECTED_NAMES + ["ptc_2021_ui_flat133", "charitable_nonitemizer_2021"],
-    2022: _EXPECTED_NAMES,
-    2023: _EXPECTED_NAMES,
-    2024: _EXPECTED_NAMES,
+    2021: _EXPECTED_NAMES + ["ptc_2021_ui_flat133",
+                             "charitable_nonitemizer_2021"] + _AGED,
+    2022: _EXPECTED_NAMES + _AGED,
+    2023: _EXPECTED_NAMES + _AGED,
+    2024: _EXPECTED_NAMES + _AGED,
     2025: _EXPECTED_NAMES,
 }
 
@@ -336,8 +340,16 @@ class StatusBatteryShapeTests(unittest.TestCase):
                     (cfg.spouse_first_name, cfg.spouse_last_name,
                      cfg.spouse_ssn),
                     ("Example", "Spouse", "000-00-0002"))
-                # Younger than the taxpayer, whom no age condition reaches.
-                self.assertGreater(cfg.spouse_birthdate, cfg.birthdate)
+                # Non-aged rows: the spouse is younger than the taxpayer,
+                # whom no age condition reaches. The aged row checks both
+                # boxes (both born the day before the cutoff).
+                if "aged" in name.split("__", 1)[0]:
+                    self.assertEqual(cfg.spouse_birthdate, cfg.birthdate)
+                    self.assertLess(
+                        cfg.spouse_birthdate,
+                        params.aged_born_before.isoformat())
+                else:
+                    self.assertGreater(cfg.spouse_birthdate, cfg.birthdate)
                 self.assertEqual(
                     sorted(w.owner for w in scenario.w2s),
                     ["spouse", "taxpayer"])

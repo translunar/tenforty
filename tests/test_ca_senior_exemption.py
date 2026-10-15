@@ -191,15 +191,19 @@ class CaSeniorExemptionTests(unittest.TestCase):
         for year in CA_YEARS:
             params = ca_params.load(year)
             with self.subTest(year=year):
-                scn = make_ca_scenario(year)
-                scn = dataclasses.replace(scn, config=dataclasses.replace(
-                    scn.config, birthdate=_aged(year)))
+                young = make_ca_scenario(year)
+                scn = dataclasses.replace(young, config=dataclasses.replace(
+                    young.config, birthdate=_aged(year)))
                 work = Path(tempfile.mkdtemp())
                 orch = ReturnOrchestrator(
                     spreadsheets_dir=REPO_ROOT / "spreadsheets",
                     work_dir=work / "work")
+                # Federal results from the non-aged twin: an aged federal
+                # return refuses from TY2025 (Schedule 1-A, ruling
+                # R-senior-1a), and the CA core reads the senior count from
+                # `scn`, not from the federal results.
                 results = orch._compute_ca_results(
-                    scn, CA540Return(), orch.compute_federal(scn))
+                    scn, CA540Return(), orch.compute_federal(young))
                 self.assertEqual(
                     results["f540_exemption_credit"],
                     params.for_status(FilingStatus.SINGLE).exemption_credit

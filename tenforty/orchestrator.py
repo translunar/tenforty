@@ -253,39 +253,43 @@ def refuse_blank_mfj_spouse_identity(config, form: str) -> None:
         )
 
 
+# First tax year with the Schedule 1-A seniors deduction, which tenforty
+# does not model: aged returns from this year on are refused (ruling
+# R-senior-1a, ruled 2026-10-14; see the native-filing-statuses ledger).
+_SCHEDULE_1A_FIRST_YEAR = 2025
+
+
+# Schedule R (credit for the elderly or the disabled) AGI limits, keyed by
+# (filing status, Form 1040 age boxes checked): at or above these AGIs the
+# credit cannot be taken. GUARD-ONLY constants (never computed with; the
+# credit is unmodeled): the aged native filer at or under the limit is
+# refused. Source: Schedule R instructions, Table 1, team-lead-verified
+# 2026-10-14 from the official instructions; statutory IRC §22 amounts,
+# not inflation-indexed, so one table serves 2021-2025 (ledger row
+# R-sched-r, amended 2026-10-14). Married filing separately is not tabled
+# (not on the native grid): an aged MFS filer on the spine is refused.
+_SCHEDULE_R_AGI_LIMITS: dict[tuple[str, int], int] = {
+    (FilingStatus.SINGLE.value, 1): 17_500,
+    (FilingStatus.HEAD_OF_HOUSEHOLD.value, 1): 17_500,
+    (FilingStatus.QUALIFYING_WIDOW.value, 1): 17_500,
+    (FilingStatus.MARRIED_FILING_JOINTLY.value, 1): 20_000,
+    (FilingStatus.MARRIED_FILING_JOINTLY.value, 2): 25_000,
+}
+
+
 def form_1040_age_box_values(
         config, aged_born_before: datetime.date) -> dict[str, bool]:
     """The Form 1040 age checkboxes ("You: Were born before ..." / "Spouse:
     Was born before ..."), as a pure decision over ``config``.
 
-    ``aged_born_before`` is the year's exclusive cutoff date, passed in by
-    the caller: born strictly before it meets the condition. The taxpayer
-    box follows ``birthdate``; the spouse box is set only on a joint return
-    and follows ``spouse_birthdate``. A joint return without a spouse
-    birthdate is refused (the loader requires it; a config built around the
-    loader must not print an unchecked box by default).
+    Delegates to ``f1040_spine.age_box_values``, the one implementation of
+    the age test, which the native spine's aged standard deduction
+    (``f1040_spine.age_boxes``) also reads -- so the printed boxes and the
+    deduction cannot disagree. ``aged_born_before`` is the year's exclusive
+    cutoff; a joint return without ``spouse_birthdate`` is refused.
     """
-    def born_before(field: str) -> bool:
-        value = getattr(config, field)
-        try:
-            born = datetime.date.fromisoformat(value)
-        except (TypeError, ValueError):
-            raise ValueError(
-                f"Form 1040 age checkboxes need `{field}` as an ISO "
-                f"YYYY-MM-DD date; got {value!r}.") from None
-        return born < aged_born_before
-
-    joint = parse_filing_status(config.filing_status) is (
-        FilingStatus.MARRIED_FILING_JOINTLY)
-    if joint and not config.spouse_birthdate:
-        raise ValueError(
-            "Form 1040 age checkboxes for a married_filing_jointly return "
-            "need `spouse_birthdate` (ISO YYYY-MM-DD), which is blank in the "
-            "scenario config.")
-    return {
-        "age_taxpayer_born_before": born_before("birthdate"),
-        "age_spouse_born_before": joint and born_before("spouse_birthdate"),
-    }
+    from tenforty.forms import f1040_spine
+    return f1040_spine.age_box_values(config, aged_born_before)
 
 
 def _format_mmddyyyy(d) -> str:
@@ -975,6 +979,74 @@ class ReturnOrchestrator:
                 f"a return whose true excess business loss is zero."
             )
 
+    def _refuse_unmodeled_senior_deduction(self, scenario: Scenario) -> None:
+        """FAIL-CLOSED GUARD -- the TY2025 seniors deduction (ruling
+        R-senior-1a, 2026-10-14).
+
+        From TY2025 a filer who meets the Form 1040 age condition may claim
+        the seniors deduction on Schedule 1-A, which tenforty does not
+        model (on either path: the workbook has no Schedule 1-A either).
+        Computing only the aged standard deduction would leave the return
+        silently wrong, so any return with an age box checked
+        (``f1040_spine.age_boxes`` > 0) is refused. Any later year inherits
+        the refusal until Schedule 1-A is modeled (fail-closed).
+        """
+        from tenforty.forms import f1040_spine
+        from tenforty.params.federal import load as load_params
+        year = scenario.config.year
+        if year < _SCHEDULE_1A_FIRST_YEAR:
+            return
+        boxes = f1040_spine.age_boxes(scenario.config, load_params(year))
+        if boxes > 0:
+            raise NotImplementedError(
+                f"This tax year {year} return has {boxes} Form 1040 age "
+                f"box(es) checked (a filer born before the year's age "
+                f"cutoff). From tax year {_SCHEDULE_1A_FIRST_YEAR} such a "
+                f"filer may claim the seniors deduction on Schedule 1-A, "
+                f"which tenforty does not model, so this return cannot be "
+                f"produced: computing only the aged standard deduction "
+                f"would omit that deduction silently."
+            )
+
+    @staticmethod
+    def _refuse_possible_schedule_r(scenario: Scenario, params,
+                                    agi: float) -> None:
+        """FAIL-CLOSED GUARD -- Schedule R, credit for the elderly (ledger
+        row R-sched-r, amended 2026-10-14). Native spine only.
+
+        The credit is age-keyed and unmodeled. An aged filer (``age_boxes``
+        > 0) whose AGI is at or under the Schedule R limit for their status
+        and box count may be owed it, so the return is refused. The EIC
+        routing gate does not keep these filers off the spine: a filer with
+        no W-2 wages (the typical retiree) routes native before the EIC
+        ceiling is ever checked.
+
+        ``agi`` must be the exact AGI (the shared income preamble's), never
+        an overestimate: a refusal keyed on AGI <= limit fails OPEN on any
+        estimate that runs above true AGI.
+        """
+        from tenforty.forms import f1040_spine
+        boxes = f1040_spine.age_boxes(scenario.config, params)
+        if boxes == 0:
+            return
+        status = parse_filing_status(scenario.config.filing_status).value
+        limit = _SCHEDULE_R_AGI_LIMITS.get((status, boxes))
+        if limit is None:
+            raise NotImplementedError(
+                f"No Schedule R (credit for the elderly) AGI limit is "
+                f"recorded for filing status {status!r} with {boxes} age "
+                f"box(es) checked, so whether this aged filer is owed the "
+                f"credit cannot be ruled out; Schedule R is not modeled in "
+                f"tenforty, and this return is refused.")
+        if agi <= limit:
+            raise NotImplementedError(
+                f"This return's AGI ({agi:,.0f}) is at or under the "
+                f"Schedule R AGI limit of {limit:,} for filing status "
+                f"{status!r} with {boxes} Form 1040 age box(es) checked, so "
+                f"the filer may be owed the credit for the elderly "
+                f"(Schedule R). Schedule R is not modeled in tenforty; "
+                f"refusing rather than omit a credit the filer may be owed.")
+
     def _refuse_excess_social_security(self, scenario: Scenario) -> None:
         """FAIL-CLOSED GUARD -- excess Social Security withholding (ruling
         R-excess-ss).
@@ -1032,6 +1104,7 @@ class ReturnOrchestrator:
         # Before the native/workbook split, so BOTH paths are covered.
         self._refuse_possible_excess_business_loss(effective_scenario)
         self._refuse_excess_social_security(effective_scenario)
+        self._refuse_unmodeled_senior_deduction(effective_scenario)
         if effective_scenario.form_1095a is not None:
             # Ruling R-hoh-ptc, ahead of routing so the refusal names its
             # real cause (unknown tax-family size) on every path, including
@@ -1280,6 +1353,10 @@ class ReturnOrchestrator:
             {"sch_1": sch_1_results, "sch_d": sch_d_results},
             k1_fanout=k1_fanout,
         )
+        # Schedule R guard on the EXACT AGI (never the routing gate's
+        # rising estimate): ledger row R-sched-r.
+        self._refuse_possible_schedule_r(
+            effective_scenario, _params, _preamble.agi)
         # Partial stub for Schedule A, which reads only agi/magi. QBI is
         # below-the-line (1040 line 13), so Schedule A (line 12, depends on AGI
         # only) can be computed now — no circularity.
@@ -3286,10 +3363,12 @@ class ReturnOrchestrator:
             return False
         sch_a = form_sch_a.compute(scenario, upstream={"f1040": f1040})
         total = sch_a.get("sch_a_line_17_total", 0)
+        from tenforty.forms import f1040_spine
         from tenforty.params.federal import load as _load_federal_params
         _params = _load_federal_params(scenario.config.year)
-        std = _params.for_status(
-            scenario.config.filing_status).standard_deduction
+        # Through the chokepoint: an aged filer's comparison is against the
+        # aged standard deduction, the same figure the compute side uses.
+        std = f1040_spine.standard_deduction_for(scenario.config, _params)
         return total > std
 
     def _should_emit_sch_b(self, scenario: Scenario, results: dict) -> bool:
