@@ -37,7 +37,7 @@ FEDERAL_COMPUTE_ONLY_YEARS: tuple[int, ...] = ()
 NATIVE_SPINE_STATUSES: dict[int, tuple[str, ...]] = {
     2021: ("single",),
     2022: ("single",),
-    2023: ("single",),
+    2023: ("single", "married_filing_jointly", "head_of_household"),
     2024: ("single", "married_filing_jointly", "head_of_household"),
     2025: ("single", "married_filing_jointly", "head_of_household"),
 }
