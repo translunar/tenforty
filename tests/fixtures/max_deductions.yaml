@@ -49,7 +49,7 @@ w2s:
     wages: 250000.00
     federal_tax_withheld: 55000.00
     ss_wages: 176100.00
-    ss_tax_withheld: 10950.00
+    ss_tax_withheld: 10918.20  # 6.2% of ss_wages
     medicare_wages: 250000.00
     medicare_tax_withheld: 3650.00
     state_wages: 250000.00

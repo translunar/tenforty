@@ -51,6 +51,7 @@ class TestStandardDeductionMFJ(unittest.TestCase):
             year=self._scenario.config.year,
             filing_status=self._scenario.config.filing_status,
             birthdate=self._scenario.config.birthdate,
+            spouse_birthdate=self._scenario.config.spouse_birthdate,
             state=self._scenario.config.state,
             dependents=self._scenario.config.dependents,
             first_name="Alice",
