@@ -51,6 +51,7 @@ from tenforty.params.federal import load as load_federal_params
 from tests.fixtures.spine_battery import (
     build_canonical_wage_investment_rental,
     build_charitable_nonitemizer_2021,
+    build_wages_only,
 )
 from tests.helpers import (
     CA_SCOPE_OUT_FIELDS,
@@ -273,6 +274,61 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         smap = PdfScheduleX.get_mapping(2024)
         self.assertEqual(
             int(float(_read_v(out / "schedule_x_2024.pdf", smap["schedule_x_line7"]))),
+            round(expected_sx["schedule_x_line7"]))
+
+    def test_happy_path_mfj_2025_native_with_amended_540(self):
+        """declare-2025 (deferred from ca-2025): a married-filing-jointly 2025
+        return -- now on the native spine -- amended by one income component,
+        with the CA side. Both amendment forms and the complete amended 540
+        emit, the changed form attaches, and the 1040-X Column B delta and
+        the Schedule X balance read back from the REAL PDFs."""
+        mfj = FilingStatus.MARRIED_FILING_JOINTLY
+        base = _with_ca(build_wages_only(2025, mfj))
+        original = dataclasses.replace(base, form1099_int=[
+            Form1099INT(payer="Synthetic Bank", interest=2_000.0)])
+        amended = _bump_interest(original, 3_000.0)
+        self.assertTrue(self.orch._scenario_in_spine_scope(original))
+
+        filed_path, orig_fed = self._write_federal_filed(original)
+        ca_filed_path, orig_ca = self._write_ca_filed(original, orig_fed)
+        case = AmendmentCase(
+            year=2025, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            original_tax_paid=0.0,
+            ca_original_refund_received=max(
+                0.0, -orig_ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0,
+        )
+        out = self.tmp / "packet"
+        manifest = self.orch.run_amendment_packet(
+            original, amended, case, filed_path, ca_filed_path, out)
+
+        for name in ("f1040x_2025.pdf", "f540_amended_2025.pdf",
+                     "schedule_x_2025.pdf", "packet_manifest.txt"):
+            self.assertTrue((out / name).exists(), f"missing {name}")
+        self.assertTrue((out / "f1040sb_2025.pdf").exists())   # sch_b changed
+        by_name = {mf.filename: mf for mf in manifest.mailed_files}
+        self.assertEqual(by_name["f1040x_2025.pdf"].reason, "amendment form")
+        self.assertEqual(by_name["f1040sb_2025.pdf"].reason, "changed")
+        self.assertEqual(
+            by_name["f540_amended_2025.pdf"].reason, "complete amended return")
+        self.assertNotIn(_FEDERAL_COMPUTE_ONLY_NOTE, manifest.caveats)
+        self.assertNotIn(_CA_COMPUTE_ONLY_NOTE, manifest.caveats)
+
+        xmap = PdfF1040X.get_mapping(_REVISION)
+        self.assertEqual(
+            int(float(_read_v(out / "f1040x_2025.pdf",
+                              xmap["f1040x_line1_b"]))), 1_000)
+        corrected_fed = self.orch.compute_federal(amended)
+        corrected_ca = self.orch._compute_ca_results(
+            amended, amended.ca540, corrected_fed)
+        expected_sx = form_schedule_x.assemble_ca(
+            {"f540_total_liability": orig_ca["f540_total_liability"]},
+            corrected_ca, case)
+        smap = PdfScheduleX.get_mapping(2025)
+        self.assertEqual(
+            int(float(_read_v(out / "schedule_x_2025.pdf",
+                              smap["schedule_x_line7"]))),
             round(expected_sx["schedule_x_line7"]))
 
     def test_manifest_ca_divergences_three_buckets(self):

@@ -219,12 +219,19 @@ class GridShapeTests(unittest.TestCase):
                 {"married_filing_separately", "qualifying_widow"} & set(sts), y)
 
     def test_native_spine_supports_reads_the_grid(self):
+        # 2025 MFJ/HoH are declared (declare-2025); 2024 HoH is not yet.
         self.assertTrue(years.native_spine_supports(2025, "single"))
+        self.assertTrue(years.native_spine_supports(2025, "head_of_household"))
         with mock.patch.dict(years.NATIVE_SPINE_STATUSES,
-                             {2025: ("single", "head_of_household")}):
+                             {2024: ("single", "head_of_household")}):
             self.assertTrue(
-                years.native_spine_supports(2025, "head_of_household"))
-        self.assertFalse(years.native_spine_supports(2025, "head_of_household"))
+                years.native_spine_supports(2024, "head_of_household"))
+        self.assertFalse(years.native_spine_supports(2024, "head_of_household"))
+
+    def test_2025_declares_single_mfj_and_hoh(self):
+        self.assertEqual(
+            years.NATIVE_SPINE_STATUSES[2025],
+            ("single", "married_filing_jointly", "head_of_household"))
 
     def test_undeclared_year_is_not_supported(self):
         self.assertNotIn(1999, years.NATIVE_SPINE_STATUSES)
@@ -438,49 +445,63 @@ class BatteryCompletenessGateTests(unittest.TestCase):
         build = dict(battery_for(2025, FilingStatus.HEAD_OF_HOUSEHOLD))[
             "ptc_reconciliation_refused__hoh"]
         orch = _orchestrator(self)
-        with mock.patch.dict(years.NATIVE_SPINE_STATUSES,
-                             {2025: ("single", "married_filing_jointly",
-                                     "head_of_household")}):
-            with self.assertRaisesRegex(
-                    NotImplementedError,
-                    r"^Form 8962 .*head_of_household.*family size"):
-                orch.compute_federal(build())
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"^Form 8962 .*head_of_household.*family size"):
+            orch.compute_federal(build())
 
     def test_status_rows_route_native_once_declared(self):
         # Wage levels clear the EIC gate: with 2025 MFJ/HoH declared, every
-        # computing row is in spine scope; undeclared, none is.
+        # row is in spine scope (the 2025 aged rows refuse at compute, for
+        # Schedule 1-A, but route native like any computing row).
         orch = _orchestrator(self)
         rows = [(name, build)
                 for status in (FilingStatus.MARRIED_FILING_JOINTLY,
                                FilingStatus.HEAD_OF_HOUSEHOLD)
                 for name, build in battery_for(2025, status)
                 if name.split("__", 1)[0] not in DECLARED_REFUSAL_CELLS.values()]
-        # Six kinds plus the aged row per status, less HoH's PTC refusal
-        # row. The 2025 aged rows refuse at compute (Schedule 1-A), but
-        # route native like any computing row.
         self.assertEqual(len(rows),
                          2 * (len(REQUIRED_STATUS_SCENARIO_KINDS) + 1) - 1)
         for name, build in rows:
             with self.subTest(row=name):
-                scenario = build()
-                self.assertFalse(orch._scenario_in_spine_scope(scenario))
-                with mock.patch.dict(
-                        years.NATIVE_SPINE_STATUSES,
-                        {2025: ("single", "married_filing_jointly",
-                                "head_of_household")}):
-                    self.assertTrue(orch._scenario_in_spine_scope(scenario))
+                self.assertTrue(orch._scenario_in_spine_scope(build()))
+
+    def test_status_rows_compute_natively_or_refuse_by_kind(self):
+        # declare-2025: every computing MFJ/HoH row (including
+        # ptc_reconciliation__mfj, which refused off-grid before) computes
+        # on the native spine without touching the workbook; every
+        # `*_refused__*` row refuses.
+        orch = _orchestrator(self)
+        with mock.patch.object(
+                ReturnOrchestrator, "_compute_1040_via_workbook",
+                side_effect=AssertionError("row routed to the workbook")):
+            for status in (FilingStatus.MARRIED_FILING_JOINTLY,
+                           FilingStatus.HEAD_OF_HOUSEHOLD):
+                for name, build in battery_for(2025, status):
+                    with self.subTest(row=name):
+                        if name.split("__", 1)[0].endswith("_refused"):
+                            with self.assertRaises(NotImplementedError):
+                                orch.compute_federal(build())
+                        else:
+                            results = orch.compute_federal(build())
+                            self.assertIn("total_tax", results)
+        ptc = orch.compute_federal(dict(battery_for(
+            2025, FilingStatus.MARRIED_FILING_JOINTLY))[
+                "ptc_reconciliation__mfj"]())
+        self.assertIn("f8962_net_ptc", ptc)
 
 class SpineGateTests(unittest.TestCase):
     def test_predicate_follows_grid(self):
         orch = _orchestrator(self)
-        scenario = _high_income(2025, FilingStatus.HEAD_OF_HOUSEHOLD)
+        # 2024 HoH: not yet declared (2025 MFJ/HoH are, since declare-2025).
+        scenario = _high_income(2024, FilingStatus.HEAD_OF_HOUSEHOLD)
         with mock.patch.dict(years.NATIVE_SPINE_STATUSES,
-                             {2025: ("single", "head_of_household")}):
+                             {2024: ("single", "head_of_household")}):
             self.assertTrue(orch._scenario_in_spine_scope(scenario))
         self.assertFalse(orch._scenario_in_spine_scope(scenario))
         # Single stays in scope (positive control for the unpatched grid).
         self.assertTrue(orch._scenario_in_spine_scope(
-            _high_income(2025, FilingStatus.SINGLE)))
+            _high_income(2024, FilingStatus.SINGLE)))
 
     def test_spine_refuses_undeclared_status_naming_grid(self):
         # Anchored on compute_spine's OWN message: the spine calls qdcgt_tax,
@@ -489,18 +510,18 @@ class SpineGateTests(unittest.TestCase):
         with self.assertRaisesRegex(
                 NotImplementedError, r"^compute_spine: .*NATIVE_SPINE_STATUSES"):
             compute_spine(
-                _high_income(2025, FilingStatus.MARRIED_FILING_JOINTLY),
-                load_federal(2025), {})
+                _high_income(2024, FilingStatus.MARRIED_FILING_JOINTLY),
+                load_federal(2024), {})
 
     def test_qdcgt_refuses_undeclared_status(self):
         with self.assertRaisesRegex(
                 NotImplementedError, r"^QDCGT worksheet: .*NATIVE_SPINE_STATUSES"):
-            qdcgt_tax(150_000.0, 1_000.0, 1_000.0, load_federal(2025),
+            qdcgt_tax(150_000.0, 1_000.0, 1_000.0, load_federal(2024),
                       FilingStatus.HEAD_OF_HOUSEHOLD)
 
     def test_undeclared_mfj_with_1095a_still_refuses(self):  # carve-out holds
         scenario = dataclasses.replace(
-            _high_income(2025, FilingStatus.MARRIED_FILING_JOINTLY),
+            _high_income(2024, FilingStatus.MARRIED_FILING_JOINTLY),
             form_1095a=Form1095A(months=tuple(
                 Form1095AMonth(premium=500, slcsp=500, aptc=0)
                 for _ in range(12))))

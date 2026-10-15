@@ -1094,10 +1094,11 @@ class ReturnOrchestrator:
         """Native 1040 spine for in-scope scenarios; XLSX oracle otherwise.
 
         Runs the native spine (gather native schedule computes → compute_spine)
-        only when ``_scenario_in_spine_scope`` holds (single filer, not
-        EIC-eligible). Out-of-scope scenarios fall back to
-        ``_compute_1040_via_workbook`` so the workbook covers the full 1040
-        surface (non-single filers, EIC, etc.) until the spine is extended."""
+        only when ``_scenario_in_spine_scope`` holds (a (year, filing status)
+        declared in years.NATIVE_SPINE_STATUSES, not EIC-eligible).
+        Out-of-scope scenarios fall back to ``_compute_1040_via_workbook`` so
+        the workbook covers the full 1040 surface (undeclared filer classes,
+        EIC, etc.) until the spine is extended."""
         from tenforty.params.federal import load as load_params
         from tenforty.forms import f1040_spine
         params = load_params(effective_scenario.config.year)
@@ -1134,8 +1135,8 @@ class ReturnOrchestrator:
             # the Form 8995 simple-path threshold, because Form 8995-A (the
             # above-threshold form) is not implemented in v1. That guard lives
             # inside f8995.py, which only runs on the spine path — every
-            # non-single filer (and any EIC-possible filer) routes here
-            # instead, to the XLSX workbook. The 2025 workbook has an `8995`
+            # filer class outside the declared native grid (and any
+            # EIC-possible filer) routes here instead, to the XLSX workbook. The 2025 workbook has an `8995`
             # sheet (simple path) and NO `8995A` sheet, so an above-threshold
             # scenario routed here would silently get a workbook-computed
             # result with no refusal — a wrong number, silently, exactly the
@@ -1220,8 +1221,9 @@ class ReturnOrchestrator:
                         f"for filing status "
                         f"{effective_scenario.config.filing_status.value}, and the "
                         f"scenario has {qbi_total:.0f} of QBI. This scenario is out "
-                        "of native-1040-spine scope (EIC-possible or non-single "
-                        "filer), so it routes to the XLSX workbook path, which has "
+                        "of native-1040-spine scope (EIC-possible, or a filer "
+                        "class not declared in years.NATIVE_SPINE_STATUSES), so "
+                        "it routes to the XLSX workbook path, which has "
                         "an `8995` (simple-path) sheet but no `8995A` sheet. Form "
                         "8995-A is not implemented in tenforty v1. Refusing rather "
                         "than silently returning a workbook-computed result that "
@@ -1521,31 +1523,33 @@ class ReturnOrchestrator:
         repoints _compute_1040_pipeline at the native spine.
         """
         # FAIL-CLOSED GUARD — Schedule C / Schedule SE on the workbook path.
-        # The native single-filer spine wires Schedule C (net profit) and
-        # Schedule SE (self-employment tax) into the 1040. This XLSX workbook
-        # path (taken by non-single / EIC-possible filers) does NOT wire them:
+        # The native spine wires Schedule C (net profit) and Schedule SE
+        # (self-employment tax) into the 1040. This XLSX workbook path (taken
+        # by filer classes outside the declared native grid and by
+        # EIC-possible filers) does NOT wire them:
         # a workbook-path return carrying a Schedule C business would silently
         # emit a 1040 WITHOUT the business income and SE tax, understating both
         # income and liability. There is NO acknowledge-and-proceed (that would
         # fail-open into a wrong number — the U-1 anti-pattern): Schedule C / SE
-        # are honored ONLY on the native single-filer spine, and the message
+        # are honored ONLY on the native spine, and the message
         # points the user there. Wiring Schedule C into the workbook path is a
         # deferred follow-on; this task FAILS CLOSED, it does not implement it.
         if effective_scenario.schedule_c_businesses:
             raise NotImplementedError(
                 "Schedule C / self-employment income is set on a scenario that "
-                "routes to the workbook (XLSX) compute path (non-single filer "
-                "or EIC-eligible). tenforty has NOT wired Schedule C / Schedule "
-                "SE into the workbook path; they are supported only on the "
-                "NATIVE single-filer 1040 spine. There is no acknowledge-and-"
-                "proceed — the workbook would silently emit a return WITHOUT "
-                "the business income and SE tax. Use a single-filer scenario or "
-                "file by hand."
+                "routes to the workbook (XLSX) compute path (a filer class not "
+                "declared in years.NATIVE_SPINE_STATUSES, or EIC-eligible). "
+                "tenforty has NOT wired Schedule C / Schedule SE into the "
+                "workbook path; they are supported only on the NATIVE 1040 "
+                "spine. There is no acknowledge-and-proceed — the workbook "
+                "would silently emit a return WITHOUT the business income and "
+                "SE tax. Use a filer class declared on the native grid or file "
+                "by hand."
             )
 
         # FAIL-CLOSED GUARD — deferred ticket (dd) (the SE-health
         # workbook-input-wiring ticket in the tenforty series). The native
-        # single-filer spine (Task 1) honors
+        # spine (Task 1) honors
         # config.self_employed_health_insurance_deduction (Schedule 1 line 17),
         # but this XLSX workbook path has NO INPUTS entry for it (the wiring is
         # deferred under (dd) — a per-year named-range asymmetry makes it unsafe
@@ -1554,7 +1558,7 @@ class ReturnOrchestrator:
         # 0 and silently overstate AGI. Refuse loudly rather than emit a wrong
         # (too-high) number. There is NO acknowledge-and-proceed (that would
         # fail-open into a wrong number — the U-1 anti-pattern): the field is
-        # honored ONLY on the native single-filer path, and the message points
+        # honored ONLY on the native path, and the message points
         # the user there.
         if effective_scenario.config.self_employed_health_insurance_deduction:
             raise NotImplementedError(
@@ -1562,13 +1566,12 @@ class ReturnOrchestrator:
                 "line 17) is not wired into the XLSX workbook compute path, so "
                 "a workbook-path return carrying it would silently drop the "
                 "deduction and overstate AGI. There is no acknowledge-and-"
-                "proceed: this deduction is honored only on the NATIVE "
-                "single-filer 1040 spine. A workbook-path scenario (non-single "
-                "or EIC-possible filer) with "
+                "proceed: this deduction is honored only on the NATIVE 1040 "
+                "spine. A workbook-path scenario (a filer class not declared in "
+                "years.NATIVE_SPINE_STATUSES, or an EIC-possible filer) with "
                 "self_employed_health_insurance_deduction set cannot be "
                 "computed until the deferred workbook input wiring (ticket "
-                "(dd)) lands. Use the native single-filer path, which supports "
-                "the field."
+                "(dd)) lands. Use the native path, which supports the field."
             )
 
         year = effective_scenario.config.year
@@ -3436,8 +3439,8 @@ class ReturnOrchestrator:
 
         ⚠️ SCOPE -- the no-drift guarantee above is NATIVE-PATH ONLY. It does
         NOT hold on the XLSX workbook path, which _compute_1040_pipeline uses
-        for every out-of-spine-scope scenario (non-single filers, and any
-        EIC-possible filer). The workbook's Interest_Inc / Dividend_Inc named
+        for every out-of-spine-scope scenario (filer classes outside the
+        declared native grid, and any EIC-possible filer). The workbook's Interest_Inc / Dividend_Inc named
         ranges are 1099-only: oracle.flattener emits k1_<letter>_interest_income
         and ..._ordinary_dividends, but F1040.INPUTS carries no such keys, and
         oracle.engine drops unmapped input keys silently. So for that filer
@@ -3653,7 +3656,8 @@ class ReturnOrchestrator:
 
         - Years outside years.SCHEDULE_C_FAMILY_YEARS (the family's policy
           floor).
-        - WORKBOOK-PATH returns (non-single or EIC-possible filers). The
+        - WORKBOOK-PATH returns (undeclared filer classes or EIC-possible
+          filers). The
           workbook's 1040 line 17 can include the alternative minimum tax and
           its line 24 can include the net investment income tax; forms/sch_2
           models neither. A Schedule 2 built from the modeled components

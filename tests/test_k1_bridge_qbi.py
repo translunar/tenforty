@@ -192,22 +192,19 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
         )
 
 
-def _mfj(scenario):
-    """Re-file a `_make_v1_scenario()` fixture (which fixes filing_status=
-    SINGLE) as MARRIED_FILING_JOINTLY, leaving every other field untouched.
-
-    Also supplies a synthetic spouse identity so the MFJ scenario is complete
-    at setup: filing MARRIED_FILING_JOINTLY with `spouse_first_name` /
-    `spouse_last_name` / `spouse_ssn` left empty is an incomplete return, and
-    the tests built on this helper must be able to fail only on the guard
-    under test, never at setup. The spouse mirrors the fixture's own
-    conventions for the primary filer (`first_name="Taxpayer"`,
-    `last_name="A"`, `ssn="000-00-0000"`)."""
+def _mfs(scenario):
+    """Re-file a `_make_v1_scenario()` fixture as MARRIED_FILING_SEPARATELY
+    -- never declared on the native grid, so it still routes to the XLSX
+    workbook path these tests exist to guard. (declare-2025 put 2025 MFJ and
+    HoH on the native spine, so the MFJ / HoH vehicles these tests used
+    before no longer reach the workbook.) The spouse identity and birthdate are supplied so the
+    workbook's `Birthday_Needed` flag -- which consults the spouse birthdate on
+    the Married-Separate branch -- does not fire ahead of the guard."""
     return dataclasses.replace(
         scenario,
         config=dataclasses.replace(
             scenario.config,
-            filing_status=FilingStatus.MARRIED_FILING_JOINTLY,
+            filing_status=FilingStatus.MARRIED_FILING_SEPARATELY,
             spouse_first_name="Taxpayer",
             spouse_last_name="B",
             spouse_ssn="000-00-0001",
@@ -216,24 +213,22 @@ def _mfj(scenario):
     )
 
 
-def _hoh(scenario):
-    """Re-file a `_make_v1_scenario()` fixture as HEAD_OF_HOUSEHOLD.
-
-    No spouse identity, deliberately: HOH is an unmarried filing status, so
-    unlike `_mfj` there is nothing to supply. HOH is out of native-1040-spine
-    scope exactly as MFJ is, so it routes to the same XLSX workbook path --
-    which is what makes it a drop-in substitute for MFJ in the workbook-
-    routing tests below."""
-    return dataclasses.replace(
-        scenario,
-        config=dataclasses.replace(
-            scenario.config, filing_status=FilingStatus.HEAD_OF_HOUSEHOLD),
-    )
+def _assert_routes_to_workbook(test, orch, scenario):
+    """The guard under test lives on the workbook path only; a scenario that
+    routes native would pass these tests for the wrong reason (the native
+    Form 8995 refusal names 8995-A too)."""
+    eff, _ = orch._build_effective_scenario(scenario)
+    test.assertFalse(orch._scenario_in_spine_scope(eff))
 
 
 @needs_libreoffice
 class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
-    """Non-SINGLE filers are out of native-1040-spine scope
+    """UPDATED at declare-2025: both halves now run on
+    MARRIED_FILING_SEPARATELY (`_mfs`), which stays off the native grid, and
+    each asserts the workbook routing first. The history below describes the
+    MFJ/HoH vehicles they used before 2025 MFJ/HoH were declared native.
+
+    Non-SINGLE filers are out of native-1040-spine scope
     (`_scenario_in_spine_scope` returns False for any non-SINGLE filing
     status), so they route to the XLSX workbook path instead of the native
     spine where `forms/f8995.py`'s above-threshold refusal lives. The 2025
@@ -289,10 +284,10 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         which is why the defect cannot make it silently pass for a wrong
         reason.
 
-        `_mfj` supplies `spouse_birthdate`, so the workbook's `Birthday_Needed`
+        `_mfs` supplies `spouse_birthdate`, so the workbook's `Birthday_Needed`
         refusal no longer fires ahead of the QBI guard; this test was
         strict-xfail until that input existed."""
-        scenario = _mfj(_make_v1_scenario(
+        scenario = _mfs(_make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0))
         scenario = dataclasses.replace(scenario, w2s=[
             W2(
@@ -309,6 +304,7 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             orch = ReturnOrchestrator(
                 spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            _assert_routes_to_workbook(self, orch, scenario)
             with self.assertRaisesRegex(
                 NotImplementedError, "8995-A|8995A"
             ):
@@ -363,16 +359,23 @@ class BridgeNonSingleWorkbookRoutingQbiThresholdTests(unittest.TestCase):
         reason. The same branch structure is why the blast radius is MFJ and
         MFS only, and why QUALIFYING_WIDOW is excluded despite sharing the
         MFJ standard-deduction amount."""
-        scenario = _hoh(_make_v1_scenario(
+        scenario = _mfs(_make_v1_scenario(
             gross_receipts=100_000.0, compensation_of_officers=30_000.0))
 
         with tempfile.TemporaryDirectory() as d:
             orch = ReturnOrchestrator(
                 spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
+            _assert_routes_to_workbook(self, orch, scenario)
             results = orch.compute_federal(scenario)
 
+        # 70,000 of K-1 income less the MFS standard deduction (read from
+        # params), below the MFS QBI threshold.
+        mfs = load_federal_params(2025).for_status(
+            FilingStatus.MARRIED_FILING_SEPARATELY)
+        expected = 70_000 - mfs.standard_deduction
+        self.assertLess(expected, mfs.qbi_threshold)
         self.assertEqual(
-            results["taxable_income_before_qbi_deduction"], 46_375)
+            results["taxable_income_before_qbi_deduction"], expected)
         self.assertGreater(results["qbi_deduction"], 0)
         self.assertEqual(
             results["taxable_income"],
@@ -395,11 +398,13 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
     `_build_effective_scenario`'s S-corp waterfall / compute-time gates are
     orthogonal to it."""
 
-    def _mfj_scenario_with_qbi(self, qbi_amount=70_000.0,
+    def _mfs_scenario_with_qbi(self, qbi_amount=70_000.0,
                                acknowledges_qbi_below_threshold=False):
         scenario = make_k1_scenario()
-        scenario.config.filing_status = FilingStatus.MARRIED_FILING_JOINTLY
-        scenario.config.spouse_birthdate = scenario.config.birthdate
+        # MFS: never declared on the native grid, so this routes to the
+        # workbook path the guard lives on (2025 MFJ is native since
+        # declare-2025).
+        scenario.config.filing_status = FilingStatus.MARRIED_FILING_SEPARATELY
         # Set EXPLICITLY, never inherited: `make_k1_scenario()` (tests/
         # helpers.py) turns every K-1 gate attestation ON, including
         # `acknowledges_qbi_below_threshold`, so the fixture default here is
@@ -429,7 +434,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
         )
 
     def test_raises_when_qbi_positive_and_workbook_taxable_income_above_threshold(self):
-        scenario = self._mfj_scenario_with_qbi()
+        scenario = self._mfs_scenario_with_qbi()
         self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
         with patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",
@@ -444,7 +449,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
         `acknowledges_qbi_below_threshold`; this workbook-path message must
         too, since the two refuse the same class of scenario and differ only
         in which route the filer's filing status happened to take."""
-        scenario = self._mfj_scenario_with_qbi()
+        scenario = self._mfs_scenario_with_qbi()
         with patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",
             return_value={"taxable_income_before_qbi_deduction": 500_000.0},
@@ -465,7 +470,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
         False. Asserting on the message as well as the type pins that the
         KeyError is the guard's own deliberate refusal and not an incidental
         dict lookup failing somewhere else in the pipeline."""
-        scenario = self._mfj_scenario_with_qbi()
+        scenario = self._mfs_scenario_with_qbi()
         self.assertFalse(scenario.config.acknowledges_qbi_below_threshold)
         with patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",
@@ -490,7 +495,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
         class rather than by what the filer attested. With the attestation
         set, the guard is bypassed and the workbook result passes through
         untouched."""
-        scenario = self._mfj_scenario_with_qbi(
+        scenario = self._mfs_scenario_with_qbi(
             acknowledges_qbi_below_threshold=True)
         sentinel_result = {
             "taxable_income_before_qbi_deduction": 500_000.0,
@@ -513,7 +518,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
         })
 
     def test_does_not_raise_and_passes_through_result_when_below_threshold(self):
-        scenario = self._mfj_scenario_with_qbi()
+        scenario = self._mfs_scenario_with_qbi()
         sentinel_result = {
             "taxable_income_before_qbi_deduction": 100_000.0,
             "sentinel": "unmodified",
@@ -533,7 +538,7 @@ class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
     def test_does_not_raise_when_qbi_is_zero_even_above_threshold(self):
         """QBI == 0 must never trigger the guard, regardless of taxable
         income -- mirrors f8995.compute's `qbi_total > 0` condition."""
-        scenario = self._mfj_scenario_with_qbi(qbi_amount=0.0)
+        scenario = self._mfs_scenario_with_qbi(qbi_amount=0.0)
         sentinel_result = {"taxable_income_before_qbi_deduction": 500_000.0}
         with patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",

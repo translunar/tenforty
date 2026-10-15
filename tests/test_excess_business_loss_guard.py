@@ -186,35 +186,34 @@ class ExcessBusinessLossGuardTests(unittest.TestCase):
         self._assert_refused(_scenario(businesses=[biz]))
 
     def test_guard_fires_before_the_workbook_route(self):
-        """A married-jointly return routes to the workbook path, not the
-        native spine. The guard must refuse it too -- BEFORE the workbook is
-        evaluated."""
+        """A married-filing-separately return routes to the workbook path,
+        not the native spine (MFS is never declared on the native grid). The
+        guard must refuse it too -- BEFORE the workbook is evaluated."""
         scn = _scenario(rentals=[_rental_loss(
-            _threshold(2025, "married_filing_jointly") + 1)])
-        mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_filing_jointly"))
-        self.assertFalse(self.orch._scenario_in_spine_scope(mfj))
+            _threshold(2025, "married_filing_separately") + 1)])
+        mfs = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, filing_status="married_filing_separately"))
+        self.assertFalse(self.orch._scenario_in_spine_scope(mfs))
         with mock.patch.object(
                 self.orch, "_compute_1040_via_workbook",
                 side_effect=AssertionError("workbook route was reached"),
         ) as workbook:
             with self.assertRaises(NotImplementedError) as ctx:
-                self.orch._compute_1040_pipeline(mfj)
+                self.orch._compute_1040_pipeline(mfs)
         workbook.assert_not_called()
         self.assertIn("461(l)", str(ctx.exception))
 
     def test_workbook_route_under_the_threshold_reaches_the_workbook(self):
-        # Reachability of the route the test above protects: the same joint
+        # Reachability of the route the test above protects: the same MFS
         # return UNDER the threshold does go to the workbook.
         scn = _scenario(rentals=[_rental_loss(1_000)])
-        mfj = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, filing_status="married_filing_jointly",
-            spouse_birthdate=scn.config.birthdate))
+        mfs = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, filing_status="married_filing_separately"))
         with mock.patch.object(
                 self.orch, "_compute_1040_via_workbook",
                 return_value={"taxable_income": 0}) as workbook:
             try:
-                self.orch._compute_1040_pipeline(mfj)
+                self.orch._compute_1040_pipeline(mfs)
             except Exception:
                 pass  # downstream of the mocked workbook is not under test
         workbook.assert_called_once()

@@ -41,8 +41,8 @@ _EXPECTED_NAMES = [
 # (the 2021-only CARES/CAA line-12b non-itemizer charitable deduction);
 # 2022-2025 do not — both scenarios are meaningless outside 2021 and
 # battery_for() must not emit them for any other year.
-# The aged single row computes 2021-2024; 2025's is a Schedule 1-A refusal
-# row (R-senior-1a), kept out of battery_for(2025) (aged_refusal_rows).
+# The aged single row computes 2021-2024; 2025's is a REFUSAL row
+# (R-senior-1a, Schedule 1-A) -- the parity harness expects it to refuse.
 _AGED = ["std_deduction_aged__single"]
 _EXPECTED_NAMES_BY_YEAR = {
     2021: _EXPECTED_NAMES + ["ptc_2021_ui_flat133",
@@ -50,7 +50,7 @@ _EXPECTED_NAMES_BY_YEAR = {
     2022: _EXPECTED_NAMES + _AGED,
     2023: _EXPECTED_NAMES + _AGED,
     2024: _EXPECTED_NAMES + _AGED,
-    2025: _EXPECTED_NAMES,
+    2025: _EXPECTED_NAMES + ["std_deduction_aged_refused__single"],
 }
 
 
@@ -97,6 +97,12 @@ class BatteryParameterizationTests(unittest.TestCase):
                      + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS):
             for name, build in battery_for(year):
                 with self.subTest(year=year, scenario=name):
+                    if name.split("__", 1)[0].endswith("_refused"):
+                        # A refusal row (e.g. the 2025 aged row): it must
+                        # refuse, never compute.
+                        with self.assertRaises(NotImplementedError):
+                            orch.compute_federal(build())
+                        continue
                     results = orch.compute_federal(build())
                     self.assertIn("total_tax", results)
                     self.assertIn("taxable_income", results)

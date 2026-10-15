@@ -39,7 +39,7 @@ NATIVE_SPINE_STATUSES: dict[int, tuple[str, ...]] = {
     2022: ("single",),
     2023: ("single",),
     2024: ("single",),
-    2025: ("single",),
+    2025: ("single", "married_filing_jointly", "head_of_household"),
 }
 
 

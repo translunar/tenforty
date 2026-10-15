@@ -25,10 +25,12 @@ half-support, in either direction.
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
 from tenforty.mappings.f1040 import F1040, WORKBOOK_KEY_EXCLUSIONS
+from tenforty.models import FilingStatus
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures.spine_battery import battery_for
 from tests.helpers import REPO_ROOT, needs_libreoffice
@@ -85,6 +87,20 @@ PARITY_KEYS = (
 )
 
 
+# Refusal rows. A battery row whose KIND (name prefix before `__`) ends in
+# `_refused` is a row the return must REFUSE, with the cause named here; it is
+# never compared numerically. A computing row that refuses, a refusal row that
+# computes or refuses for another cause, and an unlisted `_refused` kind are
+# all hard failures.
+REFUSAL_EXPECTATIONS: dict[str, str] = {
+    # R-senior-1a: TY2025 aged filers refuse for Schedule 1-A.
+    "std_deduction_aged_refused": r"Schedule 1-A",
+    "std_deduction_both_aged_refused": r"Schedule 1-A",
+    # R-hoh-ptc: HoH + Form 1095-A refuses (tax-family size unknown).
+    "ptc_reconciliation_refused": r"^Form 8962 .*head_of_household.*family size",
+}
+
+
 def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> None:
     """Run penny-parity check for every (name, builder) pair in battery.
 
@@ -93,6 +109,27 @@ def _run_parity_battery(test_case: unittest.TestCase, battery, *, year=None) -> 
     """
     for name, build in battery:
         with test_case.subTest(year=year, scenario=name):
+            kind = name.split("__", 1)[0]
+            if kind.endswith("_refused"):
+                # A REFUSAL row: it must refuse with its kind's named cause,
+                # and is never compared against the workbook.
+                if kind not in REFUSAL_EXPECTATIONS:
+                    test_case.fail(
+                        f"{name}: refusal kind {kind!r} has no entry in "
+                        f"REFUSAL_EXPECTATIONS (an unlisted refusal row is a "
+                        f"hard failure, never a skip)")
+                with tempfile.TemporaryDirectory() as tmp:
+                    orch = ReturnOrchestrator(
+                        spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                        work_dir=Path(tmp),
+                    )
+                    with test_case.assertRaisesRegex(
+                            NotImplementedError, REFUSAL_EXPECTATIONS[kind],
+                            msg=f"{name}: refusal row did not refuse with "
+                                f"its expected cause"):
+                        eff, _ = orch._build_effective_scenario(build())
+                        orch._compute_1040_pipeline(eff)
+                continue
             scenario = build()
             with tempfile.TemporaryDirectory() as tmp:
                 orch = ReturnOrchestrator(
@@ -132,8 +169,12 @@ class SpineParityTests(unittest.TestCase):
 
     @pytest.mark.oracle
     def test_native_matches_every_workbook_pennywise(self):
+        # Every DECLARED (year, filing status) of every workbook year.
         for year in year_manifest.WORKBOOK_YEARS:
-            _run_parity_battery(self, battery_for(year), year=year)
+            for status in year_manifest.NATIVE_SPINE_STATUSES.get(year, ()):
+                _run_parity_battery(
+                    self, battery_for(year, FilingStatus(status)),
+                    year=f"{year}/{status}")
 
 
 class WorkbookKeyExclusionTests(unittest.TestCase):
@@ -180,6 +221,91 @@ class WorkbookKeyExclusionTests(unittest.TestCase):
                 self.assertNotIn(key, F1040.INPUTS.get(year, {}))
                 self.assertNotIn(key, F1040.OUTPUTS.get(year, {}))
                 self.assertNotIn(key, F1040.SHEET_MAP.get(year, {}))
+
+
+
+def _run_harness(battery, workbook_calls):
+    """Run `_run_parity_battery` inside a throwaway TestCase and return its
+    TestResult. The workbook is stubbed with the native pipeline (so a
+    computing row's parity is trivially exact and no soffice is launched)
+    and every call is recorded, so a refusal row that reaches the workbook
+    is visible."""
+    def workbook(self, eff):
+        workbook_calls.append(eff)
+        return self._compute_1040_pipeline(eff)
+
+    class _Inner(unittest.TestCase):
+        def runTest(self):
+            _run_parity_battery(self, battery, year=2025)
+
+    result = unittest.TestResult()
+    with mock.patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook", workbook):
+        _Inner().run(result)
+    return result
+
+
+class ParityHarnessRefusalRowTests(unittest.TestCase):
+    """The parity harness's refusal-row contract, fast tier (stubbed
+    workbook, no soffice): a `*_refused__*` row must refuse with its kind's
+    named cause and is never compared; a computing row that refuses, or a
+    refused row that computes, is a hard failure."""
+
+    def _row(self, name, status=FilingStatus.SINGLE):
+        return dict(battery_for(2025, status))[name]
+
+    def test_refusal_row_that_refuses_with_its_cause_passes(self):
+        calls = []
+        result = _run_harness(
+            [("std_deduction_aged_refused__single",
+              self._row("std_deduction_aged_refused__single"))], calls)
+        self.assertEqual((result.failures, result.errors), ([], []))
+        self.assertEqual(calls, [])   # never compared against the workbook
+
+    def test_every_declared_refusal_kind_has_an_expectation(self):
+        for status in (FilingStatus.SINGLE,
+                       FilingStatus.MARRIED_FILING_JOINTLY,
+                       FilingStatus.HEAD_OF_HOUSEHOLD):
+            for name, _ in battery_for(2025, status):
+                kind = name.split("__", 1)[0]
+                if kind.endswith("_refused"):
+                    with self.subTest(row=name):
+                        self.assertIn(kind, REFUSAL_EXPECTATIONS)
+
+    def test_refused_row_that_computes_fails(self):
+        calls = []
+        result = _run_harness(
+            [("std_deduction_aged_refused__single",
+              self._row("zero_tax_refund"))], calls)
+        self.assertEqual(len(result.failures) + len(result.errors), 1)
+
+    def test_refused_row_with_the_wrong_cause_fails(self):
+        calls = []
+        result = _run_harness(
+            [("ptc_reconciliation_refused__hoh",
+              self._row("std_deduction_aged_refused__single"))], calls)
+        self.assertEqual(len(result.failures) + len(result.errors), 1)
+
+    def test_unknown_refusal_kind_fails(self):
+        calls = []
+        result = _run_harness(
+            [("mystery_refused__single",
+              self._row("std_deduction_aged_refused__single"))], calls)
+        self.assertEqual(len(result.failures) + len(result.errors), 1)
+
+    def test_computing_row_that_refuses_fails(self):
+        calls = []
+        result = _run_harness(
+            [("zero_tax_refund",
+              self._row("std_deduction_aged_refused__single"))], calls)
+        self.assertEqual(len(result.failures) + len(result.errors), 1)
+
+    def test_computing_row_is_compared(self):
+        calls = []
+        result = _run_harness(
+            [("zero_tax_refund", self._row("zero_tax_refund"))], calls)
+        self.assertEqual((result.failures, result.errors), ([], []))
+        self.assertEqual(len(calls), 1)
 
 
 if __name__ == "__main__":
