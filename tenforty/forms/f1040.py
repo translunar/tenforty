@@ -294,8 +294,9 @@ def workbook_refusal(harvested: dict) -> str | None:
 
 # --- Numeric-cell probes ------------------------------------------------------
 #
-# The registry (cells, sheets, defined names, and why each is there) lives in
-# mappings/f1040.py::WORKBOOK_PROBES_2025. A probe's healthy value is a number
+# The registries (cells, sheets, defined names, and why each is there) live in
+# mappings/f1040.py::WORKBOOK_PROBES_2025 / WORKBOOK_PROBES_2024 (keys are
+# disjoint: 2024's carry `y2024`). A probe's healthy value is a number
 # or blank; NON-EMPTY TEXT OR AN ERROR MARKER means the sheet put a diagnostic
 # where a number belongs, which a downstream SUM/MIN would silently skip (the
 # partial-total species). There is deliberately no string allowlist: for a
@@ -310,7 +311,7 @@ _PROBE_REFUSAL = (
     "{value!r}. That cell feeds the return's arithmetic, and a spreadsheet "
     "SUM/MIN silently skips text, so the figures computed from it would be a "
     "partial total presented as a whole one. tenforty declines to emit them. "
-    "The cell is a numeric probe (mappings/f1040.py::WORKBOOK_PROBES_2025): "
+    "The cell is a numeric probe (mappings/f1040.py::WORKBOOK_PROBES_<year>): "
     "its healthy value is a number or blank, so any text is a diagnostic."
 )
 
@@ -322,7 +323,10 @@ def workbook_probe_refusal(harvested: dict) -> str | None:
     A pure function of the harvested dict (testable without soffice, like
     `workbook_refusal`). Passes when no probe key is present.
     """
-    from tenforty.mappings.f1040 import WORKBOOK_PROBES_2025
+    from tenforty.mappings.f1040 import (
+        WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
+    )
+    registry = {**WORKBOOK_PROBES_2025, **WORKBOOK_PROBES_2024}
     for key, value in harvested.items():
         if not key.startswith(WORKBOOK_PROBE_PREFIX):
             continue
@@ -332,7 +336,7 @@ def workbook_probe_refusal(harvested: dict) -> str | None:
             continue
         if isinstance(value, str) and not value.strip():
             continue
-        probe = WORKBOOK_PROBES_2025.get(key)
+        probe = registry.get(key)
         if probe is None:
             where = f"harvested probe key {key!r} (not in the registry)"
         else:

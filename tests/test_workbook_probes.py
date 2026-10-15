@@ -19,10 +19,13 @@ import unittest
 import openpyxl
 
 from tenforty.forms import f1040 as form_1040
-from tenforty.mappings.f1040 import F1040, WORKBOOK_PROBES_2025
+from tenforty.mappings.f1040 import (
+    F1040, WORKBOOK_PROBES_2024, WORKBOOK_PROBES_2025,
+)
 from tests.helpers import REPO_ROOT
 
 WORKBOOK_2025 = REPO_ROOT / "spreadsheets" / "federal" / "2025" / "1040.xlsx"
+WORKBOOK_2024 = REPO_ROOT / "spreadsheets" / "federal" / "2024" / "1040.xlsx"
 
 # The cut doc's IN list less the three recorded-not-harvested cells (73),
 # less the 32 dispatch-family cells below: 41.
@@ -146,12 +149,19 @@ class ProbeRegistryTests(unittest.TestCase):
                 self.assertEqual(outputs[key], probe.cell)
                 self.assertEqual(sheet_map[key], probe.sheet)
 
-    def test_probes_are_2025_only(self):
-        for year in (2021, 2022, 2023, 2024):
+    def test_probes_are_per_year(self):
+        # 2025's probes in 2025 only, 2024's (the `y2024` keys) in 2024 only,
+        # none in 2021-2023 yet (each back-year lane inventories its own).
+        def probe_keys(year):
+            return {k for k in F1040.OUTPUTS[year]
+                    if k.startswith(form_1040.WORKBOOK_PROBE_PREFIX)}
+        for year in (2021, 2022, 2023):
             with self.subTest(year=year):
-                self.assertEqual(
-                    [k for k in F1040.OUTPUTS[year]
-                     if k.startswith(form_1040.WORKBOOK_PROBE_PREFIX)], [])
+                self.assertEqual(probe_keys(year), set())
+        self.assertEqual(probe_keys(2025), set(WORKBOOK_PROBES_2025))
+        self.assertEqual(probe_keys(2024), set(WORKBOOK_PROBES_2024))
+        self.assertEqual(set(WORKBOOK_PROBES_2024) & set(WORKBOOK_PROBES_2025),
+                         set())
 
     def test_each_probe_cell_is_a_formula_and_names_match_the_workbook(self):
         # A probe pointed at a blank or constant cell would read None and
@@ -170,6 +180,145 @@ class ProbeRegistryTests(unittest.TestCase):
                 recorded = {n for n in probe.defined_name.split(" / ") if n}
                 self.assertEqual(
                     recorded, names_at.get((probe.sheet, probe.cell), set()))
+
+
+# ---- 2024 (workbook-health-2024; docs/plans/2026-10-13-briefs/
+# workbook-health-2024-numeric-cut.md, gitignored) -------------------------
+# 77 numeric-path cells − 32 dispatch-family (structural rule) − 6
+# recorded-not-harvested = 39. Literals independent of the registry.
+EXPECTED_PROBE_CELLS_2024: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AD60"),
+    ("1040", "BC79"),
+    ("6251", "AC26"),
+    ("6251", "AC38"),
+    ("6251", "M101"),
+    ("6251", "M103"),
+    ("6251", "M110"),
+    ("6251", "M88"),
+    ("6251", "M94"),
+    ("8582", "AT18"),
+    ("8582", "X33"),
+    ("8812", "AL30"),
+    ("8863", "X16"),
+    ("8959", "K24"),
+    ("8959", "K34"),
+    ("8959", "K46"),
+    ("8960", "L44"),
+    ("Line 16 (QDCG Tax)", "AA104"),
+    ("Line 16 (QDCG Tax)", "N65"),
+    ("Line 16 (QDCG Tax)", "N69"),
+    ("Line 16 (QDCG Tax)", "N93"),
+    ("Line 16 (QDCG Tax)", "N97"),
+    ("Line 16 (QDCG Tax)", "V109"),
+    ("Line 16 (QDCG Tax)", "X129"),
+    ("Line 16 (QDCG Tax)", "X140"),
+    ("Line 16 (QDCG Tax)", "X158"),
+    ("Line 16 (QDCG Tax)", "Y163"),
+    ("Line 6ab (SS Bene)", "J34"),
+    ("Line 6ab (SS Bene)", "J54"),
+    ("Sch. 1, Line 21 (Stu Loan)", "J20"),
+    ("Sch. A", "AI10"),
+    ("Sch. D WS", "L110"),
+    ("Sch. D WS", "L111"),
+    ("Sch. D WS", "L91"),
+    ("Sch. D WS", "L92"),
+    ("Sch. D WS", "L98"),
+    ("Sch. D WS", "P134"),
+    ("Sch. D WS", "P137"),
+    ("Sch. SE", "X20"),
+})
+REMOVED_DISPATCH_FAMILY_2024: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "AY78"),
+    ("1040", "AY79"),
+    ("Line 16 (QDCG Tax)", "AA96"),
+    ("Line 16 (QDCG Tax)", "U162"),
+    ("Line 16 (QDCG Tax)", "U163"),
+    ("Line 16 (QDCG Tax)", "U169"),
+    ("Line 16 (QDCG Tax)", "U170"),
+    ("Line 16 (QDCG Tax)", "U57"),
+    ("Line 16 (QDCG Tax)", "U58"),
+    ("Line 16 (QDCG Tax)", "U64"),
+    ("Line 16 (QDCG Tax)", "U65"),
+    ("Line 16 (QDCG Tax)", "U78"),
+    ("Line 16 (QDCG Tax)", "U79"),
+    ("Line 16 (QDCG Tax)", "U84"),
+    ("Line 16 (QDCG Tax)", "U85"),
+    ("Line 16 (QDCG Tax)", "V111"),
+    ("Line 16 (QDCG Tax)", "W103"),
+    ("Line 16 (QDCG Tax)", "W104"),
+    ("Line 16 (QDCG Tax)", "W95"),
+    ("Line 16 (QDCG Tax)", "W96"),
+    ("Line 16 (QDCG Tax)", "X165"),
+    ("Line 16 (QDCG Tax)", "Y170"),
+    ("Line 16 (QDCG Tax)", "Y58"),
+    ("Line 16 (QDCG Tax)", "Y65"),
+    ("Line 16 (QDCG Tax)", "Y79"),
+    ("Line 16 (QDCG Tax)", "Y85"),
+    ("Sch. D WS", "AB134"),
+    ("Sch. D WS", "AB135"),
+    ("Sch. D WS", "AB143"),
+    ("Sch. D WS", "AB144"),
+    ("Sch. D WS", "AF135"),
+    ("Sch. D WS", "AF144"),
+})
+NOT_PROBED_2024: frozenset[tuple[str, str]] = frozenset({
+    ("Line 6ab (SS Bene)", "J28"),
+    ("2441", "V112"),
+    ("Sch. 1, Line 20 (IRA)", "Q22"),
+    ("1099-R", "O32"),
+    ("8606", "AE76"),
+    ("8606", "AE185"),
+})
+
+
+class ProbeRegistry2024Tests(unittest.TestCase):
+    def test_probe_cells_match_the_2024_cut(self):
+        cells = {(p.sheet, p.cell) for p in WORKBOOK_PROBES_2024.values()}
+        self.assertEqual(len(EXPECTED_PROBE_CELLS_2024), 39)
+        self.assertEqual(len(WORKBOOK_PROBES_2024), 39)
+        self.assertEqual(cells, set(EXPECTED_PROBE_CELLS_2024))
+        self.assertEqual(len(REMOVED_DISPATCH_FAMILY_2024), 32)
+        self.assertEqual(len(NOT_PROBED_2024), 6)
+        self.assertEqual(cells & set(REMOVED_DISPATCH_FAMILY_2024), set())
+        self.assertEqual(cells & set(NOT_PROBED_2024), set())
+
+    def test_every_2024_probe_is_a_2024_output_routed_to_its_sheet(self):
+        for key, probe in WORKBOOK_PROBES_2024.items():
+            with self.subTest(key=key):
+                self.assertTrue(key.startswith(
+                    form_1040.WORKBOOK_PROBE_PREFIX + "y2024__"))
+                self.assertEqual(F1040.OUTPUTS[2024][key], probe.cell)
+                self.assertEqual(F1040.SHEET_MAP[2024][key], probe.sheet)
+
+    def test_each_2024_probe_cell_is_a_formula_and_names_match(self):
+        wb = openpyxl.load_workbook(WORKBOOK_2024)
+        names_at: dict[tuple[str, str], set[str]] = {}
+        for name, defn in wb.defined_names.items():
+            for sheet, ref in defn.destinations:
+                names_at.setdefault((sheet, ref.replace("$", "")),
+                                    set()).add(name)
+        for key, probe in WORKBOOK_PROBES_2024.items():
+            with self.subTest(key=key):
+                value = wb[probe.sheet][probe.cell].value
+                self.assertIsInstance(value, str)
+                self.assertTrue(value.startswith("="), value)
+                recorded = {n for n in probe.defined_name.split(" / ") if n}
+                self.assertEqual(
+                    recorded, names_at.get((probe.sheet, probe.cell), set()))
+
+    def test_2024_probe_refusal_names_the_2024_cell(self):
+        # 'Sch. A'!AI10 is a probe in both years; the 2024 key must name the
+        # 2024 registry's cell, never fall back to "not in the registry".
+        key = form_1040.WORKBOOK_PROBE_PREFIX + "y2024__sch_a__ai10"
+        message = form_1040.workbook_probe_refusal({key: "Birthdate needed."})
+        self.assertIsNotNone(message)
+        self.assertIn("'Sch. A'!AI10", message)
+        self.assertNotIn("not in the registry", message)
+        for key in WORKBOOK_PROBES_2024:
+            with self.subTest(key=key):
+                self.assertNotIn(
+                    "not in the registry",
+                    form_1040.workbook_probe_refusal({key: "x"}))
 
 
 class ProbeRefusalTests(unittest.TestCase):
