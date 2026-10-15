@@ -101,3 +101,34 @@ class TestNoPersonalData(unittest.TestCase):
                 result.returncode, 0,
                 f"Valid config with empty denylist should pass:\n{combined}",
             )
+
+
+def _load_scanner_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "verify_no_personal_data", SCANNER_PATH)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class TestNonRoundAmountHeuristic(unittest.TestCase):
+    """check_non_round_amounts: the PUBLIC_STATUTORY_AMOUNTS allowlist is an
+    exact-string exemption; every other non-round amount still fires."""
+
+    def setUp(self):
+        self.scanner = _load_scanner_module()
+        self.path = REPO_ROOT / "tests" / "fixtures" / "scratch.yaml"
+
+    def _violations(self, line: str) -> list[str]:
+        return self.scanner.check_non_round_amounts({self.path: line})
+
+    def test_allowlisted_amount_passes(self):
+        self.assertEqual(self._violations("    ss_tax_withheld: 10918.20\n"),
+                         [])
+
+    def test_non_allowlisted_non_round_amount_still_rejected(self):
+        violations = self._violations("    wages: 1234.56\n")
+        self.assertEqual(len(violations), 1)
+        self.assertIn("$1234.56 is not a round number", violations[0])
