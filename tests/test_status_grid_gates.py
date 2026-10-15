@@ -228,6 +228,11 @@ class GridShapeTests(unittest.TestCase):
             self.assertTrue(years.native_spine_supports(2025, mfs))
         self.assertFalse(years.native_spine_supports(2025, mfs))
 
+    def test_2021_declares_single_mfj_and_hoh(self):
+        self.assertEqual(
+            years.NATIVE_SPINE_STATUSES[2021],
+            ("single", "married_filing_jointly", "head_of_household"))
+
     def test_2022_declares_single_mfj_and_hoh(self):
         self.assertEqual(
             years.NATIVE_SPINE_STATUSES[2022],
