@@ -24,12 +24,11 @@ from tests.helpers import REPO_ROOT
 
 WORKBOOK_2025 = REPO_ROOT / "spreadsheets" / "federal" / "2025" / "1040.xlsx"
 
-# The cut doc's IN list less the three recorded-not-harvested cells: 73.
+# The cut doc's IN list less the three recorded-not-harvested cells (73),
+# less the 32 dispatch-family cells below: 41.
 # Independent of the registry, so a silently deleted probe key reddens.
 EXPECTED_PROBE_CELLS: frozenset[tuple[str, str]] = frozenset({
     ("1040", "AL71"),
-    ("1040", "BI99"),
-    ("1040", "BI100"),
     ("1040", "BM100"),
     ("6251", "AC27"),
     ("6251", "AC39"),
@@ -46,40 +45,16 @@ EXPECTED_PROBE_CELLS: frozenset[tuple[str, str]] = frozenset({
     ("8959", "K34"),
     ("8959", "K46"),
     ("8960", "L44"),
-    ("Line 16 (QDCG Tax)", "U59"),
-    ("Line 16 (QDCG Tax)", "U60"),
-    ("Line 16 (QDCG Tax)", "Y60"),
-    ("Line 16 (QDCG Tax)", "U66"),
     ("Line 16 (QDCG Tax)", "N67"),
-    ("Line 16 (QDCG Tax)", "U67"),
-    ("Line 16 (QDCG Tax)", "Y67"),
     ("Line 16 (QDCG Tax)", "N71"),
-    ("Line 16 (QDCG Tax)", "U80"),
-    ("Line 16 (QDCG Tax)", "U81"),
-    ("Line 16 (QDCG Tax)", "Y81"),
-    ("Line 16 (QDCG Tax)", "U86"),
-    ("Line 16 (QDCG Tax)", "U87"),
-    ("Line 16 (QDCG Tax)", "Y87"),
     ("Line 16 (QDCG Tax)", "N95"),
-    ("Line 16 (QDCG Tax)", "W97"),
-    ("Line 16 (QDCG Tax)", "W98"),
-    ("Line 16 (QDCG Tax)", "AA98"),
     ("Line 16 (QDCG Tax)", "N99"),
-    ("Line 16 (QDCG Tax)", "W105"),
-    ("Line 16 (QDCG Tax)", "W106"),
     ("Line 16 (QDCG Tax)", "AA106"),
     ("Line 16 (QDCG Tax)", "V111"),
-    ("Line 16 (QDCG Tax)", "V113"),
     ("Line 16 (QDCG Tax)", "X131"),
     ("Line 16 (QDCG Tax)", "X142"),
     ("Line 16 (QDCG Tax)", "X160"),
-    ("Line 16 (QDCG Tax)", "U164"),
-    ("Line 16 (QDCG Tax)", "U165"),
     ("Line 16 (QDCG Tax)", "Y165"),
-    ("Line 16 (QDCG Tax)", "X167"),
-    ("Line 16 (QDCG Tax)", "U171"),
-    ("Line 16 (QDCG Tax)", "U172"),
-    ("Line 16 (QDCG Tax)", "Y172"),
     ("Line 6ab (SS Bene)", "L29"),
     ("Line 6ab (SS Bene)", "L49"),
     ("Sch. 1, Line 21 (Stu Loan)", "J20"),
@@ -92,14 +67,48 @@ EXPECTED_PROBE_CELLS: frozenset[tuple[str, str]] = frozenset({
     ("Sch. D WS", "L110"),
     ("Sch. D WS", "L111"),
     ("Sch. D WS", "R134"),
+    ("Sch. D WS", "R137"),
+    ("Sch. SE", "X20"),
+})
+
+# Dispatch-family cells removed from the probe set (team-lead ruling after
+# the step-3 probe-value dump): the 29 cells that held '---' / '#N/A' /
+# '#VALUE!' on every workbook row (unused-worksheet operands and the
+# unchosen table/schedule side) plus three table-side dispatch cells of the
+# same structure. A MEMBERSHIP correction, not a string allowlist.
+REMOVED_DISPATCH_FAMILY: frozenset[tuple[str, str]] = frozenset({
+    ("1040", "BI100"),
+    ("1040", "BI99"),
+    ("Line 16 (QDCG Tax)", "AA98"),
+    ("Line 16 (QDCG Tax)", "U164"),
+    ("Line 16 (QDCG Tax)", "U165"),
+    ("Line 16 (QDCG Tax)", "U171"),
+    ("Line 16 (QDCG Tax)", "U172"),
+    ("Line 16 (QDCG Tax)", "U59"),
+    ("Line 16 (QDCG Tax)", "U60"),
+    ("Line 16 (QDCG Tax)", "U66"),
+    ("Line 16 (QDCG Tax)", "U67"),
+    ("Line 16 (QDCG Tax)", "U80"),
+    ("Line 16 (QDCG Tax)", "U81"),
+    ("Line 16 (QDCG Tax)", "U86"),
+    ("Line 16 (QDCG Tax)", "U87"),
+    ("Line 16 (QDCG Tax)", "V113"),
+    ("Line 16 (QDCG Tax)", "W105"),
+    ("Line 16 (QDCG Tax)", "W106"),
+    ("Line 16 (QDCG Tax)", "W97"),
+    ("Line 16 (QDCG Tax)", "W98"),
+    ("Line 16 (QDCG Tax)", "X167"),
+    ("Line 16 (QDCG Tax)", "Y172"),
+    ("Line 16 (QDCG Tax)", "Y60"),
+    ("Line 16 (QDCG Tax)", "Y67"),
+    ("Line 16 (QDCG Tax)", "Y81"),
+    ("Line 16 (QDCG Tax)", "Y87"),
     ("Sch. D WS", "AD134"),
     ("Sch. D WS", "AD135"),
-    ("Sch. D WS", "AH135"),
-    ("Sch. D WS", "R137"),
     ("Sch. D WS", "AD143"),
     ("Sch. D WS", "AD144"),
+    ("Sch. D WS", "AH135"),
     ("Sch. D WS", "AH144"),
-    ("Sch. SE", "X20"),
 })
 
 # Cells ruled recorded-not-harvested: normal-operation strings consumed only
@@ -111,7 +120,7 @@ NOT_PROBED: frozenset[tuple[str, str]] = frozenset({
 })
 
 AL71 = "workbook_probe__1040__al71"   # '1040'!AL71 [SocSecBenefits_Taxable]
-U59 = "workbook_probe__line_16_qdcg_tax__u59"
+K34 = "workbook_probe__8959__k34"   # '8959'!K34, no defined name
 AU30 = "workbook_probe__sch_1_a__au30"
 
 
@@ -121,9 +130,12 @@ class ProbeRegistryTests(unittest.TestCase):
 
     def test_probe_cells_match_the_cut(self):
         cells = {(p.sheet, p.cell) for p in WORKBOOK_PROBES_2025.values()}
-        self.assertEqual(len(WORKBOOK_PROBES_2025), 73)
+        self.assertEqual(len(EXPECTED_PROBE_CELLS), 41)
+        self.assertEqual(len(WORKBOOK_PROBES_2025), 41)
         self.assertEqual(cells, set(EXPECTED_PROBE_CELLS))
         self.assertEqual(cells & set(NOT_PROBED), set())
+        self.assertEqual(len(REMOVED_DISPATCH_FAMILY), 32)
+        self.assertEqual(cells & set(REMOVED_DISPATCH_FAMILY), set())
 
     def test_every_probe_is_a_2025_output_routed_to_its_sheet(self):
         outputs = F1040.OUTPUTS[2025]
@@ -167,7 +179,7 @@ class ProbeRefusalTests(unittest.TestCase):
         for value in (0, 1, -250, 1234.5, 0.0):
             with self.subTest(value=value):
                 self.assertIsNone(form_1040.workbook_probe_refusal(
-                    {AL71: value, U59: value}))
+                    {AL71: value, K34: value}))
 
     def test_blank_and_empty_string_pass(self):
         for value in (None, "", "   ", "\n"):
@@ -187,21 +199,30 @@ class ProbeRefusalTests(unittest.TestCase):
             self.assertIn(part, message)
 
     def test_unnamed_cell_refusal_names_sheet_and_cell(self):
-        message = form_1040.workbook_probe_refusal({U59: "Filing status?"})
+        message = form_1040.workbook_probe_refusal({K34: "Filing status?"})
         self.assertIsNotNone(message)
-        self.assertIn("'Line 16 (QDCG Tax)'!U59", message)
+        self.assertIn("'8959'!K34", message)
         self.assertIn("'Filing status?'", message)
 
     def test_error_markers_refuse(self):
         for marker in ("#VALUE!", "#NAME?", "#REF!", "#DIV/0!", "#N/A"):
             with self.subTest(marker=marker):
-                message = form_1040.workbook_probe_refusal({U59: marker})
+                message = form_1040.workbook_probe_refusal({K34: marker})
                 self.assertIsNotNone(message)
                 self.assertIn(marker, message)
 
+    def test_dispatch_family_strings_are_not_allowlisted(self):
+        # The 32-cell removal is a MEMBERSHIP correction: '---' and '#N/A'
+        # still refuse in every probe that remains.
+        for value in ("---", "#N/A", "#VALUE!"):
+            for key in WORKBOOK_PROBES_2025:
+                with self.subTest(value=value, key=key):
+                    self.assertIsNotNone(
+                        form_1040.workbook_probe_refusal({key: value}))
+
     def test_booleans_refuse(self):
         # A numeric cell holding TRUE/FALSE is not a number either.
-        self.assertIsNotNone(form_1040.workbook_probe_refusal({U59: True}))
+        self.assertIsNotNone(form_1040.workbook_probe_refusal({K34: True}))
 
     def test_sch_1a_caption_refuses(self):
         # Vendor bug: 'Sch. 1-A'!AU30 reads the 'W-2s'!F$39 caption where its
@@ -228,12 +249,12 @@ class ProbeComputeTests(unittest.TestCase):
 
     def test_text_in_a_probe_refuses_compute(self):
         with self.assertRaises(NotImplementedError) as ctx:
-            form_1040.compute(self._raw(**{U59: "Filing status?"}), {})
-        self.assertIn("'Line 16 (QDCG Tax)'!U59", str(ctx.exception))
+            form_1040.compute(self._raw(**{K34: "Filing status?"}), {})
+        self.assertIn("'8959'!K34", str(ctx.exception))
 
     def test_probe_keys_are_consumed_not_forwarded(self):
         result = form_1040.compute(
-            self._raw(**{U59: 0, AL71: "", AU30: None}), {})
+            self._raw(**{K34: 0, AL71: "", AU30: None}), {})
         self.assertEqual(
             [k for k in result
              if k.startswith(form_1040.WORKBOOK_PROBE_PREFIX)], [])

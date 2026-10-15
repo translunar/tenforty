@@ -149,12 +149,31 @@ class _Probe(NamedTuple):
 # numeric-cut.md, gitignored), less three cells recorded-not-harvested
 # because they hold text in normal operation and every numeric consumer is
 # behind a textual guard: 'Line 6ab (SS Bene)'!L23, '2441'!V111,
-# 'Sch. 1, Line 20 (IRA)'!Q21. Pinned by tests/test_workbook_probes.py.
+# 'Sch. 1, Line 20 (IRA)'!Q21.
+#
+# DISPATCH-FAMILY MEMBERSHIP CORRECTION (team-lead ruling after the step-3
+# probe-value dump; 73 - 29 - 3 = 41 probes). The 'Line 16 (QDCG Tax)' and
+# 'Sch. D WS' tax worksheets (and '1040'!BI99/BI100) compute tax twice per
+# status -- a Tax Table LOOKUP and a schedule that prints "---" below its
+# floor -- and a selector IF(income>100000, ROUND(schedule), ROUND(table))
+# picks one. On a worksheet the return does not use, the income operand is
+# "", so the unchosen and unused cells hold "---" / "#N/A" / "#VALUE!" on
+# EVERY return; their real guard is the worksheet-used flag (CGTW /
+# SchDTW_Used / FEI_Tax_Worksheet), not the threshold. Removed: the 29 cells
+# texty on every workbook row of the dump, plus the three table-side
+# dispatch cells of the same structure ('1040'!BI99, QDCG U164, W105) --
+# losing nothing, because the kept selectors read them inside ROUND, so real
+# table corruption still surfaces as an error in a kept probe. Kept: the
+# selector '1040'!BM100 (its operand Taxable_Inc is always numeric) and every
+# gated pass-through/selector that reads "" when its worksheet is unused --
+# the only detection left for text on a worksheet that IS in use. This is a
+# MEMBERSHIP correction on structural + empirical grounds, NOT a string
+# allowlist: "---" and "#N/A" still refuse in every probe that remains.
+# Evidence: docs/plans/2026-10-13-briefs/workbook-health-2025-numeric-cut.md.
+# Pinned by tests/test_workbook_probes.py.
 WORKBOOK_PROBES_2025: dict[str, _Probe] = {
     # --- 1040 ---
     "workbook_probe__1040__al71": _Probe("1040", "AL71", "SocSecBenefits_Taxable"),
-    "workbook_probe__1040__bi99": _Probe("1040", "BI99", ""),
-    "workbook_probe__1040__bi100": _Probe("1040", "BI100", ""),
     "workbook_probe__1040__bm100": _Probe("1040", "BM100", ""),
     # --- 6251 ---
     "workbook_probe__6251__ac27": _Probe("6251", "AC27", ""),
@@ -178,40 +197,16 @@ WORKBOOK_PROBES_2025: dict[str, _Probe] = {
     # --- 8960 ---
     "workbook_probe__8960__l44": _Probe("8960", "L44", ""),
     # --- Line 16 (QDCG Tax) ---
-    "workbook_probe__line_16_qdcg_tax__u59": _Probe("Line 16 (QDCG Tax)", "U59", ""),
-    "workbook_probe__line_16_qdcg_tax__u60": _Probe("Line 16 (QDCG Tax)", "U60", ""),
-    "workbook_probe__line_16_qdcg_tax__y60": _Probe("Line 16 (QDCG Tax)", "Y60", ""),
-    "workbook_probe__line_16_qdcg_tax__u66": _Probe("Line 16 (QDCG Tax)", "U66", ""),
     "workbook_probe__line_16_qdcg_tax__n67": _Probe("Line 16 (QDCG Tax)", "N67", ""),
-    "workbook_probe__line_16_qdcg_tax__u67": _Probe("Line 16 (QDCG Tax)", "U67", ""),
-    "workbook_probe__line_16_qdcg_tax__y67": _Probe("Line 16 (QDCG Tax)", "Y67", ""),
     "workbook_probe__line_16_qdcg_tax__n71": _Probe("Line 16 (QDCG Tax)", "N71", "CGTW_Line24"),
-    "workbook_probe__line_16_qdcg_tax__u80": _Probe("Line 16 (QDCG Tax)", "U80", ""),
-    "workbook_probe__line_16_qdcg_tax__u81": _Probe("Line 16 (QDCG Tax)", "U81", ""),
-    "workbook_probe__line_16_qdcg_tax__y81": _Probe("Line 16 (QDCG Tax)", "Y81", ""),
-    "workbook_probe__line_16_qdcg_tax__u86": _Probe("Line 16 (QDCG Tax)", "U86", ""),
-    "workbook_probe__line_16_qdcg_tax__u87": _Probe("Line 16 (QDCG Tax)", "U87", ""),
-    "workbook_probe__line_16_qdcg_tax__y87": _Probe("Line 16 (QDCG Tax)", "Y87", ""),
     "workbook_probe__line_16_qdcg_tax__n95": _Probe("Line 16 (QDCG Tax)", "N95", ""),
-    "workbook_probe__line_16_qdcg_tax__w97": _Probe("Line 16 (QDCG Tax)", "W97", ""),
-    "workbook_probe__line_16_qdcg_tax__w98": _Probe("Line 16 (QDCG Tax)", "W98", ""),
-    "workbook_probe__line_16_qdcg_tax__aa98": _Probe("Line 16 (QDCG Tax)", "AA98", ""),
     "workbook_probe__line_16_qdcg_tax__n99": _Probe("Line 16 (QDCG Tax)", "N99", ""),
-    "workbook_probe__line_16_qdcg_tax__w105": _Probe("Line 16 (QDCG Tax)", "W105", ""),
-    "workbook_probe__line_16_qdcg_tax__w106": _Probe("Line 16 (QDCG Tax)", "W106", ""),
     "workbook_probe__line_16_qdcg_tax__aa106": _Probe("Line 16 (QDCG Tax)", "AA106", ""),
     "workbook_probe__line_16_qdcg_tax__v111": _Probe("Line 16 (QDCG Tax)", "V111", ""),
-    "workbook_probe__line_16_qdcg_tax__v113": _Probe("Line 16 (QDCG Tax)", "V113", ""),
     "workbook_probe__line_16_qdcg_tax__x131": _Probe("Line 16 (QDCG Tax)", "X131", ""),
     "workbook_probe__line_16_qdcg_tax__x142": _Probe("Line 16 (QDCG Tax)", "X142", ""),
     "workbook_probe__line_16_qdcg_tax__x160": _Probe("Line 16 (QDCG Tax)", "X160", ""),
-    "workbook_probe__line_16_qdcg_tax__u164": _Probe("Line 16 (QDCG Tax)", "U164", ""),
-    "workbook_probe__line_16_qdcg_tax__u165": _Probe("Line 16 (QDCG Tax)", "U165", ""),
     "workbook_probe__line_16_qdcg_tax__y165": _Probe("Line 16 (QDCG Tax)", "Y165", ""),
-    "workbook_probe__line_16_qdcg_tax__x167": _Probe("Line 16 (QDCG Tax)", "X167", ""),
-    "workbook_probe__line_16_qdcg_tax__u171": _Probe("Line 16 (QDCG Tax)", "U171", ""),
-    "workbook_probe__line_16_qdcg_tax__u172": _Probe("Line 16 (QDCG Tax)", "U172", ""),
-    "workbook_probe__line_16_qdcg_tax__y172": _Probe("Line 16 (QDCG Tax)", "Y172", ""),
     # --- Line 6ab (SS Bene) ---
     "workbook_probe__line_6ab_ss_bene__l29": _Probe("Line 6ab (SS Bene)", "L29", ""),
     "workbook_probe__line_6ab_ss_bene__l49": _Probe("Line 6ab (SS Bene)", "L49", "Tax_SS_Benefits"),
@@ -235,13 +230,7 @@ WORKBOOK_PROBES_2025: dict[str, _Probe] = {
     "workbook_probe__sch_d_ws__l110": _Probe("Sch. D WS", "L110", "SchDTW_Line24 / SchDTW_Line26"),
     "workbook_probe__sch_d_ws__l111": _Probe("Sch. D WS", "L111", ""),
     "workbook_probe__sch_d_ws__r134": _Probe("Sch. D WS", "R134", ""),
-    "workbook_probe__sch_d_ws__ad134": _Probe("Sch. D WS", "AD134", ""),
-    "workbook_probe__sch_d_ws__ad135": _Probe("Sch. D WS", "AD135", ""),
-    "workbook_probe__sch_d_ws__ah135": _Probe("Sch. D WS", "AH135", ""),
     "workbook_probe__sch_d_ws__r137": _Probe("Sch. D WS", "R137", ""),
-    "workbook_probe__sch_d_ws__ad143": _Probe("Sch. D WS", "AD143", ""),
-    "workbook_probe__sch_d_ws__ad144": _Probe("Sch. D WS", "AD144", ""),
-    "workbook_probe__sch_d_ws__ah144": _Probe("Sch. D WS", "AH144", ""),
     # --- Sch. SE ---
     "workbook_probe__sch_se__x20": _Probe("Sch. SE", "X20", ""),
 }
