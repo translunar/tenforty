@@ -234,41 +234,20 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     reads the harvested taxable income before QBI), so a harvest refusal
     (`Deduction` diagnostic, numeric probe) legitimately preempts it.
 
-    Vehicles (team-lead ruling, declare-fallout): each half must route to the
-    workbook AND compute cleanly there.
-      * Below the threshold: a 2025 SINGLE, EIC-POSSIBLE filer (low wages +
-        a K-1) -- EIC is never on the native spine, so this vehicle is
-        permanent.
-      * Above the threshold: 2024 MARRIED_FILING_JOINTLY (undeclared until
-        back-year-2024; ledgered for re-vehicling there), all wages on the
-        taxpayer's W-2. No permanent clean vehicle exists: above the QBI
-        threshold no filer is EIC-possible, and a 2025 MFS workbook return
-        refuses on the lived-apart diagnostic ('Line 6ab (SS Bene)'!L29)
-        before the guard can run.
-    The guard's own logic is pinned without soffice by
-    `WorkbookQbiThresholdGuardUnitTests` below (mocked workbook)."""
+    Vehicle (team-lead ruling, declare-fallout): the BELOW-threshold half
+    runs on a 2025 SINGLE, EIC-POSSIBLE filer (low wages + a K-1) -- EIC is
+    never on the native spine, so this vehicle is permanent.
 
-    @pytest.mark.oracle
-    def test_above_threshold_raises_instead_of_silent_workbook_result(self):
-        """400,000 of wages + 70,000 of K-1 QBI income, 2024 MFJ: taxable
-        income before QBI is far above the 2024 MFJ QBI threshold, so the
-        guard refuses naming Form 8995-A."""
-        mfj = FilingStatus.MARRIED_FILING_JOINTLY
-        scenario = _workbook_qbi_scenario(
-            2024, mfj, wages=400_000.0, qbi=70_000.0,
-            spouse_first_name="Taxpayer", spouse_last_name="B",
-            spouse_ssn="000-00-0001", spouse_birthdate="1986-07-09")
-        threshold = load_federal_params(2024).for_status(mfj).qbi_threshold
-        self.assertGreater(400_000.0, threshold)
-
-        with tempfile.TemporaryDirectory() as d:
-            orch = ReturnOrchestrator(
-                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
-            _assert_routes_to_workbook(self, orch, scenario)
-            with self.assertRaisesRegex(
-                NotImplementedError, "8995-A|8995A"
-            ):
-                orch.compute_federal(scenario)
+    The ABOVE-threshold half is RETIRED (ruled at back-year-2024 step 8). Its
+    end-to-end guard fire was proven at declare-fallout on a 2024
+    married-filing-jointly vehicle (oracle tier green,
+    oracle-tier-post-fallout.log); declaring 2024 MFJ native removed that
+    vehicle, and no permanent clean one exists: above the QBI threshold no
+    filer is EIC-possible, a 2025 MFS workbook return refuses upstream on the
+    lived-apart diagnostic ('Line 6ab (SS Bene)'!L29), and QSS is unverified
+    and parked. The guard's own logic stays pinned without soffice by
+    `WorkbookQbiThresholdGuardUnitTests` below (mocked workbook, MFS vehicle,
+    above- and below-threshold, attestation and missing-key cases)."""
 
     @pytest.mark.oracle
     def test_below_threshold_still_computes_via_workbook(self):
