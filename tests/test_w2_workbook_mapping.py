@@ -1,5 +1,5 @@
-"""W-2s on the workbook path: every W-2 reaches the 'W-2s' sheet, or the
-return refuses.
+"""W-2s on the workbook path, every federal year: every W-2 reaches the
+'W-2s' sheet, or the return refuses.
 
 The 1040 workbook holds up to six employers per person in columns C..H of
 the 'W-2s' sheet: the taxpayer's block, and the spouse's block at a fixed
@@ -83,10 +83,26 @@ class FlattenerOwnerRoutingTests(unittest.TestCase):
         self.assertEqual(flat["w2_spouse_wages_2"], s.w2s[2].wages)
 
 
-class W2Mapping2025Tests(unittest.TestCase):
-    """Six employers per person, both blocks, every field, 2025."""
+# Each year's employer-#1 cells (the addresses mapped before the blocks
+# were extended) -- the anchors every other W-2 address is generated from.
+EMPLOYER_ONE = {
+    2021: {"state_wages": "C21", "state_withheld": "C22"},
+    2022: {"state_wages": "C22", "state_withheld": "C23"},
+    2023: {"state_wages": "C22", "state_withheld": "C23"},
+    2024: {"state_wages": "C22", "state_withheld": "C23"},
+    2025: {"state_wages": "C28", "state_withheld": "C29"},
+}
+for _anchors in EMPLOYER_ONE.values():
+    _anchors.update({"wages": "C3", "fed_withheld": "C4", "ss_wages": "C5",
+                     "ss_withheld": "C6", "medicare_wages": "C7",
+                     "medicare_withheld": "C8"})
+YEARS = tuple(sorted(EMPLOYER_ONE))
 
-    YEAR = 2025
+
+class _W2MappingYear:
+    """Six employers per person, both blocks, every field, one year."""
+
+    YEAR: int
 
     def setUp(self):
         self.inputs = F1040.INPUTS[self.YEAR]
@@ -124,11 +140,7 @@ class W2Mapping2025Tests(unittest.TestCase):
 
     def test_employer_one_addresses_unchanged(self):
         # The taxpayer's employer-#1 cells are the ones mapped before.
-        expected = {"wages": "C3", "fed_withheld": "C4", "ss_wages": "C5",
-                    "ss_withheld": "C6", "medicare_wages": "C7",
-                    "medicare_withheld": "C8", "state_wages": "C28",
-                    "state_withheld": "C29"}
-        for field, address in expected.items():
+        for field, address in EMPLOYER_ONE[self.YEAR].items():
             with self.subTest(field=field):
                 self.assertEqual(self.inputs[f"w2_{field}_1"], address)
 
@@ -154,6 +166,38 @@ class W2Mapping2025Tests(unittest.TestCase):
         for n in EMPLOYERS:
             self.assertIn("Employer #",
                           ws.cell(row=sp_wages_row - 1, column=2 + n).value)
+
+
+class W2Mapping2021Tests(_W2MappingYear, unittest.TestCase):
+    YEAR = 2021
+
+
+class W2Mapping2022Tests(_W2MappingYear, unittest.TestCase):
+    YEAR = 2022
+
+
+class W2Mapping2023Tests(_W2MappingYear, unittest.TestCase):
+    YEAR = 2023
+
+
+class W2Mapping2024Tests(_W2MappingYear, unittest.TestCase):
+    YEAR = 2024
+
+
+class W2Mapping2025Tests(_W2MappingYear, unittest.TestCase):
+    YEAR = 2025
+
+
+class W2MappingYearCoverageTests(unittest.TestCase):
+    def test_every_federal_year_has_both_blocks_mapped(self):
+        from tenforty import years
+        self.assertEqual(
+            set(YEARS),
+            set(years.FEDERAL_YEARS + years.FEDERAL_COMPUTE_ONLY_YEARS))
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertIn("w2_spouse_wages_6", F1040.INPUTS[year])
+                self.assertIn("w2_wages_6", F1040.INPUTS[year])
 
 
 class UnmappedW2RefusalTests(unittest.TestCase):
@@ -188,14 +232,26 @@ class UnmappedW2RefusalTests(unittest.TestCase):
                       ["taxpayer"] + ["spouse"] * 7)
         self.assertIn("w2_spouse_wages_7", self._refuses(s))
 
-    def test_unmapped_year_spouse_w2_refuses(self):
-        # 2024's spouse block is not mapped (2025-only this round).
+    def test_back_year_seventh_spouse_employer_refuses_with_its_capacity(self):
+        # Every federal year maps both blocks (w2-blocks-backyears); the
+        # capacity line is the year's own.
+        s = _scenario(2021, FilingStatus.MARRIED_FILING_JOINTLY,
+                      ["taxpayer"] + ["spouse"] * 7)
+        message = self._refuses(s)
+        self.assertIn("w2_spouse_wages_7", message)
+        self.assertIn("The 2021 workbook mapping covers 6 employer(s) for "
+                      "the taxpayer and 6 for the spouse", message)
+
+    def test_back_year_spouse_w2_reaches_the_engine(self):
         s = _scenario(2024, FilingStatus.MARRIED_FILING_JOINTLY,
                       ["taxpayer", "spouse"])
-        message = self._refuses(s)
-        self.assertIn("w2_spouse_wages_1", message)
-        self.assertIn("The 2024 workbook mapping covers 1 employer(s) for "
-                      "the taxpayer and 0 for the spouse", message)
+        with mock.patch.object(
+                self.orch.engine, "compute",
+                side_effect=RuntimeError("engine reached")) as compute:
+            with self.assertRaisesRegex(RuntimeError, "engine reached"):
+                self.orch._compute_1040_via_workbook(s)
+        written = compute.call_args.kwargs["inputs"]
+        self.assertEqual(written["w2_spouse_wages_1"], s.w2s[1].wages)
 
     def test_six_employers_each_reach_the_engine(self):
         s = _scenario(2025, FilingStatus.MARRIED_FILING_JOINTLY,
