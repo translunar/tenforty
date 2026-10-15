@@ -1,6 +1,7 @@
 import dataclasses
 import datetime
 import math
+import re
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -303,14 +304,17 @@ def _refuse_unmapped_w2_inputs(flat_inputs: dict, year: int) -> None:
     unmapped = sorted(k for k in flat_inputs
                       if k.startswith("w2_") and k not in mapped)
     if unmapped:
+        taxpayer = sum(1 for k in mapped if re.fullmatch(r"w2_wages_\d+", k))
+        spouse = sum(1 for k in mapped
+                     if re.fullmatch(r"w2_spouse_wages_\d+", k))
         raise NotImplementedError(
             f"This return's W-2s cannot all be written to the tax year "
             f"{year} 1040 workbook: no workbook cell is mapped for "
-            f"{', '.join(unmapped)}. The workbook holds a limited number of "
-            f"employers per person (and tenforty maps the spouse's W-2 "
-            f"block only for some years), so these W-2s would silently drop "
-            f"out of the wage and withholding totals; the return is refused "
-            f"rather than computed on a partial total.")
+            f"{', '.join(unmapped)}. The {year} workbook mapping covers "
+            f"{taxpayer} employer(s) for the taxpayer and {spouse} for the "
+            f"spouse, so these W-2s would silently drop out of the wage and "
+            f"withholding totals; the return is refused rather than computed "
+            f"on a partial total.")
 
 
 def _format_mmddyyyy(d) -> str:

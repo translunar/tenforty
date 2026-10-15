@@ -107,6 +107,21 @@ class W2Mapping2025Tests(unittest.TestCase):
                     self.assertEqual(
                         self.sheet_map[f"w2_spouse_{field}_{n}"], "W-2s")
 
+    def test_taxpayer_and_spouse_blocks_never_share_a_cell(self):
+        # Negative twin: no spouse-block address is in the taxpayer map and
+        # vice versa, and no cell is mapped twice, so an offset typo cannot
+        # cross-wire the blocks silently.
+        taxpayer = {self.inputs[f"w2_{f}_{n}"]
+                    for f in FIELDS for n in EMPLOYERS}
+        spouse = {self.inputs[f"w2_spouse_{f}_{n}"]
+                  for f in FIELDS for n in EMPLOYERS}
+        self.assertEqual(len(taxpayer), len(FIELDS) * len(EMPLOYERS))
+        self.assertEqual(len(spouse), len(FIELDS) * len(EMPLOYERS))
+        self.assertEqual(taxpayer & spouse, set())
+        w2_keys = [k for k in self.inputs if k.startswith("w2_")]
+        self.assertEqual(
+            len({self.inputs[k] for k in w2_keys}), len(w2_keys))
+
     def test_employer_one_addresses_unchanged(self):
         # The taxpayer's employer-#1 cells are the ones mapped before.
         expected = {"wages": "C3", "fed_withheld": "C4", "ss_wages": "C5",
@@ -165,7 +180,8 @@ class UnmappedW2RefusalTests(unittest.TestCase):
                       [None] * 7)
         message = self._refuses(s)
         self.assertIn("w2_wages_7", message)
-        self.assertIn("2025", message)
+        self.assertIn("The 2025 workbook mapping covers 6 employer(s) for "
+                      "the taxpayer and 6 for the spouse", message)
 
     def test_seventh_spouse_employer_refuses(self):
         s = _scenario(2025, FilingStatus.MARRIED_FILING_JOINTLY,
@@ -178,7 +194,8 @@ class UnmappedW2RefusalTests(unittest.TestCase):
                       ["taxpayer", "spouse"])
         message = self._refuses(s)
         self.assertIn("w2_spouse_wages_1", message)
-        self.assertIn("2024", message)
+        self.assertIn("The 2024 workbook mapping covers 1 employer(s) for "
+                      "the taxpayer and 0 for the spouse", message)
 
     def test_six_employers_each_reach_the_engine(self):
         s = _scenario(2025, FilingStatus.MARRIED_FILING_JOINTLY,
