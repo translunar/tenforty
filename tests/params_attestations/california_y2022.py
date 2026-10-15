@@ -33,6 +33,18 @@ SOURCES: tuple[str, ...] = (
     "'2022 California Tax Rate Schedules', Page 93, Schedules X/Y/Z (rate_schedule); "
     "'Nonrefundable Renter's Credit Qualification Record', questions 2 & 11 "
     "(renter_credit_agi_threshold, renter_credit_amount).",
+    # PROVENANCE PINNED 2026-10-15 (R-ca-provenance): the booklet edition is
+    # sha256 e7ae8a0a8e4dadf973cdb702b8f9deb1574969d0cda5c6e08882e42e966c804c
+    # — the SAME edition the agi_phaseout_threshold wave pinned, so every
+    # per-status 2022 CA value rests on one file. MIXED-PRINTING PDF: REV
+    # stamps appear only on booklet p.4 + Schedule CA instruction pages
+    # (REV 06-23) and the FTB 3514 pages (REV 02-23); NONE of the pages the
+    # values above come from (pp.12/13/14/23, Form 540 sides 1-2, p.93)
+    # carries a stamp. The MFJ and HoH columns of all five fields were
+    # RE-VERIFIED against this pinned edition by an isolated transcriber
+    # (ca_2022_reverify.py, air-gapped from this file) and compared
+    # mechanically by team-lead: FULL AGREEMENT, 12/12 comparisons, with the
+    # rate schedules' base-tax chains internally consistent. Values unchanged.
 )
 
 ATTESTED: dict[str, object] = {
