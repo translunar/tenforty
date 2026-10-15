@@ -83,7 +83,9 @@ NOT_APPLICABLE: dict[str, str] = {
 ATTESTED: dict[str, object] = {
     "year": 2024,
 
-    # Rev. Proc. 2023-34, Standard Deduction section (§2.15). QSS = MFJ.
+    # Rev. Proc. 2023-34, Standard Deduction section (§3.15). QSS = MFJ.
+    # (Section number corrected 2026-10-15: rp-23-34 puts the 2024 adjusted
+    # items in SECTION 3; the §2.xx numbering belongs to rp-24-40 / TY2025.)
     "standard_deduction": {
         "single": 14600,
         "married_filing_jointly": 29200,
@@ -96,21 +98,55 @@ ATTESTED: dict[str, object] = {
     # TY2024 (see NOT_APPLICABLE). The 2020-2021-only line 12b provision expired.
     "nonitemizer_charitable_cap": None,
 
-    # Rev. Proc. 2023-34, Tax Rate Tables (§2.01). Status-keyed; single
+    # Rev. Proc. 2023-34, Tax Rate Tables (§3.01). Status-keyed; single
     # column transcribed — the SINGLE-filer 2024 schedule.
     # See module docstring note. (upper_bound, marginal_rate).
-    "ordinary_brackets": {"single": (
-        (11600.0, 0.10),
-        (47150.0, 0.12),
-        (100525.0, 0.22),
-        (191950.0, 0.24),
-        (243725.0, 0.32),
-        (609350.0, 0.35),
-        (math.inf, 0.37),
-    )},
+    # MFJ (§3.01 Table 1) and HoH (§3.01 Table 2) added 2026-10-15 by
+    # dual transcription (A: worktree params fill; B: isolated scratch,
+    # pasted here by team-lead; mechanical adjudication: full agreement,
+    # 4/4 fields). Both sides pinned identical editions:
+    #   rp-23-34.pdf  sha256 544ba41c7ba64f77da521e0d174a7b7394dc72b5c7c73d10adb19952d5aaae57
+    #   i1040gi--2024.pdf  sha256 0ae53ed5020d69e6571d40cd7955b7735f44a28df483626d128628d2810e93d4
+    # Known SOURCE TYPO (team-lead-verified in the PDF text 2026-10-15, both
+    # transcribers flagged independently): §3.01 Table 2's 32% row prints
+    # "excess over $191,150" against its own $191,950 lower bound; the bounds
+    # and base-tax figures are internally consistent with $191,950 and the
+    # 1040 instructions agree. The typo column is not part of this schema.
+    "ordinary_brackets": {
+        "single": (
+            (11600.0, 0.10),
+            (47150.0, 0.12),
+            (100525.0, 0.22),
+            (191950.0, 0.24),
+            (243725.0, 0.32),
+            (609350.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        "married_filing_jointly": (
+            (23200.0, 0.1),
+            (94300.0, 0.12),
+            (201050.0, 0.22),
+            (383900.0, 0.24),
+            (487450.0, 0.32),
+            (731200.0, 0.35),
+            (math.inf, 0.37),
+        ),
+        "head_of_household": (
+            (16550.0, 0.1),
+            (63100.0, 0.12),
+            (100500.0, 0.22),
+            (191950.0, 0.24),
+            (243700.0, 0.32),
+            (609350.0, 0.35),
+            (math.inf, 0.37),
+        ),
+    },
 
-    # Rev. Proc. 2023-34, Maximum Capital Gains Rate (§2.03).
+    # Rev. Proc. 2023-34, Maximum Capital Gains Rate (§3.03).
     # (0%-rate maximum taxable income, 15%-rate maximum taxable income).
+    # MFJ and HoH RE-VERIFIED 2026-10-15 by fresh dual transcription from the
+    # pinned editions cited at ordinary_brackets (R-attest-reuse): both sides
+    # agree with the values below; citation upgraded, values unchanged.
     "qdcgt_breakpoints": {
         "single": (47025, 518900),
         "married_filing_jointly": (94050, 583750),
