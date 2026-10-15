@@ -911,8 +911,8 @@ class ReturnOrchestrator:
         cfg = effective_scenario.config
         earned_income = sum(w.wages for w in effective_scenario.w2s)
         if earned_income <= 0:
-            # No earned income → no EIC possible; nothing else takes the spine
-            # out of scope for a single filer.
+            # No earned income → no EIC possible; nothing else here takes a
+            # declared (year, status) out of spine scope.
             return True
 
         params = load_params(cfg.year)
