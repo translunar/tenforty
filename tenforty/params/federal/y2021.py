@@ -57,7 +57,36 @@ PARAMS = FederalParams(
         (209_425.0, 0.32),   # $164,925–$209,425
         (523_600.0, 0.35),   # $209,425–$523,600
         (math.inf, 0.37),    # Over $523,600
-    )},
+    ),
+        # Rev. Proc. 2020-45 §3.01 Table 1 (MFJ / surviving spouses),
+        # cross-checked vs 2021 Instructions for Form 1040 Schedule Y-1 and
+        # Tax Computation Worksheet Section B:
+        # https://www.irs.gov/pub/irs-drop/rp-20-45.pdf
+        # sha256 12cfb00115b86e3bb97937f1a5fc340cf98c0d61b7508c800b9a3a4674aac52d
+        # https://www.irs.gov/pub/irs-prior/i1040gi--2021.pdf
+        # sha256 7337e61fe50cd309c260817d23468cd557426c7e5f15cdbdc291f6d2c7c50d90
+        _MFJ: (
+            (19_900.0, 0.10),    # Not over $19,900
+            (81_050.0, 0.12),    # $19,900–$81,050
+            (172_750.0, 0.22),   # $81,050–$172,750
+            (329_850.0, 0.24),   # $172,750–$329,850
+            (418_850.0, 0.32),   # $329,850–$418,850
+            (628_300.0, 0.35),   # $418,850–$628,300
+            (math.inf, 0.37),    # Over $628,300
+        ),
+        # Rev. Proc. 2020-45 §3.01 Table 2 (heads of households),
+        # cross-checked vs 2021 Instructions for Form 1040 Schedule Z and
+        # Tax Computation Worksheet Section D (same two files/sha256 as above).
+        _HOH: (
+            (14_200.0, 0.10),    # Not over $14,200
+            (54_200.0, 0.12),    # $14,200–$54,200
+            (86_350.0, 0.22),    # $54,200–$86,350
+            (164_900.0, 0.24),   # $86,350–$164,900
+            (209_400.0, 0.32),   # $164,900–$209,400
+            (523_600.0, 0.35),   # $209,400–$523,600
+            (math.inf, 0.37),    # Over $523,600
+        ),
+    },
     # Rev. Proc. 2020-45 §.03 Maximum Capital Gains Rate.
     # (Maximum Zero-Rate Amount [§1(h)(1)(B)(i)],
     #  Maximum 15%-Rate Amount [§1(h)(1)(C)(ii)(I)]).
