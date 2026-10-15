@@ -35,7 +35,7 @@ FEDERAL_COMPUTE_ONLY_YEARS: tuple[int, ...] = ()
 # declared (out of scope). Written out per year on purpose — each year's row
 # changes independently.
 NATIVE_SPINE_STATUSES: dict[int, tuple[str, ...]] = {
-    2021: ("single",),
+    2021: ("single", "married_filing_jointly", "head_of_household"),
     2022: ("single", "married_filing_jointly", "head_of_household"),
     2023: ("single", "married_filing_jointly", "head_of_household"),
     2024: ("single", "married_filing_jointly", "head_of_household"),
