@@ -867,6 +867,42 @@ def refuse_joint_schedule_c(scenario: Scenario) -> None:
             "return by hand.")
 
 
+# The dependents refusal, ONE string: later lanes extend it here (e.g. a
+# head-of-household qualifying-person clause), never at a call site.
+DEPENDENTS_REFUSAL = (
+    "This return lists {count} dependent{plural}, and tenforty does not "
+    "model dependents on any compute path yet. The Child Tax Credit / Credit "
+    "for Other Dependents (Schedule 8812, Form 1040 line 19) is not computed, "
+    "so the tax would be overstated. No dependents input reaches the "
+    "workbook path either, so it figures the return as childless: no Child "
+    "Tax Credit, and any Earned Income Credit figured without qualifying "
+    "children. And the Form 1040 PDF mapping has no fields for the "
+    "Dependents section (names, SSNs, relationships, credit checkboxes), so "
+    "the printed return could not be facially complete. There is no "
+    "acknowledge-and-proceed. File this return by hand, or wait for the "
+    "dependents release (tenforty 0.2.1), which adds Schedule 8812 and the "
+    "Dependents section.")
+
+
+def refuse_dependents(scenario: Scenario) -> None:
+    """FAIL-CLOSED: any return with claimed dependents, on every path.
+
+    tenforty does not model dependents: Schedule 8812 (Form 1040 line 19) is
+    never computed on the native spine, the workbook path receives no
+    dependents input (it computes the return as childless), and the Form
+    1040 PDF mapping has no Dependents-section fields. A non-empty
+    ``dependents`` list refuses, with no acknowledge-and-proceed, until the
+    dependents release (0.2.1). Called from the compute core
+    (``_compute_1040_pipeline_core``, after the other pre-split refusals and
+    before the native/workbook split) and the shared emit chokepoint
+    (``_federal_individual_emit_plan``, before any form is prepared).
+    """
+    count = len(scenario.config.dependents)
+    if count:
+        raise NotImplementedError(DEPENDENTS_REFUSAL.format(
+            count=count, plural="" if count == 1 else "s"))
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -1009,40 +1045,6 @@ class ReturnOrchestrator:
         ceiling = ceilings.get(num_children, max(ceilings.values()))
         # Below the ceiling → possibly EIC-eligible → out of spine scope.
         return agi_estimate >= ceiling
-
-    def _refuse_native_dependents(self, effective_scenario: Scenario) -> None:
-        """FAIL-CLOSED: a native-spine return with claimed dependents.
-
-        The native spine does not model dependents: Schedule 8812 (the Child
-        Tax Credit / Credit for Other Dependents, Form 1040 line 19) is never
-        computed, and the Form 1040 PDF mapping has no Dependents-section
-        fields. Any return that routes native with a non-empty ``dependents``
-        list refuses, with no acknowledge-and-proceed, until the dependents
-        release (0.2.1) lifts it. ONE definition, called from the compute
-        core (``_compute_1040_pipeline_core``, before the native/workbook
-        split's math) and the shared emit chokepoint
-        (``_federal_individual_emit_plan``, before any form is prepared).
-
-        Keyed on routing: a return the scope gate sends to the workbook path
-        is not this refusal's business (left as is pending a ruling).
-        """
-        dependents = effective_scenario.config.dependents
-        if not dependents or not self._scenario_in_spine_scope(
-                effective_scenario):
-            return
-        count = len(dependents)
-        raise NotImplementedError(
-            f"This return lists {count} dependent"
-            f"{'' if count == 1 else 's'} and routes to tenforty's native "
-            "1040 spine, which does not model dependents yet. The Child Tax "
-            "Credit / Credit for Other Dependents (Schedule 8812, Form 1040 "
-            "line 19) is not computed, so the tax would be overstated; and "
-            "the Form 1040 PDF mapping has no fields for the Dependents "
-            "section (names, SSNs, relationships, credit checkboxes), so the "
-            "printed return could not be facially complete. There is no "
-            "acknowledge-and-proceed. File this return by hand, or wait for "
-            "the dependents release (tenforty 0.2.1), which adds Schedule "
-            "8812 and the Dependents section.")
 
     def _refuse_possible_excess_business_loss(self, scenario: Scenario) -> None:
         """FAIL-CLOSED GUARD -- IRC §461(l) excess business loss (Form 461).
@@ -1211,8 +1213,8 @@ class ReturnOrchestrator:
             # real cause (unknown tax-family size) on every path, including
             # statuses the spine grid does not declare yet.
             tax_family_size(effective_scenario.config)
-        # Native path only, before any native schedule computes.
-        self._refuse_native_dependents(effective_scenario)
+        # Every path, before the split: no compute path models dependents.
+        refuse_dependents(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
@@ -2021,9 +2023,9 @@ class ReturnOrchestrator:
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
         from tenforty.params.federal import load as load_params
-        # Native-path dependents refuse before any form is prepared (the
-        # same refusal the compute core runs).
-        self._refuse_native_dependents(scenario)
+        # Dependents refuse before any form is prepared (the same refusal
+        # the compute core runs).
+        refuse_dependents(scenario)
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):

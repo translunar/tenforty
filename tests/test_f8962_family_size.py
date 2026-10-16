@@ -153,9 +153,10 @@ class F8962FamilySizeTests(unittest.TestCase):
                     orch.compute_federal(scenario)
 
     def test_dependents_without_1095a_do_not_trip_the_ptc_refusal(self):
-        # Positive control: the refusal is about Form 8962, not dependents.
-        # High wages keep the scenario on the native spine (above every EIC
-        # ceiling), so it computes rather than routing to the workbook.
+        # The PTC refusal is about Form 8962: without a 1095-A it does not
+        # fire. Dependents themselves still refuse (tenforty does not model
+        # them on any path), so what fires is the dependents refusal, never
+        # the Form 8962 one. High wages keep the scenario on the native spine.
         scenario = dataclasses.replace(
             _ptc_scenario(FilingStatus.SINGLE, dependents=["Example Child"]),
             form_1095a=None,
@@ -163,8 +164,12 @@ class F8962FamilySizeTests(unittest.TestCase):
                     federal_tax_withheld=20_000.0, ss_wages=150_000.0,
                     ss_tax_withheld=9_300.0, medicare_wages=150_000.0,
                     medicare_tax_withheld=2_175.0)])
-        results = _orchestrator(self).compute_federal(scenario)
-        self.assertNotIn("f8962_line_1", results)
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"(?s)lists 1 dependent\b.*does not model dependents on any "
+                r"compute path.*Schedule 8812") as ctx:
+            _orchestrator(self).compute_federal(scenario)
+        self.assertNotIn("Form 8962", str(ctx.exception))
 
     def test_refusal_is_none_when_family_is_known(self):
         self.assertIsNone(ptc_family_refusal(_config(FilingStatus.SINGLE)))
