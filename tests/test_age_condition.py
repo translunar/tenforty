@@ -22,7 +22,8 @@ from unittest import mock
 from tenforty import years
 from tenforty.forms import f1040_spine
 from tenforty.models import (
-    FilingStatus, Form1099INT, ItemizedDeductions, ScheduleCBusiness,
+    FilingStatus, Form1099B, Form1099INT, ItemizedDeductions,
+    ScheduleCBusiness,
 )
 from tenforty import orchestrator as orchestrator_mod
 from tenforty.orchestrator import ReturnOrchestrator
@@ -374,16 +375,21 @@ class SchedRRefusalTests(unittest.TestCase):
                 self.assertEqual(orch.compute_federal(scenario)["agi"], limit)
 
     def test_guard_keys_on_exact_agi_not_an_overestimate(self):
-        # Schedule C profit above the limit, but the half-SE-tax adjustment
-        # brings true AGI under it: the refusal must still fire.
+        # Gross income above the limit, but a long-term capital loss brings
+        # exact AGI under it; the routing gate's estimate clamps that loss to
+        # 0 and so lands OVER the limit. The refusal must still fire: the
+        # guard keys on exact AGI, never the gate's overestimate.
+        # (Vehicle changed from a Schedule C profit offset by the half-SE
+        # adjustment: an earned-income scenario can no longer thread both
+        # the EIC gate and the Schedule R limit.)
         orch = _orchestrator(self)
         limit = self.LIMITS[(SINGLE.value, 1)]
         for year in _COMPUTING_YEARS:
-            scenario = _retiree(year, 0, birthdate=_aged(year))
-            scenario.form1099_int = []
-            scenario.schedule_c_businesses = [ScheduleCBusiness(
-                description="Synthetic consulting",
-                gross_receipts=float(limit + 100))]
+            scenario = _retiree(year, limit + 100, birthdate=_aged(year))
+            scenario.form1099_b = [Form1099B(
+                broker="Synthetic Broker", description="Synthetic Fund",
+                date_acquired="2019-01-02", date_sold=f"{year}-06-01",
+                proceeds=1_000.0, cost_basis=1_500.0, short_term=False)]
             with self.subTest(year=year):
                 self.assertTrue(orch._scenario_in_spine_scope(scenario))
                 with self.assertRaisesRegex(NotImplementedError,

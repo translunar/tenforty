@@ -32,7 +32,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.models import ScheduleCBusiness, Scenario
+from tenforty.models import Form1099INT, ScheduleCBusiness, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, make_simple_scenario
 
@@ -62,12 +62,17 @@ class SchC162lGuardTests(unittest.TestCase):
 
     def test_single_business_refuses_when_se_health_exceeds_limit(self):
         # net profit 10,000; half-SE ~707 -> limit ~9,293; SE-health 12,000 >
-        # limit -> §162(l) earned-income-limit refusal.
+        # limit -> §162(l) earned-income-limit refusal. Taxable interest keeps
+        # this low-profit filer clear of the EIC routing gate (the native
+        # spine, where the guard runs) without touching the §162(l) limit.
         scn = _scn(
             ScheduleCBusiness(description="a", gross_receipts=10_000.0),
             se_health=12_000.0,
         )
-        with self.assertRaises(NotImplementedError):
+        scn.form1099_int = [
+            Form1099INT(payer="Synthetic Bank", interest=30_000.00)]
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "§162\\(l\\) earned-income limit"):
             self._compute_federal(scn)
 
     def test_single_business_allows_within_limit(self):

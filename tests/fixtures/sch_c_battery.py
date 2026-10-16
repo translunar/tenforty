@@ -10,7 +10,7 @@ All identities and amounts are fully synthetic."""
 from collections.abc import Callable
 
 from tenforty.forms import sch_2 as form_sch_2
-from tenforty.models import Scenario, ScheduleCBusiness, W2
+from tenforty.models import Form1099INT, Scenario, ScheduleCBusiness, W2
 from tenforty.rounding import irs_round
 from tests.fixtures.spine_battery import _battery_config
 
@@ -76,8 +76,13 @@ def _base_maxed_day_job(year):
 
 
 def _under_threshold_sideline(year):
-    return _build(year, [ScheduleCBusiness(
+    # Taxable interest keeps this no-W-2, under-$400-SE filer clear of the
+    # EIC routing gate, so the battery keeps its native <$400 SE path.
+    scenario = _build(year, [ScheduleCBusiness(
         description="Side Bakes", gross_receipts=1_100.0, supplies=750.0)])
+    scenario.form1099_int = [
+        Form1099INT(payer="Synthetic Bank", interest=30_000.00)]
+    return scenario
 
 
 def _big_sole_trade(year):
