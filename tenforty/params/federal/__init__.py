@@ -48,8 +48,9 @@ class FederalParams:
     # Scope-gate threshold only; no EIC math in the native spine. Each value is
     # the LARGEST AGI at which ANY filing status can still claim the EITC —
     # i.e. the MFJ-column maximum by construction (MFJ has the highest ceiling).
-    # A deliberately conservative gate: it only ever fires for single filers,
-    # where a higher ceiling errs safe.
+    # A deliberately conservative gate: it is applied to every declared
+    # status, and for single and head-of-household filers the higher MFJ
+    # ceiling errs safe.
     eic_income_ceiling: dict[int, int]
     # 2021-only CARES/CAA above-the-line cash-charitable deduction cap for
     # NON-ITEMIZERS (Form 1040 line 12b), single-filer cap only (the $600 MFJ

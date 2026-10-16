@@ -838,6 +838,35 @@ class PacketManifest:
         return lines
 
 
+def refuse_joint_schedule_c(scenario: Scenario) -> None:
+    """FAIL-CLOSED: a married-filing-jointly return with any Schedule C.
+
+    Schedule SE is figured PER PERSON: each spouse's self-employment
+    earnings are coordinated with THAT spouse's own Social Security wages
+    (line 8a) against the wage base. tenforty computes one Schedule SE and
+    ``ScheduleCBusiness`` has no owner, so on a joint return it can neither
+    attribute a business to a spouse nor keep the other spouse's W-2 wages
+    out of line 8a -- a spouse's wages would consume the wage base and
+    understate the self-employment tax (and with it the half-SE deduction
+    and QBI). There is no acknowledge-and-proceed: the correct figures need
+    the unmodeled per-person computation.
+    """
+    if (parse_filing_status(scenario.config.filing_status)
+            is FilingStatus.MARRIED_FILING_JOINTLY
+            and scenario.schedule_c_businesses):
+        raise NotImplementedError(
+            "This married_filing_jointly return has Schedule C business "
+            "income. Schedule SE is figured per person -- each spouse's "
+            "self-employment earnings against that spouse's own Social "
+            "Security wages -- and tenforty computes only one Schedule SE. "
+            "A Schedule C business also has no owner field, so tenforty "
+            "cannot tell which spouse the business belongs to. Per-person "
+            "Schedule SE and Schedule C owner attribution are not modeled, "
+            "so the self-employment tax (and the half-SE deduction and QBI "
+            "that follow from it) cannot be computed correctly. File this "
+            "return by hand.")
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -910,7 +939,17 @@ class ReturnOrchestrator:
 
         cfg = effective_scenario.config
         earned_income = sum(w.wages for w in effective_scenario.w2s)
-        if earned_income <= 0:
+        # Earned income for the EIC gate includes Schedule C net profit (the
+        # same non-raising estimates the AGI estimate below uses): a filer
+        # with no W-2 but a small business is the EIC's core population.
+        sch_c_profit = 0.0
+        if effective_scenario.schedule_c_businesses:
+            sch_c_profit = sum(
+                form_sch_c.net_profit_estimate(
+                    biz, cfg.year,
+                    mid_quarter=mid_quarter_applies(effective_scenario))
+                for biz in effective_scenario.schedule_c_businesses)
+        if earned_income + sch_c_profit <= 0:
             # No earned income → no EIC possible; nothing else here takes a
             # declared (year, status) out of spine scope.
             return True
@@ -963,10 +1002,8 @@ class ReturnOrchestrator:
             # sends that possibly-eligible filer out of spine scope, where
             # the workbook path refuses Schedule C outright (fail-closed).
             # This estimate runs BEFORE sch_c.compute's refusals, so it uses
-            # the non-raising estimate.
-            + sum(form_sch_c.net_profit_estimate(
-                      biz, cfg.year, mid_quarter=mid_quarter)
-                  for biz in effective_scenario.schedule_c_businesses)
+            # the non-raising estimate (summed once above, for earned income).
+            + sch_c_profit
         )
         num_children = min(len(cfg.dependents), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
@@ -1091,6 +1128,10 @@ class ReturnOrchestrator:
             owner = w2.owner or "taxpayer"
             totals[owner] = totals.get(owner, 0.0) + w2.ss_tax_withheld
         for owner, total in sorted(totals.items()):
+            # Withholding is whole cents: compare the cent total, so a float
+            # residue from summing several W-2s never refuses a return whose
+            # withholding is exactly the maximum.
+            total = round(total, 2)
             if total > maximum:
                 raise NotImplementedError(
                     f"The {owner}'s W-2s withheld {total:,.2f} of Social "
@@ -1279,7 +1320,11 @@ class ReturnOrchestrator:
         (_federal_individual_emit_specs), so the two cannot hand their
         consumers different upstream: sch_c is a pure leaf (upstream={}),
         sch_se consumes sch_c's net profit. With no business both are {}.
+
+        A joint return with any Schedule C business REFUSES here, before any
+        Schedule C or SE math (see ``refuse_joint_schedule_c``).
         """
+        refuse_joint_schedule_c(scenario)
         sch_c_results = form_sch_c.compute(scenario, upstream={})
         sch_se_results = form_sch_se.compute(
             scenario, upstream={"sch_c": sch_c_results},

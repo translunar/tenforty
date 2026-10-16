@@ -110,6 +110,38 @@ class ExcessSocialSecurityGuardTests(unittest.TestCase):
                                     "Schedule 3 line 11"):
             self._compute(scenario)
 
+    def _three_w2s_summing_to_the_maximum(self, *, extra_cents=0.0):
+        # Amounts in cents whose left-to-right FLOAT sum overshoots the
+        # maximum by a rounding residue while their cent total is exactly
+        # the maximum (asserted below, so the case stays reachable).
+        parts = [8634.37, 1989.96]
+        parts.append(round(self.maximum - sum(parts) + extra_cents, 2))
+        return parts
+
+    def test_multi_w2_total_exactly_at_the_maximum_is_not_refused(self):
+        parts = self._three_w2s_summing_to_the_maximum()
+        float_total = 0.0
+        for amount in parts:
+            float_total += amount
+        # Reachability: an unrounded comparison WOULD refuse this return.
+        self.assertGreater(float_total, self.maximum)
+        self.assertEqual(round(float_total, 2), self.maximum)
+        scenario = _scenario(_S, [
+            _w2_at_maximum(_YEAR, f"Synthetic Employer {i}",
+                           ss_tax_withheld=amount)
+            for i, amount in enumerate(parts)])
+        self.orch._refuse_excess_social_security(scenario)   # no refusal
+
+    def test_multi_w2_total_one_cent_over_the_maximum_refuses(self):
+        parts = self._three_w2s_summing_to_the_maximum(extra_cents=0.01)
+        scenario = _scenario(_S, [
+            _w2_at_maximum(_YEAR, f"Synthetic Employer {i}",
+                           ss_tax_withheld=amount)
+            for i, amount in enumerate(parts)])
+        with self.assertRaises(NotImplementedError) as ctx:
+            self.orch._refuse_excess_social_security(scenario)
+        self.assertIn("Schedule 3 line 11", str(ctx.exception))
+
     def test_guard_runs_ahead_of_the_workbook_route(self):
         # MFS is not on the native grid, so this scenario would route to
         # the workbook; the refusal must come first.

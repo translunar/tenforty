@@ -114,5 +114,59 @@ class SchCEicScopeRoutingTests(unittest.TestCase):
         self.assertEqual(out["sch_1_line_3_business_income"], _NET_PROFIT)
 
 
+class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
+    """The zero-earned-income shortcut counts Schedule C profit.
+
+    Earned income is wages PLUS Schedule C net profit. A filer with no W-2
+    but a small business (the EIC's core population) used to read as
+    zero-earned-income and skip the ceiling check that already counts
+    Schedule C three lines below; now only a return with no wages and no
+    Schedule C profit takes the shortcut."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(self._tmp.name) / "work",
+        )
+
+    def _no_w2(self, *businesses) -> Scenario:
+        base = make_simple_scenario()
+        return Scenario(config=base.config, w2s=[],
+                        schedule_c_businesses=list(businesses))
+
+    def _in_scope(self, scn) -> bool:
+        eff, _ = self.orch._build_effective_scenario(scn)
+        return self.orch._scenario_in_spine_scope(eff)
+
+    def test_no_w2_low_profit_schedule_c_is_out_of_spine_scope(self):
+        scn = self._no_w2(ScheduleCBusiness(
+            description="small", gross_receipts=12_000.0, supplies=2_000.0))
+        ceiling = load_federal_params(2025).eic_income_ceiling[0]
+        self.assertLess(10_000.0, ceiling)          # possibly EIC-eligible
+        self.assertFalse(self._in_scope(scn))
+        # Out of the native spine, Schedule C refuses (the workbook path does
+        # not wire it) -- fail-closed, never a silent native compute.
+        with self.assertRaises(NotImplementedError):
+            self.orch.compute_federal(scn)
+
+    def test_no_w2_high_profit_schedule_c_stays_native(self):
+        scn = self._no_w2(ScheduleCBusiness(
+            description="large", gross_receipts=_GROSS, supplies=_SUPPLIES))
+        self.assertTrue(self._in_scope(scn))
+        out = self.orch.compute_federal(scn)
+        self.assertEqual(out["sch_1_line_3_business_income"], _NET_PROFIT)
+
+    def test_no_w2_no_schedule_c_stays_native(self):
+        self.assertTrue(self._in_scope(self._no_w2()))
+
+    def test_no_w2_schedule_c_loss_stays_native(self):
+        # Net loss: no earned income, so the shortcut still applies.
+        scn = self._no_w2(ScheduleCBusiness(
+            description="loss", gross_receipts=1_000.0, supplies=3_000.0))
+        self.assertTrue(self._in_scope(scn))
+
+
 if __name__ == "__main__":
     unittest.main()

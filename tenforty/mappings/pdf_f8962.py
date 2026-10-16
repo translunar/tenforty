@@ -23,7 +23,7 @@ Two checkboxes are handled outside the scalar value pass:
   ``get_checkbox_states(2021)`` carries its ``/2`` on-token so the filler
   writes the XFA appearance state for True / ``/Off`` for False. For
   2022-2025 ``c1_1[0]`` is instead the MFS-exception box (ON ``/1``), which
-  tenforty (single-filer only) NEVER checks — so it is left entirely
+  tenforty (which never declares MFS) NEVER checks — so it is left entirely
   unmapped those years. ``get_checkbox_states`` also carries the line 9 / line 10
 Yes-No boxes (all years; see ``_LINE_9_10_BOXES``).
 
@@ -45,7 +45,8 @@ from tenforty.mappings.registry import PdfFormMapping
 _ROOT = "topmostSubform[0].Page1[0]"
 
 # Part I — annual/monthly contribution amount. Line 2b (dependents' MAGI) is
-# deliberately unmapped: the compute does not emit it (single-filer scope).
+# deliberately unmapped: the compute does not emit it (dependents' MAGI is
+# not modeled).
 _PART_I: dict[str, str] = {
     "f8962_line_1":  f"{_ROOT}.f1_3[0]",   # tax family size
     "f8962_line_2a": f"{_ROOT}.f1_4[0]",   # modified AGI

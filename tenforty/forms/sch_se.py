@@ -75,6 +75,15 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
             "sch_se_line_13_half_deduction": 0,
         }
     line_7 = float(params.ss_wage_base)            # OASDI wage base
+    # Line 8a is the SE filer's OWN Social Security wages. One Schedule SE
+    # is computed, for the taxpayer; a spouse's W-2 must never reach it (a
+    # joint return with Schedule C is refused upstream --
+    # orchestrator.refuse_joint_schedule_c -- this is the backstop).
+    if any(w.owner == "spouse" for w in scenario.w2s):
+        raise NotImplementedError(
+            "Schedule SE line 8a would include a spouse's W-2 Social Security "
+            "wages. Schedule SE is figured per person, which tenforty does "
+            "not model.")
     ss_wages = sum(w.ss_wages for w in scenario.w2s)  # line 8a (8b/8c unmodeled) -> 8d
     line_9 = max(0.0, line_7 - ss_wages)           # SS earnings still taxable
     line_10 = irs_round(min(line_6, line_9) * _SS_RATE)   # SS portion

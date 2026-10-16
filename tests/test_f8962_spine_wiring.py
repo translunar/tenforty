@@ -165,10 +165,6 @@ class F8962SpineWiringTests(unittest.TestCase):
             self.orch.compute_federal(scenario)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class CarveOutMessageTests(unittest.TestCase):
     """The out-of-native-scope 1095-A refusal names its real cause: the
     filer class is outside the declared native grid. It must not claim the
@@ -195,3 +191,7 @@ class CarveOutMessageTests(unittest.TestCase):
         message = self._message()
         self.assertNotIn("does not compute Form 8962", message)
         self.assertNotIn("NO Form 8962", message)
+
+
+if __name__ == "__main__":
+    unittest.main()

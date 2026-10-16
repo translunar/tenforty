@@ -196,7 +196,7 @@ class IncomePreamble:
         sch_1_line_26:       Schedule 1 line 26 total adjustments.
         total_income:        1040 line 9.
         agi:                 1040 line 11.
-        magi:                Modified AGI (= AGI in v1 single-filer scope).
+        magi:                Modified AGI (= AGI in the native-spine scope).
         net_capital_gain:    QDCGT net capital gain =
             max(0, min(Sch D line 15, line 16)). The IRS QDCGT worksheet
             caps the preferential base at line 15 (net LONG-TERM gain) —
@@ -333,7 +333,7 @@ def compute_income_preamble(
         + sch_1_line_10
     )
     agi = irs_round(total_income - sch_1_line_26)
-    # MAGI: for v1 single-filer scope, MAGI = AGI (no foreign income exclusion
+    # MAGI: in the native-spine scope, MAGI = AGI (no foreign income exclusion
     # or other MAGI-specific add-backs apply in the supported scenario set).
     magi = agi
 
