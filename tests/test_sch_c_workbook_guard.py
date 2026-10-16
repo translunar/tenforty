@@ -79,8 +79,8 @@ class SchCWorkbookGuardTests(unittest.TestCase):
                 orch._compute_1040_pipeline(eff)
         msg = str(ctx.exception).lower()
         # Message must name BOTH the cause (workbook wiring) and the truth
-        # (native single-filer path supports it) so a reworded raise can't
-        # silently pass.
+        # (the native path supports Schedule C for declared statuses) so a
+        # reworded raise can't silently pass.
         self.assertIn("workbook", msg)
         self.assertIn("native", msg)
         # An off-grid reroute keeps the generic message: the EIC-specific
