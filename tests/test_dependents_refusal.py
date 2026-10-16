@@ -1,14 +1,15 @@
-"""A native-spine return with claimed dependents refuses (fail-closed).
+"""A return with claimed dependents refuses on every path (fail-closed).
 
-The native 1040 spine does not model dependents: the Child Tax Credit /
-Credit for Other Dependents (Schedule 8812, Form 1040 line 19) is never
-computed, so the tax would be overstated, and the Form 1040 PDF mapping has
-no fields for the Dependents section, so the printed return could not be
-facially complete. Until the dependents release (0.2.1: Schedule 8812 plus
-the dependents section), any return that routes to the native spine with a
-non-empty ``dependents`` list REFUSES -- on compute and on emit, before any
-math, with no acknowledge-and-proceed. Returns without dependents are
-unaffected.
+tenforty does not model dependents on any compute path: the native spine
+never computes the Child Tax Credit / Credit for Other Dependents (Schedule
+8812, Form 1040 line 19), so the tax would be overstated; the workbook path
+receives no dependents input, so it figures the return as childless; and the
+Form 1040 PDF mapping has no fields for the Dependents section, so the
+printed return could not be facially complete. Until the dependents release
+(0.2.1: Schedule 8812 plus the Dependents section), any return with a
+non-empty ``dependents`` list REFUSES -- native-routed or workbook-routed,
+on compute and on emit, before any math, with no acknowledge-and-proceed.
+Returns without dependents are unaffected.
 
 Synthetic values only.
 """
@@ -18,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tenforty.models import FilingStatus, Scenario
+from tenforty.models import W2, FilingStatus, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, make_simple_scenario
 
@@ -26,8 +27,9 @@ _STATUSES = (FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY,
              FilingStatus.HEAD_OF_HOUSEHOLD)
 
 # Both causes, the absence of an override, and both remedies, in order.
-_MESSAGE = (r"(?s)dependent.*native 1040 spine"
+_MESSAGE = (r"(?s)dependent.*does not model dependents on any compute path"
             r".*Child Tax Credit.*Schedule 8812.*line 19.*overstated"
+            r".*workbook path.*childless"
             r".*Form 1040 PDF mapping has no fields for the Dependents section"
             r".*facially complete"
             r".*no acknowledge-and-proceed"
@@ -45,6 +47,16 @@ def _scenario(status, dependents=("Example Child",), year=2025):
     config = dataclasses.replace(base.config, year=year, filing_status=status,
                                  dependents=list(dependents), **extra)
     return Scenario(config=config, w2s=list(base.w2s))
+
+
+def _workbook_routed(dependents=("Child A", "Child B")):
+    """Single, $20k wages: below the EIC income ceiling, so the scope gate
+    sends it to the workbook path."""
+    base = _scenario(FilingStatus.SINGLE, dependents=dependents)
+    return dataclasses.replace(base, w2s=[W2(
+        employer="Synthetic Co", wages=20_000, federal_tax_withheld=1_000,
+        ss_wages=20_000, ss_tax_withheld=1_240, medicare_wages=20_000,
+        medicare_tax_withheld=290)])
 
 
 class NativeDependentsRefusalTests(unittest.TestCase):
@@ -79,6 +91,24 @@ class NativeDependentsRefusalTests(unittest.TestCase):
                 with self.assertRaisesRegex(NotImplementedError, _MESSAGE):
                     self.orch.emit_pdfs(scn, {}, out)
                 self.assertFalse(out.exists() and any(out.iterdir()))
+
+    def _assert_workbook(self, scn):
+        eff, _ = self.orch._build_effective_scenario(scn)
+        self.assertFalse(self.orch._scenario_in_spine_scope(eff))
+
+    def test_workbook_routed_compute_refuses(self):
+        scn = _workbook_routed()
+        self._assert_workbook(scn)
+        with self.assertRaisesRegex(NotImplementedError, _MESSAGE):
+            self.orch.compute_federal(scn)
+
+    def test_workbook_routed_emit_refuses_and_writes_nothing(self):
+        scn = _workbook_routed()
+        self._assert_workbook(scn)
+        out = self.tmp / "emit-workbook"
+        with self.assertRaisesRegex(NotImplementedError, _MESSAGE):
+            self.orch.emit_pdfs(scn, {}, out)
+        self.assertFalse(out.exists() and any(out.iterdir()))
 
     def test_full_return_refuses_and_writes_nothing(self):
         out = self.tmp / "full"
