@@ -83,6 +83,9 @@ class SchCWorkbookGuardTests(unittest.TestCase):
         # silently pass.
         self.assertIn("workbook", msg)
         self.assertIn("native", msg)
+        # An off-grid reroute keeps the generic message: the EIC-specific
+        # cause is only for a filer on the declared grid.
+        self.assertNotIn("earned income credit", msg)
 
     def test_does_not_fire_when_no_business_on_workbook_path(self):
         """SAME workbook-path scenario, no business -> guard lets it through.

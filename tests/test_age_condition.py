@@ -375,13 +375,13 @@ class SchedRRefusalTests(unittest.TestCase):
                 self.assertEqual(orch.compute_federal(scenario)["agi"], limit)
 
     def test_guard_keys_on_exact_agi_not_an_overestimate(self):
-        # Gross income above the limit, but a long-term capital loss brings
-        # exact AGI under it; the routing gate's estimate clamps that loss to
-        # 0 and so lands OVER the limit. The refusal must still fire: the
-        # guard keys on exact AGI, never the gate's overestimate.
-        # (Vehicle changed from a Schedule C profit offset by the half-SE
-        # adjustment: an earned-income scenario can no longer thread both
-        # the EIC gate and the Schedule R limit.)
+        # Gross income is over the limit (interest = limit + 100), but a
+        # 500 long-term capital loss brings exact AGI under it (limit - 400).
+        # The refusal must fire: the guard keys on exact AGI, where a guard
+        # keyed on gross income would not refuse. (Vehicle changed from a
+        # Schedule C profit offset by the half-SE adjustment: an
+        # earned-income scenario can no longer thread both the EIC gate and
+        # the Schedule R limit.)
         orch = _orchestrator(self)
         limit = self.LIMITS[(SINGLE.value, 1)]
         for year in _COMPUTING_YEARS:

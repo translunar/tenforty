@@ -1605,6 +1605,27 @@ class ReturnOrchestrator:
         # points the user there. Wiring Schedule C into the workbook path is a
         # deferred follow-on; this task FAILS CLOSED, it does not implement it.
         if effective_scenario.schedule_c_businesses:
+            # On the declared grid, the only reason a return reaches the
+            # workbook is the EIC gate: name THAT cause. The generic remedy
+            # ("use a declared filer class") is impossible for this filer.
+            from tenforty import years as year_manifest
+            if (year_manifest.native_spine_supports(
+                    effective_scenario.config.year,
+                    parse_filing_status(
+                        effective_scenario.config.filing_status).value)
+                    and not self._scenario_in_spine_scope(effective_scenario)):
+                raise NotImplementedError(
+                    "This return has Schedule C business income and is "
+                    "possibly eligible for the Earned Income Credit: its "
+                    "earned income and estimated AGI are below the tax "
+                    "year's EIC income ceiling. tenforty does not compute the "
+                    "EIC on the native 1040 spine, and the workbook path that "
+                    "does compute it cannot carry Schedule C / Schedule SE. "
+                    "There is no acknowledge-and-proceed: the return would "
+                    "either miss a credit you may be owed or leave out the "
+                    "business income and self-employment tax. File this "
+                    "return by hand."
+                )
             raise NotImplementedError(
                 "Schedule C / self-employment income is set on a scenario that "
                 "routes to the workbook (XLSX) compute path (a filer class not "
