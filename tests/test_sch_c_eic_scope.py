@@ -147,9 +147,16 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
         self.assertLess(10_000.0, ceiling)          # possibly EIC-eligible
         self.assertFalse(self._in_scope(scn))
         # Out of the native spine, Schedule C refuses (the workbook path does
-        # not wire it) -- fail-closed, never a silent native compute.
-        with self.assertRaises(NotImplementedError):
+        # not wire it) -- fail-closed, never a silent native compute -- and
+        # the refusal names the real cause: this filer IS on the declared
+        # grid, rerouted only because the EIC is possible.
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"possibly eligible for the Earned Income Credit") as ctx:
             self.orch.compute_federal(scn)
+        self.assertIn("File this return by hand", str(ctx.exception))
+        self.assertNotIn("filer class declared on the native grid",
+                         str(ctx.exception))
 
     def test_no_w2_high_profit_schedule_c_stays_native(self):
         scn = self._no_w2(ScheduleCBusiness(
