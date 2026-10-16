@@ -198,8 +198,9 @@ class WorkbookDiagnosticRefusalTests(unittest.TestCase):
         self.assertIn("spouse birthdate", low)
         self.assertIn("married_filing_jointly", low)
         self.assertIn("married_filing_separately", low)
-        # REMEDY: the spouse-birthdate unit lifts this.
-        self.assertIn("spouse-birthdate unit", low)
+        # REMEDY: state the spouse's birthdate (the input exists).
+        self.assertIn("set `spouse_birthdate`", low)
+        self.assertNotIn("spouse-birthdate unit", low)
         # The refusal also protects line 17, which the SAME blank corrupts
         # into a wrong NONZERO value via Form 6251 on AMT-bearing returns.
         self.assertIn("line 17", low)

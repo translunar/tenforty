@@ -227,14 +227,13 @@ _REFUSAL = (
     "guessing is worst. In none of these cases are the figures ours to "
     "publish.\n"
     "\n"
-    "CAUSE: for MARRIED_FILING_JOINTLY and MARRIED_FILING_SEPARATELY — which is every return "
-    "that reaches this refusal today — tenforty supplies no spouse birthdate "
-    "at all, so the workbook's `Birthday_Needed` flag is unconditionally TRUE "
-    "and this diagnostic always fires. REMEDY: the spouse-birthdate unit adds "
-    "that input and lifts this refusal. There is no scenario-side workaround, "
-    "and none is wanted: the figures at and below line 12 were never right for "
-    "this population, so this refusal converts a silently WRONG return into a "
-    "loudly REFUSED one. It does not make the return computable.\n"
+    "CAUSE: on MARRIED_FILING_JOINTLY and MARRIED_FILING_SEPARATELY the "
+    "workbook needs the spouse's birthdate; when the scenario does not state "
+    "one, no spouse birthdate reaches the sheet, so its `Birthday_Needed` "
+    "flag is TRUE and this diagnostic fires. REMEDY: set `spouse_birthdate` "
+    "(ISO YYYY-MM-DD) in the scenario's config. Until then the figures at and "
+    "below line 12 are not right for this return, so this refusal converts a "
+    "silently WRONG return into a loudly REFUSED one.\n"
     "\n"
     "ON THE TWO BLANKING BRANCHES this refusal ALSO protects lines 17 and 18, "
     "which that same blank corrupts WITHOUT their going blank themselves and "
@@ -295,15 +294,16 @@ def workbook_refusal(harvested: dict) -> str | None:
 # --- Numeric-cell probes ------------------------------------------------------
 #
 # The registries (cells, sheets, defined names, and why each is there) live in
-# mappings/f1040.py::WORKBOOK_PROBES_2025 / _2024 / _2023 (keys are disjoint:
-# the back years' carry `y2024` / `y2023`). A probe's healthy value is a number
-# or blank; NON-EMPTY TEXT OR AN ERROR MARKER means the sheet put a diagnostic
-# where a number belongs, which a downstream SUM/MIN would silently skip (the
-# partial-total species). There is deliberately no string allowlist: for a
-# numeric cell the allowlist is empty, so any text refuses -- including text
-# nobody has seen before. Blank (None / "" / whitespace) passes, matching the
-# `Deduction` precedent, because "" is these cells' ordinary not-applicable
-# value. Booleans refuse: TRUE/FALSE is not a number either.
+# mappings/f1040.py::WORKBOOK_PROBES_2025 / _2024 / _2023 / _2022 / _2021
+# (keys are disjoint: the back years' carry `y2024` ... `y2021`). A probe's
+# healthy value is a number or blank; NON-EMPTY TEXT OR AN ERROR MARKER means
+# the sheet put a diagnostic where a number belongs, which a downstream SUM/MIN
+# would silently skip (the partial-total species). There is deliberately no
+# string allowlist: for a numeric cell the allowlist is empty, so any text
+# refuses -- including text nobody has seen before. Blank (None / "" /
+# whitespace) passes, matching the `Deduction` precedent, because "" is these
+# cells' ordinary not-applicable value. Booleans refuse: TRUE/FALSE is not a
+# number either.
 WORKBOOK_PROBE_PREFIX = "workbook_probe__"
 
 _PROBE_REFUSAL = (
