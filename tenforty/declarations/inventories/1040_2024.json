@@ -141,11 +141,11 @@
    "page": 1,
    "section": "",
    "label": "2b",
-   "text": "",
+   "text": "Taxable interest",
    "bbox": [
-    488.53,
+    338.4,
     547.91,
-    497.87,
+    343.29,
     557.46
    ]
   },
@@ -165,11 +165,11 @@
    "page": 1,
    "section": "",
    "label": "3b",
-   "text": "",
+   "text": "Ordinary dividends",
    "bbox": [
-    488.53,
+    338.4,
     559.91,
-    497.87,
+    343.29,
     569.46
    ]
   },
@@ -189,11 +189,11 @@
    "page": 1,
    "section": "",
    "label": "4b",
-   "text": "",
+   "text": "Taxable amount",
    "bbox": [
-    488.53,
+    338.4,
     571.91,
-    497.87,
+    343.29,
     581.45
    ]
   },
@@ -213,11 +213,11 @@
    "page": 1,
    "section": "",
    "label": "5b",
-   "text": "",
+   "text": "Taxable amount",
    "bbox": [
-    488.53,
+    338.4,
     583.91,
-    497.87,
+    343.29,
     593.46
    ]
   },
@@ -237,11 +237,11 @@
    "page": 1,
    "section": "",
    "label": "6b",
-   "text": "",
+   "text": "Taxable amount",
    "bbox": [
-    488.53,
+    338.4,
     595.91,
-    497.87,
+    343.29,
     605.46
    ]
   },
@@ -669,11 +669,23 @@
    "page": 2,
    "section": "",
    "label": "35b",
-   "text": "Routing number c Type:",
+   "text": "Routing number",
    "bbox": [
     100.8,
     325.91,
     105.69,
+    335.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35c",
+   "text": "Type:",
+   "bbox": [
+    338.4,
+    325.91,
+    342.99,
     335.45
    ]
   },

@@ -164,6 +164,9 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                   and any(lo <= w[0] <= hi + _SUBLINE_REACH + _JITTER
                           for lo, hi in columns)):
                 events.append((w[1], 1, "subline", w[4], w))
+        for w in _item_letters(words, columns, left_clear, right_neighbour,
+                               full_height):
+            events.append((w[1], 1, "letter", w[4], w))
         events.sort(key=lambda e: (e[0], e[1], e[4][0]))
 
         # A label column counts up within a Part. A column whose numbers fall
@@ -182,50 +185,155 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
         events = [e for e in events
                   if not (e[2] == "number" and column_of(e[4]) in not_labels)]
 
-        last_number = None
+        def parent_column(w):
+            # The label column a bare sub-letter belongs to: the nearest
+            # column at or left of it whose reach covers it.
+            cover = [c for c in columns
+                     if c[0] <= w[0] <= c[1] + _SUBLINE_REACH + _JITTER]
+            return max(cover) if cover else None
+
+        # A sub-letter composes with the last number of ITS OWN column. On a
+        # two-column page (Schedule C Part II: lines 8-17 beside 18-27) the
+        # last number in reading order may be the other column's.
+        last_number: dict = {}
         for _, _, kind, value, w in events:
             if kind == "part":
                 section = value
                 continue
             consumed = {id(w)}
-            if kind == "number":
+            if kind == "letter":
                 label = value
-                last_number = str(_number_of(value))
+            elif kind == "number":
+                label = value
+                last_number[column_of(w)] = str(_number_of(value))
                 nxt = right_neighbour(w)
                 if (nxt and not value[-1].isalpha() and _SUBLINE.match(nxt[4])
                         and nxt[0] - w[2] < _COMPOSITE_GAP):
                     label = value + nxt[4]
                     consumed.add(id(nxt))
             else:
-                if last_number is None:
+                parent = last_number.get(parent_column(w))
+                if parent is None:
                     continue
-                label = last_number + value
-            stop = min([lo for lo, _ in columns if lo > w[2] + 2] + [1e9])
-            text = " ".join(
-                v[4] for v in sorted(row(w) + [w])
-                if w[2] < v[0] < stop and id(v) not in consumed
-                and not _LEADER.match(v[4])).strip()
-            found = InventoryLine(page_no, section, label, text,
-                                  tuple(round(c, 2) for c in w[:4]))
-            # The same line seen again: its own key, or a line-number box
-            # repeating its row's label.
-            same = [i for i, o in enumerate(lines)
-                    if o.page == page_no and o.label == label
-                    and (o.section == section
-                         or abs(o.bbox[1] - w[1]) < _BOX_REPEAT)]
-            if same:
-                earlier = lines[same[0]]
-                # The printed label to the LEFT wins over an EMPTY line a
-                # box (or a stray digit) made first, whichever sorted first
-                # by a fraction of a point; the line keeps its key. A line
-                # that already has text is never rewritten.
-                if (not earlier.text and found.text
-                        and found.bbox[0] < earlier.bbox[0]):
-                    lines[same[0]] = dataclasses.replace(
-                        found, section=earlier.section)
-                continue
-            lines.append(found)
+                label = parent + value
+            mids = _mid_row_sub_lines(w, label, consumed, row, left_clear,
+                                      right_neighbour, full_height)
+
+            def text_between(start, end_x, skip):
+                edge = start[2] + 2
+                if kind == "letter" and start is w:
+                    # A narrow capital ("I") can end short of the number
+                    # column's left edge: its text runs to the first column
+                    # past its own first word.
+                    first = right_neighbour(w)
+                    edge = max(edge, first[0]) if first else edge
+                stop = min([lo for lo, _ in columns if lo > edge] + [end_x])
+                return " ".join(
+                    v[4] for v in sorted(row(start) + [start])
+                    if start[2] < v[0] < stop and id(v) not in skip
+                    and not _LEADER.match(v[4])).strip()
+
+            # A mid-row sub-line ends the text of the line before it.
+            found = [InventoryLine(
+                page_no, section, label,
+                text_between(w, mids[0][0][0] if mids else 1e9, consumed),
+                tuple(round(c, 2) for c in w[:4]))]
+            for i, (v, mid_label) in enumerate(mids):
+                end = mids[i + 1][0][0] if i + 1 < len(mids) else 1e9
+                found.append(InventoryLine(
+                    page_no, section, mid_label,
+                    text_between(v, end, {id(v)}),
+                    tuple(round(c, 2) for c in v[:4])))
+            for line in found:
+                # The same line seen again: its own key, or a line-number
+                # box repeating its row's label.
+                same = [i for i, o in enumerate(lines)
+                        if o.page == page_no and o.label == line.label
+                        and (o.section == section
+                             or abs(o.bbox[1] - line.bbox[1]) < _BOX_REPEAT)]
+                if same:
+                    earlier = lines[same[0]]
+                    # The printed label to the LEFT wins over an EMPTY line
+                    # a box (or a stray digit) made first, whichever sorted
+                    # first by a fraction of a point; the line keeps its
+                    # key. A line that already has text is never rewritten.
+                    if (not earlier.text and line.text
+                            and line.bbox[0] < earlier.bbox[0]):
+                        lines[same[0]] = dataclasses.replace(
+                            line, section=earlier.section)
+                    continue
+                lines.append(line)
     return tuple(lines)
+
+
+_MID_ROW_WORD_GAP = 35.0  # pt: a mid-row sub-letter's (or item letter's)
+                          # own text follows it
+_ITEM_LETTER = re.compile(r"^[A-Z]$")
+_CAPITALISED = re.compile(r"^[“\"(]?[A-Z]")
+
+
+def _item_letters(words, columns, left_clear, right_neighbour, full_height):
+    """Uppercase item letters printed as labels (Schedule C's header items
+    A-J, Schedule SE's line A, Form 1120-S's A-J): a lone capital, left-
+    clear, full height, followed closely by a capitalised word -- so "A late
+    filing penalty ..." (Form 4868) is a sentence, not a label -- and
+    either in a column of such letters that ascends without repeating (so
+    Schedule CA's repeated A / B / C column headers are not lines) or alone
+    at the left margin, left of every number column (Schedule SE's A)."""
+    def candidate(w):
+        if not (_ITEM_LETTER.match(w[4]) and left_clear(w) and full_height(w)):
+            return False
+        nxt = right_neighbour(w)
+        return (bool(nxt) and nxt[0] - w[2] < _MID_ROW_WORD_GAP
+                and _CAPITALISED.match(nxt[4]) is not None)
+    letters = sorted((w for w in words if candidate(w)),
+                     key=lambda w: (w[1], w[0]))
+    letter_columns = []
+    for lo, hi in _columns([w[0] for w in letters]):
+        seq = [w[4] for w in letters if lo <= w[0] <= hi]
+        if all(b > a for a, b in zip(seq, seq[1:])):
+            letter_columns.append((lo, hi))
+    first_number_column = min((lo for lo, _ in columns), default=1e9)
+    return [w for w in letters
+            if any(lo <= w[0] <= hi for lo, hi in letter_columns)
+            or (w[0] < first_number_column - 2 and w[0] <= _LEFT_MARGIN)]
+
+
+def _mid_row_sub_lines(w, label, consumed, row, left_clear, right_neighbour,
+                       full_height):
+    """Sub-lines printed LATER on a label's row ("44a Business b Commuting
+    c Other"; Form 1040 "2a ... 2a b Taxable interest 2b"), as
+    ``[(word, label), ...]``. Each is a left-clear token naming the next
+    sub-letter in sequence ("b", or the full "2b"), after at least one word
+    of the label's own text, with its own text right after it. A label with
+    no sub-letter opens them only when the row prints at least two ("a ...
+    b ..."): one lone "a" is an alternative in the text (Schedule D (540)
+    line 9, "the smaller of: a the loss ... b $3,000")."""
+    if not label[:1].isdigit():    # an item letter (A, B, ...)
+        return []
+    base = str(_number_of(label))
+    letter = label[len(base):]
+    if len(letter) > 1:            # a roman row (1ii): no sub-letters follow
+        return []
+    want = chr(ord(letter) + 1) if letter else "a"
+    mids = []
+    seen_text = False
+    for v in sorted(row(w)):
+        if v[0] <= w[2] or id(v) in consumed:
+            continue
+        if (seen_text and left_clear(v) and v[4] in (want, base + want)
+                and full_height(v)):
+            nxt = right_neighbour(v)
+            if (nxt and nxt[0] - v[2] < _MID_ROW_WORD_GAP
+                    and nxt[4][:1].isalpha()):
+                mids.append((v, base + want))
+                want = chr(ord(want) + 1)
+                continue
+        if not _LEADER.match(v[4]):
+            seen_text = True
+    if not letter and len(mids) < 2:
+        return []
+    return mids
 
 
 # --- California: the templates' own tooltips, sectioned by the printed page --

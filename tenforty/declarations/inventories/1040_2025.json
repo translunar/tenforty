@@ -141,11 +141,11 @@
    "page": 1,
    "section": "",
    "label": "2b",
-   "text": "",
+   "text": "Taxable",
    "bbox": [
-    488.53,
+    338.4,
     571.91,
-    497.87,
+    343.29,
     581.45
    ]
   },
@@ -165,11 +165,11 @@
    "page": 1,
    "section": "",
    "label": "3b",
-   "text": "",
+   "text": "Ordinary",
    "bbox": [
-    488.53,
+    338.4,
     583.91,
-    497.87,
+    343.29,
     593.46
    ]
   },
@@ -213,11 +213,11 @@
    "page": 1,
    "section": "",
    "label": "4b",
-   "text": "",
+   "text": "Taxable",
    "bbox": [
-    488.53,
+    338.4,
     607.91,
-    497.87,
+    343.29,
     617.45
    ]
   },
@@ -261,11 +261,11 @@
    "page": 1,
    "section": "",
    "label": "5b",
-   "text": "",
+   "text": "Taxable",
    "bbox": [
-    488.53,
+    338.4,
     631.91,
-    497.87,
+    343.29,
     641.46
    ]
   },
@@ -297,11 +297,11 @@
    "page": 1,
    "section": "",
    "label": "6b",
-   "text": "",
+   "text": "Taxable",
    "bbox": [
-    488.53,
+    338.4,
     655.91,
-    497.87,
+    343.29,
     665.46
    ]
   },
@@ -429,11 +429,23 @@
    "page": 2,
    "section": "",
    "label": "12b",
-   "text": "Spouse itemizes on a separate return c You were a dual-status",
+   "text": "Spouse itemizes on a separate return",
    "bbox": [
     100.8,
     61.91,
     105.69,
+    71.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12c",
+   "text": "You were a dual-status",
+   "bbox": [
+    292.9,
+    61.91,
+    297.5,
     71.46
    ]
   },
@@ -824,8 +836,20 @@
   {
    "page": 2,
    "section": "",
+   "label": "35c",
+   "text": "Type: Checking",
+   "bbox": [
+    338.4,
+    504.91,
+    342.99,
+    514.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
    "label": "35b",
-   "text": "Routing number c Type: Checking",
+   "text": "Routing number",
    "bbox": [
     100.8,
     505.41,

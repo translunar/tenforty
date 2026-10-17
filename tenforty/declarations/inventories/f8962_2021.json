@@ -105,7 +105,7 @@
    "page": 1,
    "section": "Part I",
    "label": "8a",
-   "text": "Annual contribution amount. Multiply line 3 by b Monthly contribution",
+   "text": "Annual contribution amount. Multiply line 3 by",
    "bbox": [
     45.95,
     268.31,
@@ -117,12 +117,12 @@
    "page": 1,
    "section": "Part I",
    "label": "8b",
-   "text": "",
+   "text": "Monthly contribution",
    "bbox": [
-    488.53,
-    277.92,
-    497.87,
-    287.46
+    311.91,
+    268.31,
+    316.8,
+    277.86
    ]
   },
   {
