@@ -8,6 +8,18 @@
   {
    "page": 1,
    "section": "Part I",
+   "label": "A",
+   "text": "If you are a minister, member of a religious order, or Christian Science practitioner",
+   "bbox": [
+    35.95,
+    145.85,
+    42.11,
+    156.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
    "label": "1a",
    "text": "Net farm profit or (loss) from Schedule F, line 34, and farm partnerships, Schedule",
    "bbox": [

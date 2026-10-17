@@ -164,6 +164,9 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                   and any(lo <= w[0] <= hi + _SUBLINE_REACH + _JITTER
                           for lo, hi in columns)):
                 events.append((w[1], 1, "subline", w[4], w))
+        for w in _item_letters(words, columns, left_clear, right_neighbour,
+                               full_height):
+            events.append((w[1], 1, "letter", w[4], w))
         events.sort(key=lambda e: (e[0], e[1], e[4][0]))
 
         # A label column counts up within a Part. A column whose numbers fall
@@ -198,7 +201,9 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                 section = value
                 continue
             consumed = {id(w)}
-            if kind == "number":
+            if kind == "letter":
+                label = value
+            elif kind == "number":
                 label = value
                 last_number[column_of(w)] = str(_number_of(value))
                 nxt = right_neighbour(w)
@@ -215,8 +220,14 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                                       right_neighbour, full_height)
 
             def text_between(start, end_x, skip):
-                stop = min([lo for lo, _ in columns if lo > start[2] + 2]
-                           + [end_x])
+                edge = start[2] + 2
+                if kind == "letter" and start is w:
+                    # A narrow capital ("I") can end short of the number
+                    # column's left edge: its text runs to the first column
+                    # past its own first word.
+                    first = right_neighbour(w)
+                    edge = max(edge, first[0]) if first else edge
+                stop = min([lo for lo, _ in columns if lo > edge] + [end_x])
                 return " ".join(
                     v[4] for v in sorted(row(start) + [start])
                     if start[2] < v[0] < stop and id(v) not in skip
@@ -255,7 +266,37 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
     return tuple(lines)
 
 
-_MID_ROW_WORD_GAP = 35.0  # pt: a mid-row sub-letter's own text follows it
+_MID_ROW_WORD_GAP = 35.0  # pt: a mid-row sub-letter's (or item letter's)
+                          # own text follows it
+_ITEM_LETTER = re.compile(r"^[A-Z]$")
+_CAPITALISED = re.compile(r"^[“\"(]?[A-Z]")
+
+
+def _item_letters(words, columns, left_clear, right_neighbour, full_height):
+    """Uppercase item letters printed as labels (Schedule C's header items
+    A-J, Schedule SE's line A, Form 1120-S's A-J): a lone capital, left-
+    clear, full height, followed closely by a capitalised word -- so "A late
+    filing penalty ..." (Form 4868) is a sentence, not a label -- and
+    either in a column of such letters that ascends without repeating (so
+    Schedule CA's repeated A / B / C column headers are not lines) or alone
+    at the left margin, left of every number column (Schedule SE's A)."""
+    def candidate(w):
+        if not (_ITEM_LETTER.match(w[4]) and left_clear(w) and full_height(w)):
+            return False
+        nxt = right_neighbour(w)
+        return (bool(nxt) and nxt[0] - w[2] < _MID_ROW_WORD_GAP
+                and _CAPITALISED.match(nxt[4]) is not None)
+    letters = sorted((w for w in words if candidate(w)),
+                     key=lambda w: (w[1], w[0]))
+    letter_columns = []
+    for lo, hi in _columns([w[0] for w in letters]):
+        seq = [w[4] for w in letters if lo <= w[0] <= hi]
+        if all(b > a for a, b in zip(seq, seq[1:])):
+            letter_columns.append((lo, hi))
+    first_number_column = min((lo for lo, _ in columns), default=1e9)
+    return [w for w in letters
+            if any(lo <= w[0] <= hi for lo, hi in letter_columns)
+            or (w[0] < first_number_column - 2 and w[0] <= _LEFT_MARGIN)]
 
 
 def _mid_row_sub_lines(w, label, consumed, row, left_clear, right_neighbour,
@@ -268,6 +309,8 @@ def _mid_row_sub_lines(w, label, consumed, row, left_clear, right_neighbour,
     no sub-letter opens them only when the row prints at least two ("a ...
     b ..."): one lone "a" is an alternative in the text (Schedule D (540)
     line 9, "the smaller of: a the loss ... b $3,000")."""
+    if not label[:1].isdigit():    # an item letter (A, B, ...)
+        return []
     base = str(_number_of(label))
     letter = label[len(base):]
     if len(letter) > 1:            # a roman row (1ii): no sub-letters follow

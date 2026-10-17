@@ -709,6 +709,222 @@
   },
   {
    "page": 3,
+   "section": "",
+   "label": "C",
+   "text": "Principal business activity code. Do not leave blank",
+   "bbox": [
+    36.0,
+    74.92,
+    43.0,
+    86.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "D",
+   "text": "Is this S corporation filing on a water’s-edge basis pursuant to R&TC Sections 25110 and 25113 for the current taxable",
+   "bbox": [
+    36.0,
+    104.93,
+    43.0,
+    116.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "E",
+   "text": "Does this tax return include Qualified Subchapter S Subsidiaries?",
+   "bbox": [
+    36.0,
+    119.93,
+    42.49,
+    131.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "F",
+   "text": "Date incorporated (mm/dd/yyyy) Where: State Country______________________________________",
+   "bbox": [
+    36.0,
+    138.92,
+    42.0,
+    150.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "G",
+   "text": "Maximum number of shareholders in the S corporation at any time during the year. Do not leave blank",
+   "bbox": [
+    36.0,
+    153.93,
+    43.49,
+    165.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "H",
+   "text": "Date business began in California or date income was first derived from California sources (mm/dd/yyyy)",
+   "bbox": [
+    36.0,
+    175.92,
+    43.5,
+    187.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "I",
+   "text": "Was the S corporation an inactive business both within and outside of California during the taxable year?",
+   "bbox": [
+    36.0,
+    190.92,
+    39.5,
+    202.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "J",
+   "text": "Is the S corporation under audit by the IRS or has it been audited in a prior year?",
+   "bbox": [
+    36.0,
+    205.93,
+    42.0,
+    217.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "K",
+   "text": "Effective date of federal S election (mm/dd/yyyy)",
+   "bbox": [
+    36.0,
+    225.92,
+    43.49,
+    237.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "L",
+   "text": "Accounting method (1) Cash",
+   "bbox": [
+    36.0,
+    240.92,
+    42.0,
+    252.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "M",
+   "text": "Location of principal accounting records _______________________________________________________",
+   "bbox": [
+    36.0,
+    255.93,
+    44.49,
+    267.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "N",
+   "text": "“Doing business as’’ (DBA) name. See instructions _________________________________________________________",
+   "bbox": [
+    36.0,
+    270.93,
+    43.49,
+    282.3
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "O",
+   "text": "Have all required information returns (e.g., federal Forms 1099, 8300, and state Forms 592, 592-B etc.) been filed with",
+   "bbox": [
+    36.0,
+    283.88,
+    43.5,
+    295.25
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "P",
+   "text": "Is this S corporation apportioning or allocating income to California using Schedule R?",
+   "bbox": [
+    36.0,
+    309.93,
+    42.5,
+    321.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "Q",
+   "text": "Has the S corporation included a reportable transaction or listed transaction within this return? See instructions for",
+   "bbox": [
+    36.0,
+    324.93,
+    43.5,
+    336.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "R",
+   "text": "Did this S corporation file the federal Schedule M-3 (Form 1120-S)?",
+   "bbox": [
+    35.99,
+    350.92,
+    43.0,
+    362.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "S",
+   "text": "Is form FTB 3544, Side 2, Part B, List of Assigned Credit Received and/or Claimed by Assignee, attached to the return?",
+   "bbox": [
+    36.0,
+    365.93,
+    42.5,
+    377.29
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "T",
+   "text": "Check if corporation: (1) Aggregated activities for IRC Section",
+   "bbox": [
+    36.0,
+    379.15,
+    42.5,
+    390.52
+   ]
+  },
+  {
+   "page": 3,
    "section": "Schedule J",
    "label": "1",
    "text": "Last In First Out (LIFO) recapture due to S corporation election (IRC Section 1363(d) deferral. Dollars",

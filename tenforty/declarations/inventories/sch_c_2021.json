@@ -7,6 +7,126 @@
  "lines": [
   {
    "page": 1,
+   "section": "",
+   "label": "A",
+   "text": "Principal business or profession,",
+   "bbox": [
+    36.0,
+    108.51,
+    41.48,
+    118.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "B",
+   "text": "Enter code from instructions",
+   "bbox": [
+    450.4,
+    108.91,
+    456.03,
+    118.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "C",
+   "text": "Business name. If no separate business",
+   "bbox": [
+    36.0,
+    132.51,
+    41.93,
+    142.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "D",
+   "text": "Employer ID number (EIN) (see instr.)",
+   "bbox": [
+    450.4,
+    133.51,
+    456.33,
+    143.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "E",
+   "text": "Business address (including suite",
+   "bbox": [
+    36.0,
+    157.91,
+    41.18,
+    167.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "F",
+   "text": "Accounting method: (1)",
+   "bbox": [
+    36.0,
+    181.91,
+    40.74,
+    191.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "G",
+   "text": "Did you “materially participate”",
+   "bbox": [
+    36.0,
+    193.91,
+    42.07,
+    203.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "H",
+   "text": "If you started or acquired this business",
+   "bbox": [
+    36.0,
+    205.91,
+    41.93,
+    215.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "I",
+   "text": "Did you make any payments in",
+   "bbox": [
+    36.0,
+    217.91,
+    38.36,
+    227.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "J",
+   "text": "If “Yes,” did you or will you file",
+   "bbox": [
+    36.0,
+    229.41,
+    40.45,
+    238.96
+   ]
+  },
+  {
+   "page": 1,
    "section": "Part I",
    "label": "1",
    "text": "Gross receipts or sales. See instructions",

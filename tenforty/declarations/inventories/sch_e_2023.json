@@ -8,6 +8,30 @@
   {
    "page": 1,
    "section": "Part I",
+   "label": "A",
+   "text": "Did you make any payments in",
+   "bbox": [
+    40.12,
+    138.65,
+    46.28,
+    149.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "B",
+   "text": "If “Yes,” did you or will you file",
+   "bbox": [
+    40.03,
+    150.15,
+    46.37,
+    160.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
    "label": "1a",
    "text": "Physical address of each property",
    "bbox": [
