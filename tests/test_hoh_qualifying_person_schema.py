@@ -26,7 +26,8 @@ from tenforty.models import (
     LivedTogetherPeriod,
     SeparationDecreeKind,
 )
-from tenforty.scenario import load_scenario, qp_is_19_or_older
+from tenforty.scenario import (
+    load_scenario, qp_is_19_or_older, qp_on_qualifying_child_path)
 from tests.helpers import scope_out_attestation_defaults
 
 _YEAR = 2025
@@ -408,6 +409,143 @@ class AgeBranchTests(_LoaderCase):
         self.refuses(self._aged(19, full_time_student="yes",
                                 permanently_disabled=False),
                      "full_time_student", "true or false")
+
+
+def _days_in_year(year: int) -> int:
+    return (datetime.date(year, 12, 31) - datetime.date(year, 1, 1)).days + 1
+
+
+class DaysThresholdTests(_LoaderCase):
+    """Rule 10 (FTB 3532 line 5 instructions): the qualifying person lived
+    with the filer more than half the year."""
+
+    def test_more_than_half_the_year_boundary(self):
+        for year in (2023, 2024):
+            half = _days_in_year(year) // 2
+            with self.subTest(year=year, days=half):
+                self.refuses(_hoh_yaml(year=year, block=_block(
+                    year, qp=_qp(year, days_lived_with_you=half))),
+                    "days_lived_with_you", "more than half the year")
+            with self.subTest(year=year, days=half + 1):
+                qp = self.load(_hoh_yaml(year=year, block=_block(
+                    year, qp=_qp(year, days_lived_with_you=half + 1)))
+                ).config.head_of_household.qualifying_person
+                self.assertEqual(qp.days_lived_with_you, half + 1)
+
+
+class LivedTogetherBoundaryTests(_LoaderCase):
+    """Rule 11: a married filer who lived with the spouse at any time in the
+    last six months of the year cannot qualify."""
+
+    def _ending(self, end):
+        return _hoh_yaml(block=_block(
+            marital_status="married_lived_together_part_of_year",
+            lived_with_spouse_periods=[
+                {"from": f"{_YEAR}-05-01", "to": f"{_YEAR}-{end}"}]))
+
+    def test_period_ending_june_30_loads(self):
+        facts = self.load(self._ending("06-30")).config.head_of_household
+        self.assertEqual(facts.lived_with_spouse_periods[0].end,
+                         f"{_YEAR}-06-30")
+
+    def test_period_ending_july_1_refuses(self):
+        self.refuses(self._ending("07-01"), "lived_with_spouse_periods",
+                     "last six months")
+
+
+class ConsideredUnmarriedRelationshipTests(_LoaderCase):
+    """Rule 12: a married filer (1e, 1f) is "considered unmarried" only if
+    the qualifying person is the filer's child, stepchild, adopted child or
+    eligible foster child (2a, 2c)."""
+
+    _MARRIED = {
+        "married_lived_apart_all_year": [],
+        "married_lived_together_part_of_year": [
+            {"from": f"{_YEAR}-01-01", "to": f"{_YEAR}-02-28"}],
+    }
+
+    def _married(self, marital, relationship):
+        return _hoh_yaml(block=_block(
+            marital_status=marital,
+            lived_with_spouse_periods=self._MARRIED[marital],
+            qp=_qp(relationship=relationship)))
+
+    def test_married_with_a_grandchild_sibling_niece_or_nephew_refuses(self):
+        for marital in self._MARRIED:
+            with self.subTest(marital=marital):
+                self.refuses(self._married(
+                    marital, "grandchild_sibling_niece_or_nephew"),
+                    "relationship", "eligible foster child")
+
+    def test_married_with_a_child_or_foster_child_loads(self):
+        for marital in self._MARRIED:
+            for relationship in ("child_or_stepchild", "eligible_foster_child"):
+                with self.subTest(marital=marital, relationship=relationship):
+                    qp = self.load(self._married(marital, relationship)
+                                   ).config.head_of_household.qualifying_person
+                    self.assertEqual(qp.relationship.value, relationship)
+
+    def test_unmarried_with_a_grandchild_loads(self):
+        qp = self.load(_hoh_yaml(block=_block(qp=_qp(
+            relationship="grandchild_sibling_niece_or_nephew")))
+        ).config.head_of_household.qualifying_person
+        self.assertIs(qp.relationship,
+                      HohRelationship.GRANDCHILD_SIBLING_NIECE_OR_NEPHEW)
+
+
+class QualifyingChildOnlyTests(_LoaderCase):
+    """Rule 13: until 0.2.1, the qualifying person must be on the
+    qualifying-child path (2a-2c, and under 19, a full-time student, or
+    permanently disabled)."""
+
+    def _person(self, relationship, age, **answers):
+        return _qp(relationship=relationship,
+                   birthdate=f"{_YEAR - age}-06-15", **answers)
+
+    def _assert_path(self, qp_dict, expected):
+        person = HohQualifyingPerson(**{
+            **qp_dict, "ssn": "000000005",
+            "relationship": HohRelationship(qp_dict["relationship"]),
+            "gross_income": float(qp_dict["gross_income"])})
+        self.assertIs(qp_on_qualifying_child_path(person, _YEAR), expected)
+
+    def test_parent_and_other_relative_refuse_naming_the_release(self):
+        # Permanently disabled, so the age test is met: only the Part II
+        # relationship (2d, 2e) takes them off the qualifying-child path.
+        for relationship in ("parent_or_stepparent", "other_relative"):
+            with self.subTest(relationship=relationship):
+                qp = self._person(relationship, 60, full_time_student=False,
+                                  permanently_disabled=True)
+                self._assert_path(qp, False)
+                self.refuses(_hoh_yaml(block=_block(qp=qp)),
+                             "qualifying relative", "0.2.1")
+
+    def test_child_at_20_neither_student_nor_disabled_refuses(self):
+        qp = self._person("child_or_stepchild", 20, full_time_student=False,
+                          permanently_disabled=False)
+        self._assert_path(qp, False)
+        self.refuses(_hoh_yaml(block=_block(qp=qp)), "0.2.1")
+
+    def test_child_at_20_student_loads(self):
+        qp = self._person("child_or_stepchild", 20, full_time_student=True,
+                          permanently_disabled=False)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
+    def test_child_at_30_disabled_loads(self):
+        qp = self._person("child_or_stepchild", 30, full_time_student=False,
+                          permanently_disabled=True)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
+    def test_each_child_relationship_under_19_is_on_the_path(self):
+        for relationship in ("child_or_stepchild",
+                             "grandchild_sibling_niece_or_nephew",
+                             "eligible_foster_child"):
+            with self.subTest(relationship=relationship):
+                qp = self._person(relationship, 10)
+                self._assert_path(qp, True)
+                self.load(_hoh_yaml(block=_block(qp=qp)))
 
 
 if __name__ == "__main__":
