@@ -89,7 +89,6 @@ from tenforty.filing.statement_other_deductions import (
 from tenforty.mappings.pdf_f100s import PdfF100S
 from tenforty.mappings.pdf_f100s_k1 import PdfF100SK1
 from tenforty.mappings.pdf_f540 import PdfF540
-from tenforty.mappings.pdf_f540 import interest_and_penalties_must_be_stated
 from tenforty.mappings.pdf_f540 import AMENDED_RETURN_KEY, AMENDED_RETURN_ON
 from tenforty.mappings.pdf_f1040x import PdfF1040X
 from tenforty.mappings.pdf_f3115 import PdfF3115
@@ -2774,8 +2773,8 @@ class ReturnOrchestrator:
         # emit refuses rather than count an unstated amount as zero. The CA
         # COMPUTE path never asks.
         if (ca_results["f540_interest_and_penalties"] is None
-                and interest_and_penalties_must_be_stated(
-                    year, ca_results)):
+                and form_f540.interest_and_penalties_must_be_stated(
+                    ca_results)):
             raise ValueError(
                 "Form 540 PDF emission needs `interest_and_penalties` stated "
                 f"in the CA YAML `ca540:` block for tax year {year}: this "
@@ -3307,13 +3306,18 @@ class ReturnOrchestrator:
                 scenario.config, scenario.w2s, scenario.config.year),
             **form_ftb3532.presentation_keys(scenario.config),
         }
-        return {
+        merged = {
             **sch_ca_results,
             **ca_part_ii,
             **sch_d_540_results,
             **f540_results,
             **header_keys,
         }
+        # Every printed Form 540 line that is arithmetic over other lines
+        # (ruling A1): computed here, once, for the original and the
+        # amendment paths alike; the mapping only translates.
+        return {**merged,
+                **form_f540.printed_line_keys(scenario.config.year, merged)}
 
     def run_amendment_packet(
         self,

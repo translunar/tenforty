@@ -7,7 +7,18 @@ from tenforty.forms.f540 import (
     compute_exemption_credit,
     compute_ca_tax,
     compute,
+    printed_line_keys,
 )
+
+
+def _printed(year, values):
+    """A compute result plus its printed Form 540 line keys, as the CA
+    assembly point (orchestrator._compute_ca_results) adds them: the mapping's
+    cells read those keys. These tests set ca_agi == federal_agi, so Schedule
+    CA total subtractions (line 14) is 0 -- the unique value consistent with
+    that setup."""
+    return {**values, **printed_line_keys(
+        year, {**values, "sch_ca_total_subtractions": 0})}
 
 
 # Verified against FTB Form 540 PDFs (committed in T1; constants in T9a).
@@ -619,12 +630,12 @@ class F540SettlementChainTests(unittest.TestCase):
     _D = PdfF540.get_derivations(2025)
 
     def _c(self, *, estimated=0.0, withholding=0):
-        return compute(
+        return _printed(2025, compute(
             year=2025, filing_status=FilingStatus.SINGLE,
             federal_agi=50_000, ca_agi=50_000,
             ca540=CA540Return(estimated_payments=estimated),
             ca_withholding=withholding,
-        )
+        ))
 
     def test_line_93_reads_the_line_78_total_not_just_estimated(self):
         # Payments arrive ENTIRELY via CA withholding (estimated = 0). Line 93
@@ -640,19 +651,19 @@ class F540SettlementChainTests(unittest.TestCase):
         # component: with $3,000 withholding and $100 use tax, line 93 = 2,900
         # and line 94 = 0. Component-only sourcing wrongly returned 100 (use
         # tax) while line 93 was 2,900 — the form contradicting itself.
-        c = compute(
+        c = _printed(2025, compute(
             year=2025, filing_status=FilingStatus.SINGLE,
             federal_agi=50_000, ca_agi=50_000,
             ca540=CA540Return(use_tax=100), ca_withholding=3_000,
-        )
+        ))
         self.assertEqual(self._D["540_form_3023"](c), 2_900)  # line 93
         self.assertEqual(self._D["540_form_3024"](c), 0)      # line 94
         # When use tax EXCEEDS total payments, line 94 fills and line 93 = 0.
-        c2 = compute(
+        c2 = _printed(2025, compute(
             year=2025, filing_status=FilingStatus.SINGLE,
             federal_agi=50_000, ca_agi=50_000,
             ca540=CA540Return(use_tax=5_000), ca_withholding=200,
-        )
+        ))
         self.assertEqual(self._D["540_form_3023"](c2), 0)      # line 93
         self.assertEqual(self._D["540_form_3024"](c2), 4_800)  # line 94 = 5000-200
 
@@ -693,6 +704,9 @@ class F540AmountDueLinesTests(unittest.TestCase):
       line 110 + 112 + 113 is more than line 99 -> that sum - line 99.
     * Line 115: no line 110/112/113 -> line 99; their sum less than line 99 ->
       line 99 - the sum.
+    * Line 98 is unmodeled: a 0 term, no key read (a line-98 feature adds a
+      compute key); tests/test_compute_keys_f540.py proves a supplied key is
+      ignored.
 
     Cells are located by the template's own tooltips (not the mapping's cell
     tables) and read through the same resolve step the PDF fill uses. All
@@ -737,10 +751,10 @@ class F540AmountDueLinesTests(unittest.TestCase):
         """{line: printed int or None (blank)} for the amount-due block."""
         from tenforty.filing.pdf import PdfFiller
         from tenforty.mappings.pdf_f540 import PdfF540
-        values = compute(
+        values = _printed(year, compute(
             year=year, filing_status=FilingStatus.SINGLE,
             federal_agi=agi, ca_agi=agi,
-            ca540=CA540Return(**ca540), ca_withholding=withholding)
+            ca540=CA540Return(**ca540), ca_withholding=withholding))
         resolved = PdfFiller.resolve_fields(
             PdfF540.get_mapping(year), values,
             aggregations=PdfF540.get_aggregations(year),
@@ -867,27 +881,6 @@ class F540AmountDueLinesTests(unittest.TestCase):
                 self.assertEqual(
                     self._face(year, withholding=1_000, interest_and_penalties=0)[112], 0)
                 self.assertIsNone(self._face(year, withholding=1_000)[112])
-
-    def test_line_99_subtracts_line_98_under_the_years_own_key(self):
-        # Line 98 is "Amount of line 97 you want applied to your <year+1>
-        # estimated tax"; nothing produces it yet, so the key is supplied here.
-        from tenforty.mappings.pdf_f540 import PdfF540
-        for year in self.YEARS:
-            with self.subTest(year=year):
-                values = compute(
-                    year=year, filing_status=FilingStatus.SINGLE,
-                    federal_agi=80_000, ca_agi=80_000, ca540=CA540Return(),
-                    ca_withholding=self._tax(year) + 100)
-                line_99 = PdfF540.get_derivations(year)[self._cell(year, 99)]
-                self.assertEqual(line_99(values), 100)
-                applied = {**values, f"f540_line98_applied_to_{year + 1}_estimated": 30}
-                self.assertEqual(line_99(applied), 100 - 30)
-                # A key named for any other year is not this form's line 98.
-                for other in self.YEARS:
-                    if other != year:
-                        stray = {**values,
-                                 f"f540_line98_applied_to_{other + 1}_estimated": 30}
-                        self.assertEqual(line_99(stray), 100, other)
 
     def test_total_liability_does_not_change_with_line_112(self):
         # f540_total_liability is the tax position (Schedule X reads it); line
@@ -1022,9 +1015,9 @@ class F540NonrefundableCreditClampTests(unittest.TestCase):
             for case in grid:
                 with self.subTest(year=year, case={k: v for k, v in case.items()
                                                    if k != "voluntary_contributions"}):
-                    r = self._compute(
+                    r = _printed(year, self._compute(
                         year, case["agi"],
-                        **{k: v for k, v in case.items() if k != "agi"})
+                        **{k: v for k, v in case.items() if k != "agi"}))
                     due = d[cells._cell(year, 114)](r)
                     refund = d[cells._cell(year, 115)](r)
                     printed = due if due is not None else -(refund or 0)

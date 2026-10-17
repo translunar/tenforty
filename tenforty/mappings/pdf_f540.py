@@ -37,8 +37,15 @@ known-brittle FTB encoding anomaly from caller code.
 
 from collections.abc import Callable, Mapping
 
+from tenforty.forms import f540 as _f540
 from tenforty.mappings.registry import PdfFormMapping
 from tenforty.models import FilingStatus
+
+
+def _negative_in_parentheses(v) -> str:
+    """Line 15 prints a negative amount in parentheses (the form's own
+    instruction). A translation of the computed line, not arithmetic."""
+    return f"({abs(v)})" if v < 0 else str(v)
 
 
 _FILING_STATUS_RB_STATES: dict[FilingStatus, str] = {
@@ -157,79 +164,18 @@ _AGGREGATIONS_2025: dict[str, tuple[str, ...]] = {}
 # call counts in inline comments.
 
 
-def _line_33(c: Mapping[str, object]) -> float:
-    """Line 33 = max(0, line 31 − line 32). Called from 540_form_2032,
-    540_form_2036, _line_47-consumers (3006/3010/3027/4004/4005)."""
-    return max(0, c["f540_ca_tax"] - c["f540_exemption_credit"])
 
 
-def _line_47(c: Mapping[str, object]) -> float:
-    """Line 47 = total credits (renter + ptet + [PLANNED] line40/43-45).
-    Called from 540_form_3005, 540_form_3006, 540_form_3010, 540_form_3027,
-    540_form_4004, 540_form_4005."""
-    return (
-        c["f540_renter_credit"]
-        + c.get("f540_ptet_credit", 0)
-        + c.get("f540_line40_child_dep_care", 0)
-        + c.get("f540_line43_credit_amount", 0)
-        + c.get("f540_line44_credit_amount", 0)
-        + c.get("f540_line45_sch_p_credits", 0)
-    )
 
 
-def _line_48(c: Mapping[str, object]) -> float:
-    """Line 48 = max(0, line 35 − line 47). In v1 line 35 == line 33
-    (line 34 OUT_OF_V1_SCOPE defaults 0). Called from 540_form_3006,
-    540_form_3010, 540_form_3027, 540_form_4004, 540_form_4005."""
-    return max(0, _line_33(c) - _line_47(c))
 
 
-def _line_64(c: Mapping[str, object]) -> float:
-    """Line 64 = line 48 + 61 + 62 + 63. Lines 61-63 ([PLANNED] AMT,
-    behavioral health, other taxes/recapture) default 0. Called from
-    540_form_3010, 540_form_3027, 540_form_4004, 540_form_4005."""
-    return (
-        _line_48(c)
-        + c.get("f540_line61_amt", 0)
-        + c.get("f540_line62_behavioral_health", 0)
-        + c.get("f540_line63_other_taxes", 0)
-    )
 
 
-def _line_78(c: Mapping[str, object]) -> float:
-    """Line 78 = total payments = sum of lines 71-77 (CA withholding, estimated
-    payments, 592-B/593 withholding, Program 4.0, EITC, YCTC, FYTC). Only
-    line 72 (estimated payments) and line 71 (CA withholding) are modeled in
-    v1; the rest default 0. This is the SINGLE line-78 total; the per-year
-    line-78 boxes and the settlement chain (line 93) both read it, so they
-    cannot disagree."""
-    return (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    )
 
 
-def _line_93(c: Mapping[str, object]) -> float:
-    """Line 93 = max(0, line 78 − line 91). Line 91 is use tax
-    (``f540_use_tax``). Line 78 is the TOTAL payments (``_line_78``), NOT the
-    estimated-payments component alone — sourcing only estimated payments
-    understated line 93 whenever payments arrived via CA withholding, which
-    collapsed line 95 toward 0 and made line 100 (tax due) print the full tax
-    ignoring payments while line 97/99 (overpaid) went unfilled. Called from
-    the line-93/95/97/99/100 derivations in every year surface."""
-    return max(0, _line_78(c) - c["f540_use_tax"])
 
 
-def _line_95(c: Mapping[str, object]) -> float:
-    """Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
-    ([PLANNED]; defaults 0). Called from 540_form_3025, 540_form_3027,
-    540_form_4004, 540_form_4005."""
-    return max(0, _line_93(c) - c.get("f540_line92_isr_penalty", 0))
 
 
 _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
@@ -240,62 +186,46 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Tax Table; > 100,000 → Rate Schedule. The lambda returns the
     # appearance state string directly so PdfFiller's _render_scalar
     # passes it through (bool would be rejected).
-    "540_form_2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "540_form_2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "540_form_2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "540_form_2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32). Line 31 = ca_tax, line 32 = exemption.
-    "540_form_2032": lambda c: _line_33(c),
+    "540_form_2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 (Sch G-1 / FTB 5870A) is
     # OUT_OF_V1_SCOPE, defaults 0 — so v1 line 35 == line 33.
-    "540_form_2036": lambda c: _line_33(c),
+    "540_form_2036": lambda c: c[_f540.LINE_35],
     # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45,
     # all default 0 in v1). Note: this is NOT compute()'s
     # f540_total_credits, which includes exemption credit (already
     # subtracted at line 32). See module-level note on line-47 vs
     # compute() total-credits semantic divergence.
-    "540_form_3005": lambda c: _line_47(c),
+    "540_form_3005": lambda c: c[_f540.LINE_47],
     # Line 48 = max(0, line 35 − line 47).
-    "540_form_3006": lambda c: _line_48(c),
+    "540_form_3006": lambda c: c[_f540.LINE_48],
     # Line 64 = line 48 + 61 + 62 + 63. Lines 61-63 ([PLANNED] AMT,
     # behavioral health, other taxes/recapture) default 0.
-    "540_form_3010": lambda c: _line_64(c),
+    "540_form_3010": lambda c: c[_f540.LINE_64],
     # Line 78 = sum lines 71-77. Only line 72 = estimated_payments is
     # in v1; lines 71/73-77 ([PLANNED] CA withholding, 592-B/593,
     # Program 4.0, EITC, YCTC, FYTC) default 0.
-    "540_form_3018": lambda c: (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    ),
+    "540_form_3018": lambda c: c[_f540.LINE_78],
     # Line 93 = max(0, line 78 − line 91). Line 78 is the TOTAL payments
     # (_line_78: lines 71-77, incl. CA withholding), not just estimated.
-    "540_form_3023": lambda c: _line_93(c),
+    "540_form_3023": lambda c: c[_f540.LINE_93],
     # Line 94 = max(0, line 91 − line 78).
-    "540_form_3024": lambda c: max(
-        0, c["f540_use_tax"] - _line_78(c)
-    ),
+    "540_form_3024": lambda c: c[_f540.LINE_94],
     # Line 95 = max(0, line 93 − line 92). Line 92 = ISR penalty
     # ([PLANNED]; defaults 0).
-    "540_form_3025": lambda c: _line_95(c),
+    "540_form_3025": lambda c: c[_f540.LINE_95],
     # Line 96 = max(0, line 92 − line 93). With line 92 defaulting 0,
     # this is 0 in v1.
-    "540_form_3026": lambda c: max(
-        0,
-        c.get("f540_line92_isr_penalty", 0) - _line_93(c),
-    ),
+    "540_form_3026": lambda c: c[_f540.LINE_96],
     # Line 97 = max(0, line 95 − line 64). The "overpaid tax" branch.
-    "540_form_3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    "540_form_3027": lambda c: c[_f540.LINE_97],
     # Line 99 = line 97 − line 98 (line 98 carryover-to-2026 is
     # [OUT_OF_V1_SCOPE]; defaults 0). Equals line 97 in v1.
-    "540_form_4004": lambda c: (
-        max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2026_estimated", 0)
-    ),
+    "540_form_4004": lambda c: c[_f540.LINE_99],
     # Line 100 = max(0, line 64 − line 95). The "tax due" branch.
-    "540_form_4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    "540_form_4005": lambda c: c[_f540.LINE_100],
 }
 
 
@@ -403,52 +333,36 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     "540-1036 RB": lambda c: _FILING_STATUS_RB_STATES_2024[c["f540_filing_status"]],
     # Line 31 tax-source checkboxes. f540_taxable_income ≤ 100,000 →
     # Tax Table; > 100,000 → Rate Schedule. On-states `/Yes`/`/Off` per probe.
-    "540-2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "540-2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "540-2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "540-2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32).
-    "540-2032": lambda c: _line_33(c),
+    "540-2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
-    "540-2036": lambda c: _line_33(c),
+    "540-2036": lambda c: c[_f540.LINE_35],
     # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45).
-    "540-3005": lambda c: _line_47(c),
+    "540-3005": lambda c: c[_f540.LINE_47],
     # Line 48 = max(0, line 35 − line 47).
-    "540-3006": lambda c: _line_48(c),
+    "540-3006": lambda c: c[_f540.LINE_48],
     # Line 64 = line 48 + 61 + 62 + 63.
-    "540-3010": lambda c: _line_64(c),
+    "540-3010": lambda c: c[_f540.LINE_64],
     # Line 78 = sum lines 71-77.
-    "540-3018": lambda c: (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    ),
+    "540-3018": lambda c: c[_f540.LINE_78],
     # Line 93 = max(0, line 78 − line 91).
-    "540-3023": lambda c: _line_93(c),
+    "540-3023": lambda c: c[_f540.LINE_93],
     # Line 94 = max(0, line 91 − line 78).
-    "540-3024": lambda c: max(
-        0, c["f540_use_tax"] - _line_78(c)
-    ),
+    "540-3024": lambda c: c[_f540.LINE_94],
     # Line 95 = max(0, line 93 − line 92).
-    "540-3025": lambda c: _line_95(c),
+    "540-3025": lambda c: c[_f540.LINE_95],
     # Line 96 = max(0, line 92 − line 93).
-    "540-3026": lambda c: max(
-        0,
-        c.get("f540_line92_isr_penalty", 0) - _line_93(c),
-    ),
+    "540-3026": lambda c: c[_f540.LINE_96],
     # Line 97 = max(0, line 95 − line 64).
-    "540-3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    "540-3027": lambda c: c[_f540.LINE_97],
     # Line 99 = line 97 − line 98. The 2024 form's line 98 is the amount
     # "applied to your 2025 estimated tax", so the key is named for 2025 (it
     # was the 2025 pack's 2026 key, copied over). Nothing produces it yet.
-    "540-4004": lambda c: (
-        max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2025_estimated", 0)
-    ),
+    "540-4004": lambda c: c[_f540.LINE_99],
     # Line 100 = max(0, line 64 − line 95).
-    "540-4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    "540-4005": lambda c: c[_f540.LINE_100],
 }
 
 
@@ -540,47 +454,36 @@ _FILING_STATUS_CB_2023: dict[FilingStatus, str] = {
 _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (checkbox A = tax table, B = rate
     # schedule). On-states `/Yes`/`/Off` per the 2023 /Btn probe.
-    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32).
-    "2032": lambda c: _line_33(c),
+    "2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
-    "2036": lambda c: _line_33(c),
+    "2036": lambda c: c[_f540.LINE_35],
     # Line 47 = total credits (renters + ptet + [PLANNED] line40/43-45).
-    "3005": lambda c: _line_47(c),
+    "3005": lambda c: c[_f540.LINE_47],
     # Line 48 = max(0, line 35 − line 47).
-    "3006": lambda c: _line_48(c),
+    "3006": lambda c: c[_f540.LINE_48],
     # Line 64 = line 48 + 61 + 62 + 63.
-    "3010": lambda c: _line_64(c),
+    "3010": lambda c: c[_f540.LINE_64],
     # Line 78 = sum lines 71-77 (only line 72 = estimated_payments in v1).
-    "3018": lambda c: (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    ),
+    "3018": lambda c: c[_f540.LINE_78],
     # Line 93 = max(0, line 78 − line 91).
-    "3023": lambda c: _line_93(c),
+    "3023": lambda c: c[_f540.LINE_93],
     # Line 94 = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
+    "3024": lambda c: c[_f540.LINE_94],
     # Line 95 = max(0, line 93 − line 92).
-    "3025": lambda c: _line_95(c),
+    "3025": lambda c: c[_f540.LINE_95],
     # Line 96 = max(0, line 92 − line 93).
-    "3026": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
+    "3026": lambda c: c[_f540.LINE_96],
     # Line 97 = max(0, line 95 − line 64).
-    "3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    "3027": lambda c: c[_f540.LINE_97],
     # Line 99 = line 97 − line 98. The 2023 form's line 98 is the amount
     # "applied to your 2024 estimated tax", so the key is named for 2024 (it
     # was the 2025 pack's 2026 key, copied over). Nothing produces it yet.
-    "4004": lambda c: (
-        max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2024_estimated", 0)
-    ),
+    "4004": lambda c: c[_f540.LINE_99],
     # Line 100 = max(0, line 64 − line 95).
-    "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    "4005": lambda c: c[_f540.LINE_100],
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2023 so the
@@ -686,19 +589,6 @@ _FILING_STATUS_CB_2021: dict[FilingStatus, str] = {
 }
 
 
-def _total_tax_2021(c: Mapping[str, object]) -> float:
-    """2021 Line 65 total tax = line 48 + 61 + 62 + 63 + 64.
-
-    STRUCTURAL DIVERGENCE from 2023: on 2023 the total-tax line is line 64
-    (box 3010, helper `_line_64` = line 48 + 61 + 62 + 63). The 2021 form
-    inserts a NEW line 64 (Excess APAS repayment) between the other-taxes
-    lines and the total, so "total tax" is line 65 (box 3006) with an EXTRA
-    addend. Reuses `_line_64` for the shared 48+61+62+63 sub-sum (year-agnostic
-    pure arithmetic) and adds the 2021-only line-64 APAS term
-    ([PLANNED]/OUT_OF_V1_SCOPE; defaults 0 → in v1 line 65 numerically equals
-    the 2023 `_line_64` value, but the composition matches the 2021 form).
-    Feeds 2021 lines 65/97/100 (boxes 3006/3018/3021)."""
-    return _line_64(c) + c.get("f540_line64_apas_repayment", 0)
 
 
 # get_derivations surface for 2021 — 22 form-internal computed cells ADDITIVELY
@@ -710,66 +600,55 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (A = tax table, B = rate schedule). 2021
     # boxes 2012/2013 CB (2023: 2026/2027 CB). ON-state /Yes per each box's
     # OWN /_States_ (['/Yes', '/Off']).
-    "2012 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2013 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2012 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2013 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 (box 2018) /TU "Subtract line 32 from line 31. If less than zero,
     # enter 0." = max(0, line 31 − line 32). Composition verified. (2023: 2032.)
-    "2018": lambda c: _line_33(c),
+    "2018": lambda c: c[_f540.LINE_33],
     # Line 35 (box 2022) /TU "Add line 33 and line 34." Line 34 OUT_OF_V1_SCOPE
     # (defaults 0) → line 35 == line 33. (2023: 2036.)
-    "2022": lambda c: _line_33(c),
+    "2022": lambda c: c[_f540.LINE_35],
     # Line 47 (box 2032) /TU "Add line 40 through line 46. These are your total
     # credits." = renter + ptet + [PLANNED] line40/43-45. Composition verified:
     # same line-40..46 span as 2023. (2023: 3005.)
-    "2032": lambda c: _line_47(c),
+    "2032": lambda c: c[_f540.LINE_47],
     # Line 48 (box 2033) /TU "Subtract line 47 from line 35. If less than zero,
     # enter 0." = max(0, line 35 − line 47). (2023: 3006.)
-    "2033": lambda c: _line_48(c),
+    "2033": lambda c: c[_f540.LINE_48],
     # Line 65 (box 3006) /TU "Add line 48, line 61, line 62, line 63, and line
     # 64. This is your total tax." 2021's total-tax line — line 65, NOT line 64
     # as on 2023 (box 3010). See _total_tax_2021 for the divergence.
-    "3006": lambda c: _total_tax_2021(c),
+    "3006": lambda c: c[_f540.LINE_65_2021],
     # Line 78 (box 3013) /TU "Add line 71 through line 77. These are your total
     # payments." Only line 72 (est_payments) nonzero in v1. NOTE 2021 line 74 =
     # Excess SDI and line 77 = Net PAS (2023: Program-4.0 / FYTC) — differing
     # [PLANNED] labels, all 0 in v1; the 71-77 span composition holds. (2023: 3018.)
-    "3013": lambda c: (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    ),
+    "3013": lambda c: c[_f540.LINE_78],
     # Line 93 (box 3016) /TU "If line 78 is more than line 91, subtract line 91
     # from line 78." = max(0, line 78 − line 91); line 78 is the TOTAL payments
     # (_line_78: lines 71-77, incl. CA withholding). (2023: 3023.)
-    "3016": lambda c: _line_93(c),
+    "3016": lambda c: c[_f540.LINE_93],
     # Line 94 (box 3023) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78). (2023: 3024.)
-    "3023": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
+    "3023": lambda c: c[_f540.LINE_94],
     # Line 95 (box 3017) /TU "Payments after ISR Penalty. If line 93 is more
     # than line 92, subtract line 92 from line 93." = max(0, line 93 − line 92).
     # (2023: 3025.)
-    "3017": lambda c: _line_95(c),
+    "3017": lambda c: c[_f540.LINE_95],
     # Line 96 (box 3024) /TU "ISR Penalty Balance. If line 92 is more than line
     # 93, subtract line 93 from line 92." = max(0, line 92 − line 93). (2023: 3026.)
-    "3024": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
+    "3024": lambda c: c[_f540.LINE_96],
     # Line 97 (box 3018) /TU "Overpaid tax. If line 95 is more than line 65,
     # subtract line 65 from line 95." = max(0, line 95 − line 65). References
     # 2021's line-65 total tax (2023 referenced line 64). (2023: 3027.)
-    "3018": lambda c: max(0, _line_95(c) - _total_tax_2021(c)),
+    "3018": lambda c: c[_f540.LINE_97],
     # Line 99 (box 3020) /TU "Overpaid tax available this year. Subtract line 98
     # from line 97." = line 97 − line 98. Line 98 (applied to 2022 est. tax)
     # OUT_OF_V1_SCOPE, defaults 0. (2023: 4004.)
-    "3020": lambda c: (
-        max(0, _line_95(c) - _total_tax_2021(c))
-        - c.get("f540_line98_applied_to_2022_estimated", 0)
-    ),
+    "3020": lambda c: c[_f540.LINE_99],
     # Line 100 (box 3021) /TU "Tax due. If line 95 is less than line 65,
     # subtract line 95 from line 65." = max(0, line 65 − line 95). (2023: 4005.)
-    "3021": lambda c: max(0, _total_tax_2021(c) - _line_95(c)),
+    "3021": lambda c: c[_f540.LINE_100],
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2021 so the
@@ -892,60 +771,49 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (A = tax table, B = rate schedule). Boxes
     # 2026/2027 CB. /TU: "Line 31. Tax. Checkbox A/B...". ON-state /Yes per each
     # box's OWN /_States_ (['/Yes', '/Off']).
-    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 (box 2032) /TU "Subtract line 32 from line 31. If less than zero,
     # enter 0." = max(0, line 31 − line 32).
-    "2032": lambda c: _line_33(c),
+    "2032": lambda c: c[_f540.LINE_33],
     # Line 35 (box 2036) /TU "Add line 33 and line 34." Line 34 OUT_OF_V1_SCOPE
     # (defaults 0) → line 35 == line 33.
-    "2036": lambda c: _line_33(c),
+    "2036": lambda c: c[_f540.LINE_35],
     # Line 47 (box 3005) /TU "Add line 40 through line 46. These are your total
     # credits." = renter + ptet + [PLANNED] line40/43-45.
-    "3005": lambda c: _line_47(c),
+    "3005": lambda c: c[_f540.LINE_47],
     # Line 48 (box 3006) /TU "Subtract line 47 from line 35. If less than zero,
     # enter 0." = max(0, line 35 − line 47).
-    "3006": lambda c: _line_48(c),
+    "3006": lambda c: c[_f540.LINE_48],
     # Line 64 (box 3010) /TU "Add line 48, line 61, line 62, and line 63. This is
     # your total tax." 2022 total tax IS line 64 (like 2023, NOT the 2021 line 65)
     # — use `_line_64` directly; no APAS addend.
-    "3010": lambda c: _line_64(c),
+    "3010": lambda c: c[_f540.LINE_64],
     # Line 78 (box 3018) /TU "Add line 71 through line 77. These are your total
     # payments." Only line 72 (est_payments) nonzero in v1.
-    "3018": lambda c: (
-        c.get("f540_line71_ca_withholding", 0)
-        + c["f540_estimated_payments"]
-        + c.get("f540_line73_592b_593_withholding", 0)
-        + c.get("f540_line74_program_40_motion_picture", 0)
-        + c.get("f540_line75_eitc", 0)
-        + c.get("f540_line76_yctc", 0)
-        + c.get("f540_line77_fytc", 0)
-    ),
+    "3018": lambda c: c[_f540.LINE_78],
     # Line 93 (box 3023) /TU "If line 78 is more than line 91, subtract line 91
     # from line 78." = max(0, line 78 − line 91).
-    "3023": lambda c: _line_93(c),
+    "3023": lambda c: c[_f540.LINE_93],
     # Line 94 (box 3024) /TU "If line 91 is more than line 78, subtract line 78
     # from line 91." = max(0, line 91 − line 78).
-    "3024": lambda c: max(0, c["f540_use_tax"] - _line_78(c)),
+    "3024": lambda c: c[_f540.LINE_94],
     # Line 95 (box 3025) /TU "If line 93 is more than line 92, subtract line 92
     # from line 93." = max(0, line 93 − line 92).
-    "3025": lambda c: _line_95(c),
+    "3025": lambda c: c[_f540.LINE_95],
     # Line 96 (box 3026) /TU "If line 92 is more than line 93, subtract line 93
     # from line 92." = max(0, line 92 − line 93).
-    "3026": lambda c: max(0, c.get("f540_line92_isr_penalty", 0) - _line_93(c)),
+    "3026": lambda c: c[_f540.LINE_96],
     # Line 97 (box 3027) /TU "Overpaid tax. If line 95 is more than line 64,
     # subtract line 64 from line 95." = max(0, line 95 − line 64). References
     # line 64 (2022 total tax), matching 2023.
-    "3027": lambda c: max(0, _line_95(c) - _line_64(c)),
+    "3027": lambda c: c[_f540.LINE_97],
     # Line 99 (box 4004) /TU "Overpaid tax available this year. Subtract line 98
     # from line 97." = line 97 − line 98. Line 98 OUT_OF_V1_SCOPE (defaults 0).
-    "4004": lambda c: (
-        max(0, _line_95(c) - _line_64(c))
-        - c.get("f540_line98_applied_to_2023_estimated", 0)
-    ),
+    "4004": lambda c: c[_f540.LINE_99],
     # Line 100 (box 4005) /TU "Tax due. If line 95 is less than line 64, subtract
     # line 95 from line 64." = max(0, line 64 − line 95). References line 64.
-    "4005": lambda c: max(0, _line_64(c) - _line_95(c)),
+    "4005": lambda c: c[_f540.LINE_100],
 }
 
 # Filing-status checkboxes, generated from _FILING_STATUS_CB_2022 so the coverage
@@ -1048,11 +916,6 @@ _ADJUSTMENT_LINES = {
 }
 
 
-def _line_15(c: Mapping[str, object]) -> str:
-    """Line 15 = line 13 - line 14; the form says a negative result is entered
-    in parentheses."""
-    v = c["f540_federal_agi"] - c["sch_ca_total_subtractions"]
-    return f"({abs(v)})" if v < 0 else str(v)
 
 
 _HEADER_NUMBERS = {
@@ -1129,15 +992,17 @@ def _install_presentation(year, mapping, derivations):
     l14, l15, l16, l71 = _ADJUSTMENT_LINES[year]
     mapping["f540_line71_ca_withholding"] = prefix + l71
     derivations[prefix + l14] = lambda c: c["sch_ca_total_subtractions"]
-    derivations[prefix + l15] = _line_15
+    derivations[prefix + l15] = lambda c: _negative_in_parentheses(
+        c[_f540.LINE_15])
     derivations[prefix + l16] = lambda c: c["sch_ca_total_additions"]
     for field in name_fields:
         derivations[prefix + field] = lambda c: c.get("f540_taxpayer_name")
     for field in ssn_fields:
         derivations[prefix + field] = lambda c: c.get("f540_taxpayer_ssn")
     derivations[use_tax_radio] = (
-        lambda c, tok=no_use_tax: tok if c["f540_use_tax"] == 0 else None)
-    derivations[designee_radio] = lambda c, tok=designee_no: tok
+        lambda c, tok=no_use_tax: tok if c.get(_f540.NO_USE_TAX) else None)
+    derivations[designee_radio] = (
+        lambda c, tok=designee_no: tok if c.get(_f540.DESIGNEE_NO) else None)
 
 
 # AMOUNT YOU OWE / TOTAL AMOUNT DUE / REFUND (lines 111-115).
@@ -1176,67 +1041,22 @@ _AMOUNT_DUE_CELLS = {
 }
 
 
-def _lines_110_112_113(c: Mapping[str, object]) -> tuple[float, float, float]:
-    """(line 110, line 112, line 113). An unstated line 112 counts as 0 here;
-    whether it MAY be unstated is ``interest_and_penalties_must_be_stated``."""
-    return (
-        c["f540_voluntary_contributions"],
-        c.get("f540_interest_and_penalties") or 0,
-        c["f540_estimated_tax_penalty"],
-    )
 
 
-def _line_111(year: int, c: Mapping[str, object]) -> float | None:
-    """Line 111, or None when the line is blank."""
-    l94, l96, l99, l100 = (_DERIVATIONS_BY_YEAR[year][cell](c)
-                           for cell in _AMOUNT_DUE_CELLS[year][:4])
-    l110 = c["f540_voluntary_contributions"]
-    if l99 > 0:
-        return l110 - l99 if l110 > l99 else None
-    owed = l94 + l96 + l100 + l110
-    return owed if owed > 0 else None
 
 
-def _line_114(year: int, c: Mapping[str, object]) -> float | None:
-    """Line 114, or None when the line is blank."""
-    l110, l112, l113 = _lines_110_112_113(c)
-    l111 = _line_111(year, c)
-    if l111 is not None:
-        return l111 + l112 + l113
-    l99 = _DERIVATIONS_BY_YEAR[year][_AMOUNT_DUE_CELLS[year][2]](c)
-    excess = l110 + l112 + l113 - l99
-    return excess if excess > 0 else None
 
 
-def _line_115(year: int, c: Mapping[str, object]) -> float | None:
-    """Line 115, or None when the line is blank (an amount is due instead, or
-    there is no overpayment to refund)."""
-    if _line_114(year, c) is not None:
-        return None
-    l99 = _DERIVATIONS_BY_YEAR[year][_AMOUNT_DUE_CELLS[year][2]](c)
-    if l99 <= 0:
-        return None
-    return l99 - sum(_lines_110_112_113(c))
 
 
-def interest_and_penalties_must_be_stated(year: int, c: Mapping[str, object]) -> bool:
-    """Whether line 112 may NOT be left unstated on this return.
-
-    A pure refund return (nothing on lines 110, 112 or 113, no amount on line
-    111) takes the line 115 "No" branch and never reads line 112. Any other
-    return carries line 112 into line 114 or line 115, so an unstated value
-    there would silently count as zero.
-    """
-    l110, _, l113 = _lines_110_112_113(c)
-    return _line_111(year, c) is not None or l110 != 0 or l113 != 0
 
 
 def _install_amount_due(year, mapping, derivations):
     _, _, _, _, l111, l112, l114, l115 = _AMOUNT_DUE_CELLS[year]
     mapping["f540_interest_and_penalties"] = l112
-    derivations[l111] = lambda c, y=year: _line_111(y, c)
-    derivations[l114] = lambda c, y=year: _line_114(y, c)
-    derivations[l115] = lambda c, y=year: _line_115(y, c)
+    derivations[l111] = lambda c: c.get(_f540.LINE_111)
+    derivations[l114] = lambda c: c.get(_f540.LINE_114)
+    derivations[l115] = lambda c: c.get(_f540.LINE_115)
 
 
 # DIRECT DEPOSIT (line 116).
@@ -1276,32 +1096,23 @@ _DIRECT_DEPOSIT_CELLS = {
            {"checking": ("540_form_5009A CB", "/Yes"),
             "savings": ("540_form_5009B CB", "/Yes")}),
 }
-DIRECT_DEPOSIT_KEYS = (
-    "f540_refund_routing_number", "f540_refund_account_number",
-    "f540_refund_account_type")
+DIRECT_DEPOSIT_KEYS = _f540.REFUND_DEPOSIT_KEYS
 
 
-def _deposit_refund(year: int, c: Mapping[str, object]) -> float | None:
-    """The refund to be deposited: line 115 when the scenario states direct
-    deposit and line 115 is a positive amount, else None."""
-    if any(c.get(key) is None for key in DIRECT_DEPOSIT_KEYS):
-        return None
-    refund = _line_115(year, c)
-    return refund if refund is not None and refund > 0 else None
 
 
 def _install_direct_deposit(year, derivations):
     routing, account, amount, type_cells = _DIRECT_DEPOSIT_CELLS[year]
 
     def when_depositing(value_of):
-        return lambda c, y=year: (
-            value_of(c) if _deposit_refund(y, c) is not None else None)
+        return lambda c: (
+            value_of(c) if c.get(_f540.LINE_116) is not None else None)
 
     derivations[routing] = when_depositing(
         lambda c: c["f540_refund_routing_number"])
     derivations[account] = when_depositing(
         lambda c: c["f540_refund_account_number"])
-    derivations[amount] = lambda c, y=year: _deposit_refund(y, c)
+    derivations[amount] = lambda c: c.get(_f540.LINE_116)
     by_field: dict[str, dict[str, str]] = {}
     for account_type, (field, state) in type_cells.items():
         by_field.setdefault(field, {})[account_type] = state

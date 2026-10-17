@@ -181,6 +181,22 @@ ATTESTED: dict[str, object] = {
     # booklet prints no born-before date): exclusive cutoff January 2, 1958.
     "senior_exemption_credit": 140,
     "senior_born_before": datetime.date(1958, 1, 2),
+    # Form 540 line 31 tax-table / rate-schedule boundary. Attested
+    # 2026-10-17 by an air-gapped transcriber (never read tenforty source)
+    # from the pinned FTB 2022 540 booklet pdfs/california/2022/booklet.pdf,
+    # sha256 e7ae8a0a8e4dadf973cdb702b8f9deb1574969d0cda5c6e08882e42e966c804c.
+    # Booklet p.13, "Line 31 – Tax": "Tax Table – If your taxable income on
+    # line 19 is $100,000 or less, use the tax table beginning on page 87.
+    # ... Tax Rate Schedules – If your taxable income on line 19 is over
+    # $100,000, use the tax rate schedule for your filing status on page 93."
+    # Restated on p.93 ("2022 California Tax Rate Schedules"): "Use only if
+    # your taxable income on Form 540, line 19 is more than $100,000. If
+    # $100,000 or less, use the Tax Table." The tax table's final row is
+    # "At least 99,951 But not over 100,000". INCLUSIVE ceiling: line 19 <=
+    # 100,000 uses the table; > 100,000 uses the schedules. One amount for
+    # all filing statuses (the text is not status-keyed). REV: none on
+    # p.13 or p.93.
+    "tax_table_taxable_income_ceiling": 100000,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
