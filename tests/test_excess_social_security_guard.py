@@ -168,6 +168,17 @@ class ExcessSocialSecurityGuardTests(unittest.TestCase):
         data["config"]["filing_status"] = filing_status.value
         if filing_status is not _MFJ:
             data["config"].pop("spouse_birthdate", None)
+        if filing_status is _HOH:
+            # Head of household requires its qualifying-person block (FTB
+            # 3532); synthetic values.
+            year = data["config"]["year"]
+            data["config"]["head_of_household"] = {
+                "marital_status": "unmarried",
+                "qualifying_person": {
+                    "first_name": "Example", "last_name": "Child",
+                    "ssn": "000-00-0005", "birthdate": f"{year - 10}-03-07",
+                    "relationship": "child_or_stepchild",
+                    "gross_income": 0, "days_lived_with_you": 365}}
         template = data["w2s"][0]
         data["w2s"] = []
         for i, owner in enumerate(owners):

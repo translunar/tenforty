@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 from pathlib import Path
 
@@ -27,6 +28,12 @@ from tenforty.models import (
     DepreciationOverride,
     EntityType,
     FilingStatus,
+    HeadOfHouseholdFacts,
+    HohMaritalStatus,
+    HohQualifyingPerson,
+    HohRelationship,
+    LivedTogetherPeriod,
+    SeparationDecreeKind,
     Form1095A,
     Form3115,
     Form3115Asset,
@@ -1112,6 +1119,350 @@ def validate_birthdate(cfg: TaxReturnConfig) -> None:
             f"YYYY-MM-DD date; got {value!r}.")
 
 
+_HOH = "head_of_household"
+_QP = f"{_HOH}.qualifying_person"
+_PERIODS = f"{_HOH}.lived_with_spouse_periods"
+_KNOWN_HOH_KEYS = frozenset({
+    "marital_status", "lived_with_spouse_periods", "separation_decree_kind",
+    "qualifying_person"})
+_REQUIRED_QP_KEYS = (
+    "first_name", "last_name", "ssn", "birthdate", "relationship",
+    "gross_income", "days_lived_with_you")
+_KNOWN_QP_KEYS = frozenset(_REQUIRED_QP_KEYS) | {
+    "full_time_student", "permanently_disabled"}
+_KNOWN_PERIOD_KEYS = frozenset({"from", "to"})
+# FTB 3532 Part I line 1f has exactly two From/To slots, and no year's
+# instructions mention a continuation statement.
+_MAX_LIVED_TOGETHER_PERIODS = 2
+
+
+def normalize_ssn_digits(value: str) -> str:
+    """The 9 bare digits of an SSN/ITIN written `NNNNNNNNN` or `NNN-NN-NNNN`.
+    Raises ValueError for anything else."""
+    if isinstance(value, str):
+        text = value.strip()
+        if len(text) == 9 and text.isdigit():
+            return text
+        parts = text.split("-")
+        if ([len(p) for p in parts] == [3, 2, 4]
+                and all(p.isdigit() for p in parts)):
+            return "".join(parts)
+    raise ValueError(
+        f"SSN/ITIN {value!r} must be 9 digits, written NNNNNNNNN or "
+        "NNN-NN-NNNN.")
+
+
+def qp_is_19_or_older(qp: HohQualifyingPerson, year: int) -> bool:
+    """FTB 3532 Part III line 3: "If your qualifying person is age 19 or older
+    in <year>, go to line 3a." Read as tax_year - birth_year >= 19 (ruling
+    spec §8 Q5). January-1 edge: under the convention that a person attains
+    an age the day before the birthday, someone born January 1 of
+    tax_year - 18 is already 19 on December 31 of the tax year; this
+    birth-year reading treats them as 18."""
+    return year - int(qp.birthdate[:4]) >= 19
+
+
+def _refuse_unknown_keys(data: dict, known: frozenset, where: str) -> None:
+    unknown = set(data) - known
+    if unknown:
+        raise ValueError(
+            f"Unknown key(s) in `{where}`: {sorted(unknown)}. Known keys: "
+            f"{sorted(known)}.")
+
+
+def _load_hoh_mapping(value, where: str) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError(
+            f"`{where}` must be a mapping of keys to values; got {value!r}.")
+    return value
+
+
+def _load_hoh_enum(enum_cls, value, where: str, form_part: str):
+    try:
+        return enum_cls(value)
+    except ValueError:
+        raise ValueError(
+            f"`{where}` is {value!r}, which is not one of "
+            f"{[m.value for m in enum_cls]} ({form_part}). Use one of those "
+            "values.") from None
+
+
+def _load_hoh_date(value, where: str) -> str:
+    if not isinstance(value, str):
+        # An unquoted YAML date arrives as datetime.date; refuse rather than
+        # coerce, the same way `birthdate` is loaded.
+        raise ValueError(
+            f"`{where}` must be a quoted ISO YYYY-MM-DD string; got "
+            f"{type(value).__name__} {value!r}. Put the date in quotes.")
+    try:
+        parsed = datetime.date.fromisoformat(value)
+    except ValueError:
+        parsed = None
+    if parsed is None or parsed.isoformat() != value:
+        raise ValueError(
+            f"`{where}` must be an ISO YYYY-MM-DD date; got {value!r}.")
+    return value
+
+
+def _load_hoh_answer(value, where: str) -> bool | None:
+    return None if value is None else _load_stated_bool(value, f"`{where}`")
+
+
+def _load_lived_together_periods(
+        raw, marital_status: HohMaritalStatus, year: int,
+) -> tuple[LivedTogetherPeriod, ...]:
+    if raw is None:
+        raw = []
+    if not isinstance(raw, list):
+        raise ValueError(
+            f"`{_PERIODS}` must be a list of {{from, to}} periods; got "
+            f"{raw!r}.")
+    together = HohMaritalStatus.MARRIED_LIVED_TOGETHER_PART_OF_YEAR
+    if marital_status is not together:
+        if raw:
+            raise ValueError(
+                f"`{_PERIODS}` must be empty unless `marital_status` is "
+                f"`{together.value}` (FTB 3532 Part I line 1f, the only line "
+                f"that lists periods lived together); `marital_status` is "
+                f"`{marital_status.value}`. Remove the periods, or correct "
+                "the marital status.")
+        return ()
+    if not raw:
+        raise ValueError(
+            f"`{_PERIODS}` is required when `marital_status` is "
+            f"`{together.value}`: FTB 3532 Part I line 1f lists the "
+            "beginning and ending dates of each period you lived with your "
+            "spouse. Add one or two {from, to} periods.")
+    if len(raw) > _MAX_LIVED_TOGETHER_PERIODS:
+        raise ValueError(
+            f"`{_PERIODS}` lists {len(raw)} periods, but FTB 3532 Part I "
+            "line 1f has exactly two From/To slots and no continuation "
+            "statement, so at most two periods can be reported. This "
+            "return cannot be completed on the form; file it by hand.")
+    first_day = datetime.date(year, 1, 1)
+    last_day = datetime.date(year, 12, 31)
+    periods: list[tuple[datetime.date, datetime.date]] = []
+    for i, item in enumerate(raw):
+        where = f"{_PERIODS}[{i}]"
+        item = _load_hoh_mapping(item, where)
+        _refuse_unknown_keys(item, _KNOWN_PERIOD_KEYS, where)
+        for key in ("from", "to"):
+            if key not in item:
+                raise ValueError(f"`{where}.{key}` is required.")
+        start = datetime.date.fromisoformat(
+            _load_hoh_date(item["from"], f"{where}.from"))
+        end = datetime.date.fromisoformat(
+            _load_hoh_date(item["to"], f"{where}.to"))
+        if start > end:
+            raise ValueError(
+                f"`{where}`: `from` ({start}) is after its `to` ({end}). "
+                "Swap the dates.")
+        if start < first_day or end > last_day:
+            raise ValueError(
+                f"`{where}` ({start} to {end}) lies outside tax year {year}; "
+                "FTB 3532 Part I line 1f reports only periods within the "
+                "tax year.")
+        if periods:
+            prev_start, prev_end = periods[-1]
+            if start < prev_start:
+                raise ValueError(
+                    f"`{_PERIODS}` is out of order: period {i} begins "
+                    f"({start}) before period {i - 1} ({prev_start}). List "
+                    "the periods in date order.")
+            if start <= prev_end:
+                raise ValueError(
+                    f"`{_PERIODS}`: period {i} ({start} to {end}) and period "
+                    f"{i - 1} ({prev_start} to {prev_end}) overlap. Merge "
+                    "them into one period.")
+        periods.append((start, end))
+    return tuple(LivedTogetherPeriod(start=s.isoformat(), end=e.isoformat())
+                 for s, e in periods)
+
+
+def _load_qp_ssn(value) -> str:
+    where = f"{_QP}.ssn"
+    if isinstance(value, str) and value.strip().lower() == "died":
+        raise ValueError(
+            f"`{where}` is {value!r}. FTB 3532 accepts \"Died\" only for a "
+            "person born and died in the year with no SSN, and then the "
+            "filer must attach the birth and death certificates. tenforty "
+            "cannot attach those certificates, so this return must be filed "
+            "by hand.")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(
+            f"`{where}` is blank. FTB 3532 Part III line 3 needs the "
+            "qualifying person's SSN (or ITIN), and no year's form has an "
+            "\"applied for\" entry; incomplete information can lose the "
+            "head-of-household status. Enter the 9-digit SSN or ITIN, quoted.")
+    try:
+        return normalize_ssn_digits(value)
+    except ValueError:
+        raise ValueError(
+            f"`{where}` is {value!r}; it must be 9 digits, written "
+            "NNNNNNNNN or NNN-NN-NNNN (FTB 3532 Part III line 3).") from None
+
+
+def _load_qualifying_person(raw, year: int) -> HohQualifyingPerson:
+    data = _load_hoh_mapping(raw, _QP)
+    _refuse_unknown_keys(data, _KNOWN_QP_KEYS, _QP)
+    for key in _REQUIRED_QP_KEYS:
+        if key not in data or data[key] is None:
+            raise ValueError(
+                f"`{_QP}.{key}` is required: FTB 3532 prints it (Part II for "
+                "the relationship, Part III for the rest). Add it.")
+    names = {}
+    for key in ("first_name", "last_name"):
+        where = f"{_QP}.{key}"
+        text = _load_stated_text(data[key], f"`{where}`")
+        if not text.strip():
+            raise ValueError(
+                f"`{where}` is blank; FTB 3532 Part III line 3 prints the "
+                "qualifying person's first and last name. Fill it in.")
+        names[key] = text.strip()
+    ssn = _load_qp_ssn(data["ssn"])
+    birthdate = _load_hoh_date(data["birthdate"], f"{_QP}.birthdate")
+    if datetime.date.fromisoformat(birthdate) > datetime.date(year, 12, 31):
+        raise ValueError(
+            f"`{_QP}.birthdate` ({birthdate}) is after the end of tax year "
+            f"{year}; a qualifying person must be born by 12/31/{year}. "
+            "Correct the date or the tax year.")
+    relationship = _load_hoh_enum(
+        HohRelationship, data["relationship"], f"{_QP}.relationship",
+        "FTB 3532 Part II, lines 2a-2e")
+    gross_income = _load_stated_number(
+        data["gross_income"], f"`{_QP}.gross_income`")
+    if gross_income < 0:
+        raise ValueError(
+            f"`{_QP}.gross_income` ({gross_income:g}) must be >= 0 (FTB 3532 "
+            "Part III line 4).")
+    days = _load_stated_int(
+        data["days_lived_with_you"], f"`{_QP}.days_lived_with_you`")
+    days_in_year = (datetime.date(year, 12, 31)
+                    - datetime.date(year, 1, 1)).days + 1
+    if not 0 <= days <= days_in_year:
+        raise ValueError(
+            f"`{_QP}.days_lived_with_you` is {days}, but it must be between "
+            f"0 and {days_in_year}, the number of days in tax year {year} "
+            "(FTB 3532 Part III line 5).")
+    answers = {
+        key: _load_hoh_answer(data.get(key), f"{_QP}.{key}")
+        for key in ("full_time_student", "permanently_disabled")}
+    person = HohQualifyingPerson(
+        first_name=names["first_name"], last_name=names["last_name"],
+        ssn=ssn, birthdate=birthdate, relationship=relationship,
+        gross_income=gross_income, days_lived_with_you=days, **answers)
+    lines = {"full_time_student": "3a", "permanently_disabled": "3b"}
+    if qp_is_19_or_older(person, year):
+        for key, value in answers.items():
+            if value is None:
+                raise ValueError(
+                    f"`{_QP}.{key}` is required (true or false): the "
+                    f"qualifying person is 19 or older in {year}, so FTB "
+                    f"3532 Part III line {lines[key]} must be answered.")
+    else:
+        for key, value in answers.items():
+            if value is not None:
+                raise ValueError(
+                    f"`{_QP}.{key}` must be null: the qualifying person is "
+                    f"under 19 in {year}, and FTB 3532 Part III line 3 says "
+                    f"\"If not, go to line 4\", so line {lines[key]} is "
+                    "left blank. Remove the answer.")
+    return person
+
+
+def load_head_of_household(raw: dict, year: int) -> HeadOfHouseholdFacts:
+    """Parse ``config.head_of_household`` (spec §4.1) into dataclasses,
+    refusing what FTB 3532 could not print correctly: unknown keys and enum
+    values, the line 1f periods (required iff 1f, at most two, inside the
+    year, ordered, non-overlapping), the line 1d decree kind (required iff
+    1d), blank names, an SSN that is not 9 digits (or "Died"), a birthdate
+    after the year, a negative gross income, a day count outside the year,
+    and lines 3a/3b answered iff the person is 19 or older (spec §4.3 rules
+    1-4, 6-9 and 2b). Rules needing the rest of the config run in
+    ``validate_head_of_household``."""
+    data = _load_hoh_mapping(raw, _HOH)
+    _refuse_unknown_keys(data, _KNOWN_HOH_KEYS, _HOH)
+    if data.get("marital_status") is None:
+        raise ValueError(
+            f"`{_HOH}.marital_status` is required (FTB 3532 Part I). Add it.")
+    marital_status = _load_hoh_enum(
+        HohMaritalStatus, data["marital_status"], f"{_HOH}.marital_status",
+        "FTB 3532 Part I, lines 1a-1f")
+    if data.get("qualifying_person") is None:
+        raise ValueError(
+            f"`{_QP}` is required: FTB 3532 Parts II and III describe the "
+            "person who qualifies you for head of household. Add it.")
+    periods = _load_lived_together_periods(
+        data.get("lived_with_spouse_periods"), marital_status, year)
+    decree_raw = data.get("separation_decree_kind")
+    divorced = HohMaritalStatus.DIVORCED_OR_LEGALLY_SEPARATED
+    decree = None
+    if marital_status is divorced:
+        if decree_raw is None:
+            raise ValueError(
+                f"`{_HOH}.separation_decree_kind` is required when "
+                f"`marital_status` is `{divorced.value}` (FTB 3532 Part I "
+                "line 1d): set `divorce_or_dissolution` or "
+                "`legal_separation`.")
+        decree = _load_hoh_enum(
+            SeparationDecreeKind, decree_raw,
+            f"{_HOH}.separation_decree_kind", "FTB 3532 Part I line 1d")
+    elif decree_raw is not None:
+        raise ValueError(
+            f"`{_HOH}.separation_decree_kind` is set, but it is only for "
+            f"`marital_status: {divorced.value}` (FTB 3532 Part I line 1d); "
+            f"`marital_status` is `{marital_status.value}`. Remove it, or "
+            "correct the marital status.")
+    return HeadOfHouseholdFacts(
+        marital_status=marital_status,
+        qualifying_person=_load_qualifying_person(
+            data["qualifying_person"], year),
+        lived_with_spouse_periods=periods,
+        separation_decree_kind=decree)
+
+
+def validate_head_of_household(cfg: TaxReturnConfig) -> None:
+    """Pure check of ``config.head_of_household`` against the rest of the
+    config: required iff head of household (spec §4.2), and the qualifying
+    person is not the filer (rule 5). Called at load from
+    ``_validate_scenario_config`` and re-used by the CA emit gate, so a
+    directly built config is checked too."""
+    status = FilingStatus(cfg.filing_status)
+    facts = cfg.head_of_household
+    if status is FilingStatus.HEAD_OF_HOUSEHOLD and facts is None:
+        raise ValueError(
+            "`filing_status` is `head_of_household`, but the scenario has no "
+            "`head_of_household` block. Head of household needs a qualifying "
+            "person, and California denies head-of-household status to a "
+            "return that does not attach a completed FTB 3532 (Head of "
+            "Household Filing Status Schedule). Add `config."
+            "head_of_household` with `marital_status` and "
+            "`qualifying_person` (first_name, last_name, ssn, birthdate, "
+            "relationship, gross_income, days_lived_with_you).")
+    if status is not FilingStatus.HEAD_OF_HOUSEHOLD and facts is not None:
+        raise ValueError(
+            "Scenario config has a `head_of_household` block, but "
+            f"`filing_status` is `{status.value}`. The block describes a "
+            "head-of-household qualifying person (FTB 3532) and belongs on "
+            "no other return; a stray block usually means the filing status "
+            "is wrong. Remove the block, or set `filing_status: "
+            "head_of_household`.")
+    if facts is None:
+        return
+    # Rule 5 (FTB 3532 instructions, Part II line 2): "You may not claim
+    # yourself ... as your qualifying person." The spouse case is unreachable:
+    # head of household refuses spouse fields.
+    try:
+        filer_ssn = normalize_ssn_digits(cfg.ssn)
+    except ValueError:
+        filer_ssn = None
+    if filer_ssn is not None and facts.qualifying_person.ssn == filer_ssn:
+        raise ValueError(
+            f"`{_QP}.ssn` is the same as the filer's own SSN. You may not be "
+            "your own qualifying person (FTB 3532 instructions, Part II line "
+            "2). Enter the qualifying person's SSN.")
+
+
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
     """Enforce the load-time attestations via
     tenforty.attestations._ATTESTATIONS. Conditional fields (MFS / prior-year
@@ -1227,6 +1578,7 @@ def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
 
     validate_birthdate(cfg)
     validate_spouse_birthdate(cfg)
+    validate_head_of_household(cfg)
 
 
 def _load_source_documents(
@@ -1292,7 +1644,16 @@ def load_scenario(path: Path) -> Scenario:
             f"Unknown top-level key(s) in scenario YAML: {sorted(unknown)}. "
             f"Known keys: {sorted(_KNOWN_TOP_LEVEL_KEYS)}")
 
-    config = TaxReturnConfig(**data["config"])
+    # The nested head_of_household block is parsed into dataclasses (with
+    # the tax year its rules need) and passed in; the caller's mapping is
+    # never mutated.
+    config_data = dict(data["config"])
+    hoh_raw = config_data.pop("head_of_household", None)
+    config = TaxReturnConfig(**config_data)
+    if hoh_raw is not None:
+        config = dataclasses.replace(
+            config, head_of_household=load_head_of_household(
+                hoh_raw, config.year))
     _validate_scenario_config(config)
 
     form_data: dict[str, list] = {}

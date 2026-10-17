@@ -137,14 +137,30 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
         path.write_text(text)
         return path
 
+    # Head of household requires its qualifying-person block (FTB 3532);
+    # synthetic values, for the 2025 fixture year.
+    _HOH_BLOCK = (
+        "  head_of_household:\n"
+        "    marital_status: unmarried\n"
+        "    qualifying_person:\n"
+        "      first_name: Example\n"
+        "      last_name: Child\n"
+        "      ssn: '000-00-0005'\n"
+        "      birthdate: '2015-03-07'\n"
+        "      relationship: child_or_stepchild\n"
+        "      gross_income: 0\n"
+        "      days_lived_with_you: 365\n")
+
     def test_hoh_with_spouse_name_is_refused_at_load(self):
         # Control: the same Head-of-Household scenario without spouse fields
         # loads, so the refusal below is the spouse field's doing.
-        cfg = load_scenario(self._yaml("head_of_household", "")).config
+        cfg = load_scenario(self._yaml("head_of_household",
+                                       self._HOH_BLOCK)).config
         self.assertIs(cfg.filing_status, FilingStatus.HEAD_OF_HOUSEHOLD)
         with self.assertRaises(ValueError) as ctx:
             load_scenario(self._yaml(
-                "head_of_household", "  spouse_first_name: Spouse\n"))
+                "head_of_household",
+                self._HOH_BLOCK + "  spouse_first_name: Spouse\n"))
         msg = str(ctx.exception)
         self.assertIn("spouse_first_name", msg)
         self.assertIn("head_of_household", msg)
