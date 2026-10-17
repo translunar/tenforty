@@ -417,11 +417,35 @@
    "page": 2,
    "section": "",
    "label": "1",
-   "text": "Check accounting method: a Cash b Accrual Yes No",
+   "text": "Check accounting method:",
    "bbox": [
     45.67,
     61.28,
     50.4,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1a",
+   "text": "Cash",
+   "bbox": [
+    180.0,
+    61.28,
+    184.88,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1b",
+   "text": "Accrual Yes No",
+   "bbox": [
+    244.8,
+    61.28,
+    250.0,
     71.42
    ]
   },

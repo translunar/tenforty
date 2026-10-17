@@ -645,12 +645,36 @@
    "page": 2,
    "section": "Part IV",
    "label": "44a",
-   "text": "Business b Commuting (see instructions) c Other",
+   "text": "Business",
    "bbox": [
     50.4,
     409.91,
     54.99,
     419.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44b",
+   "text": "Commuting (see instructions)",
+   "bbox": [
+    208.8,
+    410.01,
+    213.69,
+    419.55
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44c",
+   "text": "Other",
+   "bbox": [
+    432.0,
+    410.01,
+    436.59,
+    419.55
    ]
   },
   {
