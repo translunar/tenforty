@@ -1578,14 +1578,15 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     # Rule 5 (FTB 3532 instructions, Part II line 2): "You may not claim
     # yourself ... as your qualifying person." The spouse case is unreachable:
     # head of household refuses spouse fields.
-    try:
-        filer_ssn = normalize_ssn_digits(cfg.ssn)
-    except ValueError:
-        # Equality against a malformed filer SSN means nothing, so skip it;
-        # the emit path still fails closed (FTB 3532 presentation refuses a
-        # filer SSN that does not normalize).
-        filer_ssn = None
-    if filer_ssn is not None and facts.qualifying_person.ssn == filer_ssn:
+    # Compared digits-only: the federal 1040 prints a filer SSN of any shape
+    # as its digits (f1040_spine._ssn_digits), so a space-separated filer
+    # SSN equal to the qualifying person's must refuse too. Equality against
+    # a filer SSN that is not 9 digits means nothing, so skip it; the emit
+    # path still fails closed (FTB 3532 presentation refuses a filer SSN
+    # that does not normalize).
+    filer_digits = "".join(ch for ch in (cfg.ssn or "") if ch.isdigit())
+    if (len(filer_digits) == 9
+            and facts.qualifying_person.ssn == filer_digits):
         raise ValueError(
             f"`{_QP}.ssn` is the same as the filer's own SSN. You may not be "
             "your own qualifying person (FTB 3532 instructions, Part II line "
