@@ -63,10 +63,11 @@ class FederalInventoryTests(unittest.TestCase):
         # - a lone "b" beside the number column carries the last number
         #   ("1b", "4b", "5b");
         # - the right-hand line-number boxes repeat each label and add none;
-        # - no bare "1", "4", "5" or "8" (the numbers of lettered lines).
+        # - no bare "1", "4", "5" or "8" (the numbers of lettered lines);
+        # - line A, the Form 4361 item letter, heads Part I.
         lines = extract_federal(PDFS / "federal/2024/f1040sse.pdf")
         self.assertEqual(_labels(lines, "Part I"), [
-            "1a", "1b", "2", "3", "4a", "4b", "4c", "5a", "5b", "6", "7",
+            "A", "1a", "1b", "2", "3", "4a", "4b", "4c", "5a", "5b", "6", "7",
             "8a", "8b", "8c", "8d", "9", "10", "11", "12", "13"])
 
     def test_sch_se_2024_footnote_markers_are_not_lines(self):
