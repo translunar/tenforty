@@ -58,7 +58,8 @@ from tenforty.models import (
 from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
-from tenforty.scenario import qp_on_qualifying_child_path
+from tenforty.scenario import (
+    qp_on_qualifying_child_path, validate_head_of_household)
 
 
 class AgedParamsPendingError(NotImplementedError):
@@ -498,7 +499,14 @@ def header_values(config: TaxReturnConfig) -> dict[str, str]:
     blank. The ``spouse_*`` keys are present only for married filing jointly
     and married filing separately; Single, Head of Household and Qualifying
     Surviving Spouse headers omit them.
+
+    Runs ``validate_head_of_household`` first: compute, emit and the 1040-X
+    all build the header here, so a directly built config (which never
+    passes the loader) meets the loader's head-of-household contract on the
+    federal path too -- the block required on head of household and refused
+    on every other status, rules 5 and 10-13.
     """
+    validate_head_of_household(config)
     out = {
         **config.pdf_header(),
         "first_name": _first_and_middle(config.first_name, config.middle_initial),
