@@ -1421,10 +1421,113 @@ def load_head_of_household(raw: dict, year: int) -> HeadOfHouseholdFacts:
         separation_decree_kind=decree)
 
 
+# FTB 3532 Part II relationships that can make a qualifying child (2a-2c).
+_QUALIFYING_CHILD_RELATIONSHIPS = frozenset({
+    HohRelationship.CHILD_OR_STEPCHILD,
+    HohRelationship.GRANDCHILD_SIBLING_NIECE_OR_NEPHEW,
+    HohRelationship.ELIGIBLE_FOSTER_CHILD})
+# "Considered unmarried" (FTB 3532 Part I line 1 instructions): the
+# qualifying person is the filer's birth child, stepchild, adopted child, or
+# eligible foster child (2a, 2c).
+_CONSIDERED_UNMARRIED_RELATIONSHIPS = frozenset({
+    HohRelationship.CHILD_OR_STEPCHILD, HohRelationship.ELIGIBLE_FOSTER_CHILD})
+_MARRIED_STATUSES = frozenset({
+    HohMaritalStatus.MARRIED_LIVED_APART_ALL_YEAR,
+    HohMaritalStatus.MARRIED_LIVED_TOGETHER_PART_OF_YEAR})
+
+
+def qp_on_qualifying_child_path(qp: HohQualifyingPerson, year: int) -> bool:
+    """Rule 13: the qualifying person is on the qualifying-child path: a
+    Part II line 2a-2c relationship that meets the age test (FTB 3532 Part
+    III line 3 instructions: under 19, or a full-time student under 24 --
+    line 3a's own wording bounds the student branch -- or permanently and
+    totally disabled)."""
+    if qp.relationship not in _QUALIFYING_CHILD_RELATIONSHIPS:
+        return False
+    return (not qp_is_19_or_older(qp, year)
+            or qp.full_time_student is True
+            or qp.permanently_disabled is True)
+
+
+def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
+    """Rules 10-13 over a present head_of_household block."""
+    facts = cfg.head_of_household
+    qp = facts.qualifying_person
+    year = cfg.year
+    days_in_year = (datetime.date(year, 12, 31)
+                    - datetime.date(year, 1, 1)).days + 1
+    # Rule 10. FTB 3532 line 5 instructions: "more than half the year is 183
+    # days. (A leap year has 366 days, and more than half a leap year is 184
+    # days.)" Face-of-form contradiction only; not an eligibility
+    # determination (FTB Pub. 1540 counts a temporary absence as time lived
+    # together, and the filer's day count is taken as stated).
+    threshold = days_in_year // 2 + 1
+    if not qp.days_lived_with_you >= threshold:
+        raise ValueError(
+            f"`{_QP}.days_lived_with_you` is {qp.days_lived_with_you}, but "
+            "head of household requires the qualifying person to have lived "
+            f"with you more than half the year: at least {threshold} days in "
+            f"{year} (FTB 3532 line 5 instructions: \"more than half the "
+            "year is 183 days\", 184 in a leap year; temporary absences "
+            "count as time lived with you). As entered, FTB 3532 would show "
+            "you do not qualify. Correct the count, or file under the "
+            "status that applies.")
+    # Rule 11. FTB 3532 line 5 instructions: if you "lived with your
+    # spouse/RDP at any time during the last six months of the year, you
+    # cannot qualify for the HOH filing status." The last six months begin
+    # July 1. Face-of-form contradiction only; not an eligibility
+    # determination (a spouse's temporary absence still counts as living
+    # together, which no entry here can show).
+    last_six_months = datetime.date(year, 7, 1)
+    for i, period in enumerate(facts.lived_with_spouse_periods):
+        if datetime.date.fromisoformat(period.end) >= last_six_months:
+            raise ValueError(
+                f"`{_PERIODS}[{i}]` ends {period.end}, on or after "
+                f"07/01/{year}. FTB 3532 instructions: if you lived with "
+                "your spouse at any time during the last six months of the "
+                "year, you cannot qualify for the head-of-household filing "
+                "status. As entered, FTB 3532 would show you do not qualify. "
+                "Correct the dates, or file under the status that applies.")
+    # Rule 12. FTB 3532 Part I line 1 instructions ("considered unmarried"):
+    # "Your qualifying person is your birth child, stepchild, adopted child,
+    # or eligible foster child." Face-of-form contradiction only; not an
+    # eligibility determination.
+    if (facts.marital_status in _MARRIED_STATUSES
+            and qp.relationship not in _CONSIDERED_UNMARRIED_RELATIONSHIPS):
+        raise ValueError(
+            f"`{_QP}.relationship` is `{qp.relationship.value}`, but "
+            f"`marital_status` is `{facts.marital_status.value}`. A married "
+            "filer qualifies for head of household only as \"considered "
+            "unmarried\", which requires the qualifying person to be your "
+            "birth child, stepchild, adopted child, or eligible foster child "
+            "(FTB 3532 Part I line 1 instructions; Part II line 2a or 2c). "
+            "As entered, FTB 3532 would show you do not qualify. Correct "
+            "the relationship or marital status, or file under the status "
+            "that applies.")
+    # Rule 13 (scope, ruling Q3). FTB 3532 Qualifications §B: a filer must be
+    # entitled to the Dependent Exemption Credit for a qualifying relative,
+    # who would then be a CA 540 line 10 dependent -- dependents are refused
+    # until 0.2.1, so the qualifying-relative path is refused with them.
+    if not qp_on_qualifying_child_path(qp, year):
+        raise ValueError(
+            f"The qualifying person (`{_QP}`: relationship "
+            f"`{qp.relationship.value}`, born {qp.birthdate}) is not on the "
+            "qualifying-child path: a Part II line 2a-2c relationship who is "
+            f"under 19 in {year}, a full-time student under 24, or "
+            "permanently and totally disabled. Anyone else can qualify you "
+            "only as a qualifying relative, for whom California requires "
+            "you to be entitled to the Dependent Exemption Credit -- and "
+            "tenforty does not prepare returns with dependents yet. "
+            "Qualifying relatives arrive with dependents support in 0.2.1; "
+            "until then, file this return by hand.")
+
+
 def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     """Pure check of ``config.head_of_household`` against the rest of the
-    config: required iff head of household (spec §4.2), and the qualifying
-    person is not the filer (rule 5). Called at load from
+    config: required iff head of household (spec §4.2), the qualifying
+    person is not the filer (rule 5), no face-of-form contradiction of the
+    status (rules 10-12), and the qualifying-child path only (rule 13,
+    until 0.2.1). Called at load from
     ``_validate_scenario_config`` and re-used by the CA emit gate, so a
     directly built config is checked too."""
     status = FilingStatus(cfg.filing_status)
@@ -1461,6 +1564,7 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
             f"`{_QP}.ssn` is the same as the filer's own SSN. You may not be "
             "your own qualifying person (FTB 3532 instructions, Part II line "
             "2). Enter the qualifying person's SSN.")
+    _refuse_hoh_contradictions(cfg)
 
 
 def _validate_scenario_config(cfg: TaxReturnConfig) -> None:
