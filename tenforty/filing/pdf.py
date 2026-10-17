@@ -98,6 +98,21 @@ def ensure_button_marks_visible(writer: PdfWriter) -> None:
             normal[NameObject(str(state))] = mark
 
 
+def apply_blank_when_zero(pdf_fields: dict[str, str],
+                          blank_when_zero: Collection[str] | None
+                          ) -> dict[str, str]:
+    """Drop the listed DETAIL fields whose resolved value is zero ("0" or
+    "-0"), in place, and return the dict. The one implementation of the
+    drop: ``PdfFiller.fill`` uses it, and so does the runtime gate's final
+    payload (``tenforty.verification.gate``), so the gate sees exactly what
+    prints."""
+    if blank_when_zero:
+        for path in blank_when_zero:
+            if pdf_fields.get(path) in ("0", "-0"):
+                del pdf_fields[path]
+    return pdf_fields
+
+
 class PdfFiller:
     """Fills PDF form fields with computed tax values."""
 
@@ -248,10 +263,7 @@ class PdfFiller:
             checkbox_states=checkbox_states,
             field_formats=field_formats,
         )
-        if blank_when_zero:
-            for path in blank_when_zero:
-                if pdf_fields.get(path) in ("0", "-0"):
-                    del pdf_fields[path]
+        apply_blank_when_zero(pdf_fields, blank_when_zero)
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)
