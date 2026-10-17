@@ -55,6 +55,10 @@ from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
 from tenforty.forms import ftb3532 as form_ftb3532
 from tenforty.filing.pdf import PdfFiller
+from tenforty.verification.fill import (
+    FillSpec, fill as chokepoint_fill, fill_spec_for)
+from tenforty.verification.record import (
+    EmitRecord, EmitRecorder, EmitResult)
 from tenforty.params import ca_scorp
 from tenforty.params import california as params_california
 from tenforty.oracle.flattener import flatten_scenario
@@ -613,18 +617,37 @@ class _FederalFormSpec:
     name: str
     template: Path
     output_name: str
-    kind: str  # "flat" | "repeater"
-    mapping: dict
     values: dict
-    # Optional flat-fill extras (default empty): a form whose emit needs
-    # XFA checkbox on-states (bool compute key -> "/N") and/or derived cells
-    # (PDF path -> lambda(values)) carries them here so both the render and
-    # the changed-forms-selector payload see the same fields. "repeater"
-    # specs ignore these.
-    checkbox_states: dict = dataclasses.field(default_factory=dict)
-    derivations: dict = dataclasses.field(default_factory=dict)
-    # compute key -> format spec overriding the whole-dollar render (rates).
-    field_formats: dict = dataclasses.field(default_factory=dict)
+    # How the form fills: the mapping class's canonical spec
+    # (verification.fill.fill_spec_for), flattened or extended as the form
+    # needs. Both the render and the changed-forms-selector payload read it,
+    # so they see the same fields.
+    fill_spec: FillSpec
+    # Catalog identity and year for the emit record; copy_id names one of
+    # several copies (a Schedule C's business number, a Form 4562's activity).
+    form: tuple[str, str]
+    key: int
+    copy_id: str | None = None
+
+    @property
+    def kind(self) -> str:  # "flat" | "repeater"
+        return self.fill_spec.kind
+
+    @property
+    def mapping(self) -> dict:
+        return self.fill_spec.mapping
+
+    @property
+    def checkbox_states(self) -> dict:
+        return self.fill_spec.checkbox_states
+
+    @property
+    def derivations(self) -> dict:
+        return self.fill_spec.derivations
+
+    @property
+    def field_formats(self) -> dict:
+        return self.fill_spec.field_formats
 
 
 @dataclasses.dataclass(frozen=True)
@@ -797,6 +820,11 @@ class PacketManifest:
     # the printed manifest, nor of equality or hashing.
     values: Mapping[str, object] = dataclasses.field(
         default_factory=dict, compare=False, repr=False)
+    # Every form the packet filled (verification.record; ruling A6): read it
+    # from the returned manifest itself. NOT part of the printed manifest,
+    # nor of equality or hashing.
+    record: EmitRecord = dataclasses.field(
+        default_factory=EmitRecord, compare=False, repr=False)
 
     def render(self) -> str:
         lines: list[str] = [
@@ -1912,8 +1940,11 @@ class ReturnOrchestrator:
         scenario: Scenario,
         results: dict[str, object],
         output_dir: Path,
-    ) -> dict[str, Path]:
+    ) -> EmitResult:
         """Fill PDFs and write them to output_dir.
+
+        Returns an ``EmitResult``: the ``{form name: path}`` dict, carrying
+        ``.record`` (every form filled, verification.record).
 
         Raises ValueError when scenario.s_corp_return is not None — callers
         must use run_full_return() instead, which builds the effective scenario
@@ -1939,7 +1970,8 @@ class ReturnOrchestrator:
         scenario: Scenario,
         results: dict[str, object],
         output_dir: Path,
-    ) -> dict[str, Path]:
+        recorder: EmitRecorder | None = None,
+    ) -> EmitResult:
         """Fill PDFs and write them to output_dir (unguarded internal API).
 
         Does not check whether scenario.s_corp_return is set. Callers are
@@ -1953,6 +1985,7 @@ class ReturnOrchestrator:
         enforce_form_3115_refusals(scenario)
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
+        recorder = recorder if recorder is not None else EmitRecorder()
 
         # Build the per-form emit specs (identical gates/order/values to the
         # historic inline body — the specs just defer rendering), then fill
@@ -1960,17 +1993,19 @@ class ReturnOrchestrator:
         # the selector-chosen subset.
         plan = self._federal_individual_emit_plan(scenario, results)
         emitted: dict[str, Path] = {
-            spec.name: self._render_federal_spec(filler, spec, output_dir)
+            spec.name: self._render_federal_spec(
+                filler, spec, output_dir, recorder)
             for spec in plan.specs
         }
 
         # Form 3115 (only when the scenario carries a `form_3115:` block).
-        emitted.update(self._emit_form_3115(scenario, filler, output_dir))
+        emitted.update(
+            self._emit_form_3115(scenario, filler, output_dir, recorder))
 
         # 1120-S emit (only when scenario.s_corp_return is populated).
         emitted.update(
             self._emit_federal_corporate_pdfs_internal(
-                scenario, results, output_dir))
+                scenario, results, output_dir, recorder))
 
         # Depreciation audit workbook (only when the return computes
         # depreciation from `depreciable_assets`). After the forms are
@@ -1978,7 +2013,7 @@ class ReturnOrchestrator:
         emitted.update(
             self._emit_depreciation_audit(scenario, plan, output_dir))
 
-        return emitted
+        return EmitResult(emitted, recorder.record())
 
     @staticmethod
     def _printed_depreciation_figures(
@@ -2053,6 +2088,7 @@ class ReturnOrchestrator:
     @staticmethod
     def _emit_form_3115(
         scenario: Scenario, filler: PdfFiller, output_dir: Path,
+        recorder: EmitRecorder | None = None,
     ) -> dict[str, Path]:
         """Emit Form 3115, its Schedule E asset statement, the two together
         as the duplicate copy to sign, and the filing manifest.
@@ -2073,13 +2109,13 @@ class ReturnOrchestrator:
         revision = years.REVISION_KEYED_FORM_REVISIONS["f3115"]
         header = scenario.config.pdf_header()
 
-        form_path = filler.fill(
-            template_path=(
-                _PDFS_ROOT / "federal" / "revision_keyed" / "f3115.pdf"),
-            output_path=output_dir / f"f3115_{year}.pdf",
-            field_mapping=PdfF3115.get_mapping(revision),
-            values=form_f3115.presentation_values(scenario),
-            checkbox_states=PdfF3115.get_checkbox_states(revision),
+        form_path = chokepoint_fill(
+            ("federal", "f3115"), revision, fill_spec_for(PdfF3115, revision),
+            _PDFS_ROOT / "federal" / "revision_keyed" / "f3115.pdf",
+            output_dir / f"f3115_{year}.pdf",
+            form_f3115.presentation_values(scenario),
+            recorder if recorder is not None else EmitRecorder(),
+            filler=filler,
         )
         statement_path = render_f3115_asset_statement(
             scenario.form_3115, header["taxpayer_name"],
@@ -2201,24 +2237,25 @@ class ReturnOrchestrator:
         # f1040 — results is already PDF-ready (forms.f1040.compute produced it).
         specs.append(_FederalFormSpec(
             name="1040", template=_fed("f1040.pdf"),
-            output_name=f"f1040_{year}.pdf", kind="flat",
-            mapping=Pdf1040.get_mapping(year),
+            output_name=f"f1040_{year}.pdf",
+            form=("federal", "1040"), key=year,
+            fill_spec=fill_spec_for(Pdf1040, year),
             values={**results, **self._form_1040_checkbox_values(
                 scenario, results,
                 aged_born_before=load_params(year).aged_born_before),
                 **self._form_1040_direct_deposit_values(scenario, results)},
-            checkbox_states=Pdf1040.get_checkbox_states(year),
-            # 1040 line 24 (total tax) is filled by a derivation rather than a
-            # result key: no key fills it on the native path, and the single
-            # shared implementation of the arithmetic lives in forms/f4868.py.
-            # See Pdf1040.get_derivations for why not a spine output key.
-            derivations=Pdf1040.get_derivations(year),
+            # 1040 line 24 (total tax) is filled by a derivation (in the
+            # spec) rather than a result key: no key fills it on the native
+            # path, and the single shared implementation of the arithmetic
+            # lives in forms/f4868.py. See Pdf1040.get_derivations for why
+            # not a spine output key.
         ))
 
         specs.append(_FederalFormSpec(
             name="4868", template=_fed("f4868.pdf"),
-            output_name=f"f4868_{year}.pdf", kind="flat",
-            mapping=Pdf4868.get_mapping(year),
+            output_name=f"f4868_{year}.pdf",
+            form=("federal", "4868"), key=year,
+            fill_spec=fill_spec_for(Pdf4868, year),
             values=form_4868.compute(scenario, upstream=upstream),
         ))
 
@@ -2226,16 +2263,18 @@ class ReturnOrchestrator:
             sch_b_values = form_sch_b.compute(scenario, upstream=upstream)
             specs.append(_FederalFormSpec(
                 name="sch_b", template=_fed("f1040sb.pdf"),
-                output_name=f"f1040sb_{year}.pdf", kind="flat",
-                mapping=PdfSchB.get_mapping(year),
+                output_name=f"f1040sb_{year}.pdf",
+                form=("federal", "sch_b"), key=year,
+                fill_spec=fill_spec_for(PdfSchB, year),
                 values=_flatten_sch_b_rows(sch_b_values),
             ))
 
         if self._should_emit_sch_d(scenario):
             specs.append(_FederalFormSpec(
                 name="sch_d", template=_fed("f1040sd.pdf"),
-                output_name=f"f1040sd_{year}.pdf", kind="repeater",
-                mapping=PdfSchD.get_mapping(year),
+                output_name=f"f1040sd_{year}.pdf",
+                form=("federal", "sch_d"), key=year,
+                fill_spec=fill_spec_for(PdfSchD, year),
                 values=form_sch_d.compute(scenario, upstream=upstream),
             ))
 
@@ -2246,15 +2285,12 @@ class ReturnOrchestrator:
             # row dict already bakes its row index and PDF field path into its
             # keys, so a flat merge onto one field_mapping resolves all per-box
             # keys correctly for a FLAT fill.
-            f8949_full_mapping = PdfF8949.get_mapping(year)
-            f8949_flat: dict[str, str] = dict(f8949_full_mapping["scalars"])
-            for row_dicts in f8949_full_mapping["repeaters"].values():
-                for row_dict in row_dicts:
-                    f8949_flat.update(row_dict)
             specs.append(_FederalFormSpec(
                 name="f8949", template=_fed("f8949.pdf"),
-                output_name=f"f8949_{year}.pdf", kind="flat",
-                mapping=f8949_flat, values=upstream["f8949"],
+                output_name=f"f8949_{year}.pdf",
+                form=("federal", "f8949"), key=year,
+                fill_spec=fill_spec_for(PdfF8949, year).flattened(),
+                values=upstream["f8949"],
             ))
 
         sch_e_values: dict = {}
@@ -2269,7 +2305,9 @@ class ReturnOrchestrator:
             merged["taxpayer_name_page2"] = merged.get("taxpayer_name")
             merged["taxpayer_ssn_page2"] = merged.get("taxpayer_ssn")
             sch_e_values = merged
-            sch_e_mapping = PdfSchE.get_mapping(year)
+            # Scenario-answer cells, merged into the scalars by extend in the
+            # order they are added here.
+            sch_e_cells: dict[str, str] = {}
             sch_e_spec_values = sch_e_values  # downstream compute inputs stay clean
             # Lines A/B (Form 1099 questions): only the CHOSEN answer's box is
             # written (its export on-state), so each Yes/No pair is mutually
@@ -2282,15 +2320,13 @@ class ReturnOrchestrator:
             }
             if any(a is not None for a in q_stated.values()):
                 q_cells = PdfSchE.get_1099_question_cells(year)
-                q_scalars = dict(sch_e_mapping["scalars"])
                 q_values = dict(sch_e_spec_values)
                 for question, answer in q_stated.items():
                     if answer is None:
                         continue
                     q_path, q_on = q_cells[question][answer]
-                    q_scalars[f"sch_e_{question}"] = q_path
+                    sch_e_cells[f"sch_e_{question}"] = q_path
                     q_values[f"sch_e_{question}"] = q_on
-                sch_e_mapping = {**sch_e_mapping, "scalars": q_scalars}
                 sch_e_spec_values = q_values
             # Line 27 (prior-year unallowed loss question): answered "No"
             # whenever Part II is used. A return that would have to answer
@@ -2298,11 +2334,7 @@ class ReturnOrchestrator:
             # (sch_e_line_27_prior_year_unallowed_loss) stops it first.
             if self._should_emit_sch_e_part_ii(scenario):
                 l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
-                sch_e_mapping = {
-                    **sch_e_mapping,
-                    "scalars": {**sch_e_mapping["scalars"],
-                                "sch_e_line_27_no": l27_path},
-                }
+                sch_e_cells["sch_e_line_27_no"] = l27_path
                 sch_e_spec_values = {
                     **sch_e_spec_values, "sch_e_line_27_no": l27_on}
             # Line 28 column (e) (basis computation required): written only
@@ -2316,34 +2348,37 @@ class ReturnOrchestrator:
             ]
             if basis_rows:
                 basis_cells = PdfSchE.get_basis_computation_cells(year)
-                b_scalars = dict(sch_e_mapping["scalars"])
                 b_values = dict(sch_e_spec_values)
                 for letter in basis_rows:
                     b_path, b_on = basis_cells[letter]
                     key = f"sch_e_part_ii_row_{letter}_basis_computation_box"
-                    b_scalars[key] = b_path
+                    sch_e_cells[key] = b_path
                     b_values[key] = b_on
-                sch_e_mapping = {**sch_e_mapping, "scalars": b_scalars}
                 sch_e_spec_values = b_values
             specs.append(_FederalFormSpec(
                 name="sch_e", template=_fed("f1040se.pdf"),
-                output_name=f"f1040se_{year}.pdf", kind="repeater",
-                mapping=sch_e_mapping, values=sch_e_spec_values,
+                output_name=f"f1040se_{year}.pdf",
+                form=("federal", "sch_e"), key=year,
+                fill_spec=fill_spec_for(PdfSchE, year).extend(
+                    mapping=sch_e_cells),
+                values=sch_e_spec_values,
             ))
 
         if self._should_emit_sch_a(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
                 name="sch_a", template=_fed("f1040sa.pdf"),
-                output_name=f"f1040sa_{year}.pdf", kind="repeater",
-                mapping=PdfSchA.get_mapping(year),
+                output_name=f"f1040sa_{year}.pdf",
+                form=("federal", "sch_a"), key=year,
+                fill_spec=fill_spec_for(PdfSchA, year),
                 values=form_sch_a.compute(scenario, upstream=upstream),
             ))
 
         if self._should_emit_sch_1(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
                 name="sch_1", template=_fed("f1040s1.pdf"),
-                output_name=f"f1040s1_{year}.pdf", kind="repeater",
-                mapping=PdfSch1.get_mapping(year),
+                output_name=f"f1040s1_{year}.pdf",
+                form=("federal", "sch_1"), key=year,
+                fill_spec=fill_spec_for(PdfSch1, year),
                 values=form_sch_1.compute(
                     scenario, upstream={**upstream, "sch_e": sch_e_values},
                 ),
@@ -2352,8 +2387,9 @@ class ReturnOrchestrator:
         if self._should_emit_sch_2(scenario, results):
             specs.append(_FederalFormSpec(
                 name="sch_2", template=_fed("f1040s2.pdf"),
-                output_name=f"f1040s2_{year}.pdf", kind="flat",
-                mapping=PdfSch2.get_mapping(year),
+                output_name=f"f1040s2_{year}.pdf",
+                form=("federal", "sch_2"), key=year,
+                fill_spec=fill_spec_for(PdfSch2, year),
                 values=form_sch_2.compute(scenario, upstream=upstream),
             ))
 
@@ -2364,11 +2400,11 @@ class ReturnOrchestrator:
         ):
             specs.append(_FederalFormSpec(
                 name=f"sch_c_{number}", template=_fed("f1040sc.pdf"),
-                output_name=f"f1040sc_{number}_{year}.pdf", kind="flat",
-                mapping=PdfSchC.get_mapping(year),
+                output_name=f"f1040sc_{number}_{year}.pdf",
+                form=("federal", "sch_c"), key=year, copy_id=str(number),
+                fill_spec=fill_spec_for(PdfSchC, year),
                 values=form_sch_c.emit_values(
                     scenario, number - 1, line_values),
-                derivations=PdfSchC.get_derivations(year),
             ))
 
         # Schedule SE — one form however many businesses (sch_se.compute
@@ -2376,8 +2412,9 @@ class ReturnOrchestrator:
         if self._should_emit_sch_se(sch_se_results):
             specs.append(_FederalFormSpec(
                 name="sch_se", template=_fed("f1040sse.pdf"),
-                output_name=f"f1040sse_{year}.pdf", kind="flat",
-                mapping=PdfSchSe.get_mapping(year),
+                output_name=f"f1040sse_{year}.pdf",
+                form=("federal", "sch_se"), key=year,
+                fill_spec=fill_spec_for(PdfSchSe, year),
                 values={**scenario.config.pdf_header(), **sch_se_results},
             ))
 
@@ -2413,22 +2450,26 @@ class ReturnOrchestrator:
                 # The lone copy keeps the historic key and file name.
                 specs.append(_FederalFormSpec(
                     name="f4562", template=_fed("f4562.pdf"),
-                    output_name=f"f4562_{year}.pdf", kind="repeater",
-                    mapping=Pdf4562.get_mapping(year), values=copy_values,
+                    output_name=f"f4562_{year}.pdf",
+                    form=("federal", "4562"), key=year,
+                    fill_spec=fill_spec_for(Pdf4562, year),
+                    values=copy_values,
                 ))
             else:
                 specs.append(_FederalFormSpec(
                     name=f"f4562_{recon_key}", template=_fed("f4562.pdf"),
                     output_name=f"f4562_{year}_{recon_key}.pdf",
-                    kind="repeater", mapping=Pdf4562.get_mapping(year),
+                    form=("federal", "4562"), key=year, copy_id=recon_key,
+                    fill_spec=fill_spec_for(Pdf4562, year),
                     values=copy_values,
                 ))
 
         if self._should_emit_8959(scenario, {"f1040": results}):
             specs.append(_FederalFormSpec(
                 name="8959", template=_fed("f8959.pdf"),
-                output_name=f"f8959_{year}.pdf", kind="flat",
-                mapping=Pdf8959.get_mapping(year)["scalars"],
+                output_name=f"f8959_{year}.pdf",
+                form=("federal", "8959"), key=year,
+                fill_spec=fill_spec_for(Pdf8959, year).flattened(),
                 values=form_8959.compute(scenario, upstream=upstream),
             ))
 
@@ -2440,12 +2481,10 @@ class ReturnOrchestrator:
             # on-token; derivations hardwire the always-on 4c poverty-table box.
             specs.append(_FederalFormSpec(
                 name="8962", template=_fed("f8962.pdf"),
-                output_name=f"f8962_{year}.pdf", kind="flat",
-                mapping=PdfF8962.get_mapping(year)["scalars"],
+                output_name=f"f8962_{year}.pdf",
+                form=("federal", "f8962"), key=year,
+                fill_spec=fill_spec_for(PdfF8962, year).flattened(),
                 values=results,
-                checkbox_states=PdfF8962.get_checkbox_states(year),
-                derivations=PdfF8962.get_derivations(year),
-                field_formats=PdfF8962.get_field_formats(year),
             ))
 
         # Form 8995 is required whenever the QBI deduction is claimed,
@@ -2465,8 +2504,9 @@ class ReturnOrchestrator:
         if self._should_emit_8995(f8995_values):
             specs.append(_FederalFormSpec(
                 name="f8995", template=_fed("f8995.pdf"),
-                output_name=f"f8995_{year}.pdf", kind="flat",
-                mapping=PdfF8995.get_mapping(year)["scalars"],
+                output_name=f"f8995_{year}.pdf",
+                form=("federal", "f8995"), key=year,
+                fill_spec=fill_spec_for(PdfF8995, year).flattened(),
                 values=PdfF8995.presentation_values(f8995_values),
             ))
 
@@ -2485,8 +2525,9 @@ class ReturnOrchestrator:
             enforce_scoped_refusals({"f8582": f8582_values}, "schedules")
             specs.append(_FederalFormSpec(
                 name="f8582", template=_fed("f8582.pdf"),
-                output_name=f"f8582_{year}.pdf", kind="flat",
-                mapping=PdfF8582.get_mapping(year)["scalars"],
+                output_name=f"f8582_{year}.pdf",
+                form=("federal", "f8582"), key=year,
+                fill_spec=fill_spec_for(PdfF8582, year).flattened(),
                 values=f8582_values,
             ))
 
@@ -2498,23 +2539,14 @@ class ReturnOrchestrator:
     @staticmethod
     def _render_federal_spec(
         filler: PdfFiller, spec: _FederalFormSpec, output_dir: Path,
+        recorder: EmitRecorder | None = None,
     ) -> Path:
         """Render one prepared spec to ``output_dir/<output_name>``."""
-        out = output_dir / spec.output_name
-        if spec.kind == "flat":
-            filler.fill(
-                template_path=spec.template, output_path=out,
-                field_mapping=spec.mapping, values=spec.values,
-                checkbox_states=spec.checkbox_states or None,
-                derivations=spec.derivations or None,
-                field_formats=spec.field_formats or None,
-            )
-        else:
-            filler.fill_with_repeaters(
-                template_path=spec.template, output_path=out,
-                mapping=spec.mapping, values=spec.values,
-            )
-        return out
+        return chokepoint_fill(
+            spec.form, spec.key, spec.fill_spec, spec.template,
+            output_dir / spec.output_name, spec.values,
+            recorder if recorder is not None else EmitRecorder(),
+            copy_id=spec.copy_id, filler=filler)
 
     @staticmethod
     def _federal_spec_payload(spec: _FederalFormSpec) -> dict[str, str]:
@@ -2533,15 +2565,17 @@ class ReturnOrchestrator:
 
     def _emit_federal_corporate_pdfs_internal(
         self, scenario: Scenario, results: dict, output_dir: Path,
-    ) -> dict[str, Path]:
+        recorder: EmitRecorder | None = None,
+    ) -> EmitResult:
         """Emit the federal Form 1120-S + one Schedule K-1 (1120-S) per
         shareholder from a corporate results dict. Returns {} when
         scenario.s_corp_return is None. Split out of _emit_pdfs_internal so the
         S-corp-only years (e.g. 2021, which has no 1040 spine) can emit the
         corporate set WITHOUT running the individual 1040 pipeline."""
         emitted: dict[str, Path] = {}
+        recorder = recorder if recorder is not None else EmitRecorder()
         if scenario.s_corp_return is None:
-            return emitted
+            return EmitResult(emitted, recorder.record())
         output_dir.mkdir(parents=True, exist_ok=True)
         year = scenario.config.year
         validate_tax_year_dates(scenario.s_corp_return, year)
@@ -2559,19 +2593,19 @@ class ReturnOrchestrator:
         # §4a: mark box H(4) "Amended return" only when flagged. ADDITIVE —
         # merged onto the mapping/checkbox_states/values passed to fill; when
         # not amended nothing is added, so the box stays /Off.
-        main_mapping = PdfF1120S.get_mapping(year)
-        main_checkbox = PdfF1120S.get_checkbox_states(year)
+        main_spec = fill_spec_for(PdfF1120S, year)
         # Page-1 header identity block (name/address, items A/D/E/F/I): injected
         # from the SCorpReturn, additive to the compute results (mirrors the CA
         # 100S entity identity at _emit_ca_scorp_pdfs_internal).
-        header_cells = PdfF1120S.get_entity_header_fields(year)
-        main_mapping = {**main_mapping, **header_cells}
+        main_spec = main_spec.extend(
+            mapping=PdfF1120S.get_entity_header_fields(year))
         main_values: dict = {
             **results, **_entity_header_values(scenario.s_corp_return)}
         if amended:
             m_path, m_on = PdfF1120S.get_amended_mark(year)
-            main_mapping = {**main_mapping, "f1120s_amended_return": m_path}
-            main_checkbox = {**main_checkbox, "f1120s_amended_return": m_on}
+            main_spec = main_spec.extend(
+                mapping={"f1120s_amended_return": m_path},
+                checkbox_states={"f1120s_amended_return": m_on})
             main_values = {**main_values, "f1120s_amended_return": True}
         # Item G (Yes / No: the chosen box only) and item H check-if boxes
         # (only True marks; False / None leave the box blank). Additive.
@@ -2579,34 +2613,33 @@ class ReturnOrchestrator:
         if r_.electing_s_this_year is not None:
             g_path, g_on = PdfF1120S.get_item_g_cells(year)[
                 r_.electing_s_this_year]
-            main_mapping = {**main_mapping, "f1120s_item_g": g_path}
-            main_checkbox = {**main_checkbox, "f1120s_item_g": g_on}
+            main_spec = main_spec.extend(
+                mapping={"f1120s_item_g": g_path},
+                checkbox_states={"f1120s_item_g": g_on})
             main_values = {**main_values, "f1120s_item_g": True}
         if r_.discuss_with_preparer is not None:
             d_path, d_on = PdfF1120S.get_discuss_cells(year)[
                 r_.discuss_with_preparer]
-            main_mapping = {**main_mapping, "f1120s_discuss": d_path}
-            main_checkbox = {**main_checkbox, "f1120s_discuss": d_on}
+            main_spec = main_spec.extend(
+                mapping={"f1120s_discuss": d_path},
+                checkbox_states={"f1120s_discuss": d_on})
             main_values = {**main_values, "f1120s_discuss": True}
+        h_mapping: dict[str, str] = {}
+        h_checkbox: dict[str, str] = {}
         for item, (h_path, h_on) in PdfF1120S.get_item_h_cells(year).items():
             if getattr(r_, item) is True:
                 key = f"f1120s_item_h_{item}"
-                main_mapping = {**main_mapping, key: h_path}
-                main_checkbox = {**main_checkbox, key: h_on}
+                h_mapping[key] = h_path
+                h_checkbox[key] = h_on
                 main_values = {**main_values, key: True}
+        main_spec = main_spec.extend(mapping=h_mapping,
+                                     checkbox_states=h_checkbox)
         # Pass the full results dict — aggregation and derivation lambdas
         # reference keys that are NOT in _MAPPING_<year>, so filtering to
         # mapping keys alone would silently drop those inputs.
-        filler.fill(
-            template_path=main_template,
-            output_path=main_output,
-            values=main_values,
-            field_mapping=main_mapping,
-            aggregations=PdfF1120S.get_aggregations(year),
-            derivations=PdfF1120S.get_derivations(year),
-            checkbox_states=main_checkbox,
-            blank_when_zero=PdfF1120S.get_blank_when_zero(year),
-        )
+        chokepoint_fill(("federal", "f1120s"), year, main_spec,
+                        main_template, main_output, main_values, recorder,
+                        filler=filler)
         emitted["1120s"] = main_output
 
         # Per-shareholder Sch K-1.
@@ -2623,13 +2656,13 @@ class ReturnOrchestrator:
         k1_template = _PDFS_ROOT / "federal" / str(year) / "f1120s_k1.pdf"
         # §4a: "Amended K-1" checkbox on every K-1 when flagged. ADDITIVE —
         # merged per shareholder onto the fill inputs.
-        k1_mapping = PdfF1120SK1.get_mapping(year)
-        k1_checkbox: dict[str, str] = {}
+        k1_spec = fill_spec_for(PdfF1120SK1, year)
         k1_amended_values: dict = {}
         if amended:
             k1_path, k1_on = PdfF1120SK1.get_amended_mark(year)
-            k1_mapping = {**k1_mapping, "k1_amended_return": k1_path}
-            k1_checkbox = {"k1_amended_return": k1_on}
+            k1_spec = k1_spec.extend(
+                mapping={"k1_amended_return": k1_path},
+                checkbox_states={"k1_amended_return": k1_on})
             k1_amended_values = {"k1_amended_return": True}
         stated_shareholders = scenario.s_corp_return.shareholders
         for i, alloc in enumerate(
@@ -2639,11 +2672,12 @@ class ReturnOrchestrator:
             # Allocations are built one per shareholder in scenario order
             # (f1120s._compute_schedule_k1_allocations), so index i-1 is this K-1's shareholder.
             sh = stated_shareholders[i - 1]
-            this_mapping, this_checkbox, final_values = k1_mapping, k1_checkbox, {}
+            this_spec, final_values = k1_spec, {}
             if sh.final_k1:
                 f_path, f_on = PdfF1120SK1.get_final_mark(year)
-                this_mapping = {**k1_mapping, "k1_final": f_path}
-                this_checkbox = {**k1_checkbox, "k1_final": f_on}
+                this_spec = k1_spec.extend(
+                    mapping={"k1_final": f_path},
+                    checkbox_states={"k1_final": f_on})
                 final_values = {"k1_final": True}
             flat_values = {
                 **_k1_tax_year_header_values(scenario.s_corp_return),
@@ -2670,14 +2704,9 @@ class ReturnOrchestrator:
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f1120s_k1_{i}_{year}.pdf"
-            filler.fill(
-                template_path=k1_template,
-                output_path=k1_output,
-                values=flat_values,
-                field_mapping=this_mapping,
-                checkbox_states=this_checkbox or None,
-                field_formats=PdfF1120SK1.get_field_formats(year),
-            )
+            chokepoint_fill(("federal", "f1120s_k1"), year, this_spec,
+                            k1_template, k1_output, flat_values, recorder,
+                            copy_id=str(i), filler=filler)
             emitted[f"1120s_k1_{i}"] = k1_output
 
             stmt_output = output_dir / f"f1120s_k1_qbi_stmt_{i}_{year}.pdf"
@@ -2694,14 +2723,15 @@ class ReturnOrchestrator:
                 year, comps, od_output)
             emitted["1120s_other_deductions_stmt"] = od_output
 
-        return emitted
+        return EmitResult(emitted, recorder.record())
 
     def _emit_ca_pdfs_internal(
         self,
         scenario: Scenario,
         ca_results: dict,
         output_dir: Path,
-    ) -> dict[str, Path]:
+        recorder: EmitRecorder | None = None,
+    ) -> EmitResult:
         """Render the CA-state PDFs (f540, sch_ca and, when required,
         sch_d_540) from a CA compute results dict.
 
@@ -2758,6 +2788,7 @@ class ReturnOrchestrator:
                 "It is left unstated (null) here."
             )
         validate_third_party_designee(scenario.config)
+        recorder = recorder if recorder is not None else EmitRecorder()
         # FTB 3532 gate (spec §6): California denies head-of-household status
         # to a return without a completed FTB 3532. A HoH return without the
         # `head_of_household` block, or a non-HoH return carrying one, refuses
@@ -2783,15 +2814,9 @@ class ReturnOrchestrator:
                 continue
             template = _PDFS_ROOT / "california" / str(year) / f"{basename}.pdf"
             output_path = output_dir / f"{basename}_{year}.pdf"
-            filler.fill(
-                template_path=template,
-                output_path=output_path,
-                field_mapping=mapping_cls.get_mapping(year),
-                values=ca_results,
-                aggregations=mapping_cls.get_aggregations(year),
-                derivations=mapping_cls.get_derivations(year),
-                checkbox_states=mapping_cls.get_checkbox_states(year),
-            )
+            chokepoint_fill(("california", basename), year,
+                            fill_spec_for(mapping_cls, year), template,
+                            output_path, ca_results, recorder, filler=filler)
             emitted[basename] = output_path
 
         # Post-condition (spec §6.4): the 3532 is in the CA packet iff HoH.
@@ -2800,14 +2825,15 @@ class ReturnOrchestrator:
                 "FTB 3532 emit post-condition violated: emitted "
                 f"{'with' if 'ftb3532' in emitted else 'without'} FTB 3532 "
                 f"for filing status {scenario.config.filing_status!r}.")
-        return emitted
+        return EmitResult(emitted, recorder.record())
 
     def _emit_ca_scorp_pdfs_internal(
         self,
         scenario: Scenario,
         ca_corporate_results: dict,
         output_dir: Path,
-    ) -> dict[str, Path]:
+        recorder: EmitRecorder | None = None,
+    ) -> EmitResult:
         """Emit CA Form 100S + one Schedule K-1 (100S) per shareholder.
 
         Returns {} unless scenario.s_corp_return and its .ca sub-block are both
@@ -2816,8 +2842,9 @@ class ReturnOrchestrator:
         attested CA S-corp params (they are not f100s.compute outputs).
         """
         r = scenario.s_corp_return
+        recorder = recorder if recorder is not None else EmitRecorder()
         if r is None or r.ca is None:
-            return {}
+            return EmitResult({}, recorder.record())
         # Sch F line 20 passes the federal line 19 figure through, so the same
         # attached-statement requirement (and footing rule) applies here.
         form_f1120s.check_other_deductions_statement_for_emit(scenario)
@@ -2863,7 +2890,7 @@ class ReturnOrchestrator:
             "f100s_entity_country_incorporated": r.ca.country_of_incorporation,
             "f100s_entity_ca_corp_number": r.ca.corporation_number,
         }
-        f100s_mapping = PdfF100S.get_mapping(year)
+        f100s_cells: dict[str, str] = {}
         f100s_checkbox: dict[str, str] = {}
         # Schedule Q stated answers: only the CHOSEN answer's box is merged in
         # (additive, like the amended marks), so a Yes/No/N-A group can never
@@ -2907,40 +2934,41 @@ class ReturnOrchestrator:
                     "question; remove it from s_corp_return.ca.")
             q_path, q_on = q_cells[question][answer]
             key = f"f100s_q_{question}"
-            f100s_mapping = {**f100s_mapping, key: q_path}
+            f100s_cells[key] = q_path
             f100s_checkbox[key] = q_on
             f100s_values[key] = True
         # Question L accounting method (from the federal Schedule B answer).
         l_path, l_on = PdfF100S.get_accounting_method_cells(year)[
             r.schedule_b_answers.accounting_method.value]
-        f100s_mapping = {**f100s_mapping, "f100s_q_accounting_method": l_path}
+        f100s_cells["f100s_q_accounting_method"] = l_path
         f100s_checkbox["f100s_q_accounting_method"] = l_on
         f100s_values["f100s_q_accounting_method"] = True
         f100s_template = _PDFS_ROOT / "california" / str(year) / "f100s.pdf"
         f100s_output = output_dir / f"f100s_{year}.pdf"
-        filler.fill(template_path=f100s_template, output_path=f100s_output,
-                    field_mapping=f100s_mapping, values=f100s_values,
-                    checkbox_states=f100s_checkbox or None,
-                    blank_when_zero=PdfF100S.get_blank_when_zero(year))
+        chokepoint_fill(("california", "f100s"), year,
+                        fill_spec_for(PdfF100S, year).extend(
+                            mapping=f100s_cells,
+                            checkbox_states=f100s_checkbox),
+                        f100s_template, f100s_output, f100s_values, recorder,
+                        filler=filler)
         emitted["f100s"] = f100s_output
 
         k1_template = _PDFS_ROOT / "california" / str(year) / "f100s_k1.pdf"
         # §4a: line E "amended Schedule K-1" mark when flagged. PER-YEAR path +
         # ON-token (checkbox /Yes 2021-23; radio 2024-25). ADDITIVE — merged
         # onto the fill inputs; unset otherwise.
-        k1_mapping = PdfF100SK1.get_mapping(year)
-        k1_checkbox: dict[str, str] = {}
+        k1_spec = fill_spec_for(PdfF100SK1, year)
         k1_amended_values: dict = {}
         if r.amended_return:
             a_path, a_on = PdfF100SK1.get_amended_mark(year)
-            k1_mapping = {**k1_mapping, "k1_amended_return": a_path}
-            k1_checkbox = {"k1_amended_return": a_on}
+            k1_spec = k1_spec.extend(
+                mapping={"k1_amended_return": a_path},
+                checkbox_states={"k1_amended_return": a_on})
             k1_amended_values = {"k1_amended_return": True}
         for i, alloc in enumerate(
                 ca_corporate_results.get("f100s_k1_allocations", []), start=1):
             sh = r.shareholders[alloc["shareholder_index"]]
-            this_mapping, this_checkbox, final_values = (
-                k1_mapping, k1_checkbox, {})
+            this_spec, final_values = k1_spec, {}
             if sh.final_k1:
                 if r.amended_return and (
                         PdfF100SK1.final_and_amended_share_one_field(year)):
@@ -2951,8 +2979,9 @@ class ReturnOrchestrator:
                         "on an amended return: emit them as separate runs or "
                         "unflag one.")
                 f_path, f_on = PdfF100SK1.get_final_mark(year)
-                this_mapping = {**k1_mapping, "k1_final": f_path}
-                this_checkbox = {**k1_checkbox, "k1_final": f_on}
+                this_spec = k1_spec.extend(
+                    mapping={"k1_final": f_path},
+                    checkbox_states={"k1_final": f_on})
                 final_values = {"k1_final": True}
             # Lines F (entity type) and G (CA resident): only the CHOSEN
             # answer's cell is merged, so each group is mutually exclusive.
@@ -2964,8 +2993,8 @@ class ReturnOrchestrator:
                 if stated is None:
                     continue
                 c_path, c_on = cells[stated]
-                this_mapping = {**this_mapping, tag: c_path}
-                this_checkbox = {**this_checkbox, tag: c_on}
+                this_spec = this_spec.extend(mapping={tag: c_path},
+                                             checkbox_states={tag: c_on})
                 final_values = {**final_values, tag: True}
             whole, frac = _split_ownership_percent(alloc["ownership_fraction"])
             k1_values = {
@@ -3002,10 +3031,9 @@ class ReturnOrchestrator:
                 **k1_amended_values,
             }
             k1_output = output_dir / f"f100s_k1_{i}_{year}.pdf"
-            filler.fill(template_path=k1_template, output_path=k1_output,
-                        field_mapping=this_mapping, values=k1_values,
-                        checkbox_states=this_checkbox or None,
-                        field_formats=PdfF100SK1.get_field_formats(year))
+            chokepoint_fill(("california", "f100s_k1"), year, this_spec,
+                            k1_template, k1_output, k1_values, recorder,
+                            copy_id=str(i), filler=filler)
             emitted[f"f100s_k1_{i}"] = k1_output
 
         comps = r.deductions.other_deductions_components
@@ -3014,7 +3042,7 @@ class ReturnOrchestrator:
             render_ca_100s_other_deductions_statement(
                 r.name, r.ein, year, comps, od_output)
             emitted["f100s_other_deductions_stmt"] = od_output
-        return emitted
+        return EmitResult(emitted, recorder.record())
 
     def _refuse_missing_source_documents(self, scenario: Scenario) -> None:
         """Emit-time gate: every W-2 needs its Copy B PDF, or an attestation.
@@ -3333,6 +3361,7 @@ class ReturnOrchestrator:
         output_dir.mkdir(parents=True, exist_ok=True)
         year = amended_scenario.config.year
         filler = PdfFiller()
+        recorder = EmitRecorder()
         mailed: list[MailedFile] = []
         caveats: list[str] = [_ERRONEOUS_INCLUSION_CAVEAT]
         dropped: tuple[str, ...] = ()
@@ -3349,14 +3378,14 @@ class ReturnOrchestrator:
         f1040x_values = form_f1040x.assemble(filed, corrected_federal, case)
         revision = years.AMENDMENT_TEMPLATE_REVISIONS["f1040x"]
         self._emit_flat(
-            filler,
+            filler, ("federal", "f1040x"), revision,
+            fill_spec_for(PdfF1040X, revision).extend(
+                mapping=PdfF1040X.get_presentation_mapping(revision)),
             _PDFS_ROOT / "federal" / "amendments" / "f1040x.pdf",
             output_dir / f"f1040x_{year}.pdf",
-            {**PdfF1040X.get_mapping(revision),
-             **PdfF1040X.get_presentation_mapping(revision)},
             {**f1040x_values,
              **form_f1040x.presentation_keys(amended_scenario.config)},
-            checkbox_states=PdfF1040X.get_checkbox_states(revision),
+            recorder,
         )
         mailed.append(MailedFile(
             f"f1040x_{year}.pdf", "Form 1040-X (amended federal return)",
@@ -3383,7 +3412,7 @@ class ReturnOrchestrator:
                 selector.dropped_forms(filed_payloads, corrected_payloads))
             for cf in changed:
                 spec = corrected_specs[cf.form]
-                self._render_federal_spec(filler, spec, output_dir)
+                self._render_federal_spec(filler, spec, output_dir, recorder)
                 mailed.append(MailedFile(
                     spec.output_name,
                     f"changed federal form ({cf.form})", cf.reason))
@@ -3407,14 +3436,14 @@ class ReturnOrchestrator:
             schedule_x_values = form_schedule_x.assemble_ca(
                 ca_filed, corrected_ca, case)
             self._emit_flat(
-                filler,
+                filler, ("california", "schedule_x"), year,
+                fill_spec_for(PdfScheduleX, year).extend(
+                    mapping=PdfScheduleX.get_presentation_mapping(year)),
                 _PDFS_ROOT / "california" / "amendments" / f"schedule_x_{year}.pdf",
                 output_dir / f"schedule_x_{year}.pdf",
-                {**PdfScheduleX.get_mapping(year),
-                 **PdfScheduleX.get_presentation_mapping(year)},
                 {**schedule_x_values,
                  **form_schedule_x.presentation_keys(amended_scenario.config)},
-                checkbox_states=PdfScheduleX.get_checkbox_states(year),
+                recorder,
             )
             mailed.append(MailedFile(
                 f"schedule_x_{year}.pdf",
@@ -3427,9 +3456,11 @@ class ReturnOrchestrator:
                 ca_pdfs = self._emit_ca_pdfs_internal(
                     amended_scenario,
                     {**corrected_ca, AMENDED_RETURN_KEY: AMENDED_RETURN_ON},
-                    output_dir)
+                    output_dir, recorder)
                 amended_540 = output_dir / f"f540_amended_{year}.pdf"
                 ca_pdfs["f540"].replace(amended_540)
+                # The record describes the artifact as delivered.
+                recorder.relocate(ca_pdfs["f540"], amended_540)
                 mailed.append(MailedFile(
                     f"f540_amended_{year}.pdf",
                     "Complete amended California Form 540",
@@ -3459,22 +3490,20 @@ class ReturnOrchestrator:
             year=year, mailed_files=tuple(mailed),
             dropped=dropped, caveats=tuple(caveats),
             ca_divergences=ca_divergences,
-            values={**f1040x_values, **schedule_x_values})
+            values={**f1040x_values, **schedule_x_values},
+            record=recorder.record())
         (output_dir / "packet_manifest.txt").write_text(manifest.render())
         return manifest
 
     @staticmethod
     def _emit_flat(
-        filler: PdfFiller, template: Path, output_path: Path,
-        field_mapping: dict, values: dict,
-        checkbox_states: dict | None = None,
+        filler: PdfFiller, form: tuple[str, str], key: int | str,
+        spec: FillSpec, template: Path, output_path: Path, values: dict,
+        recorder: EmitRecorder,
     ) -> Path:
         """Fill a flat-mapping amendment form (1040-X / Schedule X)."""
-        return filler.fill(
-            template_path=template, output_path=output_path,
-            field_mapping=field_mapping, values=values,
-            checkbox_states=checkbox_states,
-        )
+        return chokepoint_fill(form, key, spec, template, output_path, values,
+                               recorder, filler=filler)
 
     def run_full_california_scorp_return(
         self, scenario: Scenario, output_dir: Path,
@@ -3508,7 +3537,7 @@ class ReturnOrchestrator:
         pipeline. Returns (corp_results, emitted_paths); ({}, {}) when not an
         S-corp scenario."""
         if scenario.s_corp_return is None:
-            return {}, {}
+            return {}, EmitResult()
         corp_results = self.compute_corporate(scenario)
         emitted = self._emit_federal_corporate_pdfs_internal(
             scenario, corp_results, output_dir)

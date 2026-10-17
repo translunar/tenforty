@@ -4,6 +4,7 @@ Each declared form module registers its ``FormDeclaration`` per key here.
 ``for_form`` raises ``LookupError`` for an undeclared form-key, so a caller
 can never mistake "not declared" for "declares nothing".
 """
+import re
 from collections.abc import Mapping
 
 from tenforty.declarations.model import FormDeclaration
@@ -38,3 +39,46 @@ def for_form(form: tuple[str, str], key: int | str) -> FormDeclaration:
 
 def declared_forms() -> frozenset[FormKey]:
     return frozenset(_DECLARATIONS)
+
+
+# Emitted keys that are NOT form fills, each with its reason (ruling
+# 2026-10-17). An entry is an exact key, or a pattern whose only variable part
+# is an explicit "{i}" (a 1-based copy number), matched against the WHOLE key.
+# Every emitted key is either a recorded fill (EmitRecord) or matches here;
+# EveryEntryPointCarriesRecordTests fails closed on anything else. Reviewed
+# like WORK_IN_PROGRESS.
+NON_FILL_EMITTED: Mapping[str, str] = {
+    "1120s_k1_qbi_stmt_{i}":
+        "Section 199A Statement A per shareholder: a generated statement "
+        "page (reportlab), not a form fill",
+    "1120s_other_deductions_stmt":
+        "Form 1120-S line 19 other-deductions statement: a generated "
+        "statement page, not a form fill",
+    "f100s_other_deductions_stmt":
+        "Form 100S other-deductions statement: a generated statement page, "
+        "not a form fill",
+    "f3115_asset_stmt":
+        "Form 3115 Schedule E asset statement: a generated statement page, "
+        "not a form fill",
+    "f3115_duplicate_copy":
+        "Form 3115 duplicate copy to sign: a packet concatenation of the "
+        "already-filled, recorded Form 3115 and its statement",
+    "depreciation_audit":
+        "the depreciation audit workbook (.xlsx), not a PDF form",
+}
+
+
+def _non_fill_pattern(entry: str) -> re.Pattern:
+    return re.compile(re.escape(entry).replace(re.escape("{i}"), r"[1-9]\d*"))
+
+
+_NON_FILL_PATTERNS = {entry: _non_fill_pattern(entry)
+                      for entry in NON_FILL_EMITTED}
+
+
+def non_fill_reason(key: str) -> str | None:
+    """The reason ``key`` is an emitted non-fill, or None."""
+    for entry, pattern in _NON_FILL_PATTERNS.items():
+        if pattern.fullmatch(key):
+            return NON_FILL_EMITTED[entry]
+    return None
