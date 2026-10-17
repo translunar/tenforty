@@ -32,7 +32,7 @@ from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 from tests._ca_emit_helpers import CA_YEARS, make_ca_scenario
 from tests._pdf_pixels import checked_widgets, dark_pixels_in_rect, widget_rect
-from tests.helpers import REPO_ROOT, make_simple_scenario
+from tests.helpers import REPO_ROOT, hoh_facts, make_simple_scenario
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
@@ -252,7 +252,10 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
         # Built directly (bypassing the loader's refusal) with spouse values
         # present, so a name-presence gate would leak them.
         for fs in (FilingStatus.HEAD_OF_HOUSEHOLD, FilingStatus.SINGLE):
-            cfg = _config(fs, spouse_birthdate="1979-03-07")
+            block = (hoh_facts(2025)
+                     if fs is FilingStatus.HEAD_OF_HOUSEHOLD else None)
+            cfg = _config(fs, spouse_birthdate="1979-03-07",
+                          head_of_household=block)
             with self.subTest(fs=fs.value, form="1040"):
                 got = f1040_spine.header_values(cfg)
                 self.assertEqual(

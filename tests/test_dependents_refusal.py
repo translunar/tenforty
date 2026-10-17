@@ -21,7 +21,7 @@ from unittest import mock
 
 from tenforty.models import W2, FilingStatus, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import REPO_ROOT, make_simple_scenario
+from tests.helpers import REPO_ROOT, hoh_facts, make_simple_scenario
 
 _STATUSES = (FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY,
              FilingStatus.HEAD_OF_HOUSEHOLD)
@@ -36,7 +36,8 @@ _MESSAGE = (r"(?s)dependent.*does not model dependents on any compute path"
             r".*File this return by hand.*dependents release.*0\.2\.1")
 
 
-def _scenario(status, dependents=("Example Child",), year=2025):
+def _scenario(status, dependents=("Example Child",), year=2025,
+              head_of_household=None):
     """A wage return well above every EIC income ceiling, so it routes to
     the native spine whatever the dependent count."""
     base = make_simple_scenario()
@@ -45,7 +46,8 @@ def _scenario(status, dependents=("Example Child",), year=2025):
         extra = dict(spouse_first_name="Spouse", spouse_last_name="Example",
                      spouse_ssn="000-00-0002", spouse_birthdate="1990-03-07")
     config = dataclasses.replace(base.config, year=year, filing_status=status,
-                                 dependents=list(dependents), **extra)
+                                 dependents=list(dependents),
+                                 head_of_household=head_of_household, **extra)
     return Scenario(config=config, w2s=list(base.w2s))
 
 
@@ -154,7 +156,10 @@ class NoDependentsUnaffectedTests(unittest.TestCase):
     def test_each_declared_status_without_dependents_computes(self):
         for status in _STATUSES:
             with self.subTest(status=status.value):
-                out = self.orch.compute_federal(_scenario(status, dependents=()))
+                block = (hoh_facts(2025)
+                         if status is FilingStatus.HEAD_OF_HOUSEHOLD else None)
+                out = self.orch.compute_federal(_scenario(
+                    status, dependents=(), head_of_household=block))
                 self.assertEqual(out["agi"], 100_000)
 
     def test_without_dependents_emits_the_1040(self):

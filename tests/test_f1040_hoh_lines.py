@@ -21,6 +21,7 @@ import unittest.mock
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import yaml
 from pypdf import PdfReader
 
 from tenforty import orchestrator as orch_mod
@@ -40,6 +41,7 @@ from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.federal import load as load_federal_params
 from tests._pdf_pixels import checked_widgets, dark_pixels_in_rect, widget_rect
 from tests.fixtures.spine_battery import _battery_config, build_wages_only
+from tests.helpers import CA_SCOPE_OUT_FIELDS
 
 REPO_ROOT = Path(__file__).parent.parent
 YEARS = (2021, 2022, 2023, 2024, 2025)
@@ -211,19 +213,45 @@ class HeaderValuesHohTests(unittest.TestCase):
                     _config(year, HOH, _facts(year)))
                 self.assertEqual(out[CHILD], "Example Child")
 
-    def test_other_statuses_carry_neither_key(self):
+    def test_other_statuses_with_a_stray_block_refuse(self):
+        # A directly built config carrying a stray block (the loader refuses
+        # it): the federal header refuses it too, naming the cause.
         for year in YEARS:
             for status in (FilingStatus.SINGLE,
                            FilingStatus.MARRIED_FILING_JOINTLY,
                            FilingStatus.MARRIED_FILING_SEPARATELY):
                 with self.subTest(year=year, status=status):
-                    # A directly built config carrying a stray block (the
-                    # loader would refuse it): only the status keeps the keys
-                    # out, so this negative is reachable.
-                    out = f1040_spine.header_values(
-                        _config(year, status, _facts(year)))
+                    with self.assertRaises(ValueError) as cm:
+                        f1040_spine.header_values(
+                            _config(year, status, _facts(year)))
+                    msg = str(cm.exception)
+                    self.assertIn("has a `head_of_household` block", msg)
+                    self.assertIn(f"`filing_status` is `{status.value}`", msg)
+
+    def test_other_statuses_without_a_block_carry_neither_key(self):
+        for year in YEARS:
+            for status in (FilingStatus.SINGLE,
+                           FilingStatus.MARRIED_FILING_JOINTLY,
+                           FilingStatus.MARRIED_FILING_SEPARATELY):
+                with self.subTest(year=year, status=status):
+                    out = f1040_spine.header_values(_config(year, status))
                     self.assertNotIn(CHILD, out)
                     self.assertNotIn(BOX, out)
+
+    def test_hoh_lines_keys_follow_the_status_not_the_block(self):
+        # _hoh_lines' own status check, called directly with a stray block
+        # (header_values refuses it first): only the status keeps the keys
+        # out, so this negative is reachable.
+        for year in YEARS:
+            for status in (FilingStatus.SINGLE,
+                           FilingStatus.MARRIED_FILING_JOINTLY,
+                           FilingStatus.MARRIED_FILING_SEPARATELY):
+                with self.subTest(year=year, status=status):
+                    self.assertEqual(f1040_spine._hoh_lines(
+                        _config(year, status, _facts(year))), {})
+            with self.subTest(year=year, status=HOH):
+                self.assertIn(CHILD, f1040_spine._hoh_lines(
+                    _config(year, HOH, _facts(year))))
 
     def test_box_key_is_2025_only(self):
         for year in (2021, 2022, 2023, 2024):
@@ -365,3 +393,64 @@ class HohLinesBothPathsTests(unittest.TestCase):
             results = orch._compute_1040_via_workbook(scenario)
         engine.assert_called_once()
         self.assertEqual(results[CHILD], "Example Child")
+
+
+class FederalHohBackstopTests(unittest.TestCase):
+    """The federal 1040 runs validate_head_of_household itself (via
+    header_values, shared by compute, emit and 1040-X), so a directly built
+    TaxReturnConfig -- which never passes the loader -- cannot compute or
+    emit a head-of-household 1040 the loader would refuse. The workbook
+    path is patched to fail: native throughout, no LibreOffice."""
+
+    YEAR = 2025
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.tmp / "work")
+        patcher = unittest.mock.patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            side_effect=AssertionError("workbook path reached"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _scenario(self, facts):
+        base = build_wages_only(self.YEAR, HOH)
+        scenario = dataclasses.replace(base, config=dataclasses.replace(
+            base.config, head_of_household=facts))
+        self.assertTrue(self.orch._scenario_in_spine_scope(scenario))
+        return scenario
+
+    def _rule_10_violation(self):
+        return _facts(self.YEAR, qualifying_person=_qp(
+            self.YEAR, days_lived_with_you=100))
+
+    def test_hoh_without_the_block_refuses_federal_compute(self):
+        scenario = self._scenario(None)
+        with self.assertRaises(ValueError) as cm:
+            self.orch.compute_federal(scenario)
+        self.assertIn("no `head_of_household` block", str(cm.exception))
+
+    def test_rule_10_violation_refuses_federal_emit_writing_no_pdf(self):
+        scenario = self._scenario(self._rule_10_violation())
+        out = self.tmp / "out"
+        with self.assertRaises(ValueError) as cm:
+            self.orch.run_full_return(scenario, out)
+        self.assertIn("more than half the year", str(cm.exception))
+        self.assertEqual(sorted(out.glob("*.pdf")) if out.exists() else [], [])
+
+    def test_rule_10_violation_still_refuses_on_the_ca_path(self):
+        base = self._scenario(self._rule_10_violation())
+        scenario = dataclasses.replace(base, config=dataclasses.replace(
+            base.config, full_year_health_care_coverage=True,
+            **{k: True for k in CA_SCOPE_OUT_FIELDS}))
+        ca_yaml = self.tmp / "ca.yaml"
+        ca_yaml.write_text(yaml.safe_dump(
+            {"ca540": {"interest_and_penalties": 0.0}}))
+        out = self.tmp / "ca"
+        with self.assertRaises(ValueError) as cm:
+            self.orch.run_full_california_return(
+                scenario=scenario, ca_yaml_path=ca_yaml, output_dir=out)
+        self.assertIn("more than half the year", str(cm.exception))
+        self.assertEqual(sorted(out.glob("*")) if out.exists() else [], [])
