@@ -1311,6 +1311,11 @@ class ReturnOrchestrator:
             # the 1095-A refusal below and before any workbook reroute. On a
             # declared (year, status) out of scope means EIC-possible; an
             # undeclared one keeps its routing (its cause is the grid).
+            # Deliberate (ruled, EIC lane design note; mirrors the
+            # never-misname logic): an undeclared (year, head_of_household)
+            # keeps grid-cause routing rather than this refusal, and the
+            # workbook would then figure the EIC as if childless. Any future
+            # year that adds head of household must declare it in the grid.
             from tenforty import years as year_manifest
             if year_manifest.native_spine_supports(
                     effective_scenario.config.year,
