@@ -302,6 +302,12 @@ class StructuralRuleTests(_LoaderCase):
         self.refuses(_hoh_yaml(block=_block(qp=_qp(ssn="000000000"))),
                      "your own qualifying person")
 
+    def test_space_separated_filer_ssn_equal_to_the_qualifying_persons_refuses(self):
+        # The federal 1040 prints any-shape filer SSNs digits-only, so rule 5
+        # compares digits, not the normalized NNN-NN-NNNN shape.
+        self.refuses(_hoh_yaml(ssn="000 00 0001", block=_block(
+            qp=_qp(ssn="000000001"))), "same as the filer's own SSN")
+
     # --- rule 6: birthdate ---------------------------------------------------
     def test_birthdate_after_the_tax_year_refuses(self):
         self.refuses(_hoh_yaml(block=_block(qp=_qp(
