@@ -787,8 +787,10 @@ class ItemLetterTests(unittest.TestCase):
         self.assertEqual(sorted(lines), ["1", "2"])
 
     def test_synthetic_repeated_column_headers_are_not_labels(self):
-        # Schedule CA's "A Federal Amounts B Subtractions C Additions" header
-        # row prints on every page: a letter column that repeats is headers.
+        # A letter column that repeats (a header row printed again) is
+        # headers, not items. Synthetic only: Schedule CA's real "A Federal
+        # Amounts B Subtractions C Additions" row is rejected by the
+        # left-margin rule, so no committed form exercises this guard alone.
         lines = _extract_synthetic([
             _word(240, 60, "A"), _word(252, 60, "Federal"),
             _word(240, 300, "A"), _word(252, 300, "Federal"),
