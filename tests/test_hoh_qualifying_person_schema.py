@@ -538,6 +538,32 @@ class QualifyingChildOnlyTests(_LoaderCase):
         self._assert_path(qp, True)
         self.load(_hoh_yaml(block=_block(qp=qp)))
 
+    def test_student_at_birth_year_age_23_loads(self):
+        # FTB 3532 Part III line 3 instructions: "a full-time student under
+        # 24 years of age". Birth-year age, as qp_is_19_or_older reads it.
+        qp = self._person("child_or_stepchild", 23, full_time_student=True,
+                          permanently_disabled=False)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
+    def test_student_at_24_or_older_refuses_naming_the_student_age_limit(self):
+        for age in (24, 26):
+            with self.subTest(age=age):
+                qp = self._person("child_or_stepchild", age,
+                                  full_time_student=True,
+                                  permanently_disabled=False)
+                self._assert_path(qp, False)
+                self.refuses(_hoh_yaml(block=_block(qp=qp)),
+                             "not on the qualifying-child path",
+                             "a full-time student under 24")
+
+    def test_disabled_student_at_26_loads(self):
+        # Permanently and totally disabled meets the age test at any age.
+        qp = self._person("child_or_stepchild", 26, full_time_student=True,
+                          permanently_disabled=True)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
     def test_each_child_relationship_under_19_is_on_the_path(self):
         for relationship in ("child_or_stepchild",
                              "grandchild_sibling_niece_or_nephew",

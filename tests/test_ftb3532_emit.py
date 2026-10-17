@@ -315,6 +315,23 @@ class Ftb3532GateRefusalTests(_NativeEmitCase):
         self.assertEqual(sorted(out2.glob("*")) if out2.exists() else [], [])
 
 
+class Ftb3532StudentAgeLimitEmitTests(_NativeEmitCase):
+    """Rule 13's student branch is bounded (full-time student UNDER 24): a
+    directly built config, which never passes the loader, still refuses at
+    the CA emit gate before any file is written."""
+
+    def test_26_year_old_student_writes_no_pdf(self):
+        year = 2025
+        qp = _qp(year, birthdate=f"{year - 26}-06-15",
+                 full_time_student=True, permanently_disabled=False)
+        scenario = _ca_scenario(year, HOH, _facts(year, qualifying_person=qp))
+        out = self.tmp / "student26"
+        with self.assertRaises(ValueError) as cm:
+            self._emit(scenario, out)
+        self.assertIn("a full-time student under 24", str(cm.exception))
+        self.assertEqual(sorted(out.glob("*")) if out.exists() else [], [])
+
+
 class Ftb3532PostConditionTests(_NativeEmitCase):
     """The emit asserts the 3532 is present iff HoH in code, not only in
     tests: an emit table that lost its ftb3532 row cannot ship a HoH packet

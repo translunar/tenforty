@@ -1439,13 +1439,17 @@ _MARRIED_STATUSES = frozenset({
 def qp_on_qualifying_child_path(qp: HohQualifyingPerson, year: int) -> bool:
     """Rule 13: the qualifying person is on the qualifying-child path: a
     Part II line 2a-2c relationship that meets the age test (FTB 3532 Part
-    III line 3 instructions: under 19, or a full-time student under 24 --
-    line 3a's own wording bounds the student branch -- or permanently and
-    totally disabled)."""
+    III line 3 instructions: "under 19 years of age or a full-time student
+    under 24 years of age", or permanently and totally disabled at any age).
+    The student branch's under-24 bound is enforced, with the same
+    birth-year age reading as ``qp_is_19_or_older`` (tax_year - birth_year
+    < 24)."""
     if qp.relationship not in _QUALIFYING_CHILD_RELATIONSHIPS:
         return False
+    student_under_24 = (qp.full_time_student is True
+                        and year - int(qp.birthdate[:4]) < 24)
     return (not qp_is_19_or_older(qp, year)
-            or qp.full_time_student is True
+            or student_under_24
             or qp.permanently_disabled is True)
 
 
