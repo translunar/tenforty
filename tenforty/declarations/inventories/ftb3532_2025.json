@@ -21,11 +21,11 @@
    "page": 1,
    "section": "Part I",
    "label": "1a",
-   "text": "",
+   "text": "Not legally married/RDP during 2025",
    "bbox": [
-    534.0,
+    47.0,
     150.07,
-    543.0,
+    51.5,
     161.24
    ]
   },
@@ -33,11 +33,11 @@
    "page": 1,
    "section": "Part I",
    "label": "1b",
-   "text": "",
+   "text": "Surviving spouse/RDP (my spouse/RDP died before 01/01/2025)",
    "bbox": [
-    534.0,
+    47.0,
     168.07,
-    543.0,
+    51.5,
     179.24
    ]
   },
@@ -45,11 +45,11 @@
    "page": 1,
    "section": "Part I",
    "label": "1c",
-   "text": "",
+   "text": "Marriage/RDP was annulled. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
    "bbox": [
-    534.0,
+    47.0,
     186.07,
-    542.5,
+    51.0,
     197.24
    ]
   },
@@ -57,11 +57,11 @@
    "page": 1,
    "section": "Part I",
    "label": "1d",
-   "text": "",
+   "text": "Received final decree of divorce, legal separation, dissolution, or termination of marriage/RDP by 12/31/2025. . . . . . . . . . . . . . .",
    "bbox": [
-    534.0,
+    47.0,
     204.07,
-    543.0,
+    51.5,
     215.24
    ]
   },
@@ -69,11 +69,11 @@
    "page": 1,
    "section": "Part I",
    "label": "1e",
-   "text": "",
+   "text": "Legally married/RDP and did not live with spouse/RDP during 2025. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
    "bbox": [
-    534.0,
+    47.0,
     222.07,
-    543.0,
+    51.5,
     233.24
    ]
   },
@@ -81,12 +81,12 @@
    "page": 1,
    "section": "Part I",
    "label": "1f",
-   "text": "",
+   "text": "Legally married/RDP and lived with spouse/RDP during 2025. List the beginning and ending dates for each period when",
    "bbox": [
-    534.0,
-    251.54,
-    541.0,
-    262.71
+    47.0,
+    240.54,
+    49.5,
+    251.71
    ]
   },
   {
@@ -117,11 +117,11 @@
    "page": 1,
    "section": "Part II",
    "label": "2b",
-   "text": "",
+   "text": "Grandchild, brother, sister, half brother, half sister, stepbrother, stepsister, nephew, or niece. . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
    "bbox": [
-    534.0,
+    47.0,
     370.94,
-    543.0,
+    51.5,
     382.11
    ]
   },
@@ -129,11 +129,11 @@
    "page": 1,
    "section": "Part II",
    "label": "2c",
-   "text": "",
+   "text": "Eligible foster child. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
    "bbox": [
-    534.0,
+    47.0,
     391.94,
-    542.5,
+    51.0,
     403.11
    ]
   },
@@ -141,12 +141,12 @@
    "page": 1,
    "section": "Part II",
    "label": "2d",
-   "text": "",
+   "text": "Father, mother, stepfather, or stepmother",
    "bbox": [
-    534.0,
-    412.93,
-    543.0,
-    424.1
+    47.0,
+    412.94,
+    51.5,
+    424.11
    ]
   },
   {

@@ -21,11 +21,11 @@
    "page": 1,
    "section": "Part I",
    "label": "2a",
-   "text": "",
+   "text": "Alimony received",
    "bbox": [
-    487.55,
+    44.84,
     138.39,
-    498.85,
+    56.14,
     150.32
    ]
   },
@@ -93,11 +93,11 @@
    "page": 1,
    "section": "Part I",
    "label": "7",
-   "text": "",
+   "text": "Unemployment compensation",
    "bbox": [
-    490.42,
+    44.84,
     210.39,
-    495.98,
+    50.4,
     222.32
    ]
   },
@@ -537,11 +537,11 @@
    "page": 2,
    "section": "Part II",
    "label": "22",
-   "text": "",
+   "text": "Reserved for future use",
    "bbox": [
-    487.64,
+    39.28,
     234.39,
-    498.76,
+    50.4,
     246.32
    ]
   },

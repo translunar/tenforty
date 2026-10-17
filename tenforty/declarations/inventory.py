@@ -46,6 +46,11 @@ _SAME_ROW = 2.5        # pt: words whose tops differ by less share a row
 _LABEL_GAP = 8.0       # pt: a label has no word ending within this to its left
 _COMPOSITE_GAP = 6.0   # pt: "1" + "a" printed as two words form "1a"
 _SUBLINE_REACH = 10.0  # pt: a sub-letter sits this far right of the numbers
+# pt: sub-point jitter in the template's own coordinates. FTB 3532 (2025)
+# prints its sub-letters at x0 46.998 / 47.0 / 47.001 against a reach limit
+# of exactly 47.0, and each right-hand line-number box 0.001 pt above its
+# sub-letter: attribution must not turn on a thousandth of a point.
+_JITTER = 0.01
 _COLUMN_GAP = 8.0      # pt: label x-positions closer than this share a column
 _BOX_REPEAT = 14.0     # pt: a line-number box repeats its row's label
 _FULL_HEIGHT = 0.8     # a label at least this fraction of the median height
@@ -156,7 +161,7 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
             elif w in numbers and column_of(w):
                 events.append((w[1], 1, "number", w[4], w))
             elif (_SUBLINE.match(w[4]) and full_height(w) and left_clear(w)
-                  and any(lo <= w[0] <= hi + _SUBLINE_REACH
+                  and any(lo <= w[0] <= hi + _SUBLINE_REACH + _JITTER
                           for lo, hi in columns)):
                 events.append((w[1], 1, "subline", w[4], w))
         events.sort(key=lambda e: (e[0], e[1], e[4][0]))
@@ -195,19 +200,31 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                 if last_number is None:
                     continue
                 label = last_number + value
-            if line_key(page_no, section, label) in {o.key for o in lines}:
-                continue
-            # A line-number box repeats its row's label (same line).
-            if any(o.page == page_no and o.label == label
-                   and abs(o.bbox[1] - w[1]) < _BOX_REPEAT for o in lines):
-                continue
             stop = min([lo for lo, _ in columns if lo > w[2] + 2] + [1e9])
             text = " ".join(
                 v[4] for v in sorted(row(w) + [w])
                 if w[2] < v[0] < stop and id(v) not in consumed
                 and not _LEADER.match(v[4])).strip()
-            lines.append(InventoryLine(page_no, section, label, text,
-                                       tuple(round(c, 2) for c in w[:4])))
+            found = InventoryLine(page_no, section, label, text,
+                                  tuple(round(c, 2) for c in w[:4]))
+            # The same line seen again: its own key, or a line-number box
+            # repeating its row's label.
+            same = [i for i, o in enumerate(lines)
+                    if o.page == page_no and o.label == label
+                    and (o.section == section
+                         or abs(o.bbox[1] - w[1]) < _BOX_REPEAT)]
+            if same:
+                earlier = lines[same[0]]
+                # The printed label to the LEFT wins over an EMPTY line a
+                # box (or a stray digit) made first, whichever sorted first
+                # by a fraction of a point; the line keeps its key. A line
+                # that already has text is never rewritten.
+                if (not earlier.text and found.text
+                        and found.bbox[0] < earlier.bbox[0]):
+                    lines[same[0]] = dataclasses.replace(
+                        found, section=earlier.section)
+                continue
+            lines.append(found)
     return tuple(lines)
 
 

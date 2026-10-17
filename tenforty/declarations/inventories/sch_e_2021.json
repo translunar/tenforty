@@ -68,18 +68,6 @@
   {
    "page": 1,
    "section": "Part I",
-   "label": "7",
-   "text": "",
-   "bbox": [
-    374.4,
-    276.86,
-    379.4,
-    287.35
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part I",
    "label": "4",
    "text": "Commercial",
    "bbox": [
@@ -87,18 +75,6 @@
     288.86,
     170.6,
     299.35
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part I",
-   "label": "8",
-   "text": "",
-   "bbox": [
-    374.4,
-    289.66,
-    379.4,
-    300.15
    ]
   },
   {
@@ -123,6 +99,30 @@
     360.65,
     50.4,
     371.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Cleaning and maintenance",
+   "bbox": [
+    45.4,
+    372.65,
+    50.4,
+    383.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8",
+   "text": "Commissions.",
+   "bbox": [
+    45.4,
+    384.64,
+    50.4,
+    395.38
    ]
   },
   {
