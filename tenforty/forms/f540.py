@@ -514,9 +514,15 @@ NO_USE_TAX = "f540_line_91_no_use_tax"
 DESIGNEE_NO = "f540_designee_no"
 
 
+# The total tax prints on line 65 in 2021 (line 64 there is Excess APAS
+# repayment) and on line 64 from 2022.
+_TOTAL_TAX_KEY = {2021: LINE_65_2021, 2022: LINE_64, 2023: LINE_64,
+                  2024: LINE_64, 2025: LINE_64}
+
+
 def total_tax_key(year: int) -> str:
     """The total-tax key for the year's own printed line."""
-    return LINE_65_2021 if year == 2021 else LINE_64
+    return _TOTAL_TAX_KEY[year]
 
 
 def printed_line_keys(year: int, values: Mapping[str, object]) -> dict:
@@ -542,9 +548,8 @@ def printed_line_keys(year: int, values: Mapping[str, object]) -> dict:
         + 0                              # line 61 AMT: unmodeled
         + 0                              # line 62 behavioral health tax: unmodeled
         + 0                              # line 63 other taxes: unmodeled
+        + 0                              # 2021 only, line 64 Excess APAS: unmodeled
     )
-    if year == 2021:
-        total_tax += 0                   # 2021 line 64 Excess APAS: unmodeled
     line_78 = (
         v.get("f540_line71_ca_withholding", 0)   # line 71
         + v["f540_estimated_payments"]           # line 72
