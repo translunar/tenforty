@@ -290,7 +290,9 @@ class Line47IdentityTests(_Rows):
                      "f540_line73_592b_593_withholding",
                      "f540_line74_program_40_motion_picture",
                      "f540_line75_eitc", "f540_line76_yctc", "f540_line77_fytc",
-                     "f540_line92_isr_penalty")
+                     "f540_line92_isr_penalty") + tuple(
+            # Line 98 (applied to next year's estimate), every year spelling.
+            f"f540_line98_applied_to_{y + 1}_estimated" for y in _YEARS)
         for source, name, year, values in self.each():
             with self.subTest(row=name):
                 self.assertEqual([k for k in unmodeled if k in values], [])

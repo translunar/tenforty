@@ -17,7 +17,26 @@ from pypdf import PdfReader
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings import pdf_f540
 from tenforty.mappings.pdf_f540 import _FILING_STATUS_RB_STATES
+from tenforty.forms import f540 as form_f540
 from tenforty.models import FilingStatus
+
+# The printed-line inputs a hand-built dict leaves out, at 0 (none of these
+# tests reads the lines they feed).
+_ZERO_INPUTS = {
+    "f540_federal_agi": 0, "sch_ca_total_subtractions": 0,
+    "f540_ca_tax": 0, "f540_exemption_credit": 0, "f540_renter_credit": 0,
+    "f540_estimated_payments": 0, "f540_use_tax": 0,
+    "f540_voluntary_contributions": 0, "f540_estimated_tax_penalty": 0,
+    "f540_taxable_income": 0,
+}
+
+
+def _printed(year, values):
+    """Values plus their printed Form 540 line keys, as the CA assembly
+    point (orchestrator._compute_ca_results) adds them: the mapping's cells
+    read those keys."""
+    return {**values, **form_f540.printed_line_keys(
+        year, {**_ZERO_INPUTS, **values})}
 
 
 _EXPECTED_COMPUTE_KEYS = frozenset({
@@ -368,10 +387,10 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
 
     def test_2021_tax_source_checkboxes_split_on_taxable_income(self):
         # Box 2012 (tax table) on at/below 100k; box 2013 (rate schedule) above.
-        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_000}), "/Yes")
-        self.assertEqual(self.derivations["2012 CB"]({"f540_taxable_income": 100_001}), "/Off")
-        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_001}), "/Yes")
-        self.assertEqual(self.derivations["2013 CB"]({"f540_taxable_income": 100_000}), "/Off")
+        self.assertEqual(self.derivations["2012 CB"](_printed(2021, {"f540_taxable_income": 100_000})), "/Yes")
+        self.assertEqual(self.derivations["2012 CB"](_printed(2021, {"f540_taxable_income": 100_001})), "/Off")
+        self.assertEqual(self.derivations["2013 CB"](_printed(2021, {"f540_taxable_income": 100_001})), "/Yes")
+        self.assertEqual(self.derivations["2013 CB"](_printed(2021, {"f540_taxable_income": 100_000})), "/Off")
 
     def test_2021_line_totals_resolve_from_compute_keys(self):
         # A representative flow: refund case (payments exceed tax).
@@ -382,6 +401,7 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
             "f540_estimated_payments": 5000,
             "f540_use_tax": 40,
         }
+        c = _printed(2021, c)
         d = self.derivations
         self.assertEqual(d["2018"](c), 2871)          # line 33 = 3000 - 129
         self.assertEqual(d["2022"](c), 2871)          # line 35 = line 33
@@ -404,9 +424,11 @@ class PdfF540Derivations2021Tests(unittest.TestCase):
         d = self.derivations
 
         def values(withholding):
-            return f540.compute(
+            # ca_agi == federal_agi: Schedule CA subtractions are 0, the
+            # unique value consistent with that setup.
+            return _printed(2021, f540.compute(
                 year=2021, filing_status=FilingStatus.SINGLE, federal_agi=80_000,
-                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding)
+                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding))
 
         owing = values(0)
         self.assertGreater(d["5003"](owing), 0)                 # line 111
@@ -548,10 +570,10 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
 
     def test_2022_tax_source_checkboxes_split_on_taxable_income(self):
         # Box 2026 (tax table) on at/below 100k; box 2027 (rate schedule) above.
-        self.assertEqual(self.derivations["2026 CB"]({"f540_taxable_income": 100_000}), "/Yes")
-        self.assertEqual(self.derivations["2026 CB"]({"f540_taxable_income": 100_001}), "/Off")
-        self.assertEqual(self.derivations["2027 CB"]({"f540_taxable_income": 100_001}), "/Yes")
-        self.assertEqual(self.derivations["2027 CB"]({"f540_taxable_income": 100_000}), "/Off")
+        self.assertEqual(self.derivations["2026 CB"](_printed(2022, {"f540_taxable_income": 100_000})), "/Yes")
+        self.assertEqual(self.derivations["2026 CB"](_printed(2022, {"f540_taxable_income": 100_001})), "/Off")
+        self.assertEqual(self.derivations["2027 CB"](_printed(2022, {"f540_taxable_income": 100_001})), "/Yes")
+        self.assertEqual(self.derivations["2027 CB"](_printed(2022, {"f540_taxable_income": 100_000})), "/Off")
 
     def test_2022_line_totals_resolve_from_compute_keys(self):
         # Refund case (payments exceed tax). Verifies the 2023-style line-64
@@ -563,6 +585,7 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
             "f540_estimated_payments": 5000,
             "f540_use_tax": 40,
         }
+        c = _printed(2022, c)
         d = self.derivations
         self.assertEqual(d["2032"](c), 2860)          # line 33 = 3000 - 140
         self.assertEqual(d["2036"](c), 2860)          # line 35 = line 33
@@ -585,9 +608,11 @@ class PdfF540Derivations2022Tests(unittest.TestCase):
         d = self.derivations
 
         def values(withholding):
-            return f540.compute(
+            # ca_agi == federal_agi: Schedule CA subtractions are 0, the
+            # unique value consistent with that setup.
+            return _printed(2022, f540.compute(
                 year=2022, filing_status=FilingStatus.SINGLE, federal_agi=80_000,
-                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding)
+                ca_agi=80_000, ca540=CA540Return(), ca_withholding=withholding))
 
         owing = values(0)
         self.assertGreater(d["4027"](owing), 0)                 # line 111
