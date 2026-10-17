@@ -125,7 +125,7 @@ SCHEDULE_C_FAMILY_YEARS: tuple[int, ...] = tuple(
     y for y in FEDERAL_YEARS if y >= SCHEDULE_C_FAMILY_FLOOR_YEAR
 )
 
-CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540")
+CALIFORNIA_FORMS: tuple[str, ...] = ("f540", "sch_ca", "sch_d_540", "ftb3532")
 
 # S-corporation form family. Decoupled from FEDERAL_YEARS: the S-corp
 # return has its own year support (backfill reaches 2021 without touching
