@@ -258,7 +258,11 @@ def assemble_packet(paths: list[Path], output_path: Path) -> Path:
     banner, layer "CalFile turn on"). Each source's /OCProperties is cloned
     into the writer after its pages, which maps its groups onto the copies
     the pages already use, and the packet's /OCProperties is the union: every
-    group, each in its source's default ON/OFF state."""
+    group, each in its source's default ON/OFF state. A source using /AS
+    (usage-driven auto state) or /Configs (alternate configurations) refuses:
+    the merged default configuration cannot carry them, and dropping them
+    silently could change what prints. /Intent and /ListMode are dropped;
+    they do not affect what a viewer or printer shows."""
     writer = pypdf.PdfWriter()
     groups, on, off, order, rb_groups, locked = [], [], [], [], [], []
     for path in paths:
@@ -272,6 +276,15 @@ def assemble_packet(paths: list[Path], output_path: Path) -> Path:
         # reused, not duplicated.
         ocp = root.raw_get("/OCProperties").clone(writer).get_object()
         default = ocp.get("/D", DictionaryObject())
+        for feature, holder in (("/AS", default), ("/Configs", ocp)):
+            if feature in holder:
+                raise NotImplementedError(
+                    f"{path}: its optional-content properties use {feature} "
+                    "(" + ("usage-driven auto state" if feature == "/AS"
+                           else "alternate configurations")
+                    + "), which packet assembly cannot merge; assembling "
+                    "without it could change which layers print. Assemble "
+                    "this packet by hand.")
         groups.extend(ocp.get("/OCGs", ArrayObject()))
         source_on, source_off = _optional_content_state(ocp)
         on.extend(source_on)
