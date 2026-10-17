@@ -141,7 +141,8 @@ def stylesheet_lines(form: str, year: int
                      ) -> dict[tuple[str, str], stylesheet.StylesheetLine]:
     """The year's stylesheet lines by (section, full label): a sub-line the
     stylesheet prints as a bare letter ("1a", "b", "c") carries the last
-    number ("1b", "1c")."""
+    number ("1b", "1c"). A single uppercase letter is a line of its own
+    (Schedule SE's line A, Schedule C's lines A-J) and is kept as printed."""
     out: dict[tuple[str, str], stylesheet.StylesheetLine] = {}
     last = None
     for line in stylesheet.load(form, year):
@@ -150,6 +151,8 @@ def stylesheet_lines(form: str, year: int
             last = _number(label)
         elif re.fullmatch(r"[a-z]", label) and last:
             label = last + label
+        elif re.fullmatch(r"[A-Z]", label):
+            pass
         else:
             continue
         out.setdefault((line.page_section, label), line)
