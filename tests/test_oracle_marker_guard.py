@@ -36,6 +36,12 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # mock raises if reached), and the six-employer test captures the engine
     # call's inputs via a raising mock -- so no real soffice is ever invoked.
     "test_w2_workbook_mapping.py",
+    # 1040 HoH lines (FTB 3532 round): the workbook header-merge test runs
+    # _compute_1040_via_workbook under mock.patch.object(orch.engine,
+    # "compute", return_value={}) with form_1040.compute patched too, and
+    # the native-path tests patch _compute_1040_via_workbook itself to raise
+    # if reached -- so no real soffice is ever invoked.
+    "test_f1040_hoh_lines.py",
 }
 
 

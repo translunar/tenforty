@@ -133,6 +133,7 @@ _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
         "refund_account_type_savings": "/2",
         "age_taxpayer_born_before": "/1",
         "age_spouse_born_before": "/1",
+        "hoh_lived_apart_from_spouse": "/1",
     },
 }
 
@@ -198,6 +199,13 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # (c1_09[0] / c1_11[0]) stay unmapped: no input exists for blindness.
             "age_taxpayer_born_before": "topmostSubform[0].Page1[0].c1_08[0]",
             "age_spouse_born_before": "topmostSubform[0].Page1[0].c1_10[0]",
+            # HoH child-name line ("If you checked the HOH or QW box, enter
+            # the child's name if the qualifying person is a child but not
+            # your dependent"). Geometry, 2021 template: widget [252,690,576,
+            # 702] right of the printed "dependent" (x 200.7-238.7, y 692.6-
+            # 701.9), same row. One line shared with the MFS spouse name
+            # (no MFS key maps it); emitted only for HoH.
+            "hoh_qualifying_child_name": "topmostSubform[0].Page1[0].FilingStatus[0].f1_01[0]",
 
             # === Page 1: Income (Lines 1-11) — all nest in Lines1-11_ReadOrder[0] ===
             # Line 1: Wages, salaries, tips — SINGLE box in 2021 (no 1a-1z).
@@ -372,6 +380,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # (c1_09[0] / c1_11[0]) stay unmapped: no input exists for blindness.
             "age_taxpayer_born_before": "topmostSubform[0].Page1[0].c1_08[0]",
             "age_spouse_born_before": "topmostSubform[0].Page1[0].c1_10[0]",
+            # HoH child-name line. Geometry, 2022 template: widget [244.8,
+            # 684,576,696] right of the printed "dependent:" (x 199.9-239.9,
+            # y 686.6-695.9), same row; shared with the MFS spouse name (no
+            # MFS key maps it); emitted only for HoH.
+            "hoh_qualifying_child_name": "topmostSubform[0].Page1[0].f1_01[0]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a-3b sit directly on Page1 at f1_28-f1_41.
@@ -551,6 +564,10 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # (c1_9[0] / c1_11[0]) stay unmapped: no input exists for blindness.
             "age_taxpayer_born_before": "topmostSubform[0].Page1[0].c1_8[0]",
             "age_spouse_born_before": "topmostSubform[0].Page1[0].c1_10[0]",
+            # HoH child-name line. Geometry, 2023 template: widget [288,534,
+            # 568.8,546] right of the printed "dependent:" (x 243.6-284.4,
+            # y 535.6-544.9), same row.
+            "hoh_qualifying_child_name": "topmostSubform[0].Page1[0].f1_18[0]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_31–f1_44.
@@ -738,6 +755,11 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # (c1_10[0] / c1_12[0]) stay unmapped: no input exists for blindness.
             "age_taxpayer_born_before": "topmostSubform[0].Page1[0].c1_9[0]",
             "age_spouse_born_before": "topmostSubform[0].Page1[0].c1_11[0]",
+            # HoH child-name line. Geometry, 2024 template: widget [288,534,
+            # 568.8,546] right of the printed "dependent:" (x 244.6-285.4,
+            # y 536.6-545.9), same row. NOT f1_01: on 2024 that is the
+            # tax-year "beginning" field at the top of the page.
+            "hoh_qualifying_child_name": "topmostSubform[0].Page1[0].f1_18[0]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Lines 1a–3b sit directly on Page1 at f1_32–f1_45.
@@ -901,6 +923,18 @@ class Pdf1040(PdfFormMapping[dict[str, str]]):
             # (c2_6[0] / c2_8[0]) stay unmapped: no input exists for blindness.
             "age_taxpayer_born_before": "topmostSubform[0].Page2[0].c2_5[0]",
             "age_spouse_born_before": "topmostSubform[0].Page2[0].c2_7[0]",
+            # HoH child-name line. Geometry, 2025 template: widget [362,534,
+            # 576,546] on the row directly under the clause, whose last line
+            # ends "...not your dependent:" (x 524.7-565.5, y 546.0-555.3),
+            # inside the clause's right column. f1_28 [180,540,324,552] left
+            # of it is the MFS "full name here" box.
+            "hoh_qualifying_child_name": "topmostSubform[0].Page1[0].f1_29[0]",
+            # Lived-apart box ("Check if your filing status is MFS or HOH and
+            # you lived apart from your spouse for the last 6 months of
+            # 2025, or you are legally separated ..."). Geometry: widget
+            # [95.6,359.5,103.6,367.5], on-state /1, immediately left of the
+            # printed "Check" (x 108.0-131.0, y 359.2-368.5) of that caption.
+            "hoh_lived_apart_from_spouse": "topmostSubform[0].Page1[0].c1_32[0]",
 
             # === Page 1: Income (Lines 1-11) ===
             # Line 1a: Wages, salaries, tips (W-2 box 1)
