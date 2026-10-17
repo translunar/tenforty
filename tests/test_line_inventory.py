@@ -349,11 +349,16 @@ class SameRowLabelAttributionTests(unittest.TestCase):
 
     def _synthetic(self, letter_x, letter_y, box_y):
         # One page: line "1" in the number column, its sub-line "a" with
-        # caption text, and the right-hand box "1a" on the same row.
+        # caption text, and the right-hand box "1a" on the same row. The
+        # number column counts UP (1, 2, 3): a column that counts down is a
+        # table's values and is filtered (the species behind the registered
+        # Schedule M-1 left-column debt), and its sub-letter then has no
+        # parent -- it must not borrow the box column's "1" (that
+        # cross-column composition was the inventory-fixes S1 defect).
         h = 11.0
         words = [(36.0, 100.0, 41.0, 100.0 + h, "1"),
                  (47.0, 100.0, 70.0, 100.0 + h, "Total"),
-                 (36.0, 80.0, 41.0, 80.0 + h, "2"),
+                 (36.0, 140.0, 41.0, 140.0 + h, "2"),
                  (36.0, 160.0, 41.0, 160.0 + h, "3"),
                  (letter_x, letter_y, letter_x + 5, letter_y + h, "a"),
                  (letter_x + 11, letter_y, letter_x + 60, letter_y + h,
