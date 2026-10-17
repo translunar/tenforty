@@ -81,12 +81,12 @@
    "page": 1,
    "section": "",
    "label": "7",
-   "text": "Personal: If you checked box 1, 3, or 4 above,",
+   "text": "Personal: If you checked box 1, 3, or 4 above, enter 1 in the box. If you checked box 2 or 5, enter 2, in the box. If you checked the box on line 6, see instructions.",
    "bbox": [
-    60.4,
-    651.34,
-    64.9,
-    662.51
+    379.7,
+    660.66,
+    392.5,
+    672.66
    ]
   },
   {

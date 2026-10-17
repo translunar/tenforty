@@ -9,12 +9,12 @@
    "page": 2,
    "section": "",
    "label": "1",
-   "text": "Column (c) California adjustment.",
+   "text": "Ordinary business income (loss). Column (b). Amount from federal Schedule K-1 (Form 1120-S).",
    "bbox": [
-    319.2,
-    157.2,
-    404.2,
-    170.29
+    233.4,
+    157.37,
+    317.4,
+    170.53
    ]
   },
   {
@@ -117,12 +117,12 @@
    "page": 2,
    "section": "",
    "label": "10a",
-   "text": "Column (c) California adjustment.",
+   "text": "Other portfolio income (loss). Attach schedule. Column (b). Amount from federal Schedule K-1 (Form 1120-S).",
    "bbox": [
-    319.2,
-    283.16,
-    404.2,
-    296.33
+    233.52,
+    283.03,
+    317.52,
+    296.2
    ]
   },
   {
@@ -153,11 +153,11 @@
    "page": 2,
    "section": "",
    "label": "11",
-   "text": "Column (c). California adjustment.",
+   "text": "IRC Section 179 expense deduction. Attach schedules. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
    "bbox": [
-    319.5,
+    233.38,
     322.4,
-    403.5,
+    317.38,
     334.4
    ]
   },
@@ -237,11 +237,11 @@
    "page": 2,
    "section": "",
    "label": "13a",
-   "text": "Column (e) California source amounts and credits.",
+   "text": "Low-income housing credit. See instructions. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
    "bbox": [
-    501.16,
+    414.64,
     430.1,
-    576.52,
+    490.0,
     442.1
    ]
   },
@@ -297,11 +297,11 @@
    "page": 2,
    "section": "",
    "label": "15a",
-   "text": "Column (e) California source amounts and credits.",
+   "text": "Depreciation adjustment on property placed in service after 12/31/86. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
    "bbox": [
-    503.92,
+    417.4,
     538.4,
-    576.52,
+    490.0,
     550.4
    ]
   },
@@ -369,11 +369,11 @@
    "page": 2,
    "section": "",
    "label": "16a",
-   "text": "Column (c) California adjustment.",
+   "text": "Tax-exempt interest income. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
    "bbox": [
-    318.98,
+    232.86,
     635.8,
-    402.98,
+    316.86,
     647.08
    ]
   },
@@ -429,11 +429,11 @@
    "page": 3,
    "section": "",
    "label": "17a",
-   "text": "Column (c) California adjustment.",
+   "text": "Investment income. See instructions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
    "bbox": [
-    318.98,
+    232.86,
     156.96,
-    402.98,
+    316.86,
     168.24
    ]
   },
@@ -477,12 +477,12 @@
    "page": 3,
    "section": "",
    "label": "18a",
-   "text": "Type of income",
+   "text": "Type of income.",
    "bbox": [
-    58.5,
-    225.57,
-    66.5,
-    235.49
+    127.08,
+    224.64,
+    230.64,
+    234.24
    ]
   },
   {

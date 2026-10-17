@@ -7,7 +7,7 @@
  "lines": [
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "1",
    "text": "Wages, salaries, tips, etcetera. See instructions before making an entry in column B or C. Column A. Federal Amounts (taxable amounts from your federal tax return).",
    "bbox": [
@@ -19,7 +19,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "2",
    "text": "Taxable interest. Line 2 a.",
    "bbox": [
@@ -31,7 +31,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "2b",
    "text": "Column A. Federal Amounts.",
    "bbox": [
@@ -43,7 +43,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "3",
    "text": "Ordinary dividends. See instructions. Line 3 a.",
    "bbox": [
@@ -55,7 +55,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "3b",
    "text": "Column A. Federal Amounts.",
    "bbox": [
@@ -67,7 +67,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "4",
    "text": "I R A distributions. See instructions. Line 4 a.",
    "bbox": [
@@ -79,7 +79,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "4b",
    "text": "Column A. Federal Amounts.",
    "bbox": [
@@ -91,7 +91,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "5",
    "text": "Pensions and annuities. See instructions. Line 5 a.",
    "bbox": [
@@ -103,7 +103,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "5b",
    "text": "Column A. Federal Amounts.",
    "bbox": [
@@ -115,7 +115,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "6",
    "text": "Social security benefits. Line 6 a.",
    "bbox": [
@@ -127,7 +127,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "6b",
    "text": "Column A. Federal Amounts.",
    "bbox": [
@@ -139,7 +139,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section A",
    "label": "7",
    "text": "Capital gain or (loss). See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -151,7 +151,19 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
+   "label": "1",
+   "text": "Taxable refunds, credits, or offsets of state and local income taxes. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    333.1,
+    340.44,
+    350.6
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
    "label": "2a",
    "text": "Alimony received. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -163,7 +175,67 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
+   "label": "3",
+   "text": "Business income or (loss). See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    381.44,
+    340.44,
+    398.94
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
+   "label": "4",
+   "text": "Other gains or (losses). Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    405.53,
+    340.44,
+    423.03
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
+   "label": "5",
+   "text": "Rental real estate, royalties, partnerships, S corporations, trusts, etc. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    429.62,
+    340.44,
+    447.12
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
+   "label": "6",
+   "text": "Farm income or (loss). Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    453.13,
+    340.44,
+    470.63
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
+   "label": "7",
+   "text": "Unemployment compensation. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    477.14,
+    340.44,
+    494.64
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I Section B",
    "label": "8",
    "text": "Other income: 8 a. Federal net operating loss. Column A. Federal Amounts.",
    "bbox": [
@@ -175,7 +247,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8a",
    "text": "Column C. Additions.",
    "bbox": [
@@ -187,7 +259,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8b",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -199,7 +271,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8c",
    "text": "Column C. Additions.",
    "bbox": [
@@ -211,7 +283,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8d",
    "text": "Column C. Additions.",
    "bbox": [
@@ -223,7 +295,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8e",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -235,7 +307,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8",
    "text": "Other income. 8 i. Activity not engaged in for profit income. Column A. Federal Amounts.",
    "bbox": [
@@ -247,7 +319,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8m",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -259,7 +331,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8n",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -271,7 +343,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8o",
    "text": "Column C. Additions.",
    "bbox": [
@@ -283,7 +355,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "8z",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -295,7 +367,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "9a",
    "text": "Total other income. Add lines 8 a through 8 z. Column A. Federal Amounts.",
    "bbox": [
@@ -307,21 +379,9 @@
   },
   {
    "page": 2,
-   "section": "Part I",
+   "section": "Part I Section B",
    "label": "9",
-   "text": "a Total other income. Add lines 8a through 8z 9a",
-   "bbox": [
-    36.16,
-    337.83,
-    40.66,
-    349.0
-   ]
-  },
-  {
-   "page": 2,
-   "section": "",
-   "label": "9b",
-   "text": "1. Disaster loss deduction from form FTB 3805V. Column B. Subtractions.",
+   "text": "b1. Disaster loss deduction from form FTB 3805V. Column B. Subtractions.",
    "bbox": [
     365.05,
     357.43,
@@ -331,7 +391,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section B",
    "label": "10",
    "text": "Total. Combine Section A, line 1 through line 7, and Section B, line 1 through line 7, line 9a, and line 9b4 in column A (as applicable). Add Section A, line 1 through line 7, and Section B, line 1 through line 7, line 9a and line 9b1 through line 9b4 in column B and column C (as applicable). See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -343,7 +403,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "11",
    "text": "Educator expenses. Column A. Federal Amounts.",
    "bbox": [
@@ -355,7 +415,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "12",
    "text": "Certain business expenses of reservists, performing artists, and fee-basis government officials. Column A. Federal Amounts.",
    "bbox": [
@@ -367,7 +427,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "13",
    "text": "Health savings account deduction. Column A. Federal Amounts.",
    "bbox": [
@@ -379,7 +439,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "14",
    "text": "Moving expenses. Attach form FTB 3913. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -391,7 +451,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "15",
    "text": "Deductible part of self-employment tax. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -403,7 +463,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "16",
    "text": "Self-employed SEP, SIMPLE, and qualified plans. Column A. Federal Amounts.",
    "bbox": [
@@ -415,7 +475,7 @@
   },
   {
    "page": 2,
-   "section": "",
+   "section": "Part I Section C",
    "label": "17",
    "text": "Self-employed health insurance deduction. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -427,7 +487,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "18",
    "text": "Penalty on early withdrawal of savings. Column A. Federal Amounts.",
    "bbox": [
@@ -439,7 +499,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "19a",
    "text": "Alimony paid. Column A. Federal Amounts.",
    "bbox": [
@@ -451,7 +511,7 @@
   },
   {
    "page": 3,
-   "section": "Part I",
+   "section": "Part I Section C",
    "label": "19",
    "text": "a Alimony paid. 19a",
    "bbox": [
@@ -463,7 +523,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "19b",
    "text": "Recipient’s Social Security Number.",
    "bbox": [
@@ -475,7 +535,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "20",
    "text": "IRA deduction. Column A. Federal Amounts.",
    "bbox": [
@@ -487,7 +547,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "21",
    "text": "Student loan interest deduction. Column A. Federal Amounts.",
    "bbox": [
@@ -499,7 +559,7 @@
   },
   {
    "page": 3,
-   "section": "Part I",
+   "section": "Part I Section C",
    "label": "22",
    "text": "Reserved for future use 22",
    "bbox": [
@@ -511,7 +571,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "23",
    "text": "Archer MSA deduction. Column A. Federal Amounts.",
    "bbox": [
@@ -523,21 +583,9 @@
   },
   {
    "page": 3,
-   "section": "Part I",
+   "section": "Part I Section C",
    "label": "24",
-   "text": "Other adjustments:",
-   "bbox": [
-    36.01,
-    294.06,
-    45.01,
-    305.23
-   ]
-  },
-  {
-   "page": 3,
-   "section": "",
-   "label": "24Ot",
-   "text": "her adjustments: 24 a. Jury duty pay. Column A. Federal Amounts.",
+   "text": "Other adjustments: 24 a. Jury duty pay. Column A. Federal Amounts.",
    "bbox": [
     263.65,
     297.55,
@@ -547,7 +595,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24b",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -559,7 +607,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24c",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -571,7 +619,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24d",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -583,7 +631,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24f",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -595,7 +643,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24g",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -607,7 +655,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24i",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -619,7 +667,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24j",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -631,7 +679,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "24z",
    "text": "Column B. Subtractions.",
    "bbox": [
@@ -643,7 +691,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "25",
    "text": "Total other adjustments. Add lines 24a through 24z. Column A. Federal Amounts.",
    "bbox": [
@@ -655,7 +703,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "26",
    "text": "Add line 11 through line 23 and line 25 in columns A, B, and C. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -667,7 +715,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Part I Section C",
    "label": "27",
    "text": "Total. Subtract line 26 from line 10 in columns A, B, and C. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -679,7 +727,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "1",
    "text": "Medical and dental expenses",
    "bbox": [
@@ -691,7 +739,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "2",
    "text": "Enter amount from federal Form 1040 or 1040-SR, line 11.",
    "bbox": [
@@ -703,7 +751,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "3",
    "text": "Multiply line 2 by 7.5% (0.075)",
    "bbox": [
@@ -715,7 +763,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "4",
    "text": "Subtract line 3 from line 1. If line 3 is more than line 1, enter 0. Column A. Federal Amounts (from federal Schedule A (Form 1040))",
    "bbox": [
@@ -727,7 +775,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "5a",
    "text": "State and local income tax or general sales taxes. Column A. Federal Amounts.",
    "bbox": [
@@ -751,7 +799,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "5b",
    "text": "State and local real estate taxes. Column A. Federal Amounts.",
    "bbox": [
@@ -763,7 +811,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "5c",
    "text": "State and local personal property taxes. Column A. Federal Amounts.",
    "bbox": [
@@ -775,7 +823,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "5d",
    "text": "Add line 5a through line 5c. Column A. Federal Amounts.",
    "bbox": [
@@ -787,7 +835,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "5e",
    "text": "Enter the smaller of line 5d or $10,000 ($5,000 if married filing separately) in column A. Enter the amount from line 5 a, column B in line 5e, column B. Enter the difference from line 5d and line 5e, column A in line 5e, column C. Column A. Federal Amounts.",
    "bbox": [
@@ -799,7 +847,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "6",
    "text": "Other taxes. List type.",
    "bbox": [
@@ -811,7 +859,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "7",
    "text": "Add line 5e and line 6. Column A. Federal Amounts.",
    "bbox": [
@@ -835,7 +883,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "8a",
    "text": "Home mortgage interest and points reported to you on federal Form 1098. Column A. Federal Amounts.",
    "bbox": [
@@ -847,7 +895,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "8b",
    "text": "Home mortgage interest not reported to you on federal Form 1098. Column A. Federal Amounts.",
    "bbox": [
@@ -859,7 +907,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "8c",
    "text": "Points not reported to you on federal Form 1098. Column A. Federal Amounts.",
    "bbox": [
@@ -871,7 +919,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "8d",
    "text": "Mortgage insurance premiums. Column A. Federal Amounts.",
    "bbox": [
@@ -883,7 +931,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "8e",
    "text": "Add line 8 a through line 8 d. Column A. Federal Amounts.",
    "bbox": [
@@ -895,7 +943,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "9",
    "text": "Investment interest. Column A. Federal Amounts.",
    "bbox": [
@@ -907,7 +955,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Part II",
    "label": "10",
    "text": "Add line 8 e and line 9. Column A. Federal Amounts.",
    "bbox": [
@@ -919,7 +967,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "11",
    "text": "Gifts by cash or check. Column A. Federal Amounts.",
    "bbox": [
@@ -931,7 +979,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "12",
    "text": "Other than by cash or check. Column A. Federal Amounts.",
    "bbox": [
@@ -943,7 +991,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "13",
    "text": "Carryover from prior year. Column A. Federal Amounts.",
    "bbox": [
@@ -955,7 +1003,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "14",
    "text": "Add line 11 through line 13. Column A. Federal Amounts.",
    "bbox": [
@@ -967,7 +1015,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "15",
    "text": "Casualty or theft losses (other than net qualified disaster losses). Attach federal Form 4684. See instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -979,7 +1027,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "16",
    "text": "Other—from list in federal instructions. Column A. Federal Amounts.",
    "bbox": [
@@ -991,7 +1039,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "17",
    "text": "Add lines 4, 7, 10, 14, 15, and 16 in columns A, B, and C. Column A. Federal Amounts.",
    "bbox": [
@@ -1003,7 +1051,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "18",
    "text": "Total. Combine line 17 column A less column B plus column C",
    "bbox": [
@@ -1015,7 +1063,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "19",
    "text": "Unreimbursed employee expenses - job travel, union dues, job education, etcetera. Attach federal Form 2106 if required. See instructions.",
    "bbox": [
@@ -1027,7 +1075,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "20",
    "text": "Tax preparation fees.",
    "bbox": [
@@ -1039,7 +1087,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "21",
    "text": "Other expenses - investment, safe deposit box, etcetera. List type.",
    "bbox": [
@@ -1051,7 +1099,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "22",
    "text": "Add line 19 through line 21.",
    "bbox": [
@@ -1063,7 +1111,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "23",
    "text": "Enter amount from federal Form 1040 or 1040-SR, line 11.",
    "bbox": [
@@ -1075,7 +1123,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "24",
    "text": "Multiply line 23 by 2% (0.02). If less than zero, enter 0.",
    "bbox": [
@@ -1087,7 +1135,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "25",
    "text": "Subtract line 24 from line 22. If line 24 is more than line 22, enter 0.",
    "bbox": [
@@ -1099,7 +1147,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "26",
    "text": "Total Itemized Deductions. Add line 18 and line 25.",
    "bbox": [
@@ -1111,7 +1159,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "27",
    "text": "Other adjustments. See instructions. Specify.",
    "bbox": [
@@ -1123,7 +1171,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "28",
    "text": "Combine line 26 and line 27.",
    "bbox": [
@@ -1135,7 +1183,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "29",
    "text": "Is your federal A G I (Form 540, line 13) more than the amount shown below for your filing status? Single or married/RDP filing separately $212,288 . Head of household $318,437 . Married/RDP filing jointly or qualifying widow or widower $424,581 . No. Transfer the amount on line 28 to line 29 . Yes. Complete the Itemized Deductions Worksheet in the instructions for Schedule CA (540), line 29 .",
    "bbox": [
@@ -1147,7 +1195,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Part II",
    "label": "30",
    "text": "Enter the larger of the amount on line 29 or your standard deduction listed below. Single or married/RDP filing separately. See instructions $4,803 . Married/RDP filing jointly, head of household, or qualifying widow or widower $9,606 . Transfer the amount on line 30 to Form 540, line 18 .",
    "bbox": [
