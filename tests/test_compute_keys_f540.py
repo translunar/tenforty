@@ -195,6 +195,21 @@ def chain_values():
     return rows
 
 
+# Every placeholder key the pre-move mapping read for an unmodeled line
+# (lines 40, 43-45, 61-64, 73-77, 92, and 98 under each year's own name):
+# none is a compute key, and none enters the arithmetic.
+UNMODELED = (
+    "f540_line40_child_dep_care", "f540_line43_credit_amount",
+    "f540_line44_credit_amount", "f540_line45_sch_p_credits",
+    "f540_line61_amt", "f540_line62_behavioral_health",
+    "f540_line63_other_taxes", "f540_line64_apas_repayment",
+    "f540_line73_592b_593_withholding",
+    "f540_line74_program_40_motion_picture",
+    "f540_line75_eitc", "f540_line76_yctc", "f540_line77_fytc",
+    "f540_line92_isr_penalty",
+) + tuple(f"f540_line98_applied_to_{y + 1}_estimated" for y in _YEARS)
+
+
 def _derive(year, values):
     return {cell: fn(values) for cell, fn in
             sorted(PdfF540.get_derivations(year).items())}
@@ -283,19 +298,28 @@ class Line47IdentityTests(_Rows):
 
     def test_unmodeled_lines_have_no_keys(self):
         # Absent because unmodeled stays ABSENT as a key (0 only as a term).
-        unmodeled = ("f540_line40_child_dep_care", "f540_line43_credit_amount",
-                     "f540_line44_credit_amount", "f540_line45_sch_p_credits",
-                     "f540_line61_amt", "f540_line62_behavioral_health",
-                     "f540_line63_other_taxes", "f540_line64_apas_repayment",
-                     "f540_line73_592b_593_withholding",
-                     "f540_line74_program_40_motion_picture",
-                     "f540_line75_eitc", "f540_line76_yctc", "f540_line77_fytc",
-                     "f540_line92_isr_penalty") + tuple(
-            # Line 98 (applied to next year's estimate), every year spelling.
-            f"f540_line98_applied_to_{y + 1}_estimated" for y in _YEARS)
         for source, name, year, values in self.each():
             with self.subTest(row=name):
-                self.assertEqual([k for k in unmodeled if k in values], [])
+                self.assertEqual([k for k in UNMODELED if k in values], [])
+
+    def test_a_supplied_unmodeled_key_changes_nothing_printed(self):
+        # BEHAVIORAL: the unmodeled lines are 0 terms, never key reads. Each
+        # placeholder key the pre-move mapping read is supplied (30) to the
+        # printed-line computation of every real-emit row; every printed cell
+        # still equals its before-value. Line 98 (applied to next year's
+        # estimate) on a refund row is the case that would move line 99.
+        for name, values in sorted(self.rows["real_emit"].items()):
+            year = int(name.rsplit("__", 1)[1])
+            printed = form_f540.printed_line_keys(year, values)
+            inputs = {k: v for k, v in values.items() if k not in printed}
+            for key in UNMODELED:
+                with self.subTest(row=name, key=key):
+                    supplied = {**inputs, key: 30}
+                    recomputed = {
+                        **supplied,
+                        **form_f540.printed_line_keys(year, supplied)}
+                    self.assertEqual(_derive(year, recomputed),
+                                     self.before["real_emit"][name])
 
 
 class TaxTableThresholdFromParamsTests(unittest.TestCase):
