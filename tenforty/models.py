@@ -450,6 +450,12 @@ class HohQualifyingPerson:
     permanently_disabled: bool | None  # line 3b; same rule
     gross_income: float              # line 4
     days_lived_with_you: int         # line 5
+    # "Do you claim this person as your dependent on this return?" Required.
+    # Only False proceeds: the Form 1040 head-of-household line prints the
+    # qualifying person's name for "a child but not your dependent", so
+    # False keeps that line truthful; True refuses until dependents arrive
+    # in 0.2.1 (scenario.validate_head_of_household).
+    claimed_as_dependent: bool
 
 
 @dataclass(frozen=True)

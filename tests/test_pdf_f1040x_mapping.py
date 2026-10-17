@@ -19,7 +19,8 @@ from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import f1040x
 from tenforty.mappings.pdf_f1040x import PdfF1040X, get_mapping
 from tenforty.models import AmendmentCase, FilingStatus, TaxReturnConfig
-from tests.helpers import REPO_ROOT, scope_out_attestation_defaults
+from tests.helpers import (
+    REPO_ROOT, hoh_facts, scope_out_attestation_defaults)
 
 _REVISION = "rev-2025-12"
 _TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "amendments" / "f1040x.pdf"
@@ -174,8 +175,10 @@ _FILING_STATUS_BOXES = {
 
 
 def _config(filing_status: FilingStatus, **spouse) -> TaxReturnConfig:
+    hoh = filing_status is FilingStatus.HEAD_OF_HOUSEHOLD
     return TaxReturnConfig(
         **spouse,
+        head_of_household=hoh_facts(2023) if hoh else None,
         year=2023, filing_status=filing_status, birthdate="1980-01-01",
         state="CA", first_name="Zelda", middle_initial="Q",
         last_name="Marker", ssn="000-00-0417",

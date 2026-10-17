@@ -19,7 +19,7 @@ from pathlib import Path
 from tenforty.forms import sch_se as form_sch_se
 from tenforty.models import FilingStatus, ScheduleCBusiness, Scenario, W2
 from tenforty.orchestrator import ReturnOrchestrator, refuse_joint_schedule_c
-from tests.helpers import REPO_ROOT, make_simple_scenario
+from tests.helpers import REPO_ROOT, hoh_facts, make_simple_scenario
 
 _BIZ = ScheduleCBusiness(description="consult", gross_receipts=50_000.0)
 
@@ -31,14 +31,15 @@ def _w2(employer, ss_wages, owner=None):
               medicare_tax_withheld=round(ss_wages * 0.0145, 2), owner=owner)
 
 
-def _scenario(status, w2s, businesses=(_BIZ,), year=2024):
+def _scenario(status, w2s, businesses=(_BIZ,), year=2024,
+              head_of_household=None):
     base = make_simple_scenario()
     extra = {}
     if status is FilingStatus.MARRIED_FILING_JOINTLY:
         extra = dict(spouse_first_name="Spouse", spouse_last_name="Example",
                      spouse_ssn="000-00-0002", spouse_birthdate="1990-03-07")
     config = dataclasses.replace(base.config, year=year, filing_status=status,
-                                 **extra)
+                                 head_of_household=head_of_household, **extra)
     return Scenario(config=config, w2s=list(w2s),
                     schedule_c_businesses=list(businesses))
 
@@ -129,8 +130,11 @@ class NonJointScheduleCComputesTests(unittest.TestCase):
     def test_line_8a_is_the_filers_own_ss_wages(self):
         for status in (FilingStatus.SINGLE, FilingStatus.HEAD_OF_HOUSEHOLD):
             with self.subTest(status=status.value):
+                block = (hoh_facts(2024)
+                         if status is FilingStatus.HEAD_OF_HOUSEHOLD else None)
                 scn = _scenario(status, [_w2("First Co", 60_000.0),
-                                         _w2("Second Co", 40_000.0, "taxpayer")])
+                                         _w2("Second Co", 40_000.0, "taxpayer")],
+                                head_of_household=block)
                 eff, _ = self.orch._build_effective_scenario(scn)
                 self.assertTrue(self.orch._scenario_in_spine_scope(eff))
                 _, se = self.orch._compute_sch_c_and_se(eff)

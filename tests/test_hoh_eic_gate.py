@@ -56,7 +56,8 @@ def _block(year: int) -> HeadOfHouseholdFacts:
             birthdate=f"{year - 10}-03-07",
             relationship=HohRelationship.CHILD_OR_STEPCHILD,
             full_time_student=None, permanently_disabled=None,
-            gross_income=0.0, days_lived_with_you=365))
+            gross_income=0.0, days_lived_with_you=365,
+            claimed_as_dependent=False))
 
 
 def _between_ceilings(year: int) -> float:
@@ -75,6 +76,7 @@ def _scenario(year: int, status: FilingStatus, wages: float,
               **config) -> Scenario:
     # Built without a head_of_household block on purpose: the count is
     # keyed on the status (R-eic-count-by-status), not on the block.
+    config.setdefault("head_of_household", None)
     return Scenario(config=_battery_config(year, status, **config),
                     w2s=[_w2(year, "Synthetic Employer E", wages,
                              federal_tax_withheld=float(round(wages / 10)))])
@@ -93,7 +95,7 @@ def _never_the_workbook(*args, **kwargs):
 
 class EicGateChildCountTests(unittest.TestCase):
     def test_head_of_household_without_dependents_counts_one(self):
-        cfg = _battery_config(2025, _HOH)
+        cfg = _battery_config(2025, _HOH, head_of_household=None)
         self.assertIsNone(cfg.head_of_household)
         self.assertEqual(eic_gate_child_count(cfg), 1)
 
@@ -146,7 +148,9 @@ class HohEicGateTests(unittest.TestCase):
         orch = _orchestrator(self)
         for year in _YEARS:
             with self.subTest(year=year):
-                scn = _scenario(year, _HOH, _above_one_child_ceiling(year))
+                # Computes the federal header, so it carries the block.
+                scn = _scenario(year, _HOH, _above_one_child_ceiling(year),
+                                head_of_household=_block(year))
                 eff, _ = orch._build_effective_scenario(scn)
                 self.assertTrue(orch._scenario_in_spine_scope(eff))
                 with mock.patch.object(

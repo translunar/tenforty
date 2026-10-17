@@ -32,13 +32,16 @@ from tenforty.models import (
 from tenforty.params.federal import load as load_params
 from tenforty.orchestrator import _SCHEDULE_1A_FIRST_YEAR
 from tenforty.params import f8962 as f8962_params
-from tests.helpers import scope_out_attestation_defaults
+from tests.helpers import hoh_facts, scope_out_attestation_defaults
 
 
 def _battery_config(year: int, status: FilingStatus = FilingStatus.SINGLE,
                    **overrides) -> TaxReturnConfig:
     """Battery config with all scope-out attestations set. MFJ adds a
-    synthetic spouse (younger than the taxpayer, under any age condition)."""
+    synthetic spouse (younger than the taxpayer, under any age condition).
+    Head of household carries the shared valid ``head_of_household`` block
+    unless the caller passes one (``head_of_household=None`` builds the
+    block-less config the loader and the federal header refuse)."""
     defaults = scope_out_attestation_defaults()
     # prior_year_itemized=False so the state-refund tax-benefit-rule
     # short-circuits cleanly in all battery scenarios.
@@ -60,6 +63,11 @@ def _battery_config(year: int, status: FilingStatus = FilingStatus.SINGLE,
             spouse_ssn="000-00-0002",
             spouse_birthdate="1987-06-15",
         )
+    # Contract: a head-of-household row gets a valid block unless the caller
+    # passes `head_of_household` explicitly; DELIBERATE absence is spelled
+    # `head_of_household=None` at the call site.
+    if status == FilingStatus.HEAD_OF_HOUSEHOLD:
+        defaults["head_of_household"] = hoh_facts(year)
     merged = {**defaults, **overrides}
     return TaxReturnConfig(
         year=year,
