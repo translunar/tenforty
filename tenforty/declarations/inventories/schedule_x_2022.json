@@ -7,7 +7,7 @@
  "lines": [
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "1",
    "text": "Enter the amount you owe, as shown on the amended tax return.",
    "bbox": [
@@ -19,7 +19,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "2",
    "text": "Overpaid tax, if any, as shown on original tax return or as previously adjusted by the FTB. See instructions.",
    "bbox": [
@@ -31,7 +31,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "3",
    "text": "Add line 1 and line 2.",
    "bbox": [
@@ -43,7 +43,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "4",
    "text": "Enter the refund, as shown on the amended tax return. See instructions",
    "bbox": [
@@ -55,7 +55,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "5",
    "text": "Tax paid with original tax return plus additional tax paid after it was filed. Do not include penalties and interest.",
    "bbox": [
@@ -67,7 +67,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "6",
    "text": "Add line 4 and line 5.",
    "bbox": [
@@ -79,7 +79,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "7",
    "text": "Amount you owe. If line 3 is more than line 6, subtract line 6 from line 3. See instructions.",
    "bbox": [
@@ -91,7 +91,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "8",
    "text": "Penalties/Interest. See instructions. Line 8 A. Penalties.",
    "bbox": [
@@ -103,7 +103,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "8B",
    "text": "Interest.",
    "bbox": [
@@ -115,7 +115,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "8C",
    "text": "Total Interest and Penalties. Enter the total of line 8 A and line 8 B.",
    "bbox": [
@@ -139,7 +139,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "9",
    "text": "Refund subtotal. If line 6 is more than line 3, subtract line 3 from line 6",
    "bbox": [
@@ -151,7 +151,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "10",
    "text": "Amount of line 9 you want applied to your 2023 estimated tax. See instructions",
    "bbox": [
@@ -163,7 +163,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part I",
    "label": "11",
    "text": "REFUND. See instructions",
    "bbox": [
@@ -175,7 +175,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1F",
    "text": "NOL carryback. See instructions",
    "bbox": [
@@ -187,7 +187,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1J",
    "text": "Disaster Loss",
    "bbox": [
@@ -199,7 +199,19 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
+   "label": "1",
+   "text": "Check all that apply. Line 1 A. Protective claim for refund. See instructions.",
+   "bbox": [
+    81.84,
+    442.56,
+    97.84,
+    458.56
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
    "label": "1B",
    "text": "Reservation source income adjustments",
    "bbox": [
@@ -211,7 +223,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1G",
    "text": "Error on original return",
    "bbox": [
@@ -223,7 +235,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1K",
    "text": "Military HR 100",
    "bbox": [
@@ -235,7 +247,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1H",
    "text": "Credit adjustment",
    "bbox": [
@@ -247,7 +259,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1C",
    "text": "Pass-through entity adjustments",
    "bbox": [
@@ -259,7 +271,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1L",
    "text": "Informal claim",
    "bbox": [
@@ -271,7 +283,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1D",
    "text": "Federal audit and/or adjustments",
    "bbox": [
@@ -283,7 +295,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1I",
    "text": "Earned income tax credit / Young child tax credit/Foster youth tax credit",
    "bbox": [
@@ -295,7 +307,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1M",
    "text": "Other. See instructions.",
    "bbox": [
@@ -307,7 +319,7 @@
   },
   {
    "page": 1,
-   "section": "",
+   "section": "Part II",
    "label": "1E",
    "text": "FTB audit contact",
    "bbox": [
@@ -315,6 +327,18 @@
     538.32,
     97.84,
     554.32
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Provide further explanation of reason(s) for amending below. If needed, attach a separate sheet that includes your name and Social Security Number or Individual Taxpayer Identification Number. See instructions. Limit approximately 600 characters.",
+   "bbox": [
+    56.64,
+    599.0,
+    574.32,
+    708.0
    ]
   }
  ]

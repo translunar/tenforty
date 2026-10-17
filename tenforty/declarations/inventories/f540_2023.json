@@ -81,12 +81,12 @@
    "page": 1,
    "section": "",
    "label": "7",
-   "text": "Personal: If you checked box 1, 3, or 4 above,",
+   "text": "Personal: If you checked box 1, 3, or 4 above, enter 1 in the box. If you checked box 2 or 5, enter 2, in the box. If you checked the box on line 6, see instructions.",
    "bbox": [
-    60.4,
-    651.34,
-    64.9,
-    662.51
+    379.7,
+    660.66,
+    392.5,
+    672.66
    ]
   },
   {
@@ -141,12 +141,12 @@
    "page": 2,
    "section": "",
    "label": "12",
-   "text": "State wages from your federal",
+   "text": "State wages from your federal Form or Forms W-2, box 16 .",
    "bbox": [
-    54.25,
-    246.37,
-    63.25,
-    257.54
+    278.9,
+    248.88,
+    390.62,
+    266.28
    ]
   },
   {
@@ -237,12 +237,12 @@
    "page": 2,
    "section": "",
    "label": "31",
-   "text": "Tax. Checkbox B. Check the box if tax is from Tax Rate Schedule.",
+   "text": "Tax. Checkbox A. Check the box if tax is from tax table.",
    "bbox": [
-    271.73,
-    503.97,
-    284.52,
-    515.97
+    185.33,
+    503.99,
+    198.12,
+    515.99
    ]
   },
   {
@@ -299,10 +299,10 @@
    "label": "40",
    "text": "Nonrefundable Child and Dependent Care Expenses Credit. See instructions.",
    "bbox": [
-    54.0,
-    665.81,
-    63.0,
-    676.98
+    437.25,
+    657.47,
+    548.97,
+    674.87
    ]
   },
   {
@@ -381,12 +381,12 @@
    "page": 3,
    "section": "",
    "label": "61",
-   "text": "Alternative Minimum Tax. Attach Schedule P (540)",
+   "text": "Alternative Minimum Tax. Attach Schedule P (540).",
    "bbox": [
-    54.0,
-    185.99,
-    63.0,
-    197.16
+    436.8,
+    177.56,
+    549.84,
+    194.96
    ]
   },
   {
@@ -429,12 +429,12 @@
    "page": 3,
    "section": "",
    "label": "71",
-   "text": "00",
+   "text": "California income tax withheld. See instructions.",
    "bbox": [
-    415.7,
-    293.07,
-    424.7,
-    304.24
+    436.8,
+    285.6,
+    549.6,
+    303.0
    ]
   },
   {
@@ -525,24 +525,24 @@
    "page": 3,
    "section": "",
    "label": "91",
-   "text": "If line 91 is zero, check if",
+   "text": "Use Tax. Do not leave blank. See instructions.",
    "bbox": [
-    184.8,
-    516.14,
-    197.59,
-    528.14
+    372.48,
+    489.6,
+    485.52,
+    507.0
    ]
   },
   {
    "page": 3,
    "section": "",
    "label": "92",
-   "text": "Individual Shared Responsibility (ISR) Penalty. See instructions.",
+   "text": "If you and your household had full-year health care coverage, check the box. See instructions. Medicare Part A or C coverage is qualifying health care coverage. If you did not check the box, see instructions.",
    "bbox": [
-    372.0,
-    573.36,
-    484.8,
-    590.76
+    422.18,
+    551.64,
+    435.58,
+    564.24
    ]
   },
   {
@@ -551,10 +551,10 @@
    "label": "93",
    "text": "Payments balance. If line 78 is more than line 91, subtract line 91 from line 78",
    "bbox": [
-    53.99,
-    617.89,
-    62.99,
-    629.06
+    436.8,
+    609.6,
+    549.84,
+    627.0
    ]
   },
   {
@@ -657,24 +657,24 @@
    "page": 5,
    "section": "",
    "label": "111",
-   "text": "",
+   "text": "Amount You Owe. If you do not have an amount on line 99, add line 94, line 96, line 100, and line 110. See instructions. Do not send cash. You can mail payments to: Franchise Tax Board, Post Office Box, 942867, Sacramento, California, 94267-0001. To pay online, go to ftb.ca.gov/pay for more information.",
    "bbox": [
-    413.7,
-    84.65,
-    427.2,
-    95.82
+    436.66,
+    80.84,
+    549.72,
+    98.24
    ]
   },
   {
    "page": 5,
    "section": "",
    "label": "112",
-   "text": "Interest, late return penalties, and late payment penalties",
+   "text": "Interest, late return penalties, and late payment penalties.",
    "bbox": [
-    54.0,
-    123.78,
-    67.5,
-    134.95
+    436.8,
+    116.36,
+    549.58,
+    133.76
    ]
   },
   {
@@ -705,12 +705,12 @@
    "page": 5,
    "section": "",
    "label": "115",
-   "text": "REFUND OR NO AMOUNT DUE. Subtract the sum of line 110, line 112, and line 113 from line 99.",
+   "text": "Refund or no amount due. Subtract the sum of line 110, line 112, and line 113 from line 99. See instructions. You can mail to: Franchise Tax Board, Post Office Box 942840, Sacramento, California, 94240-0001",
    "bbox": [
-    54.0,
-    207.65,
-    67.5,
-    218.82
+    436.56,
+    224.6,
+    549.84,
+    242.0
    ]
   },
   {

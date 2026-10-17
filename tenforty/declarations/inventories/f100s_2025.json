@@ -19,7 +19,7 @@
   },
   {
    "page": 1,
-   "section": "Question A",
+   "section": "Schedule Q Question A",
    "label": "2",
    "text": "Is the S corporation deferring any income from the disposition of assets?",
    "bbox": [
@@ -31,7 +31,7 @@
   },
   {
    "page": 1,
-   "section": "Question A",
+   "section": "Schedule Q Question A",
    "label": "3",
    "text": "Is the S corporation reporting previously deferred income from?",
    "bbox": [
@@ -43,7 +43,7 @@
   },
   {
    "page": 1,
-   "section": "Question B",
+   "section": "Schedule Q Question B",
    "label": "2",
    "text": "During this taxable year, did another person or legal entity acquire control or majority ownership (more than a 50% interest) of this corporation or any of its subsidiaries? If yes, did the acquired entity(ies) own California real property (i.e., land, buildings), lease such property for a term of 35 years or more, or lease such property from a government agency for any term?",
    "bbox": [
@@ -55,7 +55,7 @@
   },
   {
    "page": 1,
-   "section": "Question B",
+   "section": "Schedule Q Question B",
    "label": "3",
    "text": "Has California real property (i.e., land, buildings) transferred to the corporation that was excluded from property tax reassessment under Revenue and Taxation Code Section 62(a)(2)? If yes, during this taxable year, has more than 50% of the voting stock of this corporation cumulatively transferred in one or more transactions and it was not reported on a previous year's tax return?",
    "bbox": [
@@ -63,6 +63,18 @@
     537.72,
     520.8,
     553.32
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "Ordinary income (loss) from trade or business activities from Schedule F (Form 100S, Side 4), line 22 or federal Form 1120-S, line 22. If Schedule F (Form 100S, Side 4) was not completed, attach federal Form 1120-S, page 1, and supporting schedules.",
+   "bbox": [
+    468.56,
+    589.0,
+    563.0,
+    604.0
    ]
   },
   {
@@ -225,12 +237,12 @@
    "page": 2,
    "section": "",
    "label": "15",
-   "text": "00",
+   "text": "Net income (loss) for state purposes. Use Schedule R if apportioning or allocating income.",
    "bbox": [
-    456.0,
-    164.08,
-    465.0,
-    175.25
+    468.72,
+    162.3,
+    563.12,
+    176.3
    ]
   },
   {
@@ -297,12 +309,12 @@
    "page": 2,
    "section": "",
    "label": "21",
-   "text": "Multiply the tax percentage on line 21 by line 20 (at least minimum franchise tax, if applicable). See instructions.",
+   "text": "Tax. Enter percentage.",
    "bbox": [
-    468.72,
-    255.5,
-    563.12,
-    269.5
+    80.0,
+    255.36,
+    106.0,
+    268.4
    ]
   },
   {
@@ -417,12 +429,12 @@
    "page": 2,
    "section": "",
    "label": "31",
-   "text": "Overpayment from prior year allowed as a credit ● 31 00",
+   "text": "Overpayment from prior year allowed as a credit.",
    "bbox": [
-    51.5,
-    414.58,
-    60.0,
-    425.12
+    345.72,
+    410.52,
+    440.22,
+    424.52
    ]
   },
   {
@@ -489,12 +501,12 @@
    "page": 2,
    "section": "",
    "label": "37",
-   "text": "Use tax. This is not a total line. See instructions ● 37 00",
+   "text": "Use tax. This is not a total line. See instructions.",
    "bbox": [
-    51.5,
-    507.58,
-    60.0,
-    518.12
+    345.72,
+    503.28,
+    440.22,
+    517.28
    ]
   },
   {
@@ -643,19 +655,19 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "1",
-   "text": "Amount.",
+   "text": "Last In First Out (LIFO) recapture due to S corporation election (IRC Section 1363(d) deferral. Dollars",
    "bbox": [
-    467.57,
+    320.0,
     460.16,
-    562.37,
+    417.4,
     473.36
    ]
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "2",
    "text": "Interest computed under the look-back method for completed long-term contracts (attach form FTB 3834).",
    "bbox": [
@@ -667,7 +679,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "3",
    "text": "Interest on tax attributable to installment. Line 3a. Sales of certain timeshares and residential lots.",
    "bbox": [
@@ -679,7 +691,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "3b",
    "text": "Method for nondealer installment obligations.",
    "bbox": [
@@ -691,7 +703,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "4",
    "text": "IRC Section 197(f)(9)(B)(ii) election.",
    "bbox": [
@@ -703,7 +715,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "5",
    "text": "Credit recapture name.",
    "bbox": [
@@ -715,7 +727,7 @@
   },
   {
    "page": 3,
-   "section": "",
+   "section": "Schedule J",
    "label": "6",
    "text": "Combine line 1 through line 5. Revise the amount on Side 2, line 40 or line 41, whichever applies, by this amount. Write \"Schedule J\" to the left of line 40 or line 41.",
    "bbox": [
@@ -727,7 +739,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
+   "label": "1a",
+   "text": "Gross receipts or sales.",
+   "bbox": [
+    156.0,
+    80.88,
+    207.6,
+    92.88
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule F",
    "label": "1b",
    "text": "Less returns and allowances.",
    "bbox": [
@@ -739,7 +763,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "1c",
    "text": "Balance.",
    "bbox": [
@@ -751,7 +775,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "1",
    "text": "a) Gross receipts or sales ____________ b) Less returns and allowances _______________ c) Balance",
    "bbox": [
@@ -763,7 +787,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "2",
    "text": "Cost of goods sold from Schedule V, line 8.",
    "bbox": [
@@ -775,7 +799,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "3",
    "text": "Gross profit. Subtract line 2 from line 1c.",
    "bbox": [
@@ -787,7 +811,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "4",
    "text": "Net gain (loss). Attach schedule.",
    "bbox": [
@@ -799,7 +823,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "5",
    "text": "Other income (loss). Attach schedule.",
    "bbox": [
@@ -811,7 +835,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "6",
    "text": "Total income (loss). Combine line 3 through line 5.",
    "bbox": [
@@ -823,7 +847,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
+   "label": "7",
+   "text": "Compensation of officers. Attach schedule. See instructions.",
+   "bbox": [
+    468.6,
+    154.2,
+    564.0,
+    165.0
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule F",
    "label": "8",
    "text": "Salaries and wages.",
    "bbox": [
@@ -835,7 +871,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "9",
    "text": "Repairs and maintenance.",
    "bbox": [
@@ -847,7 +883,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "10",
    "text": "Bad debts.",
    "bbox": [
@@ -859,7 +895,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "11",
    "text": "Rents.",
    "bbox": [
@@ -871,7 +907,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "12",
    "text": "Taxes.",
    "bbox": [
@@ -883,7 +919,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "13",
    "text": "Interest.",
    "bbox": [
@@ -895,7 +931,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "14a",
    "text": "Depreciation.",
    "bbox": [
@@ -907,7 +943,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "14b",
    "text": "Less depreciation reported elsewhere.",
    "bbox": [
@@ -919,7 +955,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "14c",
    "text": "Balance.",
    "bbox": [
@@ -931,7 +967,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
+   "label": "14",
+   "text": "a) Depreciation __________ b) Less depreciation reported elsewhere __________ c) Balance",
+   "bbox": [
+    53.5,
+    241.08,
+    62.0,
+    251.62
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule F",
    "label": "15",
    "text": "Depletion.",
    "bbox": [
@@ -943,7 +991,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "16",
    "text": "Advertising.",
    "bbox": [
@@ -955,7 +1003,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "17",
    "text": "Pension, profit-sharing plans, etcetera.",
    "bbox": [
@@ -967,7 +1015,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "18",
    "text": "Employee benefit programs.",
    "bbox": [
@@ -979,7 +1027,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "19a",
    "text": "Total travel and entertainment.",
    "bbox": [
@@ -991,7 +1039,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "19b",
    "text": "Deductible amount.",
    "bbox": [
@@ -1003,7 +1051,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
+   "label": "19",
+   "text": "a) Total travel and entertainment _________________________________ b) Deductible amount",
+   "bbox": [
+    53.5,
+    301.08,
+    62.0,
+    311.62
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule F",
    "label": "20",
    "text": "Other deductions. Attach schedule.",
    "bbox": [
@@ -1015,7 +1075,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "21",
    "text": "Total deductions. Add line 7 through line 20.",
    "bbox": [
@@ -1027,7 +1087,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule F",
    "label": "22",
    "text": "Ordinary income (loss) from trade or business. Subtract line 21 from line 6. Enter here and on Side 1, line 1.",
    "bbox": [
@@ -1039,19 +1099,19 @@
   },
   {
    "page": 4,
-   "section": "",
-   "label": "1Ca",
-   "text": "sh End of taxable year. Column (D).",
+   "section": "Schedule L",
+   "label": "1",
+   "text": "Cash. Beginning of taxable year. Column (B).",
    "bbox": [
-    497.76,
+    315.78,
     385.62,
-    576.0,
+    401.22,
     395.62
    ]
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "2a",
    "text": "Trade notes and accounts receivable. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1063,7 +1123,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "2b",
    "text": "Less allowance for bad debts. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1075,7 +1135,55 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "3",
+   "text": "Inventories. Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    418.62,
+    401.22,
+    428.62
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "4",
+   "text": "Federal and state government obligations. Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    429.6,
+    401.22,
+    439.6
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "5",
+   "text": "Other current assets. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    440.64,
+    401.22,
+    450.64
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "6",
+   "text": "Loans to shareholders. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    451.62,
+    401.22,
+    461.62
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "7",
    "text": "Mortgage and real estate loans. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1087,7 +1195,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "8",
+   "text": "Other investments. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    473.64,
+    401.22,
+    483.64
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "9a",
    "text": "Buildings and other fixed depreciable assets. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1099,7 +1219,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "9b",
    "text": "Less accumulated depreciation. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1111,7 +1231,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "10a",
    "text": "Depletable assets. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1123,7 +1243,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "10b",
    "text": "Less accumulated depletion. Beginning of taxable year. Column (A)",
    "bbox": [
@@ -1135,7 +1255,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "11",
+   "text": "Land (net of any amortization). Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    528.6,
+    401.22,
+    538.6
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "12a",
    "text": "Intangible assets (amortizable only). Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1147,7 +1279,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "12b",
    "text": "Less accumulated amortization. Beginning of taxable year. Column (A).",
    "bbox": [
@@ -1159,7 +1291,19 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "13",
+   "text": "Other assets. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    561.66,
+    401.22,
+    571.66
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "14",
    "text": "Total assets. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1171,7 +1315,55 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "15",
+   "text": "Accounts payable. Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    595.62,
+    401.22,
+    605.62
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "16",
+   "text": "Mortgages, notes, bonds payable in less than 1 year. Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    606.66,
+    401.22,
+    616.66
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "17",
+   "text": "Other current liabilities. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    617.64,
+    401.22,
+    627.64
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "18",
+   "text": "Loans from shareholders. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    628.68,
+    401.22,
+    638.68
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "19",
    "text": "Mortgages, notes, bonds payable in 1 year or more. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1183,7 +1375,43 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
+   "label": "20",
+   "text": "Other liabilities. Attach schedule(s). Beginning of taxable year. Column (B).",
+   "bbox": [
+    315.78,
+    650.64,
+    401.22,
+    660.64
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "21",
+   "text": "Capital stock. Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    661.56,
+    401.22,
+    671.56
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
+   "label": "22",
+   "text": "Paid-in or capital surplus. Beginning of taxable year. Column (B).",
+   "bbox": [
+    323.82,
+    672.64,
+    401.22,
+    682.64
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Schedule L",
    "label": "23",
    "text": "Retained earnings. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1195,7 +1423,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "24",
    "text": "Adjustments. Attach schedule(s). Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1207,7 +1435,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "25",
    "text": "Less cost of treasury stock. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1219,7 +1447,7 @@
   },
   {
    "page": 4,
-   "section": "",
+   "section": "Schedule L",
    "label": "26",
    "text": "Total liabilities and shareholders’ equity. Beginning of taxable year. Column (B).",
    "bbox": [
@@ -1231,7 +1459,19 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
+   "label": "1",
+   "text": "Net income per books.",
+   "bbox": [
+    216.6,
+    90.12,
+    303.0,
+    100.92
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-1",
    "label": "2",
    "text": "Income included on Schedule K, line 1 through line 10b, not recorded on books this year (itemize). Line 1 of 2.",
    "bbox": [
@@ -1243,7 +1483,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "5",
    "text": "Income recorded on books this year not included on Schedule K, line 1 through line 10b (itemize). Line 5 a. Tax-exempt interest $.",
    "bbox": [
@@ -1255,7 +1495,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "5b",
    "text": "Other $.",
    "bbox": [
@@ -1267,7 +1507,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "5c",
    "text": "Total. Add line 5a and line 5b.",
    "bbox": [
@@ -1279,7 +1519,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "3",
    "text": "Expenses recorded on books this year not included on Schedule K, line 1 through line 12f (itemize). Line 3 a Depreciation $",
    "bbox": [
@@ -1291,7 +1531,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6a",
    "text": "Depreciation $____________________",
    "bbox": [
@@ -1303,7 +1543,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6",
    "text": "Deductions included on Schedule K, line 1 through line 12f, not charged against book income this year (itemize). Line 6 a Depreciation $.",
    "bbox": [
@@ -1315,7 +1555,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "3b",
    "text": "State taxes $.",
    "bbox": [
@@ -1327,7 +1567,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6b",
    "text": "State tax refunds $.",
    "bbox": [
@@ -1339,7 +1579,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "3c",
    "text": "Travel and entertainment $.",
    "bbox": [
@@ -1351,7 +1591,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6c",
    "text": "Other $.",
    "bbox": [
@@ -1363,7 +1603,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6d",
    "text": "Total. Add line 6a through line 6c.",
    "bbox": [
@@ -1375,7 +1615,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "3d",
    "text": "Other $.",
    "bbox": [
@@ -1387,7 +1627,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "7",
    "text": "Total. Add line 5c and line 6d.",
    "bbox": [
@@ -1399,7 +1639,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "3e",
    "text": "Total. Add line 3a through line 3d.",
    "bbox": [
@@ -1411,7 +1651,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "6e",
    "text": "Total. Add line 3a through line 3d ●",
    "bbox": [
@@ -1423,7 +1663,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "4",
    "text": "Total. Add line 1 through line 3e.",
    "bbox": [
@@ -1435,7 +1675,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-1",
    "label": "8",
    "text": "Income (loss) (Schedule K, line 19, col. d). Subtract line 7 from line 4.",
    "bbox": [
@@ -1447,19 +1687,103 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-2",
    "label": "1",
-   "text": "Balance at beginning of year. Column (B). Other adjustments account.",
+   "text": "Balance at beginning of year. Column (A). Accumulated adjustments account.",
    "bbox": [
-    401.0,
+    320.64,
     351.2,
-    487.2,
+    399.24,
     362.0
    ]
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-2",
+   "label": "2",
+   "text": "Ordinary income from Form 100S, Side 1, line 1. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    312.72,
+    365.28,
+    399.24,
+    376.08
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "3",
+   "text": "Other additions. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    324.0,
+    379.2,
+    399.24,
+    390.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "4",
+   "text": "Loss from Form 100S, Side 1, line 1. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    317.0,
+    393.24,
+    394.5,
+    404.04
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "5",
+   "text": "Other reductions. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    327.24,
+    407.28,
+    395.52,
+    418.08
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "6",
+   "text": "Combine line 1 through line 5. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    312.72,
+    421.2,
+    399.24,
+    432.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "7",
+   "text": "Distributions other than dividend distributions. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    320.64,
+    435.2,
+    399.24,
+    446.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
+   "label": "8",
+   "text": "Balance at end of year. Subtract line 7 from line 6. Column (A). Accumulated adjustments account.",
+   "bbox": [
+    320.64,
+    449.28,
+    399.24,
+    460.08
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule M-2",
    "label": "9",
    "text": "Retained earnings at end of year. Add line 8, column (A) through column (C). Column (C). Other retained earnings. (see instructions)",
    "bbox": [
@@ -1471,7 +1795,7 @@
   },
   {
    "page": 5,
-   "section": "",
+   "section": "Schedule M-2",
    "label": "10",
    "text": "If the corp. has C corp. E&P at the end of the taxable year, enter the amount. See instructions. Column (C). Other retained earnings. (see instructions)",
    "bbox": [
@@ -1482,44 +1806,140 @@
    ]
   },
   {
-   "page": 6,
-   "section": "",
+   "page": 5,
+   "section": "Schedule V",
    "label": "1",
-   "text": "●",
+   "text": "Inventory at beginning of year.",
    "bbox": [
-    347.25,
-    112.58,
-    351.75,
-    123.75
+    468.6,
+    525.25,
+    563.28,
+    536.05
    ]
   },
   {
-   "page": 6,
-   "section": "",
+   "page": 5,
+   "section": "Schedule V",
    "label": "2",
-   "text": "●",
+   "text": "Purchases.",
    "bbox": [
-    347.25,
-    124.58,
-    351.75,
-    135.75
+    468.6,
+    538.22,
+    563.28,
+    549.02
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "3",
+   "text": "Cost of labor.",
+   "bbox": [
+    468.6,
+    551.2,
+    563.28,
+    562.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "4",
+   "text": "Other IRC Section 263A costs. Attach schedule.",
+   "bbox": [
+    468.6,
+    564.2,
+    563.28,
+    575.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "5",
+   "text": "Other costs. Attach schedule.",
+   "bbox": [
+    468.6,
+    576.9,
+    563.28,
+    587.7
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "6",
+   "text": "Total. Add line 1 through line 5.",
+   "bbox": [
+    468.6,
+    590.0,
+    563.28,
+    600.8
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "7",
+   "text": "Inventory at end of year.",
+   "bbox": [
+    468.6,
+    603.1,
+    563.28,
+    613.9
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Schedule V",
+   "label": "8",
+   "text": "Cost of goods sold. Subtract line 7 from line 6.",
+   "bbox": [
+    468.6,
+    616.2,
+    563.28,
+    627.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
+   "label": "1",
+   "text": "Ordinary business income (loss). Column (b) Amount from federal K (1120-S)",
+   "bbox": [
+    359.7,
+    112.08,
+    427.32,
+    122.88
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
+   "label": "2",
+   "text": "Net rental real estate income (loss). Attach federal Form 8825. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    124.0,
+    427.32,
+    134.8
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
    "label": "3a",
-   "text": "",
+   "text": "Other gross rental income (loss). Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    345.0,
-    136.58,
-    354.0,
-    147.75
+    359.7,
+    136.2,
+    427.32,
+    147.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "3",
    "text": "a",
    "bbox": [
@@ -1531,103 +1951,127 @@
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "3b",
-   "text": "",
+   "text": "Expenses from other rental activities. Attach schedule. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    345.0,
-    148.58,
-    354.0,
-    159.75
+    359.7,
+    148.2,
+    427.32,
+    159.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "3c",
-   "text": "●",
+   "text": "Other net rental income (loss). Subtract line 3b from line 3a. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    345.25,
-    160.58,
-    353.75,
-    171.75
+    359.7,
+    160.08,
+    427.32,
+    170.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "4",
-   "text": "●",
+   "text": "Interest income. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    172.58,
-    351.75,
-    183.75
+    359.7,
+    172.2,
+    427.32,
+    183.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "5",
-   "text": "●",
+   "text": "Dividends. See instructions. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    184.58,
-    351.75,
-    195.75
+    359.7,
+    184.0,
+    427.32,
+    194.8
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "6",
-   "text": "●",
+   "text": "Royalties. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    196.58,
-    351.75,
-    207.75
+    359.7,
+    196.2,
+    427.32,
+    207.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "7",
-   "text": "●",
+   "text": "Net short-term capital gain (loss). Attach Schedule D (100S). Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    208.58,
-    351.75,
-    219.75
+    359.7,
+    208.2,
+    427.32,
+    219.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "8",
-   "text": "●",
+   "text": "Net long-term capital gain (loss). Attach Schedule D (100S). Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    220.58,
-    351.75,
-    231.75
+    371.0,
+    220.2,
+    427.32,
+    231.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "9",
-   "text": "●",
+   "text": "Net IRC Section 1231 gain (loss). Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    347.25,
-    232.58,
-    351.75,
-    243.75
+    371.0,
+    232.2,
+    427.32,
+    243.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
+   "label": "10a",
+   "text": "Other portfolio income (loss). Attach schedule. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    244.32,
+    427.32,
+    255.12
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
+   "label": "10b",
+   "text": "Other income (loss). Attach schedule. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    257.0,
+    427.32,
+    267.8
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
    "label": "9b",
    "text": "",
    "bbox": [
@@ -1639,55 +2083,67 @@
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "11",
-   "text": "",
+   "text": "IRC Section 179 expense deduction. Attach Schedule B (100S). Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    345.0,
-    269.58,
-    354.0,
-    280.75
+    359.7,
+    269.2,
+    427.32,
+    280.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "12a",
-   "text": "",
+   "text": "Cash charitable contributions. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    56.88,
-    282.08,
-    65.38,
-    292.62
+    359.7,
+    281.2,
+    427.32,
+    292.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "12b",
-   "text": "",
+   "text": "Noncash charitable contributions. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    70.0,
-    294.08,
-    74.25,
-    304.62
+    359.7,
+    293.2,
+    427.32,
+    304.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "12c",
-   "text": "",
+   "text": "Investment interest expense. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    70.0,
-    306.08,
-    73.77,
-    316.62
+    359.7,
+    305.2,
+    427.32,
+    316.0
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
+   "label": "12",
+   "text": "d1. IRC Section 59(e)(2) expenditures. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    317.2,
+    427.32,
+    328.0
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
    "label": "12d",
    "text": "",
    "bbox": [
@@ -1699,7 +2155,19 @@
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
+   "label": "12e",
+   "text": "Deductions-portfolio. Attach schedule. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    341.08,
+    427.32,
+    351.88
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
    "label": "2e",
    "text": "",
    "bbox": [
@@ -1711,266 +2179,314 @@
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "12f",
-   "text": "",
+   "text": "Other deductions. Attach schedule. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    343.75,
-    353.58,
-    355.25,
-    364.75
+    359.7,
+    353.08,
+    427.32,
+    363.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "13a",
-   "text": "",
+   "text": "Low-income housing credit. See instructions. Column (D). Total amounts using California law.",
    "bbox": [
-    56.88,
-    365.25,
-    65.38,
-    375.8
+    505.8,
+    365.08,
+    570.0,
+    375.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "13b",
-   "text": "",
+   "text": "Credits related to rental real estate activities. Attach schedule. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    378.08,
-    74.25,
-    388.62
+    505.8,
+    377.08,
+    570.0,
+    387.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "13c",
-   "text": "",
+   "text": "Credits related to other rental activities. See instructions. Attach schedule. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    390.08,
-    73.77,
-    400.62
+    505.8,
+    389.08,
+    570.0,
+    399.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "13d",
-   "text": "",
+   "text": "Other credits. Attach schedule. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    402.08,
-    74.25,
-    412.62
+    505.8,
+    401.08,
+    570.0,
+    411.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "14",
-   "text": "",
+   "text": "Total withholding allocated to all shareholders. Column (D). Total amounts using California law.",
    "bbox": [
-    345.0,
-    413.58,
-    354.0,
-    424.75
+    498.0,
+    413.08,
+    570.0,
+    423.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15a",
-   "text": "",
+   "text": "Depreciation adjustment on property placed in service after 12/31/86. Column (D). Total amounts using California law.",
    "bbox": [
-    56.88,
-    425.63,
-    65.38,
-    436.18
+    498.0,
+    425.08,
+    570.0,
+    435.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15b",
-   "text": "",
+   "text": "Adjusted gain or loss. See instructions. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    438.08,
-    74.25,
-    448.62
+    498.0,
+    437.08,
+    570.0,
+    447.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15c",
-   "text": "",
+   "text": "Depletion (other than oil and gas). Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    450.08,
-    73.77,
-    460.62
+    498.0,
+    449.08,
+    570.0,
+    459.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15d",
-   "text": "",
+   "text": "Gross income from oil, gas, and geothermal properties. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    462.08,
-    74.25,
-    472.62
+    498.0,
+    461.08,
+    570.0,
+    471.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15e",
-   "text": "",
+   "text": "Deductions allocable to oil, gas, and geothermal properties. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    474.08,
-    74.25,
-    484.62
+    498.0,
+    473.08,
+    570.0,
+    483.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "15f",
-   "text": "",
+   "text": "Other AMT items. Column (D). Total amounts using California law.",
    "bbox": [
-    343.75,
-    485.58,
-    355.25,
-    496.75
+    498.0,
+    485.08,
+    570.0,
+    495.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
+   "label": "16a",
+   "text": "Tax-exempt interest income. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    497.36,
+    427.32,
+    508.16
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
+   "label": "16b",
+   "text": "Other tax-exempt income. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    510.08,
+    427.32,
+    520.88
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
+   "label": "16c",
+   "text": "Nondeductible expenses. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    522.8,
+    427.32,
+    533.6
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
+   "label": "16d",
+   "text": "Total property distributions (including cash) other than dividends distribution reported on line 17 c. Column (B). Amount from federal K (1120-S).",
+   "bbox": [
+    359.7,
+    546.68,
+    427.32,
+    557.68
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Schedule K",
    "label": "17a",
-   "text": "",
+   "text": "Investment income. See instructions. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    56.88,
-    559.25,
-    65.38,
-    569.8
+    359.7,
+    559.08,
+    427.32,
+    569.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "17b",
-   "text": "",
+   "text": "Investment expenses. See instructions. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    70.0,
-    572.08,
-    74.25,
-    582.62
+    359.7,
+    571.08,
+    427.32,
+    581.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "17c",
-   "text": "",
+   "text": "Total dividend distributions paid from accumulated earnings and profits. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    70.0,
-    584.08,
-    73.77,
-    594.62
+    359.7,
+    583.08,
+    427.32,
+    593.88
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "17d",
-   "text": "",
+   "text": "Other items and amounts not included in lines 1 - 17b and lines 18a-e that are required to be reported separately to shareholders. Attach schedule. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    70.0,
-    595.08,
-    74.25,
-    605.62
+    359.7,
+    606.44,
+    427.32,
+    616.68
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "18a",
-   "text": "",
+   "text": "Type of income.",
    "bbox": [
-    56.88,
-    618.25,
-    65.38,
-    628.8
+    140.0,
+    617.99,
+    338.0,
+    629.45
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "18b",
-   "text": "",
+   "text": "Name of state.",
    "bbox": [
-    342.75,
-    630.58,
-    356.25,
-    641.75
+    140.0,
+    630.06,
+    338.0,
+    641.3
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "18c",
-   "text": "",
+   "text": "Total gross income from sources outside California. Attach schedule. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    643.08,
-    73.77,
-    653.62
+    498.0,
+    641.88,
+    570.0,
+    652.68
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "18d",
-   "text": "",
+   "text": "Total applicable deductions and losses. Attach schedule. Column (D). Total amounts using California law.",
    "bbox": [
-    70.0,
-    655.08,
-    74.25,
-    665.62
+    498.0,
+    654.48,
+    570.0,
+    665.28
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "18e",
-   "text": "",
+   "text": "Total other state taxes. Check one",
    "bbox": [
-    70.0,
-    667.08,
-    74.25,
-    677.62
+    216.84,
+    667.22,
+    224.58,
+    675.02
    ]
   },
   {
    "page": 6,
-   "section": "",
+   "section": "Schedule K",
    "label": "19",
-   "text": "Income",
+   "text": "Income (loss) (required only if Schedule M-1 must be completed). Combine line 1, line 2, and line 3c through line 10b. From the result, subtract the sum of lines 11, 12a, 12b, 12c, 12d1, 12e and 12f. Column (B). Amount from federal K (1120-S).",
    "bbox": [
-    56.88,
-    678.18,
-    65.38,
-    688.73
+    360.49,
+    701.88,
+    427.32,
+    712.68
    ]
   }
  ]

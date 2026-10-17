@@ -12,6 +12,7 @@ label) keying, the provenance hash, and the independence rule.
 import ast
 import json
 import unittest
+import unittest.mock
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -140,22 +141,163 @@ class DuplicateLabelTests(unittest.TestCase):
         # Real same-page recurrence (found by scanning every inventory):
         # Form 100S (2025) page 1 prints line 2 of the main form and line 2
         # of Schedule Q Questions A and B. Only `section` tells them apart.
+        # A federal-only vehicle would leave the drop-section mutation
+        # green: no federal template repeats a label in two Parts on ONE
+        # page, so `page` alone already separates every federal recurrence.
         lines = [l for l in extract_california(
                      PDFS / "california/2025/f100s.pdf")
                  if l.page == 1 and l.label == "2"]
         self.assertEqual(sorted(l.section for l in lines),
-                         ["", "Question A", "Question B"])
+                         ["", "Schedule Q Question A",
+                          "Schedule Q Question B"])
 
 
     def test_schedule_x_2025_line_1_recurs_in_part_1_and_part_2(self):
         # Real same-page recurrence: Schedule X (2025) page 1 prints line 1
-        # of Part 1 (amount you owe) and line 1 of Part 2 (reasons for
+        # of Part I (amount you owe) and line 1 of Part II (reasons for
         # filing).
         lines = [l for l in extract_california(
                      PDFS / "california/amendments/schedule_x_2025.pdf")
                  if l.page == 1 and l.label == "1"]
         self.assertEqual(sorted(l.section for l in lines),
-                         ["Part 1", "Part 2"])
+                         ["Part I", "Part II"])
+
+
+class CaliforniaSectionTests(unittest.TestCase):
+    """California sections come from the printed page's own headings
+    (Schedule X, Part N, Section X, at the left margin), positionally, as
+    for federal. A tooltip's prefix appears only on the first line of a
+    Part, so it cannot be the source."""
+
+    def test_f100s_2025_page_4_line_3_is_two_lines(self):
+        # Schedule F line 3 ("Gross profit") and Schedule L line 3
+        # ("Inventories") share page 4 and label 3.
+        lines = [l for l in extract_california(
+                     PDFS / "california/2025/f100s.pdf")
+                 if l.page == 4 and l.label == "3"]
+        self.assertEqual(sorted((l.section, l.text.split(".")[0])
+                                for l in lines),
+                         [("Schedule F", "Gross profit"),
+                          ("Schedule L", "Inventories")])
+
+    def test_schedule_x_2025_line_2_is_two_lines(self):
+        # Part I line 2 ("Overpaid tax...") and Part II line 2 ("Provide
+        # further explanation...") share page 1; only each Part's first
+        # tooltip carries a "Part N" prefix.
+        lines = [l for l in extract_california(
+                     PDFS / "california/amendments/schedule_x_2025.pdf")
+                 if l.page == 1 and l.label == "2"]
+        self.assertEqual(sorted((l.section, l.text.split(",")[0])
+                                for l in lines),
+                         [("Part I", "Overpaid tax"),
+                          ("Part II", "Provide further explanation of "
+                           "reason or reasons for amending below. If "
+                           "needed")])
+
+
+    def test_every_section_heading_prints_at_the_left_margin(self):
+        # Premise of the left-margin heading rule: no FTB template prints a
+        # section heading in a column (so no heading needs an x-extent).
+        # The only heading-shaped words that start a row beyond the margin
+        # are form-name footers and one in-text reference; a new one fails
+        # here instead of being silently ignored.
+        import re
+        found = set()
+        for path in sorted(inventory.INVENTORY_DIR.glob("*.json")):
+            data = json.loads(path.read_text())
+            if data["jurisdiction"] != "california":
+                continue
+            for words in inventory._page_words(REPO_ROOT / data["source"]):
+                for w in words:
+                    if (w[4] not in inventory._HEADING_WORDS
+                            or w[0] <= inventory._LEFT_MARGIN):
+                        continue
+                    row = sorted(v for v in words if v is not w and abs(
+                        v[1] - w[1]) < inventory._SAME_ROW)
+                    if any(v[2] > w[0] - inventory._LABEL_GAP and v[0] < w[0]
+                           for v in row):
+                        continue
+                    right = [v for v in row if v[0] >= w[2] - 0.5]
+                    if right and inventory._HEADING_ID.match(right[0][4]):
+                        found.add((data["form"], w[4],
+                                   re.sub(r"\d", "N", right[0][4])))
+        self.assertEqual(sorted(found), [
+            ("f100s_k1", "Schedule", "K-N"),   # footer "Schedule K-1 (100S)"
+            ("f540", "Schedule", "G-N"),       # text "Schedule G-1 FTB 5870A"
+            ("sch_d_540", "Schedule", "D"),    # footer "Schedule D (540)"
+            ("schedule_x", "Schedule", "X"),   # footer "Schedule X <year>"
+        ])
+
+
+class TooltipPrefixCensusTests(unittest.TestCase):
+    """Ruling 4: every tooltip-prefix shape the FTB templates use is
+    classified in the pinned census; a new shape fails loudly."""
+
+    def _observed_shapes(self) -> set[str]:
+        from pypdf import PdfReader
+        shapes = set()
+        for path in sorted(inventory.INVENTORY_DIR.glob("*.json")):
+            data = json.loads(path.read_text())
+            if data["jurisdiction"] != "california":
+                continue
+            reader = PdfReader(str(REPO_ROOT / data["source"]))
+            for page in reader.pages:
+                for ref in page.get("/Annots") or []:
+                    tip = inventory._tooltip(ref.get_object())
+                    if tip is None:
+                        continue
+                    tip = " ".join(tip.split())
+                    m = inventory._TOOLTIP_LINE.search(tip)
+                    if m:
+                        shapes.add(inventory.prefix_shape(tip[:m.start()]))
+        return shapes
+
+    def test_census_is_exactly_the_observed_shapes(self):
+        self.assertEqual(sorted(self._observed_shapes()),
+                         sorted(inventory._PREFIX_CENSUS))
+
+    def test_an_unknown_shape_refuses(self):
+        census = dict(inventory._PREFIX_CENSUS)
+        del census["Assets"]
+        with unittest.mock.patch.object(inventory, "_PREFIX_CENSUS", census):
+            with self.assertRaisesRegex(inventory.UnknownTooltipShapeError,
+                                        "'Assets'"):
+                extract_california(PDFS / "california/2025/f100s.pdf")
+
+    def test_an_address_line_is_not_a_form_line(self):
+        # The preparer's "Firm's name ... and address. Line 1 of 2." (Form
+        # 100S, page 3) names an address line, not line 1. Tested on the
+        # tooltip itself: on the page its key collides with Schedule J line
+        # 1, which the widget order happens to keep, so only the parse can
+        # show the rule.
+        for tip in (
+                "Firm's name (or yours, if self-employed) and address. "
+                "Line 1 of 2.",
+                "Firm's name (or yours if self-employed) and address. "
+                "Line 2 of 2."):
+            with self.subTest(tip=tip):
+                self.assertIsNone(inventory.tooltip_line(tip))
+        self.assertEqual(inventory.tooltip_line(
+            "Schedule J Line 1. Last In First Out (LIFO) recapture.")[:2],
+            ("1", "Last In First Out (LIFO) recapture."))
+
+    def test_a_prefix_that_contradicts_the_printed_page_refuses(self):
+        # Reachable negative space for the cross-check: with the printed
+        # headings withheld, Schedule X's "Part 1 . Line 1" tooltip states
+        # a Part the widget no longer sits under.
+        with unittest.mock.patch.object(
+                inventory, "_printed_headings", lambda pdf: []):
+            with self.assertRaisesRegex(ValueError, "states 'Part I'"):
+                extract_california(
+                    PDFS / "california/amendments/schedule_x_2025.pdf")
+
+    def test_only_a_clause_starting_with_a_name_states_a_section(self):
+        self.assertEqual(inventory._tooltip_sections(
+            "Section B – Additional Income from federal Schedule 1 "
+            "(Form 1040). "), ["Section B"])
+        self.assertEqual(inventory._tooltip_sections(
+            "Part One. Income Adjustment Schedule. Section A. Income from "
+            "federal Form 1040 or 1040-SR. "), ["Part I", "Section A"])
 
 
 class CaliforniaInventoryTests(unittest.TestCase):
@@ -167,21 +309,32 @@ class CaliforniaInventoryTests(unittest.TestCase):
         self.assertTrue(line_8.text.startswith(
             "Blind: If you (or your spouse / R D P )"), line_8.text)
 
-    def test_f540_2025_line_7_from_the_printed_page(self):
-        # No f540 year 2021-2025 has a /TU beginning "Line 7": line 7's
-        # widgets carry generic tooltips ("Exemptions. For line 7, line 8,
-        # ..."), so the line comes from the printed row.
+    def test_f540_2025_line_7_from_its_tooltip_after_a_preamble(self):
+        # Line 7's tooltip opens with the exemptions preamble ("Exemptions.
+        # For line 7, line 8, ... Whole dollars only.") and only then names
+        # "Line 7. Personal: ...": the first "Line N" token anywhere counts.
         lines = extract_california(PDFS / "california/2025/f540.pdf")
         (line_7,) = [l for l in lines if l.label == "7"]
-        self.assertTrue(line_7.text.startswith("Personal:"), line_7.text)
+        self.assertTrue(line_7.text.startswith(
+            "Personal: If you checked box 1, 3, or 4 above, enter 1 in the "
+            "box."), line_7.text)
 
-    def test_section_from_the_tooltip_prefix(self):
-        # Schedule X (2025) is the California template whose tooltips carry
-        # Part prefixes: "Part 1 . Line 1 . Enter the amount you owe, ...".
+    def test_f540_2025_line_1_from_the_printed_page(self):
+        # The filing-status boxes' tooltips name no line ("Filing status
+        # ..."), so line 1 ("Single") comes from the printed row.
+        lines = extract_california(PDFS / "california/2025/f540.pdf")
+        (line_1,) = [l for l in lines if l.label == "1"]
+        self.assertEqual(line_1.text, "Single")
+
+    def test_printed_section_agrees_with_the_tooltip_prefix(self):
+        # Schedule X (2025): the tooltip says "Part 1 . Line 1 . Enter the
+        # amount you owe, ..."; the page prints "Part I". The printed
+        # heading is the source, the prefix a cross-check (extraction
+        # refuses a disagreement).
         lines = extract_california(
             PDFS / "california/amendments/schedule_x_2025.pdf")
         (line_1,) = [l for l in lines
-                     if l.label == "1" and l.section == "Part 1"]
+                     if l.label == "1" and l.section == "Part I"]
         self.assertTrue(line_1.text.startswith("Enter the amount you owe"))
 
     def test_spaced_sub_letter_tooltips(self):

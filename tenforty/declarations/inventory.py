@@ -207,15 +207,146 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
     return tuple(lines)
 
 
-# --- California: the templates' own tooltips --------------------------------
+# --- California: the templates' own tooltips, sectioned by the printed page --
 
-# "Line 12. ...", "Line 1 h. ...", "Line 3 . ...", "Line 8 A. ...", with an
-# optional section prefix: "Part 1 . ", "Question A. ", "Schedule Q
-# Question A. ", "Section B. ".
-_TOOLTIP = re.compile(
-    r"^(?:(?P<section>(?:Schedule \w+ )?(?:Part|Question|Section) \w+)\s*\.\s*)?"
-    r"Line (?P<number>[1-9]\d{0,2})\s?(?P<sub>[a-zA-Z]{1,2})?\s*\.?\s*"
-    r"(?P<text>.*)$", re.S)
+# A tooltip names its line with the first "Line N" token, anywhere in the
+# tooltip ("Line 12. ...", "Line 1 h. ...", "Line 8 A. ...", or after a
+# heading: "Assets Line 1. Cash."). The sub-line is one letter or a
+# lowercase roman row. An address field's "Line 1 of 2" is not a form line;
+# its prefix is classified "not-line" in the census below.
+_TOOLTIP_LINE = re.compile(
+    r"\bLine (?P<number>[1-9]\d{0,2})"
+    r"(?:\s?(?P<sub>ii|iii|iv|vi|vii|viii|[a-zA-Z]))?\b")
+
+# Every tooltip-prefix shape the FTB templates use before their "Line N"
+# (surveyed over every California template, 2021-2025; shape = the prefix
+# with whitespace collapsed, outer " ." stripped, digits as N and "(a)" as
+# "(x)"). A new shape fails extraction loudly instead of being guessed at.
+#   "section"  : names a Part / Section / Schedule (cross-checked against
+#                the printed heading) or a Schedule Q question (which the
+#                page prints only as a letter, so the tooltip is its source)
+#   "context"  : a heading or column descriptor; the line keeps its printed
+#                section
+#   "not-line" : not a form line (an address field's "Line 1 of 2")
+_PREFIX_CENSUS: dict[str, str] = {
+    "": "context",
+    "Alternative Minimum Tax (A M T) Items. Column (x) Pro-rata share items": "context",
+    "Alternative Minimum Tax (AMT) Items Column (x) Pro-rata share items": "context",
+    "Alternative Minimum Tax (AMT) Items. Column (x) Pro-rata share items": "context",
+    "Amount You Owe": "context",
+    "Assets": "context",
+    "California Net Income": "context",
+    "Casualty and Theft Losses": "context",
+    "Column (x) Pro-rata share items": "context",
+    "Column (x). Pro-rata share items": "context",
+    "Credits Column (x) Pro-rata share items": "context",
+    "Credits. Column (x) Pro-rata share items": "context",
+    "Deductions": "context",
+    "Deductions Column (x) Pro-rata share items": "context",
+    "Deductions. Column (x) Pro-rata share items": "context",
+    "Exemptions. For line N, line N, line N, and line N: Multiply the number "
+    "you enter in the box by the pre-printed dollar amount for that line. "
+    "Whole dollars only": "context",
+    "Fill in the information to authorize direct deposit of your refund into "
+    "one or two accounts. Do not attach a voided check or a deposit slip. See "
+    "instructions. Have you verified the routing and account numbers? Use "
+    "whole dollars only. All or the following amount of my refund (line N) is "
+    "authorized for direct deposit into the account shown below": "context",
+    "Fill in the information to authorize direct deposit of your refund into "
+    "one or two accounts. Do not attach a voided check or a deposit slip. See "
+    "instructions. Have you verified the routing and account numbers? Use "
+    "whole dollars only. All or the following amount of my refund (line N) is "
+    "authorized for direct deposit into the account shown below:": "context",
+    "Firm's name (or yours if self-employed) and address": "not-line",
+    "Firm's name (or yours, if self-employed) and address": "not-line",
+    "For line N, line N, line N, and line N: Multiply the number you enter in "
+    "the box by the pre-printed dollar amount for that line. Whole dollars "
+    "only": "context",
+    "Gifts to Charity": "context",
+    "Income": "context",
+    "Income (Loss) Column (x) Pro-rata share items": "context",
+    "Income (Loss) column (x) Pro-rata share items": "context",
+    "Income (Loss). Column (x) Pro-rata share items": "context",
+    "Income (Loss). Column (x). Pro-rata share items": "context",
+    "Income (loss) Column (x) Pro-rata share items": "context",
+    "Individual Shared Responsibility Penalty": "context",
+    "Interest You Paid": "context",
+    "Interest and Penalties": "context",
+    "Items Affecting Shareholder Basis Column (x) Pro-rata share items": "context",
+    "Items Affecting Shareholder Basis. Column (x) Pro-rata share items": "context",
+    "Job Expenses and Certain Miscellaneous Deductions": "context",
+    "Liabilities and shareholders' equity": "context",
+    "Liabilities and shareholders’ equity": "context",
+    "Medical and Dental Expenses": "context",
+    "Other Income (Loss) Column (x) Pro-rata share items": "context",
+    "Other Income (Loss) column (x) Pro-rata share items": "context",
+    "Other Income (Loss). Column (x) Pro-rata share items": "context",
+    "Other Income (Loss). Column (x). Pro-rata share items": "context",
+    "Other Information Column (x) Pro-rata share items": "context",
+    "Other Information. Column (x) Pro-rata share items": "context",
+    "Other Itemized Deductions": "context",
+    "Other State Taxes Column (x) Pro-rata share items": "context",
+    "Other State Taxes. Column (x) Pro-rata share items": "context",
+    "Other Taxes": "context",
+    "Overpaid Tax or Tax Due": "context",
+    "Paid preparer's Use Only Firms name (or yours, if self-employed) and "
+    "address": "not-line",
+    "Part N": "section",
+    "Part One. Income Adjustment Schedule. Section A. Income from federal "
+    "Form N or N-SR": "section",
+    "Part One. Section A": "section",
+    "Payments": "context",
+    "Question A": "section",
+    "Question B": "section",
+    "Reconciliation Column (x) Pro-rata share items": "context",
+    "Reconciliation. Column (x) Pro-rata share items": "context",
+    "Refund and Direct Deposit": "context",
+    "Refund or Amount Due": "context",
+    "Schedule F Income": "section",
+    "Schedule J": "section",
+    "Schedule M-N": "section",
+    "Schedule Q Question A": "section",
+    "Schedule V": "section",
+    "Section B": "section",
+    "Section B – Additional Income from federal Schedule N (Form N)": "section",
+    "Section C": "section",
+    "Section C . Adjustments to Income from federal Schedule N (Form N)": "section",
+    "Special Credits": "context",
+    "State Adjustments": "context",
+    "Tax": "context",
+    "Taxable Income": "context",
+    "Taxes": "context",
+    "Taxes You Paid": "context",
+    "The remaining amount of my refund (line N) is authorized for direct "
+    "deposit into the account shown below": "context",
+    "The remaining amount of my refund (line N) is authorized for direct "
+    "deposit into the account shown below:": "context",
+    "Use Tax": "context",
+}
+
+# A printed section heading: "Part I", "Schedule L", "Schedule M-1",
+# "Section B", starting its row at the left margin (every FTB section
+# heading prints at the margin; a mid-page "Schedule G-1" or "Part I, line
+# 27" is a reference). Schedule Q is not one: its questions sit inside the
+# Side 1 main form ("continued on Side 3"), so the lines below it are the
+# main form's; each question is named by its tooltip.
+_HEADING_WORDS = ("Part", "Schedule", "Section")
+_HEADING_ID = re.compile(r"^(?:[IVX]+|[A-Z](?:-\d)?|\d+)$")
+_LEFT_MARGIN = 72.0
+_FOOTER = 60.0
+_QUESTION_BLOCK = ("Schedule", "Q")
+_ROMAN_OF = {"1": "I", "2": "II", "3": "III", "One": "I", "Two": "II",
+             "Three": "III"}
+
+
+class UnknownTooltipShapeError(ValueError):
+    """A California tooltip prefix the census does not classify."""
+
+
+def prefix_shape(prefix: str) -> str:
+    shape = " ".join(prefix.split()).strip(" .")
+    shape = re.sub(r"\(\s*\w\s*\)", "(x)", shape)
+    return re.sub(r"\d+", "N", shape)
 
 
 def _tooltip(annotation) -> str | None:
@@ -228,9 +359,90 @@ def _tooltip(annotation) -> str | None:
     return None
 
 
+def _printed_headings(pdf: Path) -> list[tuple[int, float, str, str]]:
+    """(page, top, word, identifier) for every printed section heading."""
+    headings = []
+    for page_no, words in enumerate(_page_words(pdf), 1):
+        bottom = max((w[3] for w in words), default=0.0)
+        for w in words:
+            if w[4] not in _HEADING_WORDS or w[0] > _LEFT_MARGIN:
+                continue
+            if w[1] > bottom - _FOOTER:
+                continue
+            row = sorted(v for v in words
+                         if v is not w and abs(v[1] - w[1]) < _SAME_ROW)
+            if any(v[2] > w[0] - _LABEL_GAP and v[0] < w[0] for v in row):
+                continue
+            right = [v for v in row if v[0] >= w[2] - 0.5]
+            if right and _HEADING_ID.match(right[0][4]):
+                headings.append((page_no, w[1], w[4], right[0][4]))
+    return sorted(headings)
+
+
+def _section_at(headings, page: int, top: float) -> str:
+    """The printed section a point on the page sits in."""
+    part = section = ""
+    for h_page, h_top, word, ident in headings:
+        if (h_page, h_top) > (page, top + 3):
+            break
+        if (word, ident) == _QUESTION_BLOCK:
+            continue
+        if word == "Section":
+            section = f"Section {ident}"
+        else:
+            part, section = f"{word} {ident}", ""
+    return " ".join(p for p in (part, section) if p)
+
+
+def _tooltip_sections(prefix: str) -> list[str]:
+    """The Part / Section / Schedule names a section-class prefix states,
+    normalized to the printed spelling ("Part 1", "Part One" -> "Part I")."""
+    names = []
+    # Only a clause that STARTS with the name states a section; "Section B
+    # - Additional Income from federal Schedule 1" refers to Schedule 1.
+    for clause in re.split(r"\.\s+|\s+[–-]\s+", " ".join(prefix.split())):
+        m = re.match(r"(Part|Section|Schedule) ([A-Z](?:-\d)?|[IVX]+|\d+|"
+                     r"One|Two|Three)\b", clause.strip(" ."))
+        if not m:
+            continue
+        word, ident = m.groups()
+        if (word, ident) == _QUESTION_BLOCK:
+            continue
+        if word == "Part":
+            ident = _ROMAN_OF.get(ident, ident)
+        names.append(f"{word} {ident}")
+    return names
+
+
+def tooltip_line(tip: str, where: str = "") -> tuple[str, str, str, str] | None:
+    """(label, text, census kind, prefix) for the form line a tooltip names,
+    or None when it names none (no "Line N", an address field's "Line 1 of
+    2", or a not-line prefix). An unclassified prefix shape refuses."""
+    tip = " ".join(tip.split())
+    m = _TOOLTIP_LINE.search(tip)
+    if not m:
+        return None
+    prefix = tip[:m.start()]
+    shape = prefix_shape(prefix)
+    kind = _PREFIX_CENSUS.get(shape)
+    if kind is None:
+        raise UnknownTooltipShapeError(
+            f"{where}: tooltip prefix shape {shape!r} is not in the census "
+            "(_PREFIX_CENSUS); classify it as section, context or not-line. "
+            f"Tooltip: {tip[:120]!r}")
+    if kind == "not-line":
+        return None
+    label = m.group("number") + (m.group("sub") or "")
+    return label, tip[m.end():].lstrip(" .").strip(), kind, prefix
+
+
 def extract_california(pdf: Path) -> tuple[InventoryLine, ...]:
-    """Lines from the FTB template's /TU tooltips; a printed label whose
-    widgets carry only generic tooltips comes from the printed page."""
+    """Lines from the FTB template's /TU tooltips, each placed in the
+    printed section its widget sits under. A tooltip's own section prefix
+    is a cross-check (it appears only on a Part's first line); a Schedule Q
+    question, printed only as a letter, is named by its tooltip. A printed
+    label no tooltip names comes from the printed page."""
+    headings = _printed_headings(pdf)
     lines: list[InventoryLine] = []
     seen: set[tuple[int, str, str]] = set()
     reader = PdfReader(str(pdf))
@@ -241,27 +453,42 @@ def extract_california(pdf: Path) -> tuple[InventoryLine, ...]:
             tip = _tooltip(annotation)
             if tip is None:
                 continue
-            m = _TOOLTIP.match(" ".join(tip.split()))
-            if not m:
+            parsed = tooltip_line(tip, where=str(pdf))
+            if parsed is None:
                 continue
-            section = m.group("section") or ""
-            section = re.sub(r"^Part (\d+)$", lambda p: f"Part {p.group(1)}",
-                             section)
-            label = m.group("number") + (m.group("sub") or "")
-            key = line_key(page_no, section, label)
-            if key in seen:
-                continue
-            seen.add(key)
+            label, text, kind, prefix = parsed
             x0, y0, x1, y1 = (float(c) for c in annotation["/Rect"])
             # Top-left origin, like pdftotext.
             bbox = (round(x0, 2), round(height - y1, 2),
                     round(x1, 2), round(height - y0, 2))
-            lines.append(InventoryLine(page_no, section, label,
-                                       m.group("text").strip(), bbox))
+            section = _section_at(headings, page_no, bbox[1])
+            if kind == "section":
+                printed = re.findall(r"(?:Part|Section|Schedule) \S+",
+                                     section)
+                for stated in _tooltip_sections(prefix):
+                    if stated not in printed:
+                        raise ValueError(
+                            f"{pdf}: page {page_no} tooltip states {stated!r} "
+                            f"but the widget sits under the printed "
+                            f"{section or 'main form'!r}: {tip[:120]!r}")
+                question = re.search(r"\bQuestion ([A-Z])\b", prefix)
+                if question:
+                    section = " ".join(p for p in (
+                        section, f"Schedule Q Question {question.group(1)}")
+                        if p)
+            key = line_key(page_no, section, label)
+            if key in seen:
+                continue
+            seen.add(key)
+            lines.append(InventoryLine(page_no, section, label, text, bbox))
     for line in extract_federal(pdf):
-        if not any(o.page == line.page and o.label == line.label
-                   for o in lines):
-            lines.append(line)
+        section = _section_at(headings, line.page, line.bbox[1])
+        if any(o.page == line.page and o.label == line.label
+               and (o.section == section
+                    or abs(o.bbox[1] - line.bbox[1]) < _BOX_REPEAT)
+               for o in lines):
+            continue
+        lines.append(dataclasses.replace(line, section=section))
     return tuple(lines)
 
 
