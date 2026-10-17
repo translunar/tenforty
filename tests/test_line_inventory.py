@@ -494,12 +494,16 @@ class InventoryProvenanceTests(unittest.TestCase):
                     "it (inventory.refresh) and review the diff.")
 
     def test_committed_inventories_equal_a_fresh_extraction(self):
-        # A sample across both extractors and every template family.
-        for form, key in (("sch_se", 2024), ("f8995", 2025), ("f540", 2025),
-                          ("schedule_x", 2025), ("f3115", "rev-2022-12")):
+        # EVERY committed inventory, not a sample: each reviewed JSON is a
+        # live pin on the extractor (a 5-form-year sample let three of six
+        # inventory-fixes mutations through unseen).
+        paths = sorted(inventory.INVENTORY_DIR.glob("*.json"))
+        self.assertTrue(paths)  # the set itself: test_inventory_set_is_every_emitted_form_template
+        for path in paths:
+            data = json.loads(path.read_text())
+            form, key = data["form"], data["key"]
             with self.subTest(form=form, key=key):
                 committed = inventory.inventory_path(form, key).read_text()
-                data = json.loads(committed)
                 self.assertEqual(committed, inventory.to_json(
                     form, key, data["jurisdiction"], REPO_ROOT / data["source"],
                     inventory.extract(data["jurisdiction"],
