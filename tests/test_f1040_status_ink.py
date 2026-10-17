@@ -149,7 +149,8 @@ class SpouseIdentityDisciplineTests(unittest.TestCase):
         "      birthdate: '2015-03-07'\n"
         "      relationship: child_or_stepchild\n"
         "      gross_income: 0\n"
-        "      days_lived_with_you: 365\n")
+        "      days_lived_with_you: 365\n"
+        "      claimed_as_dependent: false\n")
 
     def test_hoh_with_spouse_name_is_refused_at_load(self):
         # Control: the same Head-of-Household scenario without spouse fields

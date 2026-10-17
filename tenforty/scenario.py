@@ -1129,8 +1129,25 @@ _REQUIRED_QP_KEYS = (
     "first_name", "last_name", "ssn", "birthdate", "relationship",
     "gross_income", "days_lived_with_you")
 _KNOWN_QP_KEYS = frozenset(_REQUIRED_QP_KEYS) | {
-    "full_time_student", "permanently_disabled"}
+    "full_time_student", "permanently_disabled", "claimed_as_dependent"}
 _KNOWN_PERIOD_KEYS = frozenset({"from", "to"})
+_CLAIMED_AS_DEPENDENT_REQUIRED = (
+    "`head_of_household.qualifying_person.claimed_as_dependent` is required "
+    "(true or false): do you claim this person as your dependent on this "
+    "return? Form 1040's head-of-household line names the qualifying person "
+    "only when they are \"a child but not your dependent\", so tenforty "
+    "must be told. Add it.")
+_CLAIMED_AS_DEPENDENT_REFUSAL = (
+    "`head_of_household.qualifying_person.claimed_as_dependent` is true: you "
+    "claim your head-of-household qualifying person as a dependent on this "
+    "return. tenforty does not prepare returns with claimed dependents yet: "
+    "the Child Tax Credit / Credit for Other Dependents (Schedule 8812, Form "
+    "1040 line 19) would not be computed, overstating your tax. If this "
+    "person is NOT claimed as your dependent on this return -- for example, "
+    "you released the claim to the other parent on Form 8332 -- set "
+    "`claimed_as_dependent: false`. If they ARE your dependent, tenforty "
+    "cannot prepare this return until the dependents release (tenforty "
+    "0.2.1); file it by hand. There is no acknowledge-and-proceed.")
 # FTB 3532 Part I line 1f has exactly two From/To slots, and no year's
 # instructions mention a continuation statement.
 _MAX_LIVED_TOGETHER_PERIODS = 2
@@ -1347,10 +1364,15 @@ def _load_qualifying_person(raw, year: int) -> HohQualifyingPerson:
     answers = {
         key: _load_hoh_answer(data.get(key), f"{_QP}.{key}")
         for key in ("full_time_student", "permanently_disabled")}
+    claimed = _load_hoh_answer(
+        data.get("claimed_as_dependent"), f"{_QP}.claimed_as_dependent")
+    if claimed is None:
+        raise ValueError(_CLAIMED_AS_DEPENDENT_REQUIRED)
     person = HohQualifyingPerson(
         first_name=names["first_name"], last_name=names["last_name"],
         ssn=ssn, birthdate=birthdate, relationship=relationship,
-        gross_income=gross_income, days_lived_with_you=days, **answers)
+        gross_income=gross_income, days_lived_with_you=days,
+        claimed_as_dependent=claimed, **answers)
     lines = {"full_time_student": "3a", "permanently_disabled": "3b"}
     if qp_is_19_or_older(person, year):
         for key, value in answers.items():
@@ -1548,7 +1570,9 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
 def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     """Pure check of ``config.head_of_household`` against the rest of the
     config: required iff head of household (spec §4.2), the qualifying
-    person is not the filer (rule 5), no face-of-form contradiction of the
+    person is not claimed as a dependent (``claimed_as_dependent`` stated,
+    and true refuses until 0.2.1), the qualifying person is not the filer
+    (rule 5), no face-of-form contradiction of the
     status (rules 10-12), and the qualifying-child path only (rule 13,
     until 0.2.1). Called at load from
     ``_validate_scenario_config`` and re-used by the CA emit gate, so a
@@ -1575,6 +1599,14 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
             "head_of_household`.")
     if facts is None:
         return
+    # claimed_as_dependent (Juno ruling, M3): required, and true is a
+    # capability refusal -- wrong species, so it fires ahead of rule 5 and
+    # the face-of-form rules 10-13.
+    claimed = facts.qualifying_person.claimed_as_dependent
+    if claimed is None:
+        raise ValueError(_CLAIMED_AS_DEPENDENT_REQUIRED)
+    if claimed is True:
+        raise NotImplementedError(_CLAIMED_AS_DEPENDENT_REFUSAL)
     # Rule 5 (FTB 3532 instructions, Part II line 2): "You may not claim
     # yourself ... as your qualifying person." The spouse case is unreachable:
     # head of household refuses spouse fields.

@@ -101,7 +101,8 @@ def _qp(year: int, **over) -> HohQualifyingPerson:
         birthdate=f"{year - 10}-03-07",
         relationship=HohRelationship.CHILD_OR_STEPCHILD,
         full_time_student=None, permanently_disabled=None,
-        gross_income=0.0, days_lived_with_you=365)
+        gross_income=0.0, days_lived_with_you=365,
+        claimed_as_dependent=False)
     fields.update(over)
     return HohQualifyingPerson(**fields)
 
@@ -454,3 +455,12 @@ class FederalHohBackstopTests(unittest.TestCase):
                 scenario=scenario, ca_yaml_path=ca_yaml, output_dir=out)
         self.assertIn("more than half the year", str(cm.exception))
         self.assertEqual(sorted(out.glob("*")) if out.exists() else [], [])
+
+    def test_claimed_dependent_refuses_federal_compute(self):
+        # M3 through the federal backstop: a directly built config whose
+        # qualifying person is claimed as a dependent.
+        scenario = self._scenario(_facts(self.YEAR, qualifying_person=_qp(
+            self.YEAR, claimed_as_dependent=True)))
+        with self.assertRaises(NotImplementedError) as cm:
+            self.orch.compute_federal(scenario)
+        self.assertIn("Child Tax Credit", str(cm.exception))

@@ -46,6 +46,7 @@ def _qp(year=_YEAR, **overrides) -> dict:
         "permanently_disabled": None,
         "gross_income": 0,
         "days_lived_with_you": 365,
+        "claimed_as_dependent": False,
     }
     qp.update(overrides)
     return qp
@@ -359,6 +360,52 @@ class StructuralRuleTests(_LoaderCase):
                      "days_lived_with_you")
 
 
+class ClaimedAsDependentTests(_LoaderCase):
+    """`claimed_as_dependent`: "do you claim this person as your dependent
+    on this return". Required; true refuses until dependents arrive in
+    0.2.1, so the 1040's "child but not your dependent" line is always
+    truthful; false proceeds."""
+
+    _KEY = "claimed_as_dependent"
+
+    def test_absent_refuses_naming_the_field_and_its_meaning(self):
+        for absent in ("missing", "null"):
+            with self.subTest(absent=absent):
+                qp = _qp()
+                if absent == "missing":
+                    qp.pop(self._KEY, None)
+                else:
+                    qp[self._KEY] = None
+                self.refuses(_hoh_yaml(block=_block(qp=qp)),
+                             f"qualifying_person.{self._KEY}", "is required",
+                             "your dependent on this return")
+
+    def test_true_refuses_naming_the_child_tax_credit_and_the_8332_fork(self):
+        with self.assertRaises(NotImplementedError) as cm:
+            self.load(_hoh_yaml(block=_block(qp=_qp(
+                **{self._KEY: True}))))
+        msg = str(cm.exception)
+        for fragment in ("Child Tax Credit", "0.2.1", "Form 8332",
+                         f"`{self._KEY}: false`",
+                         "no acknowledge-and-proceed"):
+            self.assertIn(fragment, msg)
+
+    def test_true_refuses_ahead_of_the_face_of_form_rules(self):
+        # Wrong species beats a rule-10 contradiction on the same block.
+        with self.assertRaises(NotImplementedError):
+            self.load(_hoh_yaml(block=_block(qp=_qp(
+                days_lived_with_you=10, **{self._KEY: True}))))
+
+    def test_false_loads(self):
+        qp = self.load(_hoh_yaml(block=_block(qp=_qp(**{self._KEY: False})))
+                       ).config.head_of_household.qualifying_person
+        self.assertIs(qp.claimed_as_dependent, False)
+
+    def test_non_boolean_refuses(self):
+        self.refuses(_hoh_yaml(block=_block(qp=_qp(**{self._KEY: "no"}))),
+                     self._KEY, "true or false")
+
+
 class AgeBranchTests(_LoaderCase):
     """Rule 7: lines 3a/3b are answered iff the person is 19 or older in the
     tax year ("If not, go to line 4"). The reading is
@@ -375,7 +422,8 @@ class AgeBranchTests(_LoaderCase):
                 birthdate=f"{birth_year}-01-01",
                 relationship=HohRelationship.CHILD_OR_STEPCHILD,
                 full_time_student=None, permanently_disabled=None,
-                gross_income=0.0, days_lived_with_you=365)
+                gross_income=0.0, days_lived_with_you=365,
+                claimed_as_dependent=False)
         self.assertTrue(qp_is_19_or_older(person(_YEAR - 19), _YEAR))
         self.assertFalse(qp_is_19_or_older(person(_YEAR - 18), _YEAR))
         # December 31 birthday in the year-19 birth year still counts as 19.

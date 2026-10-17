@@ -178,7 +178,8 @@ class ExcessSocialSecurityGuardTests(unittest.TestCase):
                     "first_name": "Example", "last_name": "Child",
                     "ssn": "000-00-0005", "birthdate": f"{year - 10}-03-07",
                     "relationship": "child_or_stepchild",
-                    "gross_income": 0, "days_lived_with_you": 365}}
+                    "gross_income": 0, "days_lived_with_you": 365,
+                    "claimed_as_dependent": False}}
         template = data["w2s"][0]
         data["w2s"] = []
         for i, owner in enumerate(owners):
