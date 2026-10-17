@@ -162,6 +162,15 @@ def _compute_business(
         "sch_c_line_28_total_expenses": line_28,
         "sch_c_line_29_tentative_profit": line_29,
         "sch_c_line_31_net_profit": line_31,
+        # Line F, accounting method = Cash. A modeled-SCOPE constant: tenforty
+        # models cash-basis accounting only (no accrual, no "other" method).
+        # An accrual feature must change this key, not the mapping.
+        "sch_c_line_f_cash_method": True,
+        # Line G, "Did you materially participate": Yes. A modeled-SCOPE
+        # constant: material participation is universal in what tenforty
+        # models (passive sole proprietorships are unmodeled). A
+        # passive-activity feature must change this key, not the mapping.
+        "sch_c_line_g_material_participation": True,
         # Line 32a is answered only on a loss; a profit business leaves line
         # 32 blank, so the key is ABSENT (not False) for it.
         **({"sch_c_line_32a_all_investment_at_risk": True} if is_loss else {}),
