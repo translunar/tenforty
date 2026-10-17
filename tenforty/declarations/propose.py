@@ -40,6 +40,7 @@ from tenforty.declarations.inventory import InventoryLine
 # lines go to ranking.
 KEY_PREFIX: dict[str, str] = {
     "f8995": "f8995",
+    "sch_se": "sch_se",
 }
 
 STYLESHEET_AGREEMENT = 0.6   # Jaccard, stylesheet text vs inventory text
