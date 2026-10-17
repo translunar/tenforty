@@ -112,6 +112,7 @@ from tenforty.models import (
     RentalProperty,
     Scenario,
     ScheduleK1,
+    TaxReturnConfig,
 )
 from tenforty.types import UpstreamState
 
@@ -931,6 +932,51 @@ def refuse_dependents(scenario: Scenario) -> None:
             count=count, plural="" if count == 1 else "s"))
 
 
+def eic_gate_child_count(config: TaxReturnConfig) -> int:
+    """The number of qualifying children the EIC-ceiling gate assumes.
+
+    Claimed dependents, plus one for every head-of-household return
+    (ruling R-eic-count-by-status). Its qualifying person (schema rule 13:
+    the qualifying-child path only) may be the filer's EIC qualifying child
+    without being claimed as a dependent -- under a Form 8332 release the
+    custodial parent keeps the EIC (IRS Pub. 596, Rule 9). Keyed on the
+    status, not on ``config.head_of_household``, so a directly built config
+    without the block is never under-counted. Over-counting raises the
+    ceiling, the safe direction for the gate."""
+    hoh = (parse_filing_status(config.filing_status)
+           is FilingStatus.HEAD_OF_HOUSEHOLD)
+    return len(config.dependents) + (1 if hoh else 0)
+
+
+def refuse_hoh_possible_eic(config: TaxReturnConfig) -> None:
+    """FAIL-CLOSED: a possibly EIC-eligible head-of-household return (ruling
+    Q2: refuse, never reroute).
+
+    Called only once the gate has ruled the return out of native-spine
+    scope on a DECLARED (year, head_of_household), where out of scope can
+    only mean EIC-possible (pinned by HohEicGateTests). Neither path
+    computes the EIC with a qualifying child: the native spine performs no
+    EIC math, and the workbook path receives no child count, so it would
+    figure the credit as if the filer had no qualifying child.
+    """
+    if (parse_filing_status(config.filing_status)
+            is not FilingStatus.HEAD_OF_HOUSEHOLD):
+        return
+    raise NotImplementedError(
+        "This head_of_household return may be eligible for the Earned Income "
+        "Credit with a qualifying child: its earned income and estimated AGI "
+        "are below the tax year's EIC income ceiling for one qualifying "
+        "child, counting the head-of-household qualifying person. tenforty "
+        "does not compute the EIC with a qualifying child on any path: the "
+        "native 1040 spine performs no EIC math, and the workbook path would "
+        "compute the credit as if you had no qualifying child. A qualifying "
+        "child whose dependency exemption you released to the other parent "
+        "on Form 8332 still counts for your EIC as the custodial parent (IRS "
+        "Pub. 596, Rule 9). There is no acknowledge-and-proceed: the return "
+        "would miss a refundable credit you may be owed. File this return by "
+        "hand.")
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -1069,7 +1115,7 @@ class ReturnOrchestrator:
             # the non-raising estimate (summed once above, for earned income).
             + sch_c_profit
         )
-        num_children = min(len(cfg.dependents), max(ceilings))
+        num_children = min(eic_gate_child_count(cfg), max(ceilings))
         ceiling = ceilings.get(num_children, max(ceilings.values()))
         # Below the ceiling → possibly EIC-eligible → out of spine scope.
         return agi_estimate >= ceiling
@@ -1244,6 +1290,16 @@ class ReturnOrchestrator:
         # Every path, before the split: no compute path models dependents.
         refuse_dependents(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
+            # An EIC-possible head-of-household return refuses here, before
+            # the 1095-A refusal below and before any workbook reroute. On a
+            # declared (year, status) out of scope means EIC-possible; an
+            # undeclared one keeps its routing (its cause is the grid).
+            from tenforty import years as year_manifest
+            if year_manifest.native_spine_supports(
+                    effective_scenario.config.year,
+                    parse_filing_status(
+                        effective_scenario.config.filing_status).value):
+                refuse_hoh_possible_eic(effective_scenario.config)
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
                 # scenario whose filer class is outside the declared native
