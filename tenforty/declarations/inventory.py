@@ -299,6 +299,16 @@ _PREFIX_CENSUS: dict[str, str] = {
     "Part One. Income Adjustment Schedule. Section A. Income from federal "
     "Form N or N-SR": "section",
     "Part One. Section A": "section",
+    # FTB 3532 (2023-2025), each verified against the printed page's
+    # "Part I Marital Status" / "Part II Qualifying Person" / "Part III
+    # Qualifying Person Information" headings (2026-10-17).
+    "Part One": "section",
+    "Part Two": "section",
+    "Part Three": "section",
+    "Part one": "section",
+    "Part two": "section",
+    "Part three": "section",
+    "Part three. Qualifying Person Information": "section",
     "Payments": "context",
     "Question A": "section",
     "Question B": "section",
@@ -406,14 +416,16 @@ def _tooltip_sections(prefix: str) -> list[str]:
     # - Additional Income from federal Schedule 1" refers to Schedule 1.
     for clause in re.split(r"\.\s+|\s+[–-]\s+", " ".join(prefix.split())):
         m = re.match(r"(Part|Section|Schedule) ([A-Z](?:-\d)?|[IVX]+|\d+|"
-                     r"One|Two|Three)\b", clause.strip(" ."))
+                     r"[Oo]ne|[Tt]wo|[Tt]hree)\b", clause.strip(" ."))
         if not m:
             continue
         word, ident = m.groups()
         if (word, ident) == _QUESTION_BLOCK:
             continue
         if word == "Part":
-            ident = _ROMAN_OF.get(ident, ident)
+            # FTB writes the Part number as a word in either case ("Part
+            # One", FTB 3532 2024's "Part one").
+            ident = _ROMAN_OF.get(ident.capitalize(), ident)
         names.append(f"{word} {ident}")
     return names
 
