@@ -91,6 +91,8 @@ def _capped_values() -> dict:
     monthly write-in row and a real repayment limitation on line 28."""
     return {
         "f8962_line_1": 1,
+        # Box 4c ("Other 48 states and DC"): compute emits it True with line 4.
+        "f8962_line_4c_other48": True,
         "f8962_line_2a": 30_000,
         "f8962_line_3": 30_000,
         "f8962_line_4": 13_590,
@@ -153,7 +155,8 @@ class FilledEmitReadBackTests(unittest.TestCase):
         values = {**_capped_values(), "f8962_ui_box_checked": True}
         out = _fill(2021, values, self.tmp / "f8962_2021.pdf")
         read = _read_fields(out)
-        # ARPA UI Box A ON with its own /2 token (NOT /1); 4c hardwired /3.
+        # ARPA UI Box A ON with its own /2 token (NOT /1); 4c /3 from its
+        # compute key.
         self.assertEqual(read[_UI_BOX], "/2")
         self.assertEqual(read[_BOX_4C], "/3")
         # Monthly write-in row 1 (Jan) cells a & f, plus Part I / totals.
@@ -172,7 +175,7 @@ class FilledEmitReadBackTests(unittest.TestCase):
         # 2024 c1_1[0] is the MFS box (ON /1); unmapped -> stays unchecked.
         self.assertIn(read[_UI_BOX], ("", "/Off"))
         self.assertNotEqual(read[_UI_BOX], "/1")
-        self.assertEqual(read[_BOX_4C], "/3")        # 4c still hardwired ON
+        self.assertEqual(read[_BOX_4C], "/3")        # 4c from its compute key
         self.assertEqual(read[_LINE_28], "1500")     # repayment limitation
         self.assertEqual(read[_LINE_29], "28")       # excess APTC repayment
 
@@ -272,10 +275,12 @@ class ShouldEmit8962Tests(unittest.TestCase):
         specs = self.orch._federal_individual_emit_specs(scenario, results)
         universe = {s.name for s in specs}
         self.assertIn("8962", universe)
-        # The joined spec carries the year's checkbox_states + derivations so
-        # the render and selector payload agree on the 4c always-on cell.
+        # The joined spec carries both halves of the 4c translation -- the
+        # compute key (True) and its /3 on-state -- so the render and selector
+        # payload agree on the 4c cell.
         (spec,) = [s for s in specs if s.name == "8962"]
-        self.assertIn(_BOX_4C, spec.derivations)
+        self.assertIs(spec.values["f8962_line_4c_other48"], True)
+        self.assertEqual(spec.checkbox_states["f8962_line_4c_other48"], "/3")
 
     def test_end_to_end_2024_emit_writes_f8962_with_4c_on(self):
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=400))
@@ -335,9 +340,11 @@ class Line7DecimalFormatTests(unittest.TestCase):
         mapping = PdfF8962.get_mapping(year)["scalars"]
         values = {**_capped_values(), "f8962_line_7": 0.085,
                   "f8962_line_3": 30_000.5}  # a fractional dollar value too
-        plain = PdfFiller.resolve_fields(mapping, values)
+        states = PdfF8962.get_checkbox_states(year)
+        plain = PdfFiller.resolve_fields(mapping, values, checkbox_states=states)
         formatted = PdfFiller.resolve_fields(
-            mapping, values, field_formats=PdfF8962.get_field_formats(year))
+            mapping, values, checkbox_states=states,
+            field_formats=PdfF8962.get_field_formats(year))
         changed = {k for k in plain if plain[k] != formatted[k]}
         self.assertEqual(changed, {mapping["f8962_line_7"]})
         # Reachability of the negative space: the fractional dollar value DID
