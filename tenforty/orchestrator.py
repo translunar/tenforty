@@ -3314,10 +3314,12 @@ class ReturnOrchestrator:
             **header_keys,
         }
         # Every printed Form 540 line that is arithmetic over other lines
-        # (ruling A1): computed here, once, for the original and the
-        # amendment paths alike; the mapping only translates.
+        # (ruling A1), and Schedule CA Part II line 30 (the Form 540 line 18
+        # deduction): computed here, once, for the original and the
+        # amendment paths alike; the mappings only translate.
         return {**merged,
-                **form_f540.printed_line_keys(scenario.config.year, merged)}
+                **form_f540.printed_line_keys(scenario.config.year, merged),
+                **form_sch_ca.part_ii_line_30_keys(merged)}
 
     def run_amendment_packet(
         self,

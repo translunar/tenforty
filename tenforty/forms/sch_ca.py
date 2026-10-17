@@ -17,6 +17,7 @@ Produces compute output keys:
 - sch_ca_ca_agi: federal_agi - net_sub + net_add
 """
 
+import re
 from collections import defaultdict
 from tenforty.ca_divergences import CatalogDirection, load_catalog
 from tenforty.models import CASchCAAdjustment, DivergenceDirection, DivergenceSource
@@ -173,7 +174,95 @@ def compute(ca540, federal_results: dict, year: int) -> dict:
     federal_agi = federal_results.get("agi", 0.0)
     out["sch_ca_federal_agi"] = irs_round(federal_agi)
     out["sch_ca_ca_agi"] = irs_round(federal_agi - net_sub + net_add)
+    out.update(part_i_printed_totals(out, year))
     return out
+
+
+# ── Part I printed section totals (ruling A1) ──────────────────────────────
+#
+# The page's section totals (lines 1z, 9a, 10, 25, 26) and the line 1a
+# Column A wages, each a compute key the mapping places 1:1. Every total sums
+# the PRINTED per-line keys (each already rounded), the same membership the
+# page shows -- so line 10 - line 26 is what the page foots. This is not the
+# line 27 net above (sch_ca_total_subtractions / sch_ca_total_additions),
+# which the kernel computes from the raw divergences (see the bug #11 note).
+
+_SUFFIX = {"A": "col_a", "B": "subtractions", "C": "additions"}
+
+# Member blocks by key pattern (key = sch_ca_line_<pattern>_<suffix>).
+# Line 1 block: 2022+ lines 1a-1i and the 1z subtotal; 2021's single
+# un-lettered line 1.
+_LINE_1_BLOCK = r"part_i_(a_1[a-z]|line_1)"
+_SECTION_A_REST = r"part_i_a_(2|3|4|5b|6|7)"
+_SECTION_B_MAIN = r"part_i_b_(1|2a|3|4|5|6|7)"
+_LINE_8_BLOCK = r"part_i_b_8[a-z]"           # -> line 9a
+_LINE_9B_BLOCK = r"part_i_b_9b\d"            # Col B only, joins line 10 Col B
+_SECTION_C_MAIN = r"part_i_c_(1[1-8]|19a|2[0-3])"
+_LINE_24_BLOCK = r"part_i_c_24[a-z]"         # -> line 25
+_LINE_26_OWN = r"part_i_line_26"             # the §179A row posts at line 26 itself
+PART_I_MEMBER_PATTERNS = (
+    _LINE_1_BLOCK, _SECTION_A_REST, _SECTION_B_MAIN, _LINE_8_BLOCK,
+    _LINE_9B_BLOCK, _SECTION_C_MAIN, _LINE_24_BLOCK, _LINE_26_OWN)
+
+# (printed line, member blocks, columns, absent when no member is present).
+# Lines 10 and 26 always print (0 when empty); 1z, 9a and 25 are blank when
+# nothing posts to their block. 1z Column A is the federal wages key itself.
+_PART_I_TOTALS = (
+    ("1z", (_LINE_1_BLOCK,), "BC", True),
+    ("9a", (_LINE_8_BLOCK,), "ABC", True),
+    ("25", (_LINE_24_BLOCK,), "ABC", True),
+    ("10", (_LINE_1_BLOCK, _SECTION_A_REST, _SECTION_B_MAIN, _LINE_8_BLOCK),
+     "ABC", False),
+    ("26", (_SECTION_C_MAIN, _LINE_24_BLOCK, _LINE_26_OWN), "ABC", False),
+)
+# Line 10 Column B also takes line 9b (Column B only).
+_LINE_10_COL_B_EXTRA = (_LINE_9B_BLOCK,)
+
+# Whether the year's form prints a lettered line 1a (2021 prints one
+# un-lettered line 1).
+_PRINTS_LINE_1A = {2021: False, 2022: True, 2023: True, 2024: True, 2025: True}
+
+LINE_1A_WAGES_COL_A = "sch_ca_line_part_i_1a_wages_col_a"
+
+
+def part_i_total_key(line: str, column: str) -> str:
+    """The compute key of a printed Part I section total ("10", "B")."""
+    return f"sch_ca_line_part_i_{line}_total_{_SUFFIX[column]}"
+
+
+def part_i_printed_totals(values: dict, year: int) -> dict:
+    """The printed Part I section totals and the line 1a Column A wages."""
+    out = {}
+    for line, blocks, columns, absent_when_empty in _PART_I_TOTALS:
+        for column in columns:
+            extra = _LINE_10_COL_B_EXTRA if (line, column) == ("10", "B") else ()
+            rx = re.compile(
+                rf"sch_ca_line_({'|'.join(blocks + extra)})_{_SUFFIX[column]}")
+            members = [k for k in values if rx.fullmatch(k)]
+            if absent_when_empty and not members:
+                continue
+            out[part_i_total_key(line, column)] = sum(
+                values[k] for k in members)
+    # Line 1a Column A is Form 1040 line 1a (W-2 wages): the same figure the
+    # 1z subtotal carries, since lines 1b-1i have no federal source.
+    wages = values.get("sch_ca_line_part_i_a_1z_col_a")
+    if _PRINTS_LINE_1A[year] and wages is not None:
+        out[LINE_1A_WAGES_COL_A] = wages
+    return out
+
+
+# Part II line 30: "the larger of line 29 or your standard deduction ...
+# Transfer the amount on line 30 to Form 540, line 18" -- the Form 540 line
+# 18 deduction itself, printed only when Part II is on the page (line 28
+# present). Computed at the CA assembly point, which holds Form 540.
+PART_II_LINE_30 = "sch_ca_line_part_ii_30"
+
+
+def part_ii_line_30_keys(values: dict) -> dict:
+    if values.get("sch_ca_line_part_ii_28") is None:
+        return {}
+    deduction = values.get("f540_deduction")
+    return {} if deduction is None else {PART_II_LINE_30: deduction}
 
 
 def federal_itemization_applied(federal_results: dict) -> bool:

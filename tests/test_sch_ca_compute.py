@@ -227,7 +227,11 @@ class SchCaColAPassthroughTests(unittest.TestCase):
             federal_results={"agi": 50_000.0},
             year=2025,
         )
-        col_a_keys = [k for k in result if k.endswith("_col_a")]
+        # Per-line passthrough keys only: the printed Part I totals
+        # (`..._total_col_a`, lines 10 and 26 always present) are not
+        # passthroughs.
+        col_a_keys = [k for k in result if k.endswith("_col_a")
+                      and not k.endswith("_total_col_a")]
         self.assertEqual(
             col_a_keys, [],
             f"Expected no _col_a keys with empty federal income, got {col_a_keys}",

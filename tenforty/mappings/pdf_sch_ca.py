@@ -40,9 +40,9 @@ flat names rather than the IRS XFA `topmostSubform[0].PageN[0]....`
 form).
 """
 
-import re
 from collections.abc import Callable, Mapping
 
+from tenforty.forms import sch_ca as _sch_ca
 from tenforty.mappings.registry import PdfFormMapping
 
 
@@ -96,8 +96,6 @@ _MAPPING_2025: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "540ca_form - 1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "540ca_form - 1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "540ca_form - 1028",
-    "sch_ca_line_part_i_a_1z_additions":          "540ca_form - 1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "540ca_form - 1031",
     "sch_ca_line_part_i_a_2_subtractions":        "540ca_form - 1032",
@@ -245,8 +243,6 @@ _MAPPING_2024: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "540ca_form - 1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "540ca_form - 1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "540ca_form - 1028",
-    "sch_ca_line_part_i_a_1z_additions":          "540ca_form - 1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "540ca_form - 1031",
     "sch_ca_line_part_i_a_2_subtractions":        "540ca_form - 1032",
@@ -392,8 +388,6 @@ _MAPPING_2023: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "1028",
-    "sch_ca_line_part_i_a_1z_additions":          "1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "1031",
     "sch_ca_line_part_i_a_2_subtractions":        "1032",
@@ -546,8 +540,6 @@ _MAPPING_2021: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "1002",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "1003",
-    "sch_ca_line_part_i_a_1z_subtractions":       "1004",
-    "sch_ca_line_part_i_a_1z_additions":          "1005",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "1007",
     "sch_ca_line_part_i_a_2_subtractions":        "1008",
@@ -670,8 +662,9 @@ PdfSchCa._MAPPINGS[2021] = _MAPPING_2021
 # Col A source were placed on the form, so a divergence on (say) line 1a, 8c or
 # 24j was added into line 27 yet printed NOWHERE — the page did not foot against
 # its visible addends. These tables place every catalog-reachable Part I cell, and
-# the section totals (1z, 9a, 10, 25, 26) are DERIVED from the same keys so line
-# 10 - line 26 = line 27 holds on the page by construction.
+# the section totals (1z, 9a, 10, 25, 26) print compute keys that
+# forms.sch_ca.part_i_printed_totals sums from the same per-line keys (ruling
+# A1: the mapping only places them).
 #
 # Field numbers were generated from each template's /TU tooltips
 # (tests/_schca_tooltips.py) restricted to Part I, and are re-verified against
@@ -894,63 +887,22 @@ _TOTAL_CELLS_2025: dict[str, str] = {'1aA': '540ca_form - 1002',
 
 _SUFFIX = {"A": "col_a", "B": "subtractions", "C": "additions"}
 
-# Section membership by compute-key pattern (key = sch_ca_line_<pattern>_<suffix>).
-# Line 1 block: 2022+ lines 1a-1i and the 1z subtotal; 2021's single un-lettered line 1.
-_LINE_1_BLOCK = r"part_i_(a_1[a-z]|line_1)"
-_SECTION_A_REST = r"part_i_a_(2|3|4|5b|6|7)"
-_SECTION_B_MAIN = r"part_i_b_(1|2a|3|4|5|6|7)"
-_LINE_8_BLOCK = r"part_i_b_8[a-z]"           # -> line 9a
-_LINE_9B_BLOCK = r"part_i_b_9b\d"            # Col B only, joins line 10 Col B
-_SECTION_C_MAIN = r"part_i_c_(1[1-8]|19a|2[0-3])"
-_LINE_24_BLOCK = r"part_i_c_24[a-z]"         # -> line 25
-_LINE_26_OWN = r"part_i_line_26"             # the §179A row posts at line 26 itself
+# The printed Part I totals, each a compute key (forms.sch_ca). 1z Column A
+# is the federal wages key itself; 1a Columns B/C are catalog cells above.
+_PART_I_TOTAL_TOKENS = tuple(
+    [("1z" + c, _sch_ca.part_i_total_key("1z", c)) for c in "BC"]
+    + [(line + c, _sch_ca.part_i_total_key(line, c))
+       for line in ("9a", "10", "25", "26") for c in "ABC"]
+    + [("1aA", _sch_ca.LINE_1A_WAGES_COL_A)])
 
 
-def _install_sch_ca_totals(year, mapping, derivations, suppressed,
-                           catalog_cells, total_cells):
-    """Place every catalog-routed Part I cell and derive the section totals from
-    the same compute keys, so line 10 - line 26 = line 27 on the printed page."""
+def _install_sch_ca_totals(year, mapping, catalog_cells, total_cells):
+    """Place every catalog-routed Part I cell and each printed section total
+    (a compute key) in its cell."""
     mapping.update(catalog_cells)
-    universe = set(mapping) | set(suppressed)
-
-    def keys(pattern, col):
-        rx = re.compile(rf"sch_ca_line_({pattern})_{_SUFFIX[col]}")
-        return sorted(k for k in universe if rx.fullmatch(k))
-
-    def total(c, groups, col):
-        return sum(c.get(k, 0) for g in groups for k in keys(g, col))
-
-    def any_present(c, groups, col):
-        return any(k in c for g in groups for k in keys(g, col))
-
-    def put(token, col, groups, *, always):
-        field = total_cells.get(token + col)
-        if field is None:
-            return
-        if always:
-            derivations[field] = lambda c, g=groups, col=col: total(c, g, col)
-        else:
-            derivations[field] = (
-                lambda c, g=groups, col=col:
-                total(c, g, col) if any_present(c, g, col) else None)
-
-    for col in "ABC":
-        if col != "A":   # 1z Col A is the 1:1 federal passthrough (wages)
-            put("1z", col, (_LINE_1_BLOCK,), always=False)
-        put("9a", col, (_LINE_8_BLOCK,), always=False)
-        put("25", col, (_LINE_24_BLOCK,), always=False)
-        line10 = (_LINE_1_BLOCK, _SECTION_A_REST, _SECTION_B_MAIN, _LINE_8_BLOCK)
-        if col == "B":
-            line10 += (_LINE_9B_BLOCK,)
-        put("10", col, line10, always=True)
-        put("26", col, (_SECTION_C_MAIN, _LINE_24_BLOCK, _LINE_26_OWN), always=True)
-
-    # Line 1a Col A mirrors its federal counterpart (Form 1040 line 1a = W-2 wages,
-    # which is also what feeds the 1z subtotal; 1b-1i have no federal source and
-    # stay blank, as on the federal 1040).
-    if "1aA" in total_cells:
-        derivations[total_cells["1aA"]] = (
-            lambda c: c.get("sch_ca_line_part_i_a_1z_col_a"))
+    for token, key in _PART_I_TOTAL_TOKENS:
+        if token in total_cells:
+            mapping[key] = total_cells[token]
 
 
 
@@ -990,15 +942,25 @@ _SUPPRESSED_2022 = _SUPPRESSED_2023
 _SUPPRESSED_2024 = _SUPPRESSED_2024 | _LINE_26_KEYS
 _SUPPRESSED_2025 = _SUPPRESSED_2025 | _LINE_26_KEYS
 
-_install_sch_ca_totals(2021, _MAPPING_2021, _DERIVATIONS_2021, _SUPPRESSED_2021,
-                       _CATALOG_CELLS_2021, _TOTAL_CELLS_2021)
+# A divergence posted AT line 1z is a member of the 1z subtotal: its amount
+# prints inside the 1z total (sch_ca_line_part_i_1z_total_*), which owns the
+# 1z Column B / C cells. (Before ruling A1 the raw key was also mapped onto
+# those cells and the total's derivation overwrote it at fill time.)
+_LINE_1Z_MEMBER_KEYS = frozenset({
+    "sch_ca_line_part_i_a_1z_subtractions",
+    "sch_ca_line_part_i_a_1z_additions",
+})
+_SUPPRESSED_2021 = _SUPPRESSED_2021 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2023 = _SUPPRESSED_2023 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_SUPPRESSED_2024 = _SUPPRESSED_2024 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2025 = _SUPPRESSED_2025 | _LINE_1Z_MEMBER_KEYS
+
+_install_sch_ca_totals(2021, _MAPPING_2021, _CATALOG_CELLS_2021, _TOTAL_CELLS_2021)
 # 2022 shares 2023's mapping / derivation / suppression objects (identical field tree).
-_install_sch_ca_totals(2023, _MAPPING_2023, _DERIVATIONS_2023, _SUPPRESSED_2023,
-                       _CATALOG_CELLS_2023, _TOTAL_CELLS_2023)
-_install_sch_ca_totals(2024, _MAPPING_2024, _DERIVATIONS_2024, _SUPPRESSED_2024,
-                       _CATALOG_CELLS_2024, _TOTAL_CELLS_2024)
-_install_sch_ca_totals(2025, _MAPPING_2025, _DERIVATIONS_2025, _SUPPRESSED_2025,
-                       _CATALOG_CELLS_2025, _TOTAL_CELLS_2025)
+_install_sch_ca_totals(2023, _MAPPING_2023, _CATALOG_CELLS_2023, _TOTAL_CELLS_2023)
+_install_sch_ca_totals(2024, _MAPPING_2024, _CATALOG_CELLS_2024, _TOTAL_CELLS_2024)
+_install_sch_ca_totals(2025, _MAPPING_2025, _CATALOG_CELLS_2025, _TOTAL_CELLS_2025)
 
 
 # ── Part II (adjustments to federal itemized deductions) ────────────────────
@@ -1064,25 +1026,23 @@ def _part_ii_key(token: str) -> str:
     return f"sch_ca_line_part_ii_{token}"
 
 
-def _install_sch_ca_part_ii(mapping, derivations, fields, line_30_field):
+def _install_sch_ca_part_ii(mapping, fields, line_30_field):
     mapping.update(
         {_part_ii_key(token): field
          for token, field in zip(_PART_II_TOKENS, fields, strict=True)})
-    # Line 30 is by definition the Form 540 line 18 deduction, so it prints
-    # that figure itself rather than a second computation of it — and only
-    # when Part II is on the page at all (line 28 present).
-    derivations[line_30_field] = (
-        lambda c: c.get("f540_deduction")
-        if c.get("sch_ca_line_part_ii_28") is not None else None)
+    # Line 30 is by definition the Form 540 line 18 deduction, computed once
+    # at the CA assembly point and only when Part II is on the page at all
+    # (forms.sch_ca.part_ii_line_30_keys).
+    mapping[_sch_ca.PART_II_LINE_30] = line_30_field
 
 
 # 2022 shares 2023's mapping / derivation objects (identical field tree).
-for _y, _m, _d, _fields in (
-        (2021, _MAPPING_2021, _DERIVATIONS_2021, _PART_II_FIELDS_2021),
-        (2023, _MAPPING_2023, _DERIVATIONS_2023, _PART_II_FIELDS_2023),
-        (2024, _MAPPING_2024, _DERIVATIONS_2024, _PART_II_FIELDS_2024),
-        (2025, _MAPPING_2025, _DERIVATIONS_2025, _PART_II_FIELDS_2024)):
-    _install_sch_ca_part_ii(_m, _d, _fields, _PART_II_LINE_30_FIELD[_y])
+for _y, _m, _fields in (
+        (2021, _MAPPING_2021, _PART_II_FIELDS_2021),
+        (2023, _MAPPING_2023, _PART_II_FIELDS_2023),
+        (2024, _MAPPING_2024, _PART_II_FIELDS_2024),
+        (2025, _MAPPING_2025, _PART_II_FIELDS_2024)):
+    _install_sch_ca_part_ii(_m, _fields, _PART_II_LINE_30_FIELD[_y])
 
 _SUPPRESSED_2021 = _SUPPRESSED_2021 | _PART_II_TRANSIT_KEYS
 _SUPPRESSED_2023 = _SUPPRESSED_2023 | _PART_II_TRANSIT_KEYS
