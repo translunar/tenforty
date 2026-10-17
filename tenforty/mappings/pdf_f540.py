@@ -186,8 +186,8 @@ _DERIVATIONS_2025: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Tax Table; > 100,000 → Rate Schedule. The lambda returns the
     # appearance state string directly so PdfFiller's _render_scalar
     # passes it through (bool would be rejected).
-    "540_form_2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "540_form_2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "540_form_2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "540_form_2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32). Line 31 = ca_tax, line 32 = exemption.
     "540_form_2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 (Sch G-1 / FTB 5870A) is
@@ -333,8 +333,8 @@ _DERIVATIONS_2024: dict[str, Callable[[Mapping[str, object]], object]] = {
     "540-1036 RB": lambda c: _FILING_STATUS_RB_STATES_2024[c["f540_filing_status"]],
     # Line 31 tax-source checkboxes. f540_taxable_income ≤ 100,000 →
     # Tax Table; > 100,000 → Rate Schedule. On-states `/Yes`/`/Off` per probe.
-    "540-2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "540-2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "540-2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "540-2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32).
     "540-2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
@@ -454,8 +454,8 @@ _FILING_STATUS_CB_2023: dict[FilingStatus, str] = {
 _DERIVATIONS_2023: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (checkbox A = tax table, B = rate
     # schedule). On-states `/Yes`/`/Off` per the 2023 /Btn probe.
-    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 = max(0, line 31 − line 32).
     "2032": lambda c: c[_f540.LINE_33],
     # Line 35 = line 33 + line 34. Line 34 OUT_OF_V1_SCOPE, defaults 0.
@@ -600,8 +600,8 @@ _DERIVATIONS_2021: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (A = tax table, B = rate schedule). 2021
     # boxes 2012/2013 CB (2023: 2026/2027 CB). ON-state /Yes per each box's
     # OWN /_States_ (['/Yes', '/Off']).
-    "2012 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2013 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2012 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2013 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 (box 2018) /TU "Subtract line 32 from line 31. If less than zero,
     # enter 0." = max(0, line 31 − line 32). Composition verified. (2023: 2032.)
     "2018": lambda c: c[_f540.LINE_33],
@@ -771,8 +771,8 @@ _DERIVATIONS_2022: dict[str, Callable[[Mapping[str, object]], object]] = {
     # Line 31 tax-source checkboxes (A = tax table, B = rate schedule). Boxes
     # 2026/2027 CB. /TU: "Line 31. Tax. Checkbox A/B...". ON-state /Yes per each
     # box's OWN /_States_ (['/Yes', '/Off']).
-    "2026 CB": lambda c: "/Yes" if c["f540_taxable_income"] <= 100_000 else "/Off",
-    "2027 CB": lambda c: "/Yes" if c["f540_taxable_income"] > 100_000 else "/Off",
+    "2026 CB": lambda c: "/Yes" if c[_f540.LINE_31_TAX_TABLE] else "/Off",
+    "2027 CB": lambda c: "/Off" if c[_f540.LINE_31_TAX_TABLE] else "/Yes",
     # Line 33 (box 2032) /TU "Subtract line 32 from line 31. If less than zero,
     # enter 0." = max(0, line 31 − line 32).
     "2032": lambda c: c[_f540.LINE_33],

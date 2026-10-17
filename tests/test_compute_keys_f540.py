@@ -298,6 +298,9 @@ class TaxTableThresholdFromParamsTests(unittest.TestCase):
         self.assertNotIn("100000", inspect.getsource(pdf_f540))
 
     def test_line_31_branch_reads_the_params_ceiling(self):
+        # The ceiling is INCLUSIVE: taxable income of exactly the ceiling
+        # (100,000 every year) takes the Tax Table; one dollar more takes the
+        # Tax Rate Schedules.
         for year in _YEARS:
             ceiling = params_california.load(
                 year).tax_table_taxable_income_ceiling

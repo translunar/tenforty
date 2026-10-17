@@ -480,6 +480,8 @@ REFUND_DEPOSIT_KEYS = (
     "f540_refund_account_type")
 
 LINE_15 = "f540_line_15_agi_after_subtractions"
+# Line 31 method: True = Tax Table box, False = Tax Rate Schedule box.
+LINE_31_TAX_TABLE = "f540_line_31_tax_table"
 LINE_33 = "f540_line_33_tax_less_exemption_credits"
 LINE_35 = "f540_line_35_tax_before_credits"
 # Form 540 line 47 AS PRINTED: lines 40 through 46 (line 40 child and
@@ -593,6 +595,10 @@ def printed_line_keys(year: int, values: Mapping[str, object]) -> dict:
                 and line_115 > 0 else None)
     out = {
         LINE_15: line_15,
+        # Line 31: the Tax Table for taxable income (line 19) at or below the
+        # year's ceiling (inclusive), the Tax Rate Schedules above it.
+        LINE_31_TAX_TABLE: v["f540_taxable_income"]
+        <= ca_params.load(year).tax_table_taxable_income_ceiling,
         LINE_33: line_33,
         LINE_35: line_35,
         LINE_47: line_47,

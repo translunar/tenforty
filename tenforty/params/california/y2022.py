@@ -107,4 +107,10 @@ PARAMS = CaliforniaParams(
     # 2022) means born on or before January 1, 1958 -- exclusive
     # born-before cutoff January 2, 1958. Verbatim wording above.
     senior_born_before=datetime.date(1958, 1, 2),
+    # Form 540 line 31: FTB 2022 booklet p.13, "Line 31 - Tax": "Tax Table -
+    # If your taxable income on line 19 is $100,000 or less, use the tax
+    # table beginning on page 87. ... Tax Rate Schedules - If your taxable
+    # income on line 19 is over $100,000, use the tax rate schedule"
+    # (restated p.93). Inclusive: line 19 <= ceiling uses the table.
+    tax_table_taxable_income_ceiling=100_000,
 )

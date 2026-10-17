@@ -42,6 +42,10 @@ class CaliforniaParams:
     # Exclusive age cutoff for the tax year: a person born strictly before
     # this date qualifies. None = pending transcription.
     senior_born_before: datetime.date | None
+    # Form 540 line 31: taxable income (line 19) at or below this amount
+    # takes its tax from the Tax Table; above it, from the Tax Rate
+    # Schedules. INCLUSIVE ceiling, one amount for every filing status.
+    tax_table_taxable_income_ceiling: int
 
     def for_status(self, status: "FilingStatus | str") -> "StatusView":
         """Projection of these params onto one filing status. Per-status
