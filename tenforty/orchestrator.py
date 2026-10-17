@@ -53,6 +53,7 @@ from tenforty.models import (
     validate_unclaimed_property)
 from tenforty.forms import sch_d_540 as form_sch_d_540
 from tenforty.forms import f540 as form_f540
+from tenforty.forms import ftb3532 as form_ftb3532
 from tenforty.filing.pdf import PdfFiller
 from tenforty.params import ca_scorp
 from tenforty.params import california as params_california
@@ -96,6 +97,8 @@ from tenforty import pdf_packet
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
 from tenforty.mappings.pdf_sch_d_540 import PdfSchD540
+from tenforty.mappings.pdf_ftb3532 import PdfFtb3532
+from tenforty.scenario import validate_head_of_household
 from tenforty.models import (
     AmendmentCase,
     CA540Return,
@@ -119,12 +122,37 @@ _PDFS_ROOT = Path(__file__).parent.parent / "pdfs"
 # uniform fill loop in `_emit_ca_pdfs_internal` — each entry produces
 # `<basename>_<year>.pdf` from the year-keyed mapping/aggregations/
 # derivations/checkbox_states on the mapping class. `sch_d_540` is
-# conditional: it is skipped unless `form_sch_d_540.is_required`.
+# conditional: it is skipped unless `form_sch_d_540.is_required`. `ftb3532`
+# (Head of Household Filing Status Schedule) is emitted iff the return is
+# head of household (`form_ftb3532.is_required`): FTB denies HoH status to a
+# return that does not attach it.
 _CA_FORMS_BY_BASENAME: tuple[tuple[str, type], ...] = (
     ("f540", PdfF540),
     ("sch_ca", PdfSchCa),
     ("sch_d_540", PdfSchD540),
+    ("ftb3532", PdfFtb3532),
 )
+
+
+def refuse_incomplete_ftb3532_payload(values: dict, year: int) -> None:
+    """Refuse a FTB 3532 payload missing any field this scenario's branch of
+    the form requires (``PdfFtb3532.required_pdf_fields``): header name and
+    SSN, one Part I and one Part II selection, the line 1f periods when 1f,
+    the qualifying person's name/SSN/DOB, 3a and 3b when the qualifying
+    person is 19 or older, line 4 and line 5."""
+    payload = PdfFiller.resolve_fields(
+        PdfFtb3532.get_mapping(year), values,
+        derivations=PdfFtb3532.get_derivations(year),
+        checkbox_states=PdfFtb3532.get_checkbox_states(year))
+    missing = PdfFtb3532.required_pdf_fields(values, year) - set(payload)
+    if missing:
+        raise ValueError(
+            "California FTB 3532 (Head of Household Filing Status Schedule) "
+            f"for tax year {year} would print incomplete: no value for PDF "
+            f"field(s) {', '.join(sorted(missing))}. FTB may disallow head "
+            "of household on an incomplete FTB 3532, so tenforty will not "
+            "emit it. Complete `config.head_of_household` (every line the "
+            "form asks for on this return's branch).")
 
 
 def _flatten_sch_b_rows(sch_b_values: dict) -> dict:
@@ -2652,12 +2680,28 @@ class ReturnOrchestrator:
                 "It is left unstated (null) here."
             )
         validate_third_party_designee(scenario.config)
+        # FTB 3532 gate (spec §6): California denies head-of-household status
+        # to a return without a completed FTB 3532. A HoH return without the
+        # `head_of_household` block, or a non-HoH return carrying one, refuses
+        # here (loaded scenarios refuse at load; directly built configs reach
+        # this backstop). Then, for HoH, every field the scenario's branch of
+        # the form requires must be in the resolved payload:
+        # PdfFiller.resolve_fields silently SKIPS a derivation whose key is
+        # absent, which is right for optional cells and wrong for a form
+        # whose every answered line is required. Both refuse before any file
+        # is written.
+        validate_head_of_household(scenario.config)
+        ftb3532_required = form_ftb3532.is_required(scenario.config)
+        if ftb3532_required:
+            refuse_incomplete_ftb3532_payload(ca_results, year)
         output_dir.mkdir(parents=True, exist_ok=True)
         filler = PdfFiller()
 
         emitted: dict[str, Path] = {}
         for basename, mapping_cls in _CA_FORMS_BY_BASENAME:
             if basename == "sch_d_540" and not form_sch_d_540.is_required(ca_results):
+                continue
+            if basename == "ftb3532" and not ftb3532_required:
                 continue
             template = _PDFS_ROOT / "california" / str(year) / f"{basename}.pdf"
             output_path = output_dir / f"{basename}_{year}.pdf"
@@ -2672,6 +2716,12 @@ class ReturnOrchestrator:
             )
             emitted[basename] = output_path
 
+        # Post-condition (spec §6.4): the 3532 is in the CA packet iff HoH.
+        if ("ftb3532" in emitted) != ftb3532_required:
+            raise AssertionError(
+                "FTB 3532 emit post-condition violated: emitted "
+                f"{'with' if 'ftb3532' in emitted else 'without'} FTB 3532 "
+                f"for filing status {scenario.config.filing_status!r}.")
         return emitted
 
     def _emit_ca_scorp_pdfs_internal(
@@ -3149,6 +3199,7 @@ class ReturnOrchestrator:
             "sch_d_540_taxpayer_ssn": scenario.config.ssn,
             **form_f540.presentation_keys(
                 scenario.config, scenario.w2s, scenario.config.year),
+            **form_ftb3532.presentation_keys(scenario.config),
         }
         return {
             **sch_ca_results,
@@ -3313,6 +3364,12 @@ class ReturnOrchestrator:
                     mailed.append(MailedFile(
                         f"sch_d_540_{year}.pdf",
                         "California Schedule D-540 (amended)",
+                        "complete amended return"))
+                if "ftb3532" in ca_pdfs:
+                    mailed.append(MailedFile(
+                        f"ftb3532_{year}.pdf",
+                        "California FTB 3532 Head of Household Filing "
+                        "Status Schedule",
                         "complete amended return"))
             else:
                 caveats.append(_CA_COMPUTE_ONLY_NOTE)

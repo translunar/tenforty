@@ -17,7 +17,8 @@ Four packets are defined:
 - ``california_corporate`` — CA Form 100S + one Schedule K-1 (100S) per
   shareholder (FTB order: 100S first, each K-1 behind it).
 - ``california`` — Form 540 + Schedule CA (540) + Schedule D (540) when the
-  return requires it (emitted only when CA capital gains differ from federal).
+  return requires it (emitted only when CA capital gains differ from federal)
+  + FTB 3532 on a head-of-household return.
 
 Two design choices keep this robust as forms/shareholders are added:
 - **Key-family membership.** A member is either an exact emitted-key
@@ -122,6 +123,11 @@ CALIFORNIA = Packet(
         PacketMember("f540"),
         PacketMember("sch_ca"),
         PacketMember("sch_d_540"),
+        # FTB 3532, head-of-household returns only. The 540 booklet's
+        # assembly graphic groups "Supporting California Schedules" after
+        # the 540 without ordering them (2025 booklet p. 23), so last-in-group
+        # is a decision, not a source fact (FTB 3532 spec §6.5).
+        PacketMember("ftb3532"),
     ),
 )
 
