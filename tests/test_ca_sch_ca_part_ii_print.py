@@ -154,9 +154,8 @@ class PartIIMappingCellsTests(unittest.TestCase):
                 self.assertEqual(
                     placed,
                     {_key(token): cells[token]
-                     for token in _expected(year) if token != "30"}
+                     for token in _expected(year)}
                     | {_key("5cA"): cells["5cA"], _key("12A"): cells["12A"]})
-                self.assertIn(cells["30"], PdfSchCa.get_derivations(year))
 
     def test_transit_sums_are_owned_as_suppressed(self):
         for year in CA_YEARS:
