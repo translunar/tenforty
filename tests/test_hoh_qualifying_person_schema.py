@@ -433,6 +433,45 @@ class DaysThresholdTests(_LoaderCase):
                 self.assertEqual(qp.days_lived_with_you, half + 1)
 
 
+_BIRTH_OR_DEATH = ("In the event of a birth or death of your qualifying "
+                   "person during the year, enter 365 days.")
+
+
+class BirthInYearDaysTests(_LoaderCase):
+    """FTB 3532 line 5 instructions: "In the event of a birth or death of
+    your qualifying person during the year, enter 365 days. Note: A year is
+    365 days, a leap year is 366 days." A qualifying person born in the tax
+    year enters the year's full day count."""
+
+    def _born_in_year(self, year, days):
+        return _hoh_yaml(year=year, block=_block(year, qp=_qp(
+            year, birthdate=f"{year}-11-10", days_lived_with_you=days)))
+
+    def test_born_in_year_with_the_full_year_loads(self):
+        for year in (2024, 2025):
+            with self.subTest(year=year):
+                qp = self.load(self._born_in_year(year, _days_in_year(year))
+                               ).config.head_of_household.qualifying_person
+                self.assertEqual(qp.days_lived_with_you, _days_in_year(year))
+
+    def test_born_in_year_with_fewer_days_refuses_citing_the_birth_rule(self):
+        for year, days in ((2024, 45), (2025, 45), (2024, 365)):
+            with self.subTest(year=year, days=days):
+                self.refuses(
+                    self._born_in_year(year, days), "days_lived_with_you",
+                    _BIRTH_OR_DEATH,
+                    f"enter {_days_in_year(year)} days per the FTB 3532 "
+                    "line 5 instructions")
+
+    def test_under_threshold_refusal_names_the_birth_or_death_rule(self):
+        # Not born in the year: rule 10's refusal still tells a filer whose
+        # qualifying person died during the year what to enter.
+        message = self.refuses(_hoh_yaml(block=_block(qp=_qp(
+            days_lived_with_you=45))), "more than half the year")
+        self.assertIn(_BIRTH_OR_DEATH, message)
+        self.assertIn(f"enter {_days_in_year(_YEAR)} days", message)
+
+
 class LivedTogetherBoundaryTests(_LoaderCase):
     """Rule 11: a married filer who lived with the spouse at any time in the
     last six months of the year cannot qualify."""
