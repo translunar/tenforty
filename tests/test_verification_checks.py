@@ -136,6 +136,35 @@ class ValueCheckTests(unittest.TestCase):
         self.assertEqual([f.line for f in findings], ["12b"])
         self.assertIn("nothing computed", findings[0].message)
 
+    def _posture(self, line, posture):
+        """F8582_DECL with ``line`` declared single_state=``posture``."""
+        reason = f"synthetic control: line {line} is always {posture}"
+        return dataclasses.replace(F8582_DECL, lines=tuple(
+            dataclasses.replace(ln, single_state=posture,
+                                single_state_reason=reason)
+            if ln.line == line else ln for ln in F8582_DECL.lines)), reason
+
+    def test_declared_value_line_with_nothing_computed_is_a_finding(self):
+        decl, reason = self._posture("1b", "value")
+        self.assertEqual(checks.check_value(
+            _emit(F8582, F8582_VALUES), decl), [])
+        values = dict(F8582_VALUES, f8582_line_1b_activities_with_loss=None)
+        findings = checks.check_value(_emit(F8582, values), decl)
+        self.assertEqual([(f.line, f.check) for f in findings],
+                         [("1b", "value")])
+        self.assertIn("single_state='value'", findings[0].message)
+        self.assertIn(reason, findings[0].message)
+
+    def test_declared_nothing_bound_line_with_a_value_is_a_finding(self):
+        decl, reason = self._posture("1b", "nothing")
+        values = dict(F8582_VALUES, f8582_line_1b_activities_with_loss=None)
+        self.assertEqual(checks.check_value(_emit(F8582, values), decl), [])
+        findings = checks.check_value(_emit(F8582, F8582_VALUES), decl)
+        self.assertEqual([(f.line, f.check) for f in findings],
+                         [("1b", "value")])
+        self.assertIn("single_state='nothing'", findings[0].message)
+        self.assertIn(reason, findings[0].message)
+
     def test_zero_prints_zero(self):
         rec = _emit(SCH_D, SCH_D_VALUES)
         field = PdfSchD540.get_mapping(YEAR)["sch_d_540_total_subtractions"]
@@ -195,6 +224,24 @@ class PlacementTests(unittest.TestCase):
                 # The anchor, not the value, carries the identity.
                 self.assertEqual(checks.check_value(
                     _emit(form, values, spec), decl), [])
+
+    def test_key_less_lines_are_not_placed(self):
+        # A key-less line (unmodeled, or preprinted) has no mapped field by
+        # definition; placement checks mapping-declaration agreement, which
+        # exists only for bound lines.
+        decl = dataclasses.replace(F8582_DECL, lines=F8582_DECL.lines + (
+            _line(F8582, "2a", "", "Part I", single_state="nothing",
+                  single_state_reason="unmodeled: synthetic control"),))
+        self.assertEqual(checks.check_placement(
+            _template(F8582), decl, _spec(F8582)), [])
+
+    def test_bound_line_without_a_mapped_field_is_still_a_finding(self):
+        decl = dataclasses.replace(F8582_DECL, lines=F8582_DECL.lines + (
+            _line(F8582, "2a", "f8582_no_such_key", "Part I"),))
+        findings = checks.check_placement(
+            _template(F8582), decl, _spec(F8582))
+        self.assertEqual([f.line for f in findings], ["2a"])
+        self.assertIn("has no field to place", findings[0].message)
 
     def test_ambiguous_near_label_is_a_finding(self):
         # "Activities with net income" prints for both line 1a and line 2a.
