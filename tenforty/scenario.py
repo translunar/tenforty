@@ -1558,6 +1558,9 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     try:
         filer_ssn = normalize_ssn_digits(cfg.ssn)
     except ValueError:
+        # Equality against a malformed filer SSN means nothing, so skip it;
+        # the emit path still fails closed (FTB 3532 presentation refuses a
+        # filer SSN that does not normalize).
         filer_ssn = None
     if filer_ssn is not None and facts.qualifying_person.ssn == filer_ssn:
         raise ValueError(
