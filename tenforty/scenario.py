@@ -1460,6 +1460,23 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
     year = cfg.year
     days_in_year = (datetime.date(year, 12, 31)
                     - datetime.date(year, 1, 1)).days + 1
+    # FTB 3532 line 5 instructions: "In the event of a birth or death of
+    # your qualifying person during the year, enter 365 days. Note: A year
+    # is 365 days, a leap year is 366 days." Death is not captured; a birth
+    # in the tax year is, so a born-in-year count short of the full year is
+    # a face-of-form error, refused ahead of rule 10's threshold.
+    birth_or_death_rule = (
+        "FTB 3532 line 5 instructions: \"In the event of a birth or death of "
+        "your qualifying person during the year, enter 365 days. Note: A "
+        "year is 365 days, a leap year is 366 days.\"")
+    if (int(qp.birthdate[:4]) == year
+            and qp.days_lived_with_you != days_in_year):
+        raise ValueError(
+            f"`{_QP}.days_lived_with_you` is {qp.days_lived_with_you}, but "
+            f"the qualifying person was born during {year} "
+            f"({qp.birthdate}). {birth_or_death_rule} Correct the count: "
+            f"enter {days_in_year} days per the FTB 3532 line 5 "
+            "instructions.")
     # Rule 10. FTB 3532 line 5 instructions: "more than half the year is 183
     # days. (A leap year has 366 days, and more than half a leap year is 184
     # days.)" Face-of-form contradiction only; not an eligibility
@@ -1473,9 +1490,11 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
             f"with you more than half the year: at least {threshold} days in "
             f"{year} (FTB 3532 line 5 instructions: \"more than half the "
             "year is 183 days\", 184 in a leap year; temporary absences "
-            "count as time lived with you). As entered, FTB 3532 would show "
-            "you do not qualify. Correct the count, or file under the "
-            "status that applies.")
+            "count as time lived with you). If your qualifying person was "
+            f"born or died during {year}, enter {days_in_year} days instead "
+            f"({birth_or_death_rule}). As entered, FTB 3532 would show you "
+            "do not qualify. Correct the count, or file under the status "
+            "that applies.")
     # Rule 11. FTB 3532 line 5 instructions: if you "lived with your
     # spouse/RDP at any time during the last six months of the year, you
     # cannot qualify for the HOH filing status." The last six months begin
