@@ -1,0 +1,477 @@
+{
+ "form": "sch_2",
+ "key": 2023,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2023/f1040s2.pdf",
+ "source_sha256": "ccfe610c15371e722c3743943e0f20e278114c3a040e2e00aceb68ea3c6eab33",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Alternative minimum tax. Attach Form 6251",
+   "bbox": [
+    44.28,
+    130.13,
+    50.4,
+    143.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Excess advance premium tax credit repayment. Attach Form 8962",
+   "bbox": [
+    44.28,
+    148.13,
+    50.4,
+    161.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Add lines 1 and 2. Enter here and on Form 1040, 1040-SR, or 1040-NR,",
+   "bbox": [
+    44.28,
+    165.63,
+    50.4,
+    178.75
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "Self-employment tax. Attach Schedule SE",
+   "bbox": [
+    44.28,
+    202.13,
+    50.4,
+    215.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Social security and Medicare tax on unreported tip income.",
+   "bbox": [
+    44.28,
+    218.93,
+    50.4,
+    232.05
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Uncollected social security and Medicare tax on wages. Attach",
+   "bbox": [
+    44.28,
+    248.93,
+    50.4,
+    262.05
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "7",
+   "text": "Total additional social security and Medicare tax. Add lines 5 and 6",
+   "bbox": [
+    44.28,
+    280.13,
+    50.4,
+    293.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Additional tax on IRAs or other tax-favored accounts. Attach Form 5329",
+   "bbox": [
+    44.28,
+    298.13,
+    50.4,
+    311.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Household employment taxes. Attach Schedule H",
+   "bbox": [
+    44.28,
+    334.13,
+    50.4,
+    347.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Repayment of first-time homebuyer credit. Attach Form 5405 if required",
+   "bbox": [
+    38.17,
+    352.13,
+    50.4,
+    365.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Additional Medicare Tax. Attach Form 8959",
+   "bbox": [
+    38.17,
+    370.13,
+    50.4,
+    383.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Net investment income tax. Attach Form 8960",
+   "bbox": [
+    38.17,
+    388.13,
+    50.4,
+    401.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "Uncollected social security and Medicare or RRTA tax on tips or",
+   "bbox": [
+    38.17,
+    404.93,
+    50.4,
+    418.05
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "Interest on tax due on installment income from the sale of certain",
+   "bbox": [
+    38.17,
+    434.93,
+    50.4,
+    448.05
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "Interest on the deferred tax on gain from certain installment sales with",
+   "bbox": [
+    38.17,
+    464.93,
+    50.4,
+    478.05
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16",
+   "text": "Recapture of low-income housing credit. Attach Form 8611",
+   "bbox": [
+    38.17,
+    496.13,
+    50.4,
+    509.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17",
+   "text": "Other additional taxes:",
+   "bbox": [
+    38.17,
+    70.13,
+    50.4,
+    83.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17a",
+   "text": "",
+   "bbox": [
+    390.33,
+    106.13,
+    408.87,
+    119.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17b",
+   "text": "",
+   "bbox": [
+    390.12,
+    136.13,
+    409.08,
+    149.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17c",
+   "text": "",
+   "bbox": [
+    390.33,
+    154.13,
+    408.87,
+    167.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17d",
+   "text": "",
+   "bbox": [
+    390.12,
+    184.13,
+    409.08,
+    197.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17e",
+   "text": "",
+   "bbox": [
+    390.33,
+    202.13,
+    408.87,
+    215.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17f",
+   "text": "",
+   "bbox": [
+    391.65,
+    232.13,
+    407.55,
+    245.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17g",
+   "text": "",
+   "bbox": [
+    390.12,
+    262.13,
+    409.08,
+    275.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17h",
+   "text": "",
+   "bbox": [
+    390.22,
+    292.13,
+    408.98,
+    305.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17i",
+   "text": "",
+   "bbox": [
+    392.06,
+    322.13,
+    407.13,
+    335.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17j",
+   "text": "",
+   "bbox": [
+    391.95,
+    340.13,
+    407.25,
+    353.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17k",
+   "text": "",
+   "bbox": [
+    390.33,
+    358.13,
+    408.87,
+    371.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17l",
+   "text": "",
+   "bbox": [
+    392.06,
+    376.13,
+    407.13,
+    389.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17m",
+   "text": "",
+   "bbox": [
+    389.61,
+    406.13,
+    409.59,
+    419.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17n",
+   "text": "",
+   "bbox": [
+    390.22,
+    436.13,
+    408.98,
+    449.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17o",
+   "text": "",
+   "bbox": [
+    390.12,
+    466.13,
+    409.08,
+    479.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17p",
+   "text": "",
+   "bbox": [
+    390.12,
+    496.13,
+    409.08,
+    509.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17q",
+   "text": "",
+   "bbox": [
+    390.12,
+    514.13,
+    409.08,
+    527.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17z",
+   "text": "",
+   "bbox": [
+    390.63,
+    550.13,
+    408.57,
+    563.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "18",
+   "text": "Total additional taxes. Add lines 17a through 17z",
+   "bbox": [
+    38.17,
+    568.13,
+    50.4,
+    581.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "19",
+   "text": "Reserved for future use",
+   "bbox": [
+    38.17,
+    586.13,
+    50.4,
+    599.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "20",
+   "text": "Section 965 net tax liability installment from Form 965-A",
+   "bbox": [
+    38.17,
+    604.13,
+    50.4,
+    617.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "21",
+   "text": "Add lines 4, 7 through 16, and 18. These are your total other taxes.",
+   "bbox": [
+    38.17,
+    620.43,
+    50.4,
+    633.55
+   ]
+  }
+ ]
+}

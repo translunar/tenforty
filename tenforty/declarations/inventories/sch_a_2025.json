@@ -1,0 +1,333 @@
+{
+ "form": "sch_a",
+ "key": 2025,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2025/f1040sa.pdf",
+ "source_sha256": "c14acf3478f4c33f27ac6e8ecd9f94b6fb25b16745b341728bd27847d2ef56bb",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "Medical and dental expenses (see instructions)",
+   "bbox": [
+    103.0,
+    120.65,
+    108.0,
+    131.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Enter amount from Form 1040 or 1040-SR,",
+   "bbox": [
+    103.0,
+    133.35,
+    108.0,
+    144.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Multiply line 2 by 7.5% (0.075)",
+   "bbox": [
+    103.0,
+    156.65,
+    108.0,
+    167.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "Subtract line 3 from line 1. If line 3 is more than line 1, enter -0-",
+   "bbox": [
+    103.0,
+    168.65,
+    108.0,
+    179.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "State and local taxes (SALT).",
+   "bbox": [
+    103.0,
+    180.65,
+    108.0,
+    191.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5a",
+   "text": "State and local income taxes or general sales taxes. You may",
+   "bbox": [
+    108.0,
+    191.45,
+    113.17,
+    202.19
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5b",
+   "text": "State and local real estate taxes (see instructions)",
+   "bbox": [
+    108.0,
+    234.65,
+    113.5,
+    245.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5c",
+   "text": "State and local personal property taxes",
+   "bbox": [
+    108.0,
+    246.65,
+    113.17,
+    257.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5d",
+   "text": "Add lines 5a through 5c",
+   "bbox": [
+    108.0,
+    258.65,
+    113.5,
+    269.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5e",
+   "text": "Enter the smaller of line 5d or $40,000 ($20,000 if married filing",
+   "bbox": [
+    108.0,
+    273.65,
+    113.17,
+    284.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "Other taxes. List type and amount:",
+   "bbox": [
+    103.0,
+    318.65,
+    108.0,
+    329.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Add lines 5e and 6",
+   "bbox": [
+    103.0,
+    354.15,
+    108.0,
+    364.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Home mortgage interest and points. If you didn’t use all of your",
+   "bbox": [
+    103.0,
+    368.65,
+    108.0,
+    379.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8a",
+   "text": "Home mortgage interest and points reported to you on Form",
+   "bbox": [
+    108.0,
+    403.15,
+    113.17,
+    413.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8b",
+   "text": "Home mortgage interest not reported to you on Form 1098. See",
+   "bbox": [
+    108.0,
+    426.45,
+    113.5,
+    437.19
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8c",
+   "text": "Points not reported to you on Form 1098. See instructions for",
+   "bbox": [
+    108.0,
+    493.85,
+    113.17,
+    504.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8d",
+   "text": "Reserved for future use",
+   "bbox": [
+    108.0,
+    516.65,
+    113.5,
+    527.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8e",
+   "text": "Add lines 8a through 8c",
+   "bbox": [
+    108.0,
+    528.65,
+    113.17,
+    539.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "Investment interest. Attach Form 4952 if required. See instructions",
+   "bbox": [
+    103.0,
+    540.65,
+    108.0,
+    551.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "10",
+   "text": "Add lines 8e and 9",
+   "bbox": [
+    97.99,
+    552.15,
+    108.0,
+    562.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "11",
+   "text": "Gifts by cash or check. If you made any gift of $250 or more,",
+   "bbox": [
+    97.99,
+    565.85,
+    108.0,
+    576.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "12",
+   "text": "Other than by cash or check. If you made any gift of $250 or",
+   "bbox": [
+    97.99,
+    589.65,
+    108.0,
+    600.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "13",
+   "text": "Carryover from prior year",
+   "bbox": [
+    97.99,
+    612.65,
+    108.0,
+    623.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "14",
+   "text": "Add lines 11 through 13",
+   "bbox": [
+    97.99,
+    624.15,
+    108.0,
+    634.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "15",
+   "text": "Casualty and theft loss(es) from a federally declared disaster (other",
+   "bbox": [
+    97.99,
+    637.65,
+    108.0,
+    648.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "16",
+   "text": "Other—from list in instructions. List type and amount:",
+   "bbox": [
+    97.99,
+    672.65,
+    108.0,
+    683.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "17",
+   "text": "Add the amounts in the far right column for lines 4 through 16. Also,",
+   "bbox": [
+    97.99,
+    709.85,
+    108.0,
+    720.59
+   ]
+  }
+ ]
+}

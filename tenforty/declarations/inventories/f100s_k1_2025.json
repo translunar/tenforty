@@ -1,0 +1,561 @@
+{
+ "form": "f100s_k1",
+ "key": 2025,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2025/f100s_k1.pdf",
+ "source_sha256": "60a3bac1c58ef26e6cc0614e2f190d6d4f578f5758c76576ab2e30ba7cbf7221",
+ "lines": [
+  {
+   "page": 2,
+   "section": "",
+   "label": "1",
+   "text": "Column (c) California adjustment.",
+   "bbox": [
+    319.2,
+    157.2,
+    404.2,
+    170.29
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "2",
+   "text": "Net rental real estate income (loss). Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    171.12,
+    317.52,
+    184.29
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "3",
+   "text": "Other net rental income (loss). Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    185.12,
+    317.52,
+    198.29
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "4",
+   "text": "Interest income. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    199.0,
+    317.52,
+    212.17
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "5",
+   "text": "Dividends. See instructions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    213.16,
+    317.52,
+    226.33
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "6",
+   "text": "Royalties. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    227.12,
+    317.52,
+    240.29
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "7",
+   "text": "Net short-term capital gain (loss). Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    241.04,
+    317.52,
+    254.21
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8",
+   "text": "Net long-term capital gain (loss). Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    255.02,
+    317.52,
+    268.19
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "9",
+   "text": "Net IRC Section 1231 gain (loss). Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    269.07,
+    317.52,
+    282.24
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10a",
+   "text": "Column (c) California adjustment.",
+   "bbox": [
+    319.2,
+    283.16,
+    404.2,
+    296.33
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10b",
+   "text": "Other income (loss) Column (b). Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.52,
+    297.07,
+    317.52,
+    310.24
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "9b",
+   "text": "Other income (loss) ▶",
+   "bbox": [
+    69.7,
+    301.72,
+    73.7,
+    311.65
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11",
+   "text": "Column (c). California adjustment.",
+   "bbox": [
+    319.5,
+    322.4,
+    403.5,
+    334.4
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12a",
+   "text": "Cash charitable contributions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.69,
+    334.97,
+    316.69,
+    346.25
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12b",
+   "text": "Noncash charitable contributions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.38,
+    347.24,
+    317.38,
+    358.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12c",
+   "text": "Investment interest expense. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.38,
+    359.24,
+    317.38,
+    370.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12d",
+   "text": "1. IRC Section 59(e)(2) expenditures. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.38,
+    371.24,
+    317.38,
+    382.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12e",
+   "text": "Deductions-portfolio. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.38,
+    395.4,
+    317.38,
+    406.68
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12f",
+   "text": "Other deductions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    233.38,
+    407.24,
+    317.38,
+    418.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13a",
+   "text": "Column (e) California source amounts and credits.",
+   "bbox": [
+    501.16,
+    430.1,
+    576.52,
+    442.1
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13b",
+   "text": "Credits related to rental real estate activities other than on line 13(a). Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    414.64,
+    454.1,
+    490.0,
+    466.1
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13c",
+   "text": "Credits related to other rental activities. See instructions. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    414.64,
+    478.1,
+    490.0,
+    490.1
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13d",
+   "text": "Other credits. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    414.64,
+    491.24,
+    490.0,
+    502.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "14",
+   "text": "Total withholding (equals amount on Form 592-B if calendar year). Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    414.64,
+    514.4,
+    490.0,
+    526.4
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15a",
+   "text": "Column (e) California source amounts and credits.",
+   "bbox": [
+    503.92,
+    538.4,
+    576.52,
+    550.4
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15b",
+   "text": "Adjusted gain or loss. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    406.0,
+    551.3,
+    490.0,
+    562.58
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15c",
+   "text": "Depletion (other than oil and gas). Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    406.0,
+    563.34,
+    490.0,
+    574.62
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15d",
+   "text": "Gross income from oil, gas, and geothermal properties. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    406.0,
+    586.4,
+    490.0,
+    598.4
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15e",
+   "text": "Deductions allocable to oil, gas, and geothermal properties. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    406.0,
+    610.4,
+    490.0,
+    622.4
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15f",
+   "text": "Other AMT items. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    406.0,
+    623.24,
+    490.0,
+    634.52
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16a",
+   "text": "Column (c) California adjustment.",
+   "bbox": [
+    318.98,
+    635.8,
+    402.98,
+    647.08
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16b",
+   "text": "Other tax-exempt income. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    647.75,
+    316.86,
+    659.03
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16c",
+   "text": "Nondeductible expenses. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    659.75,
+    316.86,
+    671.03
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16d",
+   "text": "Total property distributions (including cash) other than dividends distribution reported on line 17c. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    690.91,
+    316.86,
+    702.91
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16e",
+   "text": "Repayment of loans from shareholders. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    703.81,
+    316.86,
+    715.09
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "17a",
+   "text": "Column (c) California adjustment.",
+   "bbox": [
+    318.98,
+    156.96,
+    402.98,
+    168.24
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "17b",
+   "text": "Investment expenses. See instructions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    169.06,
+    316.86,
+    180.34
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "17c",
+   "text": "Total taxable dividend distribution paid from accumulated earnings and profits. See instructions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    200.4,
+    316.86,
+    212.4
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "17d",
+   "text": "Other information. See instructions. Column (b) Amount from federal Schedule K-1 (Form 1120-S).",
+   "bbox": [
+    232.86,
+    213.24,
+    316.86,
+    224.52
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18a",
+   "text": "Type of income",
+   "bbox": [
+    58.5,
+    225.57,
+    66.5,
+    235.49
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18b",
+   "text": "Name of state.",
+   "bbox": [
+    123.48,
+    236.16,
+    226.68,
+    245.76
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18c",
+   "text": "Total gross income from sources outside California. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    405.48,
+    258.9,
+    489.48,
+    270.9
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18d",
+   "text": "Total applicable deductions and losses. Attach schedule. Column (d) Total amounts using California law. Combine column (b) and column (c) where applicable.",
+   "bbox": [
+    405.48,
+    282.3,
+    489.48,
+    294.3
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18e",
+   "text": "Total other state taxes",
+   "bbox": [
+    77.4,
+    309.31,
+    83.59,
+    315.5
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "19",
+   "text": "More than one activity for at-risk purposes. See instructions.",
+   "bbox": [
+    73.8,
+    321.5,
+    79.99,
+    327.69
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "20",
+   "text": "More than one activity for passive activity purposes. See instructions.",
+   "bbox": [
+    345.48,
+    321.5,
+    351.67,
+    327.69
+   ]
+  }
+ ]
+}

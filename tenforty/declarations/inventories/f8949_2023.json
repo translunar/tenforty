@@ -1,0 +1,57 @@
+{
+ "form": "f8949",
+ "key": 2023,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2023/f8949.pdf",
+ "source_sha256": "8d42e05176c6a8c63bf025cb26546a878fc73c462b234ec70fd5a824c3b145a7",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "If you enter an amount in column (g),",
+   "bbox": [
+    44.4,
+    282.65,
+    49.4,
+    293.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Totals. Add the amounts in columns (d), (e), (g), and (h) (subtract",
+   "bbox": [
+    43.4,
+    693.05,
+    48.4,
+    703.79
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "1",
+   "text": "If you enter an amount in column (g),",
+   "bbox": [
+    44.4,
+    246.65,
+    49.4,
+    257.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "2",
+   "text": "Totals. Add the amounts in columns (d), (e), (g), and (h) (subtract",
+   "bbox": [
+    43.4,
+    655.55,
+    48.4,
+    666.29
+   ]
+  }
+ ]
+}

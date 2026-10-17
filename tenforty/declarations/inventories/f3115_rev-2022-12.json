@@ -1,0 +1,1017 @@
+{
+ "form": "f3115",
+ "key": "rev-2022-12",
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/revision_keyed/f3115.pdf",
+ "source_sha256": "cdfcb43e61467926acab03c5da3d7c21111c35b0e6208ee183b4fe2de636cd2c",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Enter the applicable designated automatic accounting method change number (“DCN”) for the requested",
+   "bbox": [
+    45.4,
+    435.65,
+    50.4,
+    446.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "(1) DCN: (2) DCN: (3) DCN: (4) DCN: (5) DCN: (6) DCN:",
+   "bbox": [
+    50.4,
+    480.65,
+    55.57,
+    491.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Other Description:",
+   "bbox": [
+    50.4,
+    504.65,
+    55.9,
+    515.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Do any of the eligibility rules restrict the applicant from filing the requested change using the automatic change",
+   "bbox": [
+    45.4,
+    517.65,
+    50.4,
+    528.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Has the filer provided all the information and statements required (a) on this form and (b) by the List of Automatic",
+   "bbox": [
+    45.4,
+    542.65,
+    50.4,
+    553.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "During the tax year of change, did or will the applicant (a) cease to engage in the trade or business to which the",
+   "bbox": [
+    45.4,
+    589.65,
+    50.4,
+    600.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Is the applicant requesting to change to the principal method in the tax year of change under Regulations section",
+   "bbox": [
+    45.4,
+    613.65,
+    50.4,
+    624.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "6a",
+   "text": "Does the applicant (or any present or former consolidated group in which the applicant was a member during the",
+   "bbox": [
+    45.4,
+    61.65,
+    55.57,
+    72.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "6b",
+   "text": "Is the method of accounting the applicant is requesting to change an issue under consideration (with respect to",
+   "bbox": [
+    50.4,
+    98.65,
+    55.9,
+    109.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "6c",
+   "text": "Enter the name and telephone number of the examining agent and the tax year(s) under examination.",
+   "bbox": [
+    50.4,
+    132.15,
+    55.57,
+    142.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "6d",
+   "text": "Has a copy of this Form 3115 been provided to the examining agent identified on line 6c?",
+   "bbox": [
+    50.4,
+    156.65,
+    55.9,
+    167.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "7a",
+   "text": "Does audit protection apply to the applicant’s requested change in method of accounting? See instructions",
+   "bbox": [
+    45.4,
+    168.65,
+    55.57,
+    179.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "7b",
+   "text": "If “Yes,” check the applicable box and attach the required statement.",
+   "bbox": [
+    50.4,
+    192.65,
+    55.9,
+    203.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "8a",
+   "text": "Does the applicant (or any present or former consolidated group in which the applicant was a member during the",
+   "bbox": [
+    45.4,
+    241.65,
+    55.57,
+    252.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "8b",
+   "text": "Is the method of accounting the applicant is requesting to change an issue under consideration by Appeals and/or",
+   "bbox": [
+    52.1,
+    278.65,
+    57.6,
+    289.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "8c",
+   "text": "If “Yes,” enter the name of the (check the box) Appeals officer and/or counsel for the government,",
+   "bbox": [
+    50.4,
+    324.25,
+    55.57,
+    334.99
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "8d",
+   "text": "Has a copy of this Form 3115 been provided to the Appeals officer and/or counsel for the government identified",
+   "bbox": [
+    50.4,
+    361.65,
+    55.9,
+    372.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "9",
+   "text": "If the applicant answered “Yes” to line 6a and/or 8a with respect to any present or former consolidated group,",
+   "bbox": [
+    45.4,
+    387.65,
+    50.4,
+    398.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "10",
+   "text": "If for federal income tax purposes, the applicant is either an entity (including a limited liability company) treated as",
+   "bbox": [
+    40.39,
+    435.65,
+    50.4,
+    446.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "11a",
+   "text": "Has the applicant, its predecessor, or a related party requested or made (under either an automatic or",
+   "bbox": [
+    40.39,
+    482.65,
+    50.4,
+    493.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "11b",
+   "text": "If “Yes,” for each trade or business, attach a description of each requested change in method of accounting",
+   "bbox": [
+    50.4,
+    529.65,
+    55.9,
+    540.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "11c",
+   "text": "If any application was withdrawn, not perfected, or denied, or if a Consent Agreement granting a change was not",
+   "bbox": [
+    50.38,
+    554.64,
+    55.55,
+    565.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "12",
+   "text": "Does the applicant, its predecessor, or a related party currently have pending any request (including any",
+   "bbox": [
+    40.45,
+    589.64,
+    50.45,
+    600.37
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "13",
+   "text": "Is the applicant requesting to change its overall method of accounting?",
+   "bbox": [
+    40.39,
+    648.65,
+    50.4,
+    659.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "14",
+   "text": "If the applicant is either (i) not changing its overall method of accounting, or (ii) changing its overall method of",
+   "bbox": [
+    40.39,
+    62.65,
+    50.4,
+    73.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "14a",
+   "text": "The item(s) being changed.",
+   "bbox": [
+    50.4,
+    96.65,
+    55.57,
+    107.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "14b",
+   "text": "The applicant’s present method for the item(s) being changed.",
+   "bbox": [
+    50.4,
+    108.65,
+    55.9,
+    119.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "14c",
+   "text": "The applicant’s proposed method for the item(s) being changed.",
+   "bbox": [
+    50.4,
+    120.64,
+    55.57,
+    131.38
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "14d",
+   "text": "The applicant’s present overall method of accounting (cash, accrual, or hybrid).",
+   "bbox": [
+    50.4,
+    132.65,
+    55.9,
+    143.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "15a",
+   "text": "Attach a detailed and complete description of the applicant’s trade(s) or business(es). See section 446(d).",
+   "bbox": [
+    40.39,
+    144.65,
+    50.4,
+    155.38
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "16a",
+   "text": "Attach a full explanation of the legal basis supporting the proposed method for the item being changed. Include a",
+   "bbox": [
+    40.39,
+    242.65,
+    55.57,
+    253.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "16b",
+   "text": "Include all authority (statutes, regulations, published rulings, court cases, etc.) supporting the proposed method.",
+   "bbox": [
+    50.39,
+    276.64,
+    55.89,
+    287.38
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "16c",
+   "text": "Include either a discussion of the contrary authorities or a statement that no contrary authority exists.",
+   "bbox": [
+    50.39,
+    288.64,
+    55.56,
+    299.38
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "17",
+   "text": "Will the proposed method of accounting be used for the applicant’s books and records and financial statements?",
+   "bbox": [
+    40.38,
+    301.64,
+    50.39,
+    312.38
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "18",
+   "text": "Does the applicant request a conference with the IRS National Office if the IRS National Office proposes an",
+   "bbox": [
+    40.39,
+    337.65,
+    50.4,
+    348.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "19a",
+   "text": "If the applicant is changing to either the overall cash method, an overall accrual method, or is changing its method",
+   "bbox": [
+    40.39,
+    363.65,
+    55.57,
+    374.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part II",
+   "label": "19b",
+   "text": "If the applicant is changing its method of accounting for any long-term contract subject to section 460, in addition",
+   "bbox": [
+    50.4,
+    446.15,
+    55.9,
+    456.89
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "20",
+   "text": "Is the applicant’s requested change described in any revenue procedure, revenue ruling, notice, regulation, or",
+   "bbox": [
+    40.39,
+    505.65,
+    50.4,
+    516.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "21",
+   "text": "Attach a copy of all documents related to the proposed change (see instructions).",
+   "bbox": [
+    40.39,
+    552.65,
+    50.4,
+    563.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "22",
+   "text": "Attach a statement of the applicant’s reasons for the proposed change.",
+   "bbox": [
+    40.39,
+    564.65,
+    50.4,
+    575.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "23",
+   "text": "If the applicant is a member of a consolidated group for the year of change, do all other members of the",
+   "bbox": [
+    40.39,
+    577.65,
+    50.4,
+    588.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "24a",
+   "text": "Enter the amount of user fee attached to this application (see instructions) $",
+   "bbox": [
+    40.39,
+    612.65,
+    50.4,
+    623.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part III",
+   "label": "24b",
+   "text": "If the applicant qualifies for a reduced user fee, attach the required information or certification (see instructions).",
+   "bbox": [
+    50.4,
+    624.65,
+    55.9,
+    635.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part IV",
+   "label": "25",
+   "text": "Does published guidance require the applicant (or permit the applicant and the applicant is electing) to implement",
+   "bbox": [
+    40.39,
+    61.65,
+    50.4,
+    72.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part IV",
+   "label": "26",
+   "text": "Enter the section 481(a) adjustment. Indicate whether the adjustment is an increase (+) or a decrease (-) in",
+   "bbox": [
+    40.39,
+    102.65,
+    50.4,
+    113.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part IV",
+   "label": "27",
+   "text": "Is the applicant required to take into account in the year of change any remaining portion of a section 481(a)",
+   "bbox": [
+    40.39,
+    181.65,
+    50.4,
+    192.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part IV",
+   "label": "28",
+   "text": "Is the applicant making an election to take the entire amount of the adjustment into account in the tax year of change?",
+   "bbox": [
+    40.39,
+    204.65,
+    50.4,
+    215.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part IV",
+   "label": "29",
+   "text": "Is any part of the section 481(a) adjustment attributable to transactions between members of an affiliated group, a",
+   "bbox": [
+    40.39,
+    241.65,
+    50.4,
+    252.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "1",
+   "text": "Check the appropriate boxes below to indicate the applicant’s present and proposed methods of accounting.",
+   "bbox": [
+    45.4,
+    311.45,
+    50.4,
+    322.19
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2",
+   "text": "Enter the following amounts as of the close of the tax year preceding the year of change. If none, state “None.” Also, attach a",
+   "bbox": [
+    45.39,
+    349.65,
+    50.4,
+    360.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2a",
+   "text": "Income accrued but not received (such as accounts receivable) $",
+   "bbox": [
+    50.4,
+    384.65,
+    55.57,
+    395.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2b",
+   "text": "Income received or reported before it was earned (such as advanced payments). Attach a description of",
+   "bbox": [
+    50.4,
+    397.65,
+    55.9,
+    408.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2c",
+   "text": "Expenses accrued but not paid (such as accounts payable)",
+   "bbox": [
+    50.4,
+    420.65,
+    55.57,
+    431.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2d",
+   "text": "Prepaid expenses previously deducted",
+   "bbox": [
+    50.4,
+    432.65,
+    55.9,
+    443.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2e",
+   "text": "Supplies on hand previously deducted and/or not previously reported",
+   "bbox": [
+    50.4,
+    444.65,
+    55.57,
+    455.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2f",
+   "text": "Inventory on hand previously deducted and/or not previously reported. Complete Schedule D, Part II",
+   "bbox": [
+    50.4,
+    456.65,
+    53.4,
+    467.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2g",
+   "text": "Other amounts (specify). Attach a description of the item and the legal basis for its inclusion in the",
+   "bbox": [
+    50.4,
+    469.65,
+    55.9,
+    480.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "2h",
+   "text": "Net section 481(a) adjustment (Combine lines 2a–2g.) Indicate whether the adjustment is an increase (+)",
+   "bbox": [
+    50.4,
+    494.65,
+    55.74,
+    505.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "3",
+   "text": "Is the applicant also requesting the recurring item exception under section 461(h)(3)? Yes No",
+   "bbox": [
+    45.4,
+    540.65,
+    50.4,
+    551.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "4",
+   "text": "Attach copies of the profit and loss statement (Schedule F (Form 1040) for farmers) and the balance sheet, if applicable, as of",
+   "bbox": [
+    45.39,
+    568.65,
+    50.4,
+    579.39
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part I",
+   "label": "5",
+   "text": "Is the applicant making a change to the overall cash method or to a method in which a taxpayer uses an",
+   "bbox": [
+    45.4,
+    626.64,
+    50.41,
+    637.37
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part II",
+   "label": "1",
+   "text": "A description of inventory items (items whose production, purchase, or sale is an income-producing factor) and materials and",
+   "bbox": [
+    45.4,
+    685.65,
+    50.4,
+    696.38
+   ]
+  },
+  {
+   "page": 4,
+   "section": "Part II",
+   "label": "2",
+   "text": "An explanation as to whether the applicant is required to use an accrual method under any section of the Code or regulations.",
+   "bbox": [
+    45.46,
+    707.15,
+    50.46,
+    717.88
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "1",
+   "text": "To the extent not already provided, attach a description of the applicant’s present and proposed methods for reporting income",
+   "bbox": [
+    45.4,
+    85.65,
+    50.4,
+    96.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "2a",
+   "text": "Are the applicant’s contracts long-term contracts as defined in section 460(f)(1) (see instructions)? Yes No",
+   "bbox": [
+    45.43,
+    120.64,
+    55.6,
+    131.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "2b",
+   "text": "If “Yes,” do all the contracts qualify for the exception under section 460(e) (see instructions)? Yes No",
+   "bbox": [
+    50.4,
+    132.66,
+    55.9,
+    143.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "2c",
+   "text": "Is the applicant requesting to use the percentage-of-completion method using cost-to-cost under",
+   "bbox": [
+    50.4,
+    157.64,
+    55.56,
+    168.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "2d",
+   "text": "If line 2c is “Yes,” in computing the completion factor of a contract, will the applicant use the simplified",
+   "bbox": [
+    50.4,
+    180.65,
+    55.9,
+    191.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "2e",
+   "text": "If line 2c is “No,” is the applicant requesting to use the exempt-contract percentage-of-completion",
+   "bbox": [
+    50.4,
+    205.65,
+    55.56,
+    216.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "3a",
+   "text": "Does the applicant have long-term manufacturing contracts as defined in section 460(f)(2)? Yes No",
+   "bbox": [
+    45.4,
+    264.65,
+    55.57,
+    275.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "3b",
+   "text": "If “Yes,” attach a description of the applicant’s manufacturing activities, including any required installation",
+   "bbox": [
+    50.4,
+    277.65,
+    55.9,
+    288.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "4a",
+   "text": "Does the applicant enter into cost-plus long-term contracts? Yes No",
+   "bbox": [
+    45.4,
+    300.65,
+    50.41,
+    311.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part I",
+   "label": "4b",
+   "text": "Does the applicant enter into federal long-term contracts? Yes No",
+   "bbox": [
+    50.4,
+    312.15,
+    55.9,
+    322.89
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "1",
+   "text": "Attach a description of the inventory goods being changed.",
+   "bbox": [
+    45.4,
+    336.65,
+    50.4,
+    347.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "2",
+   "text": "Attach a description of the inventory goods (if any) NOT being changed.",
+   "bbox": [
+    45.4,
+    348.65,
+    50.4,
+    359.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "3a",
+   "text": "Is the applicant subject to section 263A? If “No,” go to line 4a Yes No",
+   "bbox": [
+    45.4,
+    360.65,
+    50.4,
+    371.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "3b",
+   "text": "Is the applicant’s present inventory valuation method in compliance with section 263A (see instructions)?",
+   "bbox": [
+    50.4,
+    373.65,
+    55.9,
+    384.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "4a",
+   "text": "Check the appropriate boxes in the chart. Being Changed",
+   "bbox": [
+    45.4,
+    408.65,
+    50.4,
+    419.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "4b",
+   "text": "Enter the value at the end of the tax year preceding the year of change. $ $",
+   "bbox": [
+    50.4,
+    552.65,
+    55.9,
+    563.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "5",
+   "text": "If the applicant is changing from the LIFO inventory method to a non-LIFO method, attach the following information (see",
+   "bbox": [
+    45.4,
+    565.65,
+    50.4,
+    576.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "5a",
+   "text": "Copies of Form(s) 970 filed to adopt or expand the use of the method.",
+   "bbox": [
+    50.46,
+    588.65,
+    55.63,
+    599.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "5b",
+   "text": "Only for applicants requesting a non-automatic change. A statement describing whether the applicant is changing to the",
+   "bbox": [
+    50.46,
+    601.65,
+    55.96,
+    612.39
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "5c",
+   "text": "Only for applicants requesting an automatic change. The statement required by section 23.01(5) of Rev. Proc. 2022-14 (or",
+   "bbox": [
+    50.52,
+    625.65,
+    55.68,
+    636.38
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "6",
+   "text": "Is the applicant presently using the AFS cost offset method as described in Regulations section",
+   "bbox": [
+    45.53,
+    651.65,
+    50.53,
+    662.38
+   ]
+  }
+ ]
+}

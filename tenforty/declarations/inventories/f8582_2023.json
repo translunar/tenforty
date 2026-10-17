@@ -1,0 +1,249 @@
+{
+ "form": "f8582",
+ "key": 2023,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2023/f8582.pdf",
+ "source_sha256": "cec767a84828b93ab9e4950147aef74b7c69af2420cc0d66e50feb108da928b9",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Activities with net income (enter the amount from Part IV, column (a))",
+   "bbox": [
+    45.4,
+    162.65,
+    50.4,
+    173.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Activities with net loss (enter the amount from Part IV, column (b))",
+   "bbox": [
+    50.4,
+    174.65,
+    55.9,
+    185.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1c",
+   "text": "Prior years’ unallowed losses (enter the amount from Part IV, column (c))",
+   "bbox": [
+    50.4,
+    186.65,
+    55.57,
+    197.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1d",
+   "text": "Combine lines 1a, 1b, and 1c",
+   "bbox": [
+    50.4,
+    198.65,
+    55.9,
+    209.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2a",
+   "text": "Activities with net income (enter the amount from Part V, column (a))",
+   "bbox": [
+    45.4,
+    228.65,
+    55.57,
+    239.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2b",
+   "text": "Activities with net loss (enter the amount from Part V, column (b))",
+   "bbox": [
+    50.4,
+    240.65,
+    55.9,
+    251.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2c",
+   "text": "Prior years’ unallowed losses (enter the amount from Part V, column (c))",
+   "bbox": [
+    50.4,
+    252.65,
+    55.57,
+    263.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2d",
+   "text": "Combine lines 2a, 2b, and 2c",
+   "bbox": [
+    50.4,
+    264.65,
+    55.9,
+    275.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Combine lines 1d and 2d and subtract any prior year unallowed CRD. See instructions.",
+   "bbox": [
+    45.4,
+    279.65,
+    50.4,
+    290.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "",
+   "bbox": [
+    490.7,
+    396.65,
+    495.7,
+    407.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Enter $150,000. If married filing separately, see instructions",
+   "bbox": [
+    45.4,
+    408.65,
+    50.4,
+    419.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Enter modified adjusted gross income, but not less than zero. See instructions",
+   "bbox": [
+    45.4,
+    420.65,
+    50.4,
+    431.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "7",
+   "text": "Subtract line 6 from line 5",
+   "bbox": [
+    45.4,
+    456.65,
+    50.4,
+    467.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Multiply line 7 by 50% (0.50). Do not enter more than $25,000. If married filing separately,",
+   "bbox": [
+    45.4,
+    468.65,
+    50.4,
+    479.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Enter the smaller of line 4 or line 8. If line 3 includes any CRD, see instructions",
+   "bbox": [
+    45.4,
+    480.65,
+    50.4,
+    491.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "10",
+   "text": "Add the income, if any, on lines 1a and 2a and enter the total",
+   "bbox": [
+    40.39,
+    504.65,
+    50.4,
+    515.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "11",
+   "text": "Total losses allowed from all passive activities for 2023. Add lines 9 and 10. See",
+   "bbox": [
+    40.39,
+    517.35,
+    50.4,
+    528.09
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part IX",
+   "label": "1a",
+   "text": "Net loss plus prior year unallowed",
+   "bbox": [
+    45.4,
+    121.85,
+    50.4,
+    132.59
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part IX",
+   "label": "1b",
+   "text": "Net income from form or schedule",
+   "bbox": [
+    50.4,
+    156.65,
+    55.9,
+    167.39
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part IX",
+   "label": "1c",
+   "text": "Subtract line 1b from line 1a. If zero or less, enter -0-",
+   "bbox": [
+    50.4,
+    180.15,
+    55.57,
+    190.89
+   ]
+  }
+ ]
+}

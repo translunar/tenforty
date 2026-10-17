@@ -1,0 +1,381 @@
+{
+ "form": "f1040x",
+ "key": "rev-2025-12",
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/amendments/f1040x.pdf",
+ "source_sha256": "e4d8d7df37209218d0d63d06e988004306365354873481726e93916accf3013e",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "Adjusted gross income. If a net operating loss (NOL) carryback is",
+   "bbox": [
+    45.4,
+    325.85,
+    50.4,
+    336.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Itemized deductions or standard deduction",
+   "bbox": [
+    45.4,
+    348.65,
+    50.4,
+    359.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Subtract line 2 from line 1",
+   "bbox": [
+    45.4,
+    360.65,
+    50.4,
+    371.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4a",
+   "text": "Qualified business income deduction",
+   "bbox": [
+    45.63,
+    372.65,
+    55.8,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4b",
+   "text": "Deductions for tips, overtime, car loan interest, and seniors from",
+   "bbox": [
+    50.3,
+    385.35,
+    55.8,
+    396.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "Taxable income. Subtract the total of lines 4a and 4b from line 3. If the",
+   "bbox": [
+    45.4,
+    408.85,
+    50.4,
+    419.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "Tax. Enter method(s) used to figure tax. See instructions:",
+   "bbox": [
+    45.4,
+    444.6,
+    50.4,
+    455.34
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Nonrefundable credits. If a general business credit carryback is",
+   "bbox": [
+    45.4,
+    469.65,
+    50.4,
+    480.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Subtract line 7 from line 6. If the result is zero or less, enter -0-",
+   "bbox": [
+    45.4,
+    492.65,
+    50.4,
+    503.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "Reserved for future use",
+   "bbox": [
+    45.4,
+    504.65,
+    50.4,
+    515.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "10",
+   "text": "Other taxes",
+   "bbox": [
+    40.39,
+    516.65,
+    50.4,
+    527.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "11",
+   "text": "Total tax. Add lines 8 and 10",
+   "bbox": [
+    40.39,
+    528.15,
+    50.4,
+    538.88
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "12",
+   "text": "Federal income tax withheld and excess social security and tier 1 RRTA",
+   "bbox": [
+    40.39,
+    553.35,
+    50.4,
+    564.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "13",
+   "text": "Estimated tax payments, including amount applied from prior year’s return",
+   "bbox": [
+    40.39,
+    576.65,
+    50.4,
+    587.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "14",
+   "text": "Earned income credit (EIC)",
+   "bbox": [
+    40.39,
+    588.65,
+    50.4,
+    599.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "15",
+   "text": "Refundable credits from: Schedule 8812 Form(s) 2439 4136",
+   "bbox": [
+    40.39,
+    600.6,
+    50.4,
+    611.34
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "16",
+   "text": "Total amount paid with request for extension of time to file, tax paid with original",
+   "bbox": [
+    40.39,
+    625.1,
+    50.4,
+    635.84
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "17",
+   "text": "Total payments. Add lines 12 through 15, column C, and line 16",
+   "bbox": [
+    40.39,
+    648.15,
+    50.4,
+    658.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "18",
+   "text": "Overpayment, if any, as shown on original return or as previously adjusted",
+   "bbox": [
+    40.39,
+    672.65,
+    50.4,
+    683.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "19",
+   "text": "Subtract line 18 from line 17. (If less than zero, see instructions.)",
+   "bbox": [
+    40.39,
+    684.65,
+    50.4,
+    695.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "20",
+   "text": "Amount you owe. If line 11, column C, is more than line 19, enter the difference.",
+   "bbox": [
+    40.39,
+    696.85,
+    50.4,
+    707.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "21",
+   "text": "If line 11, column C, is less than line 19, enter the difference. This is the amount",
+   "bbox": [
+    40.39,
+    720.65,
+    50.4,
+    731.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "22",
+   "text": "Amount of line 21 you want refunded to you",
+   "bbox": [
+    40.39,
+    732.65,
+    50.4,
+    743.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "23",
+   "text": "Amount of line 21 you want applied to your (enter year): estimated",
+   "bbox": [
+    40.39,
+    744.15,
+    50.4,
+    754.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "24",
+   "text": "Reserved for future use",
+   "bbox": [
+    40.39,
+    96.65,
+    50.4,
+    107.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "25",
+   "text": "Your dependent children who lived with you more than half of the year",
+   "bbox": [
+    40.39,
+    108.65,
+    50.4,
+    119.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "26",
+   "text": "Reserved for future use",
+   "bbox": [
+    40.39,
+    120.65,
+    50.4,
+    131.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "27",
+   "text": "Other dependents",
+   "bbox": [
+    40.39,
+    132.65,
+    50.4,
+    143.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "28",
+   "text": "Reserved for future use",
+   "bbox": [
+    40.39,
+    144.65,
+    50.4,
+    155.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "29",
+   "text": "Reserved for future use",
+   "bbox": [
+    40.39,
+    156.65,
+    50.4,
+    167.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "30",
+   "text": "List ALL dependents (children and others) claimed on this amended return.",
+   "bbox": [
+    40.39,
+    168.15,
+    50.4,
+    178.89
+   ]
+  }
+ ]
+}

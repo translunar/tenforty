@@ -1,0 +1,1485 @@
+{
+ "form": "sch_ca",
+ "key": 2025,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2025/sch_ca.pdf",
+ "source_sha256": "0927485bff61e49f21623c2df4f1e92b3b4d20ed52377814684f9bf814980660",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1a",
+   "text": "Column B. Subtractions. See instructions.",
+   "bbox": [
+    364.45,
+    141.62,
+    455.61,
+    159.12
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1b",
+   "text": "Household employee wages not reported on federal Form or Forms W-2. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    165.5,
+    340.44,
+    183.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1c",
+   "text": "Tip income not reported on line 1a. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    189.38,
+    340.44,
+    206.88
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1d",
+   "text": "Medicaid waiver payments not reported on federal Form or Forms W-2. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    213.26,
+    340.44,
+    230.76
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1e",
+   "text": "Taxable dependent care benefits from federal Form 2441, line 26. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    237.6,
+    340.44,
+    255.1
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1f",
+   "text": "Employer-provided adoption benefits from federal Form 8839, line 31 . Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    261.6,
+    340.44,
+    279.1
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1g",
+   "text": "Wages from federal Form 8919, line 6 . Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    285.66,
+    340.44,
+    303.16
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1h",
+   "text": "Other earned income. See instructions. Enter type of income.",
+   "bbox": [
+    58.8,
+    310.0,
+    219.6,
+    327.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1i",
+   "text": "Nontaxable combat pay election. See instructions. Column C. Additions.",
+   "bbox": [
+    480.26,
+    333.6,
+    571.42,
+    351.1
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1z",
+   "text": "Add line 1a through line 1i. Column A. Federal Amounts.",
+   "bbox": [
+    249.28,
+    357.6,
+    340.44,
+    375.1
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2b",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    381.44,
+    455.61,
+    398.94
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Taxable interest. Line 2 a.",
+   "bbox": [
+    131.56,
+    382.0,
+    219.08,
+    399.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3b",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    405.53,
+    455.61,
+    423.03
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Ordinary dividends. See instructions. Line 3 a.",
+   "bbox": [
+    131.56,
+    405.68,
+    219.08,
+    423.18
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "I R A distributions. See instructions. Line 4 a.",
+   "bbox": [
+    131.56,
+    429.56,
+    219.08,
+    447.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4b",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    429.62,
+    455.61,
+    447.12
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "Pensions and annuities. See instructions. Line 5 a.",
+   "bbox": [
+    131.56,
+    465.44,
+    219.08,
+    482.94
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5b",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    465.44,
+    455.61,
+    482.94
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "Social security benefits. Line 6 a.",
+   "bbox": [
+    131.56,
+    489.67,
+    219.08,
+    507.17
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6b",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    489.67,
+    455.61,
+    507.17
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7a",
+   "text": "Capital gain or (loss). See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.87,
+    513.5,
+    341.03,
+    531.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    364.45,
+    549.5,
+    455.61,
+    567.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2a",
+   "text": "Alimony received. Column A. Federal Amounts.",
+   "bbox": [
+    250.1,
+    585.2,
+    341.26,
+    602.7
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Unemployment compensation. Column A. Federal Amounts.",
+   "bbox": [
+    250.1,
+    705.1,
+    341.26,
+    722.6
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8",
+   "text": "Other income. Line 8a. Federal net operating loss. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    105.3,
+    340.1,
+    122.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8a",
+   "text": "Column C. Additions.",
+   "bbox": [
+    479.29,
+    105.3,
+    571.31,
+    122.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8b",
+   "text": "Gambling. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    129.3,
+    341.15,
+    146.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8c",
+   "text": "Cancellation of debt. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    153.54,
+    341.15,
+    171.04
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8d",
+   "text": "Foreign earned income exclusion from federal Form 2555. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    177.54,
+    340.1,
+    195.04
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8e",
+   "text": "Income from federal Form 8853. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    201.3,
+    341.15,
+    218.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8f",
+   "text": "Income from federal Form 8889. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    225.24,
+    341.15,
+    242.74
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8g",
+   "text": "Alaska Permanent Fund dividends. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    249.3,
+    341.15,
+    266.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8h",
+   "text": "Jury duty pay. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    273.3,
+    341.15,
+    290.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8i",
+   "text": "Prizes and awards. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    297.3,
+    341.15,
+    314.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8j",
+   "text": "Activity not engaged in for profit income. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    321.3,
+    341.15,
+    338.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8k",
+   "text": "Stock options. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    345.3,
+    341.15,
+    362.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8l",
+   "text": "Income from the rental of personal property if you engaged in the rental for profit but were not in the business of renting such property. Column A. Federal Amounts.",
+   "bbox": [
+    248.47,
+    381.3,
+    340.5,
+    398.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8m",
+   "text": "Olympic and Paralympic medals and USOC prize money. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    405.3,
+    341.15,
+    422.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8n",
+   "text": "IRC Section 951(a) inclusion. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    429.3,
+    341.15,
+    446.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8o",
+   "text": "IRC Section 951A(a) inclusion. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    453.3,
+    341.15,
+    470.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8p",
+   "text": "IRC Section 461( l ) excess business loss adjustment. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    477.3,
+    341.15,
+    494.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8q",
+   "text": "Taxable distributions from an ABLE account. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    501.3,
+    341.15,
+    518.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8r",
+   "text": "Scholarship and fellowship grants not reported on federal Form or Forms W-2. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    526.0,
+    341.15,
+    543.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8s",
+   "text": "Nontaxable amount of Medicaid waiver payments included on federal Form 1040, line 1a or line 1d. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    549.3,
+    340.1,
+    566.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8t",
+   "text": "Pension or annuity from a nonqualified deferred compensation plan or a nongovernmental IRC Section 457 plan. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    585.3,
+    341.15,
+    602.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8u",
+   "text": "Wages earned while incarcerated. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    609.3,
+    341.15,
+    626.8
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8v",
+   "text": "Digital assets received as ordinary income not reported elsewhere. Column A. Federal Amounts.",
+   "bbox": [
+    249.13,
+    633.06,
+    341.15,
+    650.56
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8z",
+   "text": "Other income. Enter type of income.",
+   "bbox": [
+    61.8,
+    669.54,
+    219.12,
+    686.8
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part I",
+   "label": "9",
+   "text": "a Total other income.",
+   "bbox": [
+    36.0,
+    99.54,
+    40.5,
+    110.71
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "9a",
+   "text": "Total other income. Add line 8a through line 8z. Column A. Federal Amounts.",
+   "bbox": [
+    250.24,
+    105.7,
+    341.4,
+    123.2
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "9b",
+   "text": "1. Disaster loss deduction from form FTB 3805V. Column B. Subtractions.",
+   "bbox": [
+    365.24,
+    129.48,
+    457.26,
+    146.98
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "10",
+   "text": "Total. Add Section A, line 1z through line 7a, and Section B, line 1 through line 7, and line 9a in column A and column C. Add Section A, line 1z through line 7a, and Section B, line 1 through line 7, line 9a, and line 9b1 through line 9b3 in column B (as applicable). See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.74,
+    237.3,
+    341.4,
+    254.8
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "11",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    363.65,
+    297.55,
+    455.67,
+    315.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12",
+   "text": "Certain business expenses of reservists, performing artists, and fee-basis government officials. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    321.55,
+    340.96,
+    339.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13",
+   "text": "Health savings account deduction. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    345.55,
+    340.96,
+    363.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "14",
+   "text": "Moving expenses. Attach form FTB 3913. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    369.55,
+    340.96,
+    387.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15",
+   "text": "Deductible part of self-employment tax. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    393.55,
+    340.96,
+    411.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16",
+   "text": "Self-employed SEP, SIMPLE, and qualified plans. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    417.55,
+    340.96,
+    435.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "17",
+   "text": "Self-employed health insurance deduction. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    249.3,
+    441.55,
+    340.96,
+    459.05
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "18",
+   "text": "Penalty on early withdrawal of savings. Column A. Federal Amounts.",
+   "bbox": [
+    250.34,
+    464.07,
+    342.0,
+    481.57
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "19a",
+   "text": "Alimony paid. Column A. Federal Amounts.",
+   "bbox": [
+    250.34,
+    488.95,
+    342.0,
+    506.45
+   ]
+  },
+  {
+   "page": 3,
+   "section": "Part I",
+   "label": "19",
+   "text": "a Alimony paid. .19a",
+   "bbox": [
+    35.62,
+    494.59,
+    44.62,
+    505.76
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "19b",
+   "text": "Recipient’s Social Security Number.",
+   "bbox": [
+    133.93,
+    512.77,
+    233.4,
+    530.27
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "19c",
+   "text": "Date of original divorce or separation agreement. See instruction. Enter date as 2 digit month and 4 digit year.",
+   "bbox": [
+    111.6,
+    572.9,
+    232.67,
+    590.4
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "20",
+   "text": "IRA deduction. Column A. Federal Amounts.",
+   "bbox": [
+    250.34,
+    597.3,
+    342.0,
+    614.8
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "21",
+   "text": "Student loan interest deduction. Column A. Federal Amounts.",
+   "bbox": [
+    250.34,
+    621.37,
+    342.0,
+    638.87
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "22",
+   "text": "Reserved for future use.",
+   "bbox": [
+    268.8,
+    643.5,
+    341.36,
+    660.9
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "23",
+   "text": "Archer MSA deduction. Column A. Federal Amounts.",
+   "bbox": [
+    250.34,
+    668.57,
+    342.0,
+    686.07
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24",
+   "text": "Other adjustments. Line 24a. Jury duty pay. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    105.54,
+    355.14,
+    122.56
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24b",
+   "text": "Deductible expenses related to income reported on line 8 l from the rental of personal property engaged in for profit. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    141.9,
+    355.14,
+    158.92
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24c",
+   "text": "Nontaxable amount of the value of Olympic and Paralympic medals and USOC prize money reported on line 8 m. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    177.3,
+    355.14,
+    194.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24d",
+   "text": "Reforestation amortization and expenses. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    201.3,
+    355.14,
+    218.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24e",
+   "text": "Repayment of supplemental unemployment benefits under the federal Trade Act of 1974. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    225.3,
+    355.14,
+    242.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24f",
+   "text": "Contributions to IRC Section 501(c)(18)(D) pension plans. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    249.3,
+    355.14,
+    266.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24g",
+   "text": "Contributions by certain chaplains to IRC Section 403(b) plans. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    273.3,
+    355.14,
+    290.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24h",
+   "text": "Attorney fees and court costs for actions involving certain unlawful discrimination claims. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    297.3,
+    355.14,
+    314.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24i",
+   "text": "Attorney fees and court costs you paid in connection with an award from the IRS for information you provided that helped the IRS detect tax law violations. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    333.3,
+    355.14,
+    350.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24j",
+   "text": "Housing deduction from federal Form 2555 . Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    357.3,
+    355.14,
+    374.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24k",
+   "text": "Excess deductions of IRC Section 67(e) expenses from federal Schedule K-1 (Form 1041). Column A. Federal Amounts.",
+   "bbox": [
+    265.88,
+    381.3,
+    357.14,
+    398.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24z",
+   "text": "Other adjustments. Enter type of income.",
+   "bbox": [
+    63.4,
+    418.0,
+    234.4,
+    435.02
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "25",
+   "text": "Total other adjustments. Add line 24a through line 24z. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    440.98,
+    355.14,
+    458.0
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "26",
+   "text": "Add line 11 through line 23 and line 25 in columns A, B, and C. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    465.3,
+    355.14,
+    482.32
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "27",
+   "text": "Total. Subtract line 26 from line 10 in columns A, B, and C. See instructions. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    489.3,
+    355.14,
+    506.32
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Part II",
+   "label": "1",
+   "text": "Medical and",
+   "bbox": [
+    39.7,
+    162.34,
+    44.2,
+    173.51
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "2",
+   "text": "Enter amount from federal Form 1040 or 1040-SR, line 11b.",
+   "bbox": [
+    141.37,
+    201.75,
+    233.03,
+    219.25
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "3",
+   "text": "Multiply line 2 by 7.5% (0.075).",
+   "bbox": [
+    141.37,
+    225.63,
+    233.03,
+    243.13
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "4",
+   "text": "Subtract line 3 from line 1. If line 3 is more than line 1, enter 0. Column A. Federal Amounts .",
+   "bbox": [
+    263.65,
+    249.51,
+    355.31,
+    267.01
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5a",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    371.33,
+    273.42,
+    463.35,
+    290.92
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Part II",
+   "label": "5",
+   "text": "a State and local income tax or general sales taxes.",
+   "bbox": [
+    39.7,
+    281.57,
+    44.2,
+    292.74
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5b",
+   "text": "State and local real estate taxes. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    296.94,
+    355.23,
+    314.44
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5c",
+   "text": "State and local personal property taxes. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    321.47,
+    355.23,
+    338.97
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5d",
+   "text": "Add line 5a through line 5c. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    346.0,
+    355.23,
+    363.5
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5e",
+   "text": "Enter the smaller of line 5d or $40,000 ($20,000 if married filing separately) in column A. Enter the amount from line 5 a, column B in line 5e, column B. Enter the difference from line 5d and line 5e, column A in line 5e, column C. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    417.84,
+    355.23,
+    435.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "6",
+   "text": "Other taxes. List type.",
+   "bbox": [
+    140.77,
+    440.84,
+    232.43,
+    458.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "7",
+   "text": "Add line 5e and line 6. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    465.84,
+    355.23,
+    483.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "Part II",
+   "label": "8",
+   "text": "a Home mortgage interest and points reported to",
+   "bbox": [
+    39.7,
+    498.83,
+    44.2,
+    510.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8a",
+   "text": "Column C. Additions.",
+   "bbox": [
+    479.57,
+    501.84,
+    571.23,
+    519.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8b",
+   "text": "Home mortgage interest not reported to you on federal Form 1098. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    525.84,
+    355.23,
+    543.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8c",
+   "text": "Points not reported to you on federal Form 1098. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    549.84,
+    355.23,
+    567.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8d",
+   "text": "Reserved for future use.",
+   "bbox": [
+    281.44,
+    577.5,
+    354.0,
+    594.9
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8e",
+   "text": "Add line 8a through line 8c. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    597.84,
+    355.23,
+    615.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "9",
+   "text": "Investment interest. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    621.84,
+    355.23,
+    639.34
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "10",
+   "text": "Add line 8 e and line 9. Column A. Federal Amounts.",
+   "bbox": [
+    263.57,
+    645.84,
+    355.23,
+    663.34
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "11",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    372.0,
+    106.0,
+    463.26,
+    123.02
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "12",
+   "text": "Other than by cash or check. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    129.3,
+    355.5,
+    146.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "13",
+   "text": "Carryover from prior year. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    153.52,
+    355.5,
+    170.54
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "14",
+   "text": "Add line 11 through line 13. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    177.52,
+    355.5,
+    194.54
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "15",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    372.0,
+    213.76,
+    463.26,
+    230.78
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "16",
+   "text": "Column B. Subtractions.",
+   "bbox": [
+    372.0,
+    249.46,
+    463.26,
+    266.48
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "17",
+   "text": "Add lines 4, 7, 10, 14, 15, and 16 in columns A, B, and C. Column A. Federal Amounts.",
+   "bbox": [
+    263.88,
+    273.3,
+    355.5,
+    290.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "18",
+   "text": "Total. Combine line 17 column A less column B plus column C.",
+   "bbox": [
+    480.6,
+    297.3,
+    571.86,
+    314.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "Part II",
+   "label": "19",
+   "text": "Unreimbursed employee expenses: job travel, union dues, job education, etc.",
+   "bbox": [
+    36.0,
+    341.18,
+    45.0,
+    352.35
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "20",
+   "text": "Tax preparation fees.",
+   "bbox": [
+    372.6,
+    369.3,
+    463.86,
+    386.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "21",
+   "text": "Other expenses: investment, safe deposit box, etcetera. List type.",
+   "bbox": [
+    228.0,
+    393.3,
+    341.4,
+    410.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "22",
+   "text": "Add line 19 through line 21.",
+   "bbox": [
+    372.6,
+    417.98,
+    463.86,
+    435.0
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "23",
+   "text": "Enter amount from federal Form 1040 or 1040-SR, line 11b .",
+   "bbox": [
+    228.0,
+    441.98,
+    319.26,
+    459.0
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "24",
+   "text": "Multiply line 23 by 2% (0.02). If less than zero, enter 0.",
+   "bbox": [
+    372.6,
+    465.3,
+    463.86,
+    482.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "25",
+   "text": "Subtract line 24 from line 22. If line 24 is more than line 22, enter 0.",
+   "bbox": [
+    480.6,
+    489.9,
+    571.86,
+    506.92
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "26",
+   "text": "Total Itemized Deductions. Add line 18 and line 25.",
+   "bbox": [
+    480.6,
+    513.0,
+    571.86,
+    530.02
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "27",
+   "text": "Other adjustments. See instructions. Specify.",
+   "bbox": [
+    227.03,
+    537.0,
+    448.43,
+    554.02
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "28",
+   "text": "Combine line 26 and line 27.",
+   "bbox": [
+    480.6,
+    561.3,
+    571.86,
+    578.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "29",
+   "text": "Is your federal adjusted gross income (Form 540, line 13) more than the amount shown below for your filing status? Single, married, or registered domestic partner filing separately: $252,203 . Head of household: $378,310 . Married or registered domestic partner filing jointly or qualifying surviving spouse or registered domestic partner: $504,411 . No. Transfer the amount on line 28 to line 29. Yes. Complete the Itemized Deductions Worksheet in the instructions for Schedule CA (540), line 29.",
+   "bbox": [
+    480.6,
+    645.3,
+    571.86,
+    662.32
+   ]
+  },
+  {
+   "page": 6,
+   "section": "",
+   "label": "30",
+   "text": "Enter the larger of the amount on line 29 or your standard deduction shown below: Single, married or registered domestic partner filing separately. See instructions: $5,706 . Married or registered domestic partner filing jointly, head of household, or qualifying surviving spouse or registered domestic partner: $11,412 . Transfer the amount on line 30 to Form 540, line 18.",
+   "bbox": [
+    480.6,
+    705.98,
+    571.86,
+    723.0
+   ]
+  }
+ ]
+}

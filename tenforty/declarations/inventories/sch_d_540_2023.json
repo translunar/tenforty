@@ -1,0 +1,441 @@
+{
+ "form": "sch_d_540",
+ "key": 2023,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2023/sch_d_540.pdf",
+ "source_sha256": "95b8c3980e1d774d2fff0815a8462da0b0116bb5a06b85c197d9ebe8201b9a22",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "",
+   "bbox": [
+    40.5,
+    129.08,
+    45.0,
+    140.25
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1a",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    142.5,
+    232.5,
+    160.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1b",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    162.5,
+    232.5,
+    180.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1c",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    182.5,
+    232.5,
+    200.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1d",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    202.5,
+    232.5,
+    220.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1e",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    222.5,
+    232.5,
+    240.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1f",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    242.5,
+    232.5,
+    260.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1g",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    262.5,
+    232.5,
+    280.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1h",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    282.5,
+    232.5,
+    300.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1i",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    302.5,
+    232.5,
+    320.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1j",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    322.5,
+    232.5,
+    340.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1k",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    342.5,
+    232.5,
+    360.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1l",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    362.5,
+    232.5,
+    380.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1m",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    382.5,
+    232.5,
+    400.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1n",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    402.5,
+    232.5,
+    420.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1o",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    422.5,
+    232.5,
+    440.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1p",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    442.5,
+    232.5,
+    460.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1q",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    462.5,
+    232.5,
+    480.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1r",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    482.5,
+    232.5,
+    500.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1s",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    502.5,
+    232.5,
+    520.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1t",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    522.5,
+    232.5,
+    540.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1u",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    542.5,
+    232.5,
+    560.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1v",
+   "text": "Column A. Description of Property. Example: 100 Shares of \"Z\" Co.",
+   "bbox": [
+    64.5,
+    562.5,
+    232.5,
+    580.5
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Net gain or (loss) shown on California Schedule(s) K-1 (100S, 541, 565, and 568). Column D. Loss.",
+   "bbox": [
+    416.0,
+    583.0,
+    489.5,
+    600.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Capital gain distributions (federal Form 1099-D I V, box 2a).",
+   "bbox": [
+    502.8,
+    604.0,
+    575.5,
+    621.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "Total 2023 gains from all sources. Add column (e) amounts of line 1, line 2, and line 3 .",
+   "bbox": [
+    502.8,
+    625.0,
+    575.5,
+    642.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "2023 loss. Add column (d) amounts of line 1 and line 2 .",
+   "bbox": [
+    403.54,
+    649.0,
+    475.5,
+    666.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "California capital loss carryover from 2022, if any. See instructions.",
+   "bbox": [
+    403.7,
+    670.0,
+    475.5,
+    687.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Total 2023 loss. Add line 5 and line 6 .",
+   "bbox": [
+    403.37,
+    691.0,
+    475.5,
+    708.0
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8",
+   "text": "Net gain or (loss). Combine line 4 and line 7 . If a loss, go to line 9 . If a gain, go to line 10 .",
+   "bbox": [
+    494.5,
+    58.5,
+    575.5,
+    75.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "9",
+   "text": "If line 8 is a loss, enter the smaller of: a. the loss on line 8 . b. $3,000 ($1,500 if married/Registered Domestic Partner filing separate). See instructions.",
+   "bbox": [
+    496.5,
+    102.5,
+    571.5,
+    119.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10",
+   "text": "Enter the gain or (loss) from federal Form 1040 or 1040-S R, line 7 .",
+   "bbox": [
+    494.5,
+    127.5,
+    575.5,
+    144.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11",
+   "text": "Enter the California gain from line 8 or (loss) from line 9 .",
+   "bbox": [
+    494.5,
+    151.5,
+    575.5,
+    168.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12",
+   "text": "a If line 10 is more than line 11, enter the difference here and on Schedule CA (540), Part I,",
+   "bbox": [
+    36.0,
+    181.68,
+    45.0,
+    192.85
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12a",
+   "text": "If line 10 is more than line 11, enter the difference here and on Schedule CA (540), Part I, Section A, line 7, column B.",
+   "bbox": [
+    494.5,
+    188.5,
+    575.5,
+    205.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12b",
+   "text": "If line 10 is less than line 11, enter the difference here and on Schedule CA (540), Part I, Section A, line 7, column C.",
+   "bbox": [
+    494.5,
+    222.5,
+    575.5,
+    239.5
+   ]
+  }
+ ]
+}

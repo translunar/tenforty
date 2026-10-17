@@ -1,0 +1,573 @@
+{
+ "form": "sch_2",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f1040s2.pdf",
+ "source_sha256": "2efb90815ed0b92c0a30d23517258382c4087334c76fa07ac033ca70e883420e",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Additions to tax:",
+   "bbox": [
+    45.4,
+    126.65,
+    50.4,
+    137.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Excess advance premium tax credit repayment. Attach Form 8962",
+   "bbox": [
+    50.4,
+    144.65,
+    55.57,
+    155.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Repayment of new clean vehicle credit(s) transferred to a registered dealer",
+   "bbox": [
+    50.4,
+    164.05,
+    55.9,
+    174.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1c",
+   "text": "Repayment of previously owned clean vehicle credit(s) transferred to a",
+   "bbox": [
+    50.4,
+    206.05,
+    55.57,
+    216.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1d",
+   "text": "Recapture of net EPE from Form 4255, line 2a, column (l)",
+   "bbox": [
+    50.4,
+    246.65,
+    55.9,
+    257.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1e",
+   "text": "Excessive payments (EP) from Form 4255. Check applicable box and enter",
+   "bbox": [
+    50.4,
+    265.85,
+    55.57,
+    276.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1f",
+   "text": "20% EP from Form 4255. Check applicable box and enter amount. See",
+   "bbox": [
+    50.4,
+    319.85,
+    53.4,
+    330.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1y",
+   "text": "Other additions to tax (see instructions):",
+   "bbox": [
+    50.4,
+    372.65,
+    55.07,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1z",
+   "text": "Add lines 1a through 1y",
+   "bbox": [
+    50.4,
+    390.65,
+    55.07,
+    401.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Alternative minimum tax. Attach Form 6251",
+   "bbox": [
+    45.4,
+    408.65,
+    50.4,
+    419.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Add lines 1z and 2. Enter here and on Form 1040, 1040-SR, or 1040-NR, line 17",
+   "bbox": [
+    45.4,
+    425.65,
+    50.4,
+    436.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "Self-employment tax. Attach Schedule SE",
+   "bbox": [
+    45.4,
+    456.65,
+    50.4,
+    467.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Social security and Medicare tax on unreported tip income. Attach Form 4137",
+   "bbox": [
+    45.4,
+    474.65,
+    50.4,
+    485.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Uncollected social security and Medicare tax on wages. Attach Form 8919",
+   "bbox": [
+    45.4,
+    492.65,
+    50.4,
+    503.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "7",
+   "text": "Total additional social security and Medicare tax. Add lines 5 and 6",
+   "bbox": [
+    45.4,
+    510.65,
+    50.4,
+    521.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Additional tax on IRAs or other tax-favored accounts. Attach Form 5329 if required.",
+   "bbox": [
+    45.4,
+    528.65,
+    50.4,
+    539.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Household employment taxes. Attach Schedule H",
+   "bbox": [
+    45.4,
+    558.65,
+    50.4,
+    569.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Repayment of first-time homebuyer credit. Attach Form 5405 if required",
+   "bbox": [
+    40.39,
+    576.65,
+    50.4,
+    587.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Additional Medicare Tax. Attach Form 8959",
+   "bbox": [
+    40.39,
+    594.65,
+    50.4,
+    605.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Net investment income tax. Attach Form 8960",
+   "bbox": [
+    40.39,
+    612.65,
+    50.4,
+    623.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "Uncollected social security and Medicare or RRTA tax on tips or group-term life insurance",
+   "bbox": [
+    40.39,
+    631.85,
+    50.4,
+    642.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "Interest on tax due on installment income from the sale of certain residential lots and",
+   "bbox": [
+    40.39,
+    660.65,
+    50.4,
+    671.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "Interest on the deferred tax on gain from certain installment sales with a sales price",
+   "bbox": [
+    40.39,
+    678.65,
+    50.4,
+    689.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16",
+   "text": "Recapture of low-income housing credit. Attach Form 8611",
+   "bbox": [
+    40.39,
+    696.15,
+    50.4,
+    706.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17",
+   "text": "Other additional taxes:",
+   "bbox": [
+    40.39,
+    66.65,
+    50.4,
+    77.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17a",
+   "text": "Recapture of other credits. List type, form number, and amount:",
+   "bbox": [
+    50.4,
+    84.65,
+    55.57,
+    95.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17b",
+   "text": "Recapture of federal mortgage subsidy, if you sold your home see instructions",
+   "bbox": [
+    50.4,
+    114.65,
+    55.9,
+    125.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17c",
+   "text": "Additional tax on HSA distributions. Attach Form 8889",
+   "bbox": [
+    50.4,
+    132.65,
+    55.57,
+    143.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17d",
+   "text": "Additional tax on an HSA because you didn’t remain an eligible individual.",
+   "bbox": [
+    50.4,
+    151.85,
+    55.9,
+    162.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17e",
+   "text": "Additional tax on Archer MSA distributions. Attach Form 8853",
+   "bbox": [
+    50.4,
+    180.65,
+    55.57,
+    191.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17f",
+   "text": "Additional tax on Medicare Advantage MSA distributions. Attach Form 8853",
+   "bbox": [
+    50.4,
+    198.65,
+    53.4,
+    209.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17g",
+   "text": "Recapture of a charitable contribution deduction related to a fractional interest",
+   "bbox": [
+    50.4,
+    217.85,
+    55.9,
+    228.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17h",
+   "text": "Income you received from a nonqualified deferred compensation plan that fails",
+   "bbox": [
+    50.4,
+    247.85,
+    55.74,
+    258.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17i",
+   "text": "Compensation you received from a nonqualified deferred compensation plan",
+   "bbox": [
+    50.4,
+    277.35,
+    52.72,
+    288.09
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17j",
+   "text": "Section 72(m)(5) excess benefits tax",
+   "bbox": [
+    50.4,
+    306.65,
+    52.9,
+    317.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17k",
+   "text": "Golden parachute payments",
+   "bbox": [
+    50.4,
+    324.65,
+    55.57,
+    335.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17l",
+   "text": "Tax on accumulation distribution of trusts",
+   "bbox": [
+    50.4,
+    342.65,
+    52.72,
+    353.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17m",
+   "text": "Excise tax on insider stock compensation from an expatriated corporation",
+   "bbox": [
+    50.4,
+    360.65,
+    58.55,
+    371.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17n",
+   "text": "Look-back interest under section 167(g) or 460(b) from Form 8697 or 8866",
+   "bbox": [
+    50.4,
+    378.65,
+    55.74,
+    389.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17o",
+   "text": "Tax on non-effectively connected income for any part of the year you were a",
+   "bbox": [
+    50.4,
+    397.85,
+    55.9,
+    408.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17p",
+   "text": "Any interest from Form 8621, line 16f, relating to distributions from, and",
+   "bbox": [
+    50.4,
+    427.85,
+    55.9,
+    438.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17q",
+   "text": "Any interest from Form 8621, line 24",
+   "bbox": [
+    50.4,
+    456.65,
+    55.9,
+    467.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17z",
+   "text": "Any other taxes. List type and amount:",
+   "bbox": [
+    50.4,
+    474.65,
+    55.07,
+    485.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "18",
+   "text": "Total additional taxes. Add lines 17a through 17z",
+   "bbox": [
+    40.39,
+    504.65,
+    50.4,
+    515.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "19",
+   "text": "Recapture of net EPE from Form 4255, line 1d, column (l)",
+   "bbox": [
+    40.39,
+    522.65,
+    50.4,
+    533.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "20",
+   "text": "Section 965 net tax liability installment from Form 965-A",
+   "bbox": [
+    40.39,
+    540.65,
+    50.4,
+    551.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "21",
+   "text": "Add lines 4, 7 through 16, 18, and 19. These are your total other taxes. Enter here",
+   "bbox": [
+    40.39,
+    559.35,
+    50.4,
+    570.09
+   ]
+  }
+ ]
+}
