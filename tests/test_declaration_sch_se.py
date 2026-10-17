@@ -76,7 +76,7 @@ class SchSeAnchorPhrasesPrintOnceTests(unittest.TestCase):
 # must then become empty.
 BLOCKED_ON_SKIP_BRANCH = {"8d", "9", "10"}
 SCH_SE = ("federal", "sch_se")
-COVERED_BATTERIES = ("sch_c_battery",)
+COVERED_BATTERIES = ("sch_c_battery", "emit_battery_sch_se")
 
 
 def _sch_se_records():
@@ -101,10 +101,14 @@ def _sch_se_records():
 class SchSeCoverageTests(unittest.TestCase):
     """Coverage over this declaration (read directly; it is not registered
     until graduation): every cell is covered except the skip-branch
-    nothing-cells, blocked on the routed compute fix."""
+    nothing-cells, blocked on the routed compute fix. sch_c_battery covers
+    2022-2025; emit_battery_sch_se adds 2021."""
+
+    def test_the_battery_is_registered(self):
+        self.assertIn("emit_battery_sch_se", [b.name for b in BATTERIES])
 
     def test_only_the_skip_branch_cells_are_uncovered(self):
-        decls = [sch_se.DECLARATIONS[y] for y in (2022, 2023, 2024, 2025)]
+        decls = [sch_se.DECLARATIONS[y] for y in YEARS]
         report = coverage_cells(_sch_se_records(), decls)
         self.assertEqual(
             sorted(report.uncovered, key=str),
