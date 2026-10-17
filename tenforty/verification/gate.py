@@ -14,8 +14,10 @@ field in what is about to print:
 
 Repeat lines are checked through the model's own ``expand`` (ruling Q4);
 for an option group only the line its value selects must be present
-(exclusivity is the check-suite's; Q5); ``scope="WORKBOOK"`` lines are
-outside the harness (Q6). Any finding refuses with ``IncompleteEmitError``
+(exclusivity is the check-suite's; Q5), and that line's widget is found by
+``options.option_widgets`` (the translation derivations evaluated on its own
+value; ruled 2026-10-17): it must print WITH its on-state. ``scope=
+"WORKBOOK"`` lines are outside the harness (Q6). Any finding refuses with ``IncompleteEmitError``
 listing every one, before anything is written; there is no
 acknowledge-and-proceed.
 
@@ -32,6 +34,7 @@ from tenforty.declarations import registry
 from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.filing.pdf import PdfFiller, apply_blank_when_zero
 from tenforty.verification import pending
+from tenforty.verification.options import option_widgets
 from tenforty.verification.findings import Finding
 
 
@@ -81,8 +84,21 @@ def missing_lines(decl: FormDeclaration, values: Mapping,
         value = values.get(ln.key)
         if value is None:
             continue  # nothing computed: blank is correct
-        if ln.selects is not None and str(value) != ln.selects:
-            continue  # an option this value does not select
+        if ln.selects is not None:
+            if str(value) != ln.selects:
+                continue  # an option this value does not select
+            widgets = option_widgets(spec, ln.key, ln.selects)
+            if len(widgets) != 1:
+                finding(ln, f"option line resolves to {len(widgets)} widgets "
+                            f"{widgets}; exactly one derivation must turn ON "
+                            f"for {ln.selects!r}.")
+                continue
+            field, on_state = widgets[0]
+            if final_payload.get(field) != on_state:
+                finding(ln, f"its option widget {field!r} would print "
+                            f"{final_payload.get(field)!r}, not its on-state "
+                            f"{on_state!r}.")
+            continue
         field = mapping.get(ln.key)
         if field is None:
             finding(ln, "the computation produced a value, but no field of "

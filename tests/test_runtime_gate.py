@@ -13,6 +13,7 @@ The vehicle is an in-memory declaration over the real Form 8582 2024
 template and a hand-built FillSpec: no production declaration exists yet.
 Every refusal species has a test proving it fires on reachable input.
 """
+import dataclasses
 import tempfile
 import unittest
 import unittest.mock
@@ -170,13 +171,20 @@ class GateRuleTwoTests(_Declared):
 
 class OptionGroupPresenceTests(_Declared):
     """Q5: only the line whose `selects` equals the key's value must be
-    present; exclusivity is the check-suite's."""
+    present; exclusivity is the check-suite's. An option line's widget is
+    the translation derivation that turns ON for its own value (ruled
+    2026-10-17), never a mapping entry: Q3's "a valued key no field prints
+    is a finding" covers NON-option lines only."""
 
     decl = _decl(
         _line("1a", "choice", TEXT_1A, kind="checkbox", group="g",
               selects="yes"),
         _line("1b", "choice", "Activities with net loss", kind="checkbox",
               group="g", selects="no"))
+    DERIVATIONS = {
+        F_1A: lambda v: "/Yes" if v["choice"] == "yes" else "/Off",
+        F_1B: lambda v: "/Yes" if v["choice"] == "no" else "/Off",
+    }
 
     def test_selected_line_absent_is_a_finding(self):
         spec = FillSpec(kind="flat", mapping={})
@@ -186,10 +194,105 @@ class OptionGroupPresenceTests(_Declared):
         self.assertEqual([f.line for f in findings], ["1a"])
 
     def test_unselected_line_is_not_required(self):
-        spec = FillSpec(kind="flat", mapping={"choice": F_1A})
+        spec = FillSpec(kind="flat", mapping={}, derivations=self.DERIVATIONS)
         values = {"choice": "yes"}
         self.assertEqual(missing_lines(self.decl, values,
                                        _payload(spec, values), spec), [])
+
+
+class OptionWidgetGateTests(unittest.TestCase):
+    """The option-line widget resolution in the gate (ruled 2026-10-17):
+    the false-refusal regression, and every refusal it can issue firing on
+    reachable input."""
+
+    MARITAL = ("unmarried", "surviving_spouse", "marriage_annulled",
+               "divorced_or_legally_separated", "married_lived_apart_all_year",
+               "married_lived_together_part_of_year")
+    FORM = ("california", "ftb3532")
+
+    def _decl(self, year):
+        lines = tuple(DeclaredLine(
+            line=f"1{letter}", description=f"Part I line 1{letter}",
+            key="ftb3532_marital_status", kind="checkbox", section="Part I",
+            group="marital_status", selects=value)
+            for letter, value in zip("abcdef", self.MARITAL))
+        return FormDeclaration(form=self.FORM, key=year, lines=lines,
+                               not_printed={})
+
+    def _declared(self, year):
+        decl = self._decl(year)
+        without = {k: v for k, v in pending.PENDING_DECLARATIONS.items()
+                   if k != self.FORM}
+        return (unittest.mock.patch.dict(registry._DECLARATIONS,
+                                         {(self.FORM, year): decl}),
+                unittest.mock.patch.object(pending, "PENDING_DECLARATIONS",
+                                           without))
+
+    def test_declared_option_group_emits_through_the_gate(self):
+        # 2024: six independent checkboxes; 2025: one radio group.
+        from tenforty.mappings.pdf_ftb3532 import PdfFtb3532
+        from tenforty.verification.fill import fill_spec_for
+        for year in (2024, 2025):
+            for value in self.MARITAL:
+                with self.subTest(year=year, value=value):
+                    p1, p2 = self._declared(year)
+                    with p1, p2:
+                        spec = fill_spec_for(PdfFtb3532, year)
+                        values = {"ftb3532_marital_status": value}
+                        self.assertEqual(missing_lines(
+                            self._decl(year), values,
+                            gate.final_payload(spec, values), spec), [])
+                        out = Path(tempfile.mkdtemp()) / "ftb3532.pdf"
+                        fill(self.FORM, year, spec,
+                             REPO_ROOT / "pdfs" / "california" / str(year)
+                             / "ftb3532.pdf", out, values, EmitRecorder())
+                        self.assertTrue(out.exists())
+
+    def test_absent_option_widget_refuses(self):
+        from tenforty.mappings.pdf_ftb3532 import PdfFtb3532
+        from tenforty.verification.fill import fill_spec_for
+        spec = fill_spec_for(PdfFtb3532, 2024)
+        spec = dataclasses.replace(spec, derivations={
+            f: d for f, d in spec.derivations.items() if f != "3532_1003 CB"})
+        p1, p2 = self._declared(2024)
+        with p1, p2, self.assertRaises(IncompleteEmitError) as cm:
+            gate.check(self.FORM, 2024, spec,
+                       {"ftb3532_marital_status": "unmarried"})
+        self.assertIn("resolves to 0 widgets", str(cm.exception))
+
+    def test_wrong_state_refuses(self):
+        # Resolution evaluates the line's own value alone; the full values
+        # carry a second key that flips the derivation Off at fill time.
+        spec = FillSpec(kind="flat", mapping={}, derivations={
+            F_1A: lambda v: ("/Off" if v.get("override") else
+                             "/Yes" if v["choice"] == "yes" else "/Off")})
+        decl = _decl(_line("1a", "choice", TEXT_1A, kind="checkbox",
+                           group="g", selects="yes"))
+        values = {"choice": "yes", "override": True}
+        findings = missing_lines(decl, values, gate.final_payload(spec, values),
+                                 spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("not its on-state '/Yes'", findings[0].message)
+
+    def test_several_resolutions_are_a_finding(self):
+        # A spurious derivation that answers ON for any value makes N=2.
+        spec = FillSpec(kind="flat", mapping={}, derivations={
+            F_1A: lambda v: "/Yes" if v["choice"] == "yes" else "/Off",
+            F_1B: lambda v: "/Yes" if v.get("choice") else "/Off"})
+        decl = _decl(_line("1a", "choice", TEXT_1A, kind="checkbox",
+                           group="g", selects="yes"))
+        values = {"choice": "yes"}
+        findings = missing_lines(decl, values, gate.final_payload(spec, values),
+                                 spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("resolves to 2 widgets", findings[0].message)
+
+    def test_a_broken_derivation_fails_loud(self):
+        from tenforty.verification.options import option_widgets
+        spec = FillSpec(kind="flat", mapping={}, derivations={
+            F_1A: lambda v: 1 / 0})
+        with self.assertRaises(ZeroDivisionError):
+            option_widgets(spec, "choice", "yes")
 
 
 class ScopeAndRepeatTests(_Declared):
