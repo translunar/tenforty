@@ -316,11 +316,13 @@ class TaxTableThresholdFromParamsTests(unittest.TestCase):
 
 class MappingHasNoArithmeticTests(unittest.TestCase):
     """The Form 540 mapping does no arithmetic: no arithmetic operator, no
-    max/min/sum, and comparisons only inside the approved translations (the
-    2021-2023 filing-status checkboxes, `== _status`; the line 15 negative
-    formatter, `< 0`)."""
+    max/min/sum, and comparisons only inside the approved translations."""
 
-    APPROVED_COMPARES = {"c['f540_filing_status'] == _s", "v < 0"}
+    # The 2021-2023 filing-status checkboxes (enum -> state), the line 15
+    # negative formatter, and the line 116 deposit cells' presence gate on
+    # the computed deposit amount (absent when no deposit): translations.
+    APPROVED_COMPARES = {"c['f540_filing_status'] == _s", "v < 0",
+                         "c.get(_f540.LINE_116) is not None"}
     # Installers only build field paths (`prefix + "2021"`) and register
     # lambdas; their lambdas are scanned on their own.
     INSTALLERS = {"_install_presentation", "_install_amount_due",
