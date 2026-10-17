@@ -56,7 +56,8 @@ def _block(year: int) -> HeadOfHouseholdFacts:
             birthdate=f"{year - 10}-03-07",
             relationship=HohRelationship.CHILD_OR_STEPCHILD,
             full_time_student=None, permanently_disabled=None,
-            gross_income=0.0, days_lived_with_you=365))
+            gross_income=0.0, days_lived_with_you=365,
+            claimed_as_dependent=False))
 
 
 def _between_ceilings(year: int) -> float:
