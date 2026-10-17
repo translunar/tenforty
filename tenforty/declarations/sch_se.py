@@ -19,6 +19,12 @@ when its label wraps. Anchor phrases end on token boundaries as printed,
 trailing punctuation included ("line 31;"): the evaluator matches whole
 ``pdftotext`` words, so a phrase cut inside a token prints zero times.
 
+Nine bound lines are value-only (single_state="value"): Schedule SE exists
+only above line 4c's $400 stop, and every filed form computes them. Lines 8d,
+9 and 10 keep both states: line 8a's "skip lines 8b through 10" leaves them
+blank at or above the wage base (the native pipeline prints them there today;
+routed as the sch-se-skip-branch-blanks lane, which blocks graduation).
+
 2021 is the base year; 2022-2025 are ``derive`` diffs. A line whose text or
 anchor changes is dropped and re-added with the same binding.
 """
@@ -29,9 +35,24 @@ FORM = ("federal", "sch_se")
 P1, P2 = "Part I", "Part II"
 
 
-def _bound(section, line, description, key, anchor=None):
+def _bound(section, line, description, key, anchor=None, always=None):
+    """A bound line; ``always`` is the official-form grounding for a
+    value-only line (single_state="value"), None for a two-state line."""
     return DeclaredLine(line=line, description=description, key=key,
-                        kind="amount", section=section, anchor=anchor)
+                        kind="amount", section=section, anchor=anchor,
+                        single_state="value" if always else None,
+                        single_state_reason=always)
+
+
+def _filed(what):
+    """Value-only grounding: the form exists only above the $400 stop.
+
+    Line 4c's "If less than $400, stop; you don't owe self-employment tax"
+    means no Schedule SE at all, not a blank line, so every filed form
+    carries ``what``."""
+    return ("Schedule SE is filed only when net SE earnings reach $400 "
+            "(line 4c: \"If less than $400, stop; you don't owe "
+            f"self-employment tax\"); every filed Schedule SE computes {what}")
 
 
 def _unserved(section, line, description, reason, kind="amount",
@@ -91,7 +112,9 @@ def _line_8a(base):
     return _bound(P1, "8a", _LINE_8A.format(base=base),
                   "sch_se_line_8a_ss_wages_and_tips",
                   anchor=_wrapped(
-                      "and railroad retirement (tier 1) compensation."))
+                      "and railroad retirement (tier 1) compensation."),
+                  always=_filed("line 8a, the wage total its own skip test "
+                                "reads"))
 
 
 def _line_15(cap):
@@ -106,6 +129,7 @@ def _line_1b(code):
 
 
 _LINE_12_ANCHOR = _wrapped("Self-employment tax. Add lines 10 and 11.")
+_LINE_12_ALWAYS = _filed("line 12, the self-employment tax itself")
 
 SCH_SE_2021 = FormDeclaration(
     form=FORM,
@@ -135,13 +159,17 @@ SCH_SE_2021 = FormDeclaration(
                "minister or member of a religious order.",
                "sch_se_line_2_net_profit",
                anchor=_wrapped(
-                   "Net profit or (loss) from Schedule C, line 31;")),
+                   "Net profit or (loss) from Schedule C, line 31;"),
+               always=_filed("line 2, the net profit or (loss) feeding line "
+                             "3")),
         _bound(P1, "3", "Combine lines 1a, 1b, and 2",
-               "sch_se_line_3_net_profit"),
+               "sch_se_line_3_net_profit",
+               always=_filed("line 3, the combined net profit")),
         _bound(P1, "4a",
                "If line 3 is more than zero, multiply line 3 by 92.35% "
                "(0.9235). Otherwise, enter amount from line 3",
-               "sch_se_line_4a_net_earnings"),
+               "sch_se_line_4a_net_earnings",
+               always=_filed("line 4a from line 3")),
         _unserved(
             P1, "4b",
             "If you elect one or both of the optional methods, enter the "
@@ -154,7 +182,8 @@ SCH_SE_2021 = FormDeclaration(
                "had church employee income, enter -0- and continue",
                "sch_se_line_4c_net_earnings",
                anchor=_wrapped(
-                   "Combine lines 4a and 4b. If less than $400, stop;")),
+                   "Combine lines 4a and 4b. If less than $400, stop;"),
+               always=_filed("line 4c, the figure the $400 test reads")),
         _unserved(
             P1, "5a",
             "Enter your church employee income from Form W-2. See "
@@ -166,7 +195,8 @@ SCH_SE_2021 = FormDeclaration(
             "-0-",
             "line 5a x 92.35% (church employee income)"),
         _bound(P1, "6", "Add lines 4c and 5b",
-               "sch_se_line_6_total_net_earnings"),
+               "sch_se_line_6_total_net_earnings",
+               always=_filed("line 6, the earnings lines 10 and 11 tax")),
         _line_7(2021),
         _line_8a("$142,800"),
         _unserved(
@@ -189,13 +219,17 @@ SCH_SE_2021 = FormDeclaration(
                "Multiply the smaller of line 6 or line 9 by 12.4% (0.124)",
                "sch_se_line_10_ss_portion"),
         _bound(P1, "11", "Multiply line 6 by 2.9% (0.029)",
-               "sch_se_line_11_medicare_portion"),
+               "sch_se_line_11_medicare_portion",
+               always=_filed("line 11; unlike lines 8b-10, line 8a's skip "
+                             "instruction sends the filer to line 11")),
         # One label row in 2021-2022; it wraps from 2023 (anchored there).
-        _bound(P1, "12", _LINE_12_2021, "sch_se_line_12_se_tax"),
+        _bound(P1, "12", _LINE_12_2021, "sch_se_line_12_se_tax",
+               always=_LINE_12_ALWAYS),
         # Three-row label; the phrase is the second row.
         _bound(P1, "13", "Deduction for one-half of self-employment tax.",
                "sch_se_line_13_half_deduction",
-               anchor=_wrapped("Multiply line 12 by 50% (0.50).")),
+               anchor=_wrapped("Multiply line 12 by 50% (0.50)."),
+               always=_filed("line 13, one-half of the line 12 tax")),
         _unserved(
             P2, "14", "Maximum income for optional methods.",
             _OPTIONAL + "maximum income for optional methods (amount "
@@ -241,14 +275,14 @@ SCH_SE_2023 = derive(
     add=_yearly(2023, "$160,200", "$6,560") + [
         _line_1b("AQ"),
         _bound(P1, "12", _LINE_12_2021, "sch_se_line_12_se_tax",
-               anchor=_LINE_12_ANCHOR)])
+               anchor=_LINE_12_ANCHOR, always=_LINE_12_ALWAYS)])
 
 # 2024: the inventory's line 12 text gains the Form 1040-SS clause.
 SCH_SE_2024 = derive(
     SCH_SE_2023, 2024, drop=_YEARLY + [(P1, "12")],
     add=_yearly(2024, "$168,600", "$6,920") + [
         _bound(P1, "12", _LINE_12_2024, "sch_se_line_12_se_tax",
-               anchor=_LINE_12_ANCHOR)])
+               anchor=_LINE_12_ANCHOR, always=_LINE_12_ALWAYS)])
 
 # 2025: the inventory still carries the 2024 figures in lines 8a and 15
 # (the official 2025 form prints $176,100 and $7,240); kept verbatim.

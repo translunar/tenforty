@@ -5,12 +5,17 @@ The declaration is inert until graduation: registration and the pending
 removal land together (ruling 2026-10-17), so this test reads the module
 directly, not the registry.
 """
+import tempfile
 import unittest
+from pathlib import Path
 
 from tenforty.declarations import sch_se
 from tenforty.declarations.anchors import NearLabel
 from tenforty.declarations.validate import validate
 from tenforty.verification import anchors as anchor_eval
+from tenforty.verification import emit_manifest
+from tenforty.verification.batteries import BATTERIES
+from tenforty.verification.coverage import coverage_cells
 from tests.helpers import REPO_ROOT
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
@@ -62,3 +67,46 @@ class SchSeAnchorPhrasesPrintOnceTests(unittest.TestCase):
                 with self.subTest(year=year, line=ln.line):
                     self.assertEqual(len(anchor_eval._phrase_boxes(
                         words, ln.anchor.phrase)), 1, ln.anchor.phrase)
+
+
+# Cells no battery can cover yet: on the line 8a at-or-above-wage-base branch
+# the form says "skip lines 8b through 10" (blank), but the native pipeline
+# prints 8d, 9 and 10. Routed to the sch-se-skip-branch-blanks lane, which
+# blocks graduation; a wage-base battery row arrives with that fix. This set
+# must then become empty.
+BLOCKED_ON_SKIP_BRANCH = {"8d", "9", "10"}
+SCH_SE = ("federal", "sch_se")
+COVERED_BATTERIES = ("sch_c_battery",)
+
+
+def _sch_se_records():
+    """(scenario, RecordedForm) for every Schedule SE the covered batteries
+    emit natively (no expected values: the states are observed)."""
+    manifest = emit_manifest.load_manifest()
+    records = []
+    for battery in BATTERIES:
+        if battery.name not in COVERED_BATTERIES:
+            continue
+        for name, year, build in battery.scenarios():
+            rid = emit_manifest.row_id(battery.name, name, year)
+            row = manifest.get(rid)
+            if not row or row["routing"] != "native" or row["refusal"]:
+                continue
+            out = Path(tempfile.mkdtemp()) / "out"
+            records += [(rid, rec) for rec in emit_manifest.emit(
+                battery, build(), out).record if rec.form == SCH_SE]
+    return records
+
+
+class SchSeCoverageTests(unittest.TestCase):
+    """Coverage over this declaration (read directly; it is not registered
+    until graduation): every cell is covered except the skip-branch
+    nothing-cells, blocked on the routed compute fix."""
+
+    def test_only_the_skip_branch_cells_are_uncovered(self):
+        decls = [sch_se.DECLARATIONS[y] for y in (2022, 2023, 2024, 2025)]
+        report = coverage_cells(_sch_se_records(), decls)
+        self.assertEqual(
+            sorted(report.uncovered, key=str),
+            sorted(((SCH_SE, d.key, line, "nothing") for d in decls
+                    for line in BLOCKED_ON_SKIP_BRANCH), key=str))
