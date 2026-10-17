@@ -46,6 +46,7 @@ def _qp(year=_YEAR, **overrides) -> dict:
         "permanently_disabled": None,
         "gross_income": 0,
         "days_lived_with_you": 365,
+        "claimed_as_dependent": False,
     }
     qp.update(overrides)
     return qp
@@ -302,6 +303,12 @@ class StructuralRuleTests(_LoaderCase):
         self.refuses(_hoh_yaml(block=_block(qp=_qp(ssn="000000000"))),
                      "your own qualifying person")
 
+    def test_space_separated_filer_ssn_equal_to_the_qualifying_persons_refuses(self):
+        # The federal 1040 prints any-shape filer SSNs digits-only, so rule 5
+        # compares digits, not the normalized NNN-NN-NNNN shape.
+        self.refuses(_hoh_yaml(ssn="000 00 0001", block=_block(
+            qp=_qp(ssn="000000001"))), "same as the filer's own SSN")
+
     # --- rule 6: birthdate ---------------------------------------------------
     def test_birthdate_after_the_tax_year_refuses(self):
         self.refuses(_hoh_yaml(block=_block(qp=_qp(
@@ -353,6 +360,52 @@ class StructuralRuleTests(_LoaderCase):
                      "days_lived_with_you")
 
 
+class ClaimedAsDependentTests(_LoaderCase):
+    """`claimed_as_dependent`: "do you claim this person as your dependent
+    on this return". Required; true refuses until dependents arrive in
+    0.2.1, so the 1040's "child but not your dependent" line is always
+    truthful; false proceeds."""
+
+    _KEY = "claimed_as_dependent"
+
+    def test_absent_refuses_naming_the_field_and_its_meaning(self):
+        for absent in ("missing", "null"):
+            with self.subTest(absent=absent):
+                qp = _qp()
+                if absent == "missing":
+                    qp.pop(self._KEY, None)
+                else:
+                    qp[self._KEY] = None
+                self.refuses(_hoh_yaml(block=_block(qp=qp)),
+                             f"qualifying_person.{self._KEY}", "is required",
+                             "your dependent on this return")
+
+    def test_true_refuses_naming_the_child_tax_credit_and_the_8332_fork(self):
+        with self.assertRaises(NotImplementedError) as cm:
+            self.load(_hoh_yaml(block=_block(qp=_qp(
+                **{self._KEY: True}))))
+        msg = str(cm.exception)
+        for fragment in ("Child Tax Credit", "0.2.1", "Form 8332",
+                         f"`{self._KEY}: false`",
+                         "no acknowledge-and-proceed"):
+            self.assertIn(fragment, msg)
+
+    def test_true_refuses_ahead_of_the_face_of_form_rules(self):
+        # Wrong species beats a rule-10 contradiction on the same block.
+        with self.assertRaises(NotImplementedError):
+            self.load(_hoh_yaml(block=_block(qp=_qp(
+                days_lived_with_you=10, **{self._KEY: True}))))
+
+    def test_false_loads(self):
+        qp = self.load(_hoh_yaml(block=_block(qp=_qp(**{self._KEY: False})))
+                       ).config.head_of_household.qualifying_person
+        self.assertIs(qp.claimed_as_dependent, False)
+
+    def test_non_boolean_refuses(self):
+        self.refuses(_hoh_yaml(block=_block(qp=_qp(**{self._KEY: "no"}))),
+                     self._KEY, "true or false")
+
+
 class AgeBranchTests(_LoaderCase):
     """Rule 7: lines 3a/3b are answered iff the person is 19 or older in the
     tax year ("If not, go to line 4"). The reading is
@@ -369,7 +422,8 @@ class AgeBranchTests(_LoaderCase):
                 birthdate=f"{birth_year}-01-01",
                 relationship=HohRelationship.CHILD_OR_STEPCHILD,
                 full_time_student=None, permanently_disabled=None,
-                gross_income=0.0, days_lived_with_you=365)
+                gross_income=0.0, days_lived_with_you=365,
+                claimed_as_dependent=False)
         self.assertTrue(qp_is_19_or_older(person(_YEAR - 19), _YEAR))
         self.assertFalse(qp_is_19_or_older(person(_YEAR - 18), _YEAR))
         # December 31 birthday in the year-19 birth year still counts as 19.
@@ -431,6 +485,45 @@ class DaysThresholdTests(_LoaderCase):
                     year, qp=_qp(year, days_lived_with_you=half + 1)))
                 ).config.head_of_household.qualifying_person
                 self.assertEqual(qp.days_lived_with_you, half + 1)
+
+
+_BIRTH_OR_DEATH = ("In the event of a birth or death of your qualifying "
+                   "person during the year, enter 365 days.")
+
+
+class BirthInYearDaysTests(_LoaderCase):
+    """FTB 3532 line 5 instructions: "In the event of a birth or death of
+    your qualifying person during the year, enter 365 days. Note: A year is
+    365 days, a leap year is 366 days." A qualifying person born in the tax
+    year enters the year's full day count."""
+
+    def _born_in_year(self, year, days):
+        return _hoh_yaml(year=year, block=_block(year, qp=_qp(
+            year, birthdate=f"{year}-11-10", days_lived_with_you=days)))
+
+    def test_born_in_year_with_the_full_year_loads(self):
+        for year in (2024, 2025):
+            with self.subTest(year=year):
+                qp = self.load(self._born_in_year(year, _days_in_year(year))
+                               ).config.head_of_household.qualifying_person
+                self.assertEqual(qp.days_lived_with_you, _days_in_year(year))
+
+    def test_born_in_year_with_fewer_days_refuses_citing_the_birth_rule(self):
+        for year, days in ((2024, 45), (2025, 45), (2024, 365)):
+            with self.subTest(year=year, days=days):
+                self.refuses(
+                    self._born_in_year(year, days), "days_lived_with_you",
+                    _BIRTH_OR_DEATH,
+                    f"enter {_days_in_year(year)} days per the FTB 3532 "
+                    "line 5 instructions")
+
+    def test_under_threshold_refusal_names_the_birth_or_death_rule(self):
+        # Not born in the year: rule 10's refusal still tells a filer whose
+        # qualifying person died during the year what to enter.
+        message = self.refuses(_hoh_yaml(block=_block(qp=_qp(
+            days_lived_with_you=45))), "more than half the year")
+        self.assertIn(_BIRTH_OR_DEATH, message)
+        self.assertIn(f"enter {_days_in_year(_YEAR)} days", message)
 
 
 class LivedTogetherBoundaryTests(_LoaderCase):
@@ -534,6 +627,32 @@ class QualifyingChildOnlyTests(_LoaderCase):
 
     def test_child_at_30_disabled_loads(self):
         qp = self._person("child_or_stepchild", 30, full_time_student=False,
+                          permanently_disabled=True)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
+    def test_student_at_birth_year_age_23_loads(self):
+        # FTB 3532 Part III line 3 instructions: "a full-time student under
+        # 24 years of age". Birth-year age, as qp_is_19_or_older reads it.
+        qp = self._person("child_or_stepchild", 23, full_time_student=True,
+                          permanently_disabled=False)
+        self._assert_path(qp, True)
+        self.load(_hoh_yaml(block=_block(qp=qp)))
+
+    def test_student_at_24_or_older_refuses_naming_the_student_age_limit(self):
+        for age in (24, 26):
+            with self.subTest(age=age):
+                qp = self._person("child_or_stepchild", age,
+                                  full_time_student=True,
+                                  permanently_disabled=False)
+                self._assert_path(qp, False)
+                self.refuses(_hoh_yaml(block=_block(qp=qp)),
+                             "not on the qualifying-child path",
+                             "a full-time student under 24")
+
+    def test_disabled_student_at_26_loads(self):
+        # Permanently and totally disabled meets the age test at any age.
+        qp = self._person("child_or_stepchild", 26, full_time_student=True,
                           permanently_disabled=True)
         self._assert_path(qp, True)
         self.load(_hoh_yaml(block=_block(qp=qp)))

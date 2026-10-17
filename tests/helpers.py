@@ -8,13 +8,37 @@ from pathlib import Path
 import pytest
 
 from tenforty.attestations import _CA_ATTESTATIONS
-from tenforty.models import Scenario, TaxReturnConfig, W2
+from tenforty.models import (
+    HeadOfHouseholdFacts,
+    HohMaritalStatus,
+    HohQualifyingPerson,
+    HohRelationship,
+    Scenario,
+    TaxReturnConfig,
+    W2,
+)
 from tenforty.attestations import _ATTESTATIONS
 
 REPO_ROOT = Path(__file__).parent.parent
 SPREADSHEETS_DIR = REPO_ROOT / "spreadsheets"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 F1040_PDF = Path("/tmp/f1040_2025.pdf")
+
+def hoh_facts(year: int) -> HeadOfHouseholdFacts:
+    """A valid synthetic ``config.head_of_household`` block: an unmarried
+    filer whose child (10 in the tax year) lived with them all year. Every
+    head-of-household vehicle needs one -- validate_head_of_household runs on
+    load, on the federal header and at the CA emit gate."""
+    return HeadOfHouseholdFacts(
+        marital_status=HohMaritalStatus.UNMARRIED,
+        qualifying_person=HohQualifyingPerson(
+            first_name="Example", last_name="Child", ssn="000000005",
+            birthdate=f"{year - 10}-03-07",
+            relationship=HohRelationship.CHILD_OR_STEPCHILD,
+            full_time_student=None, permanently_disabled=None,
+            gross_income=0.0, days_lived_with_you=365,
+            claimed_as_dependent=False))
+
 
 # Set of CA scope-out attestation field names, derived from the registry.
 # Single source of truth for tests that need to iterate every CA scope-out

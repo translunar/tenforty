@@ -1129,8 +1129,25 @@ _REQUIRED_QP_KEYS = (
     "first_name", "last_name", "ssn", "birthdate", "relationship",
     "gross_income", "days_lived_with_you")
 _KNOWN_QP_KEYS = frozenset(_REQUIRED_QP_KEYS) | {
-    "full_time_student", "permanently_disabled"}
+    "full_time_student", "permanently_disabled", "claimed_as_dependent"}
 _KNOWN_PERIOD_KEYS = frozenset({"from", "to"})
+_CLAIMED_AS_DEPENDENT_REQUIRED = (
+    "`head_of_household.qualifying_person.claimed_as_dependent` is required "
+    "(true or false): do you claim this person as your dependent on this "
+    "return? Form 1040's head-of-household line names the qualifying person "
+    "only when they are \"a child but not your dependent\", so tenforty "
+    "must be told. Add it.")
+_CLAIMED_AS_DEPENDENT_REFUSAL = (
+    "`head_of_household.qualifying_person.claimed_as_dependent` is true: you "
+    "claim your head-of-household qualifying person as a dependent on this "
+    "return. tenforty does not prepare returns with claimed dependents yet: "
+    "the Child Tax Credit / Credit for Other Dependents (Schedule 8812, Form "
+    "1040 line 19) would not be computed, overstating your tax. If this "
+    "person is NOT claimed as your dependent on this return -- for example, "
+    "you released the claim to the other parent on Form 8332 -- set "
+    "`claimed_as_dependent: false`. If they ARE your dependent, tenforty "
+    "cannot prepare this return until the dependents release (tenforty "
+    "0.2.1); file it by hand. There is no acknowledge-and-proceed.")
 # FTB 3532 Part I line 1f has exactly two From/To slots, and no year's
 # instructions mention a continuation statement.
 _MAX_LIVED_TOGETHER_PERIODS = 2
@@ -1347,10 +1364,15 @@ def _load_qualifying_person(raw, year: int) -> HohQualifyingPerson:
     answers = {
         key: _load_hoh_answer(data.get(key), f"{_QP}.{key}")
         for key in ("full_time_student", "permanently_disabled")}
+    claimed = _load_hoh_answer(
+        data.get("claimed_as_dependent"), f"{_QP}.claimed_as_dependent")
+    if claimed is None:
+        raise ValueError(_CLAIMED_AS_DEPENDENT_REQUIRED)
     person = HohQualifyingPerson(
         first_name=names["first_name"], last_name=names["last_name"],
         ssn=ssn, birthdate=birthdate, relationship=relationship,
-        gross_income=gross_income, days_lived_with_you=days, **answers)
+        gross_income=gross_income, days_lived_with_you=days,
+        claimed_as_dependent=claimed, **answers)
     lines = {"full_time_student": "3a", "permanently_disabled": "3b"}
     if qp_is_19_or_older(person, year):
         for key, value in answers.items():
@@ -1439,13 +1461,17 @@ _MARRIED_STATUSES = frozenset({
 def qp_on_qualifying_child_path(qp: HohQualifyingPerson, year: int) -> bool:
     """Rule 13: the qualifying person is on the qualifying-child path: a
     Part II line 2a-2c relationship that meets the age test (FTB 3532 Part
-    III line 3 instructions: under 19, or a full-time student under 24 --
-    line 3a's own wording bounds the student branch -- or permanently and
-    totally disabled)."""
+    III line 3 instructions: "under 19 years of age or a full-time student
+    under 24 years of age", or permanently and totally disabled at any age).
+    The student branch's under-24 bound is enforced, with the same
+    birth-year age reading as ``qp_is_19_or_older`` (tax_year - birth_year
+    < 24)."""
     if qp.relationship not in _QUALIFYING_CHILD_RELATIONSHIPS:
         return False
+    student_under_24 = (qp.full_time_student is True
+                        and year - int(qp.birthdate[:4]) < 24)
     return (not qp_is_19_or_older(qp, year)
-            or qp.full_time_student is True
+            or student_under_24
             or qp.permanently_disabled is True)
 
 
@@ -1456,6 +1482,23 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
     year = cfg.year
     days_in_year = (datetime.date(year, 12, 31)
                     - datetime.date(year, 1, 1)).days + 1
+    # FTB 3532 line 5 instructions: "In the event of a birth or death of
+    # your qualifying person during the year, enter 365 days. Note: A year
+    # is 365 days, a leap year is 366 days." Death is not captured; a birth
+    # in the tax year is, so a born-in-year count short of the full year is
+    # a face-of-form error, refused ahead of rule 10's threshold.
+    birth_or_death_rule = (
+        "FTB 3532 line 5 instructions: \"In the event of a birth or death of "
+        "your qualifying person during the year, enter 365 days. Note: A "
+        "year is 365 days, a leap year is 366 days.\"")
+    if (int(qp.birthdate[:4]) == year
+            and qp.days_lived_with_you != days_in_year):
+        raise ValueError(
+            f"`{_QP}.days_lived_with_you` is {qp.days_lived_with_you}, but "
+            f"the qualifying person was born during {year} "
+            f"({qp.birthdate}). {birth_or_death_rule} Correct the count: "
+            f"enter {days_in_year} days per the FTB 3532 line 5 "
+            "instructions.")
     # Rule 10. FTB 3532 line 5 instructions: "more than half the year is 183
     # days. (A leap year has 366 days, and more than half a leap year is 184
     # days.)" Face-of-form contradiction only; not an eligibility
@@ -1469,9 +1512,11 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
             f"with you more than half the year: at least {threshold} days in "
             f"{year} (FTB 3532 line 5 instructions: \"more than half the "
             "year is 183 days\", 184 in a leap year; temporary absences "
-            "count as time lived with you). As entered, FTB 3532 would show "
-            "you do not qualify. Correct the count, or file under the "
-            "status that applies.")
+            "count as time lived with you). If your qualifying person was "
+            f"born or died during {year}, enter {days_in_year} days instead "
+            f"({birth_or_death_rule}). As entered, FTB 3532 would show you "
+            "do not qualify. Correct the count, or file under the status "
+            "that applies.")
     # Rule 11. FTB 3532 line 5 instructions: if you "lived with your
     # spouse/RDP at any time during the last six months of the year, you
     # cannot qualify for the HOH filing status." The last six months begin
@@ -1525,7 +1570,9 @@ def _refuse_hoh_contradictions(cfg: TaxReturnConfig) -> None:
 def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     """Pure check of ``config.head_of_household`` against the rest of the
     config: required iff head of household (spec §4.2), the qualifying
-    person is not the filer (rule 5), no face-of-form contradiction of the
+    person is not claimed as a dependent (``claimed_as_dependent`` stated,
+    and true refuses until 0.2.1), the qualifying person is not the filer
+    (rule 5), no face-of-form contradiction of the
     status (rules 10-12), and the qualifying-child path only (rule 13,
     until 0.2.1). Called at load from
     ``_validate_scenario_config`` and re-used by the CA emit gate, so a
@@ -1552,17 +1599,26 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
             "head_of_household`.")
     if facts is None:
         return
+    # claimed_as_dependent (Juno ruling, M3): required, and true is a
+    # capability refusal -- wrong species, so it fires ahead of rule 5 and
+    # the face-of-form rules 10-13.
+    claimed = facts.qualifying_person.claimed_as_dependent
+    if claimed is None:
+        raise ValueError(_CLAIMED_AS_DEPENDENT_REQUIRED)
+    if claimed is True:
+        raise NotImplementedError(_CLAIMED_AS_DEPENDENT_REFUSAL)
     # Rule 5 (FTB 3532 instructions, Part II line 2): "You may not claim
     # yourself ... as your qualifying person." The spouse case is unreachable:
     # head of household refuses spouse fields.
-    try:
-        filer_ssn = normalize_ssn_digits(cfg.ssn)
-    except ValueError:
-        # Equality against a malformed filer SSN means nothing, so skip it;
-        # the emit path still fails closed (FTB 3532 presentation refuses a
-        # filer SSN that does not normalize).
-        filer_ssn = None
-    if filer_ssn is not None and facts.qualifying_person.ssn == filer_ssn:
+    # Compared digits-only: the federal 1040 prints a filer SSN of any shape
+    # as its digits (f1040_spine._ssn_digits), so a space-separated filer
+    # SSN equal to the qualifying person's must refuse too. Equality against
+    # a filer SSN that is not 9 digits means nothing, so skip it; the emit
+    # path still fails closed (FTB 3532 presentation refuses a filer SSN
+    # that does not normalize).
+    filer_digits = "".join(ch for ch in (cfg.ssn or "") if ch.isdigit())
+    if (len(filer_digits) == 9
+            and facts.qualifying_person.ssn == filer_digits):
         raise ValueError(
             f"`{_QP}.ssn` is the same as the filer's own SSN. You may not be "
             "your own qualifying person (FTB 3532 instructions, Part II line "
