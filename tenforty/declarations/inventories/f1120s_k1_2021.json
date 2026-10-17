@@ -80,6 +80,18 @@
   {
    "page": 1,
    "section": "Part I",
+   "label": "A",
+   "text": "Corporation’s employer identification number",
+   "bbox": [
+    40.8,
+    171.17,
+    45.6,
+    179.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
    "label": "5b",
    "text": "Qualified dividends",
    "bbox": [
@@ -99,6 +111,18 @@
     193.17,
     460.18,
     201.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "B",
+   "text": "Corporation’s name, address, city, state, and ZIP code",
+   "bbox": [
+    40.74,
+    195.17,
+    45.66,
+    203.52
    ]
   },
   {
@@ -152,6 +176,18 @@
   {
    "page": 1,
    "section": "Part I",
+   "label": "C",
+   "text": "IRS Center where corporation filed return",
+   "bbox": [
+    40.61,
+    267.17,
+    45.79,
+    275.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
    "label": "8b",
    "text": "Collectibles (28%) gain (loss)",
    "bbox": [
@@ -159,6 +195,18 @@
     289.17,
     327.77,
     297.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "D",
+   "text": "Corporation’s total number of shares",
+   "bbox": [
+    40.61,
+    291.17,
+    45.79,
+    299.52
    ]
   },
   {
@@ -212,6 +260,30 @@
   {
    "page": 1,
    "section": "Part II",
+   "label": "E",
+   "text": "Shareholder’s identifying number",
+   "bbox": [
+    40.93,
+    363.17,
+    45.47,
+    371.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "F",
+   "text": "Shareholder’s name, address, city, state, and ZIP code",
+   "bbox": [
+    41.12,
+    387.17,
+    45.28,
+    395.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
    "label": "17",
    "text": "Other information",
    "bbox": [
@@ -219,6 +291,18 @@
     457.17,
     460.18,
     465.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "G",
+   "text": "Current year allocation percentage",
+   "bbox": [
+    40.54,
+    468.73,
+    45.86,
+    477.08
    ]
   },
   {
@@ -236,6 +320,18 @@
   {
    "page": 1,
    "section": "Part II",
+   "label": "H",
+   "text": "Shareholder’s number of shares",
+   "bbox": [
+    40.61,
+    495.17,
+    45.79,
+    503.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
    "label": "12",
    "text": "Other deductions",
    "bbox": [
@@ -243,6 +339,18 @@
     505.17,
     323.38,
     513.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "I",
+   "text": "Loans from shareholder",
+   "bbox": [
+    42.17,
+    543.17,
+    44.23,
+    551.52
    ]
   },
   {

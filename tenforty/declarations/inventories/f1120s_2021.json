@@ -8,6 +8,126 @@
   {
    "page": 1,
    "section": "",
+   "label": "A",
+   "text": "S election",
+   "bbox": [
+    36.0,
+    97.17,
+    40.8,
+    105.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "D",
+   "text": "Employer",
+   "bbox": [
+    457.6,
+    97.17,
+    462.79,
+    105.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "B",
+   "text": "Business",
+   "bbox": [
+    36.0,
+    121.17,
+    40.93,
+    129.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "E",
+   "text": "Date",
+   "bbox": [
+    457.6,
+    121.17,
+    462.14,
+    129.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "F",
+   "text": "Total",
+   "bbox": [
+    457.6,
+    145.29,
+    461.75,
+    153.65
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "C",
+   "text": "Check",
+   "bbox": [
+    36.0,
+    157.67,
+    41.19,
+    166.02
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "G",
+   "text": "Is",
+   "bbox": [
+    36.0,
+    169.28,
+    42.45,
+    179.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "H",
+   "text": "Check",
+   "bbox": [
+    36.0,
+    181.28,
+    42.3,
+    191.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "I",
+   "text": "Enter",
+   "bbox": [
+    38.0,
+    192.78,
+    40.51,
+    202.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "J",
+   "text": "Check",
+   "bbox": [
+    36.5,
+    204.78,
+    41.23,
+    214.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
    "label": "1a",
    "text": "Gross receipts or sales",
    "bbox": [
@@ -417,11 +537,35 @@
    "page": 2,
    "section": "",
    "label": "1",
-   "text": "Check accounting method: a Cash b Accrual Yes No",
+   "text": "Check accounting method:",
    "bbox": [
     45.67,
     61.28,
     50.4,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1a",
+   "text": "Cash",
+   "bbox": [
+    180.0,
+    61.28,
+    184.88,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1b",
+   "text": "Accrual Yes No",
+   "bbox": [
+    244.8,
+    61.28,
+    250.0,
     71.42
    ]
   },
@@ -1655,22 +1799,10 @@
    "label": "6a",
    "text": "Depreciation $",
    "bbox": [
-    50.4,
+    324.0,
     169.28,
-    55.28,
+    328.88,
     179.42
-   ]
-  },
-  {
-   "page": 5,
-   "section": "",
-   "label": "6b",
-   "text": "Travel and entertainment $",
-   "bbox": [
-    50.4,
-    193.28,
-    55.59,
-    203.42
    ]
   },
   {

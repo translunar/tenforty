@@ -417,11 +417,23 @@
    "page": 2,
    "section": "Part V",
    "label": "24a",
-   "text": "Do you have evidence to support the business/investment use claimed? Yes No 24b If “Yes,”",
+   "text": "Do you have evidence to support the business/investment use claimed? Yes No",
    "bbox": [
     40.4,
     108.65,
     55.57,
+    119.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "24b",
+   "text": "If “Yes,”",
+   "bbox": [
+    374.4,
+    108.65,
+    389.91,
     119.39
    ]
   },
