@@ -291,6 +291,19 @@ class TooltipPrefixCensusTests(unittest.TestCase):
                 extract_california(
                     PDFS / "california/amendments/schedule_x_2025.pdf")
 
+    def test_ftb3532_part_words_cross_check_in_either_case(self):
+        # FTB 3532's tooltips name Parts as words: "Part One." (2023),
+        # "Part one." (2024), "Part three. Qualifying Person Information."
+        # (2025). Each must state the printed Part, or the cross-check
+        # would assert nothing.
+        for prefix, stated in (("Part One. ", ["Part I"]),
+                               ("Part one. ", ["Part I"]),
+                               ("Part two. ", ["Part II"]),
+                               ("Part three. Qualifying Person Information. ",
+                                ["Part III"])):
+            with self.subTest(prefix=prefix):
+                self.assertEqual(inventory._tooltip_sections(prefix), stated)
+
     def test_only_a_clause_starting_with_a_name_states_a_section(self):
         self.assertEqual(inventory._tooltip_sections(
             "Section B – Additional Income from federal Schedule 1 "
@@ -298,6 +311,42 @@ class TooltipPrefixCensusTests(unittest.TestCase):
         self.assertEqual(inventory._tooltip_sections(
             "Part One. Income Adjustment Schedule. Section A. Income from "
             "federal Form 1040 or 1040-SR. "), ["Part I", "Section A"])
+
+
+class Ftb3532InventoryTests(unittest.TestCase):
+    """FTB 3532 (2021-2025): Parts I-III from the printed headings. 2025
+    prints Parts I and II as radio groups whose tooltips name no line, so
+    those lines come from the printed page."""
+
+    def test_parts_from_the_printed_headings_every_year(self):
+        for year in range(2021, 2026):
+            with self.subTest(year=year):
+                lines = load("ftb3532", year).lines
+                by_section = {}
+                for l in lines:
+                    by_section.setdefault(l.section, set()).add(l.label)
+                self.assertEqual(sorted(by_section),
+                                 ["Part I", "Part II", "Part III"])
+                self.assertLessEqual(
+                    {"1a", "1b", "1c", "1d", "1e", "1f"}, by_section["Part I"])
+                self.assertLessEqual(
+                    {"2a", "2b", "2c", "2d", "2e"}, by_section["Part II"])
+                self.assertLessEqual(
+                    {"3", "3a", "3b", "4", "5"}, by_section["Part III"])
+
+    def test_2025_parts_i_and_ii_come_from_the_printed_page(self):
+        # Asserts the in-memory InventoryLine.source of a FRESH extraction
+        # only (the JSON stores `source` only for tooltip lines). Nine 2025
+        # lines are currently DEFECT-EMPTY text: 1a, 1b, 1c, 1d, 1e, 1f, 2b,
+        # 2c, 2d. Each was made by the right-hand line-number box (bbox x0
+        # 534.0), which sorts a fraction of a point above the printed
+        # sub-letter; 2a and 2e (x0 47.0) kept their text. The
+        # extractor-ordering lane fixes that, and their text becoming
+        # non-empty is the expected fix, not a regression.
+        lines = {(l.section, l.label): l for l in extract_california(
+            PDFS / "california/2025/ftb3532.pdf")}
+        self.assertEqual(lines[("Part I", "1a")].source, "printed")
+        self.assertEqual(lines[("Part III", "3")].source, "tooltip")
 
 
 class CaliforniaInventoryTests(unittest.TestCase):
