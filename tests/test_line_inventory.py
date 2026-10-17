@@ -604,6 +604,20 @@ class ColumnAwareCompositionTests(unittest.TestCase):
         self.assertEqual(lines["2a"].text, "LeftSub")
         self.assertEqual(lines["6a"].text, "RightSub")
 
+    def test_synthetic_orphan_sub_letter_takes_no_other_columns_number(self):
+        # The left column counts DOWN (3 above 2 above 1), so it is a
+        # table's values, not labels: its sub-letter has no parent and must
+        # not borrow the right column's 6 (Form 1120-S Schedule M-1's left
+        # column, whose 3a / 3b posed as "6a" / "6b").
+        lines = _extract_synthetic([
+            _word(40, 80, "3"), _word(52, 80, "Three"),
+            _word(40, 100, "2"), _word(52, 100, "Two"),
+            _word(40, 120, "1"), _word(52, 120, "One"),
+            _word(300, 100, "5"), _word(312, 100, "Five"),
+            _word(300, 125, "6"), _word(312, 125, "Six"),
+            _word(50, 140, "a", 5), _word(62, 140, "Orphan")])
+        self.assertEqual(sorted(lines), ["5", "6"])
+
     _SUB_LINES = {"16a": "Mortgage (paid to banks, etc.)", "16b": "Other",
                   "20a": "Vehicles, machinery, and equipment",
                   "20b": "Other business property",
@@ -673,6 +687,19 @@ class MidRowSubLineTests(unittest.TestCase):
             _word(200, 120, "a", 5), _word(212, 120, "Loss")])
         self.assertEqual(sorted(lines), ["3", "4"])
         self.assertEqual(lines["4"].text, "Smaller a Loss")
+
+    def test_synthetic_first_sub_letter_after_the_label_is_not_mid_row(self):
+        # "12 a If line 10 ..." (Schedule D (540)): the row's own first
+        # sub-letter, printed just past the composite gap, is the label's
+        # text, not a mid-row line.
+        lines = _extract_synthetic([
+            _word(40, 100, "11"), _word(60, 100, "Eleven"),
+            _word(40, 120, "12"), _word(58, 120, "a", 5),
+            _word(70, 120, "If"), _word(84, 120, "Line"),
+            _word(140, 120, "b", 5), _word(152, 120, "Other")])
+        self.assertEqual(sorted(lines), ["11", "12"])
+        self.assertTrue(lines["12"].text.startswith("a If Line"),
+                        lines["12"].text)
 
     def test_sch_c_line_44_every_year(self):
         for year in _YEARS:
@@ -747,6 +774,16 @@ class ItemLetterTests(unittest.TestCase):
             _word(36, 100, "B"), _word(48, 100, "penalty"),
             _word(40, 140, "1"), _word(52, 140, "One"),
             _word(40, 160, "2"), _word(52, 160, "Two")])
+        self.assertEqual(sorted(lines), ["1", "2"])
+
+    def test_synthetic_repeated_column_headers_are_not_labels(self):
+        # Schedule CA's "A Federal Amounts B Subtractions C Additions" header
+        # row prints on every page: a letter column that repeats is headers.
+        lines = _extract_synthetic([
+            _word(240, 60, "A"), _word(252, 60, "Federal"),
+            _word(240, 300, "A"), _word(252, 300, "Federal"),
+            _word(40, 100, "1"), _word(52, 100, "One"),
+            _word(40, 120, "2"), _word(52, 120, "Two")])
         self.assertEqual(sorted(lines), ["1", "2"])
 
     _SCH_C = {"A": "Principal business or profession",
