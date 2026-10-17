@@ -15,7 +15,9 @@ line 12; 2025 lines 8a and 15).
 
 An anchor is declared only where the line's printed label row cannot locate
 its entry field: lines 2, 4c, 7, 8a and 13 every year, and line 12 from 2023,
-when its label wraps.
+when its label wraps. Anchor phrases end on token boundaries as printed,
+trailing punctuation included ("line 31;"): the evaluator matches whole
+``pdftotext`` words, so a phrase cut inside a token prints zero times.
 
 2021 is the base year; 2022-2025 are ``derive`` diffs. A line whose text or
 anchor changes is dropped and re-added with the same binding.
@@ -103,7 +105,7 @@ def _line_1b(code):
                      "security retirement/disability recipient")
 
 
-_LINE_12_ANCHOR = _wrapped("Self-employment tax. Add lines 10 and 11")
+_LINE_12_ANCHOR = _wrapped("Self-employment tax. Add lines 10 and 11.")
 
 SCH_SE_2021 = FormDeclaration(
     form=FORM,
@@ -133,7 +135,7 @@ SCH_SE_2021 = FormDeclaration(
                "minister or member of a religious order.",
                "sch_se_line_2_net_profit",
                anchor=_wrapped(
-                   "Net profit or (loss) from Schedule C, line 31")),
+                   "Net profit or (loss) from Schedule C, line 31;")),
         _bound(P1, "3", "Combine lines 1a, 1b, and 2",
                "sch_se_line_3_net_profit"),
         _bound(P1, "4a",
@@ -151,7 +153,8 @@ SCH_SE_2021 = FormDeclaration(
                "owe self-employment tax. Exception: If less than $400 and you "
                "had church employee income, enter -0- and continue",
                "sch_se_line_4c_net_earnings",
-               anchor=_wrapped("Combine lines 4a and 4b")),
+               anchor=_wrapped(
+                   "Combine lines 4a and 4b. If less than $400, stop;")),
         _unserved(
             P1, "5a",
             "Enter your church employee income from Form W-2. See "

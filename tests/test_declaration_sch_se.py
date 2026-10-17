@@ -8,7 +8,10 @@ directly, not the registry.
 import unittest
 
 from tenforty.declarations import sch_se
+from tenforty.declarations.anchors import NearLabel
 from tenforty.declarations.validate import validate
+from tenforty.verification import anchors as anchor_eval
+from tests.helpers import REPO_ROOT
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
@@ -39,3 +42,23 @@ class SchSeDeclarationValidatesTests(unittest.TestCase):
                     [(f.line, f.check) for f in findings],
                     KNOWN_INVENTORY_GAP,
                     "\n".join(f.message for f in findings))
+
+
+class SchSeAnchorPhrasesPrintOnceTests(unittest.TestCase):
+    """Every explicit anchor phrase prints exactly once on that year's
+    official template, under the evaluator's own semantics (token-exact
+    against ``pdftotext -bbox`` words, so a trailing "31;" or "4b." is part
+    of its token). Every anchored Schedule SE line is in Part I, on page 1.
+    """
+
+    def test_each_phrase_prints_exactly_once(self):
+        for year in YEARS:
+            template = str(REPO_ROOT / "pdfs" / "federal" / str(year)
+                           / "f1040sse.pdf")
+            words = anchor_eval._page_words(template, 0)
+            for ln in sch_se.DECLARATIONS[year].lines:
+                if not isinstance(ln.anchor, NearLabel):
+                    continue
+                with self.subTest(year=year, line=ln.line):
+                    self.assertEqual(len(anchor_eval._phrase_boxes(
+                        words, ln.anchor.phrase)), 1, ln.anchor.phrase)
