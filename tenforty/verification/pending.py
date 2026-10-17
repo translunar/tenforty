@@ -24,3 +24,17 @@ _FILLABLE_FORMS = (
 PENDING_DECLARATIONS: Mapping[tuple[str, str], str] = {
     form: _REASON for form in _FILLABLE_FORMS
 }
+
+
+def registry_problems() -> list[str]:
+    """The registry's standing invariants, read live: no form both declared
+    and pending (D3), and no declared form-key with work still in progress
+    (D2: WORK_IN_PROGRESS must be empty to merge)."""
+    from tenforty.declarations import registry
+    problems = []
+    declared = {form for form, _key in registry.declared_forms()}
+    for form in sorted(declared & set(PENDING_DECLARATIONS)):
+        problems.append(f"{'/'.join(form)} is both declared and pending")
+    for form_key, lines in sorted(registry.WORK_IN_PROGRESS.items(), key=str):
+        problems.append(f"{form_key} has work in progress: {list(lines)}")
+    return problems
