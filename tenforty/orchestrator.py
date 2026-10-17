@@ -912,6 +912,20 @@ DEPENDENTS_REFUSAL = (
     "dependents release (tenforty 0.2.1), which adds Schedule 8812 and the "
     "Dependents section.")
 
+# Appended to DEPENDENTS_REFUSAL when the return carries a head_of_household
+# block (spec §7): it names which fact to correct and never invites deleting
+# a real claim. The spec text's closing remedy sentence ("File this return by
+# hand or wait for 0.2.1.") is dropped (team-lead ruling 2026-10-16): the
+# base message already ends with that remedy, so the filer reads it once.
+DEPENDENTS_REFUSAL_HOH_CLAUSE = (
+    "Your head-of-household qualifying person "
+    "(`head_of_household.qualifying_person`) is separate from `dependents`: "
+    "if you are NOT claiming that person as a dependent — for example, a "
+    "child whose exemption you released to the other parent on Form 8332 "
+    "— remove them from `dependents`; the qualifying person alone "
+    "completes FTB 3532. If you ARE claiming them, do not remove them to get "
+    "past this refusal: the return would understate your credits.")
+
 
 def refuse_dependents(scenario: Scenario) -> None:
     """FAIL-CLOSED: any return with claimed dependents, on every path.
@@ -928,8 +942,11 @@ def refuse_dependents(scenario: Scenario) -> None:
     """
     count = len(scenario.config.dependents)
     if count:
-        raise NotImplementedError(DEPENDENTS_REFUSAL.format(
-            count=count, plural="" if count == 1 else "s"))
+        message = DEPENDENTS_REFUSAL.format(
+            count=count, plural="" if count == 1 else "s")
+        if scenario.config.head_of_household is not None:
+            message = f"{message} {DEPENDENTS_REFUSAL_HOH_CLAUSE}"
+        raise NotImplementedError(message)
 
 
 def eic_gate_child_count(config: TaxReturnConfig) -> int:
