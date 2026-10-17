@@ -68,8 +68,15 @@ class PdfSchCMappingTests(unittest.TestCase):
                 self.assertEqual(set(d), {_CASH_BOX,
                                           _MATERIAL_PARTICIPATION_YES_BOX,
                                           _LINE_32A_BOX})
-                self.assertEqual(d[_CASH_BOX]({}), "/1")
-                self.assertEqual(d[_MATERIAL_PARTICIPATION_YES_BOX]({}), "/Yes")
+                # Ruling A1: each box translates its compute key; an absent
+                # key prints blank (blank = not computed).
+                self.assertEqual(
+                    d[_CASH_BOX]({"sch_c_line_f_cash_method": True}), "/1")
+                self.assertIsNone(d[_CASH_BOX]({}))
+                self.assertEqual(
+                    d[_MATERIAL_PARTICIPATION_YES_BOX](
+                        {"sch_c_line_g_material_participation": True}), "/Yes")
+                self.assertIsNone(d[_MATERIAL_PARTICIPATION_YES_BOX]({}))
 
     def test_line_32a_box_is_marked_only_for_a_loss_business(self):
         for year in years.SCHEDULE_C_FAMILY_YEARS:
@@ -92,6 +99,9 @@ class PdfSchCMappingTests(unittest.TestCase):
             "sch_c_line_28_total_expenses": 1000,
             "sch_c_line_29_tentative_profit": 8000,
             "sch_c_line_31_net_profit": 8000,
+            # The scope constants sch_c.compute emits (ruling A3).
+            "sch_c_line_f_cash_method": True,
+            "sch_c_line_g_material_participation": True,
         }
         for year in years.SCHEDULE_C_FAMILY_YEARS:
             with self.subTest(year=year), tempfile.TemporaryDirectory() as d:
