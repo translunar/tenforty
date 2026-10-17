@@ -24,10 +24,13 @@ total that the "Other expenses (from line 48)" line carries forward -- a
 filled form prints every line its own arithmetic requires.
 
 FIXED CHECKBOXES (get_derivations). Two boxes are always checked because they
-are invariants of what tenforty models, not per-return facts:
-  - Line F, accounting method = Cash. Accrual accounting is unmodeled.
-  - Line G, material participation = Yes. Passive sole proprietorships are
-    unmodeled.
+are invariants of what tenforty models, not per-return facts; the
+computation emits each as a compute key (ruling A3) and the mapping only
+translates it to the box's on-state:
+  - Line F, accounting method = Cash (sch_c_line_f_cash_method). Accrual
+    accounting is unmodeled.
+  - Line G, material participation = Yes (sch_c_line_g_material_participation).
+    Passive sole proprietorships are unmodeled.
 The compute layer's refusals (cost of goods sold, home office,
 vehicle, depletion, returns and allowances, statutory employee, and a net
 loss without the at-risk attestation) fence everything else.
@@ -116,10 +119,16 @@ _FIELDS_2025: dict[str, str] = inherit_pdf_fields(
     overrides={"sch_c_expense_other_expenses": f"{_L18}.f1_39[0]"},
 )
 
-# PDF path -> constant on-state. Same paths and states in all five years.
+# PDF path -> on-state translation of a compute key (ruling A1: every
+# printed value comes from the computation; the mapping only translates).
+# Same paths and states in all five years.
 _DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
-    f"{_P1}.c1_1[0]": lambda _values: "/1",    # line F: (1) Cash
-    f"{_P1}.c1_2[0]": lambda _values: "/Yes",  # line G: Yes
+    # line F: (1) Cash
+    f"{_P1}.c1_1[0]": lambda values: (
+        "/1" if values.get("sch_c_line_f_cash_method") else None),
+    # line G: Yes
+    f"{_P1}.c1_2[0]": lambda values: (
+        "/Yes" if values.get("sch_c_line_g_material_participation") else None),
     # Line 32a "All investment is at risk": marked only for a business with a
     # net loss (the compute emits the key for those alone). The companion
     # box 32b is c1_7[1] (on-state /2) and is never written -- Form 6198 is
