@@ -403,6 +403,66 @@ def parse_filing_status(value: "str | FilingStatus") -> FilingStatus:
         f"{suggestion}")
 
 
+class HohMaritalStatus(str, Enum):
+    """FTB 3532 Part I (marital status). "Spouse" means a federal spouse; CA
+    registered domestic partners are outside tenforty's contract."""
+    UNMARRIED = "unmarried"                                         # 1a
+    SURVIVING_SPOUSE = "surviving_spouse"                           # 1b
+    MARRIAGE_ANNULLED = "marriage_annulled"                         # 1c
+    DIVORCED_OR_LEGALLY_SEPARATED = "divorced_or_legally_separated" # 1d
+    MARRIED_LIVED_APART_ALL_YEAR = "married_lived_apart_all_year"   # 1e
+    MARRIED_LIVED_TOGETHER_PART_OF_YEAR = "married_lived_together_part_of_year"  # 1f
+
+
+class HohRelationship(str, Enum):
+    """FTB 3532 Part II (the qualifying person's relationship to the filer)."""
+    CHILD_OR_STEPCHILD = "child_or_stepchild"                                   # 2a
+    GRANDCHILD_SIBLING_NIECE_OR_NEPHEW = "grandchild_sibling_niece_or_nephew"   # 2b
+    ELIGIBLE_FOSTER_CHILD = "eligible_foster_child"                             # 2c
+    PARENT_OR_STEPPARENT = "parent_or_stepparent"                               # 2d
+    OTHER_RELATIVE = "other_relative"                                           # 2e
+
+
+class SeparationDecreeKind(str, Enum):
+    """Which final decree a Part I line 1d filer received."""
+    DIVORCE_OR_DISSOLUTION = "divorce_or_dissolution"
+    LEGAL_SEPARATION = "legal_separation"
+
+
+@dataclass(frozen=True)
+class LivedTogetherPeriod:
+    """One FTB 3532 Part I line 1f From/To pair (YAML keys `from` / `to`)."""
+    start: str   # ISO YYYY-MM-DD
+    end: str     # ISO YYYY-MM-DD
+
+
+@dataclass(frozen=True)
+class HohQualifyingPerson:
+    """FTB 3532 Parts II and III: the person who qualifies the filer for
+    head of household. Separate from ``TaxReturnConfig.dependents``: never
+    counted as a dependent."""
+    first_name: str
+    last_name: str
+    ssn: str                         # normalized: 9 bare digits (SSN or ITIN)
+    birthdate: str                   # ISO YYYY-MM-DD
+    relationship: HohRelationship
+    full_time_student: bool | None   # line 3a; answered iff 19+ in the year
+    permanently_disabled: bool | None  # line 3b; same rule
+    gross_income: float              # line 4
+    days_lived_with_you: int         # line 5
+
+
+@dataclass(frozen=True)
+class HeadOfHouseholdFacts:
+    """``config.head_of_household``: the facts FTB 3532 prints. Required on a
+    head-of-household return, refused on every other status (validated in
+    ``scenario.validate_head_of_household``)."""
+    marital_status: HohMaritalStatus
+    qualifying_person: HohQualifyingPerson
+    lived_with_spouse_periods: tuple[LivedTogetherPeriod, ...] = ()
+    separation_decree_kind: SeparationDecreeKind | None = None
+
+
 class EntityType(str, Enum):
     """Pass-through entity type carried on ScheduleK1. YAML fixtures yield
     strings; str-Enum lets them compare equal to their value string and
@@ -755,6 +815,10 @@ class TaxReturnConfig:
     # time, not silently set to 0. v1 is an INPUT CHANNEL — the §162(l) limit
     # math (premium caps, S-corp >2%-shareholder rules) is NOT modeled here.
     self_employed_health_insurance_deduction: float = 0.0
+    # The head-of-household qualifying person and marital facts (FTB 3532).
+    # Required iff filing_status is head_of_household; refused otherwise
+    # (scenario.validate_head_of_household). Never counts as a dependent.
+    head_of_household: HeadOfHouseholdFacts | None = None
 
     def __post_init__(self) -> None:
         self.filing_status = parse_filing_status(self.filing_status)
