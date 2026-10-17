@@ -82,3 +82,9 @@ def non_fill_reason(key: str) -> str | None:
         if pattern.fullmatch(key):
             return NON_FILL_EMITTED[entry]
     return None
+
+
+# Populate the registry: ``forms`` imports each graduated form's declaration
+# module, and each calls ``register`` above at import time. This import must
+# stay at the bottom, after ``register`` is defined, to break the cycle.
+from tenforty.declarations import forms  # noqa: E402,F401

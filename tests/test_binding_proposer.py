@@ -38,6 +38,25 @@ def _exceptions(proposals, line, reason=None):
             if e.line == line and (reason is None or e.reason == reason)]
 
 
+class StylesheetLineLabelTests(unittest.TestCase):
+    """stylesheet_lines keeps a single-uppercase-letter line: Schedule SE's
+    line A (the Form 4361 checkbox, ExemptForm4361Ind) prints in every year's
+    stylesheet and must reach the proposer and the cross-check."""
+
+    def test_schedule_se_line_a_is_kept(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                line = propose.stylesheet_lines("sch_se", year).get(
+                    ("Part I", "A"))
+                self.assertIsNotNone(line)
+                self.assertIn("ExemptForm4361Ind", line.elements)
+
+    def test_lowercase_sub_lines_still_take_the_last_number(self):
+        styles = propose.stylesheet_lines("sch_se", 2021)
+        self.assertIn(("Part I", "1b"), styles)
+        self.assertNotIn(("Part I", "b"), styles)
+
+
 class NamingPassTests(unittest.TestCase):
     def test_f8995_2025_line_15_auto_confirms_with_its_stylesheet_element(self):
         (sheet_15,) = [l for l in stylesheet.load("f8995", 2025)
