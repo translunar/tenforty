@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pypdf
+from pypdf.generic import ArrayObject, DictionaryObject, NameObject
 
 from tenforty.models import SourceDocument
 
@@ -231,11 +232,67 @@ def classify_key(key: str) -> str | None:
     return None
 
 
+def _optional_content_state(ocp) -> tuple[list, list]:
+    """(ON, OFF) lists of a source's /OCProperties default configuration, with
+    /BaseState applied: under /BaseState /OFF every group not listed /ON is
+    off. (/Unchanged is not valid in the default configuration; it reads as
+    the /ON default.)"""
+    default = ocp.get("/D", DictionaryObject())
+    groups = list(ocp.get("/OCGs", ArrayObject()))
+    on = list(default.get("/ON", ArrayObject()))
+    off = list(default.get("/OFF", ArrayObject()))
+    if default.get("/BaseState") == "/OFF":
+        listed_on = {ref.idnum for ref in on}
+        off = [ref for ref in groups if ref.idnum not in listed_on]
+    return on, off
+
+
 def assemble_packet(paths: list[Path], output_path: Path) -> Path:
-    """Concatenate ``paths`` (in order) into a single PDF at ``output_path``."""
+    """Concatenate ``paths`` (in order) into a single PDF at ``output_path``.
+
+    Optional content survives the merge. ``PdfWriter.append`` copies pages
+    (and the optional-content groups their content references) but not the
+    catalog's /OCProperties, and a viewer or printer with no /OCProperties
+    shows every layer -- including ones a template ships hidden (the 2021
+    FTB 3532's "Keep this form for your records - DO NOT MAIL TO FTB"
+    banner, layer "CalFile turn on"). Each source's /OCProperties is cloned
+    into the writer after its pages, which maps its groups onto the copies
+    the pages already use, and the packet's /OCProperties is the union: every
+    group, each in its source's default ON/OFF state."""
     writer = pypdf.PdfWriter()
+    groups, on, off, order, rb_groups, locked = [], [], [], [], [], []
     for path in paths:
-        writer.append(str(path))
+        reader = pypdf.PdfReader(str(path))
+        writer.append(reader)
+        root = reader.trailer["/Root"]
+        if "/OCProperties" not in root:
+            continue
+        # Same reader object as the append: clone() resolves through the
+        # writer's per-reader translation table, so already-copied groups are
+        # reused, not duplicated.
+        ocp = root.raw_get("/OCProperties").clone(writer).get_object()
+        default = ocp.get("/D", DictionaryObject())
+        groups.extend(ocp.get("/OCGs", ArrayObject()))
+        source_on, source_off = _optional_content_state(ocp)
+        on.extend(source_on)
+        off.extend(source_off)
+        order.extend(default.get("/Order", ArrayObject()))
+        rb_groups.extend(default.get("/RBGroups", ArrayObject()))
+        locked.extend(default.get("/Locked", ArrayObject()))
+    if groups:
+        default = DictionaryObject({
+            NameObject("/BaseState"): NameObject("/ON"),
+            NameObject("/ON"): ArrayObject(on),
+            NameObject("/OFF"): ArrayObject(off),
+            NameObject("/Order"): ArrayObject(order),
+            NameObject("/RBGroups"): ArrayObject(rb_groups),
+        })
+        if locked:
+            default[NameObject("/Locked")] = ArrayObject(locked)
+        writer.root_object[NameObject("/OCProperties")] = DictionaryObject({
+            NameObject("/OCGs"): ArrayObject(groups),
+            NameObject("/D"): default,
+        })
     with open(output_path, "wb") as f:
         writer.write(f)
     writer.close()
