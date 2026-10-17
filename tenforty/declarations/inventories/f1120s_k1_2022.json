@@ -1,0 +1,273 @@
+{
+ "form": "f1120s_k1",
+ "key": 2022,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2022/f1120s_k1.pdf",
+ "source_sha256": "c69b62dfbf0250cbd720159102d8a1166600b962eef6886fd608ba38eaf3a0f6",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "1",
+   "text": "Ordinary business income (loss)",
+   "bbox": [
+    319.6,
+    73.17,
+    323.49,
+    81.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "13",
+   "text": "Credits",
+   "bbox": [
+    452.4,
+    73.17,
+    460.18,
+    81.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "2",
+   "text": "Net rental real estate income (loss)",
+   "bbox": [
+    319.6,
+    97.17,
+    323.49,
+    105.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3",
+   "text": "Other net rental income (loss)",
+   "bbox": [
+    319.6,
+    121.17,
+    323.49,
+    129.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "4",
+   "text": "Interest income",
+   "bbox": [
+    319.6,
+    145.17,
+    323.49,
+    153.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5a",
+   "text": "Ordinary dividends",
+   "bbox": [
+    319.6,
+    169.17,
+    327.51,
+    177.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5b",
+   "text": "Qualified dividends",
+   "bbox": [
+    319.6,
+    193.17,
+    327.77,
+    201.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "14",
+   "text": "Schedule K-3 is attached if",
+   "bbox": [
+    452.4,
+    193.17,
+    460.18,
+    201.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Royalties",
+   "bbox": [
+    319.6,
+    217.17,
+    323.49,
+    225.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "15",
+   "text": "Alternative minimum tax (AMT) items",
+   "bbox": [
+    452.22,
+    217.17,
+    460.0,
+    225.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Net short-term capital gain (loss)",
+   "bbox": [
+    319.6,
+    241.17,
+    323.49,
+    249.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8a",
+   "text": "Net long-term capital gain (loss)",
+   "bbox": [
+    319.6,
+    265.17,
+    327.51,
+    273.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8b",
+   "text": "Collectibles (28%) gain (loss)",
+   "bbox": [
+    319.6,
+    289.17,
+    327.77,
+    297.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8c",
+   "text": "Unrecaptured section 1250 gain",
+   "bbox": [
+    319.6,
+    313.17,
+    327.51,
+    321.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Net section 1231 gain (loss)",
+   "bbox": [
+    319.6,
+    337.17,
+    323.49,
+    345.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "16",
+   "text": "Items affecting shareholder basis",
+   "bbox": [
+    452.22,
+    337.17,
+    460.0,
+    345.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Other income (loss)",
+   "bbox": [
+    315.6,
+    361.17,
+    323.38,
+    369.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "17",
+   "text": "Other information",
+   "bbox": [
+    452.4,
+    457.17,
+    460.18,
+    465.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Section 179 deduction",
+   "bbox": [
+    315.6,
+    481.17,
+    323.38,
+    489.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Other deductions",
+   "bbox": [
+    315.6,
+    505.17,
+    323.38,
+    513.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "18",
+   "text": "More than one activity for at-risk purposes*",
+   "bbox": [
+    316.22,
+    698.07,
+    324.0,
+    706.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "19",
+   "text": "More than one activity for passive",
+   "bbox": [
+    316.21,
+    710.07,
+    324.0,
+    718.42
+   ]
+  }
+ ]
+}

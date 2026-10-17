@@ -1,0 +1,297 @@
+{
+ "form": "sch_se",
+ "key": 2025,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2025/f1040sse.pdf",
+ "source_sha256": "05bc2b3e1dfca65d8c6fc6d652af4fa3736e953c6575d6e9f82590484677d347",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Net farm profit or (loss) from Schedule F, line 34, and farm partnerships, Schedule",
+   "bbox": [
+    45.4,
+    181.66,
+    50.4,
+    192.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "If you received social security retirement or disability benefits, enter the amount of Conservation",
+   "bbox": [
+    50.4,
+    205.65,
+    55.9,
+    216.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Net profit or (loss) from Schedule C, line 31; and Schedule K-1 (Form 1065), box 14,",
+   "bbox": [
+    45.4,
+    241.65,
+    50.4,
+    252.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Combine lines 1a, 1b, and 2",
+   "bbox": [
+    45.4,
+    264.65,
+    50.4,
+    275.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4a",
+   "text": "If line 3 is more than zero, multiply line 3 by 92.35% (0.9235). Otherwise, enter amount",
+   "bbox": [
+    45.4,
+    276.65,
+    50.4,
+    287.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4b",
+   "text": "If you elect one or both of the optional methods, enter the total of lines 15 and 17 here",
+   "bbox": [
+    50.4,
+    300.65,
+    55.9,
+    311.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4c",
+   "text": "Combine lines 4a and 4b. If less than $400, stop; you don’t owe self-employment",
+   "bbox": [
+    50.4,
+    313.65,
+    55.57,
+    324.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5a",
+   "text": "Enter your church employee income from Form W-2. See instructions for",
+   "bbox": [
+    45.4,
+    337.65,
+    50.4,
+    348.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5b",
+   "text": "Multiply line 5a by 92.35% (0.9235). If less than $100, enter -0-",
+   "bbox": [
+    50.4,
+    360.65,
+    55.9,
+    371.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Add lines 4c and 5b",
+   "bbox": [
+    45.4,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Maximum amount of combined wages and self-employment earnings subject to social",
+   "bbox": [
+    45.4,
+    385.65,
+    50.4,
+    396.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8a",
+   "text": "Total social security wages and tips (total of boxes 3 and 7 on Form(s) W-2)",
+   "bbox": [
+    45.4,
+    410.65,
+    50.4,
+    421.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8b",
+   "text": "Unreported tips subject to social security tax from Form 4137, line 10",
+   "bbox": [
+    50.4,
+    444.65,
+    55.9,
+    455.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8c",
+   "text": "Wages subject to social security tax from Form 8919, line 10",
+   "bbox": [
+    50.4,
+    456.65,
+    55.57,
+    467.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8d",
+   "text": "Add lines 8a, 8b, and 8c",
+   "bbox": [
+    50.4,
+    468.65,
+    55.9,
+    479.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Subtract line 8d from line 7. If zero or less, enter -0- here and on line 10 and go to",
+   "bbox": [
+    45.4,
+    480.65,
+    50.4,
+    491.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "10",
+   "text": "Multiply the smaller of line 6 or line 9 by 12.4% (0.124)",
+   "bbox": [
+    40.39,
+    492.65,
+    50.4,
+    503.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "11",
+   "text": "Multiply line 6 by 2.9% (0.029)",
+   "bbox": [
+    40.39,
+    504.65,
+    50.4,
+    515.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "12",
+   "text": "Self-employment tax. Add lines 10 and 11. Enter here and on Schedule 2 (Form",
+   "bbox": [
+    40.39,
+    517.65,
+    50.4,
+    528.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "13",
+   "text": "Deduction for one-half of self-employment tax.",
+   "bbox": [
+    40.39,
+    540.65,
+    50.4,
+    551.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "14",
+   "text": "Maximum income for optional methods",
+   "bbox": [
+    40.39,
+    84.65,
+    50.4,
+    95.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "15",
+   "text": "Enter the smaller of: two-thirds ( 2 / ) of gross farm income 1 (not less than zero) or $7,240. Also, include",
+   "bbox": [
+    40.39,
+    97.15,
+    50.4,
+    107.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "16",
+   "text": "Subtract line 15 from line 14",
+   "bbox": [
+    40.39,
+    156.65,
+    50.4,
+    167.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17",
+   "text": "Enter the smaller of: two-thirds ( 2 / ) of gross nonfarm income 4 (not less than zero) or the amount on",
+   "bbox": [
+    40.39,
+    169.65,
+    50.4,
+    180.39
+   ]
+  }
+ ]
+}

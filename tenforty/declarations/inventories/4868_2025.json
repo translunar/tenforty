@@ -1,0 +1,105 @@
+{
+ "form": "4868",
+ "key": 2025,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2025/f4868.pdf",
+ "source_sha256": "36c7607db08ff469ed4e5df89e27ca90f29023c7cd6ca77c69343045e8f33d29",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1",
+   "text": "Your name(s) (see instructions)",
+   "bbox": [
+    40.0,
+    649.17,
+    43.89,
+    657.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "Estimate of total tax liability for 2025 $",
+   "bbox": [
+    312.35,
+    649.91,
+    316.8,
+    659.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Total 2025 payments",
+   "bbox": [
+    312.36,
+    661.91,
+    316.8,
+    671.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Balance due. Subtract line 5 from line 4.",
+   "bbox": [
+    312.35,
+    674.41,
+    316.8,
+    683.96
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "7",
+   "text": "Amount you’re paying (see instructions)",
+   "bbox": [
+    312.35,
+    697.41,
+    316.8,
+    706.96
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Check here if you’re “out of the country” and a U.S. citizen or",
+   "bbox": [
+    312.35,
+    710.31,
+    316.8,
+    719.86
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Your social security number 3 Spouse’s social security number",
+   "bbox": [
+    40.0,
+    733.17,
+    43.89,
+    741.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Check here if you file Form 1040-NR and didn’t receive wages",
+   "bbox": [
+    312.35,
+    734.31,
+    316.8,
+    743.86
+   ]
+  }
+ ]
+}

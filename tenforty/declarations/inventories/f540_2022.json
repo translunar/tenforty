@@ -1,0 +1,741 @@
+{
+ "form": "f540",
+ "key": 2022,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2022/f540.pdf",
+ "source_sha256": "70360340ea632a55ec0c6bcea31a49c0c4bd5654fe503a249274c315c1f322f1",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "Single.",
+   "bbox": [
+    77.3,
+    516.58,
+    90.1,
+    528.58
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "Head of household (with qualifying",
+   "bbox": [
+    232.5,
+    516.75,
+    237.0,
+    527.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "Enter year spouse or Registered Domestic Partner died.",
+   "bbox": [
+    501.9,
+    537.6,
+    535.8,
+    555.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Married/RDP filing jointly. See instr.",
+   "bbox": [
+    60.18,
+    540.95,
+    64.68,
+    552.12
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Enter spouse’s or Registered Domestic Partner's Social Security Number or Individual Taxpayer Identification Number above and full name here.",
+   "bbox": [
+    421.8,
+    585.6,
+    571.63,
+    602.4
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": ": If someone can claim you (or your spouse or Registered Domestic Partner) as a dependent, check the box here. See instructions.",
+   "bbox": [
+    466.13,
+    612.0,
+    478.92,
+    624.0
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Personal: If you checked box 1, 3, or 4 above,",
+   "bbox": [
+    60.4,
+    651.34,
+    64.9,
+    662.51
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Blind: If you (or your spouse/Registered Domestic Partner) are visually impaired, enter 1; if both are visually impaired, enter 2 .",
+   "bbox": [
+    379.7,
+    684.66,
+    392.5,
+    696.66
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "Senior: If you (or your spouse/Registered Domestic Partner) are 65 or older, enter 1; if both are 65 or older, enter 2 . See instructions.",
+   "bbox": [
+    379.7,
+    708.66,
+    392.5,
+    720.66
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10",
+   "text": "Dependents: Do not include yourself or your spouse/Registered Domestic Partner. Dependent One, first name.",
+   "bbox": [
+    135.5,
+    94.2,
+    261.72,
+    111.0
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11",
+   "text": "Exemption amount: Add line 7 through line 10. Transfer this amount to line 32. Whole dollars only.",
+   "bbox": [
+    451.55,
+    213.01,
+    563.27,
+    230.41
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12",
+   "text": "State wages from your federal Form or Forms W-2, box 16 .",
+   "bbox": [
+    278.9,
+    248.88,
+    390.62,
+    266.28
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13",
+   "text": "Enter federal adjusted gross income from federal Form 1040 or 1040-SR, line 11.",
+   "bbox": [
+    437.25,
+    272.98,
+    548.97,
+    290.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "14",
+   "text": "California adjustments – subtractions. Enter the amount from Schedule CA (540), Part 1, line 27, column B.",
+   "bbox": [
+    437.25,
+    296.99,
+    548.97,
+    314.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15",
+   "text": "Subtract line 14 from line 13. If less than zero, enter the result in parentheses. See instructions.",
+   "bbox": [
+    437.25,
+    320.97,
+    548.97,
+    338.37
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16",
+   "text": "California adjustments – additions. Enter the amount from Schedule CA (540), Part 1, line 27, column C.",
+   "bbox": [
+    437.25,
+    344.99,
+    548.97,
+    362.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "17",
+   "text": "California adjusted gross income. Combine line 15 and line 16.",
+   "bbox": [
+    437.25,
+    368.99,
+    548.97,
+    386.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "18",
+   "text": "Enter the larger of your California itemized deductions from Schedule CA (540), Part II, line 30; or Your California standard deduction shown for your filing status. California standard deduction is $5,202 for filing single, or for married or Registered Domestic Partner filing separately. California standard deduction is $10,404 for filing married or Registered Domestic Partner filing jointly, or for Head of household, or for Qualifying surviving spouse or Registered Domestic Partner. If married or Registered Domestic Partner filing separately or the box on line 6 is checked, STOP. See instructions.",
+   "bbox": [
+    437.25,
+    441.1,
+    548.97,
+    458.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "19",
+   "text": "Subtract line 18 from line 17. This is your taxable income. If less than zero, enter 0.",
+   "bbox": [
+    437.25,
+    465.1,
+    548.97,
+    482.5
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "31",
+   "text": "Tax amount.",
+   "bbox": [
+    436.8,
+    524.87,
+    548.52,
+    542.27
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "32",
+   "text": "Exemption credits. Enter the amount from line 11. If your federal A G I is more than $229,908, see instructions.",
+   "bbox": [
+    437.25,
+    548.98,
+    548.97,
+    566.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "33",
+   "text": "Subtract line 32 from line 31. If less than zero, enter 0.",
+   "bbox": [
+    437.25,
+    572.98,
+    548.97,
+    590.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "34",
+   "text": "Tax. See instructions.",
+   "bbox": [
+    437.25,
+    596.98,
+    548.97,
+    614.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35",
+   "text": "Add line 33 and line 34.",
+   "bbox": [
+    437.25,
+    620.98,
+    548.97,
+    638.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "40",
+   "text": "Nonrefundable Child and Dependent Care Expenses Credit. See instructions.",
+   "bbox": [
+    437.25,
+    657.47,
+    548.97,
+    674.87
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "43",
+   "text": "Enter credit name.",
+   "bbox": [
+    142.11,
+    681.45,
+    268.33,
+    698.85
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "44",
+   "text": "Enter credit name.",
+   "bbox": [
+    142.41,
+    705.8,
+    268.63,
+    723.2
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "45",
+   "text": "To claim more than two credits, see instructions. Attach Schedule P (540).",
+   "bbox": [
+    436.56,
+    69.12,
+    549.84,
+    86.52
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "46",
+   "text": "Nonrefundable Renter’s Credit. See instructions.",
+   "bbox": [
+    436.56,
+    93.11,
+    549.84,
+    110.51
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "47",
+   "text": "Add line 40 through line 46. These are your total credits.",
+   "bbox": [
+    436.56,
+    117.11,
+    549.84,
+    134.51
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "48",
+   "text": "Subtract line 47 from line 35. If less than zero, enter 0.",
+   "bbox": [
+    436.56,
+    141.11,
+    549.84,
+    158.51
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "61",
+   "text": "Alternative Minimum Tax. Attach Schedule P (540).",
+   "bbox": [
+    436.8,
+    177.56,
+    549.84,
+    194.96
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "62",
+   "text": "Mental Health Services Tax. See instructions.",
+   "bbox": [
+    436.8,
+    201.56,
+    549.84,
+    218.96
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "63",
+   "text": "Other taxes and credit recapture. See instructions.",
+   "bbox": [
+    436.8,
+    225.72,
+    549.84,
+    243.12
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "64",
+   "text": "Add line 48, line 61, line 62, and line 63. This is your total tax.",
+   "bbox": [
+    436.8,
+    249.6,
+    549.84,
+    267.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "71",
+   "text": "California income tax withheld. See instructions.",
+   "bbox": [
+    436.8,
+    285.6,
+    549.6,
+    303.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "72",
+   "text": "2022 California estimated tax and other payments. See instructions.",
+   "bbox": [
+    436.8,
+    309.66,
+    549.6,
+    327.06
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "73",
+   "text": "Withholding (Form 592-B and/or Form 593). See instructions.",
+   "bbox": [
+    436.8,
+    333.64,
+    549.6,
+    351.04
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "74",
+   "text": "Excess State Disability Insurance (or Voluntary Plan Disability Insurance) withheld. See instructions.",
+   "bbox": [
+    436.8,
+    357.66,
+    549.6,
+    375.06
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "75",
+   "text": "Earned Income Tax Credit (E I T C). See instructions.",
+   "bbox": [
+    436.8,
+    381.67,
+    549.6,
+    399.07
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "76",
+   "text": "Young Child Tax Credit (YCTC). See instructions.",
+   "bbox": [
+    436.8,
+    405.6,
+    548.52,
+    423.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "77",
+   "text": "Foster Youth Tax Credit (FYTC). See instructions.",
+   "bbox": [
+    436.8,
+    429.84,
+    548.52,
+    447.24
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "78",
+   "text": "Add line 71 through line 77. These are your total payments. See instructions.",
+   "bbox": [
+    436.8,
+    453.6,
+    548.52,
+    471.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "91",
+   "text": "Use Tax. Do not leave blank. See instructions.",
+   "bbox": [
+    372.48,
+    489.6,
+    485.52,
+    507.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "92",
+   "text": "If you and your household had full-year health care coverage, check the box. See instructions. Medicare Part A or C coverage is qualifying health care coverage. If you did not check the box, see instructions.",
+   "bbox": [
+    422.18,
+    551.64,
+    435.58,
+    564.24
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "93",
+   "text": "Payments balance. If line 78 is more than line 91, subtract line 91 from line 78 .",
+   "bbox": [
+    436.8,
+    609.6,
+    549.84,
+    627.0
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "94",
+   "text": "Use Tax balance. If line 91 is more than line 78, subtract line 78 from line 91 .",
+   "bbox": [
+    436.8,
+    633.4,
+    549.84,
+    650.8
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "95",
+   "text": "Payments after Individual Shared Responsibility Penalty . If line 93 is more than line 92, subtract line 92 from line 93 .",
+   "bbox": [
+    436.8,
+    657.69,
+    549.84,
+    675.09
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "96",
+   "text": "Individual Shared Responsibility Penalty Balance. If line 92 is more than line 93, subtract line 93 from line 92.",
+   "bbox": [
+    436.8,
+    681.69,
+    549.84,
+    699.09
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "97",
+   "text": "Overpaid tax. If line 95 is more than line 64, subtract line 64 from line 95.",
+   "bbox": [
+    436.8,
+    705.58,
+    549.84,
+    722.98
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "98",
+   "text": "Amount of line 97 you want applied to your 2023 estimated tax.",
+   "bbox": [
+    436.78,
+    69.6,
+    549.75,
+    87.0
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "99",
+   "text": "Overpaid tax available this year. Subtract line 98 from line 97.",
+   "bbox": [
+    436.78,
+    93.72,
+    549.75,
+    111.12
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "100",
+   "text": "Tax due. If line 95 is less than line 64, subtract line 95 from line 64.",
+   "bbox": [
+    436.78,
+    117.48,
+    549.75,
+    134.88
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "110",
+   "text": "Add amounts in code 400 through code 446. This is your total contribution.",
+   "bbox": [
+    436.56,
+    633.0,
+    549.5,
+    650.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "111",
+   "text": "Amount You Owe. If you do not have an amount on line 99, add line 94, line 96, line 100, and line 110. See instructions. Do not send cash. You can mail payments to: Franchise Tax Board, Post Office Box, 942867, Sacramento, California, 94267-0001. To pay online, go to ftb.ca.gov/pay for more information.",
+   "bbox": [
+    436.78,
+    681.36,
+    549.84,
+    698.76
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "112",
+   "text": "Interest, late return penalties, and late payment penalties. Enter amount.",
+   "bbox": [
+    436.8,
+    93.36,
+    549.58,
+    110.76
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "113",
+   "text": "Underpayment of estimated tax. Enter amount.",
+   "bbox": [
+    436.8,
+    129.37,
+    549.58,
+    146.74
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "114",
+   "text": "Total amount due. See instructions. Enclose, but do not staple, any payment.",
+   "bbox": [
+    436.8,
+    153.36,
+    549.58,
+    170.76
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "115",
+   "text": "Refund or no amount due. Subtract the sum of line line 110, line 112, and line 113 from line 99. See instructions. You can mail to: Franchise Tax Board, Post Office Box 942840, Sacramento, California, 94240-0001 .",
+   "bbox": [
+    436.56,
+    201.6,
+    549.84,
+    219.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "116",
+   "text": "Account number.",
+   "bbox": [
+    221.33,
+    297.0,
+    347.55,
+    315.0
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "117",
+   "text": "Secondary Account number.",
+   "bbox": [
+    221.33,
+    369.0,
+    347.55,
+    386.4
+   ]
+  }
+ ]
+}

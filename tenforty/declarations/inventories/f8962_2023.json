@@ -1,0 +1,465 @@
+{
+ "form": "f8962",
+ "key": 2023,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2023/f8962.pdf",
+ "source_sha256": "74c8dae38348e5236d1bffb4e07333181d96a6029b872da7d001efe53763deff",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Tax family size. Enter your tax family size. See instructions",
+   "bbox": [
+    45.95,
+    133.91,
+    50.4,
+    143.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2a",
+   "text": "Modified AGI. Enter your modified AGI. See instructions",
+   "bbox": [
+    45.95,
+    145.91,
+    54.99,
+    155.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2b",
+   "text": "Enter the total of your dependents’ modified AGI. See instructions",
+   "bbox": [
+    50.4,
+    157.91,
+    55.29,
+    167.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Household income. Add the amounts on lines 2a and 2b. See instructions",
+   "bbox": [
+    45.95,
+    169.91,
+    50.4,
+    179.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Federal poverty line. Enter the federal poverty line amount from Table 1-1, 1-2, or 1-3. See instructions.",
+   "bbox": [
+    45.95,
+    184.31,
+    50.4,
+    193.86
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Household income as a percentage of federal poverty line (see instructions)",
+   "bbox": [
+    45.95,
+    205.91,
+    50.4,
+    215.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Reserved for future use",
+   "bbox": [
+    45.95,
+    217.91,
+    50.4,
+    227.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Applicable figure. Using your line 5 percentage, locate your “applicable figure” on the table in the",
+   "bbox": [
+    45.95,
+    229.91,
+    50.4,
+    239.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8a",
+   "text": "Annual contribution amount. Multiply line 3 by b Monthly contribution",
+   "bbox": [
+    45.95,
+    244.31,
+    50.4,
+    253.86
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8b",
+   "text": "",
+   "bbox": [
+    488.53,
+    253.91,
+    497.87,
+    263.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Are you allocating policy amounts with another taxpayer or do you want to use the alternative",
+   "bbox": [
+    45.95,
+    277.91,
+    50.4,
+    287.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "See the instructions to determine if you can use line 11 or must complete lines 12 through 23.",
+   "bbox": [
+    41.5,
+    301.91,
+    50.4,
+    311.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Annual Totals",
+   "bbox": [
+    42.0,
+    373.91,
+    50.9,
+    383.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "January",
+   "bbox": [
+    42.0,
+    433.91,
+    50.9,
+    443.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "February",
+   "bbox": [
+    42.0,
+    445.91,
+    50.9,
+    455.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "March",
+   "bbox": [
+    42.0,
+    457.91,
+    50.9,
+    467.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "April",
+   "bbox": [
+    42.0,
+    469.91,
+    50.9,
+    479.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16",
+   "text": "May",
+   "bbox": [
+    42.0,
+    481.91,
+    50.9,
+    491.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "17",
+   "text": "June",
+   "bbox": [
+    42.0,
+    493.91,
+    50.9,
+    503.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "18",
+   "text": "July",
+   "bbox": [
+    42.0,
+    505.9,
+    50.9,
+    515.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "19",
+   "text": "August",
+   "bbox": [
+    42.0,
+    517.9,
+    50.9,
+    527.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "20",
+   "text": "September",
+   "bbox": [
+    42.0,
+    529.9,
+    50.9,
+    539.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "21",
+   "text": "October",
+   "bbox": [
+    42.0,
+    541.9,
+    50.9,
+    551.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "22",
+   "text": "November",
+   "bbox": [
+    42.0,
+    553.9,
+    50.9,
+    563.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "23",
+   "text": "December",
+   "bbox": [
+    42.0,
+    565.9,
+    50.9,
+    575.44
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "24",
+   "text": "Total premium tax credit. Enter the amount from line 11(e) or add lines 12(e) through 23(e) and",
+   "bbox": [
+    41.5,
+    577.91,
+    50.4,
+    587.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "25",
+   "text": "Advance payment of PTC. Enter the amount from line 11(f) or add lines 12(f) through 23(f) and",
+   "bbox": [
+    41.5,
+    589.91,
+    50.4,
+    599.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "26",
+   "text": "Net premium tax credit. If line 24 is greater than line 25, subtract line 25 from line 24. Enter the",
+   "bbox": [
+    41.5,
+    605.91,
+    50.4,
+    615.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "27",
+   "text": "Excess advance payment of PTC. If line 25 is greater than line 24, subtract line 24 from line 25. Enter",
+   "bbox": [
+    41.5,
+    649.91,
+    50.4,
+    659.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "28",
+   "text": "Repayment limitation (see instructions)",
+   "bbox": [
+    41.5,
+    661.91,
+    50.4,
+    671.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "29",
+   "text": "Excess advance premium tax credit repayment. Enter the smaller of line 27 or line 28 here",
+   "bbox": [
+    41.5,
+    673.91,
+    50.4,
+    683.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "30",
+   "text": "(a) Policy Number (Form 1095-A, line 2) (b) SSN of other taxpayer (c) Allocation start month (d) Allocation stop month",
+   "bbox": [
+    41.5,
+    84.91,
+    50.4,
+    94.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "31",
+   "text": "(a) Policy Number (Form 1095-A, line 2) (b) SSN of other taxpayer (c) Allocation start month (d) Allocation stop month",
+   "bbox": [
+    41.5,
+    168.91,
+    50.4,
+    178.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "32",
+   "text": "(a) Policy Number (Form 1095-A, line 2) (b) SSN of other taxpayer (c) Allocation start month (d) Allocation stop month",
+   "bbox": [
+    41.5,
+    252.91,
+    50.4,
+    262.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "33",
+   "text": "(a) Policy Number (Form 1095-A, line 2) (b) SSN of other taxpayer (c) Allocation start month (d) Allocation stop month",
+   "bbox": [
+    41.5,
+    336.91,
+    50.4,
+    346.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "34",
+   "text": "Have you completed all policy amount allocations?",
+   "bbox": [
+    41.5,
+    409.91,
+    50.4,
+    419.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "35",
+   "text": "Alternative entries",
+   "bbox": [
+    41.5,
+    523.11,
+    50.4,
+    532.65
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "36",
+   "text": "Alternative entries",
+   "bbox": [
+    41.5,
+    558.71,
+    50.4,
+    568.25
+   ]
+  }
+ ]
+}
