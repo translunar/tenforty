@@ -136,6 +136,35 @@ class ValueCheckTests(unittest.TestCase):
         self.assertEqual([f.line for f in findings], ["12b"])
         self.assertIn("nothing computed", findings[0].message)
 
+    def _posture(self, line, posture):
+        """F8582_DECL with ``line`` declared single_state=``posture``."""
+        reason = f"synthetic control: line {line} is always {posture}"
+        return dataclasses.replace(F8582_DECL, lines=tuple(
+            dataclasses.replace(ln, single_state=posture,
+                                single_state_reason=reason)
+            if ln.line == line else ln for ln in F8582_DECL.lines)), reason
+
+    def test_declared_value_line_with_nothing_computed_is_a_finding(self):
+        decl, reason = self._posture("1b", "value")
+        self.assertEqual(checks.check_value(
+            _emit(F8582, F8582_VALUES), decl), [])
+        values = dict(F8582_VALUES, f8582_line_1b_activities_with_loss=None)
+        findings = checks.check_value(_emit(F8582, values), decl)
+        self.assertEqual([(f.line, f.check) for f in findings],
+                         [("1b", "value")])
+        self.assertIn("single_state='value'", findings[0].message)
+        self.assertIn(reason, findings[0].message)
+
+    def test_declared_nothing_bound_line_with_a_value_is_a_finding(self):
+        decl, reason = self._posture("1b", "nothing")
+        values = dict(F8582_VALUES, f8582_line_1b_activities_with_loss=None)
+        self.assertEqual(checks.check_value(_emit(F8582, values), decl), [])
+        findings = checks.check_value(_emit(F8582, F8582_VALUES), decl)
+        self.assertEqual([(f.line, f.check) for f in findings],
+                         [("1b", "value")])
+        self.assertIn("single_state='nothing'", findings[0].message)
+        self.assertIn(reason, findings[0].message)
+
     def test_zero_prints_zero(self):
         rec = _emit(SCH_D, SCH_D_VALUES)
         field = PdfSchD540.get_mapping(YEAR)["sch_d_540_total_subtractions"]

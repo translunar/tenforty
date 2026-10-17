@@ -158,9 +158,25 @@ def check_value(rec: RecordedForm, decl: FormDeclaration) -> list[Finding]:
     fields = PdfReader(str(rec.pdf_path)).get_fields() or {}
     widgets = None
     for ln in lines:
+        value = values.get(ln.key)
+        # A declared posture has teeth (U-1: an attestation must be able to
+        # fire). A key-less single_state="nothing" line cannot contradict
+        # itself (no key, so never a value), so only bound lines are checked.
+        if ln.key and ln.single_state == "value" and value is None:
+            findings.append(_finding(
+                decl, ln.line, "value",
+                f"line {ln.line} ({ln.key!r}) is declared "
+                f"single_state='value' ({ln.single_state_reason}), but the "
+                "computation produced nothing."))
+            continue
+        if ln.key and ln.single_state == "nothing" and value is not None:
+            findings.append(_finding(
+                decl, ln.line, "value",
+                f"line {ln.line} ({ln.key!r}) is declared "
+                f"single_state='nothing' ({ln.single_state_reason}), but the "
+                f"computation produced {value!r}."))
         if ln.line in unprinted:
             continue
-        value = values.get(ln.key)
         if ln.selects is not None:
             if value is None or str(value) != ln.selects:
                 continue  # exclusivity is check_option_groups'
