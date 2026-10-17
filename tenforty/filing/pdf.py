@@ -113,6 +113,28 @@ def apply_blank_when_zero(pdf_fields: dict[str, str],
     return pdf_fields
 
 
+def stamp_field_names(template) -> Path:
+    """A temp copy of ``template`` with every text field filled with its own
+    leaf name (``f1_3`` for ``topmostSubform[0].Page1[0].f1_3[0]``), for the
+    marker probe that locates each field's printed row
+    (``tenforty.verification.anchors.row_line_tokens``). The caller deletes
+    the returned file. It lives here because the field-write primitive lives
+    only in this module (the fill chokepoint's guard)."""
+    import tempfile
+    reader = PdfReader(str(template))
+    fields = reader.get_fields() or {}
+    vals = {n: n.split(".")[-1].replace("[0]", "")
+            for n, f in fields.items() if f.get("/FT") == "/Tx"}
+    writer = PdfWriter(clone_from=reader)
+    for page in writer.pages:
+        writer.update_page_form_field_values(page, vals, auto_regenerate=False)
+    handle = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    handle.close()
+    with open(handle.name, "wb") as f:
+        writer.write(f)
+    return Path(handle.name)
+
+
 class PdfFiller:
     """Fills PDF form fields with computed tax values."""
 
