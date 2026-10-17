@@ -52,11 +52,13 @@ from tenforty import years as year_manifest
 from tenforty.forms import f8962 as form_f8962
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import (
-    FilingStatus, K1FanoutData, Scenario, TaxReturnConfig, parse_filing_status,
+    FilingStatus, HohMaritalStatus, K1FanoutData, Scenario,
+    SeparationDecreeKind, TaxReturnConfig, parse_filing_status,
 )
 from tenforty.params import f8962 as params_f8962
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
+from tenforty.scenario import qp_on_qualifying_child_path
 
 
 class AgedParamsPendingError(NotImplementedError):
@@ -512,6 +514,84 @@ def header_values(config: TaxReturnConfig) -> dict[str, str]:
             config.spouse_first_name, config.spouse_middle_initial)
         out["spouse_last_name"] = config.spouse_last_name
         out["spouse_ssn"] = _ssn_digits(config.spouse_ssn)
+    out.update(_hoh_lines(config))
+    return out
+
+
+# 2025+ Form 1040 page 1: "Check if your filing status is MFS or HOH and you
+# lived apart from your spouse for the last 6 months of 2025, or you are
+# legally separated according to your state law under a written separation
+# agreement or a decree of separate maintenance and you did not live in the
+# same household as your spouse at the end of 2025." Which years print it is
+# year_manifest.form_1040_prints_lived_apart_box (this module stays
+# year-agnostic).
+# Prong (a), lived apart for the last six months: 1e (lived apart all year)
+# and 1f (FTB 3532 rule 11 guarantees no cohabitation from 07/01 on). Every
+# other Part I status is unchecked, except 1d + legal separation, which
+# refuses (refuse_ty2025_legal_separation). Ratified R-lived-apart-trigger.
+_LIVED_APART_STATUSES = frozenset({
+    HohMaritalStatus.MARRIED_LIVED_APART_ALL_YEAR,
+    HohMaritalStatus.MARRIED_LIVED_TOGETHER_PART_OF_YEAR,
+})
+
+
+def refuse_ty2025_legal_separation(config: TaxReturnConfig) -> None:
+    """Refuse a TY2025+ head-of-household return whose filer is legally
+    separated (FTB 3532 line 1d with ``separation_decree_kind:
+    legal_separation``).
+
+    The 2025 Form 1040 lived-apart box's legal-separation prong also requires
+    that "you did not live in the same household as your spouse at the end of
+    2025", and its other prong needs last-six-months facts; the scenario
+    captures neither for line 1d, so tenforty cannot say whether the box is
+    checked. A capability refusal, not a data error: the same facts are valid
+    and emit for 2021-2024, which print no such box."""
+    facts = config.head_of_household
+    if (not year_manifest.form_1040_prints_lived_apart_box(config.year)
+            or parse_filing_status(config.filing_status)
+            is not FilingStatus.HEAD_OF_HOUSEHOLD
+            or facts is None
+            or facts.marital_status
+            is not HohMaritalStatus.DIVORCED_OR_LEGALLY_SEPARATED
+            or facts.separation_decree_kind
+            is not SeparationDecreeKind.LEGAL_SEPARATION):
+        return
+    raise NotImplementedError(
+        f"Form 1040 ({config.year}) has a box for a head-of-household filer "
+        "who is legally separated under a written separation agreement or a "
+        "decree of separate maintenance AND \"did not live in the same "
+        f"household as your spouse at the end of {config.year}\" (or who "
+        f"lived apart for the last 6 months of {config.year}). This return "
+        "says you are legally separated (FTB 3532 line 1d, "
+        "`separation_decree_kind: legal_separation`) but does not record "
+        "where your spouse lived at year end, so tenforty cannot tell whether "
+        "that box should be checked. There is no acknowledge-and-proceed: "
+        "prepare this return by hand.")
+
+
+def _hoh_lines(config: TaxReturnConfig) -> dict[str, object]:
+    """The head-of-household lines on the 1040's filing-status block.
+
+    ``hoh_qualifying_child_name`` answers "If you checked the HOH ... box,
+    enter the child's name if the qualifying person is a child but not your
+    dependent" (every year): the qualifying person is never a dependent here
+    (``config.head_of_household`` is disjoint from ``dependents``), so the
+    name prints whenever the person is on the qualifying-child path.
+    ``hoh_lived_apart_from_spouse`` is the 2025+ lived-apart box. Both keys
+    exist only for head of household with the block present (loading refuses
+    head of household without it)."""
+    facts = config.head_of_household
+    if (parse_filing_status(config.filing_status)
+            is not FilingStatus.HEAD_OF_HOUSEHOLD or facts is None):
+        return {}
+    out: dict[str, object] = {}
+    qp = facts.qualifying_person
+    if qp_on_qualifying_child_path(qp, config.year):
+        out["hoh_qualifying_child_name"] = f"{qp.first_name} {qp.last_name}"
+    if year_manifest.form_1040_prints_lived_apart_box(config.year):
+        refuse_ty2025_legal_separation(config)
+        out["hoh_lived_apart_from_spouse"] = (
+            facts.marital_status in _LIVED_APART_STATUSES)
     return out
 
 

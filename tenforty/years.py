@@ -43,6 +43,18 @@ NATIVE_SPINE_STATUSES: dict[int, tuple[str, ...]] = {
 }
 
 
+# Form 1040 page 1 prints "Check if your filing status is MFS or HOH and you
+# lived apart from your spouse for the last 6 months of <year>, or you are
+# legally separated ..." from the 2025 revision on (no such box on the
+# 2021-2024 faces). Kept here, not in the year-agnostic spine.
+FORM_1040_LIVED_APART_BOX_FIRST_YEAR: int = 2025
+
+
+def form_1040_prints_lived_apart_box(year: int) -> bool:
+    """True iff that year's Form 1040 prints the MFS/HOH lived-apart box."""
+    return year >= FORM_1040_LIVED_APART_BOX_FIRST_YEAR
+
+
 def native_spine_supports(year: int, status_value: str) -> bool:
     """True iff ``status_value`` (a FilingStatus value string) is declared
     for ``year`` in NATIVE_SPINE_STATUSES."""
