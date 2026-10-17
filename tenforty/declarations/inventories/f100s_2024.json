@@ -1656,18 +1656,6 @@
   {
    "page": 5,
    "section": "Schedule M-1",
-   "label": "6a",
-   "text": "Depreciation $____________________",
-   "bbox": [
-    48.0,
-    189.08,
-    52.25,
-    199.63
-   ]
-  },
-  {
-   "page": 5,
-   "section": "Schedule M-1",
    "label": "6",
    "text": "Deductions included on Schedule K, line 1 through line 12e, not charged against book income this year (itemize). Line 6 a. Depreciation $.",
    "bbox": [
@@ -1781,18 +1769,6 @@
     256.8
    ],
    "source": "tooltip"
-  },
-  {
-   "page": 5,
-   "section": "Schedule M-1",
-   "label": "6e",
-   "text": "Total. Add line 3a through line 3d ●",
-   "bbox": [
-    48.0,
-    249.08,
-    52.25,
-    259.62
-   ]
   },
   {
    "page": 5,
@@ -2327,18 +2303,6 @@
   {
    "page": 6,
    "section": "Schedule K",
-   "label": "2d",
-   "text": "",
-   "bbox": [
-    70.0,
-    330.08,
-    74.25,
-    340.62
-   ]
-  },
-  {
-   "page": 6,
-   "section": "Schedule K",
    "label": "12e",
    "text": "Other deductions. Attach schedule. Column (B). Amount from federal K (1120-S).",
    "bbox": [
@@ -2348,18 +2312,6 @@
     351.8
    ],
    "source": "tooltip"
-  },
-  {
-   "page": 6,
-   "section": "Schedule K",
-   "label": "2e",
-   "text": "",
-   "bbox": [
-    70.0,
-    342.08,
-    74.25,
-    352.62
-   ]
   },
   {
    "page": 6,

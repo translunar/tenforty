@@ -182,7 +182,17 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
         events = [e for e in events
                   if not (e[2] == "number" and column_of(e[4]) in not_labels)]
 
-        last_number = None
+        def parent_column(w):
+            # The label column a bare sub-letter belongs to: the nearest
+            # column at or left of it whose reach covers it.
+            cover = [c for c in columns
+                     if c[0] <= w[0] <= c[1] + _SUBLINE_REACH + _JITTER]
+            return max(cover) if cover else None
+
+        # A sub-letter composes with the last number of ITS OWN column. On a
+        # two-column page (Schedule C Part II: lines 8-17 beside 18-27) the
+        # last number in reading order may be the other column's.
+        last_number: dict = {}
         for _, _, kind, value, w in events:
             if kind == "part":
                 section = value
@@ -190,16 +200,17 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
             consumed = {id(w)}
             if kind == "number":
                 label = value
-                last_number = str(_number_of(value))
+                last_number[column_of(w)] = str(_number_of(value))
                 nxt = right_neighbour(w)
                 if (nxt and not value[-1].isalpha() and _SUBLINE.match(nxt[4])
                         and nxt[0] - w[2] < _COMPOSITE_GAP):
                     label = value + nxt[4]
                     consumed.add(id(nxt))
             else:
-                if last_number is None:
+                parent = last_number.get(parent_column(w))
+                if parent is None:
                     continue
-                label = last_number + value
+                label = parent + value
             stop = min([lo for lo, _ in columns if lo > w[2] + 2] + [1e9])
             text = " ".join(
                 v[4] for v in sorted(row(w) + [w])

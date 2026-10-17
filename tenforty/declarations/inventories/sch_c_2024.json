@@ -164,24 +164,12 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "10a",
+   "label": "20a",
    "text": "Vehicles, machinery, and equipment",
    "bbox": [
     309.6,
     397.91,
     314.19,
-    407.45
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part II",
-   "label": "20a",
-   "text": "",
-   "bbox": [
-    457.66,
-    397.91,
-    471.14,
     407.45
    ]
   },
@@ -200,24 +188,12 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "11b",
+   "label": "20b",
    "text": "Other business property",
    "bbox": [
     309.6,
     409.91,
     314.49,
-    419.45
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part II",
-   "label": "20b",
-   "text": "",
-   "bbox": [
-    457.51,
-    409.91,
-    471.29,
     419.45
    ]
   },
@@ -320,24 +296,12 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "14b",
+   "label": "24b",
    "text": "Deductible meals (see instructions)",
    "bbox": [
     309.6,
     481.91,
     314.49,
-    491.45
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part II",
-   "label": "24b",
-   "text": "",
-   "bbox": [
-    457.51,
-    481.91,
-    471.29,
     491.45
    ]
   },
@@ -392,24 +356,12 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "26a",
+   "label": "16a",
    "text": "Mortgage (paid to banks, etc.)",
    "bbox": [
     50.4,
     517.91,
     54.99,
-    527.45
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part II",
-   "label": "16a",
-   "text": "",
-   "bbox": [
-    176.86,
-    517.91,
-    190.34,
     527.45
    ]
   },
@@ -428,7 +380,7 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "27b",
+   "label": "16b",
    "text": "Other",
    "bbox": [
     50.4,
@@ -440,13 +392,13 @@
   {
    "page": 1,
    "section": "Part II",
-   "label": "16b",
-   "text": "",
+   "label": "27b",
+   "text": "Energy efficient commercial bldgs",
    "bbox": [
-    176.71,
-    529.91,
-    190.49,
-    539.46
+    309.6,
+    531.91,
+    314.49,
+    541.46
    ]
   },
   {

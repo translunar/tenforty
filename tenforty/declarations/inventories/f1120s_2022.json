@@ -1655,22 +1655,10 @@
    "label": "6a",
    "text": "Depreciation $",
    "bbox": [
-    50.4,
+    324.0,
     169.28,
-    55.28,
+    328.88,
     179.42
-   ]
-  },
-  {
-   "page": 5,
-   "section": "",
-   "label": "6b",
-   "text": "Travel and entertainment $",
-   "bbox": [
-    50.4,
-    193.28,
-    55.59,
-    203.42
    ]
   },
   {
