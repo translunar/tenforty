@@ -44,6 +44,10 @@ from tests.oracles.ca_540_reference import (
     HAND_WORKED_CASES_2022,
     HAND_WORKED_CASES_2023,
     HAND_WORKED_CASES_2024,
+    HAND_WORKED_TABLE_CASES_2021,
+    HAND_WORKED_TABLE_CASES_2022,
+    HAND_WORKED_TABLE_CASES_2023,
+    HAND_WORKED_TABLE_CASES_2024,
     HAND_WORKED_AGED_CASES_2025,
     HAND_WORKED_STATUS_CASES_2025,
     HandWorkedCase540,
@@ -1406,19 +1410,19 @@ class HandWorkedStatusCaseProductionChainTests(unittest.TestCase):
             self._check_case(case, year=2025, num_seniors=senior_count_2025(case))
 
     def test_production_chain_matches_hand_worked_lines_2024(self):
-        for case in HAND_WORKED_CASES_2024:
+        for case in HAND_WORKED_CASES_2024 + HAND_WORKED_TABLE_CASES_2024:
             self._check_case(case, year=2024, num_seniors=senior_count_2024(case))
 
     def test_production_chain_matches_hand_worked_lines_2023(self):
-        for case in HAND_WORKED_CASES_2023:
+        for case in HAND_WORKED_CASES_2023 + HAND_WORKED_TABLE_CASES_2023:
             self._check_case(case, year=2023, num_seniors=senior_count_2023(case))
 
     def test_production_chain_matches_hand_worked_lines_2022(self):
-        for case in HAND_WORKED_CASES_2022:
+        for case in HAND_WORKED_CASES_2022 + HAND_WORKED_TABLE_CASES_2022:
             self._check_case(case, year=2022, num_seniors=senior_count_2022(case))
 
     def test_production_chain_matches_hand_worked_lines_2021(self):
-        for case in HAND_WORKED_CASES_2021:
+        for case in HAND_WORKED_CASES_2021 + HAND_WORKED_TABLE_CASES_2021:
             self._check_case(case, year=2021, num_seniors=senior_count_2021(case))
 
     def _check_case(self, case: HandWorkedCase540, *, year: int, num_seniors: int):

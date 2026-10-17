@@ -1991,6 +1991,84 @@ HAND_WORKED_CASES_2024: tuple[HandWorkedCase540, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Hand-worked tax-table case — TY2024 (line 19 ≤ $100,000)
+#
+# Every case in HAND_WORKED_CASES_2024 has line 19 > $100,000 (rate
+# schedule). This case witnesses the tax-table side. Kept in its own tuple
+# so the shape of HAND_WORKED_CASES_2024 is unchanged.
+#
+# Same booklet (CA_540_BOOKLET_2024_PROVENANCE, sha256 re-verified
+# 2026-10-17). Facts used, beyond those in the TY2024 header above:
+#   - Line 31: p.13 "Tax Table – If your taxable income on line 19 is
+#     $100,000 or less, use the tax table beginning on page 69. Use the
+#     correct filing status column." Table p.71, column "1 Or 3 Is".
+#   - Line 46: Nonrefundable Renter's Credit Qualification Record pp.25–26.
+#     Q2 limit: CA AGI (line 17) $52,421 or less if single/MFS; Q11:
+#     "Single, enter $60 on Form 540, line 46."
+# ---------------------------------------------------------------------------
+
+# Case: single, one W-2, renter all year in CA, under 65, nobody's dependent.
+#   L12 = L13 = L15 = L17 = 51,800; L14 = L16 = 0
+#   L18 chart status 1 = 5,540 (p.13)
+#   L19 = 51,800 − 5,540 = 46,260 (≤ 100,000 → tax table, p.13)
+#   L31 tax table p.71, row "At least 46,251 But not over 46,350",
+#       column 1 Or 3 = 1,356
+#     (cross-check: Schedule X (p.75) at row midpoint 46,300, over 40,245:
+#      6,055 × 6% = 363.30; 992.26 + 363.30 = 1,355.56 → 1,356. Exact
+#      schedule at 46,260 would give 1,353.16 → 1,353, so this case
+#      distinguishes table lookup from exact schedule.)
+#   L7 status 1 → 1 × 149 = 149; L8/L9/L10 = 0; L11 = 149
+#   L32: L13 51,800 ≤ 244,857 (p.14) → no AGI limitation; L32 = 149
+#   L33 = 1,356 − 149 = 1,207; L34 = 0; L35 = 1,207
+#   L46 renter's credit (pp.25–26): Q1 full-year resident yes; Q2 L17
+#   51,800 ≤ 52,421 yes; Q3 rented CA principal residence ≥ half of 2024
+#   yes; Q4 not a dependent → Q6; Q6 property not tax-exempt → Q7; Q7 no
+#   homeowner's exemption → Q8; Q8 single yes → Q11: single → 60
+#   L40/43–45 = 0; L47 = 60; L48 = 1,207 − 60 = 1,147; L61–63 = 0
+#   L64 = 1,147; L71 = 1,420 = L78 = L93 = L95
+#   L97 = 1,420 − 1,147 = 273 = L99 = L115 refund
+CASE_SINGLE_RENTER_TABLE_2024 = HandWorkedCase540(
+    name="single_renter_tax_table_2024",
+    filing_status="single",
+    w2_wages=(51_800.0,),
+    w2_ca_withholding=(1_420.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=True,
+    line_31_method="tax_table",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 149.0,
+        "f540_line_12_state_wages": 51_800.0,
+        "f540_line_13_federal_agi": 51_800.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 51_800.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 51_800.0,
+        "f540_line_18_deduction": 5_540.0,
+        "f540_line_19_taxable_income": 46_260.0,
+        "f540_line_31_tax": 1_356.0,
+        "f540_line_32_exemption_credits": 149.0,
+        "f540_line_33_tax_after_exemption_credits": 1_207.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 1_207.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 60.0,
+        "f540_line_47_total_nonrefundable_credits": 60.0,
+        "f540_line_48_tax_after_special_credits": 1_147.0,
+        **_zero_balance_tail(line_64=1_147.0, line_71=1_420.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_TABLE_CASES_2024: tuple[HandWorkedCase540, ...] = (
+    CASE_SINGLE_RENTER_TABLE_2024,
+)
+
+
+# ---------------------------------------------------------------------------
 # Hand-worked cases — TY2023 (MFJ, HOH, aged single)
 #
 # Worked by hand from the 2023 booklet in CA_540_BOOKLET_2023_PROVENANCE.
@@ -2205,6 +2283,85 @@ HAND_WORKED_CASES_2023: tuple[HandWorkedCase540, ...] = (
     CASE_MFJ_TWO_W2_2023,
     CASE_HOH_2023,
     CASE_SINGLE_AGED_2023,
+)
+
+
+# ---------------------------------------------------------------------------
+# Hand-worked tax-table case — TY2023 (line 19 ≤ $100,000)
+#
+# Every case in HAND_WORKED_CASES_2023 has line 19 > $100,000 (rate
+# schedule). This case witnesses the tax-table side. Kept in its own tuple
+# so the shape of HAND_WORKED_CASES_2023 is unchanged.
+#
+# Same booklet (CA_540_BOOKLET_2023_PROVENANCE, sha256 re-verified
+# 2026-10-17). Facts used, beyond those in the TY2023 header above:
+#   - Line 31: p.13 "Tax Table – If your taxable income on line 19 is
+#     $100,000 or less, use the tax table beginning on page 69. Use the
+#     correct filing status column." Table p.73, column "2 Or 5 Is".
+#   - Line 46: Nonrefundable Renter's Credit Qualification Record pp.25–26.
+#     Q2 limit: CA AGI (line 17) $101,492 or less if MFJ/HOH/QSS; Q11:
+#     "Married/RDP filing jointly, enter $120 on Form 540, line 46."
+# ---------------------------------------------------------------------------
+
+# Case: MFJ, two W-2s, renters all year in CA, both under 65, no dependents.
+#   L12 state wages = 61,200 + 35,250 = 96,450
+#   L13 = L15 = L17 = 96,450; L14 = L16 = 0
+#   L18 chart status 2 = 10,726 (p.13)
+#   L19 = 96,450 − 10,726 = 85,724 (≤ 100,000 → tax table, p.13)
+#   L31 tax table p.73, row "At least 85,651 But not over 85,750",
+#       column 2 Or 5 = 2,388
+#     (cross-check: Schedule Y (p.75) at row midpoint 85,700, over 77,918:
+#      7,782 × 6% = 466.92; 1,921.12 + 466.92 = 2,388.04 → 2,388. Exact
+#      schedule at 85,724 would give 2,389.48 → 2,389.)
+#   L7 status 2 → 2 × 144 = 288; L8/L9/L10 = 0; L11 = 288
+#   L32: L13 96,450 ≤ 474,075 (p.14) → no AGI limitation; L32 = 288
+#   L33 = 2,388 − 288 = 2,100; L34 = 0; L35 = 2,100
+#   L46 renter's credit (pp.25–26): Q1 full-year residents yes; Q2 L17
+#   96,450 ≤ 101,492 yes; Q3 rented CA principal residence ≥ half of 2023
+#   yes; Q4 not a dependent → Q6; Q6 property not tax-exempt → Q7; Q7 no
+#   homeowner's exemption → Q8; Q8 not single → Q9; Q9 spouse claimed no
+#   homeowner's exemption → Q11: MFJ → 120
+#   L40/43–45 = 0; L47 = 120; L48 = 2,100 − 120 = 1,980; L61–63 = 0
+#   L64 = 1,980; L71 = 1,450 + 820 = 2,270 = L78 = L93 = L95
+#   L97 = 2,270 − 1,980 = 290 = L99 = L115 refund
+CASE_MFJ_RENTER_TABLE_2023 = HandWorkedCase540(
+    name="mfj_renter_tax_table_2023",
+    filing_status="mfj",
+    w2_wages=(61_200.0, 35_250.0),
+    w2_ca_withholding=(1_450.0, 820.0),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=True,
+    line_31_method="tax_table",
+    expected={
+        "f540_line_7_personal_exemption_count": 2.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 288.0,
+        "f540_line_12_state_wages": 96_450.0,
+        "f540_line_13_federal_agi": 96_450.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 96_450.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 96_450.0,
+        "f540_line_18_deduction": 10_726.0,
+        "f540_line_19_taxable_income": 85_724.0,
+        "f540_line_31_tax": 2_388.0,
+        "f540_line_32_exemption_credits": 288.0,
+        "f540_line_33_tax_after_exemption_credits": 2_100.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 2_100.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 120.0,
+        "f540_line_47_total_nonrefundable_credits": 120.0,
+        "f540_line_48_tax_after_special_credits": 1_980.0,
+        **_zero_balance_tail(line_64=1_980.0, line_71=2_270.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_TABLE_CASES_2023: tuple[HandWorkedCase540, ...] = (
+    CASE_MFJ_RENTER_TABLE_2023,
 )
 
 
@@ -2431,6 +2588,86 @@ HAND_WORKED_CASES_2022: tuple[HandWorkedCase540, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Hand-worked tax-table case — TY2022 (line 19 ≤ $100,000)
+#
+# Every case in HAND_WORKED_CASES_2022 has line 19 > $100,000 (rate
+# schedule). This case witnesses the tax-table side. Kept in its own tuple
+# so the shape of HAND_WORKED_CASES_2022 is unchanged.
+#
+# Same booklet (CA_540_BOOKLET_2022_PROVENANCE, sha256 re-verified
+# 2026-10-17; none of the pages cited here carries a REV stamp). Facts
+# used, beyond those in the TY2022 header above:
+#   - Line 31: p.13 "Tax Table – If your taxable income on line 19 is
+#     $100,000 or less, use the tax table beginning on page 87. Use the
+#     correct filing status column." Table p.90, column "4 Is".
+#   - Line 46: Nonrefundable Renter's Credit Qualification Record p.23.
+#     Q2 limit: CA AGI (line 17) $98,440 or less if MFJ/HOH/QSS; Q11:
+#     "Head of household or qualifying surviving spouse/RDP, enter $120
+#     on Form 540, line 46."
+# ---------------------------------------------------------------------------
+
+# Case: HOH, one W-2, renter all year in CA, under 65, no dependents listed.
+#   L12 = L13 = L15 = L17 = 74,600; L14 = L16 = 0
+#   L18 chart status 4 = 10,404 (p.13)
+#   L19 = 74,600 − 10,404 = 64,196 (≤ 100,000 → tax table, p.13)
+#   L31 tax table p.90, row "At least 64,151 But not over 64,250",
+#       column 4 = 1,458
+#     (cross-check: Schedule Z (p.93) at row midpoint 64,200, over 61,730:
+#      2,470 × 6% = 148.20; 1,309.34 + 148.20 = 1,457.54 → 1,458. Exact
+#      schedule at 64,196 would give 1,457.30 → 1,457.)
+#   L7 status 4 → 1 × 140 = 140; L8/L9/L10 = 0; L11 = 140
+#   L32: L13 74,600 ≤ 344,867 (HOH, p.14) → no AGI limitation; L32 = 140
+#   L33 = 1,458 − 140 = 1,318; L34 = 0; L35 = 1,318
+#   L46 renter's credit (p.23): Q1 full-year resident yes; Q2 L17 74,600 ≤
+#   98,440 yes; Q3 rented CA principal residence ≥ half of 2022 yes; Q4
+#   not a dependent → Q6; Q6 property not tax-exempt → Q7; Q7 no
+#   homeowner's exemption → Q8; Q8 single (unmarried) yes → Q11: head of
+#   household → 120
+#   L40/43–45 = 0; L47 = 120; L48 = 1,318 − 120 = 1,198; L61–63 = 0
+#   L64 = 1,198; L71 = 1,650 = L78 = L93 = L95
+#   L97 = 1,650 − 1,198 = 452 = L99 = L115 refund
+CASE_HOH_RENTER_TABLE_2022 = HandWorkedCase540(
+    name="hoh_renter_tax_table_2022",
+    filing_status="hoh",
+    w2_wages=(74_600.0,),
+    w2_ca_withholding=(1_650.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=True,
+    line_31_method="tax_table",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 140.0,
+        "f540_line_12_state_wages": 74_600.0,
+        "f540_line_13_federal_agi": 74_600.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 74_600.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 74_600.0,
+        "f540_line_18_deduction": 10_404.0,
+        "f540_line_19_taxable_income": 64_196.0,
+        "f540_line_31_tax": 1_458.0,
+        "f540_line_32_exemption_credits": 140.0,
+        "f540_line_33_tax_after_exemption_credits": 1_318.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 1_318.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 120.0,
+        "f540_line_47_total_nonrefundable_credits": 120.0,
+        "f540_line_48_tax_after_special_credits": 1_198.0,
+        **_zero_balance_tail(line_64=1_198.0, line_71=1_650.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_TABLE_CASES_2022: tuple[HandWorkedCase540, ...] = (
+    CASE_HOH_RENTER_TABLE_2022,
+)
+
+
+# ---------------------------------------------------------------------------
 # Hand-worked cases — TY2021 (MFJ, HOH, aged single)
 #
 # Worked by hand from the 2021 booklet in CA_540_BOOKLET_2021_PROVENANCE.
@@ -2651,6 +2888,80 @@ HAND_WORKED_CASES_2021: tuple[HandWorkedCase540, ...] = (
 )
 
 
+# ---------------------------------------------------------------------------
+# Hand-worked tax-table case — TY2021 (line 19 ≤ $100,000)
+#
+# Every case in HAND_WORKED_CASES_2021 has line 19 > $100,000 (rate
+# schedule). This case witnesses the tax-table side. Kept in its own tuple
+# so the shape of HAND_WORKED_CASES_2021 is unchanged.
+#
+# Same booklet (CA_540_BOOKLET_2021_PROVENANCE, sha256 re-verified
+# 2026-10-17; none of the pages cited here carries a REV stamp). Facts
+# used, beyond those in the TY2021 header above:
+#   - Line 31: p.13 "Tax Table – If your taxable income on line 19 is
+#     $100,000 or less, use the tax table beginning on page 87. Use the
+#     correct filing status column." Table p.89, column "1 Or 3 Is".
+#   - Line 46: Nonrefundable Renter's Credit Qualification Record p.23
+#     (not claimed here: not a renter; L17 63,250 also exceeds the
+#     $45,448 single limit of Q2).
+# ---------------------------------------------------------------------------
+
+# Case: single, one W-2, not a renter, under 65, nobody's dependent.
+#   L12 = L13 = L15 = L17 = 63,250; L14 = L16 = 0
+#   L18 chart status 1 = 4,803 (p.13)
+#   L19 = 63,250 − 4,803 = 58,447 (≤ 100,000 → tax table, p.13)
+#   L31 tax table p.89, row "At least 58,351 But not over 58,450",
+#       column 1 Or 3 = 2,470
+#     (cross-check: Schedule X (p.93) at row midpoint 58,400, over 48,435:
+#      9,965 × 8% = 797.20; 1,672.87 + 797.20 = 2,470.07 → 2,470. Exact
+#      schedule at 58,447 would give 2,473.83 → 2,474.)
+#   L7 status 1 → 1 × 129 = 129; L8/L9/L10 = 0; L11 = 129
+#   L32: L13 63,250 ≤ 212,288 (p.14) → no AGI limitation; L32 = 129
+#   L33 = 2,470 − 129 = 2,341; L34 = 0; L35 = 2,341
+#   L40/43–45/46 = 0; L47 = 0; L48 = 2,341; L61–63 = 0; L64 = 2,341
+#   L71 = 2,600 = L78 = L93 = L95
+#   L97 = 2,600 − 2,341 = 259 = L99 = L115 refund
+CASE_SINGLE_TABLE_2021 = HandWorkedCase540(
+    name="single_tax_table_2021",
+    filing_status="single",
+    w2_wages=(63_250.0,),
+    w2_ca_withholding=(2_600.0,),
+    taxable_interest=0.0,
+    renter_six_months_in_ca=False,
+    line_31_method="tax_table",
+    expected={
+        "f540_line_7_personal_exemption_count": 1.0,
+        "f540_line_9_senior_exemption_count": 0.0,
+        "f540_line_11_exemption_amount_pre_phaseout": 129.0,
+        "f540_line_12_state_wages": 63_250.0,
+        "f540_line_13_federal_agi": 63_250.0,
+        "f540_line_14_ca_subtractions": 0.0,
+        "f540_line_15": 63_250.0,
+        "f540_line_16_ca_additions": 0.0,
+        "f540_line_17_ca_agi": 63_250.0,
+        "f540_line_18_deduction": 4_803.0,
+        "f540_line_19_taxable_income": 58_447.0,
+        "f540_line_31_tax": 2_470.0,
+        "f540_line_32_exemption_credits": 129.0,
+        "f540_line_33_tax_after_exemption_credits": 2_341.0,
+        "f540_line_34_lump_sum_tax": 0.0,
+        "f540_line_35_total_tax_before_special_credits": 2_341.0,
+        "f540_line_40_dep_care_credit": 0.0,
+        "f540_line_43_45_other_special_credits": 0.0,
+        "f540_line_46_renters_credit": 0.0,
+        "f540_line_47_total_nonrefundable_credits": 0.0,
+        "f540_line_48_tax_after_special_credits": 2_341.0,
+        **_zero_balance_tail(line_64=2_341.0, line_71=2_600.0),
+    },
+    taxpayer_birth_date=None,
+    spouse_birth_date=None,
+)
+
+HAND_WORKED_TABLE_CASES_2021: tuple[HandWorkedCase540, ...] = (
+    CASE_SINGLE_TABLE_2021,
+)
+
+
 __all__ = [
     # Hand-worked cases
     "CA_540_BOOKLET_2025_PROVENANCE",
@@ -2699,6 +3010,15 @@ __all__ = [
     "SENIOR_BIRTH_DATE_CUTOFF_2021",
     "senior_count_2021",
     "is_senior_2021",
+    # Hand-worked tax-table cases (line 19 ≤ 100,000), TY2024–TY2021
+    "HAND_WORKED_TABLE_CASES_2024",
+    "CASE_SINGLE_RENTER_TABLE_2024",
+    "HAND_WORKED_TABLE_CASES_2023",
+    "CASE_MFJ_RENTER_TABLE_2023",
+    "HAND_WORKED_TABLE_CASES_2022",
+    "CASE_HOH_RENTER_TABLE_2022",
+    "HAND_WORKED_TABLE_CASES_2021",
+    "CASE_SINGLE_TABLE_2021",
     # Enums / constants
     "FilingStatus",
     "STANDARD_DEDUCTION_2025",
