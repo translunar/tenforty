@@ -1602,11 +1602,18 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     # claimed_as_dependent (Juno ruling, M3): required, and true is a
     # capability refusal -- wrong species, so it fires ahead of rule 5 and
     # the face-of-form rules 10-13.
+    # Only False proceeds: a directly built config skips the loader's type
+    # check, and a non-bool ("true", 1) must not print the 1040's "child but
+    # not your dependent" line.
     claimed = facts.qualifying_person.claimed_as_dependent
     if claimed is None:
         raise ValueError(_CLAIMED_AS_DEPENDENT_REQUIRED)
     if claimed is True:
         raise NotImplementedError(_CLAIMED_AS_DEPENDENT_REFUSAL)
+    if claimed is not False:
+        raise ValueError(
+            f"`{_QP}.claimed_as_dependent` must be true or false; got "
+            f"{claimed!r}")
     # Rule 5 (FTB 3532 instructions, Part II line 2): "You may not claim
     # yourself ... as your qualifying person." The spouse case is unreachable:
     # head of household refuses spouse fields.
@@ -1617,8 +1624,11 @@ def validate_head_of_household(cfg: TaxReturnConfig) -> None:
     # path still fails closed (FTB 3532 presentation refuses a filer SSN
     # that does not normalize).
     filer_digits = "".join(ch for ch in (cfg.ssn or "") if ch.isdigit())
-    if (len(filer_digits) == 9
-            and facts.qualifying_person.ssn == filer_digits):
+    # Both sides: a directly built qualifying person keeps whatever SSN
+    # shape it was given (the loader normalizes; a direct build does not).
+    qp_digits = "".join(
+        ch for ch in (facts.qualifying_person.ssn or "") if ch.isdigit())
+    if len(filer_digits) == 9 and qp_digits == filer_digits:
         raise ValueError(
             f"`{_QP}.ssn` is the same as the filer's own SSN. You may not be "
             "your own qualifying person (FTB 3532 instructions, Part II line "

@@ -464,3 +464,27 @@ class FederalHohBackstopTests(unittest.TestCase):
         with self.assertRaises(NotImplementedError) as cm:
             self.orch.compute_federal(scenario)
         self.assertIn("Child Tax Credit", str(cm.exception))
+
+    def test_non_boolean_claimed_as_dependent_refuses_the_federal_header(self):
+        # A directly built config skips the loader's type check; the
+        # backstop proceeds only on False.
+        for value in ("true", 1, "false"):
+            with self.subTest(value=value):
+                cfg = _config(self.YEAR, HOH, _facts(
+                    self.YEAR, qualifying_person=_qp(
+                        self.YEAR, claimed_as_dependent=value)))
+                with self.assertRaises(ValueError) as cm:
+                    f1040_spine.header_values(cfg)
+                self.assertIn("claimed_as_dependent", str(cm.exception))
+                self.assertIn("true or false", str(cm.exception))
+
+    def test_dashed_qp_ssn_equal_to_the_filers_refuses_the_federal_header(self):
+        # Rule 5 compares digits on both sides: a directly built qualifying
+        # person keeps whatever SSN shape it was given.
+        cfg = dataclasses.replace(
+            _config(self.YEAR, HOH, _facts(self.YEAR, qualifying_person=_qp(
+                self.YEAR, ssn="000-00-0001"))),
+            ssn="000-00-0001")
+        with self.assertRaises(ValueError) as cm:
+            f1040_spine.header_values(cfg)
+        self.assertIn("same as the filer's own SSN", str(cm.exception))
