@@ -1,0 +1,127 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_b",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxBB"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "TaxableInterestSubtotalAmt"
+   ],
+   "label": "2",
+   "page_section": "",
+   "text": "Add the amounts on line 1"
+  },
+  {
+   "elements": [
+    "ExcludableSavingsBondIntAmt"
+   ],
+   "label": "3",
+   "page_section": "",
+   "text": "Excludable interest on series EE and l U.S. savings bonds issued after 1989. Attach Form 8815"
+  },
+  {
+   "elements": [
+    "CalculatedTotalTaxableIntAmt",
+    "OrdinaryDividendSubtotalAmt/@dividendSubtotalLiteralCd",
+    "OrdinaryDividendSubtotalAmt",
+    "RestrictedStockDividendAmt/@restrictedStockDivLiteralCd",
+    "RestrictedStockDividendAmt",
+    "NomineeDividendAmt/@nomineeDividendLiteralCd",
+    "NomineeDividendAmt",
+    "DividendPayerNameBusiness/BusinessNameLine1Txt",
+    "DividendPayerNameBusiness/BusinessNameLine2Txt",
+    "DividendAmt",
+    "Form1040SchBPartII"
+   ],
+   "label": "4",
+   "page_section": "",
+   "text": "Subtract line 3 from line 2. Enter the result here and on Form 1040 or 1040-SR, line 2b"
+  },
+  {
+   "elements": [
+    "TotalOrdinaryDividendsAmt"
+   ],
+   "label": "6",
+   "page_section": "",
+   "text": "Add the amounts on line 5. Enter the total here and on Form 1040 or 1040-SR, line 3b."
+  },
+  {
+   "elements": [
+    "Form8814LiteralCd",
+    "ForeignAccountsQuestionInd",
+    "FinCENForm114Ind"
+   ],
+   "label": "7a",
+   "page_section": "",
+   "text": "At any time during 2021, did you have a financial interest in or signature authority over a financial account (such as a bank account, securities account, or brokerage account) located in a foreign country? See instructions"
+  },
+  {
+   "elements": [
+    "ForeignCountryCd"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "If you are required to file FinCEN Form 114, enter the name of the foreign country where the financial account is located"
+  },
+  {
+   "elements": [
+    "TrustFormLiteralCd",
+    "ForeignTrustQuestionInd",
+    "$FormData",
+    "InterestSubtotalAmt/@interestSubtotalLiteralCd",
+    "InterestSubtotalAmt",
+    "NomineeInterestAmt/@nomineeInterestLiteralCd",
+    "NomineeInterestAmt",
+    "AccruedInterestAmt/@accruedInterestLiteralCd",
+    "AccruedInterestAmt",
+    "AccruedMarketDiscountAmt/@accruedMarketDiscountLiteralCd",
+    "AccruedMarketDiscountAmt",
+    "OriginalIssueDiscountAdjAmt/@originalIssueDiscountAdjLitCd",
+    "OriginalIssueDiscountAdjAmt",
+    "AmortizableBondPremAdjAmt/@amortizableBondPremiumAdjLitCd",
+    "AmortizableBondPremAdjAmt",
+    "TotalSellerFinancedMortgIntAmt",
+    "OrdinaryDividendSubtotalAmt/@dividendSubtotalLiteralCd",
+    "OrdinaryDividendSubtotalAmt",
+    "RestrictedStockDividendAmt/@restrictedStockDivLiteralCd",
+    "RestrictedStockDividendAmt",
+    "NomineeDividendAmt",
+    "Form8814LiteralCd",
+    "SellerFinancedNm",
+    "SellerFinancedSSN",
+    "SellerFinancedAddressUS/AddressLine1Txt",
+    "SellerFinancedAddressUS/AddressLine2Txt",
+    "SellerFinancedAddressUS/CityNm",
+    "SellerFinancedAddressUS/StateAbbreviationCd",
+    "SellerFinancedAddressUS/ZIPCd",
+    "SellerFinancedAddressForeign/AddressLine1Txt",
+    "SellerFinancedAddressForeign/AddressLine2Txt",
+    "SellerFinancedAddressForeign/CityNm",
+    "SellerFinancedAddressForeign/ProvinceOrStateNm",
+    "SellerFinancedAddressForeign/CountryCd",
+    "SellerFinancedAddressForeign/ForeignPostalCd",
+    "SellerFinancedMortgageIntAmt",
+    "InterestPayerName/BusinessNameLine1Txt",
+    "InterestPayerName/BusinessNameLine2Txt",
+    "InterestAmt",
+    "DividendPayerNameBusiness/BusinessNameLine1Txt",
+    "DividendPayerNameBusiness/BusinessNameLine2Txt",
+    "DividendAmt",
+    "$TargetNode[position()=$Start]",
+    "$TargetNode"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "During 2021, did you receive a distribution from, or were you the grantor of, or transferor to, a foreign trust? If \"Yes,\" you may have to file Form 3520. See instructions"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2022r1.zip",
+ "package_sha256": "a416f318f452b50f8844f9450d278607108a9a51114d81833d7553c6eb5a30b7",
+ "xsl": "PY2022R12/mef/Stylesheets/2021/IRS1040ScheduleB.xsl",
+ "year": 2021
+}

@@ -1,0 +1,410 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_2",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Addittions to tax:"
+  },
+  {
+   "elements": [
+    "PremiumTaxCreditTaxLiabAmt"
+   ],
+   "label": "a",
+   "page_section": "Part I",
+   "text": "Excess advance premium tax credit repayment. Attach Form 8962"
+  },
+  {
+   "elements": [
+    "CrTrnsfrDlrSaleAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Repayment of new clean vehicle credit(s) transferred to a registered dealer from Schedule A (Form 8936), Part II. Attach Form 8936 and Schedule A (Form 8936)"
+  },
+  {
+   "elements": [
+    "PrevOwnCrTrnsfrDlrSaleAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Repayment of previously owned clean vehicle credit(s) transferred to a registered dealer from Schedule A (Form 8936), Part IV. Attach Form 8936 and Schedule A (Form 8936)"
+  },
+  {
+   "elements": [
+    "RcptrPrtnNetEPECrAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Recapture of net EPE from Form 4255, line 2a, column (l)"
+  },
+  {
+   "elements": [
+    "ExcessivePymtFrom4255Grp/ApplicableCheckboxiInd",
+    "ExcessivePymtFrom4255Grp/ApplicableCheckboxiiInd",
+    "ExcessivePymtFrom4255Grp/ApplicableCheckboxiiiInd",
+    "ExcessivePymtFrom4255Grp/ApplicableCheckboxivInd",
+    "ExcessivePymtFrom4255Grp/ExPymt100CrAmt"
+   ],
+   "label": "e",
+   "page_section": "Part I",
+   "text": "Excessive payments (EP) on gross EPE from Form 4255. Check applicable box and enter amount. See instructions. (i) Line 1a (ii) Line 1c (iii) Line 1d (iv) Line 2a"
+  },
+  {
+   "elements": [
+    "IncreaseChapter1TaxFrom4255Grp/ApplicableCheckboxiInd",
+    "IncreaseChapter1TaxFrom4255Grp/ApplicableCheckboxiiInd",
+    "IncreaseChapter1TaxFrom4255Grp/ApplicableCheckboxiiiInd",
+    "IncreaseChapter1TaxFrom4255Grp/ApplicableCheckboxivInd",
+    "IncreaseChapter1TaxFrom4255Grp/TotEx20PrvlWgAprntcshpPnltyAmt"
+   ],
+   "label": "f",
+   "page_section": "Part I",
+   "text": "20% EP from Form 4255. Check applicable box and enter amount. See instructions. (i) Line 1a (ii) Line 1c (iii) Line 1d (iv) Line 2a"
+  },
+  {
+   "elements": [
+    "OtherTaxAdditionsGrp",
+    "TotalOtherTaxAdditionsAmt"
+   ],
+   "label": "y",
+   "page_section": "Part I",
+   "text": "Other additions to tax (see instructions):"
+  },
+  {
+   "elements": [
+    "TotalTaxAdditionsAmt"
+   ],
+   "label": "z",
+   "page_section": "Part I",
+   "text": "Add lines 1a through 1y"
+  },
+  {
+   "elements": [
+    "AlternativeMinimumTaxAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Alternative minimum tax. Attach Form 6251"
+  },
+  {
+   "elements": [
+    "AdditionalTaxAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Add lines 1z and 2. Enter here and on Form 1040, 1040-SR, or 1040-NR, line 17"
+  },
+  {
+   "elements": [
+    "SelfEmploymentTaxAmt",
+    "ExemptForm4361Ind",
+    "ExemptForm4029Ind",
+    "ExemptSETaxLiteralInd",
+    "."
+   ],
+   "label": "4",
+   "page_section": "Part II",
+   "text": "Self-employment tax. Attach Schedule SE. Check if any exemption from (see instructions): 1 4361 2 4029 3"
+  },
+  {
+   "elements": [
+    "SocSecMedicareTaxUnrptdTipAmt"
+   ],
+   "label": "5",
+   "page_section": "Part II",
+   "text": "Social security and Medicare tax on unreported tip income. Attach Form 4137"
+  },
+  {
+   "elements": [
+    "UncollectedSocSecMedTaxAmt"
+   ],
+   "label": "6",
+   "page_section": "Part II",
+   "text": "Uncollected social security and Medicare tax on wages. Attach Form 8919"
+  },
+  {
+   "elements": [
+    "UnrprtdSocSecAndMedcrTaxAmt"
+   ],
+   "label": "7",
+   "page_section": "Part II",
+   "text": "Total additional social security and Medicare tax. Add lines 5 and 6"
+  },
+  {
+   "elements": [
+    "TaxOnIRAsAmt",
+    "TaxOnIRAsAmt/@form5329NotRequiredInd"
+   ],
+   "label": "8",
+   "page_section": "Part II",
+   "text": "Additional tax on IRAs or other tax-favored accounts. Attach Form 5329 if required. If not required, check here"
+  },
+  {
+   "elements": [
+    "HouseholdEmploymentTaxAmt"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Household employment taxes. Attach Schedule H"
+  },
+  {
+   "elements": [],
+   "label": "10",
+   "page_section": "Part II",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "TotalAMRRTTaxAmt"
+   ],
+   "label": "11",
+   "page_section": "Part II",
+   "text": "Additional Medicare Tax. Attach Form 8959"
+  },
+  {
+   "elements": [
+    "IndivNetInvstIncomeTaxAmt"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Net investment income tax. Attach Form 8960"
+  },
+  {
+   "elements": [
+    "UncollSSMedcrRRTAGrpInsTxAmt"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Uncollected social security and Medicare or RRTA tax on tips or group-term life insurance from Form W-2, box 12"
+  },
+  {
+   "elements": [
+    "IntTaxDueInstalSaleIncmAmt"
+   ],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Interest on tax due on installment income from the sale of certain residential lots and timeshares"
+  },
+  {
+   "elements": [
+    "IntDefrdTaxGainInstalSalesAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Interest on the deferred tax on gain from certain installment sales with a sales price over $150,000"
+  },
+  {
+   "elements": [
+    "RecaptureTaxAmt"
+   ],
+   "label": "16",
+   "page_section": "Part II",
+   "text": "Recapture of low-interest housing credit. Attach Form 8611"
+  },
+  {
+   "elements": [],
+   "label": "17",
+   "page_section": "Part II",
+   "text": "Other additional taxes:"
+  },
+  {
+   "elements": [
+    "RecaptureOtherCreditsGrp/OtherCreditsCd",
+    "RecaptureOtherCreditsGrp/OtherCreditsTxt",
+    "RecaptureOtherCreditsGrp/OtherCreditsAmt",
+    "TotalRecaptureOtherCreditsAmt"
+   ],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Recapture of other credits. List type, form number, and amount:"
+  },
+  {
+   "elements": [
+    "MortgSbsdyRecaptureTaxAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Recapture of federal mortgage subsidy, if you sold your home, see instructions"
+  },
+  {
+   "elements": [
+    "HSADistriAddnlPercentTaxAmt"
+   ],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Additional tax on HSA distributions. Attach Form 8889"
+  },
+  {
+   "elements": [
+    "HDHPCoverageAddnlTaxAmt"
+   ],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "Additional tax on an HSA because you didn't remain an eligible individual. Attach Form 8889"
+  },
+  {
+   "elements": [
+    "ArcherMSAAddnlDistriTaxAmt"
+   ],
+   "label": "e",
+   "page_section": "Part II",
+   "text": "Additional tax on Archer MSA distributions. Attach Form 8853"
+  },
+  {
+   "elements": [
+    "MedicareMSAAddnlDistriTaxAmt"
+   ],
+   "label": "f",
+   "page_section": "Part II",
+   "text": "Additional tax on Medicare Advantage MSA distributions. Attach Form 8853"
+  },
+  {
+   "elements": [
+    "RecaptureChrtblContriDedAmt"
+   ],
+   "label": "g",
+   "page_section": "Part II",
+   "text": "Recapture of a charitable contribution deduction related to a fractional interest in tangible personal property"
+  },
+  {
+   "elements": [
+    "IncmNonqlfyDefrdCompPlanAmt"
+   ],
+   "label": "h",
+   "page_section": "Part II",
+   "text": "Income you received from a nonqualified deferred compensation plan that fails to meet the requirements of section 409A"
+  },
+  {
+   "elements": [
+    "CompNonqlfyDefrdCompPlanAmt"
+   ],
+   "label": "i",
+   "page_section": "Part II",
+   "text": "Compensation you received from a nonqualified deferred compensation plan described in section 457A"
+  },
+  {
+   "elements": [
+    "Sect72m5ExcessBenefitsTaxAmt"
+   ],
+   "label": "j",
+   "page_section": "Part II",
+   "text": "Section 72(m)(5) excess benefits tax"
+  },
+  {
+   "elements": [
+    "ExcessParachutePaymentAmt"
+   ],
+   "label": "k",
+   "page_section": "Part II",
+   "text": "Golden parachute payments"
+  },
+  {
+   "elements": [
+    "PartialTaxOnAccumDistriAmt"
+   ],
+   "label": "l",
+   "page_section": "Part II",
+   "text": "Tax on accumulation distribution of trusts"
+  },
+  {
+   "elements": [
+    "InsiderStockCompExciseTaxAmt"
+   ],
+   "label": "m",
+   "page_section": "Part II",
+   "text": "Excise tax on insider stock compensation from an expatriated corporation"
+  },
+  {
+   "elements": [
+    "LookBackIntSect167gOr460bAmt"
+   ],
+   "label": "n",
+   "page_section": "Part II",
+   "text": "Look-back interest under section 167(g) or 460(b) from Form 8697 or 8866"
+  },
+  {
+   "elements": [
+    "IncomeNotUSBusinessTaxAmt"
+   ],
+   "label": "o",
+   "page_section": "Part II",
+   "text": "Tax on non-effectively connected income for any part of the year you were a nonresident alien from Form 1040-NR"
+  },
+  {
+   "elements": [
+    "InterestOnEachNetIncrInTaxAmt"
+   ],
+   "label": "p",
+   "page_section": "Part II",
+   "text": "Any interest from Form 8621, line 16f, relating to distributions from, and dispositions of, stock of a section 1291 fund"
+  },
+  {
+   "elements": [
+    "AccruedInterestDueThisRetAmt"
+   ],
+   "label": "q",
+   "page_section": "Part II",
+   "text": "Any interest from Form 8621, line 24"
+  },
+  {
+   "elements": [
+    "TotalAnyOtherTaxesAmt"
+   ],
+   "label": "z",
+   "page_section": "Part II",
+   "text": "Any other taxes. List type and amount:"
+  },
+  {
+   "elements": [
+    "TotalOtherAdditionalTaxesAmt"
+   ],
+   "label": "18",
+   "page_section": "Part II",
+   "text": "Total additional taxes. Add lines 17a through 17z"
+  },
+  {
+   "elements": [
+    "Frm3468IVRcptrPrtnNetEPECrAmt"
+   ],
+   "label": "19",
+   "page_section": "Part II",
+   "text": "Recapture of net EPE from Form 4255, line 1d, column (l)"
+  },
+  {
+   "elements": [
+    "Section965TaxInstallmentAmt"
+   ],
+   "label": "20",
+   "page_section": "Part II",
+   "text": "Section 965 net tax liability installment from Form 965-A"
+  },
+  {
+   "elements": [
+    "TotalOtherTaxesAmt",
+    "$FormData",
+    "OtherTaxLitCd",
+    "OtherTaxTxt",
+    "OtherTaxAmt",
+    "OtherCreditsCd",
+    "OtherCreditsTxt",
+    "OtherCreditsAmt"
+   ],
+   "label": "21",
+   "page_section": "Part II",
+   "text": "Add lines 4, 7 through 16, 18 and 19. These are your total other taxes. Enter here and on Form 1040 or 1040-SR, line 23, or Form 1040-NR, line 23b"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2026r1.zip",
+ "package_sha256": "903d2d186da0615f626d0737b45933d8007628084be820a3d669d9ff7779b61a",
+ "xsl": "PY2026R10/mef/Stylesheets/2025/IRS1040Schedule2.xsl",
+ "year": 2025
+}

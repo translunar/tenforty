@@ -1,0 +1,96 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "4868",
+ "label_classes": [
+  "styLNLeftNumBox"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "$RtnHdrData/Filer/USAddress/CityNm",
+    "$RtnHdrData/Filer/USAddress/StateAbbreviationCd",
+    "$RtnHdrData/Filer/ForeignAddress/ProvinceOrStateNm",
+    "$RtnHdrData/Filer/ForeignAddress/CountryCd",
+    "$RtnHdrData/Filer/USAddress/ZIPCd",
+    "$RtnHdrData/Filer/ForeignAddress/ForeignPostalCd"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Your name(s) (see instructions)"
+  },
+  {
+   "elements": [
+    "$RtnHdrData/Filer/PrimarySSN"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Your social security number"
+  },
+  {
+   "elements": [
+    "$RtnHdrData/Filer/SpouseSSN"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Spouse's social security number"
+  },
+  {
+   "elements": [
+    "TotalTaxLiabilityAmt"
+   ],
+   "label": "4",
+   "page_section": "Part II",
+   "text": "Estimate of total tax liability for 2022 $"
+  },
+  {
+   "elements": [
+    "TotalPaymentsAmt"
+   ],
+   "label": "5",
+   "page_section": "Part II",
+   "text": "Total 2022 payments"
+  },
+  {
+   "elements": [
+    "BalanceDueAmt"
+   ],
+   "label": "6",
+   "page_section": "Part II",
+   "text": "Balance due. Subtract line 5 from line 4. See instructions"
+  },
+  {
+   "elements": [
+    "TaxpayerIsPayingAmt"
+   ],
+   "label": "7",
+   "page_section": "Part II",
+   "text": "Amount you're paying (see instructions)"
+  },
+  {
+   "elements": [
+    "TaxpayerAbroadInd"
+   ],
+   "label": "8",
+   "page_section": "Part II",
+   "text": "Check here if you're \"out of the country\" and a U.S. citizen or resident. See instructions"
+  },
+  {
+   "elements": [
+    "NonresWithNoWagesSubjToWhInd",
+    "$FormData",
+    "AppData/SubmissionHeaderAndDocument/ReturnHeader/Filer/ForeignAddress/ProvinceOrStateNm",
+    "AppData/SubmissionHeaderAndDocument/ReturnHeader/Filer/ForeignAddress/CountryCd",
+    "AppData/SubmissionHeaderAndDocument/ReturnHeader/Filer/ForeignAddress/ForeignPostalCd"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Check here if you file Form 1040-NR and didn't receive wages as an employee subject to U.S. income tax withholding"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS4868.xsl",
+ "year": 2022
+}

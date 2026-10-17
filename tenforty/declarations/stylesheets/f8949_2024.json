@@ -1,0 +1,12 @@
+{
+ "desc_classes": [
+  "styIRS8949LNDesc"
+ ],
+ "form": "f8949",
+ "label_classes": [],
+ "lines": [],
+ "package": "https://www.irs.gov/pub/irs-schema/py2025r1.zip",
+ "package_sha256": "d9d47b48d15a01beaa4194e33cdd6fba357db7bc92ee8ea93657caa805c1ede5",
+ "xsl": "mef/Stylesheets/2024/IRS8949.xsl",
+ "year": 2024
+}
