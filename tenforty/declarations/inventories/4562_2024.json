@@ -1,0 +1,669 @@
+{
+ "form": "4562",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f4562.pdf",
+ "source_sha256": "5a7b8d23cf88e21a57ad7fe3d22294941a8f1161b7a5600ffcd05fa0f6b351a5",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Maximum amount (see instructions)",
+   "bbox": [
+    45.4,
+    132.65,
+    50.4,
+    143.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Total cost of section 179 property placed in service (see instructions)",
+   "bbox": [
+    45.4,
+    144.65,
+    50.4,
+    155.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Threshold cost of section 179 property before reduction in",
+   "bbox": [
+    45.4,
+    156.65,
+    50.4,
+    167.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Reduction in limitation. Subtract line 3 from line 2. If zero or",
+   "bbox": [
+    45.4,
+    168.65,
+    50.4,
+    179.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Dollar limitation for tax year. Subtract line 4 from line 1.",
+   "bbox": [
+    45.4,
+    181.85,
+    50.4,
+    192.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "(a) Description of property (b)",
+   "bbox": [
+    45.4,
+    204.65,
+    50.4,
+    215.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Listed property. Enter the amount from line 29",
+   "bbox": [
+    45.4,
+    240.65,
+    50.4,
+    251.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8",
+   "text": "Total elected cost of section 179 property. Add amounts in",
+   "bbox": [
+    45.4,
+    252.65,
+    50.4,
+    263.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Tentative deduction. Enter the smaller of line 5 or line 8",
+   "bbox": [
+    45.4,
+    264.65,
+    50.4,
+    275.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "10",
+   "text": "Carryover of disallowed deduction from line 13 of your 2023",
+   "bbox": [
+    40.39,
+    276.65,
+    50.4,
+    287.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "11",
+   "text": "Business income limitation. Enter the smaller of business income",
+   "bbox": [
+    40.39,
+    288.65,
+    50.4,
+    299.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "12",
+   "text": "Section 179 expense deduction. Add lines 9 and 10, but don’t",
+   "bbox": [
+    40.39,
+    300.65,
+    50.4,
+    311.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "13",
+   "text": "Carryover of disallowed deduction to 2025. Add lines 9 and",
+   "bbox": [
+    40.39,
+    312.65,
+    50.4,
+    323.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "Special depreciation allowance for qualified property (other",
+   "bbox": [
+    40.39,
+    349.85,
+    50.4,
+    360.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "Property subject to section 168(f)(1) election",
+   "bbox": [
+    40.39,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16",
+   "text": "Other depreciation (including ACRS)",
+   "bbox": [
+    40.39,
+    384.15,
+    50.4,
+    394.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "17",
+   "text": "",
+   "bbox": [
+    488.2,
+    420.65,
+    498.2,
+    431.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "18",
+   "text": "If you are electing to group any assets placed in service",
+   "bbox": [
+    40.39,
+    431.85,
+    50.4,
+    442.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19a",
+   "text": "3-year property",
+   "bbox": [
+    40.43,
+    492.65,
+    55.6,
+    503.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19b",
+   "text": "5-year property",
+   "bbox": [
+    50.1,
+    504.65,
+    55.6,
+    515.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19c",
+   "text": "7-year property",
+   "bbox": [
+    50.43,
+    516.65,
+    55.6,
+    527.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19d",
+   "text": "10-year property",
+   "bbox": [
+    50.1,
+    528.64,
+    55.6,
+    539.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19e",
+   "text": "15-year property",
+   "bbox": [
+    50.43,
+    540.64,
+    55.6,
+    551.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19f",
+   "text": "20-year property",
+   "bbox": [
+    52.6,
+    552.64,
+    55.6,
+    563.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19g",
+   "text": "25-year property",
+   "bbox": [
+    50.1,
+    564.64,
+    55.6,
+    575.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19h",
+   "text": "Residential rental 27.5",
+   "bbox": [
+    50.26,
+    576.64,
+    55.6,
+    587.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "19i",
+   "text": "Nonresidential real",
+   "bbox": [
+    53.28,
+    600.64,
+    55.6,
+    611.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "20a",
+   "text": "Class life",
+   "bbox": [
+    40.43,
+    636.65,
+    55.6,
+    647.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "20b",
+   "text": "12-year",
+   "bbox": [
+    50.1,
+    648.65,
+    55.6,
+    659.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "20c",
+   "text": "30-year",
+   "bbox": [
+    50.43,
+    660.65,
+    55.6,
+    671.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "20d",
+   "text": "40-year",
+   "bbox": [
+    50.1,
+    672.64,
+    55.6,
+    683.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part IV",
+   "label": "21",
+   "text": "Listed property. Enter amount from line 28",
+   "bbox": [
+    40.39,
+    696.65,
+    50.4,
+    707.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part IV",
+   "label": "22",
+   "text": "Total. Add amounts from line 12, lines 14 through 17, lines",
+   "bbox": [
+    40.39,
+    709.85,
+    50.4,
+    720.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part IV",
+   "label": "23",
+   "text": "For assets shown above and placed in service during the",
+   "bbox": [
+    40.39,
+    733.85,
+    50.4,
+    744.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "24a",
+   "text": "Do you have evidence to support the business/investment use claimed? Yes No 24b If “Yes,”",
+   "bbox": [
+    40.4,
+    108.65,
+    55.57,
+    119.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "25",
+   "text": "Special depreciation allowance for qualified listed property placed in service during",
+   "bbox": [
+    40.39,
+    157.35,
+    50.4,
+    168.09
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "26",
+   "text": "Property used more than 50% in a qualified business use:",
+   "bbox": [
+    40.39,
+    180.65,
+    50.4,
+    191.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "27",
+   "text": "Property used 50% or less in a qualified business use:",
+   "bbox": [
+    40.39,
+    228.65,
+    50.4,
+    239.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "28",
+   "text": "Add amounts in column (h), lines 25 through 27. Enter here and on line 21, page 1",
+   "bbox": [
+    40.39,
+    276.65,
+    50.4,
+    287.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "29",
+   "text": "Add amounts in column (i), line 26. Enter here and on line 7, page 1",
+   "bbox": [
+    40.39,
+    288.15,
+    50.4,
+    298.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "30",
+   "text": "Total business/investment miles driven during Vehicle 1 Vehicle 2 Vehicle 3",
+   "bbox": [
+    40.39,
+    348.85,
+    50.4,
+    359.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "31",
+   "text": "Total commuting miles driven during the year",
+   "bbox": [
+    40.39,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "32",
+   "text": "Total other personal (noncommuting)",
+   "bbox": [
+    40.39,
+    384.85,
+    50.4,
+    395.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "33",
+   "text": "Total miles driven during the year. Add",
+   "bbox": [
+    40.39,
+    408.85,
+    50.4,
+    419.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "34",
+   "text": "Was the vehicle available for personal Yes No Yes No Yes No Yes",
+   "bbox": [
+    40.39,
+    432.65,
+    50.4,
+    443.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "35",
+   "text": "Was the vehicle used primarily by a more",
+   "bbox": [
+    40.39,
+    456.85,
+    50.4,
+    467.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "36",
+   "text": "Is another vehicle available for personal use?",
+   "bbox": [
+    40.39,
+    480.15,
+    50.4,
+    490.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "37",
+   "text": "Do you maintain a written policy statement that prohibits all personal use of vehicles, including",
+   "bbox": [
+    40.39,
+    528.86,
+    50.4,
+    539.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "38",
+   "text": "Do you maintain a written policy statement that prohibits personal use of vehicles, except",
+   "bbox": [
+    40.39,
+    552.85,
+    50.4,
+    563.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "39",
+   "text": "Do you treat all use of vehicles by employees as personal use?",
+   "bbox": [
+    40.39,
+    576.65,
+    50.4,
+    587.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "40",
+   "text": "Do you provide more than five vehicles to your employees, obtain information from your",
+   "bbox": [
+    40.39,
+    588.85,
+    50.4,
+    599.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "41",
+   "text": "Do you meet the requirements concerning qualified automobile demonstration use? See instructions",
+   "bbox": [
+    40.39,
+    612.65,
+    50.4,
+    623.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part VI",
+   "label": "42",
+   "text": "Amortization of costs that begins during your 2024 tax year (see instructions):",
+   "bbox": [
+    40.39,
+    684.15,
+    50.4,
+    694.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part VI",
+   "label": "43",
+   "text": "Amortization of costs that began before your 2024 tax year",
+   "bbox": [
+    40.39,
+    720.65,
+    50.4,
+    731.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part VI",
+   "label": "44",
+   "text": "Total. Add amounts in column (f). See the instructions for where to report",
+   "bbox": [
+    40.39,
+    732.15,
+    50.4,
+    742.89
+   ]
+  }
+ ]
+}

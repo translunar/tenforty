@@ -1,0 +1,359 @@
+{
+ "form": "schedule_x",
+ "key": 2024,
+ "jurisdiction": "california",
+ "source": "pdfs/california/amendments/schedule_x_2024.pdf",
+ "source_sha256": "fd654fce6714c5c34359c7fda6a25a56e00fe04efc4947679dfca29383f03a93",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Enter the amount you owe, as shown on the amended tax return.",
+   "bbox": [
+    444.58,
+    142.5,
+    555.58,
+    157.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Overpaid tax, if any, as shown on original tax return or as previously adjusted by the FTB. See instructions.",
+   "bbox": [
+    444.58,
+    166.62,
+    555.58,
+    181.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Add line 1 and line 2 .",
+   "bbox": [
+    444.58,
+    190.38,
+    555.58,
+    205.38
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Enter the refund, as shown on the amended tax return. See instructions.",
+   "bbox": [
+    444.58,
+    214.4,
+    555.58,
+    229.4
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Tax paid with original tax return plus additional tax paid after it was filed. Do not include penalties and interest.",
+   "bbox": [
+    444.58,
+    238.62,
+    555.58,
+    253.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Add line 4 and line 5 .",
+   "bbox": [
+    444.58,
+    262.62,
+    555.58,
+    277.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Amount you owe. If line 3 is more than line 6, subtract line 6 from line 3 . See instructions.",
+   "bbox": [
+    444.58,
+    286.51,
+    555.58,
+    301.51
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8",
+   "text": "Penalties/Interest. See instructions. Line 8 A. Penalties.",
+   "bbox": [
+    164.16,
+    310.5,
+    254.38,
+    325.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8B",
+   "text": "Interest.",
+   "bbox": [
+    308.0,
+    310.5,
+    398.22,
+    325.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8C",
+   "text": "Total Interest and Penalties. Enter the total of line 8 A and line 8 B.",
+   "bbox": [
+    444.58,
+    310.51,
+    555.58,
+    325.51
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8c",
+   "text": "00",
+   "bbox": [
+    432.48,
+    316.06,
+    440.98,
+    327.23
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Refund subtotal. If line 6 is more than line 3, subtract line 3 from line 6 .",
+   "bbox": [
+    444.58,
+    334.62,
+    555.58,
+    349.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "10",
+   "text": "Amount of line 9 you want applied to your 2025 estimated tax. See instructions.",
+   "bbox": [
+    444.58,
+    358.62,
+    555.58,
+    373.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "11",
+   "text": "REFUND. See instructions.",
+   "bbox": [
+    444.58,
+    382.5,
+    555.58,
+    397.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1k",
+   "text": "Military HR 100 .",
+   "bbox": [
+    463.44,
+    442.08,
+    479.44,
+    458.08
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1g",
+   "text": "Error on original return.",
+   "bbox": [
+    283.44,
+    442.2,
+    299.44,
+    458.2
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1",
+   "text": "Check all that apply. Line 1 a. Protective claim for refund. See instructions.",
+   "bbox": [
+    81.84,
+    442.56,
+    97.84,
+    458.56
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1l",
+   "text": "Informal claim.",
+   "bbox": [
+    463.44,
+    466.08,
+    479.44,
+    482.08
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1h",
+   "text": "Credit adjustment.",
+   "bbox": [
+    283.44,
+    466.13,
+    299.44,
+    482.13
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1b",
+   "text": "Reservation source income adjustments.",
+   "bbox": [
+    81.84,
+    466.32,
+    97.84,
+    482.32
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1i",
+   "text": "Earned income tax credit / Young child tax credit / Foster youth tax credit.",
+   "bbox": [
+    282.96,
+    490.08,
+    298.96,
+    506.08
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1m",
+   "text": "Other. See instructions.",
+   "bbox": [
+    463.44,
+    490.08,
+    479.44,
+    506.08
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1c",
+   "text": "Pass-through entity adjustments.",
+   "bbox": [
+    81.84,
+    490.32,
+    97.84,
+    506.32
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1d",
+   "text": "Federal audit and/or adjustments.",
+   "bbox": [
+    81.84,
+    514.32,
+    97.84,
+    530.32
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1j",
+   "text": "Disaster Loss.",
+   "bbox": [
+    283.44,
+    523.2,
+    299.44,
+    539.2
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1e",
+   "text": "FTB audit contact.",
+   "bbox": [
+    81.84,
+    538.32,
+    97.84,
+    554.32
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Provide further explanation of reason or reasons for amending below. If needed, attach a separate sheet that includes your name and Social Security Number or Individual Taxpayer Identification Number. See instructions. Limit approximately 600 characters.",
+   "bbox": [
+    55.32,
+    595.0,
+    576.32,
+    707.85
+   ],
+   "source": "tooltip"
+  }
+ ]
+}

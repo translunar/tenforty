@@ -1,0 +1,207 @@
+{
+ "desc_classes": [],
+ "form": "f1120s_k1",
+ "label_classes": [
+  "IRS1120SScheduleK1_itemLabel"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "OrdinaryIncomeLossAmt"
+   ],
+   "label": "1",
+   "page_section": "Part III",
+   "text": "Ordinary business income (loss)"
+  },
+  {
+   "elements": [
+    "RealEstateNetIncomeLossAmt"
+   ],
+   "label": "2",
+   "page_section": "Part III",
+   "text": "Net rental real estate income (loss)"
+  },
+  {
+   "elements": [
+    "OtherRentalIncomeAmt"
+   ],
+   "label": "3",
+   "page_section": "Part III",
+   "text": "Other net rental income (loss)"
+  },
+  {
+   "elements": [
+    "InterestIncomeAmt"
+   ],
+   "label": "4",
+   "page_section": "Part III",
+   "text": "Interest income"
+  },
+  {
+   "elements": [
+    "OrdinaryDividendsAmt"
+   ],
+   "label": "5a",
+   "page_section": "Part III",
+   "text": "Ordinary dividends"
+  },
+  {
+   "elements": [
+    "QualifiedDividendsAmt"
+   ],
+   "label": "5b",
+   "page_section": "Part III",
+   "text": "Qualified dividends"
+  },
+  {
+   "elements": [
+    "PortfolioIncomeLossRyltsAmt"
+   ],
+   "label": "6",
+   "page_section": "Part III",
+   "text": "Royalties"
+  },
+  {
+   "elements": [
+    "NetSTCapitalGainOrLossAmt"
+   ],
+   "label": "7",
+   "page_section": "Part III",
+   "text": "Net short-term capital gain (loss)"
+  },
+  {
+   "elements": [
+    "NetLTCapitalGainOrLossAmt"
+   ],
+   "label": "8a",
+   "page_section": "Part III",
+   "text": "Net long-term capital gain (loss)"
+  },
+  {
+   "elements": [
+    "CollectiblesGainLossAmt"
+   ],
+   "label": "8b",
+   "page_section": "Part III",
+   "text": "Collectibles (28%) gain (loss)"
+  },
+  {
+   "elements": [
+    "UnrecapturedSection1250GainAmt"
+   ],
+   "label": "8c",
+   "page_section": "Part III",
+   "text": "Unrecaptured section 1250 gain"
+  },
+  {
+   "elements": [
+    "NetSection1231GainLossAmt"
+   ],
+   "label": "9",
+   "page_section": "Part III",
+   "text": "Net section 1231 gain (loss)"
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1OtherIncmLossGrp",
+    "IRS1120SSchK1OtherIncmLossCd",
+    "Amt"
+   ],
+   "label": "10",
+   "page_section": "Part III",
+   "text": "Other income (loss)"
+  },
+  {
+   "elements": [
+    "Section179ExpenseDeductionAmt"
+   ],
+   "label": "11",
+   "page_section": "Part III",
+   "text": "Section 179 deduction"
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1OtherDedGrp",
+    "IRS1120SSchK1OtherDedCd",
+    "Amt"
+   ],
+   "label": "12",
+   "page_section": "Part III",
+   "text": "Other deductions"
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1CreditsGrp",
+    "IRS1120SSchK1CreditsCd",
+    "Amt"
+   ],
+   "label": "13",
+   "page_section": "Part III",
+   "text": "Credits"
+  },
+  {
+   "elements": [
+    "ScheduleK3AttachedInd",
+    "ScheduleK-3attachedInd",
+    "IRS1120SSchK1FrgnTransGrp",
+    "CountryOrPossessionCd",
+    "ForeignCountryOrUSPossessionCd",
+    "ForeignRegulatedInvestmtCompCd",
+    "Amt",
+    "IRS1120SSchK1FrgnTransCd"
+   ],
+   "label": "14",
+   "page_section": "Part III",
+   "text": "Schedule K-3 is attached if checked."
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1AMTItemsGrp",
+    "IRS1120SSchK1AMTItemsCd",
+    "Amt"
+   ],
+   "label": "15",
+   "page_section": "Part III",
+   "text": "Alternative minimum tax (AMT) items"
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1AffectngShrBssGrp",
+    "IRS1120SSchK1AffectngShrBssCd",
+    "Amt"
+   ],
+   "label": "16",
+   "page_section": "Part III",
+   "text": "Items affecting shareholder basis"
+  },
+  {
+   "elements": [
+    "IRS1120SSchK1OtherInfoGrp",
+    "IRS1120SSchK1OtherInfoCd",
+    "Amt",
+    "Sect465AtRiskAggregatedActyInd",
+    "Sect469PALGroupedActyInd",
+    "IRS1120SSchK1OtherIncmLossGrp",
+    "IRS1120SSchK1OtherDedGrp",
+    "IRS1120SSchK1CreditsGrp",
+    "IRS1120SSchK1FrgnTransGrp",
+    "IRS1120SSchK1AMTItemsGrp",
+    "IRS1120SSchK1AffectngShrBssGrp",
+    "$FormData",
+    "@section1377a2Cd",
+    "ShareholderNameControlTxt",
+    "CountryOrPossessionCd",
+    "ForeignCountryOrUSPossessionCd",
+    "ForeignRegulatedInvestmtCompCd",
+    "IRS1120SSchK1FrgnTransCd"
+   ],
+   "label": "17",
+   "page_section": "Part III",
+   "text": "Other information"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2024r1.zip",
+ "package_sha256": "04756268735a28e5f7cbdc3c07c37b2336d68f05d1b448fd318c4b28b849e089",
+ "xsl": "PY2024R11/mef/Stylesheets/2023/IRS1120SScheduleK1.xsl",
+ "year": 2023
+}

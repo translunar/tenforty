@@ -1,0 +1,451 @@
+{
+ "form": "sch_d_540",
+ "key": 2025,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2025/sch_d_540.pdf",
+ "source_sha256": "cec2e32a42f67573d564434140428856f8ae19822264c085a1a6a8eb2a0ddf86",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1a",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    141.62,
+    571.44,
+    158.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1b",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    237.36,
+    571.44,
+    254.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1c",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    333.6,
+    571.44,
+    350.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1d",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    429.36,
+    571.44,
+    446.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1e",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    525.6,
+    571.44,
+    542.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1f",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    621.6,
+    571.44,
+    638.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1g",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.14,
+    81.62,
+    571.5,
+    98.5
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1h",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    177.36,
+    571.44,
+    194.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1i",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    273.6,
+    571.44,
+    290.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1j",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    369.6,
+    571.44,
+    386.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1k",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.14,
+    465.6,
+    571.5,
+    482.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1l",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.14,
+    561.36,
+    571.5,
+    578.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1m",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.14,
+    657.6,
+    571.5,
+    674.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1n",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    81.6,
+    571.44,
+    98.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1o",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    177.36,
+    571.44,
+    194.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1p",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    273.6,
+    571.44,
+    290.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1q",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    369.6,
+    571.44,
+    386.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1r",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    465.6,
+    571.44,
+    482.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1s",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    561.36,
+    571.44,
+    578.24
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1t",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    657.6,
+    571.44,
+    674.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "1u",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    81.6,
+    571.44,
+    98.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "1v",
+   "text": "(a) Description of property. Example: 100 shares of “Z” Company.",
+   "bbox": [
+    70.08,
+    177.6,
+    571.44,
+    194.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "2",
+   "text": "Net gain or (loss) shown on California Schedule(s) K-1 (100S, 541, 565, and 568) . (d). Loss.",
+   "bbox": [
+    328.96,
+    273.6,
+    435.12,
+    290.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "3",
+   "text": "Capital gain distributions (federal Form 1099-DIV, box 2 a ) .",
+   "bbox": [
+    465.6,
+    309.6,
+    571.68,
+    326.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "4",
+   "text": "Total 2025 gains from all sources. Add column (e) amounts of line 1, line 2, and line 3.",
+   "bbox": [
+    465.6,
+    333.72,
+    571.68,
+    350.6
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "5",
+   "text": "2025 loss. Add column (d) amounts of line 1 and line 2.",
+   "bbox": [
+    328.96,
+    357.6,
+    435.12,
+    374.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "6",
+   "text": "California capital loss carryover from 2024, if any. See instructions.",
+   "bbox": [
+    328.96,
+    381.6,
+    435.12,
+    398.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "7",
+   "text": "Total 2025 loss. Add line 5 and line 6.",
+   "bbox": [
+    328.96,
+    405.6,
+    435.12,
+    422.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "8",
+   "text": "Net gain or (loss). Combine line 4 and line 7. If a loss, go to line 9. If a gain, go to line 10.",
+   "bbox": [
+    465.6,
+    429.6,
+    571.68,
+    446.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "9",
+   "text": "If line 8 is a loss, enter the smaller of: a. the loss on line 8. b. $3,000 ($1,500 if married/registered domestic partner filing separate). See instructions.",
+   "bbox": [
+    465.6,
+    465.6,
+    571.68,
+    482.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "10",
+   "text": "Enter the gain or (loss) from federal Form 1040 or 1040-SR, line 7a.",
+   "bbox": [
+    465.6,
+    489.6,
+    571.68,
+    506.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "11",
+   "text": "Enter the California gain from line 8 or (loss) from line 9.",
+   "bbox": [
+    465.6,
+    513.6,
+    571.68,
+    530.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "12a",
+   "text": "If line 10 is more than line 11, enter the difference here and on Schedule CA (540), Part I, Section A, line 7a, column B.",
+   "bbox": [
+    465.6,
+    549.6,
+    571.68,
+    566.48
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "12b",
+   "text": "If line 10 is less than line 11, enter the difference here and on Schedule CA (540), Part I, Section A, line 7a, column C.",
+   "bbox": [
+    465.6,
+    573.6,
+    571.68,
+    590.48
+   ],
+   "source": "tooltip"
+  }
+ ]
+}

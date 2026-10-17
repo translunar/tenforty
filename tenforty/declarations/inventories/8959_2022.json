@@ -1,0 +1,297 @@
+{
+ "form": "8959",
+ "key": 2022,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2022/f8959.pdf",
+ "source_sha256": "052e2444e4837ac9082e4c567d7d23d42241546d9d6ca70700479ab86b80ddb0",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Medicare wages and tips from Form W-2, box 5. If you have more than one",
+   "bbox": [
+    45.4,
+    121.85,
+    50.4,
+    132.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Unreported tips from Form 4137, line 6",
+   "bbox": [
+    45.4,
+    144.65,
+    50.4,
+    155.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Wages from Form 8919, line 6",
+   "bbox": [
+    45.4,
+    156.65,
+    50.4,
+    167.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Add lines 1 through 3",
+   "bbox": [
+    45.4,
+    168.65,
+    50.4,
+    179.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Enter the following amount for your filing status:",
+   "bbox": [
+    45.4,
+    180.65,
+    50.4,
+    191.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Subtract line 5 from line 4. If zero or less, enter -0-",
+   "bbox": [
+    45.4,
+    228.65,
+    50.4,
+    239.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Additional Medicare Tax on Medicare wages. Multiply line 6 by 0.9% (0.009). Enter",
+   "bbox": [
+    45.4,
+    241.35,
+    50.4,
+    252.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Self-employment income from Schedule SE (Form 1040), Part I, line 6. If you",
+   "bbox": [
+    45.4,
+    277.65,
+    50.4,
+    288.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Enter the following amount for your filing status:",
+   "bbox": [
+    45.4,
+    300.65,
+    50.4,
+    311.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Enter the amount from line 4",
+   "bbox": [
+    40.39,
+    348.65,
+    50.4,
+    359.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Subtract line 10 from line 9. If zero or less, enter -0-",
+   "bbox": [
+    40.39,
+    360.65,
+    50.4,
+    371.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Subtract line 11 from line 8. If zero or less, enter -0-",
+   "bbox": [
+    40.39,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "Additional Medicare Tax on self-employment income. Multiply line 12 by 0.9% (0.009).",
+   "bbox": [
+    40.39,
+    385.35,
+    50.4,
+    396.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "14",
+   "text": "Railroad retirement (RRTA) compensation and tips from Form(s) W-2, box 14",
+   "bbox": [
+    40.39,
+    421.85,
+    50.4,
+    432.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "15",
+   "text": "Enter the following amount for your filing status:",
+   "bbox": [
+    40.39,
+    444.65,
+    50.4,
+    455.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "16",
+   "text": "Subtract line 15 from line 14. If zero or less, enter -0-",
+   "bbox": [
+    40.39,
+    492.65,
+    50.4,
+    503.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "17",
+   "text": "Additional Medicare Tax on railroad retirement (RRTA) compensation. Multiply line",
+   "bbox": [
+    40.39,
+    505.35,
+    50.4,
+    516.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part IV",
+   "label": "18",
+   "text": "Add lines 7, 13, and 17. Also include this amount on Schedule 2 (Form 1040), line",
+   "bbox": [
+    40.39,
+    541.35,
+    50.4,
+    552.09
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "19",
+   "text": "Medicare tax withheld from Form W-2, box 6. If you have more than one Form",
+   "bbox": [
+    40.39,
+    577.85,
+    50.4,
+    588.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "20",
+   "text": "Enter the amount from line 1",
+   "bbox": [
+    40.39,
+    600.65,
+    50.4,
+    611.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "21",
+   "text": "Multiply line 20 by 1.45% (0.0145). This is your regular Medicare tax",
+   "bbox": [
+    40.39,
+    613.85,
+    50.4,
+    624.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "22",
+   "text": "Subtract line 21 from line 19. If zero or less, enter -0-. This is your Additional",
+   "bbox": [
+    40.39,
+    637.85,
+    50.4,
+    648.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "23",
+   "text": "Additional Medicare Tax withholding on railroad retirement (RRTA) compensation from",
+   "bbox": [
+    40.39,
+    661.85,
+    50.4,
+    672.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part V",
+   "label": "24",
+   "text": "Total Additional Medicare Tax withholding. Add lines 22 and 23. Also include",
+   "bbox": [
+    40.39,
+    686.05,
+    50.4,
+    696.79
+   ]
+  }
+ ]
+}

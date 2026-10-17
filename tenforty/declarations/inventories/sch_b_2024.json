@@ -1,0 +1,117 @@
+{
+ "form": "sch_b",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f1040sb.pdf",
+ "source_sha256": "03b72c78d75082ddd51901ca8a39e0ca2e982fdec2567b2dfb2fe4180f6aa93a",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "List name of payer. If any interest is from a seller-financed mortgage and the",
+   "bbox": [
+    110.2,
+    111.05,
+    115.2,
+    121.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Add the amounts on line 1",
+   "bbox": [
+    110.2,
+    312.65,
+    115.2,
+    323.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Excludable interest on series EE and I U.S. savings bonds issued after 1989.",
+   "bbox": [
+    110.2,
+    325.85,
+    115.2,
+    336.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Subtract line 3 from line 2. Enter the result here and on Form 1040 or 1040-SR, line 2b",
+   "bbox": [
+    110.2,
+    348.15,
+    115.2,
+    358.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "List name of payer:",
+   "bbox": [
+    110.2,
+    372.65,
+    115.2,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Add the amounts on line 5. Enter the total here and on Form 1040 or 1040-SR, line 3b",
+   "bbox": [
+    110.2,
+    552.15,
+    115.2,
+    562.89
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "7a",
+   "text": "At any time during 2024, did you have a financial interest in or signature authority over",
+   "bbox": [
+    110.2,
+    627.05,
+    115.2,
+    637.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "7b",
+   "text": "If you are required to file FinCEN Form 114, list the name(s) of the foreign country(-ies)",
+   "bbox": [
+    115.2,
+    697.85,
+    120.7,
+    708.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "8",
+   "text": "During 2024, did you receive a distribution from, or were you the grantor of, or transferor",
+   "bbox": [
+    110.2,
+    733.35,
+    115.2,
+    744.09
+   ]
+  }
+ ]
+}

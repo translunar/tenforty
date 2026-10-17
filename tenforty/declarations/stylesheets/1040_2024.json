@@ -1,0 +1,615 @@
+{
+ "desc_classes": [
+  "sty1040Desc",
+  "styLNDesc"
+ ],
+ "form": "1040",
+ "label_classes": [
+  "styLNLeftLtrBox",
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "WagesAmt/@fringeBenefitsCd",
+    "WagesAmt"
+   ],
+   "label": "1a",
+   "page_section": "",
+   "text": "Total amount from Form(s) W-2, box 1 (see instructions)"
+  },
+  {
+   "elements": [
+    "HouseholdEmployeeWagesAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Household employee wages not reported on Form(s) W-2"
+  },
+  {
+   "elements": [
+    "TipIncomeAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Tip income not reported on line 1a (see instructions)"
+  },
+  {
+   "elements": [
+    "MedicaidWaiverPymtNotRptW2Amt"
+   ],
+   "label": "d",
+   "page_section": "",
+   "text": "Medicaid waiver payments not reported on Form(s) W-2 (see instructions)"
+  },
+  {
+   "elements": [
+    "TaxableBenefitsAmt"
+   ],
+   "label": "e",
+   "page_section": "",
+   "text": "Taxable dependent care benefits from Form 2441, line 26"
+  },
+  {
+   "elements": [
+    "TaxableBenefitsForm8839Amt"
+   ],
+   "label": "f",
+   "page_section": "",
+   "text": "Employer-provided adoption benefits from Form 8839, line 29"
+  },
+  {
+   "elements": [
+    "TotalWagesWithNoWithholdingAmt"
+   ],
+   "label": "g",
+   "page_section": "",
+   "text": "Wages from Form 8919, line 6"
+  },
+  {
+   "elements": [
+    "OtherEarnedIncomeAmt/@wagesNotShownLitOnlyCd",
+    "OtherEarnedIncomeAmt"
+   ],
+   "label": "h",
+   "page_section": "",
+   "text": "Other earned income (see instructions)"
+  },
+  {
+   "elements": [
+    "NontxCombatPayElectionAmt"
+   ],
+   "label": "i",
+   "page_section": "",
+   "text": "Nontaxable combat pay election (see instructions)"
+  },
+  {
+   "elements": [
+    "WagesSalariesAndTipsAmt"
+   ],
+   "label": "z",
+   "page_section": "",
+   "text": "Add lines 1a through 1h."
+  },
+  {
+   "elements": [
+    "TaxExemptInterestAmt"
+   ],
+   "label": "2a",
+   "page_section": "",
+   "text": "Tax-exempt interest"
+  },
+  {
+   "elements": [
+    "TaxableInterestAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Taxable interest"
+  },
+  {
+   "elements": [
+    "QualifiedF8814Cd",
+    "QualifiedF8814Amt",
+    "QualifiedDividendsAmt"
+   ],
+   "label": "3a",
+   "page_section": "",
+   "text": "Qualified dividends"
+  },
+  {
+   "elements": [
+    "OrdinaryF8814Cd",
+    "OrdinaryF8814Amt",
+    "OrdinaryDividendsAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Ordinary dividends"
+  },
+  {
+   "elements": [
+    "IRADistributionsAmt"
+   ],
+   "label": "4a",
+   "page_section": "",
+   "text": "IRA distributions"
+  },
+  {
+   "elements": [
+    "IRADistributionsLiteralCd",
+    "TaxableIRAAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Taxable amount"
+  },
+  {
+   "elements": [
+    "PensionsAnnuitiesAmt"
+   ],
+   "label": "5a",
+   "page_section": "",
+   "text": "Pensions and annuities"
+  },
+  {
+   "elements": [
+    "TotalTaxablePensionsAmt/@pensionsAnnuitiesLiteralCd",
+    "ForeignEmployerPensionCd",
+    "TaxableForeignPensionsTotalAmt",
+    "TotalTaxablePensionsAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Taxable amount"
+  },
+  {
+   "elements": [
+    "SocSecBnftAmt/@socSecBnftCd",
+    "SocSecBnftAmt"
+   ],
+   "label": "6a",
+   "page_section": "",
+   "text": "Social security benefits"
+  },
+  {
+   "elements": [
+    "TaxableSocSecAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Taxable amount"
+  },
+  {
+   "elements": [
+    "LumpSumElectionMethodInd"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "If you elect to use the lump-sum election method, check here (see instructions)"
+  },
+  {
+   "elements": [
+    "Form8814Cd",
+    "Form8814Amt",
+    "CapitalDistributionInd",
+    "CapitalGainLossAmt"
+   ],
+   "label": "7",
+   "page_section": "",
+   "text": "Capital gain or (loss). Attach Schedule D if required. If not required, check here"
+  },
+  {
+   "elements": [
+    "TotalAdditionalIncomeAmt"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "Additional income from Schedule 1, line 10"
+  },
+  {
+   "elements": [
+    "TotalIncomeAmt"
+   ],
+   "label": "9",
+   "page_section": "",
+   "text": "Add lines 1z, 2b, 3b, 4b, 5b, 6b, 7, and 8. This is your total income"
+  },
+  {
+   "elements": [
+    "TotalAdjustmentsAmt"
+   ],
+   "label": "10",
+   "page_section": "",
+   "text": "Adjustments to income from Schedule 1, line 26"
+  },
+  {
+   "elements": [
+    "ExcldSect933PuertoRicoIncmAmt/@excldSect933PuertoRicoIncmCd",
+    "ExcldSect933PuertoRicoIncmAmt",
+    "AdjustedGrossIncomeAmt"
+   ],
+   "label": "11",
+   "page_section": "",
+   "text": "Subtract line 10 from line 9. This is your adjusted gross income"
+  },
+  {
+   "elements": [
+    "TotalItemizedOrStandardDedAmt/@modifiedStandardDeductionInd",
+    "TotalItemizedOrStandardDedAmt"
+   ],
+   "label": "12",
+   "page_section": "",
+   "text": "Standard deduction or itemized deductions (from Schedule A)"
+  },
+  {
+   "elements": [
+    "QualifiedBusinessIncomeDedAmt"
+   ],
+   "label": "13",
+   "page_section": "",
+   "text": "Qualified business income deduction from Form 8995 or Form 8995-A"
+  },
+  {
+   "elements": [
+    "TotalDeductionsAmt"
+   ],
+   "label": "14",
+   "page_section": "",
+   "text": "Add lines 12 and 13"
+  },
+  {
+   "elements": [
+    "TaxableIncomeAmt/@capitalConstructionFundCd",
+    "TaxableIncomeAmt/@capitalConstructionFundAmt",
+    "ScheduleQCd",
+    "TaxableIncomeAmt"
+   ],
+   "label": "15",
+   "page_section": "",
+   "text": "Subtract line 14 from line 11. If zero or less, enter -0-. This is your taxable income"
+  },
+  {
+   "elements": [
+    "Form8814Ind",
+    "Form8814Ind/@childInterestAndDividendTaxAmt",
+    "Form4972Ind",
+    "OtherTaxAmtInd",
+    "OtherTaxAmtGrp/OtherTaxAmtCd",
+    "OtherTaxAmtGrp/OtherTaxAmt",
+    "OtherTaxAmtGrp",
+    "TaxAmt"
+   ],
+   "label": "16",
+   "page_section": "",
+   "text": "Tax (see instructions). Check if any from Form(s): 1 8814 2 4972 3"
+  },
+  {
+   "elements": [
+    "AdditionalTaxAmt"
+   ],
+   "label": "17",
+   "page_section": "",
+   "text": "Amount from Schedule 2, line 3"
+  },
+  {
+   "elements": [
+    "TotalTaxBeforeCrAndOthTaxesAmt"
+   ],
+   "label": "18",
+   "page_section": "",
+   "text": "Add lines 16 and 17"
+  },
+  {
+   "elements": [
+    "CTCODCAmt"
+   ],
+   "label": "19",
+   "page_section": "",
+   "text": "Child tax credit or credit for other dependents from Schedule 8812"
+  },
+  {
+   "elements": [
+    "TotalNonrefundableCreditsAmt"
+   ],
+   "label": "20",
+   "page_section": "",
+   "text": "Amount from Schedule 3, line 8"
+  },
+  {
+   "elements": [
+    "TotalCreditsAmt"
+   ],
+   "label": "21",
+   "page_section": "",
+   "text": "Add lines 19 and 20"
+  },
+  {
+   "elements": [
+    "TaxLessCreditsAmt"
+   ],
+   "label": "22",
+   "page_section": "",
+   "text": "Subtract line 21 from line 18. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "Form8854DeferredTaxGrp[1]/TotalTaxDeferredAmt",
+    "Form8854DeferredTaxGrp[1]/ExpatriationCd",
+    "Form8854DeferredTaxGrp[2]/TotalTaxDeferredAmt",
+    "Form8854DeferredTaxGrp[2]/ExpatriationCd",
+    "TotalOtherTaxesAmt"
+   ],
+   "label": "23",
+   "page_section": "",
+   "text": "Other taxes, including self-employment tax, from Schedule 2, line 21"
+  },
+  {
+   "elements": [
+    "TotalTaxAmt"
+   ],
+   "label": "24",
+   "page_section": "",
+   "text": "Add lines 22 and 23. This is your total tax"
+  },
+  {
+   "elements": [],
+   "label": "25",
+   "page_section": "",
+   "text": "Federal income tax withheld from:"
+  },
+  {
+   "elements": [
+    "FormW2WithheldTaxAmt"
+   ],
+   "label": "a",
+   "page_section": "",
+   "text": "Form(s) W-2"
+  },
+  {
+   "elements": [
+    "Form1099WithheldTaxAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Form(s) 1099"
+  },
+  {
+   "elements": [
+    "TaxWithheldOtherAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Other forms (see instructions)"
+  },
+  {
+   "elements": [
+    "WithholdingTaxAmt"
+   ],
+   "label": "d",
+   "page_section": "",
+   "text": "Add lines 25a through 25c"
+  },
+  {
+   "elements": [
+    "EstimatedTaxPaymentsAmt/@divorcedSpouseSSN",
+    "EstimatedTaxPaymentsAmt/@divorcedLiteralCd",
+    "EstimatedTaxPaymentsAmt"
+   ],
+   "label": "26",
+   "page_section": "",
+   "text": "2024 estimated tax payments and amount applied from 2023 return"
+  },
+  {
+   "elements": [
+    "EICEligibilityLiteralCd",
+    "EarnedIncomeCreditAmt"
+   ],
+   "label": "27",
+   "page_section": "",
+   "text": "Earned income credit (EIC)"
+  },
+  {
+   "elements": [
+    "AdditionalChildTaxCreditAmt"
+   ],
+   "label": "28",
+   "page_section": "",
+   "text": "Additional child tax credit from Schedule 8812"
+  },
+  {
+   "elements": [
+    "RefundableAmerOppCreditAmt"
+   ],
+   "label": "29",
+   "page_section": "",
+   "text": "American opportunity credit from Form 8863, line 8"
+  },
+  {
+   "elements": [],
+   "label": "30",
+   "page_section": "",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "TotalOtherPaymentsRfdblCrAmt"
+   ],
+   "label": "31",
+   "page_section": "",
+   "text": "Amount from Schedule 3, line 15"
+  },
+  {
+   "elements": [
+    "RefundableCreditsAmt"
+   ],
+   "label": "32",
+   "page_section": "",
+   "text": "Add lines 27, 28, 29, and 31. These are your total other payments and refundable credits"
+  },
+  {
+   "elements": [
+    "TotalPaymentsAmt/@form8689Cd",
+    "TotalPaymentsAmt/@form8689Amt",
+    "TotalPaymentsAmt"
+   ],
+   "label": "33",
+   "page_section": "",
+   "text": "Add lines 25d, 26, and 32. These are your total payments"
+  },
+  {
+   "elements": [
+    "OverpaidAmt"
+   ],
+   "label": "34",
+   "page_section": "",
+   "text": "If line 33 is more than line 24, subtract line 24 from line 33. This is the amount you overpaid"
+  },
+  {
+   "elements": [
+    "Form8888Ind",
+    "RefundAmt"
+   ],
+   "label": "35a",
+   "page_section": "",
+   "text": "Amount of line 34 you want refunded to you. If Form 8888 is attached, check here"
+  },
+  {
+   "elements": [
+    "RoutingTransitNum",
+    "BankAccountTypeCd"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Routing number c Type: Checking Savings"
+  },
+  {
+   "elements": [
+    "DepositorAccountNum"
+   ],
+   "label": "d",
+   "page_section": "",
+   "text": "Account number"
+  },
+  {
+   "elements": [
+    "AppliedToEsTaxAmt"
+   ],
+   "label": "36",
+   "page_section": "",
+   "text": "Amount of line 34 you want applied to your 2025 estimated tax"
+  },
+  {
+   "elements": [
+    "OwedAmt"
+   ],
+   "label": "37",
+   "page_section": "",
+   "text": "Subtract line 33 from line 24. This is the amount you owe. For details on how to pay, go to www.irs.gov/Payments or see instructions"
+  },
+  {
+   "elements": [
+    "EsPenaltyAmt",
+    "ThirdPartyDesigneeInd",
+    "ThirdPartyDesigneeNm",
+    "ThirdPartyDesigneePhoneNum",
+    "ThirdPartyDesigneePIN",
+    "$RtnHdrData/PrimarySignaturePIN",
+    "$RtnHdrData/PrimarySignatureDt",
+    "PrimaryOccupationTxt",
+    "$RtnHdrData/IdentityProtectionPIN",
+    "$RtnHdrData/SpouseSignaturePIN",
+    "$RtnHdrData/SpouseSignatureDt",
+    "SpouseOccupationTxt",
+    "$RtnHdrData/SpouseIdentityProtectionPIN",
+    "$RtnHdrData/Filer/PhoneNum",
+    "$RtnHdrData/Filer/ForeignPhoneNum",
+    "$RtnHdrData/AdditionalFilerInformation/AtSubmissionFilingGrp/EmailAddressTxt",
+    "$RtnHdrData/PaidPreparerInformationGrp/PreparerPersonNm",
+    "$RtnHdrData/PaidPreparerInformationGrp/SelfEmployedInd",
+    "$FormData",
+    "SpecialConditionDesc",
+    "PrimaryDeathDt",
+    "SpouseDeathDt",
+    "SpecialProcessingLiteralCd",
+    "CombatZoneCd",
+    "CombatZoneCd/@combatZoneDt",
+    "SpecialProcessingCodeTxt",
+    "CommPropStateRtnInd",
+    "PowerOfAttorneySignedByInd",
+    "PowerOfAttorneyNm",
+    "SurvivingSpouseInd",
+    "PersonalRepresentativeInd",
+    "NonPaidPreparerCd",
+    "RefundProductCd",
+    "RefundProductCodeTxt",
+    "FiledPursuantToSect30191002Cd",
+    "NRALiteralCd",
+    "QualifyingHOHSSN",
+    "QualifyingPersonSSN",
+    "$RtnHdrData/Filer/PrimaryNameControlTxt",
+    "$RtnHdrData/Filer/InCareOfNm",
+    "$RtnHdrData/Filer/SpouseNameControlTxt",
+    "ExemptSpouseNm",
+    "ExemptSpouseNameControlTxt",
+    "TotalExemptPrimaryAndSpouseCnt",
+    "TotalBoxesCheckedCnt",
+    "ChldWhoLivedWithYouCnt",
+    "OtherDependentsListedCnt",
+    "TotalExemptionsCnt",
+    "DependentNameControlTxt",
+    "WagesAmt/@fringeBenefitsCd",
+    "OtherEarnedIncomeAmt/@wagesNotShownLitOnlyCd",
+    "QualifiedF8814Cd",
+    "QualifiedF8814Amt",
+    "OrdinaryF8814Cd",
+    "OrdinaryF8814Amt",
+    "IRADistributionsLiteralCd",
+    "ForeignEmployerPensionCd",
+    "TaxableForeignPensionsTotalAmt",
+    "TotalTaxablePensionsAmt/@pensionsAnnuitiesLiteralCd",
+    "SocSecBnftAmt/@socSecBnftCd",
+    "Form8814Cd",
+    "Form8814Amt",
+    "ExcldSect933PuertoRicoIncmAmt/@excldSect933PuertoRicoIncmCd",
+    "ExcldSect933PuertoRicoIncmAmt",
+    "TotalItemizedOrStandardDedAmt/@modifiedStandardDeductionInd",
+    "TaxableIncomeAmt/@capitalConstructionFundCd",
+    "TaxableIncomeAmt/@capitalConstructionFundAmt",
+    "ScheduleQCd",
+    "Form8814Ind/@childInterestAndDividendTaxAmt",
+    "OtherTaxAmtGrp/OtherTaxAmtCd",
+    "OtherTaxAmtGrp/OtherTaxTxt",
+    "OtherTaxAmtGrp/OtherTaxAmt",
+    "Form8854DeferredTaxGrp[1]/TotalTaxDeferredAmt",
+    "Form8854DeferredTaxGrp[1]/ExpatriationCd",
+    "Form8854DeferredTaxGrp[2]/TotalTaxDeferredAmt",
+    "Form8854DeferredTaxGrp[2]/ExpatriationCd",
+    "EstimatedTaxPaymentsAmt/@divorcedSpouseSSN",
+    "EstimatedTaxPaymentsAmt/@divorcedLiteralCd",
+    "EICEligibilityLiteralCd",
+    "TotalPaymentsAmt/@form8689Cd",
+    "TotalPaymentsAmt/@form8689Amt",
+    ".",
+    "DependentFirstNm",
+    "DependentLastNm",
+    "DiedLiteralCd",
+    "DependentSSN",
+    "DependentRelationshipCd",
+    "EligibleForChildTaxCreditInd",
+    "EligibleForODCInd",
+    "OtherTaxAmtCd",
+    "OtherTaxTxt",
+    "OtherTaxAmt"
+   ],
+   "label": "38",
+   "page_section": "",
+   "text": "Estimated tax penalty (see instructions)"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2025r1.zip",
+ "package_sha256": "d9d47b48d15a01beaa4194e33cdd6fba357db7bc92ee8ea93657caa805c1ede5",
+ "xsl": "mef/Stylesheets/2024/IRS1040.xsl",
+ "year": 2024
+}

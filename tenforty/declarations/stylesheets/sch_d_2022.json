@@ -1,0 +1,235 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_d",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "TotalSTCGL1099BBssRptNoAdjGrp/TotalProceedsSalesPriceAmt",
+    "TotalSTCGL1099BBssRptNoAdjGrp/TotalCostOrOtherBasisAmt",
+    "TotalSTCGL1099BBssRptNoAdjGrp/TotalGainOrLossAmt"
+   ],
+   "label": "1a",
+   "page_section": "Part I",
+   "text": "Totals for all short-term transactions reported on Form 1099-B for which basis was reported to the IRS and for which you have no adjustments (see instructions). However, if you choose to report all these transactions on Form 8949, leave this line blank and go to line 1b"
+  },
+  {
+   "elements": [
+    "TotalSTCGL1099BShowsBasisGrp/TotalProceedsSalesPriceAmt",
+    "TotalSTCGL1099BShowsBasisGrp/TotalCostOrOtherBasisAmt",
+    "TotalSTCGL1099BShowsBasisGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalSTCGL1099BShowsBasisGrp/TotalGainOrLossAmt"
+   ],
+   "label": "1b",
+   "page_section": "Part I",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box A checked"
+  },
+  {
+   "elements": [
+    "TotalSTCGL1099BNotShowBasisGrp/TotalProceedsSalesPriceAmt",
+    "TotalSTCGL1099BNotShowBasisGrp/TotalCostOrOtherBasisAmt",
+    "TotalSTCGL1099BNotShowBasisGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalSTCGL1099BNotShowBasisGrp/TotalGainOrLossAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box B checked"
+  },
+  {
+   "elements": [
+    "TotalSTCGL1099BNotReceivedGrp/TotalProceedsSalesPriceAmt",
+    "TotalSTCGL1099BNotReceivedGrp/TotalCostOrOtherBasisAmt",
+    "TotalSTCGL1099BNotReceivedGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalSTCGL1099BNotReceivedGrp/TotalGainOrLossAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box C checked"
+  },
+  {
+   "elements": [
+    "STGainOrLossFromFormsAmt"
+   ],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Short-term gain from Form 6252 and short-term gain or (loss) from Forms 4684, 6781, and 8824"
+  },
+  {
+   "elements": [
+    "NetSTGainOrLossFromSchK1Amt"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Net short-term gain or (loss) from partnerships, S corporations, estates, and trusts from Schedule(s) K-1"
+  },
+  {
+   "elements": [
+    "STCapitalLossCarryoverAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "Short-term capital loss carryover. Enter the amount, if any, from line 8 of your Capital Loss Carryover Worksheet in the instructions"
+  },
+  {
+   "elements": [
+    "NetSTCapitalGainOrLossAmt"
+   ],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Net short-term capital gain or (loss). Combine lines 1a through 6 in column (h). If you have any long-term capital gains or losses, go to Part II below. Otherwise, go to Part III on the back"
+  },
+  {
+   "elements": [
+    "TotalLTCGL1099BBssRptNoAdjGrp/TotalProceedsSalesPriceAmt",
+    "TotalLTCGL1099BBssRptNoAdjGrp/TotalCostOrOtherBasisAmt",
+    "TotalLTCGL1099BBssRptNoAdjGrp/TotalGainOrLossAmt"
+   ],
+   "label": "8a",
+   "page_section": "Part II",
+   "text": "Totals for all long-term transactions reported on Form 1099-B for which basis was reported to the IRS and for which you have no adjustments (see instructions). However, if you choose to report all these transactions on Form 8949, leave this line blank and go to line 8b"
+  },
+  {
+   "elements": [
+    "TotalLTCGL1099BShowsBasisGrp/TotalProceedsSalesPriceAmt",
+    "TotalLTCGL1099BShowsBasisGrp/TotalCostOrOtherBasisAmt",
+    "TotalLTCGL1099BShowsBasisGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalLTCGL1099BShowsBasisGrp/TotalGainOrLossAmt"
+   ],
+   "label": "8b",
+   "page_section": "Part II",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box D checked"
+  },
+  {
+   "elements": [
+    "TotalLTCGL1099BNotShowBasisGrp/TotalProceedsSalesPriceAmt",
+    "TotalLTCGL1099BNotShowBasisGrp/TotalCostOrOtherBasisAmt",
+    "TotalLTCGL1099BNotShowBasisGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalLTCGL1099BNotShowBasisGrp/TotalGainOrLossAmt"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box E checked"
+  },
+  {
+   "elements": [
+    "TotalLTCGL1099BNotReceivedGrp/TotalProceedsSalesPriceAmt",
+    "TotalLTCGL1099BNotReceivedGrp/TotalCostOrOtherBasisAmt",
+    "TotalLTCGL1099BNotReceivedGrp/TotAdjustmentsToGainOrLossAmt",
+    "TotalLTCGL1099BNotReceivedGrp/TotalGainOrLossAmt"
+   ],
+   "label": "10",
+   "page_section": "Part II",
+   "text": "Totals for all transactions reported on Form(s) 8949 with Box F checked"
+  },
+  {
+   "elements": [
+    "LTGainOrLossFromFormsAmt"
+   ],
+   "label": "11",
+   "page_section": "Part II",
+   "text": "Gain from Form 4797, Part I; long-term gain from Forms 2439 and 6252; and long-term gain or (loss) from Forms 4684, 6781, and 8824"
+  },
+  {
+   "elements": [
+    "NetLTGainOrLossFromSchK1Amt"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Net long-term gain or (loss) from partnerships, S corporations, estates, and trusts from Schedule(s) K-1"
+  },
+  {
+   "elements": [
+    "CapitalGainDistributionsAmt",
+    "Form8814LiteralCd",
+    "Form8814Amt"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Capital gain distributions. See the instructions"
+  },
+  {
+   "elements": [
+    "LTCapitalLossCarryoverAmt"
+   ],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Long-term capital loss carryover. Enter the amount, if any, from line 13 of your Capital Loss Carryover Worksheet in the instructions"
+  },
+  {
+   "elements": [
+    "NetLTCapitalGainOrLossAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Net long-term capital gain or (loss). Combine lines 8a through 14 in column (h). Then, go to Part III on the back"
+  },
+  {
+   "elements": [
+    "NetSTAndLTCapitalGainOrLossAmt"
+   ],
+   "label": "16",
+   "page_section": "Part III",
+   "text": "Combine lines 7 and 15 and enter the result"
+  },
+  {
+   "elements": [
+    "STAndLTGainInd"
+   ],
+   "label": "17",
+   "page_section": "Part III",
+   "text": "Are lines 15 and 16 both gains?"
+  },
+  {
+   "elements": [
+    "RateGainWrkshtAmt"
+   ],
+   "label": "18",
+   "page_section": "Part III",
+   "text": "If you are required to complete the 28% Rate Gain Worksheet (see instructions), enter the amount, if any, from line 7 of that worksheet"
+  },
+  {
+   "elements": [
+    "UnrcptrSect1250GainWrkshtAmt"
+   ],
+   "label": "19",
+   "page_section": "Part III",
+   "text": "If you are required to complete the Unrecaptured Section 1250 Gain Worksheet (see instructions), enter the amount, if any, from line 18 of that worksheet"
+  },
+  {
+   "elements": [
+    "ZeroOrBlankInd"
+   ],
+   "label": "20",
+   "page_section": "Part III",
+   "text": "Are lines 18 and 19 both zero or blank and are you not filing Form 4952?"
+  },
+  {
+   "elements": [
+    "AllowableLossAmt"
+   ],
+   "label": "21",
+   "page_section": "Part III",
+   "text": "If line 16 is a loss, enter here and on Form 1040, 1040-SR, or 1040-NR, line 7, the smaller of:"
+  },
+  {
+   "elements": [
+    "QualifiedDividendsInd",
+    "$FormData",
+    "Form8814LiteralCd",
+    "Form8814Amt"
+   ],
+   "label": "22",
+   "page_section": "Part III",
+   "text": "Do you have qualified dividends on Form 1040, 1040-SR, or 1040-NR, line 3a?"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS1040ScheduleD.xsl",
+ "year": 2022
+}

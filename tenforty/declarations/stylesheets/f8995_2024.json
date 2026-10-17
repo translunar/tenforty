@@ -1,0 +1,152 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "f8995",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "TotQlfyBusinessIncomeOrLossAmt"
+   ],
+   "label": "2",
+   "page_section": "",
+   "text": "Total qualified business income or (loss). Combine lines 1i through 1v, column (c)"
+  },
+  {
+   "elements": [
+    "PYQlfyBusinessNetLossCfwdAmt"
+   ],
+   "label": "3",
+   "page_section": "",
+   "text": "Qualified business net (loss) carryforward from the prior year"
+  },
+  {
+   "elements": [
+    "TotQualifiedBusinessIncomeAmt"
+   ],
+   "label": "4",
+   "page_section": "",
+   "text": "Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "QBIComponentAmt"
+   ],
+   "label": "5",
+   "page_section": "",
+   "text": "Qualified business income component. Multiply line 4 by 20% (0.20)"
+  },
+  {
+   "elements": [
+    "QlfyREITDivPTPIncomeLossAmt"
+   ],
+   "label": "6",
+   "page_section": "",
+   "text": "Qualified REIT dividends and publicly traded partnership (PTP) income or (loss) (see instructions)"
+  },
+  {
+   "elements": [
+    "PYQlfyREITDivPTPLossCfwdAmt"
+   ],
+   "label": "7",
+   "page_section": "",
+   "text": "Qualified REIT dividends and qualified PTP (loss) carryforward from the prior year"
+  },
+  {
+   "elements": [
+    "TotQlfyREITDivPTPIncomeAmt"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "REITPTPComponentAmt"
+   ],
+   "label": "9",
+   "page_section": "",
+   "text": "REIT and PTP component. Multiply line 8 by 20% (0.20)"
+  },
+  {
+   "elements": [
+    "QBIDedBfrIncomeLimitationAmt"
+   ],
+   "label": "10",
+   "page_section": "",
+   "text": "Qualified business income deduction before the income limitation. Add lines 5 and 9"
+  },
+  {
+   "elements": [
+    "TaxableIncomeBeforeQBIDedAmt"
+   ],
+   "label": "11",
+   "page_section": "",
+   "text": "Taxable income before qualified business income deduction"
+  },
+  {
+   "elements": [
+    "NetCapitalGainAmt"
+   ],
+   "label": "12",
+   "page_section": "",
+   "text": "Enter your net capital gain, if any, increased by any qualified dividends (see instructions)"
+  },
+  {
+   "elements": [
+    "AdjustedTaxableIncomeAmt"
+   ],
+   "label": "13",
+   "page_section": "",
+   "text": "Subtract line 12 from line 11. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "IncomeLimitationAmt"
+   ],
+   "label": "14",
+   "page_section": "",
+   "text": "Income limitation. Multiply line 13 by 20% (0.20)"
+  },
+  {
+   "elements": [
+    "QualifiedBusinessIncomeDedAmt"
+   ],
+   "label": "15",
+   "page_section": "",
+   "text": "Qualified business income deduction. Enter the lesser of line 10 or line 14. Also enter this amount on the applicable line of your return"
+  },
+  {
+   "elements": [
+    "TotQlfyBusLossCarryforwardAmt"
+   ],
+   "label": "16",
+   "page_section": "",
+   "text": "Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than zero, enter -0-"
+  },
+  {
+   "elements": [
+    "TotQlfyREITDivPTPLossCfwdAmt",
+    "$FormData",
+    "TradeOrBusinessName/BusinessNameLine1Txt",
+    "TradeOrBusinessName/BusinessNameLine2Txt",
+    "PersonNm",
+    "SSN",
+    "MissingEINReasonCd",
+    "EIN",
+    "QlfyBusinessIncomeOrLossAmt"
+   ],
+   "label": "17",
+   "page_section": "",
+   "text": "Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and 7. If greater than zero, enter -0-"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2025r1.zip",
+ "package_sha256": "d9d47b48d15a01beaa4194e33cdd6fba357db7bc92ee8ea93657caa805c1ede5",
+ "xsl": "mef/Stylesheets/2024/IRS8995.xsl",
+ "year": 2024
+}

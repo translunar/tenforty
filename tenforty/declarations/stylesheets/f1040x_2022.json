@@ -1,0 +1,343 @@
+{
+ "desc_classes": [
+  "sty1040XDesc",
+  "sty1040XLongDesc"
+ ],
+ "form": "f1040x",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "NetOperatingLossCarrybackInd",
+    "OriginalRptOrAsPrevAdjGrp/AdjustedGrossIncomeAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/AdjustedGrossIncomeAmt",
+    "CorrectNumberOrAmountGrp/AdjustedGrossIncomeAmt"
+   ],
+   "label": "1",
+   "page_section": "",
+   "text": "Adjusted gross income. If a net operating loss (NOL) carryback is included, check here"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/TotalItemizedOrStandardDedAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TotalItemizedOrStandardDedAmt",
+    "CorrectNumberOrAmountGrp/TotalItemizedOrStandardDedAmt"
+   ],
+   "label": "2",
+   "page_section": "",
+   "text": "Itemized deductions or standard deduction"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/AGILessDeductionsAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/AGILessDeductionsAmt",
+    "CorrectNumberOrAmountGrp/AGILessDeductionsAmt"
+   ],
+   "label": "3",
+   "page_section": "",
+   "text": "Subtract line 2 from line 1"
+  },
+  {
+   "elements": [],
+   "label": "4a",
+   "page_section": "",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/QualifiedBusinessIncomeDedAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/QualifiedBusinessIncomeDedAmt",
+    "CorrectNumberOrAmountGrp/QualifiedBusinessIncomeDedAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Qualified business income deduction"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/TaxableIncomeAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TaxableIncomeAmt",
+    "CorrectNumberOrAmountGrp/TaxableIncomeAmt"
+   ],
+   "label": "5",
+   "page_section": "",
+   "text": "Taxable income. Subtract line 4b from line 3. If the result is zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    ".",
+    "OriginalRptOrAsPrevAdjGrp/TaxAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TaxAmt",
+    "CorrectNumberOrAmountGrp/TaxAmt"
+   ],
+   "label": "6",
+   "page_section": "",
+   "text": "Tax. Enter method(s) used to figure tax (see instructions):"
+  },
+  {
+   "elements": [
+    "GeneralBusinessCrCarrybackInd",
+    "OriginalRptOrAsPrevAdjGrp/TotalNonrefundableCreditsAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TotalNonrefundableCreditsAmt",
+    "CorrectNumberOrAmountGrp/TotalNonrefundableCreditsAmt"
+   ],
+   "label": "7",
+   "page_section": "",
+   "text": "Nonrefundable credits. If a general business credit carryback is included, check here"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/TaxLessCreditsAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TaxLessCreditsAmt",
+    "CorrectNumberOrAmountGrp/TaxLessCreditsAmt"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "Subtract line 7 from line 6. If the result is zero or less, enter -0-"
+  },
+  {
+   "elements": [],
+   "label": "9",
+   "page_section": "",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/OtherTaxesAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/OtherTaxesAmt",
+    "CorrectNumberOrAmountGrp/OtherTaxesAmt"
+   ],
+   "label": "10",
+   "page_section": "",
+   "text": "Other taxes"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/TotalTaxAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/TotalTaxAmt",
+    "CorrectNumberOrAmountGrp/TotalTaxAmt"
+   ],
+   "label": "11",
+   "page_section": "",
+   "text": "Total tax. Add lines 8 and 10"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/FedIncmExSocSecRRTAWthldTxAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/FedIncmExSocSecRRTAWthldTxAmt",
+    "CorrectNumberOrAmountGrp/FedIncmExSocSecRRTAWthldTxAmt"
+   ],
+   "label": "12",
+   "page_section": "",
+   "text": "Federal income tax withheld and excess social security and tier 1 RRTA tax withheld ( If changing, see instructions)"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/EstimatedTaxPaymentsAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/EstimatedTaxPaymentsAmt",
+    "CorrectNumberOrAmountGrp/EstimatedTaxPaymentsAmt"
+   ],
+   "label": "13",
+   "page_section": "",
+   "text": "Estimated tax payments, including amount applied from prior year's return"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/EarnedIncomeCreditAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/EarnedIncomeCreditAmt",
+    "CorrectNumberOrAmountGrp/EarnedIncomeCreditAmt"
+   ],
+   "label": "14",
+   "page_section": "",
+   "text": "Earned Income Credit (EIC)"
+  },
+  {
+   "elements": [
+    "Schedule8812Ind",
+    "Form2439Ind",
+    "Form4136Ind",
+    "Form8863Ind",
+    "Form8885Ind",
+    "Form8962Ind",
+    "OtherInd",
+    "OtherInd/@otherRefundableCrTxt",
+    "OriginalRptOrAsPrevAdjGrp/RefundableCreditsAmt",
+    "NetChangeOrigRptOrPrevAdjGrp/RefundableCreditsAmt",
+    "CorrectNumberOrAmountGrp/RefundableCreditsAmt"
+   ],
+   "label": "15",
+   "page_section": "",
+   "text": "Refundable credits from: Schedule 8812 Form(s) 2439 4136 8863 8885 8962 or other (specify):"
+  },
+  {
+   "elements": [
+    "TotalTxPdWithReturnOrExtnsAmt"
+   ],
+   "label": "16",
+   "page_section": "",
+   "text": "Total amount paid with request for extension of time to file, tax paid with original return, and additional tax paid after return was filed"
+  },
+  {
+   "elements": [
+    "TotalPaymentsAmt/@uSVirginIslandCd",
+    "TotalPaymentsAmt/@uSVirginIslandAmt",
+    "TotalPaymentsAmt"
+   ],
+   "label": "17",
+   "page_section": "",
+   "text": "Total payments. Add lines 12 through 15, column C, and line 16"
+  },
+  {
+   "elements": [
+    "OverpaidAmt"
+   ],
+   "label": "18",
+   "page_section": "",
+   "text": "Overpayment, if any, as shown on original return or as previously adjusted by the IRS"
+  },
+  {
+   "elements": [
+    "TotPaymentsLessOverpaymentAmt"
+   ],
+   "label": "19",
+   "page_section": "",
+   "text": "Subtract line 18 from line 17. (If less than zero, see instructions.)"
+  },
+  {
+   "elements": [
+    "OwedAmt"
+   ],
+   "label": "20",
+   "page_section": "",
+   "text": "Amount you owe. If line 11, column C, is more than line 19, enter the difference"
+  },
+  {
+   "elements": [
+    "NetOverpaymentAmt"
+   ],
+   "label": "21",
+   "page_section": "",
+   "text": "If line 11, column C, is less than line 19, enter the difference. This is the amount overpaid on this return"
+  },
+  {
+   "elements": [
+    "RefundAmt"
+   ],
+   "label": "22",
+   "page_section": "",
+   "text": "Amount of line 21 you want refunded to you"
+  },
+  {
+   "elements": [
+    "ElectOvpmtAppliedToEsTaxYr",
+    "AppliedToEsTaxAmt"
+   ],
+   "label": "23",
+   "page_section": "",
+   "text": "Amount of line 21 you want applied to your (enter year): estimated tax"
+  },
+  {
+   "elements": [],
+   "label": "24",
+   "page_section": "Part I",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/ChldWhoLivedWithYouCnt",
+    "NetChangeOrigRptOrPrevAdjGrp/ChldWhoLivedWithYouCnt",
+    "CorrectNumberOrAmountGrp/ChldWhoLivedWithYouCnt"
+   ],
+   "label": "25",
+   "page_section": "Part I",
+   "text": "Your dependent children who lived with you"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/ChldNotLivingWithYouCnt",
+    "NetChangeOrigRptOrPrevAdjGrp/ChldNotLivingWithYouCnt",
+    "CorrectNumberOrAmountGrp/ChldNotLivingWithYouCnt"
+   ],
+   "label": "26",
+   "page_section": "Part I",
+   "text": "Your dependent children who didn't live with you due to divorce or separation"
+  },
+  {
+   "elements": [
+    "OriginalRptOrAsPrevAdjGrp/OtherDependentsListedCnt",
+    "NetChangeOrigRptOrPrevAdjGrp/OtherDependentsListedCnt",
+    "CorrectNumberOrAmountGrp/OtherDependentsListedCnt"
+   ],
+   "label": "27",
+   "page_section": "Part I",
+   "text": "Other dependents"
+  },
+  {
+   "elements": [],
+   "label": "28",
+   "page_section": "Part I",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [],
+   "label": "29",
+   "page_section": "Part I",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "DependentDetail",
+    "MoreDependentsInd",
+    "DependentFirstNm",
+    "DependentLastNm",
+    "DependentNameControlTxt",
+    "DiedLiteralCd",
+    "DependentSSN",
+    "DependentRelationshipCd",
+    "EligibleForChildTaxCreditInd",
+    "EligibleForODCInd",
+    "ChangeInElectToContriToPECFInd",
+    "ChangeInSpouseContriToPECFInd",
+    "ReasonForFilingAmdReturnTxt",
+    "$RtnHdrData/PrimarySignaturePIN",
+    "$RtnHdrData/PrimarySignatureDt",
+    "PrimaryOccupationTxt",
+    "$RtnHdrData/ParentGrdnLegalResponsibleGrp/MinorChildSignedByCd",
+    "$RtnHdrData/ParentGrdnLegalResponsibleGrp/PersonNm",
+    "$RtnHdrData/SpouseSignaturePIN",
+    "$RtnHdrData/SpouseSignatureDt",
+    "SpouseOccupationTxt",
+    "$RtnHdrData/PaidPreparerInformationGrp/PreparerPersonNm",
+    "$RtnHdrData/PaidPreparerInformationGrp/SelfEmployedInd",
+    "$FormData",
+    ".",
+    "PrimaryDeathDt",
+    "SpouseDeathDt",
+    "PowerOfAttorneySignedByInd",
+    "PowerOfAttorneyNm",
+    "SurvivingSpouseInd",
+    "PersonalRepresentativeInd",
+    "NonPaidPreparerCd",
+    "TASCaseTypeCd",
+    "$RtnHdrData/Filer/PrimaryNameControlTxt",
+    "$RtnHdrData/Filer/InCareOfNm",
+    "$RtnHdrData/Filer/SpouseNameControlTxt",
+    "QualifyingHOHSSN",
+    "QualifyingPersonSSN",
+    "OtherInd/@otherRefundableCrTxt",
+    "TotalPaymentsAmt/@uSVirginIslandCd",
+    "TotalPaymentsAmt/@uSVirginIslandAmt"
+   ],
+   "label": "30",
+   "page_section": "Part I",
+   "text": "List ALL dependents (children and others) claimed on this amended return."
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS1040X.xsl",
+ "year": 2022
+}
