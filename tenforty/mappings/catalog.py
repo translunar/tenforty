@@ -19,6 +19,7 @@ from tenforty.mappings.pdf_f8582 import PdfF8582
 from tenforty.mappings.pdf_f8949 import PdfF8949
 from tenforty.mappings.pdf_f8962 import PdfF8962
 from tenforty.mappings.pdf_f8995 import PdfF8995
+from tenforty.mappings.pdf_ftb3532 import PdfFtb3532
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_2 import PdfSch2
 from tenforty.mappings.pdf_sch_a import PdfSchA
@@ -61,6 +62,7 @@ CATALOG: dict[tuple[str, str], FormEntry] = {
     ("california", "f540"): FormEntry(PdfF540, "f540"),
     ("california", "sch_ca"): FormEntry(PdfSchCa, "sch_ca"),
     ("california", "sch_d_540"): FormEntry(PdfSchD540, "sch_d_540"),
+    ("california", "ftb3532"): FormEntry(PdfFtb3532, "ftb3532"),
 }
 
 # Grid cells known to be incomplete, exempted from the gates so the suite

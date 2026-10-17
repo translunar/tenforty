@@ -1,0 +1,131 @@
+Source: https://www.ftb.ca.gov/forms/2021/2021-3532-instructions.html (retrieved 2026-10-16; html sha256 f273843ba340190ebb9f469006d600b09461e65541cc76886a7ef1da8e6c0243). Page chrome stripped; body text only.
+
+2021 Instructions for Form FTB 3532 Head of Household Filing Status Schedule
+
+References in these instructions are to the Internal Revenue Code (IRC) as of January 1, 2015, and to the California Revenue and Taxation Code (R&TC).
+
+General Information
+
+In general, for taxable years beginning on or after January 1, 2015, California law conforms to the Internal Revenue Code (IRC) as of January 1, 2015. However, there are continuing differences between California and federal law. When California conforms to federal tax law changes, we do not always adopt all of the changes made at the federal level. For more information, go to ftb.ca.gov and search for conformity. Additional information can be found in FTB Pub. 1001, Supplemental Guidelines to California Adjustments, the instructions for California Schedule CA (540), California Adjustments - Residents, or Schedule CA (540NR), California Adjustments - Nonresidents or Part-Year Residents, and the Business Entity tax booklets.
+
+The instructions provided with California tax forms are a summary of California tax law and are only intended to aid taxpayers in preparing their state income tax returns. We include information that is most useful to the greatest number of taxpayers in the limited space available. It is not possible to include all requirements of the California Revenue and Taxation Code (R&TC) in the instructions. Taxpayers should not consider the instructions as authoritative law.
+
+California requires taxpayers who use head of household (HOH) filing status to file form FTB 3532, Head of Household Filing Status Schedule, to report how the HOH filing status was determined.
+
+Attach the completed form FTB 3532, to your Form 540, California Resident Income Tax Return, Form 540NR, California Nonresident or Part-Year Resident Income Tax Return, or Form 540 2EZ, California Resident Income Tax Return, if you claim head of household filing status.
+
+Beginning in tax year 2018, if you do not attach a completed form FTB 3532 to your tax return, we will deny your Head of Household filing status. For more information about the Head of Household filing requirements, go to ftb.ca.gov and search for hoh.
+
+Registered Domestic Partners (RDPs) - For purposes of California income tax, references to a spouse, husband, or wife also refer to a California RDP, unless otherwise specified. When we use the initials RDP they refer to both a California registered domestic “partner” and a California registered domestic “partnership,” as applicable. For more information on RDPs, get FTB Pub. 737, Tax Information for Registered Domestic Partners.
+
+A. Purpose
+
+Use form FTB 3532 to report how the HOH filing status was determined.
+
+B. Qualifications
+
+You may qualify for HOH filing status if all of the following apply.
+
+You were unmarried and not an RDP, or met the requirements to be considered unmarried or considered not in a registered domestic partnership on the last day of the year.
+
+You paid more than one-half the costs of keeping up your home for the year.
+
+Your home was the main home for you and a qualifying person who lived with you for more than half the year.
+
+The qualifying person was related to you and met the requirements to be a qualifying child or qualifying relative. (For a qualifying relative see the instructions for Part III, line 4, Gross Income.)
+
+You were entitled to a Dependent Exemption Credit for your qualifying person. However, you do not have to be entitled to a Dependent Exemption Credit for your qualifying child if you were unmarried and not an RDP, and your qualifying child was also unmarried and not an RDP.
+
+You were not a nonresident alien at any time during the year.
+
+You paid more than half the cost of a qualifying person’s total support.
+
+Your qualifying person is a citizen or national of the United States, or a resident of the U.S., Canada, or Mexico.
+
+If you, your spouse/RDP, or your qualifying person who lived with you was absent from your home during the year, see the definition for temporary absence in FTB Pub. 1540, Tax Information for Head of Household Filing Status. If your qualifying person is your father or mother, see the definition for Parent/Stepparent (Father or Mother) in FTB Pub. 1540.
+
+Specific Line Instructions
+
+The law allowing HOH filing status has very specific requirements that the taxpayer must meet. Get FTB Pub. 1540 for more information.
+
+Part I – Marital Status
+
+Line 1
+
+To qualify for HOH filing status, you must be either unmarried or considered unmarried on the last day of the year. You are considered unmarried on the last day of the year if you meet all of the following tests.
+
+Considered Unmarried or Considered Not in a Registered Domestic Partnership
+
+If you were married or an RDP as of the last day of the tax year or if your spouse/RDP died during the tax year, you may be considered unmarried or considered not in a registered domestic partnership for head of household purposes if you meet all of the following requirements:
+
+Your spouse/RDP did not live in your home at any time during the last six months of the year (see Temporary Absence in FTB Pub. 1540).
+
+Your qualifying person is your birth child, stepchild, adopted child, or eligible foster child.
+
+You paid more than one-half the cost of keeping up your home for the year.
+
+Your home was the main home for you and your birth child, stepchild, adopted child, or eligible foster child for more than half the year.
+
+You must be entitled to claim a Dependent Exemption Credit for your child; that is, your child must meet the requirements to be either a qualifying child or qualifying relative and meet the joint return and citizenship tests. You cannot claim a Dependent Exemption Credit for your child if you could be claimed as a dependent by another taxpayer. You can still meet this requirement if the only reason you cannot claim a Dependent Exemption Credit for your child is because either of the following applies, as provided in a decree of divorce, legal separation, or termination of registered domestic partnership, or a written separation agreement that applies to the tax year at issue:
+
+The noncustodial parent is entitled to the Dependent Exemption Credit for the child.
+
+The custodial parent signed a written statement that he or she will not claim the Dependent Exemption Credit for the child. (The custodial parent may sign federal Form 8332, Release/Revocation of Release of Claim to Exemption for Child by Custodial Parent, or a similar statement. The custodial parent can revoke their federal Form 8332 or similar statement by providing written notice to the other parent.) The noncustodial parent must attach a copy of the statement to his or her income tax return.
+
+If either of the above provisions was contained in a pre-1985 decree or agreement, the noncustodial parent must have provided more than $600 in support for the child during the year.
+
+Part II – Qualifying Person
+
+Line 2
+
+For the purposes of HOH filing status, you must have a qualifying person who is related to you to qualify for head of household filing status. Your qualifying person must meet the requirements to be either a qualifying child or qualifying relative. You must also pay more than half the cost of keeping up your home in which you and the qualifying child or qualifying relative lived for more than half the year. You may not claim yourself, or your spouse/RDP as your qualifying person.
+
+Part III – Qualifying Person Information
+
+Line 3
+
+Enter the qualifying person’s name.
+
+Enter the qualifying person’s Social Security Number (SSN). Verify that the name and SSN match the qualifying person’s social security card to avoid disallowance of your HOH filing status. If the person was born in, and later died in, 2021, and does not have a SSN, enter “Died” and attach a copy of the person’s birth and death certificates.
+
+Enter the qualifying person’s date of birth (mm/dd/yyyy) in the space provided. Incomplete information could result in a disallowance of your HOH filing status.
+
+Your qualifying child must be under 19 years of age or a full-time student under 24 years of age. The person also meets the age test if he or she is permanently and totally disabled at any time during the calendar year. (If the person does not meet the age test to be a qualifying child, he or she may meet the requirements to be a qualifying relative).
+
+Line 4
+
+Gross Income
+
+Your qualifying relative’s gross income must be less than $4,300. Generally, gross income for head of household purposes only includes income that is taxable for federal income tax purposes. It does not include nontaxable income such as welfare benefits or the nontaxable portion of social security benefits.
+
+If your qualifying relative was married or an RDP, you must consider the qualifying relative’s community interest in the spouse's/RDP’s income in applying the gross income test. For the federal allowable exemption amount, see the federal instruction booklet for that particular tax year. For more information, go to irs.gov and search for 17 to find federal Publication 17, Your Federal Income Tax For Individuals.
+
+Line 5
+
+More Than Half the Year
+
+Just because someone lived with you for six months does not mean that the person lived with you for more than half the year. A year has 365 days, and more than half the year is 183 days. (A leap year has 366 days, and more than half a leap year is 184 days.)
+
+To determine how many days your home was your qualifying person’s main home follow these guidelines:
+
+If you were not married and not an RDP at any time during the year, count all of the days that your qualifying person lived with you in your home.
+
+If you were married or an RDP at any time during the year and received a final decree of divorce, legal separation or your registered domestic partnership was legally terminated by the last day of the year, add together:
+
+Half the number of days that you, your spouse/RDP, and your qualifying person lived together in your home.
+
+All of the days that you and your qualifying person lived together in your home without your spouse/RDP (ex-spouse/ex-RDP).
+
+If you were married or an RDP as of the last day of the year, and you did not live with your spouse/RDP at any time during the last six months of the year, add together:
+
+Half the number of days that you, your spouse/RDP, and your qualifying person lived together in your home.
+
+All of the days that you and your qualifying person lived together in your home without your spouse/RDP.
+
+If you were married or an RDP as of the last day of the year, and you lived with your spouse/RDP at any time during the last six months of the year, you cannot qualify for the head of household filing status.
+
+When calculating the above, you may include days when your qualifying person was temporarily absent from your home. Temporary absences include vacations, illness, business, school, military service, and incarceration. In the event of a birth or death of your qualifying person during the year, enter 365 days. Note: A year is 365 days, a leap year is 366 days.
+
+Franchise Tax Board Privacy Notice on Collection
+
+Our privacy notice can be found in annual tax booklets or online. Go to ftb.ca.gov/privacy to learn about our privacy policy statement, or go to ftb.ca.gov/forms and search for 1131 to locate FTB 1131 EN-SP, Franchise Tax Board Privacy Notice on Collection. To request this notice by mail, call 800-338-0505 and enter form code 948 when instructed.
