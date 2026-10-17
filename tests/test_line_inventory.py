@@ -11,6 +11,7 @@ label) keying, the provenance hash, and the independence rule.
 """
 import ast
 import json
+import re
 import unittest
 import unittest.mock
 from collections import Counter, defaultdict
@@ -562,6 +563,234 @@ class NoMappingImportTests(unittest.TestCase):
                 "tenforty.mappings", "tenforty.forms",
                 "tenforty.orchestrator"))]
         self.assertEqual(forbidden, [])
+
+
+
+_YEARS = (2021, 2022, 2023, 2024, 2025)
+_H = 11.0
+
+
+def _word(x, y, text, w=None):
+    return (x, y, x + (w if w is not None else 5.0 * max(len(text), 1)),
+            y + _H, text)
+
+
+def _extract_synthetic(words):
+    with unittest.mock.patch.object(inventory, "_page_words",
+                                    lambda pdf: [words]):
+        return {l.label: l for l in extract_federal(Path("synthetic"))}
+
+
+class ColumnAwareCompositionTests(unittest.TestCase):
+    """A bare sub-letter composes with the last line number of ITS OWN label
+    column, never with the last number in reading order, which may belong
+    to the other column (inventory-fixes lane, species S1). Schedule C Part
+    II is the real case: two columns of lines 8-17 and 18-27, whose
+    sub-letters formerly took the other column's number (10a for 20a, 26a
+    for 16a ...), leaving the real ids as empty box-label twins."""
+
+    def test_synthetic_two_column_page(self):
+        # Left column 1, 2 at x 40; right column 5, 6 at x 300. Line 6 sorts
+        # after line 2 in reading order, so a reading-order parent would
+        # make the left sub-letter "6a".
+        lines = _extract_synthetic([
+            _word(40, 100, "1"), _word(52, 100, "One"),
+            _word(40, 120, "2"), _word(52, 120, "Two"),
+            _word(300, 100, "5"), _word(312, 100, "Five"),
+            _word(300, 125, "6"), _word(312, 125, "Six"),
+            _word(50, 140, "a", 5), _word(62, 140, "LeftSub"),
+            _word(310, 160, "a", 5), _word(322, 160, "RightSub")])
+        self.assertEqual(sorted(lines), ["1", "2", "2a", "5", "6", "6a"])
+        self.assertEqual(lines["2a"].text, "LeftSub")
+        self.assertEqual(lines["6a"].text, "RightSub")
+
+    _SUB_LINES = {"16a": "Mortgage (paid to banks, etc.)", "16b": "Other",
+                  "20a": "Vehicles, machinery, and equipment",
+                  "20b": "Other business property",
+                  "24a": "Travel", "24b": "Deductible meals"}
+    _BOGUS = ("10a", "11b", "14b", "17b", "25a", "26a", "26b")
+
+    def test_sch_c_part_ii_sub_lines_carry_their_own_text_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("sch_c", year).lines
+                     if l.page == 1 and l.section == "Part II"}
+            for label, printed in self._SUB_LINES.items():
+                with self.subTest(year=year, line=label):
+                    self.assertTrue(lines[label].text.startswith(printed),
+                                    lines[label].text)
+            for label in self._BOGUS:
+                with self.subTest(year=year, bogus=label):
+                    self.assertNotIn(label, lines)
+
+    def test_sch_c_line_27b_every_year(self):
+        # 27b is Form 7205's deduction in 2023-2024 and "Other expenses"
+        # from 2025 (27a and 27b swapped); 2021-2022 print 27b "Reserved".
+        expected = {2023: "Energy efficient commercial bldgs",
+                    2024: "Energy efficient commercial bldgs",
+                    2025: "Other expenses (from line 48)"}
+        for year, printed in expected.items():
+            with self.subTest(year=year):
+                (line,) = [l for l in load("sch_c", year).lines
+                           if l.page == 1 and l.label == "27b"]
+                self.assertTrue(line.text.startswith(printed), line.text)
+                self.assertGreater(line.bbox[0], 300)
+
+    def test_f1120s_schedule_m1_line_6a_is_the_right_columns(self):
+        # The left column's 3a / 3b used to pose as "6a" / "6b"; the real
+        # 6a (right column) now holds its key. The left column itself is
+        # still absent (registered debt: Schedule M-1's left column).
+        for year in _YEARS:
+            page5 = [l for l in load("f1120s", year).lines if l.page == 5]
+            with self.subTest(year=year):
+                (line_6a,) = [l for l in page5 if l.label == "6a"]
+                self.assertGreater(line_6a.bbox[0], 300)
+                self.assertNotIn("6b", [l.label for l in page5])
+
+
+class MidRowSubLineTests(unittest.TestCase):
+    """A sub-line printed later on its parent's row ("44a Business b
+    Commuting c Other"; Form 1040 "2a ... 2a b Taxable interest 2b") is its
+    own line, and the earlier line's text ends where it starts (species
+    S2)."""
+
+    def test_synthetic_row_of_three_sub_lines(self):
+        lines = _extract_synthetic([
+            _word(40, 100, "3"), _word(52, 100, "Three"),
+            _word(40, 120, "4"), _word(50, 120, "a", 5),
+            _word(62, 120, "First"), _word(200, 120, "b", 5),
+            _word(212, 120, "Second"), _word(400, 120, "c", 5),
+            _word(412, 120, "Third")])
+        self.assertEqual(lines["4a"].text, "First")
+        self.assertEqual(lines["4b"].text, "Second")
+        self.assertEqual(lines["4c"].text, "Third")
+
+    def test_synthetic_lone_alternative_is_not_a_line(self):
+        # A letterless label's row opens sub-lines only when it prints at
+        # least two ("a ... b ..."): one "a" is an alternative in the text.
+        lines = _extract_synthetic([
+            _word(40, 100, "3"), _word(52, 100, "Three"),
+            _word(40, 120, "4"), _word(52, 120, "Smaller"),
+            _word(200, 120, "a", 5), _word(212, 120, "Loss")])
+        self.assertEqual(sorted(lines), ["3", "4"])
+        self.assertEqual(lines["4"].text, "Smaller a Loss")
+
+    def test_sch_c_line_44_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("sch_c", year).lines
+                     if l.label.startswith("44")}
+            with self.subTest(year=year):
+                self.assertEqual(lines["44a"].text, "Business")
+                self.assertEqual(lines["44b"].text,
+                                 "Commuting (see instructions)")
+                self.assertEqual(lines["44c"].text, "Other")
+
+    def test_1040_lines_2b_to_6b_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("1040", year).lines
+                     if l.page == 1}
+            for label, first in (("2b", "Taxable"), ("3b", "Ordinary"),
+                                 ("4b", "Taxable"), ("5b", "Taxable"),
+                                 ("6b", "Taxable")):
+                with self.subTest(year=year, line=label):
+                    self.assertTrue(lines[label].text.startswith(first),
+                                    lines[label].text)
+                    self.assertLess(lines[label].bbox[0], 400)
+
+    def test_f8962_line_8b_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("f8962", year).lines}
+            with self.subTest(year=year):
+                self.assertTrue(
+                    lines["8b"].text.startswith("Monthly contribution"))
+                self.assertNotIn("8b", lines["8a"].text)
+
+    def test_sch_d_540_line_12_keeps_its_own_first_sub_letter(self):
+        # Regression pin: "12 a If line 10 is more than line 11 ..." -- the
+        # row's own first sub-letter, right after the label, is not a
+        # mid-row line, so line 12 keeps its text.
+        for year in (2021, 2022, 2023, 2024):
+            (line_12,) = [l for l in load("sch_d_540", year).lines
+                          if l.page == 2 and l.label == "12"]
+            with self.subTest(year=year):
+                self.assertTrue(line_12.text.startswith("a If line 10"),
+                                line_12.text)
+
+    def test_sch_d_540_line_9_alternatives_are_not_lines(self):
+        # Regression pin: "9 If line 8 is a loss, enter the smaller of: a
+        # the loss on line 8 ... b $3,000" lists alternatives; no 9a.
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertNotIn("9a", [l.label for l in
+                                        load("sch_d_540", year).lines])
+
+
+class ItemLetterTests(unittest.TestCase):
+    """Uppercase item letters printed as labels (Schedule C's header items
+    A-J, Schedule SE's line A) are lines (species S3): a lone capital,
+    left-clear, followed by a capitalised word, in a letter column that
+    ascends without repeats or at the left margin."""
+
+    def test_synthetic_letter_column(self):
+        lines = _extract_synthetic([
+            _word(36, 80, "A"), _word(60, 80, "Principal"),
+            _word(36, 100, "B"), _word(60, 100, "Business"),
+            _word(40, 140, "1"), _word(52, 140, "One"),
+            _word(40, 160, "2"), _word(52, 160, "Two")])
+        self.assertEqual(lines["A"].text, "Principal")
+        self.assertEqual(lines["B"].text, "Business")
+
+    def test_synthetic_sentence_start_is_not_a_label(self):
+        # "A late filing penalty ..." begins a sentence: the next word is
+        # lowercase, so no label.
+        lines = _extract_synthetic([
+            _word(36, 80, "A"), _word(48, 80, "late"),
+            _word(36, 100, "B"), _word(48, 100, "penalty"),
+            _word(40, 140, "1"), _word(52, 140, "One"),
+            _word(40, 160, "2"), _word(52, 160, "Two")])
+        self.assertEqual(sorted(lines), ["1", "2"])
+
+    _SCH_C = {"A": "Principal business or profession",
+              "B": "Enter code from instructions",
+              "C": "Business name", "D": "Employer ID number",
+              "E": "Business address", "F": "Accounting method",
+              "G": "Did you “materially participate”",
+              "H": "If you started or acquired this business",
+              "I": "Did you make any payments", "J": "If “Yes,” did you"}
+
+    def test_sch_c_header_items_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("sch_c", year).lines
+                     if l.page == 1}
+            for label, printed in self._SCH_C.items():
+                with self.subTest(year=year, item=label):
+                    self.assertTrue(lines[label].text.startswith(printed),
+                                    lines[label].text)
+
+    def test_sch_se_line_a_every_year(self):
+        for year in _YEARS:
+            (line,) = [l for l in load("sch_se", year).lines
+                       if l.label == "A"]
+            with self.subTest(year=year):
+                self.assertEqual(line.section, "Part I")
+                self.assertTrue(line.text.startswith(
+                    "If you are a minister"), line.text)
+
+    def test_rejected_shapes_stay_rejected(self):
+        # The simulation's false positives, pinned: Form 4868's and Form
+        # 3115's sentence-start "A", Schedule CA's column headers A/B/C,
+        # and Form 1120-S's "S election".
+        cases = [("4868", y, None) for y in _YEARS]
+        cases += [("f3115", "rev-2022-12", None)]
+        cases += [("sch_ca", y, None) for y in _YEARS]
+        for form, key, _ in cases:
+            with self.subTest(form=form, key=key):
+                self.assertEqual(
+                    [l.label for l in load(form, key).lines
+                     if re.fullmatch(r"[A-Z]", l.label)], [])
+        for year in _YEARS:
+            with self.subTest(form="f1120s", key=year):
+                self.assertNotIn("S", [l.label for l in
+                                       load("f1120s", year).lines])
 
 
 if __name__ == "__main__":
