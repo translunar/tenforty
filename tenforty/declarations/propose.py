@@ -10,7 +10,8 @@ Machines propose; agents confirm. Three passes over one form-year:
    * federal: the IRS stylesheet prints line ``n`` with text matching the
      inventory's (token-set Jaccard >= 0.6), and the key's own words name
      that line (containment >= 0.5, the seam guard);
-   * California: the inventory's tooltip-derived line ``n`` exists and the
+   * California: the inventory line ``n`` was read from the FTB tooltip
+     (``source == "tooltip"``, never the printed-page fallback) and the
      key's words name it.
    Anything else becomes an exception for agent review: ``seam`` (the key's
    number names a line its words don't describe, e.g. f8995's
@@ -258,6 +259,11 @@ def propose(form: str, key: int | str, output_keys: Sequence[str]
             auto.append(Binding(
                 target.section, target.label, k,
                 f"naming+stylesheet:{_evidence_element(hit, kw)}"))
+        elif target.source != "tooltip":
+            # The FTB's tooltip must name the line itself; a line recovered
+            # from the printed page is for an agent to confirm.
+            exceptions.append(Exception_(
+                target.section, target.label, "disagree", (k,)))
         else:
             auto.append(Binding(target.section, target.label, k,
                                 "naming+tooltip"))

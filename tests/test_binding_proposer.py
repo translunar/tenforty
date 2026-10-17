@@ -152,6 +152,49 @@ class StylesheetGateTests(unittest.TestCase):
                          ["disagree"])
 
 
+class CaliforniaProvenanceTests(unittest.TestCase):
+    """California "naming+tooltip" needs a line the FTB tooltip itself
+    names. A line recovered from the printed page (its widgets' tooltips
+    name no line) can never auto-confirm, label match or not.
+
+    Control key names: no real California compute-key list exists before
+    the pilot, so these two names are SYNTHETIC test controls shaped like
+    the naming convention, never proposed bindings."""
+
+    TOOLTIP_KEY = "f540_line_8_blind"      # f540 2025 line 8, from its /TU
+    PRINTED_KEY = "f540_line_1_single"     # f540 2025 line 1, printed page
+
+    def _propose(self):
+        with unittest.mock.patch.dict(propose.KEY_PREFIX, {"f540": "f540"}):
+            return propose.propose(
+                "f540", 2025, (self.TOOLTIP_KEY, self.PRINTED_KEY))
+
+    def test_line_sources_in_the_inventory(self):
+        # Fresh extraction (the extractor's behaviour), then the committed
+        # inventory that propose() reads.
+        fresh = {l.label: l for l in inventory.extract_california(
+            inventory.REPO_ROOT / "pdfs/california/2025/f540.pdf")}
+        self.assertEqual(fresh["8"].source, "tooltip")
+        self.assertEqual(fresh["1"].source, "printed")
+        lines = {l.label: l for l in inventory.load("f540", 2025).lines}
+        self.assertEqual(lines["8"].source, "tooltip")
+        self.assertEqual(lines["1"].source, "printed")
+        self.assertEqual(lines["1"].text, "Single")
+        self.assertTrue(all(l.source == "printed"
+                            for l in inventory.load("f8995", 2025).lines))
+
+    def test_a_tooltip_line_auto_confirms(self):
+        self.assertIn(Binding("", "8", self.TOOLTIP_KEY, "naming+tooltip"),
+                      self._propose().auto_confirmed)
+
+    def test_a_printed_page_line_never_auto_confirms(self):
+        proposals = self._propose()
+        self.assertNotIn(self.PRINTED_KEY,
+                         [b.key for b in proposals.auto_confirmed])
+        self.assertEqual([e.reason for e in _exceptions(proposals, "1")],
+                         ["disagree"])
+
+
 class ProposeScriptTests(unittest.TestCase):
     def test_writes_one_json_per_form_year_and_summarizes(self):
         import io

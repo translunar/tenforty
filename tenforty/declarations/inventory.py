@@ -59,6 +59,10 @@ class InventoryLine:
     label: str
     text: str
     bbox: tuple[float, float, float, float]
+    # Where the line was read: "tooltip" (an FTB /TU naming it) or
+    # "printed" (the printed page; every federal line). Stored in the JSON
+    # only for tooltip lines, so a missing field reads as "printed".
+    source: str = "printed"
 
     @property
     def key(self) -> tuple[int, str, str]:
@@ -480,7 +484,8 @@ def extract_california(pdf: Path) -> tuple[InventoryLine, ...]:
             if key in seen:
                 continue
             seen.add(key)
-            lines.append(InventoryLine(page_no, section, label, text, bbox))
+            lines.append(InventoryLine(page_no, section, label, text, bbox,
+                                       source="tooltip"))
     for line in extract_federal(pdf):
         section = _section_at(headings, line.page, line.bbox[1])
         if any(o.page == line.page and o.label == line.label
@@ -499,6 +504,13 @@ def _sorted(lines) -> tuple[InventoryLine, ...]:
                                               l.section, l.label)))
 
 
+def _line_json(line: InventoryLine) -> dict:
+    data = dataclasses.asdict(line)
+    if data["source"] == "printed":
+        del data["source"]
+    return data
+
+
 def extract(jurisdiction: str, pdf: Path) -> tuple[InventoryLine, ...]:
     if jurisdiction == "federal":
         return extract_federal(pdf)
@@ -515,7 +527,7 @@ def to_json(form: str, key: int | str, jurisdiction: str, source: Path,
         "jurisdiction": jurisdiction,
         "source": Path(source).resolve().relative_to(REPO_ROOT).as_posix(),
         "source_sha256": sha256_of(source),
-        "lines": [dataclasses.asdict(l) for l in _sorted(lines)],
+        "lines": [_line_json(l) for l in _sorted(lines)],
     }, indent=1, ensure_ascii=False) + "\n"
 
 
@@ -549,4 +561,5 @@ def load(form: str, key: int | str) -> Inventory:
         source_sha256=data["source_sha256"],
         lines=tuple(InventoryLine(
             page=l["page"], section=l["section"], label=l["label"],
-            text=l["text"], bbox=tuple(l["bbox"])) for l in data["lines"]))
+            text=l["text"], bbox=tuple(l["bbox"]),
+            source=l.get("source", "printed")) for l in data["lines"]))
