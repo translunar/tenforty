@@ -313,6 +313,85 @@ class TooltipPrefixCensusTests(unittest.TestCase):
             "federal Form 1040 or 1040-SR. "), ["Part I", "Section A"])
 
 
+class SameRowLabelAttributionTests(unittest.TestCase):
+    """A printed line's label is attributed robustly to sub-point jitter in
+    BOTH axes (extractor-ordering lane): a sub-letter a thousandth of a
+    point past the reach, or sorting a thousandth of a point below the
+    right-hand line-number box on its row, still makes the line with its
+    printed text. Evidence: FTB 3532 (2025) page 1, where "a" sits at
+    x0 46.998, "b"-"f" at 47.001 (Part I) and 47.0 (Part II) against a
+    reach limit of exactly 47.0, and each box sorts 0.001 pt above its
+    sub-letter."""
+
+    _PRINTED = {
+        ("Part I", "1a"): "Not legally married/RDP during 2025",
+        ("Part I", "1b"): "Surviving spouse/RDP",
+        ("Part I", "1c"): "Marriage/RDP was annulled",
+        ("Part I", "1d"): "Received final decree of divorce",
+        ("Part I", "1e"): "Legally married/RDP and did not live with",
+        ("Part I", "1f"): "Legally married/RDP and lived with",
+        ("Part II", "2b"): "Grandchild, brother, sister",
+        ("Part II", "2c"): "Eligible foster child",
+        ("Part II", "2d"): "Father, mother, stepfather, or stepmother",
+    }
+
+    def test_ftb3532_2025_sub_lines_carry_their_printed_text(self):
+        lines = {(l.section, l.label): l for l in extract_california(
+            PDFS / "california/2025/ftb3532.pdf")}
+        for key, printed in self._PRINTED.items():
+            with self.subTest(line=key):
+                self.assertTrue(lines[key].text.startswith(printed),
+                                lines[key].text)
+                # Made by the printed sub-letter, not the right-hand box.
+                self.assertLess(lines[key].bbox[0], 60)
+
+    def _synthetic(self, letter_x, letter_y, box_y):
+        # One page: line "1" in the number column, its sub-line "a" with
+        # caption text, and the right-hand box "1a" on the same row.
+        h = 11.0
+        words = [(36.0, 100.0, 41.0, 100.0 + h, "1"),
+                 (47.0, 100.0, 70.0, 100.0 + h, "Total"),
+                 (36.0, 80.0, 41.0, 80.0 + h, "2"),
+                 (36.0, 160.0, 41.0, 160.0 + h, "3"),
+                 (letter_x, letter_y, letter_x + 5, letter_y + h, "a"),
+                 (letter_x + 11, letter_y, letter_x + 60, letter_y + h,
+                  "Caption"),
+                 (534.0, box_y, 546.0, box_y + h, "1a"),
+                 (534.0, 100.0, 546.0, 100.0 + h, "1")]
+        with unittest.mock.patch.object(inventory, "_page_words",
+                                        lambda pdf: [words]):
+            return {l.label: l for l in extract_federal(Path("synthetic"))}
+
+    def test_knife_edge_in_both_axes_stops_mattering(self):
+        for letter_x in (46.998, 47.0, 47.001):
+            for letter_y, box_y in ((120.001, 120.0), (120.0, 120.001)):
+                with self.subTest(x=letter_x, letter_y=letter_y,
+                                  box_y=box_y):
+                    line = self._synthetic(letter_x, letter_y, box_y)["1a"]
+                    self.assertEqual(line.text, "Caption")
+                    self.assertEqual(line.bbox[0], round(letter_x, 2))
+
+    def test_a_stray_digit_no_longer_holds_a_real_lines_key(self):
+        # Schedule E (2021): the property-type code "7 Self-Rental" made an
+        # empty line 7 that blocked the real line 7; the printed label now
+        # wins and the line carries its own text.
+        lines = extract_federal(PDFS / "federal/2021/f1040se.pdf")
+        (line_7,) = [l for l in lines
+                     if l.label == "7" and l.section == "Part I"]
+        self.assertEqual(line_7.text, "Cleaning and maintenance")
+
+    def test_a_line_with_text_is_never_rewritten(self):
+        # The narrowed rule: the left label wins only over an EMPTY line.
+        # Form 100S (2021) Schedule F line 1's printed-page row keeps its
+        # own text (an unconditional left-wins rewrote rows like it).
+        lines = extract_california(PDFS / "california/2021/f100s.pdf")
+        (line_1,) = [l for l in lines
+                     if l.page == 4 and l.section == "Schedule F"
+                     and l.label == "1"]
+        self.assertTrue(line_1.text.startswith("a) Gross receipts or sales"),
+                        line_1.text)
+
+
 class Ftb3532InventoryTests(unittest.TestCase):
     """FTB 3532 (2021-2025): Parts I-III from the printed headings. 2025
     prints Parts I and II as radio groups whose tooltips name no line, so
@@ -336,13 +415,8 @@ class Ftb3532InventoryTests(unittest.TestCase):
 
     def test_2025_parts_i_and_ii_come_from_the_printed_page(self):
         # Asserts the in-memory InventoryLine.source of a FRESH extraction
-        # only (the JSON stores `source` only for tooltip lines). Nine 2025
-        # lines are currently DEFECT-EMPTY text: 1a, 1b, 1c, 1d, 1e, 1f, 2b,
-        # 2c, 2d. Each was made by the right-hand line-number box (bbox x0
-        # 534.0), which sorts a fraction of a point above the printed
-        # sub-letter; 2a and 2e (x0 47.0) kept their text. The
-        # extractor-ordering lane fixes that, and their text becoming
-        # non-empty is the expected fix, not a regression.
+        # only (the JSON stores `source` only for tooltip lines). The nine
+        # sub-lines' printed text is pinned in SameRowLabelAttributionTests.
         lines = {(l.section, l.label): l for l in extract_california(
             PDFS / "california/2025/ftb3532.pdf")}
         self.assertEqual(lines[("Part I", "1a")].source, "printed")

@@ -117,11 +117,11 @@
    "page": 1,
    "section": "Part II",
    "label": "4",
-   "text": "",
+   "text": "Enter the smaller of the loss on line 1d or the loss on line 3",
    "bbox": [
-    490.7,
+    45.4,
     396.65,
-    495.7,
+    50.4,
     407.39
    ]
   },

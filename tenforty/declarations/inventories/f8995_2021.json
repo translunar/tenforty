@@ -105,11 +105,11 @@
    "page": 1,
    "section": "",
    "label": "4",
-   "text": "",
+   "text": "Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-",
    "bbox": [
-    397.1,
+    45.4,
     384.65,
-    402.1,
+    50.4,
     395.39
    ]
   },
