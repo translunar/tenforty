@@ -376,6 +376,13 @@ class PdfFtb3532(PdfFormMapping[dict[str, str]]):
         return _DERIVATIONS_BY_YEAR[year]
 
     @classmethod
+    def get_aggregations(cls, year: int) -> dict[str, tuple[str, ...]]:
+        # No FTB 3532 cell sums compute keys (the form has no arithmetic).
+        if year not in cls._MAPPINGS:
+            raise ValueError(f"No FTB 3532 aggregations for year {year}")
+        return {}
+
+    @classmethod
     def get_checkbox_states(cls, year: int) -> dict[str, str]:
         # Every button cell is a derivation returning its state token
         # directly; no bool-valued compute key is mapped 1:1.

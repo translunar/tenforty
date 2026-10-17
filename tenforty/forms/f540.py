@@ -15,6 +15,7 @@ import math
 from collections.abc import Mapping, Sequence
 
 from tenforty.attestations import refund_direct_deposit
+from tenforty.forms.presentation_dates import mm_dd_yyyy as _mm_dd_yyyy
 from tenforty.models import CA540Return, FilingStatus, parse_filing_status
 from tenforty.params import california as ca_params
 from tenforty.rounding import irs_round
@@ -456,6 +457,3 @@ def presentation_keys(
     return {k: v for k, v in out.items() if v != ""}
 
 
-def _mm_dd_yyyy(iso_date: str) -> str:
-    """ISO ``YYYY-MM-DD`` -> the form's ``mm/dd/yyyy``. Loud on any other shape."""
-    return datetime.date.fromisoformat(iso_date).strftime("%m/%d/%Y")
