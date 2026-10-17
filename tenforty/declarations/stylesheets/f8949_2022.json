@@ -1,0 +1,12 @@
+{
+ "desc_classes": [
+  "styIRS8949LNDesc"
+ ],
+ "form": "f8949",
+ "label_classes": [],
+ "lines": [],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS8949.xsl",
+ "year": 2022
+}

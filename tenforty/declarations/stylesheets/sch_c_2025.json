@@ -1,0 +1,734 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_c",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "PrincipalBusinessActivityDesc"
+   ],
+   "label": "A",
+   "page_section": "",
+   "text": "Principal business or profession, including product or service (see instructions)"
+  },
+  {
+   "elements": [
+    "PrincipalBusinessActivityCd",
+    "UnclassifiedEstablishmentCd"
+   ],
+   "label": "B",
+   "page_section": "",
+   "text": "Enter code from instructions"
+  },
+  {
+   "elements": [
+    "BusinessNameLine1Txt"
+   ],
+   "label": "C",
+   "page_section": "",
+   "text": "Business name. If no separate business name, leave blank."
+  },
+  {
+   "elements": [
+    "EIN"
+   ],
+   "label": "D",
+   "page_section": "",
+   "text": "Employer ID number (EIN) (see instr.)"
+  },
+  {
+   "elements": [
+    "BusinessUSAddress/AddressLine1Txt",
+    "BusinessForeignAddress/AddressLine1Txt",
+    "BusinessUSAddress/AddressLine2Txt",
+    "BusinessForeignAddress/AddressLine2Txt",
+    "BusinessUSAddress/CityNm",
+    "BusinessForeignAddress/CityNm",
+    "BusinessUSAddress/StateAbbreviationCd",
+    "BusinessForeignAddress/ProvinceOrStateNm",
+    "BusinessUSAddress/ZIPCd",
+    "BusinessForeignAddress/ForeignPostalCd",
+    "BusinessForeignAddress/CountryCd"
+   ],
+   "label": "E",
+   "page_section": "",
+   "text": "Business address (including suite or room no.) City, town or post office, state, and ZIP code"
+  },
+  {
+   "elements": [
+    "MethodOfAccountingCashInd",
+    "MethodOfAccountingAccrualInd",
+    "MethodOfAccountingOtherInd",
+    "MethodOfAccountingOtherInd/@methodOfAccountingOtherDesc"
+   ],
+   "label": "F",
+   "page_section": "",
+   "text": "Accounting method: (1) Cash (2) Accrual (3) Other (specify)"
+  },
+  {
+   "elements": [
+    "MaterialParticipationInCYInd"
+   ],
+   "label": "G",
+   "page_section": "",
+   "text": "Did you \"materially participate\" in the operation of this business during 2025? If \"No,\" see instructions for limit on losses ."
+  },
+  {
+   "elements": [
+    "NewBusinessInCurrentYearInd"
+   ],
+   "label": "H",
+   "page_section": "",
+   "text": "If you started or acquired this business during 2025, check here"
+  },
+  {
+   "elements": [
+    "PaymentRqrFilingForm1099Ind"
+   ],
+   "label": "I",
+   "page_section": "",
+   "text": "Did you make any payments in 2025 that would require you to file Form(s) 1099? See instructions"
+  },
+  {
+   "elements": [
+    "RequiredForm1099FiledInd"
+   ],
+   "label": "J",
+   "page_section": "",
+   "text": "If \"Yes,\" did you or will you file required Form(s) 1099?"
+  },
+  {
+   "elements": [
+    "StatutoryEmployeeFromW2Ind",
+    "TotalGrossReceiptsAmt"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Gross receipts or sales. See instructions for line 1 and check the box if this income was reported to you on Form W-2 and the \"Statutory employee\" box on that form was checked"
+  },
+  {
+   "elements": [
+    "ReturnsAndAllowancesAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Returns and allowances"
+  },
+  {
+   "elements": [
+    "NetGrossReceiptsAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Subtract line 2 from line 1"
+  },
+  {
+   "elements": [
+    "CostOfGoodsSoldAmt"
+   ],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Cost of goods sold (from line 42)"
+  },
+  {
+   "elements": [
+    "GrossProfitAmt"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Gross profit. Subtract line 4 from line 3"
+  },
+  {
+   "elements": [
+    "OtherIncomeAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "Other income, including federal and state gasoline or fuel tax credit or refund (see instructions)"
+  },
+  {
+   "elements": [
+    "GrossIncomeAmt"
+   ],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Gross income. Add lines 5 and 6"
+  },
+  {
+   "elements": [
+    "AdvertisingAmt"
+   ],
+   "label": "8",
+   "page_section": "Part II",
+   "text": "Advertising"
+  },
+  {
+   "elements": [
+    "CarAndTruckExpensesAmt"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Car and truck expenses (see instructions)"
+  },
+  {
+   "elements": [
+    "CommissionsAndFeesAmt"
+   ],
+   "label": "10",
+   "page_section": "Part II",
+   "text": "Commissions and fees"
+  },
+  {
+   "elements": [
+    "ContractLaborAmt"
+   ],
+   "label": "11",
+   "page_section": "Part II",
+   "text": "Contract labor (see instructions)"
+  },
+  {
+   "elements": [
+    "DepletionAmt"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Depletion"
+  },
+  {
+   "elements": [
+    "DeprecAndSect179ExpnsDedAmt"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Depreciation and section 179 expense deduction (not included in Part III) (see instructions)"
+  },
+  {
+   "elements": [
+    "EmployeeBenefitProgramAmt"
+   ],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Employee benefit programs (other than on line 19)"
+  },
+  {
+   "elements": [
+    "InsuranceAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Insurance (other than health)"
+  },
+  {
+   "elements": [],
+   "label": "16",
+   "page_section": "Part II",
+   "text": "Interest (see instructions):"
+  },
+  {
+   "elements": [
+    "MortgageInterestPaidBanksAmt"
+   ],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Mortgage (paid to banks, etc.)"
+  },
+  {
+   "elements": [
+    "MortgageInterestPaidOtherAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Other"
+  },
+  {
+   "elements": [
+    "LegalAndProfessionalServiceAmt"
+   ],
+   "label": "17",
+   "page_section": "Part II",
+   "text": "Legal and professional services"
+  },
+  {
+   "elements": [
+    "OfficeExpensesAmt"
+   ],
+   "label": "18",
+   "page_section": "Part II",
+   "text": "Office expense (see instructions)"
+  },
+  {
+   "elements": [
+    "PensionProfitSharingPlansAmt"
+   ],
+   "label": "19",
+   "page_section": "Part II",
+   "text": "Pension and profit-sharing plans"
+  },
+  {
+   "elements": [],
+   "label": "20",
+   "page_section": "Part II",
+   "text": "Rent or lease (see instructions):"
+  },
+  {
+   "elements": [
+    "MachineryAndEquipmentRentAmt"
+   ],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Vehicles, machinery, and equipment"
+  },
+  {
+   "elements": [
+    "OtherBusinessPropertyRentAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Other business property"
+  },
+  {
+   "elements": [
+    "RepairsAndMaintenanceAmt"
+   ],
+   "label": "21",
+   "page_section": "Part II",
+   "text": "Repairs and maintenance"
+  },
+  {
+   "elements": [
+    "SuppliesAmt"
+   ],
+   "label": "22",
+   "page_section": "Part II",
+   "text": "Supplies (not included in Part III)"
+  },
+  {
+   "elements": [
+    "TaxesAndLicensesAmt"
+   ],
+   "label": "23",
+   "page_section": "Part II",
+   "text": "Taxes and licenses"
+  },
+  {
+   "elements": [],
+   "label": "24",
+   "page_section": "Part II",
+   "text": "Travel and meals:"
+  },
+  {
+   "elements": [
+    "TravelAmt"
+   ],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Travel"
+  },
+  {
+   "elements": [
+    "MealsAndEntertainmentAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Deductible meals (see instructions) ."
+  },
+  {
+   "elements": [
+    "UtilitiesAmt"
+   ],
+   "label": "25",
+   "page_section": "Part II",
+   "text": "Utilities"
+  },
+  {
+   "elements": [
+    "WagesLessEmploymentCreditsAmt"
+   ],
+   "label": "26",
+   "page_section": "Part II",
+   "text": "Wages (less employment credits)"
+  },
+  {
+   "elements": [
+    "EnergyEffcntCmrclBldgDedAmt"
+   ],
+   "label": "27a",
+   "page_section": "Part II",
+   "text": "Energy efficient commercial bldgs deduction (attach Form 7205)"
+  },
+  {
+   "elements": [
+    "TotalOtherExpensesAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Other expenses (from line 48)"
+  },
+  {
+   "elements": [
+    "TotalExpensesAmt"
+   ],
+   "label": "28",
+   "page_section": "Part II",
+   "text": "Total expenses before expenses for business use of home. Add lines 8 through 27b"
+  },
+  {
+   "elements": [
+    "TentativeProfitOrLossAmt"
+   ],
+   "label": "29",
+   "page_section": "Part II",
+   "text": "Tentative profit or (loss). Subtract line 28 from line 7"
+  },
+  {
+   "elements": [
+    "HomeBusinessExpenseAmt",
+    "TotalAreaOfHomeCnt",
+    "HomeBusinessUseSquareFeetCnt"
+   ],
+   "label": "30",
+   "page_section": "Part II",
+   "text": "Expenses for business use of your home. Do not report these expenses elsewhere. Attach Form 8829 unless using the simplified method. See instructions. Simplified method filers only: Enter the total square footage of (a) your home: and (b) the part of your home used for business: . Use the Simplified Method Worksheet in the instructions to figure the amount to enter on line 30."
+  },
+  {
+   "elements": [
+    "NetProfitOrLossAmt/@passiveActivityLossLiteralCd",
+    "NetProfitOrLossAmt/@passiveActivityLossAmt",
+    "NetProfitOrLossAmt"
+   ],
+   "label": "31",
+   "page_section": "Part II",
+   "text": "Net profit or (loss). Subtract line 30 from line 29. If a profit, enter on both Schedule 1 (Form 1040), line 3 and on Schedule SE, line 2. (If you checked the box on line 1, see instructions.) Estates and trusts, enter on Form 1041, line 3. If a loss, you must go to line 32."
+  },
+  {
+   "elements": [
+    "AllInvestmentIsAtRiskInd",
+    "SomeInvestmentIsNotAtRiskInd"
+   ],
+   "label": "32",
+   "page_section": "Part II",
+   "text": "If you have a loss, check the box that describes your investment in this activity. See instructions. If you checked 32a, enter the loss on both Schedule 1 (Form 1040), line 3 and on Schedule SE, line 2 . (If you checked the box on line 1, see the line 31 instructions.) Estates and trusts, enter on Form 1041, line 3. If you checked 32b, you must attach Form 6198. Your loss may be limited."
+  },
+  {
+   "elements": [
+    "ClosingInventoryCostMethodInd",
+    "LowerOfCostOrMarketMethodInd",
+    "OtherClosingInventoryMethodInd"
+   ],
+   "label": "33",
+   "page_section": "Part III",
+   "text": "Method(s) used to value closing inventory:"
+  },
+  {
+   "elements": [
+    "ChangeInValuationsInd"
+   ],
+   "label": "34",
+   "page_section": "Part III",
+   "text": "Was there any change in determining quantities, costs, or valuations between opening and closing inventory? If \"Yes,\" attach explanation Yes No"
+  },
+  {
+   "elements": [
+    "BeginningOfYearInventoryAmt"
+   ],
+   "label": "35",
+   "page_section": "Part III",
+   "text": "Inventory at beginning of year. If different from last year's closing inventory, attach explanation"
+  },
+  {
+   "elements": [
+    "PurchasesLessPersonalItemsAmt"
+   ],
+   "label": "36",
+   "page_section": "Part III",
+   "text": "Purchases less cost of items withdrawn for personal use"
+  },
+  {
+   "elements": [
+    "CostOfLaborAmt"
+   ],
+   "label": "37",
+   "page_section": "Part III",
+   "text": "Cost of labor. Do not include any amounts paid to yourself"
+  },
+  {
+   "elements": [
+    "MaterialsAndSuppliesAmt"
+   ],
+   "label": "38",
+   "page_section": "Part III",
+   "text": "Materials and supplies"
+  },
+  {
+   "elements": [
+    "OtherCostsAmt"
+   ],
+   "label": "39",
+   "page_section": "Part III",
+   "text": "Other costs"
+  },
+  {
+   "elements": [
+    "TotalCostsAmt"
+   ],
+   "label": "40",
+   "page_section": "Part III",
+   "text": "Add lines 35 through 39"
+  },
+  {
+   "elements": [
+    "EndOfYearInventoryAmt"
+   ],
+   "label": "41",
+   "page_section": "Part III",
+   "text": "Inventory at end of year"
+  },
+  {
+   "elements": [
+    "CostOfGoodsSoldAmt",
+    "AdditionalVehicleInfoGrp"
+   ],
+   "label": "42",
+   "page_section": "Part III",
+   "text": "Cost of goods sold. Subtract line 41 from line 40. Enter the result here and on line 4"
+  },
+  {
+   "elements": [
+    "VehiclePlacedInServiceDt"
+   ],
+   "label": "43",
+   "page_section": "Part IV",
+   "text": "When did you place your vehicle in service for business purposes? (month/day/year)"
+  },
+  {
+   "elements": [],
+   "label": "44",
+   "page_section": "Part IV",
+   "text": "Of the total number of miles you drove your vehicle during 2025, enter the number of miles you used your vehicle for:"
+  },
+  {
+   "elements": [
+    "BusinessMilesCnt"
+   ],
+   "label": "a",
+   "page_section": "Part IV",
+   "text": "Business"
+  },
+  {
+   "elements": [
+    "CommutingMilesCnt"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "Commuting (see instructions)"
+  },
+  {
+   "elements": [
+    "OtherMilesCnt"
+   ],
+   "label": "c",
+   "page_section": "Part IV",
+   "text": "Other"
+  },
+  {
+   "elements": [
+    "VehicleAvailableOffDutyHrsInd"
+   ],
+   "label": "45",
+   "page_section": "Part IV",
+   "text": "Was your vehicle available for personal use during off-duty hours?"
+  },
+  {
+   "elements": [
+    "AnotherVehicleForPrsnlUseInd"
+   ],
+   "label": "46",
+   "page_section": "Part IV",
+   "text": "Do you (or your spouse) have another vehicle available for personal use?"
+  },
+  {
+   "elements": [
+    "EvidenceToSupportDeductionInd"
+   ],
+   "label": "47a",
+   "page_section": "Part IV",
+   "text": "Do you have evidence to support your deduction?"
+  },
+  {
+   "elements": [
+    "EvidenceWrittenInd"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "If \"Yes,\" is the evidence written? Yes No"
+  },
+  {
+   "elements": [
+    "AdditionalVehicleInfoGrp"
+   ],
+   "label": "43",
+   "page_section": "Part IV",
+   "text": "When did you place your vehicle in service for business purposes? (month, day, year)"
+  },
+  {
+   "elements": [],
+   "label": "44",
+   "page_section": "Part IV",
+   "text": "Of the total number of miles you drove your vehicle during 2025, enter the number of miles you used your vehicle for:"
+  },
+  {
+   "elements": [
+    "BusinessMilesCnt"
+   ],
+   "label": "a",
+   "page_section": "Part IV",
+   "text": "Business"
+  },
+  {
+   "elements": [
+    "CommutingMilesCnt"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "Commuting (see instructions)"
+  },
+  {
+   "elements": [
+    "OtherMilesCnt"
+   ],
+   "label": "c",
+   "page_section": "Part IV",
+   "text": "Other"
+  },
+  {
+   "elements": [
+    "VehicleAvailableOffDutyHrsInd"
+   ],
+   "label": "45",
+   "page_section": "Part IV",
+   "text": "Was your vehicle available for personal use during off-duty hours?"
+  },
+  {
+   "elements": [
+    "AnotherVehicleForPrsnlUseInd"
+   ],
+   "label": "46",
+   "page_section": "Part IV",
+   "text": "Do you (or your spouse) have another vehicle available for personal use?"
+  },
+  {
+   "elements": [
+    "EvidenceToSupportDeductionInd"
+   ],
+   "label": "47a",
+   "page_section": "Part IV",
+   "text": "Do you have evidence to support your deduction?"
+  },
+  {
+   "elements": [
+    "EvidenceWrittenInd",
+    "AdditionalVehicleInfoGrp",
+    "OtherExpenseDetail",
+    "Desc",
+    "Amt"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "If \"Yes,\" is the evidence written?"
+  },
+  {
+   "elements": [
+    "TotalOtherExpensesAmt/@otherExpenseCd",
+    "TotalOtherExpensesAmt",
+    "$Form1040ScheduleCData",
+    "NetProfitOrLossAmt/@passiveActivityLossLiteralCd",
+    "NetProfitOrLossAmt/@passiveActivityLossAmt"
+   ],
+   "label": "48",
+   "page_section": "Part V",
+   "text": "Total other expenses. Enter here and on line 27b"
+  },
+  {
+   "elements": [
+    "VehiclePlacedInServiceDt"
+   ],
+   "label": "43",
+   "page_section": "Part IV",
+   "text": "When did you place your vehicle in service for business purposes? (month, day, year)"
+  },
+  {
+   "elements": [],
+   "label": "44",
+   "page_section": "Part IV",
+   "text": "Of the total number of miles you drove your vehicle during 2025, enter the number of miles you used your vehicle for:"
+  },
+  {
+   "elements": [
+    "BusinessMilesCnt"
+   ],
+   "label": "a",
+   "page_section": "Part IV",
+   "text": "Business"
+  },
+  {
+   "elements": [
+    "CommutingMilesCnt"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "Commuting (see instructions)"
+  },
+  {
+   "elements": [
+    "OtherMilesCnt"
+   ],
+   "label": "c",
+   "page_section": "Part IV",
+   "text": "Other"
+  },
+  {
+   "elements": [
+    "VehicleAvailableOffDutyHrsInd"
+   ],
+   "label": "45",
+   "page_section": "Part IV",
+   "text": "Was your vehicle available for personal use during off-duty hours?"
+  },
+  {
+   "elements": [
+    "AnotherVehicleForPrsnlUseInd"
+   ],
+   "label": "46",
+   "page_section": "Part IV",
+   "text": "Do you (or your spouse) have another vehicle available for personal use?"
+  },
+  {
+   "elements": [
+    "EvidenceToSupportDeductionInd"
+   ],
+   "label": "47a",
+   "page_section": "Part IV",
+   "text": "Do you have evidence to support your deduction?"
+  },
+  {
+   "elements": [
+    "EvidenceWrittenInd",
+    "Desc",
+    "OtherExpenseDetail",
+    "Amt"
+   ],
+   "label": "b",
+   "page_section": "Part IV",
+   "text": "If \"Yes,\" is the evidence written?"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2026r1.zip",
+ "package_sha256": "903d2d186da0615f626d0737b45933d8007628084be820a3d669d9ff7779b61a",
+ "xsl": "PY2026R10/mef/Stylesheets/2025/IRS1040ScheduleC.xsl",
+ "year": 2025
+}

@@ -27,6 +27,9 @@ include = ["tenforty*"]
 # Ship the packaged runtime data files (the CA Schedule CA divergence catalogs)
 # as package data so importlib.resources can resolve them.
 "tenforty.params.california.divergences" = ["*.yaml"]
+# The committed IRS MeF stylesheet extractions read by
+# tenforty.declarations.stylesheet.load.
+"tenforty.declarations.stylesheets" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,243 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_se",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "ExemptForm4361Ind"
+   ],
+   "label": "A",
+   "page_section": "Part I",
+   "text": "If you are a minister, member of a religious order, or Christian Science practitioner and you filed Form 4361, but you had $400 or more of other net earnings from self-employment, check here and continue with Part I"
+  },
+  {
+   "elements": [
+    "NetFarmProfitLossAmt"
+   ],
+   "label": "1a",
+   "page_section": "Part I",
+   "text": "Net farm profit or (loss) from Schedule F, line 34, and farm partnerships, Schedule K-1 (Form 1065), box 14, code A."
+  },
+  {
+   "elements": [
+    "ConservationReserveProgPymtAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "If you received social security retirement or disability benefits, enter the amount of Conservation Reserve Program payments included on Schedule F, line 4b, or listed on Schedule K-1 (Form 1065), box 20, code AQ"
+  },
+  {
+   "elements": [
+    "NetNonFarmProfitLossAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Net profit or (loss) from Schedule C, line 31; and Schedule K-1 (Form 1065), box 14, code A (other than farming). See instructions for other income to report or if you are a minister or member of a religious order."
+  },
+  {
+   "elements": [
+    "SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptCd",
+    "SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptAmt",
+    "SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeCd",
+    "SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeAmt",
+    "SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseCd",
+    "SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseAmt",
+    "SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeCd",
+    "SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeAmt",
+    "SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossCd",
+    "SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossAmt",
+    "SETotalNetEarningsOrLossAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Combine lines 1a, 1b, and 2"
+  },
+  {
+   "elements": [
+    "MinimumProfitForSETaxAmt"
+   ],
+   "label": "4a",
+   "page_section": "Part I",
+   "text": "If line 3 is more than zero, multiply line 3 by 92.35% (0.9235). Otherwise, enter amount from line 3"
+  },
+  {
+   "elements": [
+    "OptionalMethodAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "If you elect one or both of the optional methods, enter the total of lines 15 and 17 here"
+  },
+  {
+   "elements": [
+    "CombinedSEAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Combine lines 4a and 4b. If less than $400, stop; you don't owe self-employment tax. Exception: If less than $400 and you had church employee income, enter -0- and continue"
+  },
+  {
+   "elements": [
+    "W2WagesFromChurchesAmt"
+   ],
+   "label": "5a",
+   "page_section": "Part I",
+   "text": "Enter your church employee income from Form W-2. See instructions for definition of church employee income"
+  },
+  {
+   "elements": [
+    "MinAllowableChurchWagesAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Multiply line 5a by 92.35% (0.9235). If less than $100, enter -0-"
+  },
+  {
+   "elements": [
+    "CombinedSEAndChurchWagesAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "Add lines 4c and 5b"
+  },
+  {
+   "elements": [],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Maximum amount of combined wages and self-employment earnings subject to social security tax or the 6.2% portion of the 7.65% railroad retirement (tier 1) tax for 2025"
+  },
+  {
+   "elements": [
+    "SSTWagesRRTCompAmt"
+   ],
+   "label": "8a",
+   "page_section": "Part I",
+   "text": "Total social security wages and tips (total of boxes 3 and 7 on Form(s) W-2) and railroad retirement (tier 1) compensation. If $168,600 or more, skip lines 8b through 10, and go to line 11"
+  },
+  {
+   "elements": [
+    "UnreportedTipsAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Unreported tips subject to social security tax from Form 4137, line 10"
+  },
+  {
+   "elements": [
+    "WagesSubjectToSSTAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Wages subject to social security tax from Form 8919, line 10"
+  },
+  {
+   "elements": [
+    "TotalWagesAndUnreportedTipsAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Add lines 8a, 8b, and 8c"
+  },
+  {
+   "elements": [
+    "AllowableSEAmt"
+   ],
+   "label": "9",
+   "page_section": "Part I",
+   "text": "Subtract line 8d from line 7. If zero or less, enter -0- here and on line 10 and go to line 11"
+  },
+  {
+   "elements": [
+    "TaxBaseAmt"
+   ],
+   "label": "10",
+   "page_section": "Part I",
+   "text": "Multiply the smaller of line 6 or line 9 by 12.4% (0.124)"
+  },
+  {
+   "elements": [
+    "SEBaseAmt"
+   ],
+   "label": "11",
+   "page_section": "Part I",
+   "text": "Multiply line 6 by 2.9% (0.029)"
+  },
+  {
+   "elements": [
+    "SelfEmploymentTaxAmt"
+   ],
+   "label": "12",
+   "page_section": "Part I",
+   "text": "Self-employment tax. Add lines 10 and 11. Enter here and on Schedule 2 (Form 1040), line 4 , or Form 1040-SS, Part I, line 3"
+  },
+  {
+   "elements": [
+    "DeductibleSelfEmploymentTaxAmt"
+   ],
+   "label": "13",
+   "page_section": "Part I",
+   "text": "Deduction for one-half of self-employment tax."
+  },
+  {
+   "elements": [],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Maximum income for optional methods."
+  },
+  {
+   "elements": [
+    "SETaxFarmOptionalMethodAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Enter the smaller of: two-thirds ( 2 / 3 ) of gross farm income 1 (not less than zero) or $6,920. Also include this amount on line 4b above"
+  },
+  {
+   "elements": [
+    "SETaxNonFarmOptionalBaseAmt"
+   ],
+   "label": "16",
+   "page_section": "Part II",
+   "text": "Subtract line 15 from line 14"
+  },
+  {
+   "elements": [
+    "SETaxNonFarmOptionalMethodAmt",
+    "$Form1040ScheduleSEData",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossAmt",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptCd",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptAmt",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossCd",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseAmt",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeCd",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseCd",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeCd",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeAmt",
+    "ShortScheduleSE/SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeAmt",
+    "SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptCd",
+    "SETotalNetEarningsOrLossAmt/@selfEmploymentTaxExemptAmt",
+    "SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeCd",
+    "SETotalNetEarningsOrLossAmt/@chap11BankruptcyIncomeAmt",
+    "SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseCd",
+    "SETotalNetEarningsOrLossAmt/@communityIncmTaxedToSpouseAmt",
+    "SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeCd",
+    "SETotalNetEarningsOrLossAmt/@exemptCommunityIncomeAmt",
+    "SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossCd",
+    "SETotalNetEarningsOrLossAmt/@additionalIncomeOrLossAmt"
+   ],
+   "label": "17",
+   "page_section": "Part II",
+   "text": "Enter the smaller of: two-thirds ( 2 / 3 ) of gross nonfarm income 4 (not less than zero) or the amount on line 16. Also include this amount on line 4b above"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2026r1.zip",
+ "package_sha256": "903d2d186da0615f626d0737b45933d8007628084be820a3d669d9ff7779b61a",
+ "xsl": "PY2026R10/mef/Stylesheets/2025/IRS1040ScheduleSE.xsl",
+ "year": 2025
+}

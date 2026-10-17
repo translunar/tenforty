@@ -1,0 +1,241 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_a",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "MedicalAndDentalExpensesAmt"
+   ],
+   "label": "1",
+   "page_section": "",
+   "text": "Medical and dental expenses (see instructions)"
+  },
+  {
+   "elements": [
+    "TaxReturnAGIAmt"
+   ],
+   "label": "2",
+   "page_section": "",
+   "text": "Enter amount from Form 1040 or 1040-SR, line 11"
+  },
+  {
+   "elements": [
+    "CalculatedMedicalAllowanceAmt"
+   ],
+   "label": "3",
+   "page_section": "",
+   "text": "Multiply line 2 by 7.5% (0.075)"
+  },
+  {
+   "elements": [
+    "TotalMedicalAndDentalExpnssAmt"
+   ],
+   "label": "4",
+   "page_section": "",
+   "text": "Subtract line 3 from line 1. If line 3 is more than line 1, enter -0-"
+  },
+  {
+   "elements": [],
+   "label": "5",
+   "page_section": "",
+   "text": "State and local taxes."
+  },
+  {
+   "elements": [
+    "StateAndLocalSalesTaxInd",
+    "StateAndLocalTaxAmt"
+   ],
+   "label": "a",
+   "page_section": "",
+   "text": "State and local income taxes or general sales taxes. You may include either income taxes or general sales taxes on line 5a, but not both. If you elect to include general sales taxes instead of income taxes, check this box"
+  },
+  {
+   "elements": [
+    "RealEstateTaxesAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "State and local real estate taxes (see instructions)"
+  },
+  {
+   "elements": [
+    "PersonalPropertyTaxesAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "State and local personal property taxes"
+  },
+  {
+   "elements": [
+    "TotalStateAndLocalTaxAmt"
+   ],
+   "label": "d",
+   "page_section": "",
+   "text": "Add lines 5a through 5c"
+  },
+  {
+   "elements": [
+    "StateAndLocalTaxLimitationAmt"
+   ],
+   "label": "e",
+   "page_section": "",
+   "text": "Enter the smaller of line 5d or $10,000 ($5,000 if married filing separately)"
+  },
+  {
+   "elements": [
+    "OtherTaxesAmt"
+   ],
+   "label": "6",
+   "page_section": "",
+   "text": "Other taxes. List type and amount"
+  },
+  {
+   "elements": [
+    "TotalTaxesPaidAmt"
+   ],
+   "label": "7",
+   "page_section": "",
+   "text": "Add lines 5e and 6"
+  },
+  {
+   "elements": [
+    "HomeMortgNotUsedInd"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "Home mortgage interest and points. If you didn't use all of your home mortgage loan(s) to buy, build, or improve your home, see instructions and check this box"
+  },
+  {
+   "elements": [
+    "RptHomeMortgIntAndPointsAmt"
+   ],
+   "label": "a",
+   "page_section": "",
+   "text": "Home mortgage interest and points reported to you on Form 1098. See instructions if limited"
+  },
+  {
+   "elements": [
+    "Form1098HomeMortgIntNotRptAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Home mortgage interest not reported to you on Form 1098. See instructions if limited. If paid to the person from whom you bought the home, see instructions and show that person's name, identifying no., and address"
+  },
+  {
+   "elements": [
+    "Form1098PointsNotReportedAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Points not reported to you on Form 1098. See instructions for special rules"
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "",
+   "text": "Reserved"
+  },
+  {
+   "elements": [
+    "TotalHomeMortgIntAndPointsAmt"
+   ],
+   "label": "e",
+   "page_section": "",
+   "text": "Add lines 8a through 8c"
+  },
+  {
+   "elements": [
+    "InvestmentInterestAmt"
+   ],
+   "label": "9",
+   "page_section": "",
+   "text": "Investment interest. Attach Form 4952 if required. See instructions"
+  },
+  {
+   "elements": [
+    "TotalInterestPaidAmt"
+   ],
+   "label": "10",
+   "page_section": "",
+   "text": "Add lines 8e and 9"
+  },
+  {
+   "elements": [
+    "GiftsByCashOrCheckAmt/@qualifiedContributionsAmt",
+    "GiftsByCashOrCheckAmt"
+   ],
+   "label": "11",
+   "page_section": "",
+   "text": "Gifts by cash or check. If you made any gift of $250 or more, see instructions"
+  },
+  {
+   "elements": [
+    "OtherThanByCashOrCheckAmt"
+   ],
+   "label": "12",
+   "page_section": "",
+   "text": "Other than by cash or check. If you made any gift of $250 or more, see instructions. You must attach Form 8283 if over $500"
+  },
+  {
+   "elements": [
+    "CarryoverFromPriorYearAmt"
+   ],
+   "label": "13",
+   "page_section": "",
+   "text": "Carryover from prior year"
+  },
+  {
+   "elements": [
+    "TotalCharitableContriAmt"
+   ],
+   "label": "14",
+   "page_section": "",
+   "text": "Add lines 11 through 13"
+  },
+  {
+   "elements": [
+    "CalcAdjGroIncmMnsTotNetLossAmt"
+   ],
+   "label": "15",
+   "page_section": "",
+   "text": "Casualty and theft loss(es) from a federally declared disaster (other than net qualified disaster losses). Attach Form 4684 and enter the amount from line 18 of that form. See instructions"
+  },
+  {
+   "elements": [
+    "OtherMiscellaneousDedAmt"
+   ],
+   "label": "16",
+   "page_section": "",
+   "text": "Other from list in instructions. List type and amount"
+  },
+  {
+   "elements": [
+    "TotalItemizedDeductionsAmt"
+   ],
+   "label": "17",
+   "page_section": "",
+   "text": "Add the amounts in the far right column for lines 4 through 16. Also, enter this amount on Form 1040 or 1040-SR, line 12"
+  },
+  {
+   "elements": [
+    "ItmzdDedLessThanStdDedInd",
+    "$FormData",
+    "FormScheduleNumber",
+    "GiftsByCashOrCheckAmt/@qualifiedContributionsAmt"
+   ],
+   "label": "18",
+   "page_section": "",
+   "text": "If you elect to itemize deductions even though they are less than your standard deduction, check this box"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS1040ScheduleA.xsl",
+ "year": 2022
+}

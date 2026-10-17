@@ -1,0 +1,1326 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "f3115",
+ "label_classes": [
+  "styIRS3115LNLeftLtrBox",
+  "styIRS3115LNLeftNumBox"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "DesignatedAccountingMthdChgNum[1]",
+    "DesignatedAccountingMthdChgNum[2]",
+    "DesignatedAccountingMthdChgNum[3]",
+    "DesignatedAccountingMthdChgNum[4]",
+    "DesignatedAccountingMthdChgNum[5]",
+    "DesignatedAccountingMthdChgNum[6]",
+    "DesignatedAccountingMthdChgNum[7]",
+    "DesignatedAccountingMthdChgNum[8]",
+    "DesignatedAccountingMthdChgNum[9]",
+    "DesignatedAccountingMthdChgNum[10]",
+    "DesignatedAccountingMthdChgNum[11]",
+    "DesignatedAccountingMthdChgNum[12]",
+    "DesignatedAccountingMthdChgNum[$pos]",
+    "MethodOfAccountingOtherInd",
+    "MethodOfAccountingOtherInd/@methodOfAccountingOtherDesc"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Enter the applicable designated automatic accounting method change number (\"DCN\") for the requested automatic change. Enter only one DCN, except as provided for in guidance published by the IRS. If the requested change has no DCN, check \"Other,\" and provide both a description of the change and a citation of the IRS guidance providing the automatic change. See instructions. a b Other Description"
+  },
+  {
+   "elements": [
+    "RulesRstrAutoChangeProcInd"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Do any of the eligibility rules restrict the applicant from filing the requested change using the automatic change"
+  },
+  {
+   "elements": [
+    "AllInformationProvidedInd"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Has the filer provided all the information and statements required (a) on this form and (b) by the List of Automatic"
+  },
+  {
+   "elements": [
+    "ApplcntTrdBusReqChgRelatesInd"
+   ],
+   "label": "4",
+   "page_section": "Part II",
+   "text": "During the tax year of change, did or will the applicant (a) cease to engage in the trade or business to which the"
+  },
+  {
+   "elements": [
+    "RequestChgUndSect1381Ind",
+    "PreparerOtherThanFilerNm",
+    "PreparerPersonNm",
+    "/PreparerFirmName/BusinessNameLine1Txt",
+    "/PreparerFirmName/BusinessNameLine2Txt"
+   ],
+   "label": "5",
+   "page_section": "Part II",
+   "text": "Under penalties of perjury, I declare that I have examined this application, including accompanying schedules and statements, and to the best of my knowledge and belief, the application contains all the relevant facts relating to the application, and it is true, correct, and complete. Declaration of preparer (other than applicant) is based on all information of which preparer has any knowledge."
+  },
+  {
+   "elements": [
+    "ReturnsUnderExaminationInfo",
+    "AnyFederalReturnsUnderExamInd"
+   ],
+   "label": "6a",
+   "page_section": "Part II",
+   "text": "Does the applicant (or any present or former consolidated group in which the applicant was a member during"
+  },
+  {
+   "elements": [
+    "AcctMthdChgUndConsiderationGrp",
+    "AcctMthdChgUndConsiderationInd"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Is the method of accounting the applicant is requesting to change an issue under consideration (with respect to"
+  },
+  {
+   "elements": [
+    "PersonNm",
+    "PhoneNum",
+    "TaxYr",
+    "ExaminingAgentContactInfo"
+   ],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Enter the name and telephone number of the examining agent and the tax year(s) under examination."
+  },
+  {
+   "elements": [
+    "CopyProvidedToExaminingAgtInd"
+   ],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "Has a copy of this Form 3115 been provided to the examining agent identified on line 6c?"
+  },
+  {
+   "elements": [
+    "AuditProtectionApplyYesInd",
+    "AuditProtectionApplyNoInd"
+   ],
+   "label": "7a",
+   "page_section": "Part II",
+   "text": "Does audit protection apply to the applicant's requested change in method of accounting? See instructions."
+  },
+  {
+   "elements": [
+    "NotUnderExamInd",
+    "ThreeMonthWindowInd",
+    "OneHundredTwentyDaysPeriodInd",
+    "ExaminationEndDt",
+    "MethodNotBeforeDirectorInd",
+    "NegativeAdjustmentInd",
+    "CAPInd",
+    "MemberJoinedGroupDt",
+    "ReqFiledUnderWindowPeriodInd",
+    "AuditProtectionExamInd",
+    "OtherInd"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "If “Yes,” check the applicable box and attach the required statement. Not under Exam 3-month window 120 day: Date examination ended Method not before director Negative adjustment CAP:Date member joined group Audit protection at end of exam Other"
+  },
+  {
+   "elements": [
+    "FedReturnBeforeAppealsInd"
+   ],
+   "label": "8a",
+   "page_section": "Part II",
+   "text": "Does the applicant (or any present or former consolidated group in which the applicant was a member during the"
+  },
+  {
+   "elements": [
+    "AcctMthdUnderCnsdrByFedCrtInd"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Is the method of accounting the applicant is requesting to change an issue under consideration by Appeals and/or"
+  },
+  {
+   "elements": [
+    "AppealsOfficerInd",
+    "CounselForTheGovernmentInd",
+    "PersonNm",
+    "PhoneNum",
+    "TaxYr",
+    "AOOrGovtCounselCntctInfo"
+   ],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "If “Yes,” enter the name of the (check the box) Appeals officer and/or counsel for the government,"
+  },
+  {
+   "elements": [
+    "AOOrGovtCounselProvCopyInd"
+   ],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "Has a copy of this Form 3115 been provided to the Appeals officer and/or counsel for the government identified"
+  },
+  {
+   "elements": [],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "If the applicant answered “Yes” to line 6a and/or 8a with respect to any present or former consolidated group,"
+  },
+  {
+   "elements": [
+    "PrtshpSCorpAcctMthdUndExamInd"
+   ],
+   "label": "10",
+   "page_section": "Part II",
+   "text": "If for federal income tax purposes, the applicant is either an entity (including a limited liability company) treated as"
+  },
+  {
+   "elements": [
+    "ChgInAcctMthdMadeInPast5YrsInd"
+   ],
+   "label": "11a",
+   "page_section": "Part II",
+   "text": "Has the applicant, its predecessor, or a related party requested or made (under either an automatic or non-"
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "If “Yes,” for each trade or business, attach a description of each requested change in method of accounting"
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "If any application was withdrawn, not perfected, or denied, or if a Consent Agreement granting a change was not"
+  },
+  {
+   "elements": [
+    "PnReqPrvtLtrRlngTamAcctChgInd"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Does the applicant, its predecessor, or a related party currently have pending any request (including any"
+  },
+  {
+   "elements": [
+    "RequestingChgToOverallAcctInd"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Is the applicant requesting to change its overall method of accounting?"
+  },
+  {
+   "elements": [],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "If the applicant is either (i) not changing its overall method of accounting, or (ii) is changing its overall method of accounting and changing to a special method of accounting for one or more items, attach a detailed and complete description for each of the following (See instructions):"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "The item(s) being changed."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "The applicant's present method for the item(s) being changed."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "The applicant's proposed method for the item(s) being changed."
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "The applicant's present overall method of accounting (cash, accrual, or hybrid)."
+  },
+  {
+   "elements": [],
+   "label": "15a",
+   "page_section": "Part II",
+   "text": "Attach a detailed and complete description of the applicant's trade(s) or business(es). See section 446(d)."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "If the applicant has more than one trade or business, as defined in Regulations section 1.446-1(d), describe"
+  },
+  {
+   "elements": [],
+   "label": "16a",
+   "page_section": "Part II",
+   "text": "Attach a full explanation of the legal basis supporting the proposed method for the item being changed. Include a detailed and complete description of the facts that explains how the law specifically applies to the applicant's situation and that demonstrates that the applicant is authorized to use the proposed method."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Include all authority (statutes, regulations, published rulings, court cases, etc.) supporting the proposed method."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Include either a discussion of the contrary authorities or a statement that no contrary authority exists."
+  },
+  {
+   "elements": [
+    "ProposedMethodUsedForBksInd"
+   ],
+   "label": "17",
+   "page_section": "Part II",
+   "text": "Will the proposed method of accounting be used for the applicant's books and records and financial statements?"
+  },
+  {
+   "elements": [
+    "ConferenceOfRightRequestedInd"
+   ],
+   "label": "18",
+   "page_section": "Part II",
+   "text": "Does the applicant request a conference with the IRS National Office if the IRS National Office proposes an adverse"
+  },
+  {
+   "elements": [],
+   "label": "19a",
+   "page_section": "Part II",
+   "text": "If the applicant is changing to either the overall cash method, an overall accrual method, or is changing its method of accounting for any property subject to section 263A, any long-term contract subject to section 460 (see 19b), or inventories subject to section 471 or 474, enter the applicant's gross receipts for the 3 tax years preceding the tax year of change."
+  },
+  {
+   "elements": [
+    "FourthPrecedingYearEndDt",
+    "GrossReceiptsFor4thPrecYrAmt",
+    "GrossReceipts4YrsPreceding"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "If the applicant is changing its method of accounting for any long-term contract subject to section 460, in addition to completing 19a, enter the applicant's gross receipts for the 4th tax year preceding the tax year of change:"
+  },
+  {
+   "elements": [
+    "ChangeReqAllwUnderAutoChgInd"
+   ],
+   "label": "20",
+   "page_section": "Part III",
+   "text": "Is the applicant's requested change described in any revenue procedure, revenue ruling, notice, regulation, or"
+  },
+  {
+   "elements": [],
+   "label": "21",
+   "page_section": "Part III",
+   "text": "Attach a copy of all documents related to the proposed change (see instructions)."
+  },
+  {
+   "elements": [],
+   "label": "22",
+   "page_section": "Part III",
+   "text": "Attach a statement of the applicant’s reasons for the proposed change."
+  },
+  {
+   "elements": [
+    "GroupMembersUsePrpsdMthdInd"
+   ],
+   "label": "23",
+   "page_section": "Part III",
+   "text": "If the applicant is a member of a consolidated group for the year of change, do all other members of the"
+  },
+  {
+   "elements": [],
+   "label": "24a",
+   "page_section": "Part III",
+   "text": "Enter the amount of user fee attached to this application (see instructions). $"
+  },
+  {
+   "elements": [
+    "QlfyRdcUserFeeRqrInfoAttInd"
+   ],
+   "label": "b",
+   "page_section": "Part III",
+   "text": "If the applicant qualifies for a reduced user fee, attach the required information or certification (see instructions)."
+  },
+  {
+   "elements": [
+    "RequireUseCutOffBasisYesInd",
+    "RequireUseCutOffBasisNoInd"
+   ],
+   "label": "25",
+   "page_section": "Part IV",
+   "text": "Does published guidance require the applicant (or permit the applicant and the applicant is electing) to implement the"
+  },
+  {
+   "elements": [
+    "NetSectionAdjustmentAmt/@increaseOrDecreaseCd",
+    "NetSectionAdjustmentAmt"
+   ],
+   "label": "26",
+   "page_section": "Part IV",
+   "text": "Enter the section 481(a) adjustment. Indicate whether the adjustment is an increase (+) or a decrease (-) in income. $ Attach a summary of the computation and an explanation of the methodology used to determine the section 481(a) adjustment. If it is based on more than one component, show the computation for each component. If the applicant waived any deductions with respect to the method of accounting pursuant to Regulations section 1.59A-3(c)(6)(i), include a summary of the waived deductions. If more than one applicant is applying for the method change on the application, attach a list of the (a) name, (b) identification number, and (c) the amount of the section 481(a) adjustment attributable to each applicant."
+  },
+  {
+   "elements": [
+    "Sect481aAdjPrChgRqrInd/@section481aAdjustmentAmt",
+    "Sect481aAdjPrChgRqrInd"
+   ],
+   "label": "27",
+   "page_section": "Part IV",
+   "text": "Is the applicant required to take into account in the year of change any remaining portion of a section 481(a) adjustment from a prior change (see instructions)? If yes, enter the amount. $"
+  },
+  {
+   "elements": [
+    "TakingEntireSectAdjIntoAcctInd",
+    "DeMinimisElection50KInd",
+    "EligibleAcquisTransElectInd"
+   ],
+   "label": "28",
+   "page_section": "Part IV",
+   "text": "Is the applicant making an election to take the entire amount of the adjustment into account in the tax year of change?"
+  },
+  {
+   "elements": [
+    "PartOfAdjAttrblBtwnMembersInd"
+   ],
+   "label": "29",
+   "page_section": "Part IV",
+   "text": "Is any part of the section 481(a) adjustment attributable to transactions between members of an affiliated group, a"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/PresentMethod/CashInd",
+    "IRS3115ScheduleA/PresentMethod/AccrualInd",
+    "IRS3115ScheduleA/PresentMethod/HybridInd",
+    "IRS3115ScheduleA/ProposedMethod/CashInd",
+    "IRS3115ScheduleA/ProposedMethod/AccrualInd",
+    "IRS3115ScheduleA/ProposedMethod/HybridInd"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Check the appropriate boxes below to indicate the applicant's present and proposed methods of accounting."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Enter the following amounts as of the close of the tax year preceding the year of change. If none, state \"None.\" Also, attach a statement providing a breakdown of the amounts entered on lines 2a through 2g."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/IncomeAccruedButNotReceivedAmt",
+    "IRS3115ScheduleA/IncomeAccruedButNotRcvdNONECd"
+   ],
+   "label": "a",
+   "page_section": "Part I",
+   "text": "Income accrued but not received (such as accounts receivable)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/IncomeReceivedOrRptBfrEarnAmt",
+    "IRS3115ScheduleA/IncomeRcvdOrRptBefEarnNONECd"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Income received or reported before it was earned (such as advanced payments). Attach a description"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/ExpensesAccruedButNotPaidAmt",
+    "IRS3115ScheduleA/ExpensesAccruedButNotPdNONECd"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Expenses accrued but not paid (such as accounts payable)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/PrepaidExpensePrevDeductedAmt",
+    "IRS3115ScheduleA/PrepaidExpnsPrevDedNONECd"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Prepaid expenses previously deducted"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/SuppliesOnHandPrevDeductedAmt",
+    "IRS3115ScheduleA/SupOnHandPrevDeductedNONECd"
+   ],
+   "label": "e",
+   "page_section": "Part I",
+   "text": "Supplies on hand previously deducted and/or not previously reported"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/InventoryOnHandPrevDeductedAmt",
+    "IRS3115ScheduleA/InvntryOnHandPrevDedNONECd"
+   ],
+   "label": "f",
+   "page_section": "Part I",
+   "text": "Inventory on hand previously deducted and/or not previously reported. Complete Schedule D, Part II"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/OtherAmt",
+    "IRS3115ScheduleA/OtherAmountNONECd"
+   ],
+   "label": "g",
+   "page_section": "Part I",
+   "text": "Other amounts (specify). Attach a description of the item and the legal basis for its inclusion in the calculation of the section 481(a) adjustment."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/NetSectionAdjustmentAmt",
+    "IRS3115ScheduleA/NetSectionAdjustmentNoneCd"
+   ],
+   "label": "h",
+   "page_section": "Part I",
+   "text": "Net section 481(a) adjustment (Combine lines 2a–2g.) Indicate whether the adjustment is an"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/RequestingRecurItemExcInd"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Is the applicant also requesting the recurring item exception under section 461(h)(3)?"
+  },
+  {
+   "elements": [],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Attach copies of the profit and loss statement (Schedule F (Form 1040) for farmers) and the balance sheet, if applicable, as of the close of the tax year preceding the year of change. Also attach a statement specifying the accounting method used when preparing the balance sheet. If books of account are not kept, attach a copy of the business schedules submitted with the federal income tax return or other return (such as, tax-exempt organization returns) for that period. If the amounts in Part I, lines 2a through 2g, do not agree with the amounts shown on the balance sheet, attach a statement explaining the differences."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleA/CashOrAccrualMethodChangeInd"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Is the applicant making a change to the overall cash method or to a method in which a taxpayer uses an accrual method for purchases and sales of inventory and uses the cash method for computing all other items of income and expense (see instructions)? Yes No"
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part II",
+   "text": "A description of inventory items (items whose production, purchase, or sale is an income-producing factor) and materials and supplies used in carrying out the business."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part II",
+   "text": "An explanation as to whether the applicant is required to use an accrual method under any section of the Code or regulations."
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part II",
+   "text": "If the applicant is requesting to change to the deferral method for advance payments under Regulations section 1.451-8(c) or (d), as described in the instructions, attach the information specified in the instructions."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part II",
+   "text": "If the applicant is requesting to change to or within a cost offset method under Regulations section 1.451-3(c) and/or Regulations section 1.451-8(e), as described in the instructions, attach the information specified in the instructions."
+  },
+  {
+   "elements": [],
+   "label": "3",
+   "page_section": "Part II",
+   "text": "If the applicant is requesting to change to or within a method to conform to the applicable financial statement income inclusion rule under section 451(b) and Regulations section 1.451-3, as described in the instructions, attach a detailed description of the proposed method including the information specified in the instructions."
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Attach a description of the applicant's present and proposed LIFO methods and submethods for each of the following items:"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Part I",
+   "text": "Valuing inventory (e.g., unit method or dollar-value method)."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Pooling (e.g., by line or type or class of goods, natural business unit, multiple pools, raw material content, simplified dollar-value method, inventory price index computation (IPIC) pools, vehicle-pool method, etc.)."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Pricing dollar-value pools (e.g., double-extension, index, link-chain, link-chain index, IPIC method, etc.)."
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Determining the current-year cost of goods in the ending inventory (i.e., most recent acquisitions, earliest acquisitions during the current year, average cost of current-year acquisitions, rolling-average cost, or other permitted method)."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "If any present method or submethod used by the applicant is not the same as indicated on Form(s) 970 filed to adopt or expand the use of the method, attach an explanation."
+  },
+  {
+   "elements": [],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "If the proposed change is not requested for all the LIFO inventory, attach a statement specifying the inventory to which the change is and is not applicable."
+  },
+  {
+   "elements": [],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "If the proposed change is not requested for all of the LIFO pools, attach a statement specifying the LIFO pool(s) to which the change is applicable."
+  },
+  {
+   "elements": [],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Attach a statement addressing whether the applicant values any of its LIFO inventory on a method other than cost. For example, if the applicant values some of its LIFO inventory at retail and the remainder at cost, identify which inventory items are valued under each method."
+  },
+  {
+   "elements": [],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "If changing to the IPIC method, attach a completed Form 970."
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part II",
+   "text": "If the applicant is proposing to change its pooling method or the number of pools, attach a description of the contents of, and state the base year for, each dollar-value pool the applicant presently uses and proposes to use."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part II",
+   "text": "If the applicant is proposing to use natural business unit (NBU) pools or requesting to change the number of NBU pools, attach the following information (to the extent not already provided) in sufficient detail to show that each proposed NBU was determined under Regulations section 1.472-8(b)(1) and (2):"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "A description of the types of products produced by the applicant. If possible, attach a brochure."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "A description of the types of processes and raw materials used to produce the products in each proposed pool."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "If all of the products to be included in the proposed NBU pool(s) are not produced at one facility, state the reasons for the separate facilities, the location of each facility, and a description of the products each facility produces."
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "A description of the natural business divisions adopted by the taxpayer. State whether separate cost centers are maintained and if separate profit and loss statements are prepared."
+  },
+  {
+   "elements": [],
+   "label": "e",
+   "page_section": "Part II",
+   "text": "A statement addressing whether the applicant has inventories of items purchased and held for resale that are not further processed by the applicant, including whether such items, if any, will be included in any proposed NBU pool."
+  },
+  {
+   "elements": [],
+   "label": "f",
+   "page_section": "Part II",
+   "text": "A statement addressing whether all items including raw materials, goods-in-process, and finished goods entering into the entire inventory investment for each proposed NBU pool are presently valued under the LIFO method. Describe any items that are not presently valued under the LIFO method that are to be included in each proposed pool."
+  },
+  {
+   "elements": [],
+   "label": "g",
+   "page_section": "Part II",
+   "text": "A statement addressing whether, within the proposed NBU pool(s), there are items both sold to unrelated parties and transferred to a different unit of the applicant to be used as a component part of another product prior to final processing."
+  },
+  {
+   "elements": [],
+   "label": "3",
+   "page_section": "Part II",
+   "text": "If the applicant is engaged in manufacturing and is proposing to use the multiple pooling method or raw material content pools, attach information to show that each proposed pool will consist of a group of items that are substantially similar. See Regulations section 1.472-8(b)(3)."
+  },
+  {
+   "elements": [],
+   "label": "4",
+   "page_section": "Part II",
+   "text": "If the applicant is engaged in the wholesaling or retailing of goods and is requesting to change the number of pools used, attach information to show that each of the proposed pools is based on customary business classifications of the applicant's trade or business. See Regulations section 1.472-8(c)."
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "To the extent not already provided, attach a description of the applicant’s present and proposed methods for reporting income and expenses from long-term contracts. Also, attach a representative actual contract (without any deletion) for the requested change. If the applicant is a construction contractor, attach a detailed description of its construction activities."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/LongTermApplicantContractsInd"
+   ],
+   "label": "2a",
+   "page_section": "Part I",
+   "text": "Are the applicant's contracts long-term contracts as defined in section 460(f)(1) (see instructions)?"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/AllContractsQlfySectionExcInd"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "If \"Yes,\" do all the contracts qualify for the exception under section 460(e) (see instructions)?"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ApplcntReqPctOfCompMethodInd"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Is the applicant requesting to use the percentage-of-completion method using cost-to-cost under Regulations"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/CmplnFctrCstCstSmplfdMthdInd"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "In computing the completion factor of a contract, will the applicant use the cost-to-cost method described in Regulations section 1.460-5(b) or the simplified cost-to-cost method described in Regulations section"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ApplcntReqExmptComplnMethodInd"
+   ],
+   "label": "e",
+   "page_section": "Part I",
+   "text": "If line 2c is \"No,\" is the applicant requesting to use the exempt-contract percentage-of-completion"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/LTMfrContractsAsDefInSectInd"
+   ],
+   "label": "3a",
+   "page_section": "Part I",
+   "text": "Does the applicant have long-term manufacturing contracts as defined in section 460(f)(2)?"
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "If \"Yes,\" attach a description of the applicant’s manufacturing activities, including any required installation of manufactured goods."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/EnterCostPlusLTCntrctInd"
+   ],
+   "label": "4a",
+   "page_section": "Part I",
+   "text": "Does the applicant enter into cost-plus long-term contracts?"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/EnterFederalLTCntrctInd"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Does the applicant enter into federal long-term contracts?"
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part II",
+   "text": "Attach a description of the inventory goods being changed."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part II",
+   "text": "Attach a description of the inventory goods (if any) NOT being changed."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ApplicationSubjectToSectionInd"
+   ],
+   "label": "3a",
+   "page_section": "Part II",
+   "text": "Is the applicant subject to section 263A? If \"No,\" go to line 4a"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/PresInvntryVltnMethodCmplncInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/SpecificIdentificationInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/SpecificIdentificationInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/SpecificIdentificationInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/FIFOInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/FIFOInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/FIFOInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/LIFOInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/LIFOInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/LIFOInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/OtherIdentificationMethodInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/OtherIdentificationMethodInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/OtherIdentificationMethodInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/CostInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/CostInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/CostInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/CostOrMarketInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/CostOrMarketInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/CostOrMarketInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/RetailCostInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/RetailCostInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/RetailCostInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/LowerRetailOfCostOrMarketInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/LowerRetailOfCostOrMarketInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/LowerRetailOfCostOrMarketInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/Methods/OtherValutionMethodInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/Methods/OtherValutionMethodInd",
+    "IRS3115ScheduleD/InventoryNotBeingChanged/PresentMethodTxt/Methods/OtherValutionMethodInd",
+    "IRS3115ScheduleD/InventoryBeingChanged/PresentMethodTxt/ValueEndOfTaxYearBefYrOfChgAmt",
+    "IRS3115ScheduleD/InventoryBeingChanged/ProposedMethodTxt/ValueEndOfTaxYearBefYrOfChgAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Is the applicant's present inventory valuation method in compliance with section 263A (see instructions)?"
+  },
+  {
+   "elements": [],
+   "label": "5",
+   "page_section": "Part II",
+   "text": "If the applicant is changing from the LIFO inventory method to a non-LIFO method, attach the following information (see instructions)."
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Copies of Form(s) 970 filed to adopt or expand the use of the method."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Only for applicants requesting a non-automatic change. A statement describing whether the applicant is changing to the method required by Regulations section 1.472-6(a) or (b), or whether the applicant is proposing a different method."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Only for applicants requesting an automatic change. The statement required by section 22.01(5) of Rev. Proc. 2022-14 (or its successor)."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/CostOffsetMethodInd"
+   ],
+   "label": "6",
+   "page_section": "Part II",
+   "text": "Is the applicant presently using the AFS cost offset method as described in Regulations section 1.451-3(c) and/or the advance payment cost offset method described in Regulations section 1.451-8(e), or is the applicant changing to such methods for the same year of change as the requested change in inventory method? If yes, see the instructions for rules regarding concurrent changes Yes No"
+  },
+  {
+   "elements": [],
+   "label": "1",
+   "page_section": "Part III",
+   "text": "The method of allocating direct and indirect costs (for example, specific identification, burden rate, standard cost, or other reasonable allocation method)."
+  },
+  {
+   "elements": [],
+   "label": "2",
+   "page_section": "Part III",
+   "text": "The method of allocating mixed service costs (for example, direct reallocation, step-allocation, simplified service cost using the labor-based allocation ratio, simplified service cost using the production cost allocation ratio, or other reasonable allocation method)."
+  },
+  {
+   "elements": [],
+   "label": "3",
+   "page_section": "Part III",
+   "text": "Except for long-term contract accounting methods, the method of capitalizing additional section 263A costs (for example, simplified production with or without the historic absorption ratio election, modified simplified production with or without the historic absorption ratio election, simplified resale with or without the historic absorption ratio election including permissible variations, the U.S. ratio, or other reasonable allocation method)."
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/DirectMaterial/PresentMethodTxt",
+    "IRS3115ScheduleD/DirectMaterial/ProposedMethodTxt"
+   ],
+   "label": "1",
+   "page_section": "Part III",
+   "text": "Direct material"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/DirectLabor/PresentMethodTxt",
+    "IRS3115ScheduleD/DirectLabor/ProposedMethodTxt"
+   ],
+   "label": "2",
+   "page_section": "Part III",
+   "text": "Direct labor"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/IndirectLabor/PresentMethodTxt",
+    "IRS3115ScheduleD/IndirectLabor/ProposedMethodTxt"
+   ],
+   "label": "3",
+   "page_section": "Part III",
+   "text": "Indirect labor"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OfficersCompensation/PresentMethodTxt",
+    "IRS3115ScheduleD/OfficersCompensation/ProposedMethodTxt"
+   ],
+   "label": "4",
+   "page_section": "Part III",
+   "text": "Officers' compensation (not including selling activities)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/PensionAndOtherRelatedCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/PensionAndOtherRelatedCosts/ProposedMethodTxt"
+   ],
+   "label": "5",
+   "page_section": "Part III",
+   "text": "Pension and other related costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/EmployeeBenefits/PresentMethodTxt",
+    "IRS3115ScheduleD/EmployeeBenefits/ProposedMethodTxt"
+   ],
+   "label": "6",
+   "page_section": "Part III",
+   "text": "Employee benefits"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/IndirectMaterialsAndSupplies/PresentMethodTxt",
+    "IRS3115ScheduleD/IndirectMaterialsAndSupplies/ProposedMethodTxt"
+   ],
+   "label": "7",
+   "page_section": "Part III",
+   "text": "Indirect materials and supplies"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/PurchasingCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/PurchasingCosts/ProposedMethodTxt"
+   ],
+   "label": "8",
+   "page_section": "Part III",
+   "text": "Purchasing costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/HandlingProcessingAssemblyCost/PresentMethodTxt",
+    "IRS3115ScheduleD/HandlingProcessingAssemblyCost/ProposedMethodTxt"
+   ],
+   "label": "9",
+   "page_section": "Part III",
+   "text": "Handling, processing, assembly, and repackaging costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OffsiteStorageWarehousingCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/OffsiteStorageWarehousingCosts/ProposedMethodTxt"
+   ],
+   "label": "10",
+   "page_section": "Part III",
+   "text": "Offsite storage and warehousing costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/DeprecAmortzAndCostRecovery/PresentMethodTxt",
+    "IRS3115ScheduleD/DeprecAmortzAndCostRecovery/ProposedMethodTxt"
+   ],
+   "label": "11",
+   "page_section": "Part III",
+   "text": "Depreciation, amortization, and cost recovery allowance for equipment and facilities placed in"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Depletion/PresentMethodTxt",
+    "IRS3115ScheduleD/Depletion/ProposedMethodTxt"
+   ],
+   "label": "12",
+   "page_section": "Part III",
+   "text": "Depletion"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Rent/PresentMethodTxt",
+    "IRS3115ScheduleD/Rent/ProposedMethodTxt"
+   ],
+   "label": "13",
+   "page_section": "Part III",
+   "text": "Rent"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/TaxesNotStateLocalAndForeign/PresentMethodTxt",
+    "IRS3115ScheduleD/TaxesNotStateLocalAndForeign/ProposedMethodTxt"
+   ],
+   "label": "14",
+   "page_section": "Part III",
+   "text": "Taxes other than state, local, and foreign income taxes"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Insurance/PresentMethodTxt",
+    "IRS3115ScheduleD/Insurance/ProposedMethodTxt"
+   ],
+   "label": "15",
+   "page_section": "Part III",
+   "text": "Insurance"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Utilities/PresentMethodTxt",
+    "IRS3115ScheduleD/Utilities/ProposedMethodTxt"
+   ],
+   "label": "16",
+   "page_section": "Part III",
+   "text": "Utilities"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/MaintRepairsProdResaleLTCntrct/PresentMethodTxt",
+    "IRS3115ScheduleD/MaintRepairsProdResaleLTCntrct/ProposedMethodTxt"
+   ],
+   "label": "17",
+   "page_section": "Part III",
+   "text": "Maintenance and repairs that relate to a production, resale, or long-term contract activity"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/EngineeringAndDesignCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/EngineeringAndDesignCosts/ProposedMethodTxt"
+   ],
+   "label": "18",
+   "page_section": "Part III",
+   "text": "Engineering and design costs (not including section 174 research and experimental"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ReworkLaborScrapAndSpoilage/PresentMethodTxt",
+    "IRS3115ScheduleD/ReworkLaborScrapAndSpoilage/ProposedMethodTxt"
+   ],
+   "label": "19",
+   "page_section": "Part III",
+   "text": "Rework labor, scrap, and spoilage"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ToolsAndEquipment/PresentMethodTxt",
+    "IRS3115ScheduleD/ToolsAndEquipment/ProposedMethodTxt"
+   ],
+   "label": "20",
+   "page_section": "Part III",
+   "text": "Tools and equipment"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/QualityControlAndInspection/PresentMethodTxt",
+    "IRS3115ScheduleD/QualityControlAndInspection/ProposedMethodTxt"
+   ],
+   "label": "21",
+   "page_section": "Part III",
+   "text": "Quality control and inspection"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/ContractBiddingExpnssIncurred/PresentMethodTxt",
+    "IRS3115ScheduleD/ContractBiddingExpnssIncurred/ProposedMethodTxt"
+   ],
+   "label": "22",
+   "page_section": "Part III",
+   "text": "Bidding expenses incurred in the solicitation of contracts awarded to the applicant"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/LicensingAndFranchiseCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/LicensingAndFranchiseCosts/ProposedMethodTxt"
+   ],
+   "label": "23",
+   "page_section": "Part III",
+   "text": "Licensing and franchise costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/CapitalizableServiceCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/CapitalizableServiceCosts/ProposedMethodTxt"
+   ],
+   "label": "24",
+   "page_section": "Part III",
+   "text": "Capitalizable service costs (including mixed service costs)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/AdministrativeCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/AdministrativeCosts/ProposedMethodTxt"
+   ],
+   "label": "25",
+   "page_section": "Part III",
+   "text": "Administrative costs (not including any costs of selling or any return on capital)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/RsrchAndExptlExpnssLTContracts/PresentMethodTxt",
+    "IRS3115ScheduleD/RsrchAndExptlExpnssLTContracts/ProposedMethodTxt"
+   ],
+   "label": "26",
+   "page_section": "Part III",
+   "text": "Research and experimental expenses attributable to long-term contracts"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Interest/PresentMethodTxt",
+    "IRS3115ScheduleD/Interest/ProposedMethodTxt"
+   ],
+   "label": "27",
+   "page_section": "Part III",
+   "text": "Interest"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OtherCostsRqrToBeAllocated",
+    "IRS3115ScheduleD/OtherCostsRqrToBeAllocated/PresentMethodTxt",
+    "IRS3115ScheduleD/OtherCostsRqrToBeAllocated/ProposedMethodTxt"
+   ],
+   "label": "28",
+   "page_section": "Part III",
+   "text": "Other costs (Attach a list of these costs.)"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/MarketingSellAdvtgDistriExpnss/PresentMethodTxt",
+    "IRS3115ScheduleD/MarketingSellAdvtgDistriExpnss/ProposedMethodTxt"
+   ],
+   "label": "1",
+   "page_section": "Part III",
+   "text": "Marketing, selling, advertising, and distribution expenses"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OtherResearchAndExptlExpenses/PresentMethodTxt",
+    "IRS3115ScheduleD/OtherResearchAndExptlExpenses/ProposedMethodTxt"
+   ],
+   "label": "2",
+   "page_section": "Part III",
+   "text": "Research and experimental expenses not included in Section B, line 26"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OtherBiddingExpenses/PresentMethodTxt",
+    "IRS3115ScheduleD/OtherBiddingExpenses/ProposedMethodTxt"
+   ],
+   "label": "3",
+   "page_section": "Part III",
+   "text": "Bidding expenses not included in Section B, line 22"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/GeneralAndAdministrativeCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/GeneralAndAdministrativeCosts/ProposedMethodTxt"
+   ],
+   "label": "4",
+   "page_section": "Part III",
+   "text": "General and administrative costs not included in Section B"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/IncomeTaxes/PresentMethodTxt",
+    "IRS3115ScheduleD/IncomeTaxes/ProposedMethodTxt"
+   ],
+   "label": "5",
+   "page_section": "Part III",
+   "text": "Income taxes"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/CostOfStrikes/PresentMethodTxt",
+    "IRS3115ScheduleD/CostOfStrikes/ProposedMethodTxt"
+   ],
+   "label": "6",
+   "page_section": "Part III",
+   "text": "Cost of strikes"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/WarrantyProductLiabilityCosts/PresentMethodTxt",
+    "IRS3115ScheduleD/WarrantyProductLiabilityCosts/ProposedMethodTxt"
+   ],
+   "label": "7",
+   "page_section": "Part III",
+   "text": "Warranty and product liability costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/Section179Costs/PresentMethodTxt",
+    "IRS3115ScheduleD/Section179Costs/ProposedMethodTxt"
+   ],
+   "label": "8",
+   "page_section": "Part III",
+   "text": "Section 179 costs"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OnSiteStorage/PresentMethodTxt",
+    "IRS3115ScheduleD/OnSiteStorage/ProposedMethodTxt"
+   ],
+   "label": "9",
+   "page_section": "Part III",
+   "text": "On-site storage"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OtherDeprecAmortzCostRecovery/PresentMethodTxt",
+    "IRS3115ScheduleD/OtherDeprecAmortzCostRecovery/ProposedMethodTxt"
+   ],
+   "label": "10",
+   "page_section": "Part III",
+   "text": "Depreciation, amortization, and cost recovery allowance not included in Section B, line 11"
+  },
+  {
+   "elements": [
+    "IRS3115ScheduleD/OtherCostsNotRqrToBeAllocated",
+    "IRS3115ScheduleD/OtherCostsNotRqrToBeAllocated/PresentMethodTxt",
+    "IRS3115ScheduleD/OtherCostsNotRqrToBeAllocated/ProposedMethodTxt",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization"
+   ],
+   "label": "11",
+   "page_section": "Part III",
+   "text": "Other costs (Attach a list of these costs.)"
+  },
+  {
+   "elements": [],
+   "label": "5",
+   "page_section": "Part III",
+   "text": "To the extent not already provided in the applicant's description of its present method, attach a statement explaining how the property is treated under the applicant’s present method (for example, depreciable property, inventory property, supplies under Regulations section 1.162-3, nondepreciable section 263(a) property, property deductible as a current expense, etc.)."
+  },
+  {
+   "elements": [],
+   "label": "6",
+   "page_section": "Part III",
+   "text": "If the property is not currently treated as depreciable or amortizable property, attach a statement of the facts supporting the proposed change to depreciate or amortize the property."
+  },
+  {
+   "elements": [],
+   "label": "7",
+   "page_section": "Part III",
+   "text": "If the property is currently treated and/or will be treated as depreciable or amortizable property, provide the following information for both the present (if applicable) and proposed methods:"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Part III",
+   "text": "The Code section under which the property is or will be depreciated or amortized (for example, section 168(g))."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Part III",
+   "text": "The applicable asset class from Rev. Proc. 87-56, 1987-2 C.B. 674, for each asset depreciated under section 168 (MACRS) or under former section 1400L; the applicable asset class from Rev. Proc. 83-35, 1983-1 C.B. 745, for each asset depreciated under former section 168 (ACRS); an explanation why no asset class is identified for each asset for which an asset class has not been identified by the applicant."
+  },
+  {
+   "elements": [],
+   "label": "c",
+   "page_section": "Part III",
+   "text": "The facts to support the asset class for the proposed method."
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "Part III",
+   "text": "The depreciation or amortization method of the property, including the applicable Code section (for example, 200% declining balance method under section 168(b)(1))."
+  },
+  {
+   "elements": [],
+   "label": "e",
+   "page_section": "Part III",
+   "text": "The useful life, recovery period, or amortization period of the property."
+  },
+  {
+   "elements": [],
+   "label": "f",
+   "page_section": "Part III",
+   "text": "The applicable convention of the property."
+  },
+  {
+   "elements": [],
+   "label": "g",
+   "page_section": "Part III",
+   "text": "Whether the additional first-year special depreciation allowance (for example, as provided by section 168(k), 168(l), 168(m), or 168(n), or former section 1400L(b) or 1400N(d) was or will be claimed for the property. If not, also provide an explanation as to why no special depreciation allowance was or will be claimed."
+  },
+  {
+   "elements": [
+    "$Form3115Data",
+    "ExaminationEndDt",
+    "QlfyRdcUserFeeRqrInfoAttInd",
+    "BusinessName[$pos]/BusinessNameLine1Txt",
+    "BusinessName[$pos]/BusinessNameLine2Txt",
+    "EIN[$pos]",
+    "PersonNm",
+    "PhoneNum",
+    "TaxYr",
+    "GrossReceiptsForFirstPrecYrAmt",
+    "FirstPrecedingYearEndDt",
+    "GrossReceiptsFor2ndPrecYrAmt",
+    "SecondPrecedingYearEndDt",
+    "GrossReceiptsForThirdPrecYrAmt",
+    "ThirdPrecedingYearEndDt",
+    "FourthPrecedingYearEndDt",
+    "GrossReceiptsFor4thPrecYrAmt",
+    "PropertyDeprecUnderSectionInd",
+    "DepreciationOrAmortizationInd",
+    "ApplicableSectionTxt",
+    "DeprecOrAmortzElectionMadeInd",
+    "ElectionMadeTxt",
+    ".",
+    "LivedInPropertyBefRentingItInd",
+    "PublicUtilityPropertyInd",
+    "ExaminationPeriodBeginDt",
+    "ConsiderationStartDt",
+    "IssuePendingExaminationStartDt",
+    "ExaminationPeriodEndDt",
+    "ConsiderationEndDt",
+    "IssuePendingExaminationEndDt",
+    "$thisElement[$index]/PersonNm",
+    "$thisElement[$index]/PhoneNum",
+    "$thisElement[$index]/TaxYr",
+    "GrossReceipts4YrsPreceding",
+    "GrossReceipts4YrsPreceding[$index]/GrossReceiptsForFirstPrecYrAmt",
+    "GrossReceipts4YrsPreceding[$index]/FirstPrecedingYearEndDt",
+    "GrossReceipts4YrsPreceding[$index]/GrossReceiptsFor2ndPrecYrAmt",
+    "GrossReceipts4YrsPreceding[$index]/SecondPrecedingYearEndDt",
+    "GrossReceipts4YrsPreceding[$index]/GrossReceiptsForThirdPrecYrAmt",
+    "GrossReceipts4YrsPreceding[$index]/ThirdPrecedingYearEndDt",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/PropertyDeprecUnderSectionInd",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/DepreciationOrAmortizationInd",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/ApplicableSectionTxt",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/DeprecOrAmortzElectionMadeInd",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/ElectionMadeTxt",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/LivedInPropertyBefRentingItInd",
+    "IRS3115ScheduleE/ChangeInDeprecOrAmortization[$index]/PublicUtilityPropertyInd"
+   ],
+   "label": "h",
+   "page_section": "Part III",
+   "text": ""
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2024r1.zip",
+ "package_sha256": "04756268735a28e5f7cbdc3c07c37b2336d68f05d1b448fd318c4b28b849e089",
+ "xsl": "PY2024R11/mef/Stylesheets/2023/IRS3115.xsl",
+ "year": 2023
+}

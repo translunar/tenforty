@@ -1,0 +1,494 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "sch_1",
+ "label_classes": [
+  "styLNLeftLtrBoxDD",
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "StateLocalIncomeTaxRefundAmt"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Taxable refunds, credits, or offsets of state and local income taxes"
+  },
+  {
+   "elements": [
+    "AlimonyReceivedGrp/AlimonyReceivedAmt",
+    "TotalAlimonyReceivedAmt"
+   ],
+   "label": "2a",
+   "page_section": "Part I",
+   "text": "Alimony received"
+  },
+  {
+   "elements": [
+    "AlimonyReceivedGrp/DivorceOrSeparationAgreementDt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Date of original divorce or separation agreement (see instructions)"
+  },
+  {
+   "elements": [
+    "BusinessIncomeLossAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Business income or (loss). Attach Schedule C"
+  },
+  {
+   "elements": [
+    "OtherGainLossAmt",
+    "OtherGainLossAmt/@form4684Cd"
+   ],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Other gains or (losses). Attach Form 4797"
+  },
+  {
+   "elements": [
+    "RentalRealEstateIncomeLossAmt"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Rental real estate, royalties, partnerships, S corporations, trusts, etc. Attach Schedule E"
+  },
+  {
+   "elements": [
+    "NetFarmProfitLossAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "Farm income or (loss). Attach Schedule F"
+  },
+  {
+   "elements": [
+    "UnemploymentCompAmt/@repaymentCd",
+    "UnemploymentCompAmt/@repaymentAmt",
+    "UnemploymentCompAmt"
+   ],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Unemployment compensation"
+  },
+  {
+   "elements": [],
+   "label": "8",
+   "page_section": "Part I",
+   "text": "Other income:"
+  },
+  {
+   "elements": [
+    "NetOperatingLossDeductionAmt"
+   ],
+   "label": "a",
+   "page_section": "Part I",
+   "text": "Net operating loss"
+  },
+  {
+   "elements": [
+    "GamblingReportableWinningAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Gambling income"
+  },
+  {
+   "elements": [
+    "DebtCancellationAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Cancellation of debt"
+  },
+  {
+   "elements": [
+    "TotalIncomeExclusionAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Foreign earned income exclusion from Form 2555"
+  },
+  {
+   "elements": [
+    "TotalTaxableHSADistributionAmt"
+   ],
+   "label": "e",
+   "page_section": "Part I",
+   "text": "Taxable Health Savings Account distribution"
+  },
+  {
+   "elements": [
+    "AlaskaPermanentFundDivAmt"
+   ],
+   "label": "f",
+   "page_section": "Part I",
+   "text": "Alaska Permanent Fund dividends"
+  },
+  {
+   "elements": [
+    "JuryDutyPayAmt"
+   ],
+   "label": "g",
+   "page_section": "Part I",
+   "text": "Jury duty pay"
+  },
+  {
+   "elements": [
+    "PrizesAwardsAmt"
+   ],
+   "label": "h",
+   "page_section": "Part I",
+   "text": "Prizes and awards"
+  },
+  {
+   "elements": [
+    "ActivityNotForProfitIncmAmt"
+   ],
+   "label": "i",
+   "page_section": "Part I",
+   "text": "Activity not engaged in for profit income"
+  },
+  {
+   "elements": [
+    "StockOptionsAmt"
+   ],
+   "label": "j",
+   "page_section": "Part I",
+   "text": "Stock options"
+  },
+  {
+   "elements": [
+    "RentalIncomePersonalPropAmt"
+   ],
+   "label": "k",
+   "page_section": "Part I",
+   "text": "Income from the rental of personal property if you engaged in the rental for profit but were not in the business of renting such property"
+  },
+  {
+   "elements": [
+    "OlympicParalympicMedalUSOCAmt"
+   ],
+   "label": "l",
+   "page_section": "Part I",
+   "text": "Olympic and Paralympic medals and USOC prize money (see instructions)"
+  },
+  {
+   "elements": [
+    "Section951aInclusionAmt"
+   ],
+   "label": "m",
+   "page_section": "Part I",
+   "text": "Section 951(a) inclusion (see instructions)"
+  },
+  {
+   "elements": [
+    "Section951AaInclusionAmt"
+   ],
+   "label": "n",
+   "page_section": "Part I",
+   "text": "Section 951A(a) inclusion (see instructions)"
+  },
+  {
+   "elements": [
+    "ExcessBusinessLossAmt"
+   ],
+   "label": "o",
+   "page_section": "Part I",
+   "text": "Section 461(l) excess business loss adjustment"
+  },
+  {
+   "elements": [
+    "TaxableABLEDistributionsAmt"
+   ],
+   "label": "p",
+   "page_section": "Part I",
+   "text": "Taxable distributions from an ABLE account (see instructions)"
+  },
+  {
+   "elements": [
+    "OtherIncomeTotalAmt"
+   ],
+   "label": "z",
+   "page_section": "Part I",
+   "text": "Other income. List type and amount"
+  },
+  {
+   "elements": [
+    "TotalOtherIncomeAmt"
+   ],
+   "label": "9",
+   "page_section": "Part I",
+   "text": "Total other income. Add lines 8a through 8z"
+  },
+  {
+   "elements": [
+    "TotalAdditionalIncomeAmt"
+   ],
+   "label": "10",
+   "page_section": "Part I",
+   "text": "Combine lines 1 through 7 and 9. Enter here and on Form 1040, 1040-SR, or 1040-NR, line 8"
+  },
+  {
+   "elements": [
+    "EducatorExpensesAmt"
+   ],
+   "label": "11",
+   "page_section": "Part II",
+   "text": "Educator expenses"
+  },
+  {
+   "elements": [
+    "BusExpnsReservistsAndOthersAmt"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Certain business expenses of reservists, performing artists, and fee-basis government officials. Attach Form 2106"
+  },
+  {
+   "elements": [
+    "HealthSavingsAccountDedAmt"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Health savings account deduction. Attach Form 8889"
+  },
+  {
+   "elements": [
+    "MovingExpenseAmt",
+    "MovingExpenseCd"
+   ],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Moving expenses for members of the Armed Forces. Attach Form 3903"
+  },
+  {
+   "elements": [
+    "DeductibleSelfEmploymentTaxAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Deductible part of self-employment tax. Attach Schedule SE"
+  },
+  {
+   "elements": [
+    "SelfEmpldSepSimpleQlfyPlansAmt"
+   ],
+   "label": "16",
+   "page_section": "Part II",
+   "text": "Self-employed SEP, SIMPLE, and qualified plans"
+  },
+  {
+   "elements": [
+    "SelfEmpldHealthInsDedAmt"
+   ],
+   "label": "17",
+   "page_section": "Part II",
+   "text": "Self-employed health insurance deduction"
+  },
+  {
+   "elements": [
+    "PnltyOnErlyWthdrwOfSavingsAmt"
+   ],
+   "label": "18",
+   "page_section": "Part II",
+   "text": "Penalty on early withdrawal of savings"
+  },
+  {
+   "elements": [
+    "AlimonyAmountGrp/AlimonyPaidAmt",
+    "TotalAlimonyPaidAmt"
+   ],
+   "label": "19a",
+   "page_section": "Part II",
+   "text": "Alimony paid"
+  },
+  {
+   "elements": [
+    "AlimonyAmountGrp/RecipientSSN"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Recipient's SSN"
+  },
+  {
+   "elements": [
+    "AlimonyAmountGrp/DivorceOrSeparationAgreementDt"
+   ],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Date of original divorce or separation agreement (see instructions)"
+  },
+  {
+   "elements": [
+    "IRADeductionCd",
+    "IRADeductionAmt"
+   ],
+   "label": "20",
+   "page_section": "Part II",
+   "text": "IRA Deduction"
+  },
+  {
+   "elements": [
+    "StudentLoanInterestDedAmt"
+   ],
+   "label": "21",
+   "page_section": "Part II",
+   "text": "Student loan interest deduction"
+  },
+  {
+   "elements": [],
+   "label": "22",
+   "page_section": "Part II",
+   "text": "Reserved for future use"
+  },
+  {
+   "elements": [
+    "ArcherMSADeductionAmt"
+   ],
+   "label": "23",
+   "page_section": "Part II",
+   "text": "Archer MSA deduction"
+  },
+  {
+   "elements": [],
+   "label": "24",
+   "page_section": "Part II",
+   "text": "Other adjustments:"
+  },
+  {
+   "elements": [
+    "JuryDutyPayDeductionAmt"
+   ],
+   "label": "a",
+   "page_section": "Part II",
+   "text": "Jury duty pay (see instructions)"
+  },
+  {
+   "elements": [
+    "RntlIncmPrsnlPropExpnssDedAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Deductible expenses related to income reported on line 8k from the rental of personal property engaged in for profit"
+  },
+  {
+   "elements": [
+    "OlympcPrlympcMedalUSOCDedAmt"
+   ],
+   "label": "c",
+   "page_section": "Part II",
+   "text": "Nontaxable amount of the value of Olympic and Paralympic medals and USOC prize money reported on line 8l"
+  },
+  {
+   "elements": [
+    "RforAmortzExpnssDedAmt"
+   ],
+   "label": "d",
+   "page_section": "Part II",
+   "text": "Reforestation amortization and expenses"
+  },
+  {
+   "elements": [
+    "RepaymentSuppUnemplBnftDedAmt"
+   ],
+   "label": "e",
+   "page_section": "Part II",
+   "text": "Repayment of supplemental unemployment benefits under the Trade Act of 1974"
+  },
+  {
+   "elements": [
+    "Sect501c18DContriDedAmt"
+   ],
+   "label": "f",
+   "page_section": "Part II",
+   "text": "Contributions to section 501(c)(18)(D) pension plans"
+  },
+  {
+   "elements": [
+    "Section403bContriDedAmt"
+   ],
+   "label": "g",
+   "page_section": "Part II",
+   "text": "Contributions by certain chaplains to section 403(b) plans"
+  },
+  {
+   "elements": [
+    "AttyFeesCrtCostsDedAmt"
+   ],
+   "label": "h",
+   "page_section": "Part II",
+   "text": "Attorney fees and court costs for actions involving certain unlawful discrimination claims (see instructions)"
+  },
+  {
+   "elements": [
+    "AttyFeesCrtCostsPdDedAmt"
+   ],
+   "label": "i",
+   "page_section": "Part II",
+   "text": "Attorney fees and court costs you paid in connection with an award from the IRS for information you provided that helped the IRS detect tax law violations"
+  },
+  {
+   "elements": [
+    "HousingDeductionAmt"
+   ],
+   "label": "j",
+   "page_section": "Part II",
+   "text": "Housing deduction from Form 2555"
+  },
+  {
+   "elements": [
+    "Section67eExcessDeductionAmt"
+   ],
+   "label": "k",
+   "page_section": "Part II",
+   "text": "Excess deductions of section 67(e) expenses from Schedule K-1 (Form 1041)"
+  },
+  {
+   "elements": [
+    "OtherAdjustmentsTotalAmt"
+   ],
+   "label": "z",
+   "page_section": "Part II",
+   "text": "Other adjustments. List type and amount"
+  },
+  {
+   "elements": [
+    "TotalOtherAdjustmentsAmt"
+   ],
+   "label": "25",
+   "page_section": "Part II",
+   "text": "Total other adjustments. Add lines 24a through 24z"
+  },
+  {
+   "elements": [
+    "TotalAdjustmentsAmt",
+    "$FormData",
+    "AlimonyReceivedGrp/AlimonyReceivedAmt",
+    "OtherGainLossAmt/@form4684Cd",
+    "UnemploymentCompAmt/@repaymentCd",
+    "UnemploymentCompAmt/@repaymentAmt",
+    "MovingExpenseCd",
+    "AlimonyAmountGrp/AlimonyPaidAmt",
+    "IRADeductionCd",
+    "AlimonyReceivedAmt",
+    "DivorceOrSeparationAgreementDt",
+    "AlimonyPaidAmt",
+    "RecipientSSN"
+   ],
+   "label": "26",
+   "page_section": "Part II",
+   "text": "Add lines 11 through 23 and 25. These are your adjustments to income. Enter here and on Form 1040 or 1040-SR, line 10, or Form 1040-NR, line 10a"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2022r1.zip",
+ "package_sha256": "a416f318f452b50f8844f9450d278607108a9a51114d81833d7553c6eb5a30b7",
+ "xsl": "PY2022R12/mef/Stylesheets/2021/IRS1040Schedule1.xsl",
+ "year": 2021
+}

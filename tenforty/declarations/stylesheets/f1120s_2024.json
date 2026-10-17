@@ -1,0 +1,1407 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "f1120s",
+ "label_classes": [
+  "styIRS1120SLNLeftLtrBoxTD",
+  "styLNLeftLtrBox",
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "GrossReceiptsOrSalesAmt",
+    "ReturnsAndAllowancesAmt"
+   ],
+   "label": "1a",
+   "page_section": "",
+   "text": "Gross receipts or sales"
+  },
+  {
+   "elements": [
+    "NetGrossReceiptsOrSalesAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Balance"
+  },
+  {
+   "elements": [
+    "CostOfGoodsSoldAmt"
+   ],
+   "label": "2",
+   "page_section": "",
+   "text": "Cost of goods sold (attach Form 1125-A)"
+  },
+  {
+   "elements": [
+    "GrossProfitAmt"
+   ],
+   "label": "3",
+   "page_section": "",
+   "text": "Gross profit. Subtract line 2 from line 1c"
+  },
+  {
+   "elements": [
+    "TotalOrdinaryGainLossAmt",
+    "TotalOrdinaryGainLossAmt/@form4684Cd"
+   ],
+   "label": "4",
+   "page_section": "",
+   "text": "Net gain (loss) from Form 4797, Part II, line 17 (attach Form 4797)"
+  },
+  {
+   "elements": [
+    "OtherIncomeLossAmt",
+    "OtherIncomeLossAmt/@otherIncomeLossDesc"
+   ],
+   "label": "5",
+   "page_section": "",
+   "text": "Other income (loss) (see instructions—attach statement)"
+  },
+  {
+   "elements": [
+    "TotalIncomeOrLossAmt"
+   ],
+   "label": "6",
+   "page_section": "",
+   "text": "Total income (loss). Add lines 3 through 5"
+  },
+  {
+   "elements": [
+    "OfficersCompensationAmt"
+   ],
+   "label": "7",
+   "page_section": "",
+   "text": "Compensation of officers (see instructions—attach Form 1125–E)"
+  },
+  {
+   "elements": [
+    "SalariesAndWagesAmt"
+   ],
+   "label": "8",
+   "page_section": "",
+   "text": "Salaries and wages (less employment credits)"
+  },
+  {
+   "elements": [
+    "RepairsAndMaintenanceAmt"
+   ],
+   "label": "9",
+   "page_section": "",
+   "text": "Repairs and maintenance"
+  },
+  {
+   "elements": [
+    "BadDebtExpenseAmt"
+   ],
+   "label": "10",
+   "page_section": "",
+   "text": "Bad debts"
+  },
+  {
+   "elements": [
+    "TotalRentOrLeaseExpenseAmt"
+   ],
+   "label": "11",
+   "page_section": "",
+   "text": "Rents"
+  },
+  {
+   "elements": [
+    "TaxesAndLicensesAmt"
+   ],
+   "label": "12",
+   "page_section": "",
+   "text": "Taxes and licenses"
+  },
+  {
+   "elements": [
+    "InterestDeductionAmt"
+   ],
+   "label": "13",
+   "page_section": "",
+   "text": "Interest (see instructions)"
+  },
+  {
+   "elements": [
+    "DepreciationAmt"
+   ],
+   "label": "14",
+   "page_section": "",
+   "text": "Depreciation from Form 4562 not claimed on Form 1125–A or elsewhere on return (attach Form 4562)"
+  },
+  {
+   "elements": [
+    "DepletionAmt"
+   ],
+   "label": "15",
+   "page_section": "",
+   "text": "Depletion (Do not deduct oil and gas depletion.)"
+  },
+  {
+   "elements": [
+    "AdvertisingAmt"
+   ],
+   "label": "16",
+   "page_section": "",
+   "text": "Advertising"
+  },
+  {
+   "elements": [
+    "PensionProfitSharingPlansAmt"
+   ],
+   "label": "17",
+   "page_section": "",
+   "text": "Pension, profit-sharing, etc., plans"
+  },
+  {
+   "elements": [
+    "EmployeeBenefitProgramAmt"
+   ],
+   "label": "18",
+   "page_section": "",
+   "text": "Employee benefit programs"
+  },
+  {
+   "elements": [
+    "EnergyEffcntCmrclBldgDedAmt"
+   ],
+   "label": "19",
+   "page_section": "",
+   "text": "Energy efficient commercial buildings deduction (attach Form 7205)"
+  },
+  {
+   "elements": [
+    "OtherDeductionsAmt"
+   ],
+   "label": "20",
+   "page_section": "",
+   "text": "Other deductions (attach statement)"
+  },
+  {
+   "elements": [
+    "TotalDeductionAmt"
+   ],
+   "label": "21",
+   "page_section": "",
+   "text": "Total deductions. Add lines 7 through 20"
+  },
+  {
+   "elements": [
+    "OrdinaryBusinessIncomeLossAmt"
+   ],
+   "label": "22",
+   "page_section": "",
+   "text": "Ordinary business income (loss). Subtract line 21 from line 6"
+  },
+  {
+   "elements": [
+    "ExcessNetPassiveIncmLIFOTxAmt/@lIFOTaxCd",
+    "ExcessNetPassiveIncmLIFOTxAmt/@lIFOTaxAmt",
+    "ExcessNetPassiveIncmLIFOTxAmt"
+   ],
+   "label": "23a",
+   "page_section": "",
+   "text": "Excess net passive income or LIFO recapture tax (see instructions)"
+  },
+  {
+   "elements": [
+    "BuiltInGainsTaxAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Tax from Schedule D (Form 1120–S)"
+  },
+  {
+   "elements": [
+    "TotalTaxAmt",
+    "TotalTaxAmt/@taxFromForm4255Cd",
+    "TotalTaxAmt/@taxFromForm4255Amt",
+    "TotalTaxAmt/@lIFOTaxCd",
+    "TotalTaxAmt/@lIFOTaxAmt",
+    "TotalTaxAmt/@form8697Cd",
+    "TotalTaxAmt/@form8697Amt",
+    "TotalTaxAmt/@form8866Cd",
+    "TotalTaxAmt/@form8866Amt",
+    "TotalTaxAmt/@bBAImputeUnderpaymentCd",
+    "TotalTaxAmt/@bBAImputeUnderpaymentAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Add lines 23a and 23b (see instructions for additional taxes)"
+  },
+  {
+   "elements": [
+    "TotOvpmtCrAndEstTxPaymentsAmt"
+   ],
+   "label": "24a",
+   "page_section": "",
+   "text": "Current year's estimated tax payments and preceding year's overpayment credited to the current year"
+  },
+  {
+   "elements": [
+    "TaxPaidForm7004Amt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Tax deposited with Form 7004"
+  },
+  {
+   "elements": [
+    "TotalFuelTaxCreditAmt"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Credit for federal tax paid on fuels (attach Form 4136)"
+  },
+  {
+   "elements": [
+    "ElectivePaymentAmt"
+   ],
+   "label": "d",
+   "page_section": "",
+   "text": "Elective payment election amount from Form 3800"
+  },
+  {
+   "elements": [
+    "TotalPaymentsAmt/@beneficiaryTrustCd",
+    "TotalPaymentsAmt/@beneficiaryTrustAmt",
+    "TotalPaymentsAmt"
+   ],
+   "label": "z",
+   "page_section": "",
+   "text": "Add lines 24a through 24d"
+  },
+  {
+   "elements": [
+    "Form2220AttachedInd",
+    "EsPenaltyAmt"
+   ],
+   "label": "25",
+   "page_section": "",
+   "text": "Estimated tax penalty (see instructions). Check if Form 2220 is attached"
+  },
+  {
+   "elements": [
+    "BalanceDueAmt"
+   ],
+   "label": "26",
+   "page_section": "",
+   "text": "Amount owed. If line 24z is smaller than the total of lines 23c and 25, enter amount owed"
+  },
+  {
+   "elements": [
+    "OverpaymentSection/OverpaymentAmt"
+   ],
+   "label": "27",
+   "page_section": "",
+   "text": "Overpayment. If line 24z is larger than the total of lines 23c and 25, enter amount overpaid"
+  },
+  {
+   "elements": [
+    "OverpaymentSection/AppliedToEsTaxAmt",
+    "OverpaymentSection/RefundAmt",
+    "$RtnHdrData/PreparerPersonGrp/PreparerPersonNm",
+    "$RtnHdrData/PreparerPersonGrp/SelfEmployedInd"
+   ],
+   "label": "28",
+   "page_section": "",
+   "text": "Enter amount of line 27 Credited to 2025 estimated tax"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/MethodOfAccountingCashInd",
+    "$Form1120SScheduleB/MethodOfAccountingAccrualInd",
+    "$Form1120SScheduleB/MethodOfAccountingOtherInd",
+    "$Form1120SScheduleB/MethodOfAccountingOtherInd/@methodOfAccountingOtherDesc"
+   ],
+   "label": "1",
+   "page_section": "Schedule B",
+   "text": "Check accounting method: a Cash b Accrual"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/PrincipalBusinessActivityDesc",
+    "$Form1120SScheduleB/PrincipalProductDesc"
+   ],
+   "label": "2",
+   "page_section": "Schedule B",
+   "text": "See the instructions and enter the:"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/ShrEntTrEstNomneSmlrPrsnInd"
+   ],
+   "label": "3",
+   "page_section": "Schedule B",
+   "text": "At any time during the tax year, was any shareholder of the corporation a disregarded entity, a trust, an estate, or a nominee or similar person? If ”Yes,“ attach Schedule B–1, Information on Certain Shareholders of an S Corporation"
+  },
+  {
+   "elements": [],
+   "label": "4",
+   "page_section": "Schedule B",
+   "text": "At the end of the tax year, did the corporation:"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/CorporationOwnedPctStkIssdInd",
+    "$Form1120SScheduleB/CorpOwnPctStkIssdOutstdGrp",
+    "CorporationNm",
+    "SSN",
+    "EIN",
+    "MissingSSNEINReasonCd",
+    "IncorporationCountryCd",
+    "VotingStockOwnedPct",
+    "QSubElectionDt"
+   ],
+   "label": "a",
+   "page_section": "Schedule B",
+   "text": "Own directly 20% or more, or own, directly or indirectly, 50% or more of the total stock issued and outstanding of any foreign or domestic corporation? For rules of constructive ownership, see instructions. If “Yes,” complete (i) through (v) below."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/CorporationOwnPctPrtshpInd",
+    "$Form1120SScheduleB/CorpOwnPctFrgnDomPrtshpGrp",
+    "EntityNm",
+    "EIN",
+    "MissingEINReasonCd",
+    "EntityTypeTxt",
+    "OrganizationCountryCd",
+    "MaximumOwnedPct"
+   ],
+   "label": "b",
+   "page_section": "Schedule B",
+   "text": "Own directly an interest of 20% or more, or own, directly or indirectly, an interest of 50% or more in the profit, loss, or"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/OutstandingRestrictedStockInd",
+    "$Form1120SScheduleB/TotalRestrictedStockOutstdNum",
+    "$Form1120SScheduleB/TotNonrestrictedStockOutsdtNum"
+   ],
+   "label": "5a",
+   "page_section": "Schedule B",
+   "text": "At the end of the tax year, did the corporation have any outstanding shares of restricted stock?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/OutstandingStkOptWarrantsInd",
+    "$Form1120SScheduleB/TotShareStockOutstandingEOYCnt",
+    "$Form1120SScheduleB/TotShrStkOutstdAllExecutedCnt"
+   ],
+   "label": "b",
+   "page_section": "Schedule B",
+   "text": "At the end of the tax year, did the corporation have any outstanding stock options, warrants, or similar instruments?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/FiledOrRequiredFileForm8918Ind"
+   ],
+   "label": "6",
+   "page_section": "Schedule B",
+   "text": "Has this corporation filed, or is it required to file, Form 8918 , Material Advisor Disclosure Statement, to provide information on any reportable transaction?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/OfferedDebtInstrumentsInd"
+   ],
+   "label": "7",
+   "page_section": "Schedule B",
+   "text": "Check this box if the corporation issued publicly offered debt instruments with original issue discount"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/NetUnrlzdRedPYNetRcgnzGainAmt",
+    "$Form1120SScheduleB/AttachmentIndicatorCd"
+   ],
+   "label": "8",
+   "page_section": "Schedule B",
+   "text": "If the corporation: (a) was a C corporation before it elected to be an S corporation or the corporation acquired an asset with a basis determined by reference to the basis of the asset (or the basis of any other property) in the hands of a C corporation, and (b) has net unrealized built–in gain in excess of the net recognized built–gain from prior years, enter the net unrealized built–gain reduced by net recognized built–gain from prior years."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/Section163jElectionInd"
+   ],
+   "label": "9",
+   "page_section": "Schedule B",
+   "text": "Did the corporation have an election under section 163(j) for any real property trade or business or any farming business in effect during the tax year? See instructions."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/SatisfyOneOrMoreConditionsInd"
+   ],
+   "label": "10",
+   "page_section": "Schedule B",
+   "text": "Does the corporation satisfy one or more of the following? See instructions"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Schedule B",
+   "text": "The corporation owns a pass–through entity with current, or prior year carryover, excess business interest expense."
+  },
+  {
+   "elements": [],
+   "label": "b",
+   "page_section": "Schedule B",
+   "text": "The corporation‘s aggregate average annual gross receipts (determined under section 448(c)) for the 3 tax years preceding the current tax year are more than $30 million and the corporation has business interest expense."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/SatisfyOneOrMoreConditionsInd",
+    "$Form1120SScheduleB/SatisfyOneConditionInd"
+   ],
+   "label": "c",
+   "page_section": "Schedule B",
+   "text": "The corporation is a tax shelter and the corporation has business interest expense."
+  },
+  {
+   "elements": [],
+   "label": "11",
+   "page_section": "Schedule B",
+   "text": "Does the corporation satisfy both of the following conditions?"
+  },
+  {
+   "elements": [],
+   "label": "a",
+   "page_section": "Schedule B",
+   "text": "The corporation’s total receipts (see instructions) for the tax year were less than $250,000."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/SchLAndSchM1NotRequiredInd"
+   ],
+   "label": "b",
+   "page_section": "Schedule B",
+   "text": "The corporation’s total assets at the end of the tax year were less than $250,000."
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/DebtCancelledForgivenModifInd",
+    "$Form1120SScheduleB/PrincipalReductionAmt"
+   ],
+   "label": "12",
+   "page_section": "Schedule B",
+   "text": "During the tax year, did the corporation have any non–shareholder debt that was canceled, was forgiven, or had the terms modified so as to reduce the principal amount of the debt?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/QSubElectionTerminatedRvkdInd"
+   ],
+   "label": "13",
+   "page_section": "Schedule B",
+   "text": "During the tax year, was a qualified subchapter S subsidiary election terminated or revoked? If “Yes,” see instructions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/RequiredToFileForms1099Ind"
+   ],
+   "label": "14a",
+   "page_section": "Schedule B",
+   "text": "Did the corporation make any payments that would require it to file Form(s) 1099?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/RequiredForms1099FiledInd"
+   ],
+   "label": "b",
+   "page_section": "Schedule B",
+   "text": "If “Yes,” did or will the corporation file required Form(s) 1099?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/QlfyOpportunityFundPenaltyAmt",
+    "$Form1120SScheduleB/Form8996AttachedInd"
+   ],
+   "label": "15",
+   "page_section": "Schedule B",
+   "text": "Is the corporation attaching Form 8996 to certify as a Qualified Opportunity Fund?"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleB/VirtualCurAcquiredDurTYInd",
+    "$Form1120SScheduleK"
+   ],
+   "label": "16",
+   "page_section": "Schedule B",
+   "text": "At any time during the tax year, did the corporation: (a) receive (as a reward, award, or payment for property or services); or (b) sell, exchange, gift, or otherwise dispose of a digital asset (or a financial interest in a digital asset)? See instructions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OrdinaryBusinessIncomeLossAmt"
+   ],
+   "label": "1",
+   "page_section": "Schedule K",
+   "text": "Ordinary business income (loss) (page 1, line 22)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NetIncomeLossAmt"
+   ],
+   "label": "2",
+   "page_section": "Schedule K",
+   "text": "Net rental real estate income (loss) (attach Form 8825)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherGrossRentalIncomeLossAmt"
+   ],
+   "label": "3a",
+   "page_section": "Schedule K",
+   "text": "Other gross rental income (loss)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/ExpensesFromOtherRentalActyAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Expenses from other rental activities (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NetIncmLossFromOthRntlActyAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Other net rental income (loss). Subtract line 3b from line 3a"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/InterestIncomeAmt"
+   ],
+   "label": "4",
+   "page_section": "Schedule K",
+   "text": "Interest income"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OrdinaryDividendsAmt",
+    "$Form1120SScheduleK/QualifiedDividendsAmt"
+   ],
+   "label": "5",
+   "page_section": "Schedule K",
+   "text": "Dividends: a Ordinary dividends"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/RoyaltiesReceivedAmt"
+   ],
+   "label": "6",
+   "page_section": "Schedule K",
+   "text": "Royalties"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NetSTCapitalGainOrLossAmt"
+   ],
+   "label": "7",
+   "page_section": "Schedule K",
+   "text": "Net short–term capital gain (loss) (attach Schedule D (Form 1120–S))"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NetLTCapitalGainOrLossAmt"
+   ],
+   "label": "8a",
+   "page_section": "Schedule K",
+   "text": "Net long–term capital gain (loss) (attach Schedule D (Form 1120–S))"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/CollectiblesGainLossAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Collectibles (28%) gain (loss)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/UnrecapturedSection1250GainAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Unrecaptured section 1250 gain (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NetSection1231GainLossAmt"
+   ],
+   "label": "9",
+   "page_section": "Schedule K",
+   "text": "Net section 1231 gain (loss) (attach Form 4797)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherIncomeLossAmt",
+    "$Form1120SScheduleK/OtherIncomeLossAmt/@otherIncomeTyp",
+    "$Form1120SScheduleK/OtherIncomeLossAmt/@globalIntangibleLowTxIncmAmt"
+   ],
+   "label": "10",
+   "page_section": "Schedule K",
+   "text": "Other income (loss) (see instructions) Type"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/Section179ExpenseDeductionAmt"
+   ],
+   "label": "11",
+   "page_section": "Schedule K",
+   "text": "Section 179 deduction (attach Form 4562)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/CashCharitableContriAmt"
+   ],
+   "label": "12a",
+   "page_section": "Schedule K",
+   "text": "Cash charitable contributions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/@NoncashCharitableContriAmt",
+    "$Form1120SScheduleK/NoncashCharitableContriAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Noncash charitable contributions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/InterestExpenseOnInvstDbAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Investment interest expense"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/Section59e2ExpenditureAmt",
+    "$Form1120SScheduleK/Section59e2ExpenditureAmt/@sect59e2ExpenditureDesc"
+   ],
+   "label": "d",
+   "page_section": "Schedule K",
+   "text": "Section 59(e)(2) expenditures Type"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherDeductionsAmt",
+    "$Form1120SScheduleK/OtherDeductionsAmt/@form4684Cd",
+    "$Form1120SScheduleK/OtherDeductionsAmt/@otherDeductionsDesc"
+   ],
+   "label": "e",
+   "page_section": "Schedule K",
+   "text": "Other deductions (see instructions) Type"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/LowIncmHsngCrSect42j5PrtshpAmt"
+   ],
+   "label": "13a",
+   "page_section": "Schedule K",
+   "text": "Low–income housing credit (section 42(j)(5))"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/LowIncomeHousingCrOthPrtshpAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Low–income housing credit (other)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/QlfyRehbltExpendRntlREActyAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Qualified rehabilitation expenditures (rental real estate) (attach Form 3468, if applicable)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherRentalRealEstateAmt",
+    "$Form1120SScheduleK/OtherRentalRealEstateAmt/@otherRentalRealEstateCrDesc"
+   ],
+   "label": "d",
+   "page_section": "Schedule K",
+   "text": "Other rental real estate credits (see instructions) Type"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherRentalCreditsAmt",
+    "$Form1120SScheduleK/OtherRentalCreditsAmt/@referenceDocumentId",
+    "$Form1120SScheduleK/OtherRentalCreditsAmt/@referenceDocumentName"
+   ],
+   "label": "e",
+   "page_section": "Schedule K",
+   "text": "Other rental credits (see instructions) Type See Additional Data"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/AlcoholFuelCreditAmt"
+   ],
+   "label": "f",
+   "page_section": "Schedule K",
+   "text": "Biofuel producer credit (attach Form 6478)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherCreditsAmt",
+    "$Form1120SScheduleK/OtherCreditsAmt/@otherCreditsTotalDesc",
+    "$Form1120SScheduleK/OtherCreditsAmt/@emplrCrPdFamilyMedLeaveAmt"
+   ],
+   "label": "g",
+   "page_section": "Schedule K",
+   "text": "Other credits (see instructions) Type"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/IntntlTaxRelevanceRptgInd"
+   ],
+   "label": "14",
+   "page_section": "Schedule K",
+   "text": "Attach Schedule K-2 (Form 1120-S), Shareholders’ Pro Rata Share Items—International, and check this box to indicate you are reporting items of international tax relevance"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/Post1986DepreciationAdjAmt"
+   ],
+   "label": "15a",
+   "page_section": "Schedule K",
+   "text": "Post–1986 depreciation adjustment"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/AdjustedGainOrLossAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Adjusted gain or loss"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/DepletionOtherThanOilAndGasAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Depletion (other than oil and gas)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OilGasAndGeothermalGroIncmAmt"
+   ],
+   "label": "d",
+   "page_section": "Schedule K",
+   "text": "Oil, gas, and geothermal properties—gross income"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OilGasAndGeothermalDedsAmt"
+   ],
+   "label": "e",
+   "page_section": "Schedule K",
+   "text": "Oil, gas, and geothermal properties—deductions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherAMTItemsAmt"
+   ],
+   "label": "f",
+   "page_section": "Schedule K",
+   "text": "Other AMT items (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/TaxExemptInterestIncomeAmt"
+   ],
+   "label": "16a",
+   "page_section": "Schedule K",
+   "text": "Tax–exempt interest income"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/OtherTaxExemptIncomeAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Other tax–exempt income"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/NondeductibleExpensesAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Nondeductible expenses"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/DistributionsOtherThanDivAmt"
+   ],
+   "label": "d",
+   "page_section": "Schedule K",
+   "text": "Distributions (attach statement if required) (see instructions)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/ShareholderLoanRepaymentAmt"
+   ],
+   "label": "e",
+   "page_section": "Schedule K",
+   "text": "Repayment of loans from shareholders"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/TotalForeignTaxesPaidOrAccrAmt"
+   ],
+   "label": "f",
+   "page_section": "Schedule K",
+   "text": "Foreign taxes paid or accrued"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/InvestmentIncomeAmt"
+   ],
+   "label": "17a",
+   "page_section": "Schedule K",
+   "text": "Investment income"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/InvestmentExpenseAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule K",
+   "text": "Investment expenses"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/DivDistriPaidAccumEarnPrftAmt"
+   ],
+   "label": "c",
+   "page_section": "Schedule K",
+   "text": "Dividend distributions paid from accumulated earnings and profits"
+  },
+  {
+   "elements": [],
+   "label": "d",
+   "page_section": "Schedule K",
+   "text": "Other items and amounts (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleK/IncomeLossReconciliationAmt"
+   ],
+   "label": "18",
+   "page_section": "Schedule K",
+   "text": "Income/loss reconciliation. Combine the total amounts on lines 1 through 10. From the result, subtract the sum of the amounts on lines 11 through 12e and 16f"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/CashBOYAmt",
+    "$Form1120SScheduleL/CashEOYAmt"
+   ],
+   "label": "1",
+   "page_section": "Schedule L",
+   "text": "Cash"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/TradeNotesAccountsRcvblBOYAmt",
+    "$Form1120SScheduleL/TradeNotesAccountsRcvblEOYAmt"
+   ],
+   "label": "2a",
+   "page_section": "Schedule L",
+   "text": "Trade notes and accounts receivable"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/BadDebtAllowanceBOYAmt",
+    "$Form1120SScheduleL/NetTradeNotesAcctRcvblBOYAmt",
+    "$Form1120SScheduleL/BadDebtAllowanceEOYAmt",
+    "$Form1120SScheduleL/NetTradeNotesAcctRcvblEOYAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule L",
+   "text": "Less allowance for bad debts"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/InventoriesBOYAmt",
+    "$Form1120SScheduleL/InventoriesEOYAmt"
+   ],
+   "label": "3",
+   "page_section": "Schedule L",
+   "text": "Inventories"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/USGovernmentObligationsBOYAmt",
+    "$Form1120SScheduleL/USGovernmentObligationsEOYAmt"
+   ],
+   "label": "4",
+   "page_section": "Schedule L",
+   "text": "U.S. government obligations"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/TaxExemptSecuritiesBOYAmt",
+    "$Form1120SScheduleL/TaxExemptSecuritiesEOYAmt"
+   ],
+   "label": "5",
+   "page_section": "Schedule L",
+   "text": "Tax–exempt securities (see instructions)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/OtherCurrentAssetsBOYAmt",
+    "$Form1120SScheduleL/OtherCurrentAssetsEOYAmt"
+   ],
+   "label": "6",
+   "page_section": "Schedule L",
+   "text": "Other current assets (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/LoansToShareholdersBOYAmt",
+    "$Form1120SScheduleL/LoansToShareholdersEOYAmt"
+   ],
+   "label": "7",
+   "page_section": "Schedule L",
+   "text": "Loans to shareholders"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/MortgageRealEstateLoansBOYAmt",
+    "$Form1120SScheduleL/MortgageRealEstateLoansEOYAmt"
+   ],
+   "label": "8",
+   "page_section": "Schedule L",
+   "text": "Mortgage and real estate loans"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/OtherInvestmentsBOYAmt",
+    "$Form1120SScheduleL/OtherInvestmentsEOYAmt"
+   ],
+   "label": "9",
+   "page_section": "Schedule L",
+   "text": "Other investments (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/BuildingOtherDeprecAstBOYAmt",
+    "$Form1120SScheduleL/BuildingOtherDeprecAstEOYAmt"
+   ],
+   "label": "10a",
+   "page_section": "Schedule L",
+   "text": "Buildings and other depreciable assets"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AccumulatedDepreciationBOYAmt",
+    "$Form1120SScheduleL/NetDepreciableAssetsBOYAmt",
+    "$Form1120SScheduleL/AccumulatedDepreciationEOYAmt",
+    "$Form1120SScheduleL/NetDepreciableAssetsEOYAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule L",
+   "text": "Less accumulated depreciation"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/DepletableAssetsBOYAmt",
+    "$Form1120SScheduleL/DepletableAssetsEOYAmt"
+   ],
+   "label": "11a",
+   "page_section": "Schedule L",
+   "text": "Depletable assets"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AccumulatedDepletionBOYAmt",
+    "$Form1120SScheduleL/NetDepletableAssetsBOYAmt",
+    "$Form1120SScheduleL/AccumulatedDepletionEOYAmt",
+    "$Form1120SScheduleL/NetDepletableAssetsEOYAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule L",
+   "text": "Less accumulated depletion"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/LandBOYAmt",
+    "$Form1120SScheduleL/LandEOYAmt"
+   ],
+   "label": "12",
+   "page_section": "Schedule L",
+   "text": "Land (net of any amortization)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/IntangibleAssetsBOYAmt",
+    "$Form1120SScheduleL/IntangibleAssetsEOYAmt"
+   ],
+   "label": "13a",
+   "page_section": "Schedule L",
+   "text": "Intangible assets (amortizable only)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AccumulatedAmortizationBOYAmt",
+    "$Form1120SScheduleL/NetIntangibleAssetsBOYAmt",
+    "$Form1120SScheduleL/AccumulatedAmortizationEOYAmt",
+    "$Form1120SScheduleL/NetIntangibleAssetsEOYAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule L",
+   "text": "Less accumulated amortization"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/OtherAssetsBOYAmt",
+    "$Form1120SScheduleL/OtherAssetsEOYAmt"
+   ],
+   "label": "14",
+   "page_section": "Schedule L",
+   "text": "Other assets (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/TotalAssetsBOYAmt",
+    "$Form1120SScheduleL/TotalAssetsEOYAmt"
+   ],
+   "label": "15",
+   "page_section": "Schedule L",
+   "text": "Total assets"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AccountsPayableBOYAmt",
+    "$Form1120SScheduleL/AccountsPayableEOYAmt"
+   ],
+   "label": "16",
+   "page_section": "Schedule L",
+   "text": "Accounts payable"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/ShortTermPayableBOYAmt",
+    "$Form1120SScheduleL/ShortTermPayableEOYAmt"
+   ],
+   "label": "17",
+   "page_section": "Schedule L",
+   "text": "Mortgages, notes, bonds payable in less than 1 year"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/OtherCurrentLiabilitiesBOYAmt",
+    "$Form1120SScheduleL/OtherCurrentLiabilitiesEOYAmt"
+   ],
+   "label": "18",
+   "page_section": "Schedule L",
+   "text": "Other current liabilities (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/LoansFromShareholdersBOYAmt",
+    "$Form1120SScheduleL/LoansFromShareholdersEOYAmt"
+   ],
+   "label": "19",
+   "page_section": "Schedule L",
+   "text": "Loans from shareholders"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/LongTermPayableBOYAmt",
+    "$Form1120SScheduleL/LongTermPayableEOYAmt"
+   ],
+   "label": "20",
+   "page_section": "Schedule L",
+   "text": "Mortgages, notes, bonds payable in 1 year or more"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/OtherLiabilitiesBOYAmt",
+    "$Form1120SScheduleL/OtherLiabilitiesEOYAmt"
+   ],
+   "label": "21",
+   "page_section": "Schedule L",
+   "text": "Other liabilities (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/CapitalStockBOYAmt",
+    "$Form1120SScheduleL/CapitalStockEOYAmt"
+   ],
+   "label": "22",
+   "page_section": "Schedule L",
+   "text": "Capital stock"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AdditionalPaidInCapitalBOYAmt",
+    "$Form1120SScheduleL/AdditionalPaidInCapitalEOYAmt"
+   ],
+   "label": "23",
+   "page_section": "Schedule L",
+   "text": "Additional paid–in capital"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/RetainedEarningBOYAmt",
+    "$Form1120SScheduleL/RetainedEarningEOYAmt"
+   ],
+   "label": "24",
+   "page_section": "Schedule L",
+   "text": "Retained earnings"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/AdjustmentToShrEqtyBOYAmt",
+    "$Form1120SScheduleL/AdjustmentToShrEqtyEOYAmt"
+   ],
+   "label": "25",
+   "page_section": "Schedule L",
+   "text": "Adjustments to shareholders' equity (attach statement)"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/CostOfTreasuryStockBOYAmt",
+    "$Form1120SScheduleL/CostOfTreasuryStockEOYAmt"
+   ],
+   "label": "26",
+   "page_section": "Schedule L",
+   "text": "Less cost of treasury stock"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleL/TotalLiabilitiesShrEqtyBOYAmt",
+    "$Form1120SScheduleL/TotalLiabilitiesShrEqtyEOYAmt"
+   ],
+   "label": "27",
+   "page_section": "Schedule L",
+   "text": "Total liabilities and shareholders' equity"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/NetIncomeLossPerBooksAmt"
+   ],
+   "label": "1",
+   "page_section": "Schedule M–1",
+   "text": "Net income (loss) per books"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/TotalIncmNotRecordedOnBooksAmt"
+   ],
+   "label": "2",
+   "page_section": "Schedule M–1",
+   "text": "Income included on Schedule K, lines 1, 2, 3c, 4, 5a, 6, 7, 8a, 9, and 10, not recorded on books this year (itemize):"
+  },
+  {
+   "elements": [],
+   "label": "3",
+   "page_section": "Schedule M–1",
+   "text": "Expenses recorded on books this year"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/DepreciationExpensesAmt"
+   ],
+   "label": "a",
+   "page_section": "Schedule M–1",
+   "text": "Depreciation $"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/TravelEntertainmentAmt",
+    "$Form1120SScheduleM1/TotalExpensesNotDeductedAmt"
+   ],
+   "label": "b",
+   "page_section": "Schedule M–1",
+   "text": "Travel and entertainment $"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/IncomeExpensesSubtotalAmt"
+   ],
+   "label": "4",
+   "page_section": "Schedule M–1",
+   "text": "Add lines 1 through 3"
+  },
+  {
+   "elements": [],
+   "label": "5",
+   "page_section": "Schedule M–1",
+   "text": "Income recorded on books this year not included on"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/TaxExemptInterestAmt",
+    "$Form1120SScheduleM1/TotIncmRecordedNotIncludedAmt"
+   ],
+   "label": "a",
+   "page_section": "Schedule M–1",
+   "text": "Tax-exempt interest $"
+  },
+  {
+   "elements": [],
+   "label": "6",
+   "page_section": "Schedule M–1",
+   "text": "Deductions included on Schedule K, lines 1"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/DepreciationDeductionAmt",
+    "$Form1120SScheduleM1/TotalDeductionsNotChargedAmt"
+   ],
+   "label": "a",
+   "page_section": "Schedule M–1",
+   "text": "Depreciation $"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/IncomeDeductionsSubtotalAmt"
+   ],
+   "label": "7",
+   "page_section": "Schedule M–1",
+   "text": "Add lines 5 and 6"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM1/IncomeLossAmt",
+    "$Form1120SScheduleM2"
+   ],
+   "label": "8",
+   "page_section": "Schedule M–1",
+   "text": "Income (loss) (Schedule K, line 18). Subtract line 7 from line 4"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/BalanceBOYAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/BalBOYShrUndistrTxblIncmAmt",
+    "$Form1120SScheduleM2/AccumulatedEarnProfitsBOYAmt",
+    "$Form1120SScheduleM2/BalanceBOYOtherAdjAcctAmt"
+   ],
+   "label": "1",
+   "page_section": "Schedule M–2",
+   "text": "Balance at beginning of tax year"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/OrdinaryBusinessIncomeAmt"
+   ],
+   "label": "2",
+   "page_section": "Schedule M–2",
+   "text": "Ordinary income from page 1, line 22"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/TotalOtherAddnAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/TotalOtherAddnOtherAdjAcctAmt"
+   ],
+   "label": "3",
+   "page_section": "Schedule M–2",
+   "text": "Other additions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/OrdinaryBusinessLossAmt"
+   ],
+   "label": "4",
+   "page_section": "Schedule M–2",
+   "text": "Loss from page 1, line 22"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/TT",
+    "$Form1120SScheduleM2/OtherReductionsAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/OtherReductionsOtherAdjAcctAmt"
+   ],
+   "label": "5",
+   "page_section": "Schedule M–2",
+   "text": "Other reductions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/SubtotalAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/SubtotalShrUndistrTxblIncmAmt",
+    "$Form1120SScheduleM2/SubtotalAccumEarnProfitsAmt",
+    "$Form1120SScheduleM2/SubtotalOtherAdjAcctAmt"
+   ],
+   "label": "6",
+   "page_section": "Schedule M–2",
+   "text": "Combine lines 1 through 5"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/NotDivDistriAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/NotDivShrUndistrTxblIncmAmt",
+    "$Form1120SScheduleM2/AccumulatedEPNotDivDistriAmt",
+    "$Form1120SScheduleM2/NotDivDistriOtherAdjAcctAmt"
+   ],
+   "label": "7",
+   "page_section": "Schedule M–2",
+   "text": "Distributions"
+  },
+  {
+   "elements": [
+    "$Form1120SScheduleM2/BalanceEOYAccumAdjAcctAmt",
+    "$Form1120SScheduleM2/BalEOYShrUndistrTxblIncmAmt",
+    "$Form1120SScheduleM2/AccumulatedEarnProfitsEOYAmt",
+    "$Form1120SScheduleM2/BalanceEOYOtherAdjAcctAmt",
+    "$Form1120SData",
+    "@section501dCd",
+    "@changeAnnualAccountingPeriodCd",
+    "@filedPursuantToSect30191002Cd",
+    "@shortPeriodReasonCd",
+    "TotalOrdinaryGainLossAmt/@form4684Cd",
+    "OtherIncomeLossAmt/@otherIncomeLossDesc",
+    "ExcessNetPassiveIncmLIFOTxAmt/@lIFOTaxCd",
+    "ExcessNetPassiveIncmLIFOTxAmt/@lIFOTaxAmt",
+    "TotalTaxAmt/@taxFromForm4255Cd",
+    "TotalTaxAmt/@taxFromForm4255Amt",
+    "TotalTaxAmt/@lIFOTaxCd",
+    "TotalTaxAmt/@lIFOTaxAmt",
+    "TotalTaxAmt/@form8697Cd",
+    "TotalTaxAmt/@form8697Amt",
+    "TotalTaxAmt/@form8866Cd",
+    "TotalTaxAmt/@form8866Amt",
+    "TotalTaxAmt/@bBAImputeUnderpaymentCd",
+    "TotalTaxAmt/@bBAImputeUnderpaymentAmt",
+    "TotalPaymentsAmt/@beneficiaryTrustCd",
+    "TotalPaymentsAmt/@beneficiaryTrustAmt",
+    "$Form1120SScheduleK/OtherDeductionsAmt/@form4684Cd",
+    "$Form1120SScheduleK/OtherRentalCreditsAmt/@otherRentalCreditDesc",
+    "$Form1120SScheduleK/OtherRentalCreditsAmt/@referenceDocumentId",
+    "$Form1120SScheduleK/OtherRentalCreditsAmt/@referenceDocumentName",
+    ".",
+    "CorporationNm",
+    "SSN",
+    "EIN",
+    "MissingSSNEINReasonCd",
+    "IncorporationCountryCd",
+    "VotingStockOwnedPct",
+    "QSubElectionDt",
+    "EntityNm",
+    "MissingEINReasonCd",
+    "EntityTypeTxt",
+    "OrganizationCountryCd",
+    "MaximumOwnedPct",
+    "$Form1120SScheduleB/CorpOwnPctStkIssdOutstdGrp/CorporationNm",
+    "$Form1120SScheduleB/CorpOwnPctFrgnDomPrtshpGrp/EntityNm"
+   ],
+   "label": "8",
+   "page_section": "Schedule M–2",
+   "text": "Balance at end of tax year. Subtract line 7 from line 6"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2025r1.zip",
+ "package_sha256": "d9d47b48d15a01beaa4194e33cdd6fba357db7bc92ee8ea93657caa805c1ede5",
+ "xsl": "mef/Stylesheets/2024/IRS1120S.xsl",
+ "year": 2024
+}

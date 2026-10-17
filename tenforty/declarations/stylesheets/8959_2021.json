@@ -1,0 +1,209 @@
+{
+ "desc_classes": [
+  "styLNDesc"
+ ],
+ "form": "8959",
+ "label_classes": [
+  "styLNLeftNumBox",
+  "styLNLeftNumBoxSD"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalW2MedicareWagesAndTipsAmt"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Medicare wages and tips from Form W-2, box 5. If you have more than one Form W-2, enter the total of the amounts from box 5"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalUnreportedMedicareTipsAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Unreported tips from Form 4137, line 6"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalWagesWithNoWithholdingAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Wages from Form 8919, line 6"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalMedicareWagesAndTipsAmt"
+   ],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Add lines 1 through 3"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/FilingStatusThresholdCd"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Enter the following amount for your filing status: Married filing jointly $250,000 Married filing separately $125,000 Single, Head of household, or Qualifying widow(er) $200,000"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/WagesTipsSubjToAddlMedcrTaxAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "Subtract line 5 from line 4. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/AdditionalMedicareTaxAmt"
+   ],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Additional Medicare tax on Medicare wages. Multiply line 6 by 0.9% (0.009). Enter here and go to Part II"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlSelfEmploymentTaxGrp/TotalSelfEmploymentIncomeAmt"
+   ],
+   "label": "8",
+   "page_section": "Part II",
+   "text": "Self-employment income from Schedule SE (Form 1040), Part 1, line 6. If you had a loss, enter -0- (Form 1040-PR or Form 1040-SS filers, see instructions.)"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/FilingStatusThresholdCd"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Enter the following amount for your filing status: Married filing jointly $250,000 Married filing separately $125,000 Single, Head of household, or Qualifying widow(er) $200,000"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalMedicareWagesAndTipsAmt"
+   ],
+   "label": "10",
+   "page_section": "Part II",
+   "text": "Enter the amount from line 4"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlSelfEmploymentTaxGrp/MedcrWagesTipsBelowThrshldAmt"
+   ],
+   "label": "11",
+   "page_section": "Part II",
+   "text": "Subtract line 10 from line 9. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlSelfEmploymentTaxGrp/SEIncomeSubjToAddSETaxAmt"
+   ],
+   "label": "12",
+   "page_section": "Part II",
+   "text": "Subtract line 11 from line 8. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlSelfEmploymentTaxGrp/AddlSelfEmploymentTaxAmt"
+   ],
+   "label": "13",
+   "page_section": "Part II",
+   "text": "Additional Medicare Tax on self-employment income. Multiply line 12 by 0.9% (0.009). Enter here and go to Part III"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlRailroadRetirementTaxGrp/TotalRailroadRetirementCompAmt"
+   ],
+   "label": "14",
+   "page_section": "Part III",
+   "text": "Railroad retirement (RRTA) compensation and tips from Form(s) W-2, box 14 (see instructions)"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/FilingStatusThresholdCd"
+   ],
+   "label": "15",
+   "page_section": "Part III",
+   "text": "Enter the following amount for your filing status: Married filing jointly $250,000 Married filing separately $125,000 Single, Head of household, or Qualifying widow(er) $200,000"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlRailroadRetirementTaxGrp/RRTCompSubjToAddRRTTaxAmt"
+   ],
+   "label": "16",
+   "page_section": "Part III",
+   "text": "Subtract line 15 from line 14. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AddnlRailroadRetirementTaxGrp/AddlRailroadRetirementTaxAmt"
+   ],
+   "label": "17",
+   "page_section": "Part III",
+   "text": "Additional Medicare Tax on railroad retirement (RRTA) compensation. Multiply line 16 by 0.9% (0.009). Enter here and go to Part IV"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/TotalAMRRTTaxAmt"
+   ],
+   "label": "18",
+   "page_section": "Part IV",
+   "text": "Add lines 7, 13, and 17. Also include this amount on Schedule 2 (Form 1040), line 11 (Form 1040-PR or 1040-SS filers, see instructions), and go to Part V"
+  },
+  {
+   "elements": [
+    "TotalW2MedicareTaxWithheldAmt"
+   ],
+   "label": "19",
+   "page_section": "Part V",
+   "text": "Medicare tax withheld from Form W-2, box 6. If you have more than one Form W-2, enter the total of the amounts from box 6"
+  },
+  {
+   "elements": [
+    "AdditionalTaxGrp/AdditionalMedicareTaxGrp/TotalW2MedicareWagesAndTipsAmt"
+   ],
+   "label": "20",
+   "page_section": "Part V",
+   "text": "Enter the amount from line 1"
+  },
+  {
+   "elements": [
+    "TotalMedicareTaxAmt"
+   ],
+   "label": "21",
+   "page_section": "Part V",
+   "text": "Multiply line 20 by 1.45% (0.0145). This is your regular Medicare tax withholding on Medicare wages"
+  },
+  {
+   "elements": [
+    "AddnlMedicareTaxWithholdingAmt"
+   ],
+   "label": "22",
+   "page_section": "Part V",
+   "text": "Subtract line 21 from line 19. If zero or less, enter -0-. This is your Additional Medicare Tax withholding on Medicare wages"
+  },
+  {
+   "elements": [
+    "TotalW2AddlRRTTaxAmt"
+   ],
+   "label": "23",
+   "page_section": "Part V",
+   "text": "Additional Medicare Tax withholding on railroad retirement (RRTA) compensation from Form W-2, box 14 (see instructions)"
+  },
+  {
+   "elements": [
+    "AddlMedcrRRTTaxWithholdingAmt",
+    "$FormData"
+   ],
+   "label": "24",
+   "page_section": "Part V",
+   "text": "Total Additional Medicare Tax withholding. Add lines 22 and 23. Also include this amount with federal income tax withholding on Form 1040, 1040-SR, or 1040-NR, line 25c (Form 1040-PR or 1040-SS filers, see instructions)"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2022r1.zip",
+ "package_sha256": "a416f318f452b50f8844f9450d278607108a9a51114d81833d7553c6eb5a30b7",
+ "xsl": "PY2022R12/mef/Stylesheets/2021/IRS8959.xsl",
+ "year": 2021
+}
