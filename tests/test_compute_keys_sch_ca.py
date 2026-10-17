@@ -238,12 +238,18 @@ class PrintedValuesComeFromComputeKeysTests(_Rows):
                 with self.subTest(row=name, token=token):
                     self.assertEqual(values.get(KEYS[token]), before[cell])
 
-    def test_each_moved_cell_is_mapped_from_its_key(self):
+    def test_each_moved_cell_is_mapped_from_its_key_alone(self):
+        # One writer per cell: before the move the 1z Column B / C cells were
+        # ALSO the 1:1 target of the raw line-1z divergence keys (the total's
+        # derivation overwrote them at fill time); those keys are now
+        # suppressed members of the 1z total.
         for year in _YEARS:
             mapping = PdfSchCa.get_mapping(year)
             for cell, token in sorted(_cell_tokens(year).items()):
                 with self.subTest(year=year, token=token):
-                    self.assertEqual(mapping.get(KEYS[token]), cell)
+                    self.assertEqual(
+                        sorted(k for k, v in mapping.items() if v == cell),
+                        [KEYS[token]])
 
     def test_line_1a_key_only_where_the_form_prints_line_1a(self):
         # 2021 prints one un-lettered line 1 (no 1a cell, no 1a key).

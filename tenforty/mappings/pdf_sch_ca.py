@@ -96,8 +96,6 @@ _MAPPING_2025: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "540ca_form - 1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "540ca_form - 1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "540ca_form - 1028",
-    "sch_ca_line_part_i_a_1z_additions":          "540ca_form - 1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "540ca_form - 1031",
     "sch_ca_line_part_i_a_2_subtractions":        "540ca_form - 1032",
@@ -245,8 +243,6 @@ _MAPPING_2024: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "540ca_form - 1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "540ca_form - 1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "540ca_form - 1028",
-    "sch_ca_line_part_i_a_1z_additions":          "540ca_form - 1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "540ca_form - 1031",
     "sch_ca_line_part_i_a_2_subtractions":        "540ca_form - 1032",
@@ -392,8 +388,6 @@ _MAPPING_2023: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "1001",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "1027",
-    "sch_ca_line_part_i_a_1z_subtractions":       "1028",
-    "sch_ca_line_part_i_a_1z_additions":          "1029",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "1031",
     "sch_ca_line_part_i_a_2_subtractions":        "1032",
@@ -546,8 +540,6 @@ _MAPPING_2021: dict[str, str] = {
     "sch_ca_taxpayer_ssn":                        "1002",
     # Page 1 §A line 1z — Sum of wages 1a–1i (federal 1040 line 1z)
     "sch_ca_line_part_i_a_1z_col_a":              "1003",
-    "sch_ca_line_part_i_a_1z_subtractions":       "1004",
-    "sch_ca_line_part_i_a_1z_additions":          "1005",
     # Page 1 §A line 2 — Taxable interest (federal 1040 line 2b)
     "sch_ca_line_part_i_a_2_col_a":               "1007",
     "sch_ca_line_part_i_a_2_subtractions":        "1008",
@@ -949,6 +941,20 @@ _SUPPRESSED_2023 = _SUPPRESSED_2023 | _LINE_26_KEYS
 _SUPPRESSED_2022 = _SUPPRESSED_2023
 _SUPPRESSED_2024 = _SUPPRESSED_2024 | _LINE_26_KEYS
 _SUPPRESSED_2025 = _SUPPRESSED_2025 | _LINE_26_KEYS
+
+# A divergence posted AT line 1z is a member of the 1z subtotal: its amount
+# prints inside the 1z total (sch_ca_line_part_i_1z_total_*), which owns the
+# 1z Column B / C cells. (Before ruling A1 the raw key was also mapped onto
+# those cells and the total's derivation overwrote it at fill time.)
+_LINE_1Z_MEMBER_KEYS = frozenset({
+    "sch_ca_line_part_i_a_1z_subtractions",
+    "sch_ca_line_part_i_a_1z_additions",
+})
+_SUPPRESSED_2021 = _SUPPRESSED_2021 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2023 = _SUPPRESSED_2023 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2022 = _SUPPRESSED_2023
+_SUPPRESSED_2024 = _SUPPRESSED_2024 | _LINE_1Z_MEMBER_KEYS
+_SUPPRESSED_2025 = _SUPPRESSED_2025 | _LINE_1Z_MEMBER_KEYS
 
 _install_sch_ca_totals(2021, _MAPPING_2021, _CATALOG_CELLS_2021, _TOTAL_CELLS_2021)
 # 2022 shares 2023's mapping / derivation / suppression objects (identical field tree).
