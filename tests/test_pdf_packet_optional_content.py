@@ -20,7 +20,8 @@ from pathlib import Path
 
 import pypdf
 import yaml
-from pypdf.generic import NameObject
+from pypdf.generic import (
+    ArrayObject, DictionaryObject, NameObject, TextStringObject)
 
 from tenforty import pdf_packet
 from tenforty.models import FilingStatus
@@ -188,3 +189,60 @@ class ScheduleD540LayerTests(_PacketCase):
         parts, packet = self._assemble(pdfs)
         self.assertIn(pdfs["sch_d_540"], parts)
         self.assert_layer_states_survive(parts, packet)
+
+
+def _blank_pdf_with_optional_content(path: Path, *, default_extra=None,
+                                     ocp_extra=None) -> Path:
+    """A one-page synthetic PDF whose /OCProperties has one group, plus the
+    given extra /D or /OCProperties entries."""
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    group = writer._add_object(DictionaryObject({
+        NameObject("/Type"): NameObject("/OCG"),
+        NameObject("/Name"): TextStringObject("Synthetic layer")}))
+    default = DictionaryObject({
+        NameObject("/OFF"): ArrayObject([group])})
+    default.update(default_extra or {})
+    ocp = DictionaryObject({
+        NameObject("/OCGs"): ArrayObject([group]),
+        NameObject("/D"): default})
+    ocp.update(ocp_extra or {})
+    writer.root_object[NameObject("/OCProperties")] = ocp
+    with open(path, "wb") as f:
+        writer.write(f)
+    return path
+
+
+class UnmergeableOptionalContentTests(unittest.TestCase):
+    """/AS (usage-driven auto state) and /Configs (alternate configurations)
+    cannot be carried by the merged default configuration, so a part that
+    uses them refuses rather than assembling with them silently dropped."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.tmp = Path(self._tmp.name)
+
+    def test_plain_optional_content_assembles(self):
+        part = _blank_pdf_with_optional_content(self.tmp / "plain.pdf")
+        out = pdf_packet.assemble_packet([part], self.tmp / "packet.pdf")
+        self.assertEqual(_off_names(out), ["Synthetic layer"])
+
+    def test_auto_state_or_alternate_configs_refuse_naming_the_source(self):
+        cases = {
+            "/AS": dict(default_extra={
+                NameObject("/AS"): ArrayObject([DictionaryObject({
+                    NameObject("/Event"): NameObject("/Print")})])}),
+            "/Configs": dict(ocp_extra={
+                NameObject("/Configs"): ArrayObject([DictionaryObject()])}),
+        }
+        for feature, extra in cases.items():
+            with self.subTest(feature=feature):
+                part = _blank_pdf_with_optional_content(
+                    self.tmp / f"part{feature[1:]}.pdf", **extra)
+                out = self.tmp / f"packet{feature[1:]}.pdf"
+                with self.assertRaises(NotImplementedError) as cm:
+                    pdf_packet.assemble_packet([part], out)
+                self.assertIn(feature, str(cm.exception))
+                self.assertIn(str(part), str(cm.exception))
+                self.assertFalse(out.exists())
