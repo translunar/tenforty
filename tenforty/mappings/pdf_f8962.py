@@ -27,15 +27,12 @@ Two checkboxes are handled outside the scalar value pass:
   unmapped those years. ``get_checkbox_states`` also carries the line 9 / line 10
 Yes-No boxes (all years; see ``_LINE_9_10_BOXES``).
 
-- **Poverty-table box 4c — hardwired ON, ALL years.** The CA filer always
-  uses the "Other 48 states and DC" poverty table, so box 4c
-  (``c1_2[2]``, ON-state ``/3``, uniform across all five years) must always
-  be checked. There is no compute key for it (Task-3 compute is out of
-  scope to touch), so it is hardwired via a DERIVATION that emits the
-  ``/3`` appearance-state string directly — the established house pattern
-  for a constant/always-on checkbox (see pdf_f540.py's line-31 tax-source
-  checkbox derivations, which likewise emit the on/off state string
-  directly rather than routing a bool through checkbox_states).
+- **Poverty-table box 4c — ALL years.** ``f8962_line_4c_other48`` (a bool
+  compute key, True: line 4 prices the "Other 48 states and DC" table, the
+  only one tenforty models; see forms.f8962.compute) maps to ``c1_2[2]``,
+  and ``get_checkbox_states`` carries its ``/3`` on-token (uniform across
+  all five years) — the same bool → on-token translation as the 2021 UI
+  box. No derivation remains (ruling A3).
 """
 
 from collections.abc import Callable, Mapping
@@ -113,9 +110,14 @@ _HEADER: dict[str, str] = {
     "taxpayer_ssn":  f"{_ROOT}.f1_2[0]",
 }
 
+# Line 4 poverty-table box 4c, "Other 48 states and DC" (c1_2[2], ON-state
+# /3, uniform across all five years): a bool compute key.
+_BOX_4C: dict[str, str] = {"f8962_line_4c_other48": f"{_ROOT}.c1_2[2]"}
+_BOX_4C_STATES: dict[str, str] = {"f8962_line_4c_other48": "/3"}
+
 _SCALARS_BASE: dict[str, str] = {
-    **_HEADER, **_PART_I, **_LINE_11, **_LINE_9_10_BOXES, **_MONTHLY,
-    **_LINES_24_29}
+    **_HEADER, **_PART_I, **_BOX_4C, **_LINE_11, **_LINE_9_10_BOXES,
+    **_MONTHLY, **_LINES_24_29}
 
 # 2021 (ARPA year) also maps the unemployment Box A at c1_1[0].
 _SCALARS_2021: dict[str, str] = {
@@ -126,14 +128,9 @@ _SCALARS_2021: dict[str, str] = {
 _FIELDS_2021: dict = {"scalars": _SCALARS_2021, "repeaters": {}}
 _FIELDS_BASE: dict = {"scalars": _SCALARS_BASE, "repeaters": {}}
 
-# Poverty-table box 4c — "Other 48 states and DC", ON-state /3, uniform
-# across all five years. Always-on: a derivation keyed by the PDF path that
-# emits the /3 appearance-state string directly (the fill layer str-passes
-# it through). No compute key, no scalar entry, no bool routing.
-_POVERTY_TABLE_4C_PATH = f"{_ROOT}.c1_2[2]"
-_DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
-    _POVERTY_TABLE_4C_PATH: lambda _values: "/3",
-}
+# Form 8962 has no derived cells: every printed value, including the box
+# 4c poverty-table mark, is a compute key (ruling A1 / A3).
+_DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {}
 
 # Per-field render-format overrides (compute key -> Python format spec). The
 # fill-time renderer rounds every numeric to whole dollars; line 7 is the
@@ -143,16 +140,15 @@ _FIELD_FORMATS: dict[str, str] = {
     "f8962_line_7": ".4f",
 }
 
-# Checkbox on-states, year-keyed. Only 2021 (ARPA) maps the unemployment Box
-# A bool key, with its own /2 on-token; every other year has no bool-mapped
-# checkbox (the 4c poverty-table box is a constant handled by
-# get_derivations, not a bool), so its dict is empty.
+# Checkbox on-states, year-keyed: the line 4 box 4c (/3) and the line 9 /
+# line 10 boxes every year; 2021 (ARPA) also maps the unemployment Box A
+# bool key, with its own /2 on-token.
 _CHECKBOX_STATES_BY_YEAR: dict[int, dict[str, str]] = {
-    2021: {"f8962_ui_box_checked": "/2", **_LINE_9_10_STATES},
-    2022: dict(_LINE_9_10_STATES),
-    2023: dict(_LINE_9_10_STATES),
-    2024: dict(_LINE_9_10_STATES),
-    2025: dict(_LINE_9_10_STATES),
+    2021: {"f8962_ui_box_checked": "/2", **_BOX_4C_STATES, **_LINE_9_10_STATES},
+    2022: {**_BOX_4C_STATES, **_LINE_9_10_STATES},
+    2023: {**_BOX_4C_STATES, **_LINE_9_10_STATES},
+    2024: {**_BOX_4C_STATES, **_LINE_9_10_STATES},
+    2025: {**_BOX_4C_STATES, **_LINE_9_10_STATES},
 }
 
 
@@ -173,10 +169,9 @@ class PdfF8962(PdfFormMapping[dict]):
         """Compute key -> PDF "on" appearance state for bool checkbox fields.
 
         States are year-keyed data in ``_CHECKBOX_STATES_BY_YEAR`` (no
-        year-literal dispatch). Only the 2021 ARPA unemployment Box A is
-        routed this way (ON ``/2``); every other year has no bool-mapped
-        checkbox (the 4c poverty-table box is a constant handled by
-        ``get_derivations``, not a bool)."""
+        year-literal dispatch): box 4c (ON ``/3``) and the line 9 / 10
+        boxes every year, plus the 2021 ARPA unemployment Box A (ON
+        ``/2``)."""
         if year not in cls._MAPPINGS:
             raise ValueError(
                 f"No {cls._FORM_NAME} checkbox states for year {year}")
@@ -188,8 +183,7 @@ class PdfF8962(PdfFormMapping[dict]):
     ) -> dict[str, Callable[[Mapping[str, object]], object]]:
         """PDF cells whose value is derived (not a direct compute key).
 
-        Sole entry, all years: the always-on 4c poverty-table checkbox,
-        emitting the ``/3`` on-state string directly."""
+        None, every year: every printed value is a compute key."""
         if year not in cls._MAPPINGS:
             raise ValueError(
                 f"No {cls._FORM_NAME} derivations for year {year}")

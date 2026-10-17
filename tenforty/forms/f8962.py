@@ -161,6 +161,12 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params,
     line_2a = magi
     line_3 = line_2a
     line_4 = fpl_for_family_size(params, family_size)
+    # Box 4c, "Other 48 states and DC": the poverty table line 4 just priced
+    # (fpl_48_by_family_size), the only table tenforty models -- a
+    # modeled-scope constant stated at the choice it attests to (ruling A3).
+    # An Alaska or Hawaii table (boxes 4a / 4b), or a refusal for those
+    # filers, changes this line and line 4 together.
+    line_4c_other48 = True
 
     if block.received_unemployment_2021 and params.unemployment_rule:
         # 2021 ARPA rule (i8962--2021 line-5 instruction): a filer who
@@ -206,6 +212,7 @@ def compute(block: Form1095A, magi: float, year: int, params: F8962Params,
         "f8962_line_2a": irs_round(line_2a),
         "f8962_line_3": irs_round(line_3),
         "f8962_line_4": irs_round(line_4),
+        "f8962_line_4c_other48": line_4c_other48,
         "f8962_line_5": line_5,
         "f8962_line_7": line_7,
         "f8962_line_8a": line_8a,
