@@ -27,15 +27,19 @@ import inspect
 import json
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
+import yaml
+
+from tenforty.forms import f1040x as form_f1040x
 from tenforty.forms import f540 as form_f540
 from tenforty.mappings import pdf_f540
 from tenforty.mappings.pdf_f540 import PdfF540
-from tenforty.models import FilingStatus, W2
+from tenforty.models import AmendmentCase, FilingStatus, Form1099INT, W2
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params import california as params_california
-from tests._ca_emit_helpers import REPO_ROOT, make_ca_scenario
+from tests._ca_emit_helpers import REPO_ROOT, emit_ca, make_ca_scenario
 from tests._ca_fixtures import _write_ca_yaml
 
 _BEFORE = Path(__file__).parent / "fixtures" / "compute_keys_f540_before.json"
@@ -355,6 +359,90 @@ class MappingHasNoArithmeticTests(unittest.TestCase):
         self.assertEqual(arith, [])
         self.assertEqual(calls, [])
         self.assertLessEqual(compares, self.APPROVED_COMPARES)
+
+
+
+class RelocatedLine112RefusalTests(unittest.TestCase):
+    """The emit-time refusal of an unstated line 112 moved from the mapping
+    to forms.f540 and now reads the computed line 111 key; it must still
+    fire from there (a relocated refusal is proven, not assumed)."""
+
+    _ZERO = {"f540_voluntary_contributions": 0,
+             "f540_estimated_tax_penalty": 0}
+
+    def test_the_predicate_reads_the_computed_line_111_key(self):
+        self.assertTrue(form_f540.interest_and_penalties_must_be_stated(
+            {**self._ZERO, form_f540.LINE_111: 1}))
+        self.assertFalse(
+            form_f540.interest_and_penalties_must_be_stated(self._ZERO))
+
+    def test_balance_due_with_line_112_unstated_refuses_every_year(self):
+        # Line 111 is the ONLY trigger here (no contribution, no penalty).
+        for year in _YEARS:
+            with self.subTest(year=year):
+                out = Path(tempfile.mkdtemp())
+                with self.assertRaises(ValueError) as ctx:
+                    emit_ca(make_ca_scenario(year, state_tax_withheld=0.0),
+                            out, ca540={"interest_and_penalties": None})
+                self.assertIn("line 112", str(ctx.exception))
+                self.assertEqual(list(out.glob("*.pdf")), [])
+
+    def test_the_refusal_is_decided_in_forms_f540(self):
+        # Control: the same return emits when the forms predicate says the
+        # line may stay unstated, so the orchestrator's gate is that call.
+        with unittest.mock.patch.object(
+                form_f540, "interest_and_penalties_must_be_stated",
+                return_value=False):
+            emit_ca(make_ca_scenario(2025, state_tax_withheld=0.0),
+                    ca540={"interest_and_penalties": None})
+
+
+class AmendmentPathCarriesLineKeysTests(unittest.TestCase):
+    """run_amendment_packet's corrected CA dict (the one the amended 540 is
+    filled from) holds the printed-line keys, as run_full_california_return's
+    does."""
+
+    def test_corrected_ca_holds_the_printed_line_keys(self):
+        from tests.test_amendment_packet_emit import _bump_interest, _with_ca
+        from tests.fixtures.spine_battery import build_wages_only
+        tmp = Path(tempfile.mkdtemp())
+        orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                                  work_dir=tmp / "work")
+        original = dataclasses.replace(
+            _with_ca(build_wages_only(2025, FilingStatus.SINGLE)),
+            form1099_int=[Form1099INT(payer="Synthetic Bank",
+                                      interest=2_000.0)])
+        amended = _bump_interest(original, 3_000.0)
+        fed = orch.compute_federal(original)
+        fed_filed = tmp / "federal_filed.yaml"
+        fed_filed.write_text(yaml.safe_dump(
+            {k: fed[k] for k in form_f1040x.REQUIRED_FILED_KEYS}))
+        ca = orch._compute_ca_results(original, original.ca540, fed)
+        ca_filed = tmp / "ca_filed.yaml"
+        ca_filed.write_text(yaml.safe_dump(
+            {"f540_total_liability": ca["f540_total_liability"]}))
+        case = AmendmentCase(
+            year=2025, explanation="Corrected taxable interest income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            original_tax_paid=0.0,
+            ca_original_refund_received=max(0.0, -ca["f540_total_liability"]),
+            ca_original_refund_applied=0.0)
+        seen = []
+        real = orch._emit_ca_pdfs_internal
+
+        def spy(scenario, ca_results, *args, **kwargs):
+            seen.append(dict(ca_results))
+            return real(scenario, ca_results, *args, **kwargs)
+
+        with unittest.mock.patch.object(orch, "_emit_ca_pdfs_internal", spy):
+            orch.run_amendment_packet(
+                original, amended, case, fed_filed, ca_filed, tmp / "packet")
+        (corrected,) = seen
+        always = [KEYS[l] for l in ("15", "33", "35", "47", "48", "64", "78",
+                                    "93", "94", "95", "96", "97", "99", "100")]
+        for key in always + list(BOOL_KEYS.values()):
+            with self.subTest(key=key):
+                self.assertIn(key, corrected)
 
 
 if __name__ == "__main__":
