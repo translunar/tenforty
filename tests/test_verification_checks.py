@@ -196,6 +196,24 @@ class PlacementTests(unittest.TestCase):
                 self.assertEqual(checks.check_value(
                     _emit(form, values, spec), decl), [])
 
+    def test_key_less_lines_are_not_placed(self):
+        # A key-less line (unmodeled, or preprinted) has no mapped field by
+        # definition; placement checks mapping-declaration agreement, which
+        # exists only for bound lines.
+        decl = dataclasses.replace(F8582_DECL, lines=F8582_DECL.lines + (
+            _line(F8582, "2a", "", "Part I", single_state="nothing",
+                  single_state_reason="unmodeled: synthetic control"),))
+        self.assertEqual(checks.check_placement(
+            _template(F8582), decl, _spec(F8582)), [])
+
+    def test_bound_line_without_a_mapped_field_is_still_a_finding(self):
+        decl = dataclasses.replace(F8582_DECL, lines=F8582_DECL.lines + (
+            _line(F8582, "2a", "f8582_no_such_key", "Part I"),))
+        findings = checks.check_placement(
+            _template(F8582), decl, _spec(F8582))
+        self.assertEqual([f.line for f in findings], ["2a"])
+        self.assertIn("has no field to place", findings[0].message)
+
     def test_ambiguous_near_label_is_a_finding(self):
         # "Activities with net income" prints for both line 1a and line 2a.
         decl = FormDeclaration(form=F8582, key=YEAR, not_printed={}, lines=(

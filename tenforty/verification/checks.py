@@ -233,6 +233,12 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
     for ln in expand(decl, {}):
         if ln.scope == "WORKBOOK":
             continue
+        if ln.key == "":
+            # A key-less line (unmodeled, or preprinted) has no mapped field
+            # by definition. Placement checks mapping-declaration agreement,
+            # which exists only for bound lines; a key-less line's nothing
+            # state belongs to the ink side.
+            continue
         if ln.selects is not None:
             resolved = option_widgets(spec, ln.key, ln.selects)
             field_path = resolved[0][0] if len(resolved) == 1 else None
