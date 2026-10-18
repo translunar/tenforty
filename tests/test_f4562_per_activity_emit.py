@@ -176,6 +176,11 @@ class PerCopyEmitTests(gate._EmitCase):
         # Twin: the same business with a placement this year HAS a copy.
         self.assertIn("f4562_sch_c_0", self._emit(_under()))
 
+    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
+    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
+    # Schedule C businesses until the half-SE-tax allocation is ruled. An
+    # unexpected success when phase C lands is the signal to remove this.
+    @unittest.expectedFailure
     def test_two_activities_with_one_printed_name_get_two_files(self):
         emitted = self._emit(gate._scenario(businesses=[
             _business(_equipment(1_000.0, 3)),

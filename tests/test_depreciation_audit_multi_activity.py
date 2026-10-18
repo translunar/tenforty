@@ -267,17 +267,28 @@ class TieOutTests(_Case):
                 "Schedule C business #0 ('Consulting')")
             self.assertEqual(sheet["C5"].value, 1_200)
         with self.subTest(shape="two stated businesses, one name"):
-            _emitted, workbook = self.emit(stated_businesses(1_200.0, 800.0))
-            sheet = workbook[TIE]
-            listed = [(sheet[f"A{r}"].value, sheet[f"C{r}"].value)
-                      for r in (5, 6)]
-            self.assertEqual(listed, [
-                ("Whole return: sch_c_0 has no Form 4562 copy (stated "
-                 "figure): Schedule C line 13 (business 1): depreciation, "
-                 "Schedule C business #0 ('Consulting')", 1_200),
-                ("Whole return: sch_c_1 has no Form 4562 copy (stated "
-                 "figure): Schedule C line 13 (business 2): depreciation, "
-                 "Schedule C business #1 ('Consulting')", 800)])
+            # Phase K of the f8995 per-source-rows lane: Form 8995 refuses
+            # two Schedule C businesses until phase C (the half-SE-tax
+            # allocation ruling). This assertion goes red when phase C lands;
+            # then replace it with
+            # self._assert_two_stated_businesses_tie_out(
+            #     self.emit(stated_businesses(1_200.0, 800.0))[1]).
+            with self.assertRaises(NotImplementedError) as ctx:
+                self.emit(stated_businesses(1_200.0, 800.0))
+            self.assertIn("Form 8995 per-source rows", str(ctx.exception))
+
+    def _assert_two_stated_businesses_tie_out(self, workbook):
+        # The two-business shape's tie-out, held until phase C (above).
+        sheet = workbook[TIE]
+        listed = [(sheet[f"A{r}"].value, sheet[f"C{r}"].value)
+                  for r in (5, 6)]
+        self.assertEqual(listed, [
+            ("Whole return: sch_c_0 has no Form 4562 copy (stated "
+             "figure): Schedule C line 13 (business 1): depreciation, "
+             "Schedule C business #0 ('Consulting')", 1_200),
+            ("Whole return: sch_c_1 has no Form 4562 copy (stated "
+             "figure): Schedule C line 13 (business 2): depreciation, "
+             "Schedule C business #1 ('Consulting')", 800)])
 
     def test_an_asset_rental_beside_a_stated_business_is_multi_activity_with_one_tab_pair(
             self):
