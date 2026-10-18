@@ -60,6 +60,14 @@ def _sch_c_emit_scenarios():
                 emit_battery_sch_c.build, name, year)
 
 
+def _f8995_emit_scenarios():
+    from tests.fixtures import emit_battery_f8995
+    for year in emit_battery_f8995.YEARS:
+        for name in emit_battery_f8995.SCENARIOS:
+            yield name, year, functools.partial(
+                emit_battery_f8995.build, name, year)
+
+
 BATTERIES: tuple[BatteryRef, ...] = (
     BatteryRef("spine_battery", "tests.fixtures.spine_battery",
                _spine_scenarios, "run_full_return"),
@@ -69,4 +77,6 @@ BATTERIES: tuple[BatteryRef, ...] = (
                _sch_se_scenarios, "run_full_return"),
     BatteryRef("emit_battery_sch_c", "tests.fixtures.emit_battery_sch_c",
                _sch_c_emit_scenarios, "run_full_return"),
+    BatteryRef("emit_battery_f8995", "tests.fixtures.emit_battery_f8995",
+               _f8995_emit_scenarios, "run_full_return"),
 )

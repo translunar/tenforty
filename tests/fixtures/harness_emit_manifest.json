@@ -1,4 +1,129 @@
 {
+ "emit_battery_f8995/five-sources/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_sch_c/at-risk-loss/2021": {
   "forms": [
    "federal/1040",
@@ -525,32 +650,32 @@
  "sch_c_battery/two-trades/2022": {
   "forms": null,
   "refusal": {
-   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
-   "type": "ValueError"
+   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
+   "type": "NotImplementedError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2023": {
   "forms": null,
   "refusal": {
-   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
-   "type": "ValueError"
+   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
+   "type": "NotImplementedError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2024": {
   "forms": null,
   "refusal": {
-   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
-   "type": "ValueError"
+   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
+   "type": "NotImplementedError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2025": {
   "forms": null,
   "refusal": {
-   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
-   "type": "ValueError"
+   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
+   "type": "NotImplementedError"
   },
   "routing": "native"
  },
