@@ -531,6 +531,11 @@ _EMITTED = ("the computation emits this key unconditionally on every "
             "Schedule 1 (forms/sch_1.py's return dict sets it, zero "
             "included), so its nothing state is unreachable")
 _TOTALS = {(P1, "10"), (P2, "26")}
+# Two-state bound lines: the computation leaves the key ABSENT when nothing is
+# computed. Line 8z is a write-in: with no nonzero Form 1099-G type the
+# computation emits no 8z keys and the write-in stays blank (team-lead R2,
+# sch_1-8z-9-mapping-gap lane), so 8z is observed in both states.
+_TWO_STATE = {(P1, "8z")}
 _TOTAL = (_EMITTED + "; on the paper it is the part total every filer "
           "completes: zero is a value")
 
@@ -550,10 +555,12 @@ def _full(year):
             anchor = _ANCHORS[i][1]
         if i in _BOUND:
             key, mef = _BOUND[i]
+            two_state = i in _TWO_STATE
             out.append(DeclaredLine(line=line, description=d[i], key=key,
                                     kind="amount", section=sec, anchor=anchor,
-                                    mef_element=mef, single_state="value",
-                                    single_state_reason=(
+                                    mef_element=mef,
+                                    single_state=None if two_state else "value",
+                                    single_state_reason=None if two_state else (
                                         _TOTAL if i in _TOTALS else _EMITTED)))
         else:
             meaning = (("caption only, no entry space: " + d[i])

@@ -159,16 +159,21 @@ class SchOneAdjudicatedTests(unittest.TestCase):
 
 
 class SchOneValueOnlyTests(unittest.TestCase):
-    def test_every_bound_line_is_value_only(self):
+    def test_every_bound_line_but_8z_is_value_only(self):
         # The computation emits every non-header key on every Schedule 1
-        # (zeros included): no scenario can leave a bound line absent.
+        # (zeros included) except line 8z, which is absent when no 1099-G
+        # type is nonzero (R2: a blank write-in), so 8z is two-state.
         for year in YEARS:
             with self.subTest(year=year):
                 for ln in sch_1.DECLARATIONS[year].lines:
-                    if ln.key:
-                        self.assertEqual(ln.single_state, "value", ln.line)
-                        self.assertIn("unconditionally",
-                                      ln.single_state_reason)
+                    if not ln.key:
+                        continue
+                    if ln.line == "8z":
+                        self.assertIsNone(ln.single_state)
+                        continue
+                    self.assertEqual(ln.single_state, "value", ln.line)
+                    self.assertIn("unconditionally",
+                                  ln.single_state_reason)
 
 
 # KNOWN GAP (graduation blocker sch_1-8z-9-mapping-gap): the computation
@@ -284,11 +289,17 @@ class SchOneCoverageTests(unittest.TestCase):
         self.assertEqual(sorted({rec.key for _, rec in self.records}),
                          list(YEARS))
 
-    def test_no_cell_is_uncovered(self):
+    def test_only_the_8z_value_cells_are_uncovered(self):
+        # KNOWN GAP (sch_1-8z-9-mapping-gap, phase P4): no battery row carries
+        # a nonzero line 8z yet, so 8z's value state is unobserved in every
+        # year. The P4 battery rows (single type, several types) cover it;
+        # then this set must become empty.
         decls = [sch_1.DECLARATIONS[y] for y in YEARS]
         report = coverage_cells(self.records, decls)
-        self.assertEqual(list(report.uncovered), [], "\n".join(
-            map(str, report.uncovered)))
+        self.assertEqual(
+            sorted(report.uncovered, key=str),
+            sorted(((FORM, y, "8z", "value") for y in YEARS), key=str),
+            "\n".join(map(str, report.uncovered)))
 
 
 if __name__ == "__main__":
