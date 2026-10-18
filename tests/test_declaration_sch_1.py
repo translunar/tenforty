@@ -171,15 +171,41 @@ class SchOneValueOnlyTests(unittest.TestCase):
                                       ln.single_state_reason)
 
 
+# KNOWN GAP (graduation blocker sch_1-8z-9-mapping-gap): the computation
+# emits line 8z (and folds it into line 10), but no field is mapped for 8z or
+# line 9 in any year. 8z is bound by meaning, so placement reports exactly
+# this finding. When the mapping lane fixes it, this pin goes red and flips.
+_8Z_GAP = "line 8z ('sch_1_line_8z_other_income') has no field to place."
+
+
 class SchOnePlacementTests(unittest.TestCase):
-    def test_every_bound_line_is_placed(self):
+    def _findings(self, year):
+        return check_placement(_template(year), sch_1.DECLARATIONS[year],
+                               fill_spec_for(PdfSch1, year))
+
+    def test_every_bound_line_but_8z_is_placed(self):
         for year in YEARS:
-            findings = check_placement(
-                _template(year), sch_1.DECLARATIONS[year],
-                fill_spec_for(PdfSch1, year))
+            findings = [f for f in self._findings(year) if f.line != "8z"]
             with self.subTest(year=year):
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
+
+    def test_the_8z_mapping_gap_is_exactly_the_known_finding(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    [(f.line, f.check, f.message)
+                     for f in self._findings(year) if f.line == "8z"],
+                    [("8z", "placement", _8Z_GAP)])
+
+    def test_wrapped_totals_use_the_default_anchor(self):
+        # Ruling: 5 (2021), 10 and 26 have their box alone on its row, and
+        # the default row label places them; no explicit anchor.
+        for year in YEARS:
+            lines = _lines(year)
+            with self.subTest(year=year):
+                for line in ((P1, "5"), (P1, "10"), (P2, "26")):
+                    self.assertIsNone(lines[line].anchor, line)
 
     def test_2025_line_7_anchor_rejects_the_amount_repaid_field(self):
         # 2025 line 7's row also holds the "amount repaid" entry. The default
