@@ -263,6 +263,49 @@ class PlacementTests(unittest.TestCase):
         self.assertNotRegex("Line 12 b.", label_pattern("12a"))
 
 
+class ExemptedAnchoredPlacementTests(unittest.TestCase):
+    """R1 ruling: an inventory-exempted line that declares an explicit
+    anchor is PLACED; only an exempted line with no expressible anchor (the
+    Schedule C Part V grid rows) is skipped. Vehicle: Form 8995 2024's row i
+    name cell, which the inventory does not print (it lists bare row ids)."""
+
+    YEAR = 2024
+
+    @classmethod
+    def setUpClass(cls):
+        from tenforty.mappings.pdf_f8995 import PdfF8995
+        cls.spec = fill_spec_for(PdfF8995, cls.YEAR)
+        cls.template = (REPO_ROOT / "pdfs" / "federal" / str(cls.YEAR)
+                        / "f8995.pdf")
+
+    def _decl(self, anchor):
+        line = DeclaredLine(
+            line="1i(a)", description="(a) Trade, business, or aggregation "
+            "name", key="f8995_line_1i_name", kind="text", section="",
+            anchor=anchor, inventory_exemption="synthetic control: the "
+            "inventory prints bare row ids")
+        return FormDeclaration(form=("federal", "f8995"), key=self.YEAR,
+                               not_printed={}, lines=(line,))
+
+    def test_an_exempted_line_with_its_anchor_places(self):
+        self.assertEqual(checks.check_placement(
+            self.template, self._decl(NearLabel("i", LabelRelation.RIGHT_OF)),
+            self.spec), [])
+
+    def test_an_exempted_line_with_a_wrong_anchor_is_a_finding(self):
+        # Kill-check: line 2's phrase locates line 2's field, not row i's.
+        wrong = NearLabel("Total qualified business income or (loss).",
+                          LabelRelation.AFTER_WRAPPED)
+        findings = checks.check_placement(self.template, self._decl(wrong),
+                                          self.spec)
+        self.assertEqual([f.line for f in findings], ["1i(a)"])
+
+    def test_an_exempted_line_without_an_anchor_is_skipped(self):
+        # The Schedule C Part V case: no printed label to anchor on.
+        self.assertEqual(checks.check_placement(
+            self.template, self._decl(None), self.spec), [])
+
+
 class NearFieldSameRowTests(unittest.TestCase):
     """NearField SAME_ROW_RIGHT_OF (R2 ruling): abutting cells are right-of
     (gap 0), overlap is not. Form 8995 2024's line-1 row i cells abut: (b)

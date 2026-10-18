@@ -254,13 +254,15 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
     for ln in expand(decl, {}):
         if ln.scope == "WORKBOOK":
             continue
-        if ln.inventory_exemption is not None:
+        if ln.inventory_exemption is not None and ln.anchor is None:
             # A ruled synthetic line the inventory cannot print (Schedule C
             # Part V's unlabeled grid rows) has no printed label to anchor
             # on: placement is SKIPPED until the check-suite has a
             # below-a-heading relation (design pile). Every such line is
             # enumerated by validate.exemptions_in_force; value and ink
-            # checks still run on it.
+            # checks still run on it. An exempted line that DOES declare an
+            # anchor (Form 8995's line-1 row cells) is placed like any other
+            # (R1 ruling): a measured anchor never goes inert.
             continue
         if ln.key == "":
             # A key-less line (unmodeled, or preprinted) has no mapped field
