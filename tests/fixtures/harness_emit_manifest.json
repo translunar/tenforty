@@ -1,4 +1,189 @@
 {
+ "emit_battery_sch_c/at-risk-loss/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_sch_se/day-job-plus-sideline/2021": {
   "forms": [
    "federal/1040",

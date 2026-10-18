@@ -7,6 +7,7 @@ removal land together, so this test reads the module directly, not the
 registry.
 """
 import dataclasses
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -15,7 +16,10 @@ from tenforty.declarations.anchors import LabelRelation, NearLabel
 from tenforty.declarations.validate import validate
 from tenforty.mappings.pdf_sch_c import PdfSchC
 from tenforty.verification import anchors as anchor_eval
+from tenforty.verification import emit_manifest
+from tenforty.verification.batteries import BATTERIES
 from tenforty.verification.checks import check_placement
+from tenforty.verification.coverage import coverage_cells
 from tenforty.verification.fill import fill_spec_for
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
@@ -158,6 +162,73 @@ class CheckboxAnchorRectTests(unittest.TestCase):
                 with self.subTest(year=year, line=line):
                     self.assertIsNotNone(anchor_eval.evaluate(
                         self._anchor(year, line), other_box, template))
+
+
+# Lines the computation emits for every Schedule C: no scenario can leave
+# them blank (ruling: coverage phase, bucket a).
+VALUE_ONLY = ("1", "3", "5", "7", "28", "29", "31", "F", "G")
+COVERED_BATTERIES = ("sch_c_battery", "emit_battery_sch_se",
+                     "emit_battery_sch_c")
+
+
+def _sch_c_records():
+    """(row id, RecordedForm) for every Schedule C the covered batteries
+    emit natively (no expected values: the states are observed)."""
+    manifest = emit_manifest.load_manifest()
+    records = []
+    for battery in BATTERIES:
+        if battery.name not in COVERED_BATTERIES:
+            continue
+        for name, year, build in battery.scenarios():
+            rid = emit_manifest.row_id(battery.name, name, year)
+            row = manifest.get(rid)
+            if not row or row["routing"] != "native" or row["refusal"]:
+                continue
+            out = Path(tempfile.mkdtemp()) / "out"
+            records += [(rid, rec) for rec in emit_manifest.emit(
+                battery, build(), out).record if rec.form == FORM]
+    return records
+
+
+class SchCValueOnlyTests(unittest.TestCase):
+    def test_exactly_the_spine_and_scope_constants_are_value_only(self):
+        for year in YEARS:
+            lines = {ln.line: ln for ln in sch_c.DECLARATIONS[year].lines}
+            with self.subTest(year=year):
+                self.assertEqual(
+                    sorted(l for l, ln in lines.items()
+                           if ln.single_state == "value"),
+                    sorted(VALUE_ONLY))
+                for line in ("F", "G"):
+                    self.assertIn("red by design",
+                                  lines[line].single_state_reason)
+                for line in ("1", "3", "5", "7", "28", "29", "31"):
+                    self.assertIn("zero is a value",
+                                  lines[line].single_state_reason)
+
+
+class SchCCoverageTests(unittest.TestCase):
+    """Coverage over this declaration (read directly; it is not registered
+    until graduation): every cell is covered, every year. sch_c_battery
+    covers 2022-2025, emit_battery_sch_se adds 2021, and emit_battery_sch_c
+    the lines neither sets."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.records = _sch_c_records()
+
+    def test_the_battery_is_registered(self):
+        self.assertIn("emit_battery_sch_c", [b.name for b in BATTERIES])
+
+    def test_every_year_has_records(self):
+        self.assertEqual(sorted({rec.key for _, rec in self.records}),
+                         list(YEARS))
+
+    def test_no_cell_is_uncovered(self):
+        decls = [sch_c.DECLARATIONS[y] for y in YEARS]
+        report = coverage_cells(self.records, decls)
+        self.assertEqual(list(report.uncovered), [], "\n".join(
+            map(str, report.uncovered)))
 
 
 if __name__ == "__main__":
