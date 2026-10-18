@@ -1,10 +1,16 @@
 """PDF field mapping for IRS Schedule 1 (Additional Income & Adjustments).
 
-V1 scope: Part I lines 1, 3, 4, 5, 6, 7, 10 (total additional income) and
-Part II lines 11, 13, 15, 17, 20, 21, 26 (total adjustments). Other line
-subparts (8a–8z "other income", 24a–24z "other adjustments", 19a alimony
-paid, etc.) are in scope of the form but not populated by v1 compute —
-they remain blank on the filled PDF.
+V1 scope: Part I lines 1, 3, 4, 5, 6, 7, 8z (its type write-in and amount),
+9 and 10 (total additional income) and Part II lines 11, 13, 15, 17, 20, 21,
+26 (total adjustments). Other line subparts (8a–8y "other income", 24a–24z
+"other adjustments", 19a alimony paid, etc.) are in scope of the form but
+not populated by v1 compute — they remain blank on the filled PDF.
+
+Line 8z ("Other income. List type and amount"): the type write-in is the
+first description field, on the caption's own row (2021-2024; the second,
+full-width row stays blank), or the single multiline field (2025). The amount
+is the box labelled "8z" on the next row. Every 8z and 9 key is absent when
+no Form 1099-G type is nonzero, so those fields stay blank.
 
 Field names enumerated from ``pdfs/federal/2025/f1040s1.pdf``. Position
 mapping (amount column x≈504, rows top-to-bottom) determined which
@@ -31,6 +37,12 @@ _SCALARS_2025: dict[str, str] = {
     "sch_1_line_5_rental_re_royalty": f"{_PAGE1}.f1_09[0]",
     "sch_1_line_6_farm_income": f"{_PAGE1}.f1_10[0]",
     "sch_1_line_7_unemployment": f"{_PAGE1}.f1_12[0]",
+    # 8z: the single multiline type write-in, its amount (f1_36), and line 9
+    # (f1_37): each widget sits on its printed row (pdftotext -bbox against
+    # the widget rects, every year).
+    "sch_1_line_8z_description": f"{_PAGE1}.Line8z_ReadOrder[0].f1_35[0]",
+    "sch_1_line_8z_other_income": f"{_PAGE1}.f1_36[0]",
+    "sch_1_line_9_total_other_income": f"{_PAGE1}.f1_37[0]",
     "sch_1_line_10_total_additional_income": f"{_PAGE1}.f1_38[0]",
     # Part II — Adjustments. Line 25 (total other adjustments) is f2_29 and
     # line 26 (adjustments-to-income total) is f2_30.
@@ -68,6 +80,10 @@ class PdfSch1(PdfFormMapping[dict]):
                         "form1[0].Page1[0].f1_11[0]",
                     "sch_1_line_26_total_adjustments":
                         "form1[0].Page2[0].f2_31[0]",
+                    # 2024's 8z type write-in is the caption-row field
+                    # (2025 merged the two rows into one field).
+                    "sch_1_line_8z_description":
+                        "form1[0].Page1[0].Line8z_ReadOrder[0].f1_34[0]",
                 },
             ),
             "repeaters": {},
@@ -102,6 +118,12 @@ class PdfSch1(PdfFormMapping[dict]):
                         "form1[0].Page1[0].f1_10[0]",
                     "sch_1_line_10_total_additional_income":
                         "form1[0].Page1[0].f1_36[0]",
+                    "sch_1_line_8z_description":
+                        "form1[0].Page1[0].Line8z_ReadOrder[0].f1_32[0]",
+                    "sch_1_line_8z_other_income":
+                        "form1[0].Page1[0].f1_34[0]",
+                    "sch_1_line_9_total_other_income":
+                        "form1[0].Page1[0].f1_35[0]",
                     "sch_1_line_26_total_adjustments":
                         "form1[0].Page2[0].f2_31[0]",
                 },
@@ -118,9 +140,10 @@ class PdfSch1(PdfFormMapping[dict]):
 # and every mapped field on its 2023 line. So 2022 reuses the 2023 payload.
 PdfSch1._MAPPINGS[2022] = PdfSch1._MAPPINGS[2023]
 
-# 2021 fresh air-gapped probe (form1[0] namespace). Matches 2022 except line-10
-# total → f1_31 (2022's f1_36 is absent on 2021; the 8a-8z sub-lines that shifted
-# it were added after 2021). Controller-verified all paths on the 2021 template.
+# 2021 fresh air-gapped probe (form1[0] namespace). Matches 2022 except the
+# 8z, 9 and 10 fields: 2021 prints a shorter 8-block (8a-8p, then 8z), so
+# 8z's write-in is f1_27, its amount f1_29, line 9 f1_30 and the line-10
+# total f1_31. Controller-verified all paths on the 2021 template.
 PdfSch1._MAPPINGS[2021] = {
     "scalars": {
         "taxpayer_name": "form1[0].Page1[0].f1_01[0]",
@@ -131,6 +154,10 @@ PdfSch1._MAPPINGS[2021] = {
         "sch_1_line_5_rental_re_royalty": "form1[0].Page1[0].f1_08[0]",
         "sch_1_line_6_farm_income": "form1[0].Page1[0].f1_09[0]",
         "sch_1_line_7_unemployment": "form1[0].Page1[0].f1_10[0]",
+        "sch_1_line_8z_description":
+            "form1[0].Page1[0].Line8z_ReadOrder[0].f1_27[0]",
+        "sch_1_line_8z_other_income": "form1[0].Page1[0].f1_29[0]",
+        "sch_1_line_9_total_other_income": "form1[0].Page1[0].f1_30[0]",
         "sch_1_line_10_total_additional_income": "form1[0].Page1[0].f1_31[0]",
         "sch_1_line_11_educator": "form1[0].Page2[0].f2_01[0]",
         "sch_1_line_13_hsa": "form1[0].Page2[0].f2_03[0]",

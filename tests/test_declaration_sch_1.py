@@ -38,6 +38,8 @@ OUTPUT_KEYS = frozenset({
     "sch_1_line_3_business_income", "sch_1_line_4_other_gains",
     "sch_1_line_5_rental_re_royalty", "sch_1_line_6_farm_income",
     "sch_1_line_7_unemployment", "sch_1_line_8z_other_income",
+    "sch_1_line_8z_description", "sch_1_line_8z_statement_rows",
+    "sch_1_line_9_total_other_income",
     "taxpayer_name", "taxpayer_ssn",
 })
 # Each non-header key binds the paper line its meaning names, every year.
@@ -49,6 +51,8 @@ BINDINGS = {
     (P1, "6"): "sch_1_line_6_farm_income",
     (P1, "7"): "sch_1_line_7_unemployment",
     (P1, "8z"): "sch_1_line_8z_other_income",
+    (P1, "8z(type)"): "sch_1_line_8z_description",
+    (P1, "9"): "sch_1_line_9_total_other_income",
     (P1, "10"): "sch_1_line_10_total_additional_income",
     (P2, "11"): "sch_1_line_11_educator",
     (P2, "13"): "sch_1_line_13_hsa",
@@ -58,7 +62,11 @@ BINDINGS = {
     (P2, "21"): "sch_1_line_21_student_loan_interest",
     (P2, "26"): "sch_1_line_26_total_adjustments",
 }
-LINE_COUNTS = {2021: 58, 2022: 63, 2023: 63, 2024: 64, 2025: 64}
+# Paper lines plus the 8z type write-in cell (declared as its own line).
+LINE_COUNTS = {2021: 59, 2022: 64, 2023: 64, 2024: 65, 2025: 65}
+# Two-state bound lines (team-lead R2): absent when no Form 1099-G type is
+# nonzero, so the write-in and subtotal stay blank.
+TWO_STATE = {(P1, "8z"), (P1, "8z(type)"), (P1, "9")}
 
 
 def _template(year):
@@ -117,13 +125,21 @@ class SchOneKeyCoverageTests(unittest.TestCase):
                 self.assertEqual(bound | set(decl.not_printed), OUTPUT_KEYS)
                 self.assertEqual(bound & set(decl.not_printed), set())
 
-    def test_only_the_header_keys_are_not_printed(self):
+    def test_not_printed_keys(self):
+        # The header keys are presentation-only; the 8z statement rows feed
+        # the attached statement, never a Schedule 1 field.
         for year in YEARS:
             np = sch_1.DECLARATIONS[year].not_printed
             with self.subTest(year=year):
-                self.assertEqual(sorted(np), ["taxpayer_name", "taxpayer_ssn"])
-                for reason in np.values():
-                    self.assertTrue(reason.startswith("presentation-only:"))
+                self.assertEqual(sorted(np), [
+                    "sch_1_line_8z_statement_rows", "taxpayer_name",
+                    "taxpayer_ssn"])
+                self.assertTrue(np["taxpayer_name"].startswith(
+                    "presentation-only:"))
+                self.assertTrue(np["taxpayer_ssn"].startswith(
+                    "presentation-only:"))
+                self.assertTrue(np["sch_1_line_8z_statement_rows"].startswith(
+                    "intermediate:"))
 
     def test_each_key_binds_its_line_every_year(self):
         for year in YEARS:
@@ -153,34 +169,29 @@ class SchOneAdjudicatedTests(unittest.TestCase):
         for year in YEARS:
             with self.subTest(year=year):
                 self.assertEqual(
-                    [line_id for line_id, _ in exemptions_in_force(
-                        sch_1.DECLARATIONS[year])],
-                    [(P2, "19b"), (P2, "19c")] if year < 2024 else [])
+                    sorted(line_id for line_id, _ in exemptions_in_force(
+                        sch_1.DECLARATIONS[year])),
+                    sorted([(P1, "8z(type)")] + (
+                        [(P2, "19b"), (P2, "19c")] if year < 2024 else [])))
 
 
 class SchOneValueOnlyTests(unittest.TestCase):
-    def test_every_bound_line_but_8z_is_value_only(self):
+    def test_every_bound_line_but_8z_and_9_is_value_only(self):
         # The computation emits every non-header key on every Schedule 1
-        # (zeros included) except line 8z, which is absent when no 1099-G
-        # type is nonzero (R2: a blank write-in), so 8z is two-state.
+        # (zeros included) except the 8z amount, its type write-in and line
+        # 9, which are absent when no 1099-G type is nonzero (R2), so they
+        # are two-state.
         for year in YEARS:
             with self.subTest(year=year):
                 for ln in sch_1.DECLARATIONS[year].lines:
                     if not ln.key:
                         continue
-                    if ln.line == "8z":
-                        self.assertIsNone(ln.single_state)
+                    if ln.line_id in TWO_STATE:
+                        self.assertIsNone(ln.single_state, ln.line)
                         continue
                     self.assertEqual(ln.single_state, "value", ln.line)
                     self.assertIn("unconditionally",
                                   ln.single_state_reason)
-
-
-# KNOWN GAP (graduation blocker sch_1-8z-9-mapping-gap): the computation
-# emits line 8z (and folds it into line 10), but no field is mapped for 8z or
-# line 9 in any year. 8z is bound by meaning, so placement reports exactly
-# this finding. When the mapping lane fixes it, this pin goes red and flips.
-_8Z_GAP = "line 8z ('sch_1_line_8z_other_income') has no field to place."
 
 
 class SchOnePlacementTests(unittest.TestCase):
@@ -188,20 +199,47 @@ class SchOnePlacementTests(unittest.TestCase):
         return check_placement(_template(year), sch_1.DECLARATIONS[year],
                                fill_spec_for(PdfSch1, year))
 
-    def test_every_bound_line_but_8z_is_placed(self):
+    def test_every_bound_line_is_placed(self):
+        # Formerly the sch_1-8z-9-mapping-gap known finding on 8z: the
+        # mapping now places 8z, its type write-in and line 9 every year.
         for year in YEARS:
-            findings = [f for f in self._findings(year) if f.line != "8z"]
+            findings = self._findings(year)
             with self.subTest(year=year):
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
 
-    def test_the_8z_mapping_gap_is_exactly_the_known_finding(self):
+    def test_the_8z_type_anchor_rejects_its_rowmates(self):
+        # The write-in's anchor accepts its own field and rejects the
+        # second description row and line 9. In 2022-2023 it also accepts
+        # the 8z amount field (both overlap the caption row); a swap of the
+        # two is still caught, because the amount's RIGHT_OF "8z" anchor
+        # rejects the write-in field every year.
+        root = {y: "form1[0]" if y < 2025 else "topmostSubform[0]"
+                for y in YEARS}
+        row_2 = {2021: "f1_28", 2022: "f1_33", 2023: "f1_33", 2024: "f1_35"}
+        line_9 = {2021: "f1_30", 2022: "f1_35", 2023: "f1_35", 2024: "f1_37",
+                  2025: "f1_37"}
         for year in YEARS:
+            template = _template(year)
+            page1 = f"{root[year]}.Page1[0]"
+            mapping = PdfSch1.get_mapping(year)["scalars"]
+            write_in = mapping["sch_1_line_8z_description"]
+            amount = mapping["sch_1_line_8z_other_income"]
+            lines = _lines(year)
+            anchor = lines[(P1, "8z(type)")].anchor
             with self.subTest(year=year):
-                self.assertEqual(
-                    [(f.line, f.check, f.message)
-                     for f in self._findings(year) if f.line == "8z"],
-                    [("8z", "placement", _8Z_GAP)])
+                self.assertIsNone(anchor_eval.evaluate(
+                    anchor, write_in, template))
+                self.assertIsNotNone(anchor_eval.evaluate(
+                    anchor, f"{page1}.{line_9[year]}[0]", template))
+                if year in row_2:
+                    self.assertIsNotNone(anchor_eval.evaluate(
+                        anchor, f"{page1}.Line8z_ReadOrder[0]."
+                        f"{row_2[year]}[0]", template))
+                self.assertIsNotNone(anchor_eval.evaluate(
+                    lines[(P1, "8z")].anchor, write_in, template))
+                self.assertIsNone(anchor_eval.evaluate(
+                    lines[(P1, "8z")].anchor, amount, template))
 
     def test_wrapped_totals_use_the_default_anchor(self):
         # Ruling: 5 (2021), 10 and 26 have their box alone on its row, and
@@ -289,16 +327,17 @@ class SchOneCoverageTests(unittest.TestCase):
         self.assertEqual(sorted({rec.key for _, rec in self.records}),
                          list(YEARS))
 
-    def test_only_the_8z_value_cells_are_uncovered(self):
+    def test_only_the_8z_and_9_value_cells_are_uncovered(self):
         # KNOWN GAP (sch_1-8z-9-mapping-gap, phase P4): no battery row carries
-        # a nonzero line 8z yet, so 8z's value state is unobserved in every
-        # year. The P4 battery rows (single type, several types) cover it;
-        # then this set must become empty.
+        # a nonzero line 8z yet, so the value state of 8z, its type write-in
+        # and line 9 is unobserved in every year. The P4 battery rows (single
+        # type, several types) cover it; then this set must become empty.
         decls = [sch_1.DECLARATIONS[y] for y in YEARS]
         report = coverage_cells(self.records, decls)
         self.assertEqual(
             sorted(report.uncovered, key=str),
-            sorted(((FORM, y, "8z", "value") for y in YEARS), key=str),
+            sorted(((FORM, y, line, "value") for y in YEARS
+                    for line in ("8z", "8z(type)", "9")), key=str),
             "\n".join(map(str, report.uncovered)))
 
 

@@ -48,20 +48,24 @@ class RootSwapPayloadTests(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertEqual(s24[key], expected)
 
-    def test_sch_1_2024_is_root_swapped_2025_with_two_overrides(self):
+    def test_sch_1_2024_is_root_swapped_2025_with_three_overrides(self):
         s24 = PdfSch1.get_mapping(2024)["scalars"]
         s25 = PdfSch1.get_mapping(2025)["scalars"]
         self.assertEqual(set(s24), set(s25))
-        self.assertEqual(len(s24), 16)
+        self.assertEqual(len(s24), 19)
         # 2024 lacks the 2025-only line-7 "amount repaid" sub-field (f1_11 on
         # 2025), so line 7's amount is the flat f1_11 here (2025: f1_12).
         # Lines 25/26 differ from 2025 by one field (2024 line 26 = f2_31;
-        # 2025 line 26 = f2_30), so line 26 is overridden.
+        # 2025 line 26 = f2_30), so line 26 is overridden. 2024 splits line
+        # 8z's type write-in over two single-line fields and the type goes on
+        # the caption-row field f1_34; 2025 has one multiline field (f1_35).
         overrides = {
             "sch_1_line_7_unemployment":
                 "form1[0].Page1[0].f1_11[0]",
             "sch_1_line_26_total_adjustments":
                 "form1[0].Page2[0].f2_31[0]",
+            "sch_1_line_8z_description":
+                "form1[0].Page1[0].Line8z_ReadOrder[0].f1_34[0]",
         }
         for key, value25 in s25.items():
             expected = overrides.get(
