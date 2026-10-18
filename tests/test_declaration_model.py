@@ -246,6 +246,35 @@ class ValidateTests(unittest.TestCase):
                     _line("10", "f8995_line_10"),
                     not_printed={"f8995_tmp": f"{tag} feeds line 10"})), [])
 
+    # "other-year:" (sch_2 lane ruling): a key whose printed line exists only
+    # in another year's layout. Self-verifying: accepted only when the same
+    # key is BOUND in another year of the same form (``siblings``), so the
+    # claim cannot go silently false.
+    _OTHER_YEAR = {"f8995_line_11": "other-year: prints on line 11 only in "
+                                    "2024"}
+
+    def test_other_year_is_accepted_when_another_year_binds_the_key(self):
+        sibling = _decl(_line("11", "f8995_line_11"), key=2024)
+        self.assertEqual(validate(_decl(
+            _line("10", "f8995_line_10"), not_printed=self._OTHER_YEAR),
+            siblings=[sibling]), [])
+
+    def test_other_year_bound_in_no_other_year_is_refused(self):
+        unbound = _decl(_line("10", "f8995_line_10"), key=2024)
+        same_year = _decl(_line("11", "f8995_line_11"), key=2025)
+        other_form = _decl(_line("11", "f8995_line_11"), key=2024,
+                           form=("federal", "sch_2"))
+        for name, siblings in (("no siblings", []), ("unbound", [unbound]),
+                               ("same year", [same_year]),
+                               ("other form", [other_form])):
+            with self.subTest(siblings=name):
+                findings = validate(_decl(
+                    _line("10", "f8995_line_10"),
+                    not_printed=self._OTHER_YEAR), siblings=siblings)
+                self.assertEqual([(f.line, f.check) for f in findings],
+                                 [("f8995_line_11", "not_printed")])
+                self.assertIn("bound in no other year", findings[0].message)
+
     def test_a_line_declared_twice(self):
         findings = validate(_decl(_line("10", "f8995_line_10"),
                                   _line("10", "f8995_line_10b")))
