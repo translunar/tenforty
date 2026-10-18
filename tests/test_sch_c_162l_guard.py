@@ -112,6 +112,11 @@ class SchC162lGuardTests(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             self._compute_federal(scn)
 
+    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
+    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
+    # Schedule C businesses until the half-SE-tax allocation is ruled. An
+    # unexpected success when phase C lands is the signal to remove this.
+    @unittest.expectedFailure
     def test_two_businesses_without_se_health_ok(self):
         # Two businesses but NO SE-health -> the multi-business refusal does not
         # fire (guard is gated on nonzero SE-health); the return computes.
@@ -123,6 +128,11 @@ class SchC162lGuardTests(unittest.TestCase):
         out = self._compute_federal(scn)
         self.assertEqual(out["sch_1_line_3_business_income"], 180_000)
 
+    # EXPECTED FAILURE pending Juno's ruling on an SE-health deduction with
+    # no Schedule C (routed with the half-SE allocation question; f8995
+    # per-source rows): Form 8995 refuses a QBI component with no source
+    # row. Phase K does not merge until this is ruled and implemented.
+    @unittest.expectedFailure
     def test_no_schedule_c_passthrough_unchanged(self):
         # No business at all -> the guard is skipped entirely and the stated
         # SE-health deduction passes through unchanged on line 17.

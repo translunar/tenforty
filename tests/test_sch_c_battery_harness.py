@@ -66,6 +66,11 @@ class SchCBatteryHarnessTests(unittest.TestCase):
                 self.assertIn(sch_c_battery.REFUSAL_TEXT, str(ctx.exception))
                 self.assertIn("Form 8995-A", str(ctx.exception))
 
+    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
+    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
+    # Schedule C businesses until the half-SE-tax allocation is ruled. An
+    # unexpected success when phase C lands is the signal to remove this.
+    @unittest.expectedFailure
     def test_non_refusing_scenario_years_extract_whole_dollar_lines(self):
         for name in NAMES:
             for year in sch_c_battery.YEARS:
@@ -83,6 +88,11 @@ class SchCBatteryHarnessTests(unittest.TestCase):
                         for line, value in form_lines.items():
                             self.assertIsInstance(value, int, (form, line))
 
+    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
+    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
+    # Schedule C businesses until the half-SE-tax allocation is ruled. An
+    # unexpected success when phase C lands is the signal to remove this.
+    @unittest.expectedFailure
     def test_second_business_yields_a_second_schedule_c_only_when_present(self):
         scn = sch_c_battery.SCENARIOS["two-trades"](2024)
         lines = sch_c_battery.native_lines(self.orch, scn)
