@@ -30,10 +30,6 @@ P1, P2 = "Part I", "Part II"
 YEARS = (2021, 2022, 2023, 2024, 2025)
 
 
-def _wrapped(phrase):
-    return NearLabel(phrase=phrase, relation=LabelRelation.AFTER_WRAPPED)
-
-
 def _right_of(token):
     return NearLabel(phrase=token, relation=LabelRelation.RIGHT_OF)
 
@@ -488,25 +484,16 @@ _CAPTION = {(P1, "8"), (P2, "22"), (P2, "24")}  # no entry space
 # Only where the default label row fails. All measured per year.
 _ALL = set(YEARS)
 _ANCHORS = {
-    # 5: wraps in 2021 only -- label row y232, entry box "5" y246 (+14 =
-    # WRAP_PT boundary). 2022+ one row (y198 / y246).
-    (P1, "5"): ({2021}, _wrapped("Rental real estate, royalties, partnerships, "
-                                 "S corporations")),
+    # 5 (2021), 10 and 26 wrap, but each amount box sits alone on its row
+    # and the default row label places it (ruled): no explicit anchor.
     # 8z: label row carries the caption; the amount entry (box label "8z",
     # x~395-406) is on the next row, which also holds the full-width
     # type/description text entry (x65-382) -- two entries on that row. The
     # box label sits immediately left of the amount entry (gap 4-6 pt).
     # "8z" also prints in line 9's text ("8a through 8z") with no entry box
-    # within LABEL_GAP_PT to its right.
+    # within LABEL_GAP_PT to its right. (No field is mapped for 8z yet: the
+    # known gap, graduation blocker sch_1-8z-9-mapping-gap.)
     (P1, "8z"): (_ALL, _right_of("8z")),
-    # 10: wraps in 2021 (y688->y702, +14), 2023 (y582->y594), 2024
-    # (y642->y654), 2025 (y666->y678); one row in 2022 (y582). The prefix
-    # lies inside the first printed row in every year.
-    (P1, "10"): ({2021, 2023, 2024, 2025},
-                 _wrapped("Combine lines 1 through 7 and 9.")),
-    # 26: wraps every year: 2021 y712->y726 (+14), 2022 y535->y546, 2023
-    # y534->y546, 2024 y504->y516, 2025 y540->y552. Prefix inside row 1.
-    (P2, "26"): (_ALL, _wrapped("Add lines 11 through 23 and 25.")),
     # 2025 only: rows that gained boxes. 4: the entry row (y233) also holds
     # the Form 4797 / 4684 boxes. 7: label wraps (y269->y281) and the entry
     # row also holds the repaid-amount text entry. 20: label wraps
