@@ -7,6 +7,7 @@ computations or orchestrator)."""
 import ast
 import dataclasses
 import unittest
+import unittest.mock
 from pathlib import Path
 
 import tenforty.declarations as declarations_pkg
@@ -322,9 +323,37 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(dict(registry.WORK_IN_PROGRESS), {})
 
     def test_every_registered_declaration_validates_clean(self):
-        for form, key in sorted(registry.declared_forms(), key=str):
+        for (form, key), findings in _registered_validation().items():
             with self.subTest(form=form, key=key):
-                self.assertEqual(validate(registry.for_form(form, key)), [])
+                self.assertEqual(findings, [])
+
+    def test_registered_validation_stays_fail_closed_on_other_year(self):
+        # The siblings are the form's OTHER registered years: an other-year:
+        # key bound in a sibling passes, one bound in none still refuses.
+        np = {"f8995_line_11": "other-year: prints on line 11 only in 2024"}
+        decl_2025 = _decl(_line("10", "f8995_line_10"), not_printed=np)
+        for name, sibling, expected in (
+                ("bound", _decl(_line("11", "f8995_line_11"), key=2024), []),
+                ("unbound", _decl(_line("10", "f8995_line_10"), key=2024),
+                 [("f8995_line_11", "not_printed")])):
+            with self.subTest(sibling=name), unittest.mock.patch.dict(
+                    registry._DECLARATIONS, {(F8995, 2025): decl_2025,
+                                             (F8995, 2024): sibling}):
+                findings = _registered_validation()[(F8995, 2025)]
+                self.assertEqual([(f.line, f.check) for f in findings],
+                                 expected)
+
+
+def _registered_validation():
+    """{(form, key): validate findings} for every registered declaration,
+    each validated against its form's other registered years (the
+    other-year: check's siblings)."""
+    declared = sorted(registry.declared_forms(), key=str)
+    return {(form, key): validate(
+        registry.for_form(form, key),
+        siblings=[registry.for_form(f, k) for f, k in declared
+                  if f == form and k != key])
+        for form, key in declared}
 
 
 class NoMappingImportTests(unittest.TestCase):
