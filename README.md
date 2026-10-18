@@ -42,10 +42,13 @@ pip install -e ".[dev]"
 
 ```bash
 source .venv/bin/activate
-python -m pytest tests/ -m "not oracle"
+PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/ -m "not oracle" -q -n 4 --dist load
 ```
 
-Tests marked `oracle` drive LibreOffice and are excluded above. They refuse to run unless `TENFORTY_ORACLE_OK=1` is set (see `tests/conftest.py`), so a bare `pytest tests/` cannot launch LibreOffice by accident.
+The fast tier runs in parallel on four pytest-xdist workers (installed by the
+`dev` extra). Tests marked `oracle` drive LibreOffice and are excluded above;
+the oracle tier always runs strictly serial (never with `-n`), because
+LibreOffice (soffice) has a single global slot. They refuse to run unless `TENFORTY_ORACLE_OK=1` is set (see `tests/conftest.py`), so a bare `pytest tests/` cannot launch LibreOffice by accident.
 
 ### Prepare and file a return
 
