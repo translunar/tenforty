@@ -2038,6 +2038,23 @@ class ReturnOrchestrator:
         return {"sch_1_8z_stmt": path}
 
     @staticmethod
+    def _refuse_unattached_8z_statement(changed_specs) -> None:
+        """Fail closed: a changed Schedule 1 whose line 8z write-in reads
+        "See statement" (two or more rows) would mail on an amendment with
+        no statement attached, because the amendment path renders only the
+        selected specs. Refused until the follow-up lane wires the statement
+        into the amendment packet (team-lead ruling on the 8z lane)."""
+        for spec in changed_specs:
+            if (spec.name == "sch_1" and len(spec.values.get(
+                    "sch_1_line_8z_statement_rows", ())) >= 2):
+                raise NotImplementedError(
+                    "amendment packet: the changed Schedule 1 line 8z reads "
+                    "\"See statement\" (two or more Form 1099-G types), but "
+                    "the amendment path does not yet attach the line 8z "
+                    "statement; refused rather than mail a dangling "
+                    "reference (follow-up lane: sch1-8z-amendment-statement)")
+
+    @staticmethod
     def _printed_depreciation_figures(
         scenario: Scenario, plan: _FederalEmitPlan,
     ) -> depreciation_workbook.PrintedFigures:
@@ -3437,6 +3454,8 @@ class ReturnOrchestrator:
                 name: self._federal_spec_payload(s)
                 for name, s in corrected_specs.items()}
             changed = selector.changed_forms(filed_payloads, corrected_payloads)
+            self._refuse_unattached_8z_statement(
+                [corrected_specs[cf.form] for cf in changed])
             dropped = tuple(
                 selector.dropped_forms(filed_payloads, corrected_payloads))
             for cf in changed:

@@ -13,12 +13,14 @@ import unittest
 from pathlib import Path
 
 import pypdf
+import yaml
 
 from tenforty import pdf_packet
 from tenforty.declarations import registry
+from tenforty.forms import f1040x as form_f1040x
 from tenforty.filing.statement_sch_1_8z import render_sch_1_8z_statement
 from tenforty.mappings.pdf_sch_1 import PdfSch1
-from tenforty.models import FilingStatus, Form1099G
+from tenforty.models import AmendmentCase, FilingStatus, Form1099G
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures.spine_battery import build_wages_only
 from tests.helpers import REPO_ROOT
@@ -106,3 +108,49 @@ class Sch1Line8zStatementPacketTests(unittest.TestCase):
 
     def test_registered_as_a_non_fill(self):
         self.assertIsNotNone(registry.non_fill_reason(KEY))
+
+
+class Sch1Line8zAmendmentGuardTests(unittest.TestCase):
+    """The amendment packet renders only the selected changed specs and does
+    not yet attach the 8z statement: a changed Schedule 1 reading "See
+    statement" is refused (fail closed) until the follow-up lane lands.
+    Native: a wages-only original amended to add Form 1099-G income."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=self.tmp / "work")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _amend(self, original, amended):
+        results = self.orch.compute_federal(original)
+        filed = self.tmp / "federal_filed.yaml"
+        filed.write_text(yaml.safe_dump(
+            {k: results[k] for k in form_f1040x.REQUIRED_FILED_KEYS}))
+        ca_filed = self.tmp / "unused_ca.yaml"
+        ca_filed.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+        case = AmendmentCase(
+            year=YEAR, explanation="Added omitted Form 1099-G income.",
+            original_refund_received=0.0, original_refund_applied=0.0,
+            original_tax_paid=0.0)
+        self.out = self.tmp / "packet"
+        return self.orch.run_amendment_packet(
+            original, amended, case, filed, ca_filed, self.out)
+
+    def test_a_changed_schedule_1_saying_see_statement_is_refused(self):
+        with self.assertRaisesRegex(
+                NotImplementedError, "sch1-8z-amendment-statement"):
+            self._amend(_scenario(), _scenario(Form1099G(
+                payer="Example State", rtaa_payments=500.0,
+                taxable_grants=1_000.0)))
+        self.assertFalse((self.out / "packet_manifest.txt").exists())
+
+    def test_a_changed_schedule_1_with_one_type_still_mails(self):
+        manifest = self._amend(_scenario(), _scenario(Form1099G(
+            payer="Example State", taxable_grants=1_000.0)))
+        names = {mf.filename for mf in manifest.mailed_files}
+        self.assertIn(f"f1040s1_{YEAR}.pdf", names)
