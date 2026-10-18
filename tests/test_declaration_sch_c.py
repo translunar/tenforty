@@ -2,16 +2,16 @@
 covers every computation key, and its anchors locate their fields
 (emit-verification protocol step 4).
 
-The declaration is inert until graduation: registration and the pending
-removal land together, so this test reads the module directly, not the
-registry.
+These tests read the module directly, not the registry: declaration
+modules are side-effect-free, and registration lives in
+tenforty.declarations.forms (sch_c graduated there).
 """
 import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.declarations import sch_c
+from tenforty.declarations import registry, sch_c
 from tenforty.declarations.anchors import LabelRelation, NearLabel
 from tenforty.declarations.validate import validate
 from tenforty.mappings.pdf_sch_c import PdfSchC
@@ -68,9 +68,15 @@ class SchCDeclarationValidatesTests(unittest.TestCase):
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
 
-    def test_still_pending(self):
-        # Graduation (registration + unpending) is a later, separate lane.
-        self.assertIn(FORM, PENDING_DECLARATIONS)
+    def test_graduated(self):
+        # Graduated: registered for every year and off the pending list,
+        # together (a registered form that is still pending is a hard
+        # registry error).
+        self.assertNotIn(FORM, PENDING_DECLARATIONS)
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertIs(registry.for_form(FORM, year),
+                              sch_c.DECLARATIONS[year])
 
 
 class SchCKeyCoverageTests(unittest.TestCase):
@@ -208,8 +214,8 @@ class SchCValueOnlyTests(unittest.TestCase):
 
 
 class SchCCoverageTests(unittest.TestCase):
-    """Coverage over this declaration (read directly; it is not registered
-    until graduation): every cell is covered, every year. sch_c_battery
+    """Coverage over this declaration, read directly from the module: every
+    cell is covered, every year. sch_c_battery
     covers 2022-2025, emit_battery_sch_se adds 2021, and emit_battery_sch_c
     the lines neither sets."""
 

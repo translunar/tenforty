@@ -569,6 +569,14 @@ DECLARATIONS = {decl.key: decl for decl in (
 # (two-column composition, missing A-J / 27b / 44b / 44c) are resolved by the
 # inventory-fixes lane and no longer appear in the regenerated inventory.
 _ALL = (2021, 2022, 2023, 2024, 2025)
+# Keys are exact (section, printed line) ids, so each entry suppresses
+# exactly its own stylesheet cross-check finding in the years listed, and an
+# entry the stylesheet in fact agrees with is stale
+# (tenforty.verification.crosscheck.discrepancies_in_force).
+_ROWS_REASON = ("Part V's nine printed rows are absent from both witnesses: "
+                "the inventory lists only line 48 in Part V, and the "
+                "stylesheet files the row elements (OtherExpenseDetail Desc / "
+                "Amt) under the repeated Part IV block's 47b")
 WITNESS_DISCREPANCIES = {
     (P2, "32a"): (_ALL, "the stylesheet has a single line 32 (two indicator "
                   "elements); the paper prints separate boxes 32a 'All "
@@ -576,17 +584,18 @@ WITNESS_DISCREPANCIES = {
                   "paper"),
     (P2, "32b"): (_ALL, "as 32a; the paper prints 32b 'Some investment is "
                   "not at risk.'"),
-    (P2, "27b@2023"): ((2023,), "the 2023 stylesheet still says 'Reserved "
-                       "for future use' for line 27b and 'Add lines 8 "
-                       "through 27a' for line 28; the 2023 paper form prints "
-                       "the Form 7205 deduction on 27b and '8 through 27b' "
-                       "on 28. The descriptions follow the paper"),
+    (P2, "27b"): ((2023,), "the 2023 stylesheet still says 'Reserved "
+                  "for future use' for line 27b and 'Add lines 8 "
+                  "through 27a' for line 28; the 2023 paper form prints "
+                  "the Form 7205 deduction on 27b and '8 through 27b' "
+                  "on 28. The descriptions follow the paper"),
+    **{(P5, f"row{i}({part})"): (_ALL, _ROWS_REASON)
+       for i in range(1, 10) for part in ("description", "amount")},
+}
+# Witness structure that suppresses no finding (no declared line disagrees):
+# documented so the absence of a Part IV cross-check finding is explained.
+WITNESS_NOTES = {
     (P4, "dup"): (_ALL, "the stylesheet repeats Part IV (43-47b) three times "
                   "(additional-vehicle blocks); the paper prints Part IV "
                   "once"),
-    (P5, "row1..row9"): (_ALL, "Part V's nine printed rows are absent from "
-                         "both witnesses: the inventory lists only line 48 "
-                         "in Part V, and the stylesheet files the row "
-                         "elements (OtherExpenseDetail Desc / Amt) under the "
-                         "repeated Part IV block's 47b"),
 }

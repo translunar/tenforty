@@ -280,6 +280,52 @@ class InkTests(unittest.TestCase):
         self.assertIn("ink where nothing", findings[0].message)
 
 
+class CombTemplateArtInkTests(unittest.TestCase):
+    """A nothing-computed field's ink is compared with the BLANK template's
+    ink in the same rect at the same inset (S2 ruling). Schedule C's line B
+    business code is a comb field: the official template prints divider
+    marks inside its widget, which is template art, not a fill. A real
+    sch_c emit (sch_c_battery sole-trade-basic 2022: no business code)
+    through the battery's own entry point."""
+
+    YEAR = 2022
+    LINE_B = "sch_c_line_b_business_code"
+
+    @classmethod
+    def setUpClass(cls):
+        from tenforty.declarations import sch_c
+        from tenforty.verification import emit_manifest
+        from tenforty.verification.batteries import BATTERIES
+        battery = next(b for b in BATTERIES if b.name == "sch_c_battery")
+        build = next(b for n, y, b in battery.scenarios()
+                     if (n, y) == ("sole-trade-basic", cls.YEAR))
+        result = emit_manifest.emit(
+            battery, build(), Path(tempfile.mkdtemp()) / "out")
+        cls.rec = next(r for r in result.record
+                       if r.form == ("federal", "sch_c"))
+        cls.decl = sch_c.DECLARATIONS[cls.YEAR]
+
+    def test_the_vehicle_computes_no_business_code(self):
+        self.assertIsNone(self.rec.values.get(self.LINE_B))
+
+    def test_comb_template_art_is_not_ink(self):
+        findings = [f for f in checks.check_ink(self.rec, self.decl)
+                    if f.line == "B"]
+        self.assertEqual(findings, [])
+
+    def test_a_character_in_the_empty_comb_field_is_ink(self):
+        # Kill-check: real stray print between the dividers still fires.
+        field = self.rec.spec.mapping[self.LINE_B]
+        _inject(self.rec.pdf_path, field, "5")
+        try:
+            findings = [f for f in checks.check_ink(self.rec, self.decl)
+                        if f.line == "B"]
+        finally:
+            _inject(self.rec.pdf_path, field, "")
+        self.assertEqual(len(findings), 1, findings)
+        self.assertIn("ink where nothing is computed", findings[0].message)
+
+
 class RepeaterZoneTests(unittest.TestCase):
     """The repeat-row no-check zone, pinned named and empty (ruling
     2026-10-17, option ii): the repeater-shape universe is exactly f8949's

@@ -24,12 +24,25 @@ def _hit(stylesheet_lines, section: str, label: str):
         stylesheet_lines, SimpleNamespace(section=section, label=label))
 
 
-def crosscheck(decl: FormDeclaration, stylesheet_lines) -> list[Finding]:
-    """Findings for every declared line that disagrees with the stylesheet."""
+def crosscheck(decl: FormDeclaration, stylesheet_lines,
+               discrepancies=None) -> list[Finding]:
+    """Findings for every declared line that disagrees with the stylesheet.
+
+    ``discrepancies`` (``discrepancies_in_force``: ``(section, line)`` ->
+    reason, for this year) are the declaration module's documented witness
+    discrepancies. A documented line's findings are suppressed; a documented
+    line with no finding is itself a finding (stale: the stylesheet in fact
+    agrees), so the record can neither hide an undocumented disagreement nor
+    outlive the one it documents."""
     where = "/".join(decl.form)
     findings = []
+    disagreeing: set[tuple[str, str]] = set()
+    documented = dict(discrepancies or {})
 
     def finding(line: str, message: str) -> None:
+        if line_id in documented:
+            disagreeing.add(line_id)
+            return
         findings.append(Finding(scenario="", form=where, year=decl.key,
                                 line=line, check="stylesheet",
                                 message=message))
@@ -37,6 +50,7 @@ def crosscheck(decl: FormDeclaration, stylesheet_lines) -> list[Finding]:
     for ln in expand(decl, {}):
         if ln.repeat is not None:
             continue
+        line_id = ln.line_id
         hit = _hit(stylesheet_lines, ln.section, ln.line)
         if hit is None:
             finding(ln.line, f"{where} {decl.key}: declared line {ln.line!r} "
@@ -55,7 +69,26 @@ def crosscheck(decl: FormDeclaration, stylesheet_lines) -> list[Finding]:
             finding(ln.line, f"{where} {decl.key} line {ln.line}: declared "
                              f"mef_element {ln.mef_element!r} is not among "
                              f"the stylesheet's {list(hit.elements)}.")
+    for (section, line), reason in sorted(documented.items()):
+        if (section, line) not in disagreeing:
+            findings.append(Finding(
+                scenario="", form=where, year=decl.key, line=line,
+                check="stylesheet",
+                message=(f"{where} {decl.key}: documented witness "
+                         f"discrepancy for line {line!r} (section "
+                         f"{section!r}) is stale: the stylesheet agrees with "
+                         f"the declaration, or no such line is declared "
+                         f"({reason})")))
     return findings
+
+
+def discrepancies_in_force(module, year: int) -> dict[tuple[str, str], str]:
+    """A declaration module's documented witness discrepancies for ``year``
+    (``WITNESS_DISCREPANCIES``: ``(section, line)`` -> ``(years, reason)``),
+    as ``(section, line)`` -> reason. A module without the record has none."""
+    record = getattr(module, "WITNESS_DISCREPANCIES", {})
+    return {line_id: reason for line_id, (years, reason) in record.items()
+            if year in years}
 
 
 def undeclared_amount_lines(decl: FormDeclaration,

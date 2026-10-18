@@ -26,6 +26,7 @@ _FILLABLE_FORMS = (
 # same commit that registers it.
 _GRADUATED = frozenset({
     ("federal", "sch_se"),
+    ("federal", "sch_c"),
 })
 
 PENDING_DECLARATIONS: Mapping[tuple[str, str], str] = {

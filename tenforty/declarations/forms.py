@@ -14,8 +14,8 @@ D3). Declaration modules written but not yet graduated stay out of this
 list and are inert.
 """
 from tenforty.declarations import registry
-from tenforty.declarations import sch_se
+from tenforty.declarations import sch_c, sch_se
 
-for _module in (sch_se,):
+for _module in (sch_se, sch_c):
     for _decl in _module.DECLARATIONS.values():
         registry.register(_decl)
