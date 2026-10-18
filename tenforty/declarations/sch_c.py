@@ -294,9 +294,10 @@ def _lines(d):
         # located immediately left of the printed "Cash" (once a page).
         _bound(H, "F", d, "sch_c_line_f_cash_method", kind="checkbox",
                anchor=_left_of("Cash")),
-        # G: a Yes/No pair on one row; the key's value marks Yes.
+        # G: a Yes/No pair on one row; the key's value marks Yes. "Yes"
+        # also prints on rows I and J; the one on G's row labels the box.
         _bound(H, "G", d, "sch_c_line_g_material_participation",
-               kind="checkbox"),
+               kind="checkbox", anchor=_left_of("Yes")),
         _unserved(H, "H", d, "started or acquired this business during the "
                   "year (checkbox)", kind="checkbox"),
         _unserved(H, "I", d, "made payments that would require Form(s) 1099 "
@@ -392,7 +393,7 @@ def _lines(d):
         # 32a: both states -- line 32 is reached only on a loss ("If a loss,
         # you must go to line 32"); a profit leaves 32a blank.
         _bound(P2, "32a", d, "sch_c_line_32a_all_investment_at_risk",
-               kind="checkbox"),
+               kind="checkbox", anchor=_left_of("All investment is at risk.")),
         _unserved(P2, "32b", d, "some investment is not at risk (attach "
                   "Form 6198)", kind="checkbox"),
 

@@ -14,6 +14,7 @@ from tenforty.declarations import sch_c
 from tenforty.declarations.anchors import LabelRelation, NearLabel
 from tenforty.declarations.validate import validate
 from tenforty.mappings.pdf_sch_c import PdfSchC
+from tenforty.verification import anchors as anchor_eval
 from tenforty.verification.checks import check_placement
 from tenforty.verification.fill import fill_spec_for
 from tenforty.verification.pending import PENDING_DECLARATIONS
@@ -141,6 +142,22 @@ class CheckboxAnchorRectTests(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertIn("F", self._placement_lines(
                     year, dataclasses.replace(decl, lines=lines)))
+
+    def _anchor(self, year, line):
+        return next(ln.anchor for ln in sch_c.DECLARATIONS[year].lines
+                    if ln.line == line)
+
+    def test_line_g_and_32a_anchors_reject_their_neighbouring_box(self):
+        # Negative space: G's anchor does not locate the No box beside it;
+        # 32a's caption does not locate 32b's box one row down.
+        neighbour = {"G": "topmostSubform[0].Page1[0].c1_2[1]",
+                     "32a": "topmostSubform[0].Page1[0].c1_7[1]"}
+        for year in YEARS:
+            template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040sc.pdf"
+            for line, other_box in neighbour.items():
+                with self.subTest(year=year, line=line):
+                    self.assertIsNotNone(anchor_eval.evaluate(
+                        self._anchor(year, line), other_box, template))
 
 
 if __name__ == "__main__":
