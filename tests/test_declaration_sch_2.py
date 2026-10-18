@@ -188,6 +188,21 @@ class SchTwoAdjudicatedTextTests(unittest.TestCase):
                 self.assertNotIn("20", summed)
 
 
+class SchTwoValueOnlyTests(unittest.TestCase):
+    def test_exactly_the_part_totals_are_value_only(self):
+        # Lines 3 and 21 are emitted on every Schedule 2: no scenario can
+        # leave them blank (the sch_c value-only precedent).
+        for year in YEARS:
+            lines = {ln.line: ln for ln in sch_2.DECLARATIONS[year].lines}
+            with self.subTest(year=year):
+                self.assertEqual(sorted(l for l, ln in lines.items()
+                                        if ln.single_state == "value"),
+                                 ["21", "3"])
+                for line in ("3", "21"):
+                    self.assertIn("zero is a value",
+                                  lines[line].single_state_reason)
+
+
 class SchTwoPlacementTests(unittest.TestCase):
     """The harness's own placement check on each year's official template."""
 
@@ -238,7 +253,7 @@ class SchTwoWitnessDiscrepancyTests(unittest.TestCase):
 
 
 COVERED_BATTERIES = ("spine_battery", "sch_c_battery", "emit_battery_sch_se",
-                     "emit_battery_sch_c", "emit_battery_sch_2")
+                     "emit_battery_sch_c")
 
 
 def _sch_2_records():
