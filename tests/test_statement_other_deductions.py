@@ -3,6 +3,7 @@
 Synthetic data only. Covers: scenario loader (fail-closed, footing rule),
 PDF-emit enforcement, the renderer, and packet placement."""
 import dataclasses
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,7 @@ from pathlib import Path
 import pypdf
 
 from tenforty.filing.statement_other_deductions import (
+    render_ca_100s_other_deductions_statement,
     render_other_deductions_statement,
 )
 from tenforty.models import OtherDeductionComponent
@@ -167,6 +169,35 @@ class RendererTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with self.assertRaises(ValueError):
                 self._render(d, comps=[])
+
+
+class RendererBytePinTests(unittest.TestCase):
+    """The 1120-S and 100S statement renders are byte-pinned (sha256), so a
+    change to the shared renderer cannot move either filed statement
+    silently. Pinned from the renderer before its header labels became
+    parameters (sch_1-8z-9-mapping-gap lane, ruling R6)."""
+
+    # reportlab 5.0.0 (main's pinned version): a renderer-library bump moves
+    # these digests and must be re-pinned deliberately.
+    PINS = {
+        "1120s": "0495acc2a2036bde29dd44f50b6866242d4089639ba55baabcda5f8a9431d23c",
+        "100s": "356499affaf01eb7162069fe725a526e320024ba3803b82c0b9428d05a540f55",
+    }
+
+    def _digest(self, render):
+        with tempfile.TemporaryDirectory() as d:
+            path = render(entity_name="Example S-Corp Inc.", ein="00-0000000",
+                          year=2025, components=_COMPS,
+                          output_path=Path(d) / "s.pdf")
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def test_1120s_statement_bytes(self):
+        self.assertEqual(self._digest(render_other_deductions_statement),
+                         self.PINS["1120s"])
+
+    def test_100s_statement_bytes(self):
+        self.assertEqual(self._digest(render_ca_100s_other_deductions_statement),
+                         self.PINS["100s"])
 
 
 class CaEmitTests(unittest.TestCase):

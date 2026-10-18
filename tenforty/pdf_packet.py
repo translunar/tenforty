@@ -72,7 +72,8 @@ class Packet:
 
 
 # Federal individual — members in IRS attachment-sequence order:
-#   1040 (main), Sch 1 (01), Sch 2 (02), Sch A (07), Sch B (08), Sch C (09,
+#   1040 (main), Sch 1 (01) followed by its line 8z statement (when two or
+#   more Form 1099-G types), Sch 2 (02), Sch A (07), Sch B (08), Sch C (09,
 #   one per business), Sch D (12), Form 8949 (12A), Sch E (13), Sch SE (17),
 #   Form 8995 (55), Form 8959 (71), Form 8962 (73), Form 8582 (88),
 #   Form 4562 (179, one copy per activity that needs one), Form 3115 (315)
@@ -83,6 +84,7 @@ FEDERAL_INDIVIDUAL = Packet(
     members=(
         PacketMember("1040"),
         PacketMember("sch_1"),
+        PacketMember("sch_1_8z_stmt"),
         PacketMember("sch_2"),
         PacketMember("sch_a"),
         PacketMember("sch_b"),

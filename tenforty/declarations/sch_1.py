@@ -435,6 +435,9 @@ _BOUND = {
     # nonzero 8z the form would print 8z but leave its own subtotal (9)
     # blank -- an emit gap to check, not a binding question.
     (P1, "8z"): ("sch_1_line_8z_other_income", "OtherIncomeTotalAmt"),
+    # 9: official "Total other income. Add lines 8a through 8z". 8z is the
+    # only modeled 8a-8z line, so the computation sets 9 = 8z.
+    (P1, "9"): ("sch_1_line_9_total_other_income", "TotalOtherIncomeAmt"),
     # 10 (auto_confirmed except 2023 'disagree'): official "Combine lines 1
     # through 7 and 9" (2023+: "...This is your additional income").
     # PARTIAL-TOTAL RISK: 2a, 8a-8y and 9 are unmodeled but in the sum.
@@ -531,6 +534,13 @@ _EMITTED = ("the computation emits this key unconditionally on every "
             "Schedule 1 (forms/sch_1.py's return dict sets it, zero "
             "included), so its nothing state is unreachable")
 _TOTALS = {(P1, "10"), (P2, "26")}
+# Two-state bound lines: the computation leaves the key ABSENT when nothing is
+# computed. Line 8z is a write-in: with no nonzero Form 1099-G type the
+# computation emits no 8z keys (amount, type write-in, line 9 subtotal) and
+# they stay blank (team-lead R2, sch_1-8z-9-mapping-gap lane), so 8z, its
+# write-in (two-state by construction, see _8z_type_line) and 9 are observed
+# in both states.
+_TWO_STATE = {(P1, "8z"), (P1, "9")}
 _TOTAL = (_EMITTED + "; on the paper it is the part total every filer "
           "completes: zero is a value")
 
@@ -538,6 +548,37 @@ _TOTAL = (_EMITTED + "; on the paper it is the part total every filer "
 def full_table(year):
     """``year``'s complete declared line table, in paper order."""
     return _full(year)
+
+
+# Line 8z's type write-in, declared as its own line "8z(type)" (the
+# computation's sch_1_line_8z_description): the paper's "List type and
+# amount" entry. Neither witness lists it (the inventory and the stylesheet
+# carry 8z's amount only), so it is inventory-exempt and its stylesheet
+# finding is a documented witness discrepancy. Anchor, measured per year: the
+# caption-row field sits right of the caption's last words (2021 prints them
+# without the colon); 2025's single multiline field begins left of the
+# caption on the same rows, so ON_ROW. Each phrase prints once on its page,
+# and the anchor rejects the second description row and line 9.
+_8Z_TYPE = (P1, "8z(type)")
+_8Z_TYPE_KEY = "sch_1_line_8z_description"
+_8Z_TYPE_EXEMPTION = ("the paper's 8z type write-in is an entry the "
+                      "inventory extractor does not list (it lists line 8z's "
+                      "amount only)")
+
+
+def _8z_type_anchor(year):
+    if year == 2021:
+        return NearLabel("List type and amount", LabelRelation.RIGHT_OF)
+    if year == 2025:
+        return NearLabel("List type and amount:", LabelRelation.ON_ROW)
+    return NearLabel("List type and amount:", LabelRelation.RIGHT_OF)
+
+
+def _8z_type_line(year, description):
+    return DeclaredLine(line=_8Z_TYPE[1], description=description,
+                        key=_8Z_TYPE_KEY, kind="text", section=_8Z_TYPE[0],
+                        anchor=_8z_type_anchor(year),
+                        inventory_exemption=_8Z_TYPE_EXEMPTION)
 
 
 def _full(year):
@@ -550,11 +591,15 @@ def _full(year):
             anchor = _ANCHORS[i][1]
         if i in _BOUND:
             key, mef = _BOUND[i]
+            two_state = i in _TWO_STATE
             out.append(DeclaredLine(line=line, description=d[i], key=key,
                                     kind="amount", section=sec, anchor=anchor,
-                                    mef_element=mef, single_state="value",
-                                    single_state_reason=(
+                                    mef_element=mef,
+                                    single_state=None if two_state else "value",
+                                    single_state_reason=None if two_state else (
                                         _TOTAL if i in _TOTALS else _EMITTED)))
+            if i == (P1, "8z"):
+                out.append(_8z_type_line(year, d[i]))
         else:
             meaning = (("caption only, no entry space: " + d[i])
                        if i in _CAPTION else d[i])
@@ -582,9 +627,13 @@ def _as_diff(prev, year):
     return out
 
 
-# Every non-header key prints every year; the header keys are outside the
-# line inventory.
+# The header keys are outside the line inventory; the 8z statement rows feed
+# the attached statement, not a Schedule 1 field.
 _NOT_PRINTED = {
+    "sch_1_line_8z_statement_rows": (
+        "intermediate: the 8z statement's (type, amount) rows; the emitter "
+        "attaches the statement when there are two or more, and the 8z "
+        "write-in then reads 'See statement'"),
     "taxpayer_name": ("presentation-only: page 1 header 'Name(s) shown on "
                       "Form 1040, 1040-SR, or 1040-NR', outside the line "
                       "inventory"),
@@ -606,9 +655,14 @@ DECLARATIONS = {d.key: d for d in
 # Keys are exact (section, printed line) ids: each entry suppresses exactly
 # its own stylesheet cross-check finding in the years listed, and an entry
 # the stylesheet in fact agrees with is stale
-# (tenforty.verification.crosscheck.discrepancies_in_force). No declared line
-# disagrees with the stylesheet beyond the cross-check threshold in any year.
-WITNESS_DISCREPANCIES: dict = {}
+# (tenforty.verification.crosscheck.discrepancies_in_force). Only the 8z type
+# write-in, which no stylesheet line names, draws a raw finding.
+WITNESS_DISCREPANCIES = {
+    _8Z_TYPE: (YEARS, "the stylesheet's line 8z lists only the amount "
+               "element (OtherIncomeTotalAmt); the paper's 'List type and "
+               "amount' write-in has no stylesheet line. Declared as its own "
+               "line for the computation's type text"),
+}
 # Witness divergences that suppress no finding: documented so the
 # paper-over-stylesheet choices and the witnesses' gaps are explained.
 WITNESS_NOTES = {

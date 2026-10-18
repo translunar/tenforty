@@ -82,6 +82,7 @@ from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.filing.statement_199a import render_199a_statement_a
+from tenforty.filing.statement_sch_1_8z import render_sch_1_8z_statement
 from tenforty.filing.statement_other_deductions import (
     render_ca_100s_other_deductions_statement,
     render_other_deductions_statement,
@@ -1997,6 +1998,9 @@ class ReturnOrchestrator:
             for spec in plan.specs
         }
 
+        # Schedule 1 line 8z statement (two or more Form 1099-G types).
+        emitted.update(self._emit_sch_1_8z_statement(plan, output_dir))
+
         # Form 3115 (only when the scenario carries a `form_3115:` block).
         emitted.update(
             self._emit_form_3115(scenario, filler, output_dir, recorder))
@@ -2013,6 +2017,45 @@ class ReturnOrchestrator:
             self._emit_depreciation_audit(scenario, plan, output_dir))
 
         return EmitResult(emitted, recorder.record())
+
+    @staticmethod
+    def _emit_sch_1_8z_statement(
+        plan: "_FederalEmitPlan", output_dir: Path,
+    ) -> dict[str, Path]:
+        """The Schedule 1 line 8z statement, rendered from the SAME values
+        the Schedule 1 fill used (one producer: forms/sch_1.line_8z decides
+        the write-in text and the rows). Attached only with two or more
+        rows; then the write-in reads "See statement" (Juno's 8z ruling)."""
+        spec = next((s for s in plan.specs if s.name == "sch_1"), None)
+        rows = (spec.values.get("sch_1_line_8z_statement_rows", ())
+                if spec else ())
+        if len(rows) < 2:
+            return {}
+        path = output_dir / f"f1040s1_8z_stmt_{spec.key}.pdf"
+        render_sch_1_8z_statement(
+            spec.values["taxpayer_name"], spec.values["taxpayer_ssn"],
+            spec.key, rows, path)
+        return {"sch_1_8z_stmt": path}
+
+    @staticmethod
+    def _refuse_unattached_8z_statement(changed_specs) -> None:
+        """Fail closed: a changed Schedule 1 whose line 8z write-in reads
+        "See statement" (two or more rows) would mail on an amendment with
+        no statement attached, because the amendment path renders only the
+        selected specs. Refused until the follow-up lane wires the statement
+        into the amendment packet (team-lead ruling on the 8z lane)."""
+        for spec in changed_specs:
+            if (spec.name == "sch_1" and len(spec.values.get(
+                    "sch_1_line_8z_statement_rows", ())) >= 2):
+                raise NotImplementedError(
+                    "amendment packet: the changed Schedule 1 line 8z reads "
+                    "\"See statement\" (two or more Form 1099-G types), but "
+                    "the amendment path does not yet attach the line 8z "
+                    "statement; refused rather than mail a dangling "
+                    "reference (follow-up lane: sch_1-8z-amendment-statement). "
+                    "The output directory may already hold a partial "
+                    "Form 1040-X with no manifest: the absence of "
+                    "packet_manifest.txt marks the packet incomplete")
 
     @staticmethod
     def _printed_depreciation_figures(
@@ -3414,6 +3457,8 @@ class ReturnOrchestrator:
                 name: self._federal_spec_payload(s)
                 for name, s in corrected_specs.items()}
             changed = selector.changed_forms(filed_payloads, corrected_payloads)
+            self._refuse_unattached_8z_statement(
+                [corrected_specs[cf.form] for cf in changed])
             dropped = tuple(
                 selector.dropped_forms(filed_payloads, corrected_payloads))
             for cf in changed:
