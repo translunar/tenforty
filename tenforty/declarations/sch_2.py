@@ -139,8 +139,9 @@ _TEXT_2025 = {  # description changes vs 2024 (existing lines)
 
 # Line 21 wraps every year: the entry box is on the label's second row. The
 # phrase is the first row's prefix in every year, including the year-varying
-# 2024-2025 sum text (adjudication ruling 2), and prints once on page 2.
-_A21 = NearLabel(phrase="Add lines 4, 7 through 16",
+# 2024-2025 sum text (adjudication ruling 2), and prints once on page 2. It
+# ends on the printed token "16," (ruled: the comma is part of the token).
+_A21 = NearLabel(phrase="Add lines 4, 7 through 16,",
                  relation=LabelRelation.AFTER_WRAPPED)
 
 
@@ -317,7 +318,10 @@ def _revise(base, key, text=None, reason=None, mef=None, anchor=None,
 # additional tax); line 21 drops 19 from its sum; line 8 gains its
 # "If not required, check here" box.
 SCH_2_2022 = _revise(SCH_2_2021, 2022, text=_TEXT_2022, reason={
-    (P2, "19"): "reserved for future use; no entry"}, mef={(P2, "19"): None})
+    (P2, "19"): "reserved for future use; no entry"},
+    # 17a: the 2022-2023 stylesheet lists only the RecaptureOtherCreditsGrp
+    # elements, no total (ruling 3 amended: per-year witness-backed).
+    mef={(P2, "19"): None, (P2, "17a"): None})
 
 SCH_2_2023 = _revise(SCH_2_2022, 2023, text=_TEXT_2023)
 
@@ -364,7 +368,8 @@ SCH_2_2024 = _revise(
     text={k: v for k, v in _TEXT_2024.items() if k[0] == P2},
     reason={(P2, "19"): "recapture of net EPE (Form 4255 line 1d, column "
             "(l))"},
-    mef={(P2, "19"): "Frm3468IVRcptrPrtnNetEPECrAmt"},
+    mef={(P2, "19"): "Frm3468IVRcptrPrtnNetEPECrAmt",
+         (P2, "17a"): "TotalRecaptureOtherCreditsAmt"},
     drop=[(P1, "1"), (P1, "2"), (P1, "3")], add=_PART_I_2024,
     not_printed=_NP_2024)
 

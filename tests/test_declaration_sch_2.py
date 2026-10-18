@@ -149,20 +149,23 @@ class SchTwoBindByMeaningTests(unittest.TestCase):
 class SchTwoAdjudicatedTextTests(unittest.TestCase):
     def test_line_21_anchor_is_its_first_row_prefix(self):
         # Ruling 2: author B's phrase, which sits on line 21's first row in
-        # every year (A's spans the 2021-2023 wrap).
+        # every year, ending on the printed token "16," (ruled).
         for year in YEARS:
             with self.subTest(year=year):
                 self.assertEqual(
                     _lines(year)[(P2, "21")].anchor,
-                    NearLabel("Add lines 4, 7 through 16",
+                    NearLabel("Add lines 4, 7 through 16,",
                               LabelRelation.AFTER_WRAPPED))
 
     def test_mef_union(self):
-        # Ruling 3: author A's elements fill author B's Nones.
-        for year in (2022, 2023):
+        # Ruling 3, amended: author A's elements fill author B's Nones only
+        # where that YEAR's stylesheet backs them. 17a's total element is on
+        # the 2021 and 2024-2025 stylesheets, not 2022-2023.
+        for year in YEARS:
             with self.subTest(year=year):
                 self.assertEqual(_lines(year)[(P2, "17a")].mef_element,
-                                 "TotalRecaptureOtherCreditsAmt")
+                                 None if year in (2022, 2023)
+                                 else "TotalRecaptureOtherCreditsAmt")
         self.assertEqual(_lines(2025)[(P1, "1y")].mef_element,
                          "TotalOtherTaxAdditionsAmt")
 
@@ -217,12 +220,26 @@ class SchTwoPlacementTests(unittest.TestCase):
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
 
+    def test_2025_line_4_anchor_rejects_the_exemption_write_in(self):
+        # 2025 line 4's amount row also holds the exemption boxes and the
+        # "other exemption" write-in field. The default row-label anchor
+        # would accept the write-in (reachable negative space); the declared
+        # RIGHT_OF box label accepts only the amount field.
+        template = _template(2025)
+        write_in = "form1[0].Page1[0].Line4_ReadOrder[0].f1_14[0]"
+        line_4 = _lines(2025)[(P2, "4")]
+        self.assertIsNotNone(line_4.anchor)
+        self.assertIsNone(anchor_eval.evaluate(
+            anchor_eval.default_anchor(line_4, False), write_in, template))
+        self.assertIsNotNone(anchor_eval.evaluate(
+            line_4.anchor, write_in, template))
+
     def test_explicit_phrases_print_exactly_once(self):
         for year in YEARS:
             words = anchor_eval._page_words(str(_template(year)), 1)
             with self.subTest(year=year):
                 self.assertEqual(len(anchor_eval._phrase_boxes(
-                    words, "Add lines 4, 7 through 16")), 1)
+                    words, "Add lines 4, 7 through 16,")), 1)
 
 
 class SchTwoWitnessDiscrepancyTests(unittest.TestCase):
