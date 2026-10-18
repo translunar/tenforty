@@ -275,7 +275,9 @@ def _near_label(anchor: NearLabel, field_path, rect, box) -> Finding | None:
 def _near_field(anchor: NearField, field_path, rect, other) -> Finding | None:
     rel = anchor.relation
     if rel is FieldRelation.SAME_ROW_RIGHT_OF:
-        ok = abs(rect[1] - other[1]) < ROW_PT and rect[0] > other[2]
+        # Abutting cells (gap 0) are right-of; any overlap is not (R2 ruling,
+        # Form 8995's line-1 row cells).
+        ok = abs(rect[1] - other[1]) < ROW_PT and rect[0] >= other[2]
     elif rel is FieldRelation.NEXT_ROW_BELOW:
         ok = (abs(rect[0] - other[0]) < COLUMN_PT
               and 0 <= other[1] - rect[3] < NEXT_ROW_PT)

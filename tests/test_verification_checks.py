@@ -263,6 +263,50 @@ class PlacementTests(unittest.TestCase):
         self.assertNotRegex("Line 12 b.", label_pattern("12a"))
 
 
+class NearFieldSameRowTests(unittest.TestCase):
+    """NearField SAME_ROW_RIGHT_OF (R2 ruling): abutting cells are right-of
+    (gap 0), overlap is not. Form 8995 2024's line-1 row i cells abut: (b)
+    ends at x=482.4 exactly where (c) begins."""
+
+    YEAR = 2024
+    REL = None
+
+    @classmethod
+    def setUpClass(cls):
+        from tenforty.declarations.anchors import FieldRelation
+        from tenforty.mappings.pdf_f8995 import PdfF8995
+        cls.REL = FieldRelation.SAME_ROW_RIGHT_OF
+        spec = fill_spec_for(PdfF8995, cls.YEAR)
+        scalars = (spec.mapping["scalars"] if spec.kind == "repeater"
+                   else spec.mapping)
+        cls.a = scalars["f8995_line_1i_name"]
+        cls.b = scalars["f8995_line_1i_tin"]
+        cls.c = scalars["f8995_line_1_qbi"]
+        cls.template = REPO_ROOT / "pdfs" / "federal" / str(cls.YEAR) / "f8995.pdf"
+
+    def _evaluate(self, field, other_line, other_field):
+        from tenforty.declarations.anchors import NearField
+        from tenforty.verification import anchors as anchor_eval
+        return anchor_eval.evaluate(NearField(other_line, self.REL), field,
+                                    self.template, other_field=other_field)
+
+    def test_the_cells_abut(self):
+        _p, b = shim.widget_rect(self.template, self.b)
+        _p, c = shim.widget_rect(self.template, self.c)
+        self.assertEqual(c[0], b[2])
+
+    def test_an_abutting_cell_is_right_of(self):
+        self.assertIsNone(self._evaluate(self.c, "1i(b)", self.b))
+
+    def test_a_gapped_cell_is_right_of(self):
+        self.assertIsNone(self._evaluate(self.b, "1i(a)", self.a))
+
+    def test_a_cell_to_the_left_is_not_right_of(self):
+        finding = self._evaluate(self.a, "1i(b)", self.b)
+        self.assertIsNotNone(finding)
+        self.assertIn("same_row_right_of", finding.message)
+
+
 class InkTests(unittest.TestCase):
 
     def test_valued_text_lines_carry_ink(self):
