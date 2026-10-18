@@ -142,11 +142,14 @@ class Sch1Line8zAmendmentGuardTests(unittest.TestCase):
             original, amended, case, filed, ca_filed, self.out)
 
     def test_a_changed_schedule_1_saying_see_statement_is_refused(self):
-        with self.assertRaisesRegex(
-                NotImplementedError, "sch1-8z-amendment-statement"):
+        with self.assertRaises(NotImplementedError) as cm:
             self._amend(_scenario(), _scenario(Form1099G(
                 payer="Example State", rtaa_payments=500.0,
                 taxable_grants=1_000.0)))
+        for needle in ("sch_1-8z-amendment-statement",
+                       "partial Form 1040-X with no manifest",
+                       "absence of packet_manifest.txt"):
+            self.assertIn(needle, str(cm.exception))
         self.assertFalse((self.out / "packet_manifest.txt").exists())
 
     def test_a_changed_schedule_1_with_one_type_still_mails(self):

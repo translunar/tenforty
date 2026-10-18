@@ -2052,7 +2052,10 @@ class ReturnOrchestrator:
                     "\"See statement\" (two or more Form 1099-G types), but "
                     "the amendment path does not yet attach the line 8z "
                     "statement; refused rather than mail a dangling "
-                    "reference (follow-up lane: sch1-8z-amendment-statement)")
+                    "reference (follow-up lane: sch_1-8z-amendment-statement). "
+                    "The output directory may already hold a partial "
+                    "Form 1040-X with no manifest: the absence of "
+                    "packet_manifest.txt marks the packet incomplete")
 
     @staticmethod
     def _printed_depreciation_figures(
