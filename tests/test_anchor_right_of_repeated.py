@@ -82,8 +82,9 @@ class RepeatedRightOfLabelTests(unittest.TestCase):
     def test_two_qualifying_occurrences_still_refuse(self):
         # Fail-closed: geometry must pick exactly one. Two "8"s both within
         # LABEL_GAP_PT left of the field, on its row -> ambiguous.
-        words = (("8", 160.0, 100.0, 165.0, 110.0),
-                 ("8", 170.0, 100.0, 175.0, 110.0))
+        # (gaps to the field at x 180: 9 pt and 3 pt, both <= 12)
+        words = (("8", 166.0, 100.0, 171.0, 110.0),
+                 ("8", 172.0, 100.0, 177.0, 110.0))
         with unittest.mock.patch.object(
                 anchor_eval, "_page_words", lambda template, page: words), \
                 unittest.mock.patch.object(

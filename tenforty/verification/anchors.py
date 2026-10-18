@@ -186,6 +186,19 @@ def evaluate(anchor: Anchor, field_path: str, template: Path, *,
     if isinstance(anchor, NearLabel):
         page, rect = widget_rect(template, field_path)
         boxes = _phrase_boxes(_page_words(template, page), anchor.phrase)
+        if len(boxes) > 1 and anchor.relation is LabelRelation.RIGHT_OF:
+            # A box label that also prints elsewhere (Schedule C Part II's
+            # "8" in the left margin): it resolves to the ONE occurrence
+            # that labels this field -- on its row, left of it, within
+            # LABEL_GAP_PT. None or several still refuse (fail-closed).
+            labelling = [box for box in boxes if _labels(rect, box)]
+            if len(labelling) == 1:
+                return _near_label(anchor, field_path, rect, labelling[0])
+            return _finding(f"phrase {anchor.phrase!r} prints {len(boxes)} "
+                            f"times on page {page + 1} and "
+                            f"{len(labelling)} occurrences sit within "
+                            f"LABEL_GAP_PT left of field {field_path!r}; "
+                            "exactly one must (ambiguous)")
         if len(boxes) != 1:
             return _finding(f"phrase {anchor.phrase!r} prints {len(boxes)} "
                             f"times on page {page + 1}; an anchor phrase must "
@@ -207,6 +220,15 @@ def evaluate(anchor: Anchor, field_path: str, template: Path, *,
 def _overlaps_row(rect, box) -> bool:
     return min(rect[3], box[3]) - max(rect[1], box[1]) > 0 or (
         abs(rect[1] - box[1]) < ROW_PT)
+
+
+def _labels(rect, box) -> bool:
+    """Whether the printed token ``box`` labels the field ``rect``: on its
+    row, ending at most LABEL_GAP_PT before the field begins (with the
+    ROW_PT tolerance RIGHT_OF allows for a token that runs a hair past the
+    field's edge)."""
+    return (_overlaps_row(rect, box)
+            and -ROW_PT <= rect[0] - box[2] <= LABEL_GAP_PT)
 
 
 def _near_label(anchor: NearLabel, field_path, rect, box) -> Finding | None:
