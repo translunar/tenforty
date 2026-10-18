@@ -37,13 +37,16 @@ OUTPUT_KEYS = frozenset({
     "f8995_line_11_taxable_income", "f8995_line_12_net_capital_gain",
     "f8995_line_13_subtract", "f8995_line_14_income_limit",
     "f8995_line_15_qbi_deduction", "f8995_line_16_qbi_loss_carryforward",
-    "f8995_line_1_qbi", "f8995_line_1i_name", "f8995_line_1i_tin",
+    "f8995_line_1_qbi",
     "f8995_line_2_total_qbi", "f8995_line_3_component",
     "f8995_line_3_prior_qbi_loss_carryforward", "f8995_line_4_reit_ptp",
     "f8995_line_4_total_qbi", "f8995_line_5_reit_ptp_component",
     "f8995_line_6_total_before_limit",
     "f8995_line_7_prior_reit_ptp_loss_carryforward",
     "f8995_line_8_total_reit_ptp", "taxpayer_name", "taxpayer_ssn",
+    # Line 1: one row per QBI source (Juno's per-source-rows ruling).
+    *(f"f8995_line_1{row}_{col}" for row in ("i", "ii", "iii", "iv", "v")
+      for col in ("name", "tin", "qbi")),
 })
 # Printed line -> key, bound by meaning (the seam), every year.
 SEAM = {
@@ -54,7 +57,9 @@ SEAM = {
     "9": "f8995_line_5_reit_ptp_component",
     "10": "f8995_line_6_total_before_limit",
 }
+ROWS = ("i", "ii", "iii", "iv", "v")
 ROW_I = ("1i(a)", "1i(b)", "1i(c)")
+CELLS = tuple(f"1{row}({col})" for row in ROWS for col in "abc")
 
 
 def _template(year):
@@ -84,21 +89,22 @@ class F8995DeclarationValidatesTests(unittest.TestCase):
                     f.message for f in findings))
 
     def test_line_counts(self):
-        # Adjudicated: 23 declared, 32 expanded (rows ii-v x 3 columns).
+        # The caption row, 15 plain cells (rows i-v x 3, option (A): no
+        # Repeat), and lines 2-17.
         for year in YEARS:
             decl = f8995.DECLARATIONS[year]
             with self.subTest(year=year):
-                self.assertEqual(len(decl.lines), 23)
+                self.assertEqual(len(decl.lines), 32)
                 self.assertEqual(len(expand(decl, {})), 32)
 
-    def test_exactly_the_row_i_cells_are_inventory_exempt(self):
+    def test_exactly_the_line_1_cells_are_inventory_exempt(self):
         # The inventory prints bare row ids (1i..1v), not the three cells.
         for year in YEARS:
             with self.subTest(year=year):
                 self.assertEqual(
                     [line_id for line_id, _ in exemptions_in_force(
                         f8995.DECLARATIONS[year])],
-                    [(S, cell) for cell in ROW_I])
+                    [(S, cell) for cell in CELLS])
 
     def test_still_pending(self):
         # Graduation (registration + unpending) is a later, separate lane.
@@ -116,13 +122,18 @@ class F8995KeyCoverageTests(unittest.TestCase):
                 self.assertEqual(bound | set(decl.not_printed), OUTPUT_KEYS)
                 self.assertEqual(bound & set(decl.not_printed), set())
 
-    def test_header_keys_are_presentation_only(self):
+    def test_not_printed_keys(self):
+        # The header keys are presentation-only; the aggregate is line 2's
+        # feed, an intermediate the paper never prints on its own.
         for year in YEARS:
             np = f8995.DECLARATIONS[year].not_printed
             with self.subTest(year=year):
-                self.assertEqual(set(np), {"taxpayer_name", "taxpayer_ssn"})
-                for reason in np.values():
-                    self.assertTrue(reason.startswith("presentation-only:"))
+                self.assertEqual(set(np), {"taxpayer_name", "taxpayer_ssn",
+                                           "f8995_line_1_qbi"})
+                for key in ("taxpayer_name", "taxpayer_ssn"):
+                    self.assertTrue(np[key].startswith("presentation-only:"))
+                self.assertTrue(np["f8995_line_1_qbi"].startswith(
+                    "intermediate:"))
 
 
 class F8995BindByMeaningTests(unittest.TestCase):
@@ -133,14 +144,15 @@ class F8995BindByMeaningTests(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertEqual({n: lines[n].key for n in SEAM}, SEAM)
 
-    def test_row_i_binds_the_single_source_keys(self):
+    def test_each_row_binds_its_own_source_keys(self):
         for year in YEARS:
             lines = _lines(year)
             with self.subTest(year=year):
-                self.assertEqual(
-                    [lines[cell].key for cell in ROW_I],
-                    ["f8995_line_1i_name", "f8995_line_1i_tin",
-                     "f8995_line_1_qbi"])
+                for row in ROWS:
+                    self.assertEqual(
+                        [lines[f"1{row}({c})"].key for c in "abc"],
+                        [f"f8995_line_1{row}_{k}"
+                         for k in ("name", "tin", "qbi")])
 
 
 class F8995AdjudicatedTextTests(unittest.TestCase):
@@ -152,8 +164,8 @@ class F8995AdjudicatedTextTests(unittest.TestCase):
             lines = _lines(year)
             with self.subTest(year=year):
                 self.assertEqual(lines["1"].kind, "text")
-                self.assertEqual(lines["1i(b)"].kind, "text")
-                self.assertEqual(lines["1{i}(b)"].kind, "text")
+                for row in ROWS:
+                    self.assertEqual(lines[f"1{row}(b)"].kind, "text")
 
     def test_cell_descriptions_are_the_paper_column_headings(self):
         # Ruling 5: verbatim paper column headings (pdftotext of the
@@ -164,23 +176,27 @@ class F8995AdjudicatedTextTests(unittest.TestCase):
         for year in YEARS:
             lines = _lines(year)
             with self.subTest(year=year):
-                for col, text in headings.items():
-                    self.assertEqual(lines[f"1i({col})"].description, text)
-                    self.assertEqual(lines["1{i}(" + col + ")"].description,
-                                     text)
+                for row in ROWS:
+                    for col, text in headings.items():
+                        self.assertEqual(lines[f"1{row}({col})"].description,
+                                         text)
 
-    def test_row_i_anchor_chain(self):
+    def test_every_row_anchor_chain(self):
+        # (a) right of the row label; (b) and (c) chain along the row.
         for year in YEARS:
             lines = _lines(year)
-            with self.subTest(year=year):
-                self.assertEqual(lines["1i(a)"].anchor,
-                                 NearLabel("i", LabelRelation.RIGHT_OF))
-                self.assertEqual(
-                    lines["1i(b)"].anchor,
-                    NearField("1i(a)", FieldRelation.SAME_ROW_RIGHT_OF))
-                self.assertEqual(
-                    lines["1i(c)"].anchor,
-                    NearField("1i(b)", FieldRelation.SAME_ROW_RIGHT_OF))
+            for row in ROWS:
+                with self.subTest(year=year, row=row):
+                    self.assertEqual(lines[f"1{row}(a)"].anchor,
+                                     NearLabel(row, LabelRelation.RIGHT_OF))
+                    self.assertEqual(
+                        lines[f"1{row}(b)"].anchor,
+                        NearField(f"1{row}(a)",
+                                  FieldRelation.SAME_ROW_RIGHT_OF))
+                    self.assertEqual(
+                        lines[f"1{row}(c)"].anchor,
+                        NearField(f"1{row}(b)",
+                                  FieldRelation.SAME_ROW_RIGHT_OF))
 
 
 class F8995ValueOnlyTests(unittest.TestCase):
@@ -188,21 +204,27 @@ class F8995ValueOnlyTests(unittest.TestCase):
     (forms/f8995.compute) and the paper line, never in battery
     observation."""
 
-    def test_exactly_the_bound_lines_are_value_only(self):
+    def test_exactly_rows_ii_v_are_two_state(self):
+        # Every emitted form has at least one source (row i); rows ii-v
+        # print only when the return has that many sources.
+        two_state = {f"1{row}({c})" for row in ROWS[1:] for c in "abc"}
         for year in YEARS:
             decl = f8995.DECLARATIONS[year]
-            bound = sorted(ln.line for ln in decl.lines if ln.key)
-            value_only = sorted(ln.line for ln in decl.lines
-                                if ln.single_state == "value")
+            bound = {ln.line for ln in decl.lines if ln.key}
+            value_only = {ln.line for ln in decl.lines
+                          if ln.single_state == "value"}
             with self.subTest(year=year):
-                self.assertEqual(len(bound), 18)
-                self.assertEqual(value_only, bound)
+                self.assertEqual(len(bound), 30)
+                self.assertEqual(value_only, bound - two_state)
+                for ln in decl.lines:
+                    if ln.line in two_state:
+                        self.assertIsNone(ln.single_state, ln.line)
 
     def test_each_reason_cites_the_producer(self):
         # Amount lines also say a computed zero is a value (it prints).
         for year in YEARS:
             for ln in f8995.DECLARATIONS[year].lines:
-                if not ln.key:
+                if ln.single_state != "value":
                     continue
                 with self.subTest(year=year, line=ln.line):
                     self.assertIn("forms/f8995.compute",
@@ -276,7 +298,7 @@ class F8995WitnessDiscrepancyTests(unittest.TestCase):
 
 
 COVERED_BATTERIES = ("spine_battery", "sch_c_battery", "emit_battery_sch_se",
-                     "emit_battery_sch_c")
+                     "emit_battery_sch_c", "emit_battery_f8995")
 
 
 def _f8995_records():
@@ -302,7 +324,8 @@ def _f8995_records():
 
 class F8995CoverageTests(unittest.TestCase):
     """Coverage over this declaration (read directly; not registered until
-    graduation) from the existing batteries: no new battery (R3)."""
+    graduation). Rows ii-v need multi-source returns: emit_battery_f8995
+    (per-source-rows lane) adds them; the rest is the existing batteries."""
 
     @classmethod
     def setUpClass(cls):
