@@ -37,3 +37,35 @@ def pytest_runtest_setup(item):
     # the sanction is in place before any class-level launch can reach the guard.
     set_oracle_sanction(item)
     yield
+
+
+# pytest-xdist (the fast tier runs `-n 4 --dist load`): a worker ships each
+# subtest report to the controller through execnet, and execnet serializes
+# only exact primitive types. subTest keyword values such as FilingStatus /
+# HohMaritalStatus / DivergenceDirection members (str-valued Enums, i.e. str
+# SUBCLASSES, which execnet also refuses) or datetime.date raise DumpError
+# INSIDE the test, failing it. This wrapper replaces any non-primitive kwarg
+# value with its repr at pytest_report_to_serializable, the boundary where a
+# report is serialized; a serial run never serializes reports, so it is
+# unaffected. Under xdist a failing subtest's label shows the value as a
+# quoted repr string. Depends on pytest's subtest report carrying its kwargs
+# under "_subtest.context" (pytest 9 built-in subtests).
+def _xdist_safe(value):
+    # Exact types: a str-valued Enum is a str subclass, and execnet refuses
+    # subclasses.
+    if value is None or type(value) in (bool, int, float, str, bytes):
+        return value
+    if type(value) in (list, tuple):
+        return type(value)(_xdist_safe(v) for v in value)
+    if type(value) is dict:
+        return {k: _xdist_safe(v) for k, v in value.items()}
+    return repr(value)
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_report_to_serializable(config, report):
+    data = yield
+    if isinstance(data, dict) and "_subtest.context" in data:
+        context = data["_subtest.context"]
+        context["kwargs"] = _xdist_safe(dict(context.get("kwargs") or {}))
+    return data

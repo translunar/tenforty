@@ -97,7 +97,7 @@ a law-scope review (see the gate's message), not a mechanical extension.
 
 ## 7. Full fast suite
 
-    python -m pytest tests/ -q
+    PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/ -m "not oracle" -q -n 4 --dist load
 
 ## 8. Acceptance gate, if a workbook exists (Layer 6, slow)
 
@@ -118,6 +118,9 @@ cell-drift smoke over one scenario before the full gate: a residual
 mismatch you cannot attribute to a moved cell is a STOP-and-report.
 
     python -m pytest tests/test_f1040_spine_oracle.py -v
+
+This is the oracle tier: run it strictly serial, never with `-n` (soffice has
+a single global slot).
 
 Penny-parity for every workbook year, including the new one.
 
