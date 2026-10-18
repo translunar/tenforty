@@ -28,7 +28,7 @@ class PdfF8995MappingTests(unittest.TestCase):
         mapping = PdfF8995.get_mapping(2025)
         self.assertIn("scalars", mapping)
         for key in (
-            "f8995_line_1_qbi",
+            "f8995_line_1i_qbi",
             "f8995_line_3_component",
             "f8995_line_15_qbi_deduction",
             "taxpayer_name",
@@ -59,7 +59,7 @@ class PdfF89952021EmitRoundTripTests(unittest.TestCase):
         values = {
             "taxpayer_name": "Distinct 8995 Filer",
             "taxpayer_ssn": "444-00-2021",
-            "f8995_line_1_qbi": 51_000,
+            "f8995_line_1i_qbi": 51_000,
             "f8995_line_6_total_before_limit": 52_000,
             "f8995_line_15_qbi_deduction": 13_000,
         }
@@ -158,9 +158,11 @@ _F8995_EXEMPT_KEYS = frozenset(
     {
         "taxpayer_name",     # header field ("Name(s) shown on return"), not a numbered line
         "taxpayer_ssn",      # header field (taxpayer id number), not a numbered line
-        "f8995_line_1_qbi",  # line-1 TABLE cell (row i, col c); binds to "1i", not a plain numeric line
-        "f8995_line_1i_name",  # line-1 TABLE cell (row i, col a); pinned by F8995Line1RowColumnTests
-        "f8995_line_1i_tin",   # line-1 TABLE cell (row i, col b); pinned by F8995Line1RowColumnTests
+        # Line-1 TABLE cells, rows i-v x (a) name / (b) TIN / (c) QBI: not
+        # plain numeric lines; pinned by test_pdf_f8995_rows_mapping (and row
+        # i's (a)/(b) also by F8995Line1RowColumnTests).
+        *(f"f8995_line_1{row}_{col}" for row in ("i", "ii", "iii", "iv", "v")
+          for col in ("name", "tin", "qbi")),
     }
 )
 
@@ -281,10 +283,6 @@ class F8995PlacementByCaptionTests(unittest.TestCase):
 # fails if a template field is neither mapped nor on a listed line, AND if a
 # listed line has no unmapped field (so this list cannot go stale).
 _F8995_BLANK_BY_DESIGN_LINES = {
-    "1ii": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
-    "1iii": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
-    "1iv": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
-    "1v": "line-1 table rows ii-v: v1 is single-row (one aggregated source)",
     "17": "total REIT/PTP loss carryforward: v1 models no REIT/PTP income "
           "(form line 6 is a constant 0), so there is nothing to carry forward",
 }
