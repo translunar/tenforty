@@ -38,6 +38,9 @@ def _lines(decl, spec):
 
 
 class PlacementCacheIdentityTests(unittest.TestCase):
+    """The forced collisions kill a missing identity check; the real
+    lifetimes kill a cache that holds no reference (ids reused)."""
+
     def test_colliding_ids_do_not_share_findings(self):
         # Every object gets the same id: only identity can tell them apart.
         spec = fill_spec_for(PdfSchC, YEAR)
@@ -46,6 +49,18 @@ class PlacementCacheIdentityTests(unittest.TestCase):
             for line in LINES:
                 with self.subTest(line=line):
                     self.assertEqual(_lines(_unanchored(line), spec), {line})
+
+    def test_colliding_spec_ids_do_not_share_findings(self):
+        # One declaration, two specs under the same id: the full mapping
+        # places every line, the empty one places none.
+        decl = sch_c.DECLARATIONS[YEAR]
+        full = fill_spec_for(PdfSchC, YEAR)
+        empty = dataclasses.replace(full, mapping={})
+        with unittest.mock.patch.object(
+                checks, "id", create=True, new=lambda obj: 0):
+            self.assertEqual(_lines(decl, full), set())
+            self.assertNotEqual(_lines(decl, empty), set())
+            self.assertEqual(_lines(decl, full), set())
 
     def test_a_freed_declaration_hands_nothing_to_its_successor(self):
         # The real lifetime: build, check, free, rebuild a differing one.

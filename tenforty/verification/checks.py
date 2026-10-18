@@ -228,17 +228,22 @@ def check_placement(template: Path, decl: FormDeclaration,
                     spec) -> list[Finding]:
     """Placement (spec §3.3), on the blank template: each declared line's
     field sits where its anchor (explicit, or the default from its own
-    label) says. Cached per (template, declaration, spec)."""
+    label) says. Cached per (template, declaration, spec) OBJECT: an entry
+    holds the declaration and spec it was computed from and answers only
+    for those very objects, so a freed object's reused id can never return
+    another declaration's findings."""
     cache_key = (str(template), decl.form, decl.key, id(decl), id(spec))
-    if cache_key not in _PLACEMENT_CACHE:
-        try:
-            _PLACEMENT_CACHE[cache_key] = tuple(
-                _placement(Path(template), decl, spec))
-        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
-            return [_finding(decl, "", "placement",
-                             f"check_placement could not run: "
-                             f"{type(exc).__name__}: {exc}")]
-    return list(_PLACEMENT_CACHE[cache_key])
+    cached = _PLACEMENT_CACHE.get(cache_key)
+    if cached is not None and cached[0] is decl and cached[1] is spec:
+        return list(cached[2])
+    try:
+        findings = tuple(_placement(Path(template), decl, spec))
+    except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+        return [_finding(decl, "", "placement",
+                         f"check_placement could not run: "
+                         f"{type(exc).__name__}: {exc}")]
+    _PLACEMENT_CACHE[cache_key] = (decl, spec, findings)
+    return list(findings)
 
 
 def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
