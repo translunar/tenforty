@@ -38,9 +38,9 @@ from pathlib import Path
 
 import pytest
 
-from tenforty.models import ScheduleCBusiness
+from tenforty.models import W2, ScheduleCBusiness
 from tenforty.verification import emit_manifest
-from tests.fixtures.sch_c_battery import _build, _w2
+from tests.fixtures.sch_c_battery import _build
 
 _ORACLE = (Path(__file__).parent / "oracles" / "sch_se_wage_base_cases.md")
 SCH_SE = ("federal", "sch_se")
@@ -75,12 +75,27 @@ def _dollars(amount: str) -> int:
     return int(Decimal(amount).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
+# Box 1 excludes a pre-tax 401(k) elective deferral at the year's 402(g)
+# limit (boxes 3 and 5 include it); one employer only, the limit is per person.
+_ELECTIVE_DEFERRAL_LIMIT = {2021: 19_500.0, 2022: 20_500.0, 2023: 22_500.0,
+                            2024: 23_000.0, 2025: 23_500.0}
+
+
+def _w2(employer: str, ss_wages: float, deferral: float) -> W2:
+    return W2(employer=employer, wages=ss_wages - deferral,
+              federal_tax_withheld=0.0, ss_wages=ss_wages,
+              ss_tax_withheld=0.0, medicare_wages=ss_wages,
+              medicare_tax_withheld=0.0)
+
+
 def _scenario(case):
+    year = case["tax_year"]
     wages = case["w2_box3_social_security_wages"]
-    return _build(case["tax_year"], [ScheduleCBusiness(
+    return _build(year, [ScheduleCBusiness(
         description="Example Oracle Sideline",
         gross_receipts=float(case["schedule_c_line_31_net_profit"]))],
-        w2s=[_w2(f"Example Employer {i + 1}", float(w))
+        w2s=[_w2(f"Example Employer {i + 1}", float(w),
+                 _ELECTIVE_DEFERRAL_LIMIT[year] if i == 0 else 0.0)
              for i, w in enumerate(wages)])
 
 
