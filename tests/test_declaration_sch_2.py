@@ -68,7 +68,9 @@ class SchTwoDeclarationValidatesTests(unittest.TestCase):
     def test_each_year_validates_clean(self):
         for year in YEARS:
             with self.subTest(year=year):
-                findings = validate(sch_2.DECLARATIONS[year])
+                # siblings: the other years verify the other-year: entries.
+                findings = validate(sch_2.DECLARATIONS[year],
+                                    siblings=sch_2.DECLARATIONS.values())
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
 

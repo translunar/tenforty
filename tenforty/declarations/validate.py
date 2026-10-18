@@ -11,7 +11,10 @@ Checks (check name in brackets):
 - [group] ``selects`` implies ``group``, and every line of a group binds
   the same key (ruling A2: one key, one value per option line);
 - [single_state] ``single_state`` carries a non-empty reason;
-- [not_printed] every not-printed reason starts with a known tag;
+- [not_printed] every not-printed reason starts with a known tag; an
+  ``other-year:`` reason (a key whose printed line exists only in another
+  year's layout) is accepted only when another year of the same form
+  (``siblings``) binds that key, so the claim cannot go silently false;
 - [duplicate] no ``(section, line)`` is declared twice;
 - [inventory_exemption] a line's ``inventory_exemption`` (a ruled paper line
   the inventory cannot print, e.g. Schedule C Part V's unlabeled grid rows)
@@ -22,15 +25,21 @@ Checks (check name in brackets):
 carries, so they never accumulate silently.
 """
 from collections import Counter
+from collections.abc import Iterable
 
 from tenforty.declarations import inventory
 from tenforty.declarations.model import FormDeclaration
 from tenforty.verification.findings import Finding
 
-NOT_PRINTED_TAGS = ("intermediate:", "presentation-only:", "diagnostic:")
+OTHER_YEAR_TAG = "other-year:"
+NOT_PRINTED_TAGS = ("intermediate:", "presentation-only:", "diagnostic:",
+                    OTHER_YEAR_TAG)
 
 
-def validate(decl: FormDeclaration) -> list[Finding]:
+def validate(decl: FormDeclaration,
+             siblings: Iterable[FormDeclaration] = ()) -> list[Finding]:
+    """``siblings``: the same module's declarations for other keys, against
+    which ``other-year:`` not-printed entries are verified."""
     jurisdiction, form = decl.form
     where = f"{jurisdiction}/{form}"
     findings: list[Finding] = []
@@ -80,11 +89,20 @@ def validate(decl: FormDeclaration) -> list[Finding]:
                     f"line {ln.line!r} is single_state={ln.single_state!r} "
                     "without a reason.")
 
+    bound_elsewhere = {ln.key for other in siblings
+                       if other.form == decl.form and other.key != decl.key
+                       for ln in other.lines if ln.key}
     for key, reason in sorted(decl.not_printed.items()):
         if not reason.startswith(NOT_PRINTED_TAGS):
             finding(key, "not_printed",
                     f"not-printed key {key!r} reason {reason!r} must start "
                     f"with one of {', '.join(NOT_PRINTED_TAGS)}")
+        elif reason.startswith(OTHER_YEAR_TAG) and key not in bound_elsewhere:
+            finding(key, "not_printed",
+                    f"not-printed key {key!r} is tagged {OTHER_YEAR_TAG!r} "
+                    f"but is bound in no other year of {where} among the "
+                    "siblings supplied: the claim is unverified or stale "
+                    f"({reason})")
 
     counts = Counter(ln.line_id for ln in decl.lines)
     for (section, line), n in sorted(counts.items()):

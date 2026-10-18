@@ -275,6 +275,14 @@ class ValidateTests(unittest.TestCase):
                                  [("f8995_line_11", "not_printed")])
                 self.assertIn("bound in no other year", findings[0].message)
 
+    def test_the_declarations_own_binding_does_not_verify_other_year(self):
+        # Bound in THIS year is not bound in another year.
+        findings = validate(_decl(
+            _line("10", "f8995_line_10"), _line("11", "f8995_line_11"),
+            not_printed=self._OTHER_YEAR))
+        self.assertEqual([(f.line, f.check) for f in findings],
+                         [("f8995_line_11", "not_printed")])
+
     def test_a_line_declared_twice(self):
         findings = validate(_decl(_line("10", "f8995_line_10"),
                                   _line("10", "f8995_line_10b")))
