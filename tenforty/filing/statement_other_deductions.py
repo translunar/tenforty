@@ -51,9 +51,14 @@ def render_other_deductions_statement(
     *, title: str = "Form 1120-S, Line 19 — Other Deductions Statement",
     subtitle: str | None = None,
     total_label: str = "Total other deductions (Form 1120-S, line 19)",
+    name_label: str = "Corporation's name",
+    id_label: str = "Corporation's EIN",
 ) -> Path:
     """Render the statement to ``output_path``. Deterministic (invariant=1,
-    fixed creator/producer), like ``render_199a_statement_a``."""
+    fixed creator/producer), like ``render_199a_statement_a``. The header
+    labels default to the corporation's; an individual's statement (the
+    Schedule 1 line 8z statement) passes its own. The 1120-S and 100S
+    statement bytes are pinned (tests/test_statement_other_deductions.py)."""
     if not components:
         raise ValueError("other-deductions statement needs at least one row")
     if len(components) > _ROWS_PER_PAGE_LIMIT:
@@ -74,8 +79,8 @@ def render_other_deductions_statement(
     c.drawString(left, y, subtitle or f"(Other deductions — Tax Year {year})")
     y -= 0.45 * inch
 
-    for label, value in [("Corporation's name", entity_name),
-                         ("Corporation's EIN", ein),
+    for label, value in [(name_label, entity_name),
+                         (id_label, ein),
                          ("Tax year", str(year))]:
         c.drawString(left, y, f"{label}:")
         c.drawString(left + 2.2 * inch, y, str(value))

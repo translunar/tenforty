@@ -65,6 +65,9 @@ NON_FILL_EMITTED: Mapping[str, str] = {
         "already-filled, recorded Form 3115 and its statement",
     "depreciation_audit":
         "the depreciation audit workbook (.xlsx), not a PDF form",
+    "sch_1_8z_stmt":
+        "Schedule 1 line 8z statement (two or more Form 1099-G types): a "
+        "generated statement page (reportlab), not a form fill",
 }
 
 

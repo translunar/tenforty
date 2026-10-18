@@ -82,6 +82,7 @@ from tenforty.mappings.pdf_f8949 import BoxLetter, PdfF8949
 from tenforty.mappings.pdf_f1120s import PdfF1120S
 from tenforty.mappings.pdf_f1120s_k1 import PdfF1120SK1
 from tenforty.filing.statement_199a import render_199a_statement_a
+from tenforty.filing.statement_sch_1_8z import render_sch_1_8z_statement
 from tenforty.filing.statement_other_deductions import (
     render_ca_100s_other_deductions_statement,
     render_other_deductions_statement,
@@ -1997,6 +1998,9 @@ class ReturnOrchestrator:
             for spec in plan.specs
         }
 
+        # Schedule 1 line 8z statement (two or more Form 1099-G types).
+        emitted.update(self._emit_sch_1_8z_statement(plan, output_dir))
+
         # Form 3115 (only when the scenario carries a `form_3115:` block).
         emitted.update(
             self._emit_form_3115(scenario, filler, output_dir, recorder))
@@ -2013,6 +2017,25 @@ class ReturnOrchestrator:
             self._emit_depreciation_audit(scenario, plan, output_dir))
 
         return EmitResult(emitted, recorder.record())
+
+    @staticmethod
+    def _emit_sch_1_8z_statement(
+        plan: "_FederalEmitPlan", output_dir: Path,
+    ) -> dict[str, Path]:
+        """The Schedule 1 line 8z statement, rendered from the SAME values
+        the Schedule 1 fill used (one producer: forms/sch_1.line_8z decides
+        the write-in text and the rows). Attached only with two or more
+        rows; then the write-in reads "See statement" (Juno's 8z ruling)."""
+        spec = next((s for s in plan.specs if s.name == "sch_1"), None)
+        rows = (spec.values.get("sch_1_line_8z_statement_rows", ())
+                if spec else ())
+        if len(rows) < 2:
+            return {}
+        path = output_dir / f"f1040s1_8z_stmt_{spec.key}.pdf"
+        render_sch_1_8z_statement(
+            spec.values["taxpayer_name"], spec.values["taxpayer_ssn"],
+            spec.key, rows, path)
+        return {"sch_1_8z_stmt": path}
 
     @staticmethod
     def _printed_depreciation_figures(
