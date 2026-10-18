@@ -170,5 +170,6 @@ def fill(form: tuple[str, str], key: int | str, spec: FillSpec,
             template_path=template, output_path=out,
             mapping=spec.mapping, values=values)
     recorder.add(RecordedForm(form=form, key=key, copy_id=copy_id,
-                              values=values, spec=spec, pdf_path=Path(out)))
+                              values=values, spec=spec, pdf_path=Path(out),
+                              template=Path(template)))
     return Path(out)

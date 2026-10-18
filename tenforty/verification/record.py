@@ -24,13 +24,15 @@ class RecordedForm:
     """One filled form: its catalog identity, the copy it is (a K-1's
     shareholder, a Schedule C's business, a Form 4562's activity; None for
     a single copy), the EXACT values object it was filled from, the final
-    fill spec (after any extend/flatten), and the delivered PDF."""
+    fill spec (after any extend/flatten), the delivered PDF, and the blank
+    template it was filled from (the ink check's baseline)."""
     form: tuple[str, str]
     key: int | str
     copy_id: str | None
     values: Mapping
     spec: "FillSpec"
     pdf_path: Path
+    template: Path | None = None
 
 
 class EmitRecord(tuple):

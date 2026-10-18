@@ -305,17 +305,27 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
 @_never_raises
 def check_ink(rec: RecordedForm, decl: FormDeclaration) -> list[Finding]:
     """Ink (spec §3.1): a valued line puts dark pixels inside its own widget;
-    a line with nothing computed puts none. Option lines: the selected line's
+    a line with nothing computed puts no more than the blank template does
+    in the same rect at the same inset (exactly the template's own art, such
+    as a comb field's printed dividers). Option lines: the selected line's
     widget is inked, every other option's widget is not."""
     spec, values = rec.spec, rec.values
     fields = PdfReader(str(rec.pdf_path)).get_fields() or {}
     widgets = _widgets(rec.pdf_path)
     cache: dict = {}
+    blank_cache: dict = {}
     findings: list[Finding] = []
 
     def ink(page, rect, inset):
         return dark_pixels_in_rect(rec.pdf_path, page, rect, inset=inset,
                                    _render_cache=cache)
+
+    def blank_ink(page, rect, inset):
+        # The nothing-computed baseline: the template's own art in the rect.
+        if rec.template is None:
+            return 0
+        return dark_pixels_in_rect(rec.template, page, rect, inset=inset,
+                                   _render_cache=blank_cache)
 
     for ln in _declared(decl, values):
         value = values.get(ln.key)
@@ -346,14 +356,18 @@ def check_ink(rec: RecordedForm, decl: FormDeclaration) -> list[Finding]:
             continue
         button = fields[field_path].get("/FT") == "/Btn"
         for page, rect, _as, _states in widgets.get(field_path, [])[:1]:
+            inset = BUTTON_INSET if button else TEXT_INSET
+            dark = ink(page, rect, inset)
             if button:
-                dark = ink(page, rect, BUTTON_INSET)
                 should = bool(value)
                 visible = dark >= MIN_INK_BUTTON
             else:
-                dark = ink(page, rect, TEXT_INSET)
                 should = value is not None
                 visible = dark > MIN_INK_TEXT
+            if not should:
+                # Nothing computed: exactly the blank template's ink.
+                baseline = blank_ink(page, rect, inset)
+                visible = dark != baseline
             if should and not visible:
                 findings.append(_finding(
                     decl, ln.line, "ink",
@@ -364,8 +378,9 @@ def check_ink(rec: RecordedForm, decl: FormDeclaration) -> list[Finding]:
                 findings.append(_finding(
                     decl, ln.line, "ink",
                     f"line {ln.line} ({ln.key!r}) has nothing computed but "
-                    f"field {field_path!r} shows {dark} dark pixels (ink "
-                    "where nothing is computed)."))
+                    f"field {field_path!r} shows {dark} dark pixels against "
+                    f"the blank template's {baseline} (ink where nothing is "
+                    "computed)."))
     return findings
 
 
