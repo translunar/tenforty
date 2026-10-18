@@ -100,10 +100,19 @@ _MEF = {
 }
 
 
-def _bound(section, line, d, key, kind="amount", anchor=None):
+def _bound(section, line, d, key, kind="amount", anchor=None,
+           inventory_exemption=None):
     return DeclaredLine(line=line, description=d[(section, line)], key=key,
                         kind=kind, section=section, anchor=anchor,
-                        mef_element=_MEF.get((section, line)))
+                        mef_element=_MEF.get((section, line)),
+                        inventory_exemption=inventory_exemption)
+
+
+# Part V's grid rows print no label, so the inventory extractor cannot list
+# them (ADDENDUM 3 rules their synthetic ids).
+_PART_V_EXEMPTION = (
+    "ADDENDUM 3: the official paper prints nine unlabeled Part V rows; the "
+    "inventory extractor captures only labeled lines")
 
 
 def _unserved(section, line, d, meaning, kind="amount"):
@@ -426,8 +435,9 @@ def _lines(d):
         # Part V's grid: nine unlabeled rows. Row 1 is bound (no anchor yet:
         # no below-a-heading relation exists); rows 2-9 are unserved.
         _bound(P5, "row1(description)", d, "sch_c_part_v_row_1_description",
-               kind="text"),
-        _bound(P5, "row1(amount)", d, "sch_c_part_v_row_1_amount"),
+               kind="text", inventory_exemption=_PART_V_EXEMPTION),
+        _bound(P5, "row1(amount)", d, "sch_c_part_v_row_1_amount",
+               inventory_exemption=_PART_V_EXEMPTION),
         _part_v_rows(d, "description", "text"),
         _part_v_rows(d, "amount", "amount"),
     )

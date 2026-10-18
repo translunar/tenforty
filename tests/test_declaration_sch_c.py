@@ -40,8 +40,8 @@ OUTPUT_KEYS = frozenset({
     "sch_c_part_v_row_1_amount", "sch_c_part_v_row_1_description",
     "taxpayer_name", "taxpayer_ssn",
 })
-# Part V row 1 has no anchor yet (no below-a-heading relation exists) and is
-# excluded from placement (ADDENDUM 3, ruling 5).
+# Part V row 1 has no anchor yet (no below-a-heading relation exists); its
+# inventory exemption excludes it from placement (ADDENDUM 3, ruling b1).
 _UNLOCATED = {("Part V", "row1(description)"), ("Part V", "row1(amount)")}
 
 
@@ -90,14 +90,14 @@ class SchCKeyCoverageTests(unittest.TestCase):
 class SchCPlacementTests(unittest.TestCase):
     """The harness's own placement check (check_placement: each bound line's
     field where its explicit or default anchor says) on each year's
-    official template. Part V row 1 is excluded (no anchor yet)."""
+    official template. Part V row 1 is excluded by its inventory exemption
+    inside check_placement itself."""
 
     def test_every_bound_line_is_placed(self):
         for year in YEARS:
             template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040sc.pdf"
-            findings = [f for f in check_placement(
+            findings = check_placement(
                 template, sch_c.DECLARATIONS[year], fill_spec_for(PdfSchC, year))
-                if ("Part V", f.line) not in _UNLOCATED]
             with self.subTest(year=year):
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))

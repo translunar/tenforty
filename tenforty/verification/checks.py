@@ -249,6 +249,14 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
     for ln in expand(decl, {}):
         if ln.scope == "WORKBOOK":
             continue
+        if ln.inventory_exemption is not None:
+            # A ruled synthetic line the inventory cannot print (Schedule C
+            # Part V's unlabeled grid rows) has no printed label to anchor
+            # on: placement is SKIPPED until the check-suite has a
+            # below-a-heading relation (design pile). Every such line is
+            # enumerated by validate.exemptions_in_force; value and ink
+            # checks still run on it.
+            continue
         if ln.key == "":
             # A key-less line (unmodeled, or preprinted) has no mapped field
             # by definition. Placement checks mapping-declaration agreement,
