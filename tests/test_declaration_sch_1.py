@@ -95,10 +95,12 @@ class SchOneDeclarationValidatesTests(unittest.TestCase):
     def test_each_year_is_its_full_table(self):
         # Each year is a derive() diff from the previous one; the diff must
         # reproduce that year's full table exactly (author A's technique).
+        # derive() appends changed lines, so compare by line id.
         for year in YEARS:
             with self.subTest(year=year):
-                self.assertEqual(sch_1.DECLARATIONS[year].lines,
-                                 sch_1.full_table(year))
+                self.assertEqual(
+                    {ln.line_id: ln for ln in sch_1.DECLARATIONS[year].lines},
+                    {ln.line_id: ln for ln in sch_1.full_table(year)})
 
     def test_still_pending(self):
         # Graduation (registration + unpending) is a later, separate lane.
@@ -156,6 +158,19 @@ class SchOneAdjudicatedTests(unittest.TestCase):
                     [(P2, "19b"), (P2, "19c")] if year < 2024 else [])
 
 
+class SchOneValueOnlyTests(unittest.TestCase):
+    def test_every_bound_line_is_value_only(self):
+        # The computation emits every non-header key on every Schedule 1
+        # (zeros included): no scenario can leave a bound line absent.
+        for year in YEARS:
+            with self.subTest(year=year):
+                for ln in sch_1.DECLARATIONS[year].lines:
+                    if ln.key:
+                        self.assertEqual(ln.single_state, "value", ln.line)
+                        self.assertIn("unconditionally",
+                                      ln.single_state_reason)
+
+
 class SchOnePlacementTests(unittest.TestCase):
     def test_every_bound_line_is_placed(self):
         for year in YEARS:
@@ -171,7 +186,7 @@ class SchOnePlacementTests(unittest.TestCase):
         # row-label anchor would accept it (reachable negative space); the
         # declared RIGHT_OF box label accepts only the amount field.
         template = _template(2025)
-        repaid = "topmostSubform[0].Page1[0].f1_11[0]"
+        repaid = "topmostSubform[0].Page1[0].Line7_ReadOrder[0].f1_11[0]"
         line_7 = _lines(2025)[(P1, "7")]
         self.assertIsNotNone(line_7.anchor)
         self.assertIsNone(anchor_eval.evaluate(
