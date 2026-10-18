@@ -6,10 +6,12 @@ The declaration is inert until graduation: registration and the pending
 removal land together, so this test reads the module directly, not the
 registry.
 """
+import dataclasses
 import unittest
 from pathlib import Path
 
 from tenforty.declarations import sch_c
+from tenforty.declarations.anchors import LabelRelation, NearLabel
 from tenforty.declarations.validate import validate
 from tenforty.mappings.pdf_sch_c import PdfSchC
 from tenforty.verification.checks import check_placement
@@ -108,6 +110,37 @@ class SchCPlacementTests(unittest.TestCase):
                 if ln.line_id in _UNLOCATED:
                     with self.subTest(year=year, line=ln.line):
                         self.assertIsNone(ln.anchor)
+
+
+class CheckboxAnchorRectTests(unittest.TestCase):
+    """A checkbox-printed key's explicit anchor is verified against the
+    widget's rectangle (ruling b3): the bool key resolves through the
+    mapping (and its checkbox state) to the box, and check_placement
+    evaluates the anchor on that box."""
+
+    def _placement_lines(self, year, decl):
+        template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040sc.pdf"
+        return {f.line for f in check_placement(
+            template, decl, fill_spec_for(PdfSchC, year))}
+
+    def test_line_f_places_on_its_cash_box(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertNotIn("F", self._placement_lines(
+                    year, sch_c.DECLARATIONS[year]))
+
+    def test_line_f_anchored_to_the_accrual_box_is_refused(self):
+        # Negative space: the Accrual box's own label does not locate the
+        # Cash box.
+        for year in YEARS:
+            decl = sch_c.DECLARATIONS[year]
+            lines = tuple(
+                dataclasses.replace(ln, anchor=NearLabel(
+                    "Accrual", LabelRelation.LEFT_OF)) if ln.line == "F" else ln
+                for ln in decl.lines)
+            with self.subTest(year=year):
+                self.assertIn("F", self._placement_lines(
+                    year, dataclasses.replace(decl, lines=lines)))
 
 
 if __name__ == "__main__":
