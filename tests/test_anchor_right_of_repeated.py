@@ -97,6 +97,54 @@ class RepeatedRightOfLabelTests(unittest.TestCase):
         self.assertIn("ambiguous", finding.message)
 
 
+# Line G's Yes / No pair: the Yes box sits immediately left of the printed
+# "Yes", which also prints on rows I and J beside their own Yes boxes
+# (ruling b3: option (i) extended to LEFT_OF).
+_G_YES = "topmostSubform[0].Page1[0].c1_2[0]"
+_G_NO = "topmostSubform[0].Page1[0].c1_2[1]"
+
+
+class RepeatedLeftOfLabelTests(unittest.TestCase):
+    def test_yes_prints_more_than_once(self):
+        for year in _YEARS:
+            words = anchor_eval._page_words(str(_template(year)), 0)
+            with self.subTest(year=year):
+                self.assertEqual(
+                    len(anchor_eval._phrase_boxes(words, "Yes")), 3)
+
+    def test_line_g_yes_box_is_left_of_its_yes(self):
+        for year in _YEARS:
+            with self.subTest(year=year):
+                self.assertIsNone(anchor_eval.evaluate(
+                    NearLabel("Yes", LabelRelation.LEFT_OF), _G_YES,
+                    _template(year)))
+
+    def test_the_no_box_is_left_of_no_yes(self):
+        # Zero qualifiers: G's "Yes" lies left of the No box, and rows I and
+        # J's are off its row -- ambiguous, as before.
+        for year in _YEARS:
+            finding = anchor_eval.evaluate(
+                NearLabel("Yes", LabelRelation.LEFT_OF), _G_NO, _template(year))
+            with self.subTest(year=year):
+                self.assertIsNotNone(finding)
+                self.assertIn("ambiguous", finding.message)
+
+    def test_two_qualifying_occurrences_still_refuse(self):
+        # Two "Yes" both within LABEL_GAP_PT right of the field, on its row.
+        words = (("Yes", 103.0, 100.0, 113.0, 110.0),
+                 ("Yes", 109.0, 100.0, 119.0, 110.0))
+        with unittest.mock.patch.object(
+                anchor_eval, "_page_words", lambda template, page: words), \
+                unittest.mock.patch.object(
+                    anchor_eval, "widget_rect",
+                    lambda template, field: (0, (90.0, 100.0, 100.0, 110.0))):
+            finding = anchor_eval.evaluate(
+                NearLabel("Yes", LabelRelation.LEFT_OF), "synthetic.field",
+                Path("synthetic.pdf"))
+        self.assertIsNotNone(finding)
+        self.assertIn("ambiguous", finding.message)
+
+
 class SinglePrintPhrasesAreUnchangedTests(unittest.TestCase):
     """A phrase that prints once takes the evaluator's original path."""
 
@@ -116,6 +164,20 @@ class SinglePrintPhrasesAreUnchangedTests(unittest.TestCase):
         self.assertIsNotNone(finding)
         self.assertNotIn("ambiguous", finding.message)
         self.assertIn("is not right_of", finding.message)
+
+    def test_a_single_print_left_of_label_is_unchanged(self):
+        # Line F's "Cash" prints once: it locates the Cash box, and fails on
+        # geometry (not ambiguity) for G's Yes box.
+        for year in _YEARS:
+            with self.subTest(year=year):
+                self.assertIsNone(anchor_eval.evaluate(
+                    NearLabel("Cash", LabelRelation.LEFT_OF),
+                    "topmostSubform[0].Page1[0].c1_1[0]", _template(year)))
+                finding = anchor_eval.evaluate(
+                    NearLabel("Cash", LabelRelation.LEFT_OF), _G_YES,
+                    _template(year))
+                self.assertIsNotNone(finding)
+                self.assertNotIn("ambiguous", finding.message)
 
 
 if __name__ == "__main__":
