@@ -51,7 +51,7 @@ class Sch1Line8zStatementRendererTests(unittest.TestCase):
                            "Name(s) shown on return", "Example Filer",
                            "Your social security number", "000-00-0001",
                            "RTAA payments", "500", "Taxable grants", "1,000",
-                           "Total other income (Schedule 1, line 8z)",
+                           "Other income total (Schedule 1, line 8z)",
                            "1,500"):
                 self.assertIn(needle, text)
             self.assertNotIn("Corporation", text)

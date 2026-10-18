@@ -28,6 +28,6 @@ def render_sch_1_8z_statement(
         output_path,
         title="Schedule 1 (Form 1040), Line 8z — Other Income Statement",
         subtitle=f"(Other income — Tax Year {year})",
-        total_label="Total other income (Schedule 1, line 8z)",
+        total_label="Other income total (Schedule 1, line 8z)",
         name_label="Name(s) shown on return",
         id_label="Your social security number")
