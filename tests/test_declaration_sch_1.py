@@ -327,18 +327,13 @@ class SchOneCoverageTests(unittest.TestCase):
         self.assertEqual(sorted({rec.key for _, rec in self.records}),
                          list(YEARS))
 
-    def test_only_the_8z_and_9_value_cells_are_uncovered(self):
-        # KNOWN GAP (sch_1-8z-9-mapping-gap, phase P4): no battery row carries
-        # a nonzero line 8z yet, so the value state of 8z, its type write-in
-        # and line 9 is unobserved in every year. The P4 battery rows (single
-        # type, several types) cover it; then this set must become empty.
+    def test_no_cell_is_uncovered(self):
+        # emit_battery_sch_1 carries the line 8z rows (one type, every
+        # type, none) that cover 8z, its type write-in and line 9.
         decls = [sch_1.DECLARATIONS[y] for y in YEARS]
         report = coverage_cells(self.records, decls)
-        self.assertEqual(
-            sorted(report.uncovered, key=str),
-            sorted(((FORM, y, line, "value") for y in YEARS
-                    for line in ("8z", "8z(type)", "9")), key=str),
-            "\n".join(map(str, report.uncovered)))
+        self.assertEqual(list(report.uncovered), [], "\n".join(
+            map(str, report.uncovered)))
 
 
 if __name__ == "__main__":
