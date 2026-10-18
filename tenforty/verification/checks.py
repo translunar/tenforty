@@ -273,6 +273,16 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
                 decl, ln.line, "placement",
                 f"line {ln.line} ({ln.key!r}) has no field to place."))
             continue
+        if ln.anchor is None and ln.kind == "checkbox":
+            # The default anchor cannot locate a checkbox: the marker probe
+            # stamps text fields only (ruling b3). The convention is the
+            # finding, not a geometry failure the line could never pass.
+            findings.append(_finding(
+                decl, ln.line, "placement",
+                f"line {ln.line} ({ln.key!r}): field {field_path!r} is a "
+                "checkbox on the default anchor; checkbox lines carry "
+                "explicit anchors."))
+            continue
         anchor = ln.anchor or anchor_eval.default_anchor(ln, has_tu)
         other = None
         if isinstance(anchor, anchor_eval.NearField):
