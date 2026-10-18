@@ -21,8 +21,15 @@ _FILLABLE_FORMS = (
     ("federal", "f3115"),
 )
 
+# Graduated forms: declared, registered in tenforty.declarations.forms, and
+# under the runtime gate. A form leaves the pending list only here, in the
+# same commit that registers it.
+_GRADUATED = frozenset({
+    ("federal", "sch_se"),
+})
+
 PENDING_DECLARATIONS: Mapping[tuple[str, str], str] = {
-    form: _REASON for form in _FILLABLE_FORMS
+    form: _REASON for form in _FILLABLE_FORMS if form not in _GRADUATED
 }
 
 

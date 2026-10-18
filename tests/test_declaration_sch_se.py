@@ -1,9 +1,9 @@
 """The Schedule SE declaration validates against each year's own inventory
 (emit-verification protocol step 4).
 
-The declaration is inert until graduation: registration and the pending
-removal land together (ruling 2026-10-17), so this test reads the module
-directly, not the registry.
+These tests read the module directly, not the registry: declaration
+modules are side-effect-free, and registration lives in
+tenforty.declarations.forms (sch_se graduated there).
 """
 import tempfile
 import unittest
@@ -91,8 +91,8 @@ def _sch_se_records():
 
 
 class SchSeCoverageTests(unittest.TestCase):
-    """Coverage over this declaration (read directly; it is not registered
-    until graduation): every cell is covered. sch_c_battery covers
+    """Coverage over this declaration, read directly from the module: every
+    cell is covered. sch_c_battery covers
     2022-2025; emit_battery_sch_se adds 2021 and the wage-base rows."""
 
     def test_the_battery_is_registered(self):
