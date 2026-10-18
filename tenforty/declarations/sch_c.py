@@ -101,11 +101,34 @@ _MEF = {
 
 
 def _bound(section, line, d, key, kind="amount", anchor=None,
-           inventory_exemption=None):
+           inventory_exemption=None, always=None):
+    """``always``: the reason the line is value-only (single_state="value")."""
     return DeclaredLine(line=line, description=d[(section, line)], key=key,
                         kind=kind, section=section, anchor=anchor,
                         mef_element=_MEF.get((section, line)),
-                        inventory_exemption=inventory_exemption)
+                        inventory_exemption=inventory_exemption,
+                        single_state="value" if always else None,
+                        single_state_reason=always)
+
+
+# Value-only lines (ruling: coverage phase). Each is emitted for every
+# Schedule C, so no scenario can produce its nothing state.
+_SPINE = (
+    "the computation emits this line for every Schedule C (forms/sch_c.py's "
+    "per-business return dict sets it unconditionally), and on the paper it "
+    "is the Part I / Part II arithmetic spine every filer completes: zero is "
+    "a value")
+_CASH_ONLY = (
+    "modeled-scope constant: tenforty models the cash method only (no "
+    "accrual, no other method), so the computation always marks Cash. If "
+    "the scope widens to accrual, an emit leaving this blank turns this "
+    "declaration red by design: the forcing function to revisit it")
+_MATERIAL_ONLY = (
+    "modeled-scope constant: tenforty models materially participating "
+    "businesses only (passive sole proprietorships are unmodeled), so the "
+    "computation always marks Yes. If the scope widens to passive "
+    "businesses, an emit leaving this blank turns this declaration red by "
+    "design: the forcing function to revisit it")
 
 
 # Part V's grid rows print no label, so the inventory extractor cannot list
@@ -293,11 +316,12 @@ def _lines(d):
         # have no key. The row holds three option boxes, so the Cash box is
         # located immediately left of the printed "Cash" (once a page).
         _bound(H, "F", d, "sch_c_line_f_cash_method", kind="checkbox",
-               anchor=_left_of("Cash")),
+               anchor=_left_of("Cash"), always=_CASH_ONLY),
         # G: a Yes/No pair on one row; the key's value marks Yes. "Yes"
         # also prints on rows I and J; the one on G's row labels the box.
         _bound(H, "G", d, "sch_c_line_g_material_participation",
-               kind="checkbox", anchor=_left_of("Yes")),
+               kind="checkbox", anchor=_left_of("Yes"),
+               always=_MATERIAL_ONLY),
         _unserved(H, "H", d, "started or acquired this business during the "
                   "year (checkbox)", kind="checkbox"),
         _unserved(H, "I", d, "made payments that would require Form(s) 1099 "
@@ -309,14 +333,14 @@ def _lines(d):
         # 1: the label wraps; the amount box is on the next row (+10 pt).
         # The line-1 statutory-employee checkbox has no key.
         _bound(P1, "1", d, "sch_c_line_1_gross_receipts",
-               anchor=_wrapped("Gross receipts or sales.")),
+               anchor=_wrapped("Gross receipts or sales."), always=_SPINE),
         _unserved(P1, "2", d, "returns and allowances"),
-        _bound(P1, "3", d, "sch_c_line_3_net_receipts"),
+        _bound(P1, "3", d, "sch_c_line_3_net_receipts", always=_SPINE),
         _unserved(P1, "4", d, "cost of goods sold (from line 42)"),
-        _bound(P1, "5", d, "sch_c_line_5_gross_profit"),
+        _bound(P1, "5", d, "sch_c_line_5_gross_profit", always=_SPINE),
         _unserved(P1, "6", d, "other income, including federal and state "
                   "gasoline or fuel tax credit or refund"),
-        _bound(P1, "7", d, "sch_c_line_7_gross_income"),
+        _bound(P1, "7", d, "sch_c_line_7_gross_income", always=_SPINE),
 
         # ---------------------------------------------------- Part II
         # Two columns of entry boxes; where a bound line shares its row with
@@ -375,9 +399,10 @@ def _lines(d):
         _unserved(P2, "27b", d, _27B_21),
         # 28: PARTIAL-TOTAL RISK (both authors): only 13 expense categories
         # carry keys, but line 28 is the total of every line 8 through 27.
-        _bound(P2, "28", d, "sch_c_line_28_total_expenses"),
+        _bound(P2, "28", d, "sch_c_line_28_total_expenses", always=_SPINE),
         # 29: "tentative profit or (loss)".
-        _bound(P2, "29", d, "sch_c_line_29_tentative_profit"),
+        _bound(P2, "29", d, "sch_c_line_29_tentative_profit",
+               always=_SPINE),
         _unserved(P2, "30", d, "expenses for business use of home (Form 8829 "
                   "or simplified method), incl. the two square-footage "
                   "entries"),
@@ -387,7 +412,8 @@ def _lines(d):
         # passive-activity rules ("it may be smaller than the amount you
         # figured by subtracting line 30 from line 29").
         _bound(P2, "31", d, "sch_c_line_31_net_profit",
-               anchor=_wrapped("If a profit, enter on both Schedule 1")),
+               anchor=_wrapped("If a profit, enter on both Schedule 1"),
+               always=_SPINE),
         _unserved(P2, "32", d, "loss-only at-risk question; answered in "
                   "boxes 32a/32b", kind="checkbox"),
         # 32a: both states -- line 32 is reached only on a loss ("If a loss,
