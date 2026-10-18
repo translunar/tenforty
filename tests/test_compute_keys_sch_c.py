@@ -21,6 +21,7 @@ import unittest
 from pathlib import Path
 
 from tenforty import years
+from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import sch_c
 from tenforty.mappings import pdf_sch_c
 from tenforty.mappings.pdf_sch_c import PdfSchC
@@ -47,13 +48,19 @@ class NewKeysMatchOldDerivationTests(unittest.TestCase):
     tree, 3fd56fe: values the code produced, not hand-derived)."""
 
     def test_printed_marks_equal_the_pre_move_derivations(self):
+        # The marks now print as bool keys through checkbox states (sch_c
+        # declaration lane, ruling b2): read them off the real translation
+        # path, at the boxes the pre-move capture recorded.
         before = json.loads(_BEFORE.read_text())
         seen = 0
         for name, year, i, values in _battery_businesses():
+            expected = before[name][str(year)][i]
+            printed = PdfFiller.resolve_fields(
+                PdfSchC.get_mapping(year), values,
+                checkbox_states=PdfSchC.get_checkbox_states(year))
             with self.subTest(scenario=name, year=year, business=i):
-                derived = {path: fn(values) for path, fn in
-                           sorted(PdfSchC.get_derivations(year).items())}
-                self.assertEqual(derived, before[name][str(year)][i])
+                self.assertEqual({path: printed.get(path) for path in expected},
+                                 expected)
                 seen += 1
         self.assertEqual(seen, sum(len(b) for y in before.values()
                                    for b in y.values()))
@@ -91,9 +98,24 @@ class MappingHasNoArithmeticTests(unittest.TestCase):
                     yield ast.unparse(key), value
 
     def test_each_derivation_translates_its_approved_compute_key(self):
+        # The approved translations are bool keys mapped to their boxes with
+        # on-states (sch_c declaration lane, ruling b2); no derivation and
+        # no lambda remains.
+        on_states = {"sch_c_line_f_cash_method": "/1",
+                     "sch_c_line_g_material_participation": "/Yes",
+                     "sch_c_line_32a_all_investment_at_risk": "/1"}
         for year in years.SCHEDULE_C_FAMILY_YEARS:
-            self.assertEqual(sorted(PdfSchC.get_derivations(year)),
-                             sorted(self.APPROVED_TRANSLATIONS))
+            with self.subTest(year=year):
+                self.assertEqual(PdfSchC.get_derivations(year), {})
+                mapping = PdfSchC.get_mapping(year)
+                states = PdfSchC.get_checkbox_states(year)
+                for path, key in sorted(self.APPROVED_TRANSLATIONS.items()):
+                    self.assertEqual(mapping[key], path)
+                    self.assertEqual(states[key], on_states[key])
+        tree = ast.parse(inspect.getsource(pdf_sch_c))
+        self.assertEqual(
+            [n.lineno for n in ast.walk(tree) if isinstance(n, ast.Lambda)],
+            [])
         found = 0
         for path_src, fn in self._lambdas():
             found += 1
@@ -110,7 +132,7 @@ class MappingHasNoArithmeticTests(unittest.TestCase):
                 for n in ast.walk(body):
                     self.assertNotIsInstance(n, (ast.BinOp, ast.Compare,
                                                  ast.AugAssign))
-        self.assertEqual(found, len(self.APPROVED_TRANSLATIONS))
+        self.assertEqual(found, 0)
 
 
 if __name__ == "__main__":

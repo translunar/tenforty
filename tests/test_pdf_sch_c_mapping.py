@@ -24,8 +24,13 @@ class PdfSchCMappingTests(unittest.TestCase):
             for field_name in sch_c._EXPENSE_FIELDS:
                 with self.subTest(year=year, field=field_name):
                     self.assertIn(f"sch_c_expense_{field_name}", mapping)
-            # 24 + line 13 + Part V row 1 (description, amount).
-            self.assertEqual(len(mapping), 27)
+            # 24 + line 13 + Part V row 1 (description, amount) + the three
+            # bool keys F, G and 32a (printed through checkbox states).
+            self.assertEqual(len(mapping), 30)
+            for key in ("sch_c_line_f_cash_method",
+                        "sch_c_line_g_material_participation",
+                        "sch_c_line_32a_all_investment_at_risk"):
+                self.assertIn(key, mapping)
             self.assertIn(sch_c.LINE_13_KEY, mapping)
             self.assertIn("sch_c_part_v_row_1_description", mapping)
             self.assertIn("sch_c_part_v_row_1_amount", mapping)
@@ -64,27 +69,34 @@ class PdfSchCMappingTests(unittest.TestCase):
             {years.SCHEDULE_C_FAMILY_YEARS[0]})
         for year in years.SCHEDULE_C_FAMILY_YEARS:
             with self.subTest(year=year):
-                d = PdfSchC.get_derivations(year)
-                self.assertEqual(set(d), {_CASH_BOX,
-                                          _MATERIAL_PARTICIPATION_YES_BOX,
-                                          _LINE_32A_BOX})
-                # Ruling A1: each box translates its compute key; an absent
-                # key prints blank (blank = not computed).
+                mapping = PdfSchC.get_mapping(year)
+                states = PdfSchC.get_checkbox_states(year)
+                # Ruling A1: each box translates its compute key (a bool key
+                # mapped to the box, with its on-state); an absent key prints
+                # blank (blank = not computed).
+                self.assertEqual(mapping["sch_c_line_f_cash_method"], _CASH_BOX)
+                self.assertEqual(states["sch_c_line_f_cash_method"], "/1")
                 self.assertEqual(
-                    d[_CASH_BOX]({"sch_c_line_f_cash_method": True}), "/1")
-                self.assertIsNone(d[_CASH_BOX]({}))
+                    mapping["sch_c_line_g_material_participation"],
+                    _MATERIAL_PARTICIPATION_YES_BOX)
                 self.assertEqual(
-                    d[_MATERIAL_PARTICIPATION_YES_BOX](
-                        {"sch_c_line_g_material_participation": True}), "/Yes")
-                self.assertIsNone(d[_MATERIAL_PARTICIPATION_YES_BOX]({}))
+                    states["sch_c_line_g_material_participation"], "/Yes")
+                blank = PdfFiller.resolve_fields(mapping, {},
+                                                 checkbox_states=states)
+                self.assertNotIn(_CASH_BOX, blank)
+                self.assertNotIn(_MATERIAL_PARTICIPATION_YES_BOX, blank)
 
     def test_line_32a_box_is_marked_only_for_a_loss_business(self):
         for year in years.SCHEDULE_C_FAMILY_YEARS:
             with self.subTest(year=year):
-                box = PdfSchC.get_derivations(year)[_LINE_32A_BOX]
-                self.assertEqual(
-                    box({"sch_c_line_32a_all_investment_at_risk": True}), "/1")
-                self.assertIsNone(box({}))
+                mapping = PdfSchC.get_mapping(year)
+                states = PdfSchC.get_checkbox_states(year)
+                marked = PdfFiller.resolve_fields(
+                    mapping, {"sch_c_line_32a_all_investment_at_risk": True},
+                    checkbox_states=states)
+                self.assertEqual(marked[_LINE_32A_BOX], "/1")
+                self.assertNotIn(_LINE_32A_BOX, PdfFiller.resolve_fields(
+                    mapping, {}, checkbox_states=states))
 
     def test_fill_round_trip_lands_values_and_checks_boxes(self):
         values = {
@@ -112,6 +124,7 @@ class PdfSchCMappingTests(unittest.TestCase):
                                    / "f1040sc.pdf"),
                     output_path=out, field_mapping=mapping, values=values,
                     derivations=PdfSchC.get_derivations(year),
+                    checkbox_states=PdfSchC.get_checkbox_states(year),
                 )
                 fields = PdfReader(str(out)).get_fields()
 
