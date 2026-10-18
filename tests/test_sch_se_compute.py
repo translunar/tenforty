@@ -91,10 +91,15 @@ class SchSeStructureTests(unittest.TestCase):
         self.assertEqual(out["sch_se_line_10_ss_portion"], round(remaining * _RATE_SS))
 
     def test_wage_base_coordination_ss_wages_above_base(self):
-        # ss_wages already exceed the base: no SS portion, Medicare still applies
+        # ss_wages already exceed the base: line 8a's skip branch ("skip lines
+        # 8b through 10") leaves 8d, 9 and 10 blank (no SS portion); Medicare
+        # still applies.
         scn, up = _scn(100_000.0, ss_wages=200_000.0, year=2024)
         out = sch_se.compute(scn, up)
-        self.assertEqual(out["sch_se_line_10_ss_portion"], 0)
+        for key in ("sch_se_line_8d_wages_subject_to_ss",
+                    "sch_se_line_9_ss_earnings_remaining",
+                    "sch_se_line_10_ss_portion"):
+            self.assertNotIn(key, out)
         self.assertGreater(out["sch_se_line_11_medicare_portion"], 0)
 
     def test_empty_returns_empty(self):

@@ -61,12 +61,12 @@ class SchSeAnchorPhrasesPrintOnceTests(unittest.TestCase):
                         words, ln.anchor.phrase)), 1, ln.anchor.phrase)
 
 
-# Cells no battery can cover yet: on the line 8a at-or-above-wage-base branch
+# Cells no battery could cover: on the line 8a at-or-above-wage-base branch
 # the form says "skip lines 8b through 10" (blank), but the native pipeline
-# prints 8d, 9 and 10. Routed to the sch-se-skip-branch-blanks lane, which
-# blocks graduation; a wage-base battery row arrives with that fix. This set
-# must then become empty.
-BLOCKED_ON_SKIP_BRANCH = {"8d", "9", "10"}
+# printed 8d, 9 and 10. EMPTIED by the sch-se-skip-branch-blanks lane: its
+# fix leaves them blank there, and emit_battery_sch_se's wage-base-day-job
+# rows cover 8d / 9 / 10's nothing state every year 2021-2025.
+BLOCKED_ON_SKIP_BRANCH: set[str] = set()
 SCH_SE = ("federal", "sch_se")
 COVERED_BATTERIES = ("sch_c_battery", "emit_battery_sch_se")
 
@@ -92,9 +92,8 @@ def _sch_se_records():
 
 class SchSeCoverageTests(unittest.TestCase):
     """Coverage over this declaration (read directly; it is not registered
-    until graduation): every cell is covered except the skip-branch
-    nothing-cells, blocked on the routed compute fix. sch_c_battery covers
-    2022-2025; emit_battery_sch_se adds 2021."""
+    until graduation): every cell is covered. sch_c_battery covers
+    2022-2025; emit_battery_sch_se adds 2021 and the wage-base rows."""
 
     def test_the_battery_is_registered(self):
         self.assertIn("emit_battery_sch_se", [b.name for b in BATTERIES])

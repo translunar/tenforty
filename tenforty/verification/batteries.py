@@ -41,10 +41,15 @@ def _sch_c_scenarios():
 
 def _sch_se_scenarios():
     from tests.fixtures import emit_battery_sch_se
-    for year in emit_battery_sch_se.YEARS:
+    # A scenario may run in years of its own (the wage-base row runs every
+    # year; the rest in YEARS): year-major, each scenario in its years.
+    years = sorted({y for name in emit_battery_sch_se.SCENARIOS
+                    for y in emit_battery_sch_se.years_for(name)})
+    for year in years:
         for name in emit_battery_sch_se.SCENARIOS:
-            yield name, year, functools.partial(
-                emit_battery_sch_se.build, name, year)
+            if year in emit_battery_sch_se.years_for(name):
+                yield name, year, functools.partial(
+                    emit_battery_sch_se.build, name, year)
 
 
 BATTERIES: tuple[BatteryRef, ...] = (
