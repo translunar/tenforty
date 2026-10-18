@@ -10,7 +10,9 @@ line a declaration says it is. The anchor data types live in
   tooltips (federal). ``row_line_tokens`` is the probe lifted verbatim from
   ``tests/test_mapping_line_identity.py``.
 - ``NearLabel(phrase, relation)``: relative to a phrase printed EXACTLY ONCE
-  on the field's page (``pdftotext -bbox``); twice is an ambiguity finding.
+  on the field's page (``pdftotext -bbox``); twice is an ambiguity finding,
+  except for RIGHT_OF / LEFT_OF, where exactly one occurrence on the field's
+  row within LABEL_GAP_PT of the field's labelled side resolves it.
 - ``NearField(other_line, relation)``: relative to another declared line's
   field.
 
@@ -186,6 +188,21 @@ def evaluate(anchor: Anchor, field_path: str, template: Path, *,
     if isinstance(anchor, NearLabel):
         page, rect = widget_rect(template, field_path)
         boxes = _phrase_boxes(_page_words(template, page), anchor.phrase)
+        if len(boxes) > 1 and anchor.relation in _SIDE:
+            # A label that also prints elsewhere (Schedule C Part II's "8"
+            # in the left margin; line G's "Yes", also on rows I and J): it
+            # resolves to the ONE occurrence that labels this field -- on
+            # its row, on the relation's side of it, within LABEL_GAP_PT.
+            # None or several still refuse (fail-closed).
+            qualifies, side = _SIDE[anchor.relation]
+            labelling = [box for box in boxes if qualifies(rect, box)]
+            if len(labelling) == 1:
+                return _near_label(anchor, field_path, rect, labelling[0])
+            return _finding(f"phrase {anchor.phrase!r} prints {len(boxes)} "
+                            f"times on page {page + 1} and "
+                            f"{len(labelling)} occurrences sit within "
+                            f"LABEL_GAP_PT {side} of field {field_path!r}; "
+                            "exactly one must (ambiguous)")
         if len(boxes) != 1:
             return _finding(f"phrase {anchor.phrase!r} prints {len(boxes)} "
                             f"times on page {page + 1}; an anchor phrase must "
@@ -207,6 +224,32 @@ def evaluate(anchor: Anchor, field_path: str, template: Path, *,
 def _overlaps_row(rect, box) -> bool:
     return min(rect[3], box[3]) - max(rect[1], box[1]) > 0 or (
         abs(rect[1] - box[1]) < ROW_PT)
+
+
+def _labels(rect, box) -> bool:
+    """Whether the printed token ``box`` labels the field ``rect``: on its
+    row, ending at most LABEL_GAP_PT before the field begins (with the
+    ROW_PT tolerance RIGHT_OF allows for a token that runs a hair past the
+    field's edge)."""
+    return (_overlaps_row(rect, box)
+            and -ROW_PT <= rect[0] - box[2] <= LABEL_GAP_PT)
+
+
+def _labels_from_right(rect, box) -> bool:
+    """Whether the printed token ``box`` labels the field ``rect`` from its
+    right (a checkbox before its caption): on its row, beginning at most
+    LABEL_GAP_PT after the field ends (with the ROW_PT tolerance LEFT_OF
+    allows)."""
+    return (_overlaps_row(rect, box)
+            and -ROW_PT <= box[0] - rect[2] <= LABEL_GAP_PT)
+
+
+# Relations whose repeated phrase resolves by geometry -> (qualifier, the
+# side of the field the qualifying occurrence sits on).
+_SIDE = {
+    LabelRelation.RIGHT_OF: (_labels, "left"),
+    LabelRelation.LEFT_OF: (_labels_from_right, "right"),
+}
 
 
 def _near_label(anchor: NearLabel, field_path, rect, box) -> Finding | None:

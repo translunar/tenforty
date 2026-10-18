@@ -59,6 +59,10 @@ class DeclaredLine:
     repeat: Repeat | None = None           # A5
     single_state: Literal["value", "nothing"] | None = None
     single_state_reason: str | None = None
+    # A RULED paper line the inventory cannot print (its reason cites the
+    # ruling): accepted while absent from the inventory, stale once printed.
+    # Also excludes the line from placement. See validate.exemptions_in_force.
+    inventory_exemption: str | None = None
 
     @property
     def line_id(self) -> LineId:

@@ -12,7 +12,14 @@ Checks (check name in brackets):
   the same key (ruling A2: one key, one value per option line);
 - [single_state] ``single_state`` carries a non-empty reason;
 - [not_printed] every not-printed reason starts with a known tag;
-- [duplicate] no ``(section, line)`` is declared twice.
+- [duplicate] no ``(section, line)`` is declared twice;
+- [inventory_exemption] a line's ``inventory_exemption`` (a ruled paper line
+  the inventory cannot print, e.g. Schedule C Part V's unlabeled grid rows)
+  carries a reason and is still absent from the inventory: once a
+  regenerated inventory prints the line, the exemption is stale.
+
+``exemptions_in_force(decl)`` enumerates every exemption a declaration
+carries, so they never accumulate silently.
 """
 from collections import Counter
 
@@ -35,6 +42,18 @@ def validate(decl: FormDeclaration) -> list[Finding]:
     printed = {(ln.section, ln.label)
                for ln in inventory.load(form, decl.key).lines}
     for ln in decl.lines:
+        if ln.inventory_exemption is not None:
+            if not ln.inventory_exemption.strip():
+                finding(ln.line, "inventory_exemption",
+                        f"line {ln.line!r} carries an inventory_exemption "
+                        "without a reason.")
+            elif ln.line_id in printed:
+                finding(ln.line, "inventory_exemption",
+                        f"{where} {decl.key} line {ln.line!r} in section "
+                        f"{ln.section!r} is exempt from the inventory, but "
+                        "the inventory now prints it: the exemption is stale "
+                        f"({ln.inventory_exemption})")
+            continue
         if ln.repeat is None and ln.line_id not in printed:
             finding(ln.line, "inventory",
                     f"{where} {decl.key} declares line {ln.line!r} in section "
@@ -74,3 +93,12 @@ def validate(decl: FormDeclaration) -> list[Finding]:
                     f"line {line!r} in section {section!r} is declared {n} "
                     "times.")
     return findings
+
+
+def exemptions_in_force(decl: FormDeclaration) -> list[tuple[tuple[str, str], str]]:
+    """Every ``(section, line)`` the declaration exempts from the inventory,
+    with its reason, in declaration order. Each is also excluded from
+    placement (``checks.check_placement``) until the check-suite can locate
+    it; its value and ink checks still run."""
+    return [(ln.line_id, ln.inventory_exemption) for ln in decl.lines
+            if ln.inventory_exemption is not None]

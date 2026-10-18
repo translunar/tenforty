@@ -228,17 +228,22 @@ def check_placement(template: Path, decl: FormDeclaration,
                     spec) -> list[Finding]:
     """Placement (spec §3.3), on the blank template: each declared line's
     field sits where its anchor (explicit, or the default from its own
-    label) says. Cached per (template, declaration, spec)."""
+    label) says. Cached per (template, declaration, spec) OBJECT: an entry
+    holds the declaration and spec it was computed from and answers only
+    for those very objects, so a freed object's reused id can never return
+    another declaration's findings."""
     cache_key = (str(template), decl.form, decl.key, id(decl), id(spec))
-    if cache_key not in _PLACEMENT_CACHE:
-        try:
-            _PLACEMENT_CACHE[cache_key] = tuple(
-                _placement(Path(template), decl, spec))
-        except Exception as exc:  # noqa: BLE001 - reported, never swallowed
-            return [_finding(decl, "", "placement",
-                             f"check_placement could not run: "
-                             f"{type(exc).__name__}: {exc}")]
-    return list(_PLACEMENT_CACHE[cache_key])
+    cached = _PLACEMENT_CACHE.get(cache_key)
+    if cached is not None and cached[0] is decl and cached[1] is spec:
+        return list(cached[2])
+    try:
+        findings = tuple(_placement(Path(template), decl, spec))
+    except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+        return [_finding(decl, "", "placement",
+                         f"check_placement could not run: "
+                         f"{type(exc).__name__}: {exc}")]
+    _PLACEMENT_CACHE[cache_key] = (decl, spec, findings)
+    return list(findings)
 
 
 def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
@@ -248,6 +253,14 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
     findings: list[Finding] = []
     for ln in expand(decl, {}):
         if ln.scope == "WORKBOOK":
+            continue
+        if ln.inventory_exemption is not None:
+            # A ruled synthetic line the inventory cannot print (Schedule C
+            # Part V's unlabeled grid rows) has no printed label to anchor
+            # on: placement is SKIPPED until the check-suite has a
+            # below-a-heading relation (design pile). Every such line is
+            # enumerated by validate.exemptions_in_force; value and ink
+            # checks still run on it.
             continue
         if ln.key == "":
             # A key-less line (unmodeled, or preprinted) has no mapped field
@@ -264,6 +277,16 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
             findings.append(_finding(
                 decl, ln.line, "placement",
                 f"line {ln.line} ({ln.key!r}) has no field to place."))
+            continue
+        if ln.anchor is None and ln.kind == "checkbox":
+            # The default anchor cannot locate a checkbox: the marker probe
+            # stamps text fields only (ruling b3). The convention is the
+            # finding, not a geometry failure the line could never pass.
+            findings.append(_finding(
+                decl, ln.line, "placement",
+                f"line {ln.line} ({ln.key!r}): field {field_path!r} is a "
+                "checkbox on the default anchor; checkbox lines carry "
+                "explicit anchors."))
             continue
         anchor = ln.anchor or anchor_eval.default_anchor(ln, has_tu)
         other = None
