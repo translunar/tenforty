@@ -11,8 +11,10 @@ within LABEL_GAP_PT left of it (gaps 6.4-8.6 pt); every other occurrence is
 The evaluator resolves such a phrase to the ONE occurrence that qualifies by
 geometry -- on the field's row, left of it, the gap from the token's right
 edge to the field's left edge within LABEL_GAP_PT -- and refuses, as before,
-when none or several qualify. Only RIGHT_OF does this; every other relation,
-and every phrase that prints once, is unchanged.
+when none or several qualify. LEFT_OF mirrors it (ruling b3: line G's
+"Yes", which also prints on rows I and J): the qualifying occurrence begins
+within LABEL_GAP_PT right of the field. Every other relation, and every
+phrase that prints once, is unchanged.
 """
 import unittest
 import unittest.mock
@@ -129,6 +131,17 @@ class RepeatedLeftOfLabelTests(unittest.TestCase):
                 self.assertIsNotNone(finding)
                 self.assertIn("ambiguous", finding.message)
 
+    def test_other_relations_still_require_exactly_one_print(self):
+        # One "Yes" qualifies right of G's Yes box, yet ON_ROW and
+        # AFTER_WRAPPED take no geometric resolution: still ambiguous.
+        for relation in (LabelRelation.ON_ROW, LabelRelation.AFTER_WRAPPED):
+            for year in _YEARS:
+                with self.subTest(relation=relation, year=year):
+                    finding = anchor_eval.evaluate(
+                        NearLabel("Yes", relation), _G_YES, _template(year))
+                    self.assertIsNotNone(finding)
+                    self.assertIn("ambiguous", finding.message)
+
     def test_two_qualifying_occurrences_still_refuse(self):
         # Two "Yes" both within LABEL_GAP_PT right of the field, on its row.
         words = (("Yes", 103.0, 100.0, 113.0, 110.0),
@@ -143,6 +156,29 @@ class RepeatedLeftOfLabelTests(unittest.TestCase):
                 Path("synthetic.pdf"))
         self.assertIsNotNone(finding)
         self.assertIn("ambiguous", finding.message)
+
+    def test_an_occurrence_beyond_the_gap_does_not_qualify(self):
+        # Same row, right of the field, but past LABEL_GAP_PT: it does not
+        # label the field. With a near "Yes" it resolves to the near one;
+        # alone it refuses.
+        near = ("Yes", 103.0, 100.0, 113.0, 110.0)
+        far = ("Yes", 150.0, 100.0, 160.0, 110.0)
+        elsewhere = ("Yes", 103.0, 300.0, 113.0, 310.0)
+        for words, placed in (((near, far), True), ((far, elsewhere), False)):
+            with unittest.mock.patch.object(
+                    anchor_eval, "_page_words", lambda template, page: words), \
+                    unittest.mock.patch.object(
+                        anchor_eval, "widget_rect",
+                        lambda template, field: (0, (90.0, 100.0, 100.0, 110.0))):
+                finding = anchor_eval.evaluate(
+                    NearLabel("Yes", LabelRelation.LEFT_OF), "synthetic.field",
+                    Path("synthetic.pdf"))
+            with self.subTest(placed=placed):
+                if placed:
+                    self.assertIsNone(finding)
+                else:
+                    self.assertIsNotNone(finding)
+                    self.assertIn("ambiguous", finding.message)
 
 
 class SinglePrintPhrasesAreUnchangedTests(unittest.TestCase):
