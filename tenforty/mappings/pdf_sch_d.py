@@ -42,8 +42,28 @@ writes scalar cells only.
 from tenforty.mappings.registry import PdfFormMapping
 
 
+# Compute keys whose cell has PREPRINTED parentheses on the form: line 21's
+# entry prints inside "21 (        )". The compute value is signed (a loss is
+# negative); the cell must receive the MAGNITUDE, or the page reads
+# "( -3,000 )". The f8995 pattern: the fill, the recorder and the value
+# check consume the presented values; the compute key stays signed for its
+# consumer (the 1040 income preamble).
+_PARENTHESIZED_KEYS = ("sch_d_line_21_allowed_loss",)
+
+
 class PdfSchD(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule D"
+
+    @staticmethod
+    def presentation_values(values: dict) -> dict:
+        """The fill payload for a computed Schedule D: a copy of ``values``
+        with every preprinted-parentheses cell carrying its magnitude. The
+        line-21 key is loss-only, so a gain year presents nothing for it."""
+        out = dict(values)
+        for key in _PARENTHESIZED_KEYS:
+            if isinstance(out.get(key), (int, float)):
+                out[key] = abs(out[key])
+        return out
 
     _MAPPINGS: dict[int, dict] = {
         2021: {
@@ -166,6 +186,11 @@ class PdfSchD(PdfFormMapping[dict]):
                     "topmostSubform[0].Page2[0].f2_03[0]",
                 "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_02[0]",
+                # Line 21 (loss-only key; preprinted parentheses: see
+                # presentation_values).
+                "sch_d_line_21_allowed_loss":
+                    "topmostSubform[0].Page2[0].Line21_ReadOrder[0]"
+                    ".TagCorrectingSubform[0].f2_04[0]",
             },
             "repeaters": {},
         },
@@ -292,6 +317,11 @@ class PdfSchD(PdfFormMapping[dict]):
                     "topmostSubform[0].Page2[0].f2_03[0]",
                 "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_02[0]",
+                # Line 21 (loss-only key; preprinted parentheses: see
+                # presentation_values).
+                "sch_d_line_21_allowed_loss":
+                    "topmostSubform[0].Page2[0].TagCorrectingSubform[0]"
+                    ".f2_04[0]",
             },
             "repeaters": {},
         },
@@ -428,6 +458,9 @@ class PdfSchD(PdfFormMapping[dict]):
                     "topmostSubform[0].Page2[0].f2_3[0]",
                 "sch_d_28_rate_gain":
                     "topmostSubform[0].Page2[0].f2_2[0]",
+                # Line 21 (loss-only key; preprinted parentheses: see
+                # presentation_values).
+                "sch_d_line_21_allowed_loss": "topmostSubform[0].Page2[0].f2_4[0]",
             },
             "repeaters": {},
         },

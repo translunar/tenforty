@@ -226,6 +226,10 @@ _LINES_2021 = (
     # Box 420-432 sits below the label row (407.3), beside the bullet list;
     # its own row holds only "21 ( )" (token "21" recurs). Label-above use
     # of AFTER_WRAPPED (Q5a): edge gap 12.7 (phrase 407.3 -> box top 420).
+    # The entry prints inside PREPRINTED parentheses: the compute key is the
+    # signed loss, the cell receives its magnitude (PdfSchD.
+    # presentation_values, the f8995 lines 3/7/16/17 pattern). Kind stays
+    # "amount".
     _bound(P3, "21",
            "If line 16 is a loss, enter here and on Form 1040, 1040-SR, or "
            "1040-NR, line 7, the smaller of:",
