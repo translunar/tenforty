@@ -3497,6 +3497,14 @@ class ReturnOrchestrator:
                 selector.dropped_forms(filed_payloads, corrected_payloads))
             for cf in changed:
                 spec = corrected_specs[cf.form]
+                if spec.refusal is not None:
+                    # The 1040-X is already on disk: name the partial
+                    # packet (the line 8z guard's precedent).
+                    raise NotImplementedError(
+                        f"{spec.refusal} On this amendment run, "
+                        f"f1040x_{year}.pdf is already written in the "
+                        "output directory and no packet_manifest.txt is: "
+                        "the missing manifest marks the packet incomplete.")
                 self._render_federal_spec(filler, spec, output_dir, recorder)
                 mailed.append(MailedFile(
                     spec.output_name,

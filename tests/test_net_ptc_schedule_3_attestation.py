@@ -13,8 +13,9 @@ from pathlib import Path
 import pypdf
 import yaml
 
+from tenforty.forms import f1040x as form_f1040x
 from tenforty.mappings.pdf_1040 import Pdf1040
-from tenforty.models import FilingStatus
+from tenforty.models import AmendmentCase, FilingStatus, Form1099INT
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 from tests.fixtures import spine_battery
@@ -66,6 +67,39 @@ class NetPtcRefusalTests(unittest.TestCase):
                 _orch(tmp).compute_federal(_unattested())["f8962_net_ptc"], 0)
 
 
+class NetPtcAmendmentTests(unittest.TestCase):
+    """An amendment that mails a changed Form 1040 refuses the same way,
+    and says the Form 1040-X it already wrote is a partial packet (the
+    line 8z guard's precedent)."""
+
+    def test_a_changed_1040_refuses_naming_the_partial_output(self):
+        original = _unattested()
+        amended = dataclasses.replace(original, form1099_int=[Form1099INT(
+            payer="Example Bank", interest=2_000.0)])
+        with tempfile.TemporaryDirectory() as tmp:
+            orch = _orch(tmp)
+            results = orch.compute_federal(original)
+            filed = Path(tmp) / "filed.yaml"
+            filed.write_text(yaml.safe_dump(
+                {k: results[k] for k in form_f1040x.REQUIRED_FILED_KEYS}))
+            ca_filed = Path(tmp) / "ca.yaml"
+            ca_filed.write_text(yaml.safe_dump({"f540_total_liability": 0.0}))
+            case = AmendmentCase(
+                year=YEAR, explanation="Added omitted interest income.",
+                original_refund_received=0.0, original_refund_applied=0.0,
+                original_tax_paid=0.0)
+            out = Path(tmp) / "packet"
+            with self.assertRaises(NotImplementedError) as cm:
+                orch.run_amendment_packet(original, amended, case, filed,
+                                          ca_filed, out)
+            msg = str(cm.exception)
+            self.assertIn("Schedule 3", msg)
+            self.assertIn(f"f1040x_{YEAR}.pdf is already written", msg)
+            self.assertIn("packet_manifest.txt", msg)
+            self.assertEqual(sorted(p.name for p in out.iterdir()),
+                             [f"f1040x_{YEAR}.pdf"])
+
+
 class NetPtcAttestedEmitTests(unittest.TestCase):
     """The attested emit proceeds and prints the known-unfooted page:
     line 33 carries the net PTC while lines 31 and 32 print blank, so
@@ -97,6 +131,13 @@ class NetPtcAttestedEmitTests(unittest.TestCase):
 
 
 class AcknowledgmentPlumbingTests(unittest.TestCase):
+    # A stray True (net PTC 0) is NOT refused, unlike a positions election
+    # the return never reaches: an election chooses between contested
+    # outcomes, so a dangling one is a live footgun; an acknowledgment
+    # accepts a limitation, and accepting one that does not apply costs
+    # nothing (and refusing would break reusing a scenario across years
+    # whose net PTC varies). The family-wide question stays on the
+    # stray-attribute audit item (team-lead ruling).
 
     def test_the_net_ptc_battery_builders_state_it(self):
         # The three builders whose native rows carry a net PTC.
