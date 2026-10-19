@@ -19,13 +19,12 @@ their meaning (the prior-year carryforward; the total QBI).
 
 LINE 1 GRID. The paper prints a column-caption row "1" and five business
 rows i-v, each with three cells: (a) name, (b) taxpayer identification
-number, (c) qualified business income or (loss). The computation models one
-source row: its keys are f8995_line_1i_name, f8995_line_1i_tin and the
-unindexed f8995_line_1_qbi. Row i's cells are plain bound lines; every cell
-of rows ii-v is unserved via Repeat. Column (c) carries the AGGREGATE QBI of
-every source by documented v1 design (adjudication ruling 1); a multi-source
-filer's row i therefore pairs one source's name and TIN with the aggregate
-(routed: f8995-multi-source-row1, Juno's call; not ruled here).
+number, (c) qualified business income or (loss). Each QBI source gets its
+own row (Juno's per-source-rows ruling, superseding the single-row
+aggregate): row r binds f8995_line_1{r}_name / _tin / _qbi. The 15 cells
+are plain lines with literal anchors (ruled option (A): Repeat does not
+substitute anchors). The aggregate f8995_line_1_qbi is line 2's feed, not
+printed on its own.
 
 Descriptions are the stylesheet text where it matches the paper, the paper
 otherwise (line 15 every year; line 12 in 2023). The line-1 cells exist in
@@ -34,23 +33,23 @@ neither witness and take the paper's column headings verbatim.
 Anchors only where the label row cannot locate the field: lines 2, 6, 7, 8
 and 15 every year and line 12 from 2023 wrap (AFTER_WRAPPED, a whole-token
 phrase of the label's first printed row that prints exactly once); row i's
-three cells share one row, so (a) is RIGHT_OF the row label "i" and (b), (c)
-chain from it with NearField SAME_ROW_RIGHT_OF.
+three cells share one row, so each row's (a) is RIGHT_OF its row label and
+(b), (c) chain from it with NearField SAME_ROW_RIGHT_OF.
 
 Every bound line is value-only, grounded in the producer: Form 8995 is
 emitted only when line 15 or 16 is nonzero, and forms/f8995.compute assigns
-every printed key on each call (the row-i name and TIN from the first source
-with nonzero QBI, which every emitted form has). Row i's three cells carry an
-inventory exemption (the inventory prints bare row ids) and are still placed
-by their explicit anchors. WITNESS_DISCREPANCIES holds only the stylesheet
+every printed key on each call (row i from the first source with nonzero
+QBI, which every emitted form has). Rows ii-v are two-state: they print only
+when the return has that many sources. Every line-1 cell carries an
+inventory exemption (the inventory prints bare row ids) and is still placed
+by its explicit anchor. WITNESS_DISCREPANCIES holds only the stylesheet
 cross-check's raw findings; WITNESS_NOTES documents what suppresses nothing.
 
 2021 is the base year; 2022-2025 are ``derive`` diffs.
 """
 from tenforty.declarations.anchors import (FieldRelation, LabelRelation,
                                            NearField, NearLabel)
-from tenforty.declarations.model import (DeclaredLine, FormDeclaration,
-                                         Repeat, derive)
+from tenforty.declarations.model import DeclaredLine, FormDeclaration, derive
 
 FORM = ("federal", "f8995")
 S = ""  # Form 8995 has no Part headings; both witnesses use section "".
@@ -59,7 +58,7 @@ YEARS = (2021, 2022, 2023, 2024, 2025)
 COL_A = "(a) Trade, business, or aggregation name"
 COL_B = "(b) Taxpayer identification number"
 COL_C = "(c) Qualified business income or (loss)"
-_ROWS_II_V = Repeat("i", values=("ii", "iii", "iv", "v"))
+ROWS = ("i", "ii", "iii", "iv", "v")
 
 
 # Every bound line is value-only (R3 ruling), grounded in the PRODUCER, not
@@ -70,19 +69,20 @@ _ROWS_II_V = Repeat("i", values=("ii", "iii", "iv", "v"))
 # needs nonzero QBI, so every emitted form has that source.
 _EMITTED = ("Form 8995 is emitted only when its line 15 or line 16 is "
             "nonzero (orchestrator _should_emit_8995)")
-_ROW_I_SOURCE = frozenset({"f8995_line_1i_name", "f8995_line_1i_tin"})
-_ROW_I_EXEMPTION = ("the inventory prints bare row ids (1i..1v), not the "
-                    "three cells the paper prints per row; the cell is "
-                    "placed by its explicit anchor")
+_ROW_I_SOURCE = frozenset({"f8995_line_1i_name", "f8995_line_1i_tin",
+                           "f8995_line_1i_qbi"})
+_CELL_EXEMPTION = ("the inventory prints bare row ids (1i..1v), not the "
+                   "three cells the paper prints per row; the cell is "
+                   "placed by its explicit anchor")
 
 
 def _always(line, description, key, kind):
     if key in _ROW_I_SOURCE:
-        produced = (f"forms/f8995.compute assigns {key} from the first "
-                    "Schedule C business with nonzero net profit, else the "
-                    "first K-1 with nonzero QBI; a nonzero line 15 or 16 "
-                    "needs nonzero QBI, so every emitted form has that "
-                    "source")
+        produced = (f"forms/f8995.compute assigns {key} from the first QBI "
+                    "source (the Schedule C business with nonzero net "
+                    "profit, else the first K-1 with nonzero QBI); a nonzero "
+                    "line 15 or 16 needs nonzero QBI, so every emitted form "
+                    "has that source")
     else:
         produced = f"forms/f8995.compute assigns {key} unconditionally"
     zero = "; zero is a value" if kind == "amount" else ""
@@ -105,12 +105,40 @@ def _wrapped(phrase):
     return NearLabel(phrase=phrase, relation=LabelRelation.AFTER_WRAPPED)
 
 
-def _unserved_rows(col, description, kind):
-    return DeclaredLine(
-        line="1{i}(" + col + ")", description=description, key="",
-        kind=kind, section=S, repeat=_ROWS_II_V, single_state="nothing",
-        single_state_reason="unmodeled: business rows ii-v, column (" + col
-        + "); the computation models one source row (row i)")
+_MEF = {"a": "TradeOrBusinessName/BusinessNameLine1Txt", "b": None,
+        "c": "QlfyBusinessIncomeOrLossAmt"}
+_COLUMNS = (("a", COL_A, "name", "text"), ("b", COL_B, "tin", "text"),
+            ("c", COL_C, "qbi", "amount"))
+
+
+def _row(row):
+    """Row ``row``'s three cells. (a) is RIGHT_OF the row label; (b) and (c)
+    chain along the row. (b) holds an SSN (a Schedule C source: the
+    taxpayer's own, never an LLC's EIN) or an EIN (a K-1 source), so kind
+    "text". Row i prints on every emitted form (value-only); rows ii-v only
+    when the return has that many sources (two-state).
+
+    GAP-BLIND PLACEMENT (registered design item): every row label prints
+    once, so (a) places through the single-print RIGHT_OF path, which does
+    not enforce LABEL_GAP_PT. The label-to-cell gaps are 15.4 pt every row
+    2021-2023 and 14.2 / 13.1 / 11.9 / 11.9 / 13.1 pt (rows i-v) 2024-2025:
+    over LABEL_GAP_PT 12 except rows iii and iv from 2024, the check-suite
+    calibration case."""
+    cells = []
+    for col, description, suffix, kind in _COLUMNS:
+        line, key = f"1{row}({col})", f"f8995_line_1{row}_{suffix}"
+        anchor = (NearLabel(row, LabelRelation.RIGHT_OF) if col == "a" else
+                  NearField(f"1{row}({chr(ord(col) - 1)})",
+                            FieldRelation.SAME_ROW_RIGHT_OF))
+        if row == "i":
+            cells.append(_b(line, description, key, _MEF[col], kind=kind,
+                            anchor=anchor, exemption=_CELL_EXEMPTION))
+        else:
+            cells.append(DeclaredLine(
+                line=line, description=description, key=key, kind=kind,
+                section=S, mef_element=_MEF[col], anchor=anchor,
+                inventory_exemption=_CELL_EXEMPTION))
+    return tuple(cells)
 
 
 F8995_2021 = FormDeclaration(
@@ -123,27 +151,8 @@ F8995_2021 = FormDeclaration(
             single_state="nothing",
             single_state_reason="caption: column-caption row for the line-1 "
             "grid; no entry space"),
-        # Row i: three cells share one row. (a) is RIGHT_OF the row label
-        # "i" (both authors measured 14.2-15.6 pt, over LABEL_GAP_PT 12: the
-        # check-suite calibration case); (b) and (c) chain from (a).
-        _b("1i(a)", COL_A, "f8995_line_1i_name",
-           "TradeOrBusinessName/BusinessNameLine1Txt", kind="text",
-           anchor=NearLabel("i", LabelRelation.RIGHT_OF),
-           exemption=_ROW_I_EXEMPTION),
-        # The cell holds an SSN (a Schedule C source: the taxpayer's own SSN,
-        # never an LLC's EIN) or an EIN (a K-1 source), so kind "text": the
-        # "ssn" kind's NNN-NN-NNNN posture would be wrong for an EIN.
-        _b("1i(b)", COL_B, "f8995_line_1i_tin", None, kind="text",
-           anchor=NearField("1i(a)", FieldRelation.SAME_ROW_RIGHT_OF),
-           exemption=_ROW_I_EXEMPTION),
-        # Column (c) carries the aggregate QBI of every source (v1 design;
-        # adjudication ruling 1), printed on row i.
-        _b("1i(c)", COL_C, "f8995_line_1_qbi", "QlfyBusinessIncomeOrLossAmt",
-           anchor=NearField("1i(b)", FieldRelation.SAME_ROW_RIGHT_OF),
-           exemption=_ROW_I_EXEMPTION),
-        _unserved_rows("a", COL_A, "text"),
-        _unserved_rows("b", COL_B, "text"),
-        _unserved_rows("c", COL_C, "amount"),
+        # Line 1: one row per QBI source, rows i-v (see _row).
+        *(cell for row in ROWS for cell in _row(row)),
         _b("2", "Total qualified business income or (loss). Combine lines 1i "
            "through 1v, column (c)", "f8995_line_2_total_qbi",
            "TotQlfyBusinessIncomeOrLossAmt",
@@ -203,6 +212,9 @@ F8995_2021 = FormDeclaration(
             "and PTP (loss) carryforward"),
     ),
     not_printed={
+        "f8995_line_1_qbi": ("intermediate: the sum of the line-1 rows' "
+                             "whole-dollar QBI, line 2's feed; each row's "
+                             "own QBI prints in its column (c)"),
         "taxpayer_name": ("presentation-only: header 'Name(s) shown on "
                           "return', outside the line inventory"),
         "taxpayer_ssn": ("presentation-only: header 'Your taxpayer "
@@ -252,7 +264,7 @@ WITNESS_NOTES = {
     (S, "1i..1v"): (YEARS, "the PDF inventory encodes one id per business "
                     "ROW (1i..1v, empty text); the paper prints three cells "
                     "per row, which the instructions name 'line 1(b)', "
-                    "'line 1(c)'. Declared per cell; row i's cells carry an "
+                    "'line 1(c)'. Declared per cell; every cell carries an "
                     "inventory exemption"),
     (S, "15"): (YEARS, "stylesheet 'Enter the lesser of line 10 or line 14 "
                 "... of your return'; paper 'Enter the smaller of ... (see "

@@ -118,11 +118,13 @@ _MID_QUARTER_ACK_KEY = (
     "acknowledges_no_personal_property_behind_stated_depreciation")
 
 _LISTED_PROPERTY_ACK_KEY = "acknowledges_no_listed_property"
+_SCHEDULE_3_ACK_KEY = "acknowledges_schedule_3_not_produced"
 
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
      _attestations.FORM_3115_KEY,
-     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY}
+     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY, _SCHEDULE_3_ACK_KEY,
+     "positions"}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -139,6 +141,14 @@ def _coerce_date(value) -> datetime.date:
     if isinstance(value, datetime.date):
         return value
     return datetime.date.fromisoformat(value)
+
+
+def _load_positions(data):
+    """The top-level `positions:` block. An empty `positions:` (YAML null)
+    means no elections; every other value goes to the Scenario as written,
+    where anything but a mapping of slug to choice is refused."""
+    raw = data.get("positions", {})
+    return {} if raw is None else raw
 
 
 def _load_stated_bool(value, where: str) -> bool:
@@ -1857,12 +1867,17 @@ def load_scenario(path: Path) -> Scenario:
     if listed_property_ack is not None:
         listed_property_ack = _load_stated_bool(
             listed_property_ack, _LISTED_PROPERTY_ACK_KEY)
+    schedule_3_ack = data.get(_SCHEDULE_3_ACK_KEY)
+    if schedule_3_ack is not None:
+        schedule_3_ack = _load_stated_bool(schedule_3_ack, _SCHEDULE_3_ACK_KEY)
     scenario = Scenario(
         config=config, s_corp_return=s_corp_return, ca540=ca540,
         acknowledges_no_listed_property=listed_property_ack,
+        acknowledges_schedule_3_not_produced=schedule_3_ack,
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         form_3115=form_3115,
         source_documents=source_documents,
+        positions=_load_positions(data),
         acknowledges_no_personal_property_behind_stated_depreciation=(
             mid_quarter_ack),
         **form_data)

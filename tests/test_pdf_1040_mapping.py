@@ -6,6 +6,7 @@ all four years with committed templates, and verifies the mapped cell is a
 real field on each year's template that round-trips a filled value.
 """
 
+import dataclasses
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,7 +18,8 @@ from tenforty.filing.pdf import PdfFiller
 from tenforty.forms import f8995
 from tenforty.forms.f1040_spine import compute_income_preamble, compute_spine
 from tenforty.mappings.pdf_1040 import Pdf1040
-from tenforty.models import K1FanoutData, Scenario, TaxReturnConfig, W2
+from tenforty.models import (K1FanoutData, Scenario, ScheduleK1,
+                             TaxReturnConfig, W2)
 from tenforty.params.federal import load as load_federal_params
 
 YEAR_CELLS = {
@@ -291,8 +293,13 @@ class TestPdf1040Line14DeductionsPlusQbi(unittest.TestCase):
             qualified_dividends_aggregate=0.0,
             passive_activities=(),
         )
+        # The f8995 compute sees the K-1 matching the fanout's QBI (as the
+        # production producers guarantee); the preamble above is unchanged.
         f8995_results = f8995.compute(
-            scenario,
+            dataclasses.replace(scenario, schedule_k1s=[ScheduleK1(
+                entity_name="Example Entity", entity_ein="00-0000000",
+                entity_type="s_corp", material_participation=True,
+                qbi_amount=self.QBI_AMOUNT)]),
             upstream={
                 "k1_fanout": fanout,
                 "f1040": {

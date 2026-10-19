@@ -21,7 +21,7 @@ from tenforty.mappings.pdf_f8995 import PdfF8995
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.mappings.pdf_sch_c import PdfSchC
 from tenforty.models import (
-    K1FanoutData, RentalProperty, ScheduleCBusiness, Scenario,
+    K1FanoutData, RentalProperty, ScheduleCBusiness, ScheduleK1, Scenario,
 )
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, make_simple_scenario
@@ -69,11 +69,23 @@ def _fanout(qbi_aggregate=0.0):
 
 
 def _f8995(sch_c_total, k1_qbi=0.0):
-    return f8995.compute(make_simple_scenario(), {
+    # The scenario carries the source objects matching the upstream totals
+    # (one loss business; a K-1 when k1_qbi is nonzero), as the production
+    # producers guarantee.
+    scenario = make_simple_scenario()
+    scenario.schedule_c_businesses = [_loss_biz()]
+    if k1_qbi:
+        scenario.schedule_k1s = [ScheduleK1(
+            entity_name="Example Entity", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            qbi_amount=k1_qbi)]
+    return f8995.compute(scenario, {
         "k1_fanout": _fanout(k1_qbi),
         "f1040": {"taxable_income_before_qbi_deduction": 80_000.0,
                   "net_capital_gain": 0.0, "qualified_dividends": 0.0},
-        "sch_c": {"sch_c_line_31_net_profit_total": sch_c_total},
+        "sch_c": {"sch_c_line_31_net_profit_total": sch_c_total,
+                  "sch_c_businesses": [
+                      {"sch_c_line_31_net_profit": sch_c_total}]},
         "sch_se": {},
     })
 

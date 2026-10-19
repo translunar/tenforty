@@ -571,6 +571,8 @@ def build_ptc_net_credit(year: int) -> Scenario:
                 federal_tax_withheld=round(wages * 0.12)),
         ],
         form_1095a=Form1095A(months=months),
+        # Net PTC > 0: emitted for review with the Schedule 3 gap.
+        acknowledges_schedule_3_not_produced=True,
     )
 
 
@@ -636,6 +638,8 @@ def build_ptc_2021_ui_flat133(year: int) -> Scenario:
                 federal_tax_withheld=round(wages * 0.10)),
         ],
         form_1095a=Form1095A(months=months, received_unemployment_2021=True),
+        # Net PTC > 0: emitted for review with the Schedule 3 gap.
+        acknowledges_schedule_3_not_produced=True,
     )
 
 
@@ -839,6 +843,8 @@ def build_ptc_reconciliation(year: int, status: FilingStatus) -> Scenario:
         config=config,
         w2s=_status_w2s(year, status, "Synthetic Employer P", wages),
         form_1095a=Form1095A(months=_ptc_net_credit_months()),
+        # Net PTC > 0: emitted for review with the Schedule 3 gap.
+        acknowledges_schedule_3_not_produced=True,
     )
 
 

@@ -324,7 +324,7 @@ class NearFieldSameRowTests(unittest.TestCase):
                    else spec.mapping)
         cls.a = scalars["f8995_line_1i_name"]
         cls.b = scalars["f8995_line_1i_tin"]
-        cls.c = scalars["f8995_line_1_qbi"]
+        cls.c = scalars["f8995_line_1i_qbi"]  # row i's column (c) cell
         cls.template = REPO_ROOT / "pdfs" / "federal" / str(cls.YEAR) / "f8995.pdf"
 
     def _evaluate(self, field, other_line, other_field):

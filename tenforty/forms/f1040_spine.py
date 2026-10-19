@@ -193,8 +193,9 @@ class IncomePreamble:
             (net capital loss limited to $3,000 / $1,500 MFS; equals
             schd_line16 whenever there's a gain or the loss is within the
             cap). This is what actually reaches 1040 line 7 and feeds
-            total_income/line 9. Defaults to schd_line16 when sch_d omits
-            the key (no Sch D block at all).
+            total_income/line 9. Line 21 is loss-only: on a gain or zero
+            it is schd_line16 itself; on a loss it is read strictly from
+            sch_d's line 21 key.
         sch_1_line_10:       Schedule 1 line 10 total additional income.
         sch_1_line_26:       Schedule 1 line 26 total adjustments.
         total_income:        1040 line 9.
@@ -321,10 +322,12 @@ def compute_income_preamble(
     # loss is within the cap); it is what actually reaches 1040 line 7 / line
     # 9 total income. Line 16 itself stays the true uncapped Schedule D total
     # (see schd_line16 usage below and in compute_spine's output keys) — only
-    # this total_income transfer is capped. Defaults to schd_line16 when
-    # absent (e.g. no sch_d block at all) so gain-only / no-Sch-D returns are
-    # numerically unperturbed.
-    schd_line21_allowed = sch_d.get("sch_d_line_21_allowed_loss", schd_line16)
+    # this total_income transfer is capped. Line 21 is loss-only (its key is
+    # absent on a gain or zero), so a gain year takes line 16 EXPLICITLY and a
+    # loss year reads line 21 STRICTLY: a loss with no allowed-loss figure is
+    # a producer defect, never silently replaced by the uncapped line 16.
+    schd_line21_allowed = (sch_d["sch_d_line_21_allowed_loss"]
+                           if schd_line16 < 0 else schd_line16)
     sch_1_line_10 = sch_1.get("sch_1_line_10_total_additional_income", 0)
     sch_1_line_26 = sch_1.get("sch_1_line_26_total_adjustments", 0)
 

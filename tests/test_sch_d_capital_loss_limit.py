@@ -79,7 +79,8 @@ class TestLine21Cap(unittest.TestCase):
         # cap must never touch a gain.
         out = _compute(short=4_000, long=6_000)
         self.assertEqual(out["sch_d_line_16_total"], 10_000)
-        self.assertEqual(out["sch_d_line_21_allowed_loss"], 10_000)
+        # Line 21 is loss-only: absent on a gain (ruled; not zero).
+        self.assertNotIn("sch_d_line_21_allowed_loss", out)
         self.assertEqual(out["sch_d_st_capital_loss_carryforward"], 0)
         self.assertEqual(out["sch_d_lt_capital_loss_carryforward"], 0)
 
@@ -299,7 +300,8 @@ class TestHonestyGuard(unittest.TestCase):
         # Same optionality for a plain gain -- no loss, no worksheet, no
         # required figure.
         out = _compute(short=10_000, long=0)
-        self.assertEqual(out["sch_d_line_21_allowed_loss"], 10_000)
+        # Line 21 is loss-only: absent on a gain (ruled; not zero).
+        self.assertNotIn("sch_d_line_21_allowed_loss", out)
 
     def test_no_raise_when_taxable_income_nonnegative(self):
         out = _compute(
@@ -343,7 +345,8 @@ class TestHonestyGuard(unittest.TestCase):
         out = _compute(
             short=10_000, long=0, taxable_income_unfloored=-999_999.0,
         )
-        self.assertEqual(out["sch_d_line_21_allowed_loss"], 10_000)
+        # Line 21 is loss-only: absent on a gain (ruled; not zero).
+        self.assertNotIn("sch_d_line_21_allowed_loss", out)
         self.assertEqual(out["sch_d_st_capital_loss_carryforward"], 0)
         self.assertEqual(out["sch_d_lt_capital_loss_carryforward"], 0)
 

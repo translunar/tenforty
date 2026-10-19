@@ -1,4 +1,129 @@
 {
+ "emit_battery_f8995/five-sources/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/five-sources/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_e",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8995/two-k1-sources/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_sch_1/every-8z-type/2021": {
   "forms": [
    "federal/1040",

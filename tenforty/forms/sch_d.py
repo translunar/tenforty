@@ -260,7 +260,10 @@ def compute(
         "sch_d_line_15_net_long": line_15,
 
         "sch_d_line_16_total": line_16,
-        "sch_d_line_21_allowed_loss": line_21,
+        # Line 21 is LOSS-ONLY (ruled): "If line 16 is a loss, enter here";
+        # on a gain or zero the line is not used, so the key is ABSENT (not
+        # zero, and not the gain).
+        **({"sch_d_line_21_allowed_loss": line_21} if line_16 < 0 else {}),
         **carryforward_keys,
         "sch_d_unrecap_1250": f8949.get("f8949_total_unrecap_1250", 0),
         "sch_d_28_rate_gain": f8949.get("f8949_total_28_rate_gain", 0),

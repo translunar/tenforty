@@ -1,15 +1,15 @@
 """PDF field mapping for IRS Form 8995 (QBI Deduction Simplified Computation).
 
-Scalars only in v1. Line 1 is a SINGLE-ROW approximation: row i carries the
-aggregate QBI in col (c) and the FIRST QBI source's name / TIN in cols (a) / (b)
-(``f8995_line_1i_name`` / ``f8995_line_1i_tin``); rows ii-v are blank by design
-(per-row tuples are out of scope).
+Scalars only. Line 1 prints one row per QBI source (Juno's per-source-rows
+ruling): row r in i-v maps ``f8995_line_1{r}_name`` / ``_tin`` / ``_qbi`` to
+its (a) / (b) / (c) cells. The aggregate ``f8995_line_1_qbi`` is line 2's feed
+and is not printed.
 
 Field names enumerated from ``pdfs/federal/2025/f8995.pdf``:
 
   f1_01  Name
   f1_02  SSN
-  f1_03..f1_17  Line 1 table (5 rows × 3 cols: name, TIN, QBI) — v1 maps row i only; rows ii-v blank by design
+  f1_03..f1_17  Line 1 table (5 rows × 3 cols: name, TIN, QBI), one row per QBI source
   f1_18  Line 2 — Total qualified business income or (loss). Combine lines 1i through 1v…
   f1_19  Line 3 — Qualified business net (loss) carryforward from the prior year
   f1_20  Line 4 — Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-
@@ -38,14 +38,15 @@ derived from the compute layer's ARITHMETIC — ``line_6 = line_3 + line_5``;
 captions, NOT from the key names. A future reader must NOT re-trust the names;
 the key rename is deferred ticket (cc).
 
-The keys for form lines 1i(a)/(b), 3, 4, 7, 8 are NEW and are named by their TRUE
+The keys for form lines 1{r}(a)/(b)/(c), 3, 4, 7, 8 are NEW and are named by their TRUE
 FORM line numbers (not one tier off); only the four older keys flagged in bold
 above carry a misleading name.
 
   compute key                            | FORM line | printed caption (abbrev)
   ---------------------------------------|-----------|-------------------------
-  f8995_line_1i_name                     |  **1i(a)**| Trade, business, or aggregation name (first QBI source)
-  f8995_line_1i_tin                      |  **1i(b)**| Taxpayer identification number (Sch C: taxpayer SSN)
+  f8995_line_1{r}_name                   |  1{r}(a)  | Trade, business, or aggregation name (row r's source)
+  f8995_line_1{r}_tin                    |  1{r}(b)  | Taxpayer identification number (Sch C: taxpayer SSN)
+  f8995_line_1{r}_qbi                    |  1{r}(c)  | Qualified business income or (loss) (row r's own)
   f8995_line_2_total_qbi                 |     2     | Total qualified business income or (loss)
   f8995_line_3_prior_qbi_loss_carryforward |   3     | Qualified business net (loss) carryforward from the prior year
   f8995_line_4_total_qbi                 |     4     | Total qualified business income. Combine lines 2 and 3 (floored at 0)
@@ -80,6 +81,28 @@ _PARENTHESIZED_KEYS = (
 )
 
 
+_TABLE = "topmostSubform[0].Page1[0].Table[0]."
+_ROWS = ("i", "ii", "iii", "iv", "v")
+
+
+def _rows(groups, cell):
+    """Line 1's five rows: row r's (a)/(b)/(c) cells are fields 3n+3..3n+5
+    of its group (n = 0 for row i)."""
+    return {f"f8995_line_1{row}_{col}":
+            f"{_TABLE}{group}[0].f1_{cell(3 * n + k)}[0]"
+            for n, (row, group) in enumerate(zip(_ROWS, groups))
+            for col, k in (("name", 3), ("tin", 4), ("qbi", 5))}
+
+
+def _rows_2021_2024():
+    return _rows([f"Ln1{letter}_Row{n}" for n, letter in
+                  enumerate("ABCDE", start=1)], str)
+
+
+def _rows_2025():
+    return _rows([f"Row1{row}" for row in _ROWS], lambda i: f"{i:02d}")
+
+
 class PdfF8995(PdfFormMapping[dict]):
     _FORM_NAME = "Form 8995"
 
@@ -100,12 +123,9 @@ class PdfF8995(PdfFormMapping[dict]):
                 # Header — 2024 uses non-zero-padded field names (f1_1, f1_2).
                 "taxpayer_name": "topmostSubform[0].Page1[0].f1_1[0]",
                 "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_2[0]",
-                # Line 1 table row: 2024 uses Ln1A_Row1 subform (vs Row1i in 2025).
-                # Col c (QBI amount) is the 3rd field (f1_5) in the 3-column row.
-                "f8995_line_1_qbi": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_5[0]",
-                # Row i cols a/b: first QBI source's name / TIN (single-row v1).
-                "f8995_line_1i_name": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_3[0]",
-                "f8995_line_1i_tin": "topmostSubform[0].Page1[0].Table[0].Ln1A_Row1[0].f1_4[0]",
+                # Line 1 table: rows i-v are Ln1A_Row1..Ln1E_Row5 (vs Row1i..
+                # Row1v in 2025), cells (a) name / (b) TIN / (c) QBI.
+                **_rows_2021_2024(),
                 # Line 2: total QBI — 2024 uses ReadOrderSubForm[0] (vs Line2_ReadOrder in 2025).
                 "f8995_line_2_total_qbi": "topmostSubform[0].Page1[0].ReadOrderSubForm[0].f1_18[0]",
                 # Keys repointed to their arithmetic-correct FORM lines (names
@@ -134,13 +154,9 @@ class PdfF8995(PdfFormMapping[dict]):
             "scalars": {
                 "taxpayer_name": "topmostSubform[0].Page1[0].f1_01[0]",
                 "taxpayer_ssn": "topmostSubform[0].Page1[0].f1_02[0]",
-                # Line 1 table row (i) col c — first entity QBI total:
-                # v1 maps the summed line-1 total to the first table cell (col c of row i)
-                # as a single-entity approximation; per-row tuples are out of scope.
-                "f8995_line_1_qbi": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_05[0]",
-                # Row i cols a/b: first QBI source's name / TIN (single-row v1).
-                "f8995_line_1i_name": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_03[0]",
-                "f8995_line_1i_tin": "topmostSubform[0].Page1[0].Table[0].Row1i[0].f1_04[0]",
+                # Line 1 table: rows i-v are Row1i..Row1v, cells (a) name /
+                # (b) TIN / (c) QBI (zero-padded f1_03..f1_17).
+                **_rows_2025(),
                 # Line 2: total QBI
                 "f8995_line_2_total_qbi": "topmostSubform[0].Page1[0].Line2_ReadOrder[0].f1_18[0]",
                 # Keys repointed to their arithmetic-correct FORM lines (names
