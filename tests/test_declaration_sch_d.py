@@ -8,9 +8,10 @@ step, so this test reads the module directly, not the registry.
 """
 import unittest
 
-from tenforty.declarations import registry, sch_d
-from tenforty.declarations.model import FormDeclaration
+from tenforty.declarations import propose, registry, sch_d
+from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
+from tenforty.verification import crosscheck as crosscheck_mod
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
 YEARS = (2021, 2022, 2023, 2024, 2025)
@@ -34,6 +35,22 @@ class SchDDeclarationValidatesTests(unittest.TestCase):
                                     siblings=sch_d.DECLARATIONS.values())
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
+
+    def test_the_documented_witness_discrepancies_are_the_raw_findings(self):
+        # The wired in-force pin: every documented entry is a real raw
+        # stylesheet cross-check finding, and every raw finding documented.
+        for year in YEARS:
+            decl = sch_d.DECLARATIONS[year]
+            by_line = {ln.line: ln.line_id for ln in expand(decl, {})}
+            raw = crosscheck_mod.crosscheck(
+                decl, propose.stylesheet_lines("sch_d", year))
+            in_force = crosscheck_mod.discrepancies_in_force(sch_d, year)
+            with self.subTest(year=year):
+                self.assertEqual(set(in_force),
+                                 {by_line[f.line] for f in raw})
+                self.assertEqual(crosscheck_mod.crosscheck(
+                    decl, propose.stylesheet_lines("sch_d", year),
+                    discrepancies=in_force), [])
 
     def test_ships_inert(self):
         self.assertIn(FORM, PENDING_DECLARATIONS)
