@@ -316,9 +316,12 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
             "the S corporation); (2) whether the deduction reduces the "
             "K-1's QBI is contested law: IRS FAQ A39 says it reduces the "
             "shareholder's QBI; the AICPA and the §199A(c)(4) / "
-            "§1.199A-3(b)(1)(vi) reading say it does not. Refused until the "
-            "contested-positions registry lands (lane qbi-sehi-position), "
-            "where the return elects a reading explicitly.")
+            "§1.199A-3(b)(1)(vi) reading say it does not. It is registered "
+            "as the contested position qbi-sehi-shareholder-reduction "
+            "(tenforty.positions); elections for it are registered but not "
+            "yet consulted by this computation, so the return is refused "
+            "whatever is elected until positions phase 2 wires the "
+            "consult.")
     if abs(sum(q for _, _, q in k1_rows) - fanout.qbi_aggregate) > 0.005:
         raise ValueError(
             "Form 8995: the K-1 fanout's qbi_aggregate "

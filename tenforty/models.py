@@ -1674,8 +1674,14 @@ class Scenario:
     # asset model cannot tell a listed asset from any other. Scenario-level,
     # not a config field.
     acknowledges_no_listed_property: bool | None = None
+    # Contested-law elections, {position slug: chosen side}
+    # (tenforty.positions). Each is validated at construction: a known
+    # position, one of its choices, and a position this return reaches.
+    positions: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        from tenforty import positions as _positions
+        _positions.validate_elections(self)
         # CA-withholding channel, schema layer (state-attribution ruling):
         # a California Form 540 return is load-decidable via `ca540 is not
         # None`. Such a return must attribute every withholding W-2 to a

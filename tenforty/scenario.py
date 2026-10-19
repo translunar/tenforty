@@ -122,7 +122,7 @@ _LISTED_PROPERTY_ACK_KEY = "acknowledges_no_listed_property"
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
      _attestations.FORM_3115_KEY,
-     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY}
+     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY, "positions"}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -139,6 +139,14 @@ def _coerce_date(value) -> datetime.date:
     if isinstance(value, datetime.date):
         return value
     return datetime.date.fromisoformat(value)
+
+
+def _load_positions(data):
+    """The top-level `positions:` block. An empty `positions:` (YAML null)
+    means no elections; every other value goes to the Scenario as written,
+    where anything but a mapping of slug to choice is refused."""
+    raw = data.get("positions", {})
+    return {} if raw is None else raw
 
 
 def _load_stated_bool(value, where: str) -> bool:
@@ -1863,6 +1871,7 @@ def load_scenario(path: Path) -> Scenario:
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         form_3115=form_3115,
         source_documents=source_documents,
+        positions=_load_positions(data),
         acknowledges_no_personal_property_behind_stated_depreciation=(
             mid_quarter_ack),
         **form_data)
