@@ -68,37 +68,25 @@
   {
    "page": 1,
    "section": "Part I",
-   "label": "1",
-   "text": "Single Family Residence",
-   "bbox": [
-    36.0,
-    276.86,
-    41.0,
-    287.35
-   ]
-  },
-  {
-   "page": 1,
-   "section": "Part I",
    "label": "3",
-   "text": "Vacation/Short-Term Rental",
+   "text": "Rents received",
    "bbox": [
-    165.6,
-    276.86,
-    170.6,
-    287.35
+    45.4,
+    312.65,
+    50.4,
+    323.38
    ]
   },
   {
    "page": 1,
    "section": "Part I",
    "label": "4",
-   "text": "Commercial",
+   "text": "Royalties received",
    "bbox": [
-    165.6,
-    288.86,
-    170.6,
-    299.35
+    45.4,
+    324.05,
+    50.4,
+    334.78
    ]
   },
   {
@@ -411,18 +399,6 @@
     687.15,
     50.4,
     697.89
-   ]
-  },
-  {
-   "page": 2,
-   "section": "Part I",
-   "label": "13",
-   "text": "2",
-   "bbox": [
-    466.42,
-    34.39,
-    477.54,
-    46.32
    ]
   },
   {

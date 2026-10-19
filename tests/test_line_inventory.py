@@ -914,6 +914,10 @@ class LegendRowTests(unittest.TestCase):
             _word(428, 160, "Beta")])
         self.assertIn("2", lines)
         self.assertIn("3", lines)
+        # The rows' own lines stay too: collisions within one column never
+        # make a row a legend, however many (line 18's row has two).
+        self.assertEqual([lines[n].text for n in ("16", "17", "18")],
+                         ["Tax Form", "Amount Form", "Total Form"])
 
     def test_synthetic_two_column_rows_are_not_a_legend(self):
         # Rows of two distinct labels with no label printed again: the

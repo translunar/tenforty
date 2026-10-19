@@ -7,7 +7,7 @@
  "lines": [
   {
    "page": 1,
-   "section": "Part II",
+   "section": "Part I",
    "label": "1",
    "text": "Your name(s) (see instructions)",
    "bbox": [
@@ -79,14 +79,26 @@
   },
   {
    "page": 1,
-   "section": "Part II",
+   "section": "Part I",
    "label": "2",
-   "text": "Your social security number 3 Spouse’s social security number",
+   "text": "Your social security number",
    "bbox": [
     40.0,
     733.17,
     43.89,
     741.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Spouse’s social security number",
+   "bbox": [
+    169.6,
+    733.57,
+    173.49,
+    741.92
    ]
   },
   {
