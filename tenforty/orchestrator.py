@@ -629,6 +629,11 @@ class _FederalFormSpec:
     form: tuple[str, str]
     key: int
     copy_id: str | None = None
+    # Set when this form must not be rendered: the refusal text, raised
+    # (NotImplementedError) at render. Building the spec stays allowed, so
+    # paths that never print the form (an amendment that does not mail it)
+    # are unaffected.
+    refusal: str | None = None
 
     @property
     def kind(self) -> str:  # "flat" | "repeater"
@@ -649,6 +654,29 @@ class _FederalFormSpec:
     @property
     def field_formats(self) -> dict:
         return self.fill_spec.field_formats
+
+
+def _net_ptc_without_schedule_3(scenario: Scenario,
+                                results: dict) -> str | None:
+    """The Form 1040 refusal for a net premium tax credit (Juno's ruling):
+    line 33 includes it, but it reaches line 33 through Schedule 3 and
+    lines 31/32, which tenforty does not produce. None when there is no net
+    credit or the scenario acknowledges the gap."""
+    net_ptc = results.get("f8962_net_ptc") or 0
+    if net_ptc <= 0 or scenario.acknowledges_schedule_3_not_produced is True:
+        return None
+    return (
+        f"This return has a net premium tax credit of {net_ptc} (Form 8962 "
+        "line 26). Form 1040 line 33 includes it, but the credit reaches "
+        "line 33 through Schedule 3 (line 9) and Form 1040 line 31 (and so "
+        "line 32), and tenforty does not produce Schedule 3: lines 31 and "
+        "32 would print blank, the page will not foot (line 33 would not "
+        "equal lines 25d + 26 + 32 as printed), and the Schedule 3 that "
+        "line 31 references is not attached. Schedule 3 support is queued "
+        "for the end of the harness program. To emit anyway FOR DRAFT OR "
+        "REVIEW USE, with this gap, set the top-level scenario key "
+        "`acknowledges_schedule_3_not_produced: true`; do not file the "
+        "result as printed.")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -2293,6 +2321,7 @@ class ReturnOrchestrator:
             # path, and the single shared implementation of the arithmetic
             # lives in forms/f4868.py. See Pdf1040.get_derivations for why
             # not a spine output key.
+            refusal=_net_ptc_without_schedule_3(scenario, results),
         ))
 
         specs.append(_FederalFormSpec(
@@ -2587,6 +2616,8 @@ class ReturnOrchestrator:
         recorder: EmitRecorder | None = None,
     ) -> Path:
         """Render one prepared spec to ``output_dir/<output_name>``."""
+        if spec.refusal is not None:
+            raise NotImplementedError(spec.refusal)
         return chokepoint_fill(
             spec.form, spec.key, spec.fill_spec, spec.template,
             output_dir / spec.output_name, spec.values,

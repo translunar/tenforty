@@ -1674,6 +1674,11 @@ class Scenario:
     # asset model cannot tell a listed asset from any other. Scenario-level,
     # not a config field.
     acknowledges_no_listed_property: bool | None = None
+    # Stated ONLY to emit a return with a net premium tax credit anyway, for
+    # draft/review use: the credit prints inside Form 1040 line 33 through
+    # Schedule 3 and lines 31/32, which tenforty does not produce, so the
+    # page does not foot. Scenario-level, not a config field.
+    acknowledges_schedule_3_not_produced: bool | None = None
     # Contested-law elections, {position slug: chosen side}
     # (tenforty.positions). Each is validated at construction: a known
     # position, one of its choices, and a position this return reaches.

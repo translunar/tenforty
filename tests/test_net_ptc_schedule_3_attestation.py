@@ -1,0 +1,131 @@
+"""A net premium tax credit prints inside Form 1040 line 33 through
+Schedule 3 lines 9-15 and 1040 lines 31/32, none of which tenforty
+produces: the page cannot foot and the Schedule 3 it references is not
+attached. Emitting such a return refuses unless the scenario states
+`acknowledges_schedule_3_not_produced: true` (draft/review use, with the
+gap). Juno's ruling; Schedule 3 support is queued for the end of the
+program. All identities synthetic."""
+import dataclasses
+import tempfile
+import unittest
+from pathlib import Path
+
+import pypdf
+import yaml
+
+from tenforty.mappings.pdf_1040 import Pdf1040
+from tenforty.models import FilingStatus
+from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.scenario import load_scenario
+from tests.fixtures import spine_battery
+from tests.helpers import REPO_ROOT
+
+YEAR = 2024
+FLAG = "acknowledges_schedule_3_not_produced"
+
+
+def _orch(tmp):
+    return ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                              work_dir=Path(tmp) / "work")
+
+
+def _unattested():
+    return dataclasses.replace(spine_battery.build_ptc_net_credit(YEAR),
+                               **{FLAG: None})
+
+
+class NetPtcRefusalTests(unittest.TestCase):
+
+    def test_emitting_without_the_acknowledgment_refuses(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = _unattested()
+            orch = _orch(tmp)
+            results = orch.compute_federal(scenario)
+            self.assertGreater(results["f8962_net_ptc"], 0)
+            out = Path(tmp) / "out"
+            with self.assertRaises(NotImplementedError) as cm:
+                orch.emit_pdfs(scenario, results, out)
+            msg = str(cm.exception)
+            for needle in ("Schedule 3", "line 31", "line 32", "line 33",
+                           "will not foot", "not attached", "queued",
+                           f"{FLAG}: true", "DRAFT"):
+                self.assertIn(needle, msg)
+            self.assertEqual(sorted(out.glob("*.pdf")), [])
+
+    def test_a_false_acknowledgment_refuses_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = dataclasses.replace(_unattested(), **{FLAG: False})
+            orch = _orch(tmp)
+            with self.assertRaises(NotImplementedError):
+                orch.emit_pdfs(scenario, orch.compute_federal(scenario),
+                               Path(tmp) / "out")
+
+    def test_compute_is_not_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertGreater(
+                _orch(tmp).compute_federal(_unattested())["f8962_net_ptc"], 0)
+
+
+class NetPtcAttestedEmitTests(unittest.TestCase):
+    """The attested emit proceeds and prints the known-unfooted page:
+    line 33 carries the net PTC while lines 31 and 32 print blank, so
+    line 33 is not 25d + 26 + 32 as printed."""
+
+    def test_line_33_does_not_foot_from_the_printed_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = spine_battery.build_ptc_net_credit(YEAR)
+            self.assertIs(getattr(scenario, FLAG), True)
+            orch = _orch(tmp)
+            results = orch.compute_federal(scenario)
+            emitted = orch.emit_pdfs(scenario, results, Path(tmp) / "out")
+            scalars = Pdf1040.get_mapping(YEAR)
+            fields = pypdf.PdfReader(str(emitted["1040"])).get_fields()
+
+            def printed(key):
+                value = fields[scalars[key]].get("/V")
+                return str(value) if value not in (None, "") else ""
+
+            self.assertEqual(printed("schedule3_payments"), "")
+            self.assertEqual(printed("total_other_payments"), "")
+            line_25d = int(printed("federal_withheld") or 0)
+            line_26 = int(printed("estimated_tax_payments") or 0)
+            line_33 = int(printed("total_payments"))
+            net_ptc = results["f8962_net_ptc"]
+            self.assertGreater(net_ptc, 0)
+            self.assertEqual(line_33, line_25d + line_26 + net_ptc)
+            self.assertNotEqual(line_33, line_25d + line_26)
+
+
+class AcknowledgmentPlumbingTests(unittest.TestCase):
+
+    def test_the_net_ptc_battery_builders_state_it(self):
+        # The three builders whose native rows carry a net PTC.
+        for name, scenario in (
+                ("ptc_net_credit", spine_battery.build_ptc_net_credit(YEAR)),
+                ("ptc_reconciliation", spine_battery.build_ptc_reconciliation(
+                    YEAR, FilingStatus.MARRIED_FILING_JOINTLY)),
+                ("ptc_2021_ui_flat133",
+                 spine_battery.build_ptc_2021_ui_flat133(2021))):
+            with self.subTest(builder=name):
+                self.assertIs(getattr(scenario, FLAG), True)
+
+    def _load(self, value):
+        data = yaml.safe_load(
+            (REPO_ROOT / "tests" / "fixtures" / "simple_w2.yaml").read_text())
+        data[FLAG] = value
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "s.yaml"
+            path.write_text(yaml.safe_dump(data))
+            return load_scenario(path)
+
+    def test_the_yaml_key_loads(self):
+        self.assertIs(getattr(self._load(True), FLAG), True)
+
+    def test_a_non_boolean_refuses(self):
+        with self.assertRaisesRegex(ValueError,
+                                    f"{FLAG} must be true or false"):
+            self._load("yes")
+
+
+if __name__ == "__main__":
+    unittest.main()
