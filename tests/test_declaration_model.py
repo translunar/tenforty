@@ -311,6 +311,24 @@ class ValidateTests(unittest.TestCase):
 
 class RegistryTests(unittest.TestCase):
 
+    def test_every_declared_form_has_exactly_one_module(self):
+        # forms.MODULES is the single form -> declaration module source
+        # (the stylesheet cross-check reads witness records through it):
+        # it names exactly the declared forms, and each registered
+        # declaration is that module's own.
+        from tenforty.declarations import forms
+        self.assertEqual(set(forms.MODULES),
+                         {form for form, _ in registry.declared_forms()})
+        for form, key in sorted(registry.declared_forms(), key=str):
+            with self.subTest(form=form, key=key):
+                self.assertIs(registry.for_form(form, key),
+                              forms.MODULES[form].DECLARATIONS[key])
+
+    def test_two_modules_for_one_form_refuse(self):
+        from tenforty.declarations import forms, sch_2
+        with self.assertRaisesRegex(ValueError, "sch_2"):
+            forms.modules_by_form((sch_2, sch_2))
+
     def test_undeclared_form_raises_lookup_error(self):
         with self.assertRaises(LookupError):
             registry.for_form(("federal", "no_such_form"), 2025)
