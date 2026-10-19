@@ -52,7 +52,16 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     sch_c_net = float(sch_c.get("sch_c_line_31_net_profit_total", 0.0))
     half_se = float(sch_se.get("sch_se_line_13_half_deduction", 0.0))
     se_health = float(scenario.config.self_employed_health_insurance_deduction)
-    sch_c_qbi = sch_c_net - half_se - se_health
+    # Ruling D (Juno): the SE-health deduction reduces QBI only through the
+    # Schedule C business it is attributable to (the §162(l) guard ties it
+    # to a single business). With no Schedule C row there is nothing for it
+    # to reduce here: it stays on Schedule 1 and never reaches Form 8995
+    # (D(i)); with K-1 QBI rows it is contested law and refused in
+    # _source_rows (D(ii)).
+    has_sch_c_row = any(
+        result.get("sch_c_line_31_net_profit")
+        for result in sch_c.get("sch_c_businesses", []))
+    sch_c_qbi = sch_c_net - half_se - (se_health if has_sch_c_row else 0.0)
     qbi_total = fanout.qbi_aggregate + sch_c_qbi
     # 1040 line 3a TOTAL (1099-DIV + K-1). Previously this read
     # fanout.qualified_dividends_aggregate, which carries ONLY the K-1
@@ -97,7 +106,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             "return; otherwise this return cannot be produced by v1."
         )
 
-    rows = _source_rows(scenario, sch_c, fanout, sch_c_qbi)
+    rows = _source_rows(scenario, sch_c, fanout, sch_c_qbi, se_health)
     # Line 2 combines lines 1i-1v AS PRINTED: the sum of each row's
     # whole-dollar QBI (ruled: the vendor workbook's own line-2 formula
     # rounds each row, then sums). line_1 is that total, the line-2 feed.
@@ -208,7 +217,8 @@ ROWS = ("i", "ii", "iii", "iv", "v")
 
 
 def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
-                 sch_c_qbi: float) -> list[tuple[str, str, int]]:
+                 sch_c_qbi: float, se_health: float
+                 ) -> list[tuple[str, str, int]]:
     """Form 8995 line 1, one row per QBI source (Juno's ruling): (a) name,
     (b) TIN, (c) that source's OWN qualified business income, whole dollars.
 
@@ -245,6 +255,17 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
             "upstream['sch_c'] disagrees with the scenario's businesses.")
     k1_rows = [(str(k1.entity_name), str(k1.entity_ein), k1.qbi_amount)
                for k1 in scenario.schedule_k1s if k1.qbi_amount]
+    if se_health and k1_rows and not businesses:
+        raise NotImplementedError(
+            "Form 8995: a self-employed health insurance deduction "
+            f"({se_health}) with K-1 qualified business income and no "
+            "Schedule C business. Whether that deduction reduces the K-1 "
+            "QBI is contested law: IRS FAQ A39 says it reduces the "
+            "shareholder's QBI; the AICPA and the §199A(c)(4) / "
+            "§1.199A-3(b)(1)(vi) reading say it does not. tenforty records "
+            "no choice silently: refused until the contested-positions "
+            "registry lands (lane qbi-sehi-position), where the return "
+            "elects a reading explicitly.")
     if abs(sum(q for _, _, q in k1_rows) - fanout.qbi_aggregate) > 0.005:
         raise ValueError(
             "Form 8995: the K-1 fanout's qbi_aggregate "
