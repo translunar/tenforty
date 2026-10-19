@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.2.2 — 2026-10-19
+
+Verification release: Schedule D graduates, and two protections land for
+cases where the law or the model has a known gap. No scenario-schema
+breaks; two new optional scenario keys.
+
+### Verified forms
+
+- **Schedule D is now a verified form** (two independent declarations,
+  machine-compared, adjudicated against the official paper; runtime gate
+  enforced).
+
+### Fixed
+
+- **Schedule D line 21 now prints.** The capped allowed capital loss —
+  which Form 1040 line 7 has always used — never printed on Schedule D
+  itself. It now prints in loss years only (as a magnitude inside the
+  form's preprinted parentheses) and stays blank in gain years, as the
+  form directs.
+
+### New protections
+
+- **Net premium tax credit returns refuse PDF emission** unless the
+  scenario states `acknowledges_schedule_3_not_produced: true`. tenforty
+  has no Schedule 3 yet, so 1040 lines 31/32 cannot print and a page with
+  a net PTC would not foot; the attested emit is for draft/review use and
+  says so. Computing the return is unaffected. Schedule 3 support is
+  queued.
+- **Contested-positions registry (phase 1)** and a new top-level
+  `positions:` scenario key. The first registered position is
+  `qbi-sehi-shareholder-reduction`: whether a >2% S-corp shareholder's
+  self-employed health insurance deduction reduces QBI (the IRS's informal
+  FAQ says yes; the AICPA and the regulation's text argue no; no binding
+  authority resolves it). In this release every election is refused at
+  load ("registered but not yet consulted"): the mechanism that will
+  consult it ships in a later release.
+
+### Behavior change
+
+- **SEHI alongside K-1 QBI now refuses instead of silently reducing.**
+  Earlier releases silently took the IRS FAQ side on the contested
+  question above (reducing the QBI deduction). The shape now refuses with
+  the controversy explained, until elections are wired.
+
+### Development
+
+- The inventory extractor's declarations registry gains a single
+  form→module source (MODULES), unblocking numerically named forms.
+
+
 ## 0.2.1 — 2026-10-19
 
 Verification release: the first graduations from the emit-verification
