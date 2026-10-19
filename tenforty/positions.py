@@ -14,7 +14,7 @@ wording ours), or ``secondhand`` (known only through secondary summaries).
 """
 import dataclasses
 import datetime
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
 SOURCE_KINDS = frozenset({"authority", "commentary"})
@@ -48,6 +48,18 @@ class ContestedPosition:
     # conditions); they decide neither side.
     shared_sources: tuple[Source, ...]
     recorded: datetime.date
+    # Whether a scenario's numbers flow through this position. An election
+    # for a position the return never reaches is refused: it would do
+    # nothing.
+    reached_when: Callable[[object], bool]
+
+
+def _sehi_and_k1_qbi(scenario) -> bool:
+    # Ruled condition (f8995 Q1(b)): a nonzero self-employed health
+    # insurance deduction AND any K-1 carrying QBI, with or without
+    # Schedule C.
+    return bool(scenario.config.self_employed_health_insurance_deduction
+                and any(k1.qbi_amount for k1 in scenario.schedule_k1s))
 
 
 _QBI_SEHI = ContestedPosition(
@@ -183,8 +195,74 @@ _QBI_SEHI = ContestedPosition(
         ),
     ),
     recorded=datetime.date(2026, 10, 18),
+    reached_when=_sehi_and_k1_qbi,
 )
 
 POSITIONS: Mapping[str, ContestedPosition] = MappingProxyType({
     p.slug: p for p in (_QBI_SEHI,)
 })
+
+
+# Every position a computation has consulted in this process (spec §13
+# reachability instrument). Tests reset it before exercising a scenario.
+CONSULTED: set[str] = set()
+
+
+def reset_consulted() -> None:
+    CONSULTED.clear()
+
+
+def validate_elections(scenario) -> None:
+    """Refuse (ValueError) a malformed ``positions`` block, an unknown
+    position, an unknown choice, or an election for a position this return
+    never reaches."""
+    elections = scenario.positions
+    if not isinstance(elections, Mapping) or not all(
+            isinstance(k, str) and isinstance(v, str)
+            for k, v in elections.items()):
+        raise ValueError(
+            "`positions` must map a position slug to the chosen side, e.g. "
+            "positions: {qbi-sehi-shareholder-reduction: no-reduction}; got "
+            f"{elections!r}.")
+    for slug, choice in elections.items():
+        pos = POSITIONS.get(slug)
+        if pos is None:
+            raise ValueError(
+                f"`positions` names {slug!r}, which is not a registered "
+                f"contested position. Registered: {sorted(POSITIONS)}.")
+        valid = [c.slug for c in pos.choices]
+        if choice not in valid:
+            raise ValueError(
+                f"`positions: {slug}` is {choice!r}, which is not one of its "
+                f"choices: {valid}.")
+        if not pos.reached_when(scenario):
+            raise ValueError(
+                f"`positions` elects {slug!r}, but this return never reaches "
+                "that position, so the election would do nothing. Remove it.")
+
+
+def refusal_message(slug: str) -> str:
+    """The standard refusal for a return that reaches ``slug`` without an
+    election: the controversy and both options."""
+    pos = POSITIONS[slug]
+    options = "\n".join(
+        f"  - {c.slug}: {c.position} {c.consequence}" for c in pos.choices)
+    return (
+        f"This return reaches a contested position of law ({slug}): "
+        f"{pos.question} {pos.status}\n"
+        f"tenforty will not choose for you. Elect one side in the scenario:\n"
+        f"{options}\n"
+        f"e.g. positions: {{{slug}: {pos.choices[0].slug}}}")
+
+
+def election(scenario, slug: str) -> str:
+    """The return's election for ``slug``, recording the consult; refuses
+    (NotImplementedError, the standard message) when none is given. An
+    unregistered slug is a programming error (LookupError)."""
+    if slug not in POSITIONS:
+        raise LookupError(f"{slug!r} is not a registered contested position.")
+    CONSULTED.add(slug)
+    choice = scenario.positions.get(slug)
+    if choice is None:
+        raise NotImplementedError(refusal_message(slug))
+    return choice

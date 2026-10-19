@@ -122,7 +122,7 @@ _LISTED_PROPERTY_ACK_KEY = "acknowledges_no_listed_property"
 _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
      _attestations.FORM_3115_KEY,
-     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY}
+     _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY, "positions"}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -1863,6 +1863,7 @@ def load_scenario(path: Path) -> Scenario:
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         form_3115=form_3115,
         source_documents=source_documents,
+        positions=data.get("positions") or {},
         acknowledges_no_personal_property_behind_stated_depreciation=(
             mid_quarter_ack),
         **form_data)
