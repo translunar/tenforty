@@ -7,6 +7,7 @@ The declaration is inert until graduation: registration and the pending
 removal land together, so these tests read the module directly, not the
 registry.
 """
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,9 @@ from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
 from tenforty.verification import anchors as anchor_eval
 from tenforty.verification import crosscheck as crosscheck_mod
+from tenforty.verification import emit_manifest
+from tenforty.verification.batteries import BATTERIES
+from tenforty.verification.coverage import coverage_cells
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -131,6 +135,46 @@ class SchBDeclarationValidatesTests(unittest.TestCase):
         # Graduation (registration + unpending) is a later, separate lane.
         self.assertIn(FORM, PENDING_DECLARATIONS)
         self.assertNotIn(FORM, {f for f, _ in registry.declared_forms()})
+
+
+
+def _sch_b_records():
+    """(row id, RecordedForm) for every Schedule B the registered batteries
+    emit natively (states observed, no expected values)."""
+    manifest = emit_manifest.load_manifest()
+    records = []
+    for battery in BATTERIES:
+        for name, year, build in battery.scenarios():
+            rid = emit_manifest.row_id(battery.name, name, year)
+            row = manifest.get(rid)
+            if not row or row["routing"] != "native" or row["refusal"]:
+                continue
+            if not any(f.startswith("federal/sch_b") for f in row["forms"]):
+                continue
+            out = Path(tempfile.mkdtemp()) / "out"
+            records += [(rid, rec) for rec in emit_manifest.emit(
+                battery, build(), out).record if rec.form == FORM]
+    return records
+
+
+class SchBCoverageTests(unittest.TestCase):
+    """Every declared state is exercised, every year: emit_battery_sch_b's
+    full payer grid observes every row's value state; the single-payer rows
+    observe the rest absent."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.records = _sch_b_records()
+
+    def test_every_year_has_records(self):
+        self.assertEqual(sorted({rec.key for _, rec in self.records}),
+                         list(YEARS))
+
+    def test_no_cell_is_uncovered(self):
+        report = coverage_cells(self.records,
+                                [sch_b.DECLARATIONS[y] for y in YEARS])
+        self.assertEqual(list(report.uncovered), [], "\n".join(
+            map(str, report.uncovered)))
 
 
 if __name__ == "__main__":
