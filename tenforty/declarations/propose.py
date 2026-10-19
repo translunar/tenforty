@@ -40,6 +40,7 @@ from tenforty.declarations.inventory import InventoryLine
 # lines go to ranking.
 KEY_PREFIX: dict[str, str] = {
     "8959": "f8959",
+    "f8962": "f8962",
     "f8995": "f8995",
     "sch_1": "sch_1",
     "sch_2": "sch_2",
