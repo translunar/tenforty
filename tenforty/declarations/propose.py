@@ -39,6 +39,7 @@ from tenforty.declarations.inventory import InventoryLine
 # list (names only). A form with no entry has no naming pass: all of its
 # lines go to ranking.
 KEY_PREFIX: dict[str, str] = {
+    "8959": "f8959",
     "f8995": "f8995",
     "sch_1": "sch_1",
     "sch_2": "sch_2",
