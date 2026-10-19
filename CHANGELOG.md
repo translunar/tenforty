@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.2.1 — 2026-10-19
+
+Verification release: the first graduations from the emit-verification
+harness. No scenario-schema changes.
+
+### Verified forms
+
+- **Schedule 1 and Schedule 2 are now verified forms.** Every printed line
+  is declared against the official IRS form (two independent declarations,
+  machine-compared, adjudicated against the paper), and a runtime gate now
+  refuses an emit whose printed output would not match the declaration —
+  a wrong or missing line refuses loudly instead of filing quietly.
+
+### Fixed
+
+- **Schedule 1 line 8z (other income) now foots.** A nonzero 8z previously
+  printed a total with no supporting detail. Now each 1099-G-type income
+  prints its own row; with one type the description is written in, and
+  with two or more a statement page is attached and referenced
+  ("See statement"), so line 9 always equals what the page shows.
+- **Amendment packets refuse rather than emit a partial Schedule 1.**
+  A 1040-X whose changed Schedule 1 would need a statement attachment
+  refuses with an explanation instead of emitting a packet missing it.
+
+### Development
+
+- The fast test tier runs under pytest-xdist (`-n 4`): ~6 minutes instead
+  of ~20. Oracle-tier runs remain strictly serial (single LibreOffice
+  slot); README and runbooks carry the warning.
+
+
 ## 0.2.0 — 2026-10-17
 
 Input-schema release: the native filing-statuses round and the FTB 3532
