@@ -852,11 +852,16 @@ def _extract_synthetic_lines(words):
 
 class LegendRowTests(unittest.TestCase):
     """An enumeration printed in rows ("Type of Property: 1 Single Family
-    Residence 3 Vacation/Short-Term Rental ... / 2 Multi-Family ... 4
-    Commercial ...") is not lines: a row of two or more distinct numbered
-    entries, any of which is printed again in the same section on another
-    row, is a legend, and none of its entries is a line (extractor species
-    2, legend-capture). Its entries used to hold the real lines' keys."""
+    Residence 3 Vacation/Short-Term Rental 5 Land ... / 2 Multi-Family ...
+    4 Commercial 6 Royalties ...") is not lines (extractor species 2,
+    legend-capture; its entries used to hold the real lines' keys). A row
+    of two or more distinct numbered entries is a legend when at least TWO
+    of them collide with a same-label entry of the same section, on another
+    row, in a DIFFERENT label column. A real row carries at most one such
+    collision (a stray repeat), or collides only within its own column (a
+    stacked checkbox enumeration): the first rule, any collision at all,
+    dropped real lines on Schedule C, Forms 1120-S and 100S and the 2025
+    Form 1040 (team-lead ruling, extractor-species-2 STOP)."""
 
     def test_synthetic_legend_rows_yield_to_the_real_lines(self):
         lines = _extract_synthetic([
@@ -864,14 +869,51 @@ class LegendRowTests(unittest.TestCase):
             _word(40, 120, "1b"), _word(56, 120, "Type"),
             _word(44, 140, "1"), _word(54, 140, "Single"),
             _word(200, 140, "3"), _word(210, 140, "Vacation"),
+            _word(300, 140, "5"), _word(310, 140, "Land"),
             _word(44, 152, "2"), _word(54, 152, "Multi"),
             _word(200, 152, "4"), _word(210, 152, "Commercial"),
+            _word(300, 152, "6"), _word(310, 152, "Royalties"),
             _word(40, 180, "3"), _word(52, 180, "Rents"),
             _word(40, 200, "4"), _word(52, 200, "Royalties"),
-            _word(40, 220, "5"), _word(52, 220, "Advertising")])
-        self.assertEqual(sorted(lines), ["1a", "1b", "3", "4", "5"])
+            _word(40, 220, "5"), _word(52, 220, "Advertising"),
+            _word(40, 240, "6"), _word(52, 240, "Auto")])
+        self.assertEqual(sorted(lines), ["1a", "1b", "3", "4", "5", "6"])
         self.assertEqual(lines["3"].text, "Rents")
-        self.assertEqual(lines["4"].text, "Royalties")
+        self.assertEqual(lines["6"].text, "Auto")
+
+    def test_synthetic_single_stray_collision_keeps_its_row(self):
+        # Schedule C's shape: a stray "13" box on line 24's row repeats the
+        # left column's 13 -- one collision, so line 24 stays a line.
+        lines = _extract_synthetic([
+            _word(40, 100, "13"), _word(56, 100, "Depreciation"),
+            _word(40, 120, "14"), _word(56, 120, "Employee"),
+            _word(180, 140, "13"), _word(300, 140, "24"),
+            _word(316, 140, "Travel"),
+            _word(180, 160, "14"), _word(300, 160, "25"),
+            _word(316, 160, "Utilities")])
+        self.assertEqual(lines["24"].text, "Travel")
+        self.assertEqual(lines["25"].text, "Utilities")
+
+    def test_synthetic_same_column_stacked_enumeration_is_not_a_legend(self):
+        # Form 1040 (2025) line 16's "1 8814 2 4972 3 ___" digits stack in
+        # one x column on several rows: they collide only within their own
+        # column, so the rule leaves them as they were (their stray lines are
+        # ruled unfiltered; see the 1040 2025 pin below).
+        # The real shape: a row holding only "2" above two rows of "2 ... 3".
+        lines = _extract_synthetic([
+            _word(40, 100, "16"), _word(56, 100, "Tax"),
+            _word(300, 100, "Form", 20), _word(353, 100, "2"),
+            _word(363, 100, "Alpha"),
+            _word(40, 130, "17"), _word(56, 130, "Amount"),
+            _word(300, 130, "Form", 20), _word(353, 130, "2"),
+            _word(363, 130, "Alpha"), _word(418, 130, "3"),
+            _word(428, 130, "Beta"),
+            _word(40, 160, "18"), _word(56, 160, "Total"),
+            _word(300, 160, "Form", 20), _word(353, 160, "2"),
+            _word(363, 160, "Alpha"), _word(418, 160, "3"),
+            _word(428, 160, "Beta")])
+        self.assertIn("2", lines)
+        self.assertIn("3", lines)
 
     def test_synthetic_two_column_rows_are_not_a_legend(self):
         # Rows of two distinct labels with no label printed again: the
@@ -899,6 +941,45 @@ class LegendRowTests(unittest.TestCase):
                  "7": "Cleaning and maintenance", "8": "Commissions"}
     _PART_I = (["A", "B", "1a", "1b"] + [str(n) for n in range(2, 23)]
                + ["23a", "23b", "23c", "23d", "23e", "24", "25", "26"])
+
+    def test_regression_sch_c_line_24_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("sch_c", year).lines
+                     if l.page == 1 and l.section == "Part II"}
+            with self.subTest(year=year):
+                self.assertEqual(lines["24"].text, "Travel and meals:")
+                self.assertEqual(lines["24a"].text, "Travel")
+                self.assertTrue(lines["24b"].text.startswith(
+                    "Deductible meals"), lines["24b"].text)
+                self.assertNotIn("23a", lines)
+
+    def test_regression_f1120s_lines_12a_and_15a_every_year(self):
+        for year in _YEARS:
+            page3 = {l.label: l for l in load("f1120s", year).lines
+                     if l.page == 3}
+            with self.subTest(year=year):
+                self.assertIn("charitable contributions",
+                              page3["12a"].text.lower())
+                self.assertTrue(page3["15a"].text.startswith(
+                    "Post-1986 depreciation adjustment"), page3["15a"].text)
+                self.assertNotIn("11b", page3)
+
+    def test_regression_f100s_schedule_f_line_19_every_year(self):
+        for year in _YEARS:
+            keys = {(l.page, l.section, l.label)
+                    for l in load("f100s", year).lines}
+            with self.subTest(year=year):
+                self.assertIn((4, "Schedule F", "19"), keys)
+
+    def test_regression_1040_2025_checkbox_digit_stays(self):
+        # Ruled UNFILTERED (inventory-extractor lane adjudication,
+        # 2026-10-17: the 1040 2025 stray "2"/"3" checkbox-digit labels
+        # stay; the proposer's Jaccard cross-check cannot false-confirm on
+        # their texts, and filtering would overfit). The legend rule must
+        # leave it in place.
+        (digit,) = [l for l in load("1040", 2025).lines
+                    if l.page == 1 and l.section == "" and l.label == "3"]
+        self.assertEqual(digit.text, "")
 
     def test_sch_e_part_i_is_its_printed_lines_every_year(self):
         for year in _YEARS:
