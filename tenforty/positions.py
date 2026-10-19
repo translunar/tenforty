@@ -220,6 +220,8 @@ _QBI_SEHI = ContestedPosition(
     may_reach=_sehi_and_possible_k1_qbi,
 )
 
+# Consumers must read positions.POSITIONS via the module: a from-import
+# freezes the mapping as imported, so a patched registry (tests) is unseen.
 POSITIONS: Mapping[str, ContestedPosition] = MappingProxyType({
     p.slug: p for p in (_QBI_SEHI,)
 })

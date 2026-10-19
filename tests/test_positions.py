@@ -1,5 +1,6 @@
 """The contested-law positions registry (spec §13): every entry is
 well-formed, and the first entry carries its citation trail as ledgered."""
+import ast
 import dataclasses
 import datetime
 import re
@@ -407,23 +408,93 @@ class WiredGateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not yet consulted"):
             _reaching(**{QBI_SEHI: "irs-faq"})
 
+    def test_an_unknown_choice_is_named_before_the_wiring(self):
+        with self.assertRaisesRegex(ValueError, "not one of its choices"):
+            _reaching(**{QBI_SEHI: "maybe"})
 
-_ELECTION_CALL = re.compile(r"election\(\s*\w+\s*,\s*[\"']([a-z0-9-]+)[\"']")
+    def test_an_unwired_unreachable_election_names_the_wiring_first(self):
+        with self.assertRaisesRegex(ValueError, "not yet consulted"):
+            _wages_only(**{QBI_SEHI: "irs-faq"})
+
+
+def _election_slugs(root: Path) -> set[str]:
+    """Every position slug an ``election(...)`` call under ``root`` names
+    (a bare ``election`` or any ``x.election``). The slug argument must be
+    a string literal or a module-level string constant of that file; any
+    other form fails loudly rather than being skipped."""
+    referenced, unresolved = set(), []
+    for path in sorted(root.rglob("*.py")):
+        tree = ast.parse(path.read_text(), filename=str(path))
+        constants = {
+            target.id: node.value.value
+            for node in tree.body if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            for target in node.targets if isinstance(target, ast.Name)}
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if not ((isinstance(func, ast.Name) and func.id == "election")
+                    or (isinstance(func, ast.Attribute)
+                        and func.attr == "election")):
+                continue
+            slug = (node.args[1] if len(node.args) >= 2 else next(
+                (k.value for k in node.keywords if k.arg == "slug"), None))
+            if isinstance(slug, ast.Constant) and isinstance(slug.value, str):
+                referenced.add(slug.value)
+            elif isinstance(slug, ast.Name) and slug.id in constants:
+                referenced.add(constants[slug.id])
+            else:
+                unresolved.append(f"{path}:{node.lineno}")
+    if unresolved:
+        raise AssertionError(
+            "election() calls whose slug is neither a string literal nor a "
+            f"module-level string constant: {unresolved}")
+    return referenced
+
+
+class ElectionScanTests(unittest.TestCase):
+    """The scan the position-taking path pins rely on."""
+
+    def _scan(self, source):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "m.py").write_text(source)
+            return _election_slugs(Path(d))
+
+    def test_literals_constants_and_attribute_calls_resolve(self):
+        self.assertEqual(self._scan(
+            'SLUG = "b-slug"\n'
+            'def f(s):\n'
+            '    positions.election(s, "a-slug")\n'
+            '    election(s, SLUG)\n'
+            '    positions.election(s, slug="c-slug")\n'),
+            {"a-slug", "b-slug", "c-slug"})
+
+    def test_an_unresolvable_slug_fails_loudly(self):
+        with self.assertRaisesRegex(AssertionError, "neither a string"):
+            self._scan("def f(s, x):\n    positions.election(s, x())\n")
 
 
 class PositionTakingPathTests(unittest.TestCase):
     """Spec §13: every position-taking code path references a registered
-    entry, and every entry has one. KNOWN GAP (positions phase 2): no path
-    calls positions.election() yet; phase 2 wires the Form 8995 consult and
-    this test then passes (an unexpected success fails the run)."""
+    entry, and an entry is wired exactly when a path consults it."""
 
-    @unittest.expectedFailure
-    def test_election_calls_name_exactly_the_registered_positions(self):
-        root = Path(positions.__file__).resolve().parent
-        referenced = {m.group(1) for path in root.rglob("*.py")
-                      for m in _ELECTION_CALL.finditer(path.read_text())}
-        self.assertEqual(referenced, set(positions.POSITIONS))
+    def setUp(self):
+        self.referenced = _election_slugs(
+            Path(positions.__file__).resolve().parent)
 
+    def test_no_path_consults_a_position_yet(self):
+        # KNOWN GAP (positions phase 2): nothing calls election() yet.
+        # Phase 2 wires the Form 8995 consult; flip this deliberately.
+        self.assertEqual(self.referenced, set(),
+                         "KNOWN GAP flipped: a path now calls election()")
+
+    def test_an_entry_is_wired_exactly_when_a_path_consults_it(self):
+        wired = {slug for slug, pos in positions.POSITIONS.items()
+                 if pos.wired}
+        self.assertEqual(wired, self.referenced)
+        self.assertLessEqual(self.referenced, set(positions.POSITIONS))
 
 if __name__ == "__main__":
     unittest.main()
