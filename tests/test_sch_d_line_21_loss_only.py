@@ -24,6 +24,11 @@ class LineTwentyOneConsumerTests(unittest.TestCase):
         preamble = _preamble({"sch_d_line_16_total": 2_500})
         self.assertEqual(preamble.schd_line21_allowed, 2_500)
 
+    def test_a_zero_year_takes_line_16_with_no_line_21_key(self):
+        # The ordinary W-2-only return: line 16 is zero, not a loss.
+        preamble = _preamble({"sch_d_line_16_total": 0})
+        self.assertEqual(preamble.schd_line21_allowed, 0)
+
     def test_a_loss_year_reads_line_21(self):
         preamble = _preamble({"sch_d_line_16_total": -8_000,
                               "sch_d_line_21_allowed_loss": -3_000})
