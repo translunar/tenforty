@@ -457,3 +457,184 @@ def presentation_keys(
     return {k: v for k, v in out.items() if v != ""}
 
 
+
+
+# --- printed lines (ruling A1: every printed value is a compute key) --------
+#
+# Form 540 lines that are arithmetic over other lines, computed here from the
+# merged CA values (this module's compute + presentation keys + Schedule CA),
+# so the PDF mapping only translates keys to cells. One function serves every
+# year: the booklet text for these lines is identical 2021-2025, except that
+# the 2021 form's total tax is line 65 (it inserts a line 64, Excess APAS
+# repayment), so 2021 carries `f540_line_65_total_tax` in place of line 64.
+#
+# Unmodeled lines enter as explicit 0 TERMS, each named for the line it
+# stands for. No key exists for them: absent because unmodeled stays absent;
+# a future feature for one of them adds its value to these sums.
+#
+# Lines 111, 114, 115 and 116 print blank in some cases; their keys are then
+# ABSENT (blank = not computed for this return), never 0.
+
+REFUND_DEPOSIT_KEYS = (
+    "f540_refund_routing_number", "f540_refund_account_number",
+    "f540_refund_account_type")
+
+LINE_15 = "f540_line_15_agi_after_subtractions"
+# Line 31 method: True = Tax Table box, False = Tax Rate Schedule box.
+LINE_31_TAX_TABLE = "f540_line_31_tax_table"
+LINE_33 = "f540_line_33_tax_less_exemption_credits"
+LINE_35 = "f540_line_35_tax_before_credits"
+# Form 540 line 47 AS PRINTED: lines 40 through 46 (line 40 child and
+# dependent care, lines 43-45 credit entries, line 46 renter's credit) plus
+# the PTET credit applied there. NOT f540_total_credits, which also holds the
+# line 32 exemption credits and feeds this module's total liability: while
+# lines 40 and 43-45 are unmodeled, line 47 == f540_total_credits -
+# f540_exemption_credit (pinned by tests/test_compute_keys_f540.py).
+LINE_47 = "f540_line_47_credits_lines_40_through_46"
+LINE_48 = "f540_line_48_tax_after_credits"
+LINE_64 = "f540_line_64_total_tax"
+LINE_65_2021 = "f540_line_65_total_tax"
+LINE_78 = "f540_line_78_total_payments"
+LINE_93 = "f540_line_93_payments_balance"
+LINE_94 = "f540_line_94_use_tax_balance"
+LINE_95 = "f540_line_95_payments_after_isr_penalty"
+LINE_96 = "f540_line_96_isr_penalty_balance"
+LINE_97 = "f540_line_97_overpaid_tax"
+LINE_99 = "f540_line_99_overpaid_tax_available"
+LINE_100 = "f540_line_100_tax_due"
+LINE_111 = "f540_line_111_amount_you_owe"
+LINE_114 = "f540_line_114_total_amount_due"
+LINE_115 = "f540_line_115_refund"
+LINE_116 = "f540_line_116_direct_deposit_amount"
+NO_USE_TAX = "f540_line_91_no_use_tax"
+# Third-party designee "No": a modeled-SCOPE constant. tenforty models no
+# designee (config `third_party_designee: true` is refused at load), so the
+# answer is always No. A designee feature must change this key, not the
+# mapping.
+DESIGNEE_NO = "f540_designee_no"
+
+
+# The total tax prints on line 65 in 2021 (line 64 there is Excess APAS
+# repayment) and on line 64 from 2022.
+_TOTAL_TAX_KEY = {2021: LINE_65_2021, 2022: LINE_64, 2023: LINE_64,
+                  2024: LINE_64, 2025: LINE_64}
+
+
+def total_tax_key(year: int) -> str:
+    """The total-tax key for the year's own printed line."""
+    return _TOTAL_TAX_KEY[year]
+
+
+def printed_line_keys(year: int, values: Mapping[str, object]) -> dict:
+    """The printed Form 540 lines computed from the merged CA values."""
+    v = values
+    # Line 15 = line 13 - line 14 (federal AGI less Schedule CA subtractions).
+    line_15 = v["f540_federal_agi"] - v["sch_ca_total_subtractions"]
+    # Line 33 = max(0, line 31 - line 32).
+    line_33 = max(0, v["f540_ca_tax"] - v["f540_exemption_credit"])
+    line_34 = 0          # Schedule G-1 / FTB 5870A tax: unmodeled
+    line_35 = line_33 + line_34
+    line_47 = (
+        v["f540_renter_credit"]          # line 46
+        + v.get("f540_ptet_credit", 0)   # PTET credit
+        + 0                              # line 40 child/dependent care: unmodeled
+        + 0                              # line 43 credit: unmodeled
+        + 0                              # line 44 credit: unmodeled
+        + 0                              # line 45 other credits: unmodeled
+    )
+    line_48 = max(0, line_35 - line_47)
+    total_tax = (
+        line_48
+        + 0                              # line 61 AMT: unmodeled
+        + 0                              # line 62 behavioral health tax: unmodeled
+        + 0                              # line 63 other taxes: unmodeled
+        + 0                              # 2021 only, line 64 Excess APAS: unmodeled
+    )
+    line_78 = (
+        v.get("f540_line71_ca_withholding", 0)   # line 71
+        + v["f540_estimated_payments"]           # line 72
+        + 0                              # line 73 592-B/593 withholding: unmodeled
+        + 0                              # line 74: unmodeled
+        + 0                              # line 75 CalEITC: unmodeled
+        + 0                              # line 76 YCTC: unmodeled
+        + 0                              # line 77: unmodeled
+    )
+    use_tax = v["f540_use_tax"]                  # line 91
+    line_92 = 0                          # ISR penalty: unmodeled
+    line_93 = max(0, line_78 - use_tax)
+    line_94 = max(0, use_tax - line_78)
+    line_95 = max(0, line_93 - line_92)
+    line_96 = max(0, line_92 - line_93)
+    line_97 = max(0, line_95 - total_tax)
+    line_98 = 0                          # applied to next year's estimate: unmodeled
+    line_99 = line_97 - line_98
+    line_100 = max(0, total_tax - line_95)
+    line_110 = v["f540_voluntary_contributions"]
+    line_112 = v.get("f540_interest_and_penalties") or 0
+    line_113 = v["f540_estimated_tax_penalty"]
+    # Line 111: "If you do not have an amount on line 99, add line 94, line
+    # 96, line 100, and line 110 ... If you have an amount on line 99 and the
+    # amount on line 110 is more than line 99, subtract line 99 from line
+    # 110." Line 113 is not part of line 111.
+    if line_99 > 0:
+        line_111 = line_110 - line_99 if line_110 > line_99 else None
+    else:
+        owed = line_94 + line_96 + line_100 + line_110
+        line_111 = owed if owed > 0 else None
+    # Line 114: an amount on line 111 -> add lines 111, 112 and 113;
+    # otherwise the part of lines 110 + 112 + 113 that line 99 does not cover.
+    if line_111 is not None:
+        line_114 = line_111 + line_112 + line_113
+    else:
+        excess = line_110 + line_112 + line_113 - line_99
+        line_114 = excess if excess > 0 else None
+    # Line 115: the refund, blank when an amount is due or nothing is overpaid.
+    if line_114 is not None or line_99 <= 0:
+        line_115 = None
+    else:
+        line_115 = line_99 - (line_110 + line_112 + line_113)
+    # Line 116: the refund to deposit, when the scenario states direct
+    # deposit and line 115 is a positive amount.
+    depositing = all(v.get(k) is not None for k in REFUND_DEPOSIT_KEYS)
+    line_116 = (line_115 if depositing and line_115 is not None
+                and line_115 > 0 else None)
+    out = {
+        LINE_15: line_15,
+        # Line 31: the Tax Table for taxable income (line 19) at or below the
+        # year's ceiling (inclusive), the Tax Rate Schedules above it.
+        LINE_31_TAX_TABLE: v["f540_taxable_income"]
+        <= ca_params.load(year).tax_table_taxable_income_ceiling,
+        LINE_33: line_33,
+        LINE_35: line_35,
+        LINE_47: line_47,
+        LINE_48: line_48,
+        total_tax_key(year): total_tax,
+        LINE_78: line_78,
+        LINE_93: line_93,
+        LINE_94: line_94,
+        LINE_95: line_95,
+        LINE_96: line_96,
+        LINE_97: line_97,
+        LINE_99: line_99,
+        LINE_100: line_100,
+        NO_USE_TAX: use_tax == 0,
+        DESIGNEE_NO: True,
+    }
+    for key, value in ((LINE_111, line_111), (LINE_114, line_114),
+                       (LINE_115, line_115), (LINE_116, line_116)):
+        if value is not None:
+            out[key] = value
+    return out
+
+
+def interest_and_penalties_must_be_stated(values: Mapping[str, object]) -> bool:
+    """Whether line 112 may NOT be left unstated on this return.
+
+    A pure refund return (nothing on lines 110, 112 or 113, no amount on line
+    111) takes the line 115 "No" branch and never reads line 112. Any other
+    return carries line 112 into line 114 or line 115, so an unstated value
+    there would silently count as zero. Reads the computed line 111.
+    """
+    return (values.get(LINE_111) is not None
+            or values["f540_voluntary_contributions"] != 0
+            or values["f540_estimated_tax_penalty"] != 0)

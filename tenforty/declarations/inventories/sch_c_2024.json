@@ -1,0 +1,861 @@
+{
+ "form": "sch_c",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f1040sc.pdf",
+ "source_sha256": "f56bfd48f3604fc015b7ea22a70c6c36535a723ba84a2b9a961bc9838d070ce6",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "A",
+   "text": "Principal business or profession,",
+   "bbox": [
+    36.0,
+    108.51,
+    41.48,
+    118.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "B",
+   "text": "Enter code from instructions",
+   "bbox": [
+    450.4,
+    108.91,
+    456.03,
+    118.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "C",
+   "text": "Business name. If no separate business",
+   "bbox": [
+    36.0,
+    132.51,
+    41.93,
+    142.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "D",
+   "text": "Employer ID number (EIN) (see instr.)",
+   "bbox": [
+    450.4,
+    133.51,
+    456.33,
+    143.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "E",
+   "text": "Business address (including suite",
+   "bbox": [
+    36.0,
+    157.91,
+    41.18,
+    167.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "F",
+   "text": "Accounting method: (1)",
+   "bbox": [
+    36.0,
+    181.91,
+    40.74,
+    191.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "G",
+   "text": "Did you “materially participate”",
+   "bbox": [
+    36.0,
+    193.91,
+    42.07,
+    203.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "H",
+   "text": "If you started or acquired this business",
+   "bbox": [
+    36.0,
+    205.91,
+    41.93,
+    215.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "I",
+   "text": "Did you make any payments in",
+   "bbox": [
+    36.0,
+    217.91,
+    38.36,
+    227.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "J",
+   "text": "If “Yes,” did you or will you file",
+   "bbox": [
+    36.0,
+    229.91,
+    40.45,
+    239.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Gross receipts or sales. See instructions",
+   "bbox": [
+    45.95,
+    255.91,
+    50.4,
+    265.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Returns and allowances",
+   "bbox": [
+    45.95,
+    277.91,
+    50.4,
+    287.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Subtract line 2 from line 1",
+   "bbox": [
+    45.95,
+    289.91,
+    50.4,
+    299.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Cost of goods sold (from line 42)",
+   "bbox": [
+    45.95,
+    301.91,
+    50.4,
+    311.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Gross profit. Subtract line 4 from",
+   "bbox": [
+    45.95,
+    313.91,
+    50.4,
+    323.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Other income, including federal",
+   "bbox": [
+    45.95,
+    325.91,
+    50.4,
+    335.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Gross income. Add lines 5 and",
+   "bbox": [
+    45.95,
+    337.91,
+    50.4,
+    347.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Advertising",
+   "bbox": [
+    45.95,
+    361.91,
+    50.4,
+    371.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "18",
+   "text": "Office expense (see instructions)",
+   "bbox": [
+    300.7,
+    361.91,
+    309.6,
+    371.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "19",
+   "text": "Pension and profit-sharing plans",
+   "bbox": [
+    300.7,
+    373.91,
+    309.6,
+    383.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Car and truck expenses",
+   "bbox": [
+    45.95,
+    375.91,
+    50.4,
+    385.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "20",
+   "text": "Rent or lease (see instructions):",
+   "bbox": [
+    300.7,
+    385.91,
+    309.6,
+    395.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Commissions and fees",
+   "bbox": [
+    41.5,
+    397.91,
+    50.4,
+    407.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "20a",
+   "text": "Vehicles, machinery, and equipment",
+   "bbox": [
+    309.6,
+    397.91,
+    314.19,
+    407.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Contract labor (see instructions)",
+   "bbox": [
+    41.5,
+    409.91,
+    50.4,
+    419.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "20b",
+   "text": "Other business property",
+   "bbox": [
+    309.6,
+    409.91,
+    314.49,
+    419.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Depletion",
+   "bbox": [
+    41.5,
+    421.91,
+    50.4,
+    431.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "21",
+   "text": "Repairs and maintenance",
+   "bbox": [
+    300.7,
+    421.91,
+    309.6,
+    431.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "Depreciation and section 179",
+   "bbox": [
+    41.5,
+    431.51,
+    50.4,
+    441.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "22",
+   "text": "Supplies (not included in Part III)",
+   "bbox": [
+    300.7,
+    433.91,
+    309.6,
+    443.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "23",
+   "text": "Taxes and licenses",
+   "bbox": [
+    300.7,
+    445.91,
+    309.6,
+    455.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "24",
+   "text": "Travel and meals:",
+   "bbox": [
+    300.7,
+    457.91,
+    309.6,
+    467.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "24a",
+   "text": "Travel",
+   "bbox": [
+    309.6,
+    469.91,
+    314.19,
+    479.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "Employee benefit programs",
+   "bbox": [
+    41.5,
+    471.91,
+    50.4,
+    481.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "24b",
+   "text": "Deductible meals (see instructions)",
+   "bbox": [
+    309.6,
+    481.91,
+    314.49,
+    491.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "Insurance (other than health)",
+   "bbox": [
+    41.5,
+    493.91,
+    50.4,
+    503.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "25",
+   "text": "Utilities",
+   "bbox": [
+    300.7,
+    493.91,
+    309.6,
+    503.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16",
+   "text": "Interest (see instructions):",
+   "bbox": [
+    41.5,
+    505.91,
+    50.4,
+    515.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "26",
+   "text": "Wages (less employment credits)",
+   "bbox": [
+    300.7,
+    505.91,
+    309.6,
+    515.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16a",
+   "text": "Mortgage (paid to banks, etc.)",
+   "bbox": [
+    50.4,
+    517.91,
+    54.99,
+    527.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "27a",
+   "text": "Other expenses (from line 48)",
+   "bbox": [
+    300.7,
+    517.91,
+    309.6,
+    527.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "16b",
+   "text": "Other",
+   "bbox": [
+    50.4,
+    529.91,
+    55.29,
+    539.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "27b",
+   "text": "Energy efficient commercial bldgs",
+   "bbox": [
+    309.6,
+    531.91,
+    314.49,
+    541.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "17",
+   "text": "Legal and professional services",
+   "bbox": [
+    41.5,
+    541.91,
+    50.4,
+    551.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "28",
+   "text": "Total expenses before expenses",
+   "bbox": [
+    41.5,
+    553.91,
+    50.4,
+    563.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "29",
+   "text": "Tentative profit or (loss). Subtract",
+   "bbox": [
+    41.5,
+    565.91,
+    50.4,
+    575.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "30",
+   "text": "Expenses for business use of",
+   "bbox": [
+    41.5,
+    579.91,
+    50.4,
+    589.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "31",
+   "text": "Net profit or (loss). Subtract line",
+   "bbox": [
+    41.5,
+    637.91,
+    50.4,
+    647.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "32",
+   "text": "If you have a loss, check the box",
+   "bbox": [
+    41.5,
+    685.91,
+    50.4,
+    695.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "32a",
+   "text": "All investment is at risk.",
+   "bbox": [
+    457.66,
+    709.91,
+    471.14,
+    719.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "32b",
+   "text": "Some investment is not",
+   "bbox": [
+    457.51,
+    721.91,
+    471.29,
+    731.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "33",
+   "text": "Method(s) used to",
+   "bbox": [
+    41.5,
+    75.91,
+    50.4,
+    85.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "34",
+   "text": "Was there any change in determining quantities, costs, or valuations between opening and closing inventory?",
+   "bbox": [
+    41.5,
+    99.91,
+    50.4,
+    109.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "35",
+   "text": "Inventory at beginning of year. If different from last year’s closing inventory, attach explanation",
+   "bbox": [
+    41.5,
+    133.91,
+    50.4,
+    143.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "36",
+   "text": "Purchases less cost of items withdrawn for personal use",
+   "bbox": [
+    41.5,
+    157.91,
+    50.4,
+    167.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "37",
+   "text": "Cost of labor. Do not include any amounts paid to yourself",
+   "bbox": [
+    41.5,
+    181.91,
+    50.4,
+    191.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "38",
+   "text": "Materials and supplies",
+   "bbox": [
+    41.5,
+    205.91,
+    50.4,
+    215.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "39",
+   "text": "Other costs",
+   "bbox": [
+    41.5,
+    229.91,
+    50.4,
+    239.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "40",
+   "text": "Add lines 35 through 39",
+   "bbox": [
+    41.5,
+    253.91,
+    50.4,
+    263.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "41",
+   "text": "Inventory at end of year",
+   "bbox": [
+    41.5,
+    277.91,
+    50.4,
+    287.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "42",
+   "text": "Cost of goods sold. Subtract line 41 from line 40. Enter the result here and on line 4",
+   "bbox": [
+    41.5,
+    301.91,
+    50.4,
+    311.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "43",
+   "text": "When did you place your vehicle in service for business purposes? (month/day/year) / /",
+   "bbox": [
+    41.5,
+    361.91,
+    50.4,
+    371.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44",
+   "text": "Of the total number of miles you drove your vehicle during 2024, enter the number of miles you used your vehicle",
+   "bbox": [
+    41.5,
+    385.91,
+    50.4,
+    395.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44a",
+   "text": "Business",
+   "bbox": [
+    50.4,
+    409.91,
+    54.99,
+    419.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44b",
+   "text": "Commuting (see instructions)",
+   "bbox": [
+    208.8,
+    410.01,
+    213.69,
+    419.55
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "44c",
+   "text": "Other",
+   "bbox": [
+    432.0,
+    410.01,
+    436.59,
+    419.55
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "45",
+   "text": "Was your vehicle available for personal use during off-duty hours?",
+   "bbox": [
+    41.5,
+    433.91,
+    50.4,
+    443.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "46",
+   "text": "Do you (or your spouse) have another vehicle available for personal use?.",
+   "bbox": [
+    41.5,
+    457.91,
+    50.4,
+    467.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "47a",
+   "text": "Do you have evidence to support your deduction?",
+   "bbox": [
+    41.5,
+    481.91,
+    54.99,
+    491.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "47b",
+   "text": "If “Yes,” is the evidence written?",
+   "bbox": [
+    50.4,
+    505.91,
+    55.29,
+    515.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "48",
+   "text": "Total other expenses. Enter here and on line 27a",
+   "bbox": [
+    41.5,
+    745.91,
+    50.4,
+    755.46
+   ]
+  }
+ ]
+}

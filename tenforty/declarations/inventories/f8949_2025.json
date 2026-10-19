@@ -1,0 +1,57 @@
+{
+ "form": "f8949",
+ "key": 2025,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2025/f8949.pdf",
+ "source_sha256": "274513891e4e281d11e14286f14b9df724c24b6030fca0f0681da64fb2e7f525",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "",
+   "bbox": [
+    44.4,
+    330.65,
+    49.4,
+    341.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Totals. Add the amounts in columns (d), (e), (g), and (h)",
+   "bbox": [
+    43.4,
+    664.45,
+    48.4,
+    675.19
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "1",
+   "text": "",
+   "bbox": [
+    44.4,
+    294.65,
+    49.4,
+    305.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "2",
+   "text": "Totals. Add the amounts in columns (d), (e), (g), and (h)",
+   "bbox": [
+    43.4,
+    628.45,
+    48.4,
+    639.19
+   ]
+  }
+ ]
+}

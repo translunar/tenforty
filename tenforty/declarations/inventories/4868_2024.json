@@ -1,0 +1,105 @@
+{
+ "form": "4868",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f4868.pdf",
+ "source_sha256": "8d1a031a5543b70e0f017ed7bfd17f6ea91ab4f36ef2276bcdd09965e4160d4a",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "1",
+   "text": "Your name(s) (see instructions)",
+   "bbox": [
+    40.0,
+    649.57,
+    43.89,
+    657.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "4",
+   "text": "Estimate of total tax liability for 2024 $",
+   "bbox": [
+    312.35,
+    649.91,
+    316.8,
+    659.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "Total 2024 payments",
+   "bbox": [
+    312.36,
+    661.91,
+    316.8,
+    671.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Balance due. Subtract line 5 from line 4.",
+   "bbox": [
+    312.35,
+    674.91,
+    316.8,
+    684.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "7",
+   "text": "Amount you’re paying (see instructions)",
+   "bbox": [
+    312.35,
+    697.41,
+    316.8,
+    706.95
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8",
+   "text": "Check here if you’re “out of the country” and a U.S. citizen",
+   "bbox": [
+    312.35,
+    708.51,
+    316.8,
+    718.06
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Check here if you file Form 1040-NR and didn’t receive",
+   "bbox": [
+    312.35,
+    728.01,
+    316.8,
+    737.56
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Your social security number 3 Spouse’s social security number",
+   "bbox": [
+    40.0,
+    733.57,
+    43.89,
+    741.92
+   ]
+  }
+ ]
+}

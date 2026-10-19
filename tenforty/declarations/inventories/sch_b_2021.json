@@ -1,0 +1,117 @@
+{
+ "form": "sch_b",
+ "key": 2021,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2021/f1040sb.pdf",
+ "source_sha256": "dfd8665b8ad261a8ccda10dbaaaf65f2fef425ea9b61a9f5fb80bd9524f276b3",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "List name of payer. If any interest is from a seller-financed mortgage and the",
+   "bbox": [
+    110.2,
+    111.05,
+    115.2,
+    121.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Add the amounts on line 1",
+   "bbox": [
+    110.2,
+    312.65,
+    115.2,
+    323.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Excludable interest on series EE and I U.S. savings bonds issued after 1989.",
+   "bbox": [
+    110.2,
+    325.85,
+    115.2,
+    336.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Subtract line 3 from line 2. Enter the result here and on Form 1040 or 1040-SR,",
+   "bbox": [
+    110.2,
+    349.25,
+    115.2,
+    359.99
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "5",
+   "text": "List name of payer",
+   "bbox": [
+    110.2,
+    384.65,
+    115.2,
+    395.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "6",
+   "text": "Add the amounts on line 5. Enter the total here and on Form 1040 or 1040-SR,",
+   "bbox": [
+    110.2,
+    577.85,
+    115.2,
+    588.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "7a",
+   "text": "At any time during 2021, did you have a financial interest in or signature authority over",
+   "bbox": [
+    110.2,
+    639.05,
+    115.2,
+    649.79
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "7b",
+   "text": "If you are required to file FinCEN Form 114, enter the name of the foreign country",
+   "bbox": [
+    115.2,
+    709.85,
+    120.7,
+    720.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "8",
+   "text": "During 2021, did you receive a distribution from, or were you the grantor of, or transferor",
+   "bbox": [
+    110.2,
+    733.35,
+    115.2,
+    744.09
+   ]
+  }
+ ]
+}

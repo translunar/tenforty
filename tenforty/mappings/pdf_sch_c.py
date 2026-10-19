@@ -23,18 +23,24 @@ are equal by construction), and Part V line 48 prints the other-expenses
 total that the "Other expenses (from line 48)" line carries forward -- a
 filled form prints every line its own arithmetic requires.
 
-FIXED CHECKBOXES (get_derivations). Two boxes are always checked because they
-are invariants of what tenforty models, not per-return facts:
-  - Line F, accounting method = Cash. Accrual accounting is unmodeled.
-  - Line G, material participation = Yes. Passive sole proprietorships are
-    unmodeled.
+FIXED CHECKBOXES (get_checkbox_states). Two boxes are always checked because
+they are invariants of what tenforty models, not per-return facts; the
+computation emits each as a bool compute key (ruling A3), mapped to its box
+like any other key, and get_checkbox_states names the box's on-state:
+  - Line F, accounting method = Cash (sch_c_line_f_cash_method). Accrual
+    accounting is unmodeled.
+  - Line G, material participation = Yes (sch_c_line_g_material_participation).
+    Passive sole proprietorships are unmodeled.
 The compute layer's refusals (cost of goods sold, home office,
 vehicle, depletion, returns and allowances, statutory employee, and a net
 loss without the at-risk attestation) fence everything else.
 
 LINE 32 (at-risk). Box 32a (c1_7[0], on-state /1) is checked for a business
-whose line 31 is a loss; a profit business leaves both boxes blank. Box 32b
-(c1_7[1], on-state /2) is never written. Same field and states 2021-2025.
+whose line 31 is a loss (the bool key is emitted only then); a profit
+business leaves both boxes blank. Box 32b (c1_7[1], on-state /2) is never
+written. Same fields and states 2021-2025. (These three bools were
+translation derivations until the sch_c declaration lane: a derivation-
+printed key has no field the harness's placement and runtime gate can find.)
 
 LEFT BLANK for hand-completion: business name (C), EIN (D), address (E), the
 "started this year" box (H), the Form 1099 questions (I, J), the unmodeled
@@ -89,6 +95,10 @@ _FIELDS_2022_2023: dict[str, str] = {
         "topmostSubform[0].Page2[0].PartVTable[0].Item1[0].f2_16[0]",
     "sch_c_line_48_total_other_expenses":
         "topmostSubform[0].Page2[0].f2_33[0]",
+    # Bool keys, translated to their boxes' on-states (_CHECKBOX_STATES).
+    "sch_c_line_f_cash_method": f"{_P1}.c1_1[0]",                 # F (1) Cash
+    "sch_c_line_g_material_participation": f"{_P1}.c1_2[0]",      # G Yes
+    "sch_c_line_32a_all_investment_at_risk": f"{_P1}.c1_7[0]",    # 32a
 }
 
 # 2021: field inventory differs from 2022 in exactly one mapped path -- the
@@ -116,17 +126,19 @@ _FIELDS_2025: dict[str, str] = inherit_pdf_fields(
     overrides={"sch_c_expense_other_expenses": f"{_L18}.f1_39[0]"},
 )
 
-# PDF path -> constant on-state. Same paths and states in all five years.
-_DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
-    f"{_P1}.c1_1[0]": lambda _values: "/1",    # line F: (1) Cash
-    f"{_P1}.c1_2[0]": lambda _values: "/Yes",  # line G: Yes
-    # Line 32a "All investment is at risk": marked only for a business with a
-    # net loss (the compute emits the key for those alone). The companion
-    # box 32b is c1_7[1] (on-state /2) and is never written -- Form 6198 is
-    # unmodeled, and a loss without the 32a attestation refuses in compute.
-    f"{_P1}.c1_7[0]": lambda values: (
-        "/1" if values.get("sch_c_line_32a_all_investment_at_risk") else None),
+# Bool compute key -> its box's on-state; same in all five years. Line 32a
+# "All investment is at risk" is marked only for a business with a net loss
+# (the compute emits the key for those alone). The companion box 32b is
+# c1_7[1] (on-state /2) and is never written -- Form 6198 is unmodeled, and
+# a loss without the 32a attestation refuses in compute.
+_CHECKBOX_STATES: dict[str, str] = {
+    "sch_c_line_f_cash_method": "/1",
+    "sch_c_line_g_material_participation": "/Yes",
+    "sch_c_line_32a_all_investment_at_risk": "/1",
 }
+
+# Schedule C has no derived cells: every printed value is a compute key.
+_DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {}
 
 
 class PdfSchC(PdfFormMapping[dict]):
@@ -139,6 +151,13 @@ class PdfSchC(PdfFormMapping[dict]):
         2024: _FIELDS_2024,
         2025: _FIELDS_2025,
     }
+
+    @classmethod
+    def get_checkbox_states(cls, year: int) -> dict[str, str]:
+        if year not in cls._MAPPINGS:
+            raise ValueError(
+                f"No {cls._FORM_NAME} checkbox states for year {year}")
+        return _CHECKBOX_STATES
 
     @classmethod
     def get_derivations(

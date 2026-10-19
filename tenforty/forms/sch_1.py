@@ -22,6 +22,45 @@ from tenforty.models import Scenario
 from tenforty.rounding import irs_round
 
 
+# Line 8z "Other income. List type and amount": the Form 1099-G boxes that
+# reach it, in box order, each labelled with its box caption verbatim (Form
+# 1099-G 2021; Rev. 1-2022; Rev. 3-2024; Rev. 12-2026: identical captions).
+_LINE_8Z_TYPES = (
+    ("rtaa_payments", "RTAA payments"),            # box 5
+    ("taxable_grants", "Taxable grants"),          # box 6
+    ("agriculture_payments", "Agriculture payments"),  # box 7
+    ("market_gain", "Market gain"),                # box 9
+)
+SEE_STATEMENT = "See statement"
+
+
+def line_8z(scenario: Scenario) -> dict:
+    """Line 8z and line 9 keys (Juno's 8z ruling; team-lead R1-R3, R7).
+
+    A component is a TYPE: one box summed across every Form 1099-G. Each
+    type is rounded on its own and 8z is the sum of the rounded types, so a
+    statement listing them foots to the printed line. One nonzero type
+    writes its caption into the 8z write-in; two or more write "See
+    statement", and the rows are the attached statement (rendered by the
+    emitter only when there are two or more). Line 9 ("Add lines 8a through
+    8z") equals 8z: 8z is the only modeled 8a-8z line. With no nonzero type
+    every key is ABSENT: the write-in and subtotal stay blank (R2)."""
+    rows = tuple(
+        (label, amount) for field, label in _LINE_8Z_TYPES
+        if (amount := irs_round(sum(getattr(g, field)
+                                    for g in scenario.form1099_g))))
+    if not rows:
+        return {}
+    total = sum(amount for _, amount in rows)
+    return {
+        "sch_1_line_8z_other_income": total,
+        "sch_1_line_8z_description": (rows[0][0] if len(rows) == 1
+                                      else SEE_STATEMENT),
+        "sch_1_line_8z_statement_rows": rows,
+        "sch_1_line_9_total_other_income": total,
+    }
+
+
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     """Compute Schedule 1 from scenario and upstream form results.
 
@@ -124,12 +163,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     unemployment_line_7 = irs_round(
         sum(g.unemployment_compensation for g in scenario.form1099_g),
     )
-    other_income_line_8_sum = irs_round(
-        sum(
-            g.rtaa_payments + g.taxable_grants + g.agriculture_payments + g.market_gain
-            for g in scenario.form1099_g
-        ),
-    )
+    other_income = line_8z(scenario)
+    other_income_line_8_sum = other_income.get("sch_1_line_8z_other_income", 0)
 
     total_additional_income_line_10 = (
         taxable_refunds_line_1
@@ -189,7 +224,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         "sch_1_line_5_rental_re_royalty": rental_re_royalty_line_5,
         "sch_1_line_6_farm_income": farm_income_line_6,
         "sch_1_line_7_unemployment": unemployment_line_7,
-        "sch_1_line_8z_other_income": other_income_line_8_sum,
+        **other_income,
         "sch_1_line_10_total_additional_income": total_additional_income_line_10,
         "sch_1_line_11_educator": educator_expenses_line_11,
         "sch_1_line_13_hsa": hsa_deduction_line_13,

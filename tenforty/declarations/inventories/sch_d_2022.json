@@ -1,0 +1,297 @@
+{
+ "form": "sch_d",
+ "key": 2022,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2022/f1040sd.pdf",
+ "source_sha256": "7aa00b008894e30b38d0486e9ffdb1436e25f1f8503c8c6a13a7e85b34d1de5e",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Totals for all short-term transactions reported on Form",
+   "bbox": [
+    41.72,
+    219.95,
+    51.88,
+    230.69
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    41.55,
+    276.85,
+    52.05,
+    287.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    44.3,
+    300.85,
+    49.3,
+    311.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    44.3,
+    324.86,
+    49.3,
+    335.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Short-term gain from Form 6252 and short-term gain or (loss) from Forms 4684, 6781, and 8824",
+   "bbox": [
+    44.3,
+    348.65,
+    49.3,
+    359.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Net short-term gain or (loss) from partnerships, S corporations, estates, and trusts from",
+   "bbox": [
+    44.3,
+    361.85,
+    49.3,
+    372.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Short-term capital loss carryover. Enter the amount, if any, from line 8 of your Capital Loss Carryover",
+   "bbox": [
+    44.3,
+    385.85,
+    49.3,
+    396.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Net short-term capital gain or (loss). Combine lines 1a through 6 in column (h). If you have any long-",
+   "bbox": [
+    44.3,
+    408.85,
+    49.3,
+    419.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8a",
+   "text": "Totals for all long-term transactions reported on Form",
+   "bbox": [
+    41.72,
+    507.95,
+    51.88,
+    518.69
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "8b",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    41.55,
+    564.85,
+    52.05,
+    575.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "9",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    44.3,
+    588.85,
+    49.3,
+    599.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "10",
+   "text": "Totals for all transactions reported on Form(s) 8949 with",
+   "bbox": [
+    41.8,
+    612.86,
+    51.8,
+    623.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "11",
+   "text": "Gain from Form 4797, Part I; long-term gain from Forms 2439 and 6252; and long-term gain or (loss)",
+   "bbox": [
+    40.39,
+    637.85,
+    50.4,
+    648.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "12",
+   "text": "Net long-term gain or (loss) from partnerships, S corporations, estates, and trusts from Schedule(s) K-1",
+   "bbox": [
+    40.39,
+    660.65,
+    50.4,
+    671.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "13",
+   "text": "Capital gain distributions. See the instructions",
+   "bbox": [
+    40.39,
+    672.65,
+    50.4,
+    683.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "14",
+   "text": "Long-term capital loss carryover. Enter the amount, if any, from line 13 of your Capital Loss Carryover",
+   "bbox": [
+    40.39,
+    685.85,
+    50.4,
+    696.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "15",
+   "text": "Net long-term capital gain or (loss). Combine lines 8a through 14 in column (h). Then, go to Part III",
+   "bbox": [
+    40.39,
+    709.85,
+    50.4,
+    720.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "16",
+   "text": "Combine lines 7 and 15 and enter the result",
+   "bbox": [
+    40.39,
+    84.65,
+    50.4,
+    95.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "17",
+   "text": "Are lines 15 and 16 both gains?",
+   "bbox": [
+    40.39,
+    192.65,
+    50.4,
+    203.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "18",
+   "text": "If you are required to complete the 28% Rate Gain Worksheet (see instructions), enter the",
+   "bbox": [
+    40.39,
+    241.85,
+    50.4,
+    252.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "19",
+   "text": "If you are required to complete the Unrecaptured Section 1250 Gain Worksheet (see",
+   "bbox": [
+    40.39,
+    277.85,
+    50.4,
+    288.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "20",
+   "text": "Are lines 18 and 19 both zero or blank and you are not filing Form 4952?",
+   "bbox": [
+    40.39,
+    312.65,
+    50.4,
+    323.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "21",
+   "text": "If line 16 is a loss, enter here and on Form 1040, 1040-SR, or 1040-NR, line 7, the smaller of:",
+   "bbox": [
+    40.43,
+    396.65,
+    50.44,
+    407.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "22",
+   "text": "Do you have qualified dividends on Form 1040, 1040-SR, or 1040-NR, line 3a?",
+   "bbox": [
+    40.39,
+    480.65,
+    50.4,
+    491.39
+   ]
+  }
+ ]
+}

@@ -1,0 +1,200 @@
+{
+ "desc_classes": [
+  "styIRS8582LNDesc"
+ ],
+ "form": "f8582",
+ "label_classes": [
+  "styIRS8582LNLeftNumBox"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "$TargetNode/NetLossAmt"
+   ],
+   "label": "1a",
+   "page_section": "",
+   "text": "."
+  },
+  {
+   "elements": [
+    "$TargetNode/NetIncomeAmt"
+   ],
+   "label": "b",
+   "page_section": "",
+   "text": "Net income from form or schedule"
+  },
+  {
+   "elements": [
+    "$TargetNode/NetIncomeLossAmt",
+    "$TargetNode/LossesPct",
+    "$TargetNode/PriorYearUnallowedLossesAmt",
+    "$TargetNode/F8582WrkshtLossesAmt",
+    "$Form8582Data"
+   ],
+   "label": "c",
+   "page_section": "",
+   "text": "Subtract line 1b from line 1a. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "RentalRealtyIncomeAmt"
+   ],
+   "label": "1a",
+   "page_section": "Part I",
+   "text": "Activities with net income (enter the amount from Worksheet 1, column (a))"
+  },
+  {
+   "elements": [
+    "RentalRealtyLossAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Activities with net loss (enter the amount from Worksheet 1, column (b))"
+  },
+  {
+   "elements": [
+    "PYUnallowedRentalLossAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Prior years unallowed losses (enter the amount from Worksheet 1, column (c))"
+  },
+  {
+   "elements": [
+    "NetRentalRealtyAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Combine lines 1a, 1b, and 1c"
+  },
+  {
+   "elements": [
+    "OtherActivityIncomeAmt"
+   ],
+   "label": "2a",
+   "page_section": "Part I",
+   "text": "Activities with net income (enter the amount from Worksheet 2, column (a))"
+  },
+  {
+   "elements": [
+    "OtherActivityLossAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Activities with net loss (enter the amount from Worksheet 2, column (b))"
+  },
+  {
+   "elements": [
+    "PriorYearUnallowedOtherLossAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Prior years unallowed losses (enter the amount from Worksheet 2, column (c))"
+  },
+  {
+   "elements": [
+    "NetOtherActivityAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Combine lines 2a, 2b, and 2c"
+  },
+  {
+   "elements": [
+    "TotalPassiveActivityAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Combine lines 1d and 2d. If this line is zero or more, stop here and include this form with your return; all losses are allowed, including any prior year unallowed losses entered on line 1c or 2c. Report the losses on the forms and schedules normally used"
+  },
+  {
+   "elements": [
+    "RentalRealtyLossLimitAmt"
+   ],
+   "label": "4",
+   "page_section": "Part II",
+   "text": "Enter the smaller of the loss on line 1d or the loss on line 3"
+  },
+  {
+   "elements": [
+    "MaximumAllowedIncomeAmt"
+   ],
+   "label": "5",
+   "page_section": "Part II",
+   "text": "Enter $150,000. If married filing separately, see instructions"
+  },
+  {
+   "elements": [
+    "ModifiedAGIAmt"
+   ],
+   "label": "6",
+   "page_section": "Part II",
+   "text": "Enter modified adjusted gross income, but not less than zero (see instructions)"
+  },
+  {
+   "elements": [
+    "ModifiedAGIDifferenceAmt"
+   ],
+   "label": "7",
+   "page_section": "Part II",
+   "text": "Subtract line 6 from line 5"
+  },
+  {
+   "elements": [
+    "PercentNetSpecialAllowanceAmt"
+   ],
+   "label": "8",
+   "page_section": "Part II",
+   "text": "Multiply line 7 by 50% (0.5). Do not enter more than $25,000. If married filing separately, see instructions"
+  },
+  {
+   "elements": [
+    "AllowedRentalRealtyLossAmt"
+   ],
+   "label": "9",
+   "page_section": "Part II",
+   "text": "Enter the smaller of line 4 or line 8"
+  },
+  {
+   "elements": [
+    "TotalIncomeAmt"
+   ],
+   "label": "10",
+   "page_section": "Part III",
+   "text": "Add the income, if any, on lines 1a and 2a and enter the total"
+  },
+  {
+   "elements": [
+    "TotalLossesAllowedAmt",
+    "ParentWrkshtRentalActGrp/WrkshtRentalActGrp",
+    "ParentWrkshtRentalActGrp/TotalCurrentYearNetIncomeAmt",
+    "ParentWrkshtRentalActGrp/TotalCurrentYearNetLossAmt",
+    "ParentWrkshtRentalActGrp/TotalPriorYrRentalUnallowedAmt",
+    "ParentWrkshtPassiveGrp/WrkshtPassiveGrp",
+    "ParentWrkshtPassiveGrp/TotalOtherCurrentYearIncomeAmt",
+    "ParentWrkshtPassiveGrp/TotalOtherCurrentYearLossAmt",
+    "ParentWrkshtPassiveGrp/TotalOtherPYUnallowedAmt",
+    "ParentWrkshtAllowanceGrp/WrkshtAllowanceGrp",
+    "ParentWrkshtAllowanceGrp/TotalLossAmt",
+    "ParentWrkshtAllowanceGrp/TotalSpecialAllowanceAmt",
+    "ParentWrkshtAllowanceGrp/TotalNetSpecialAllowanceAmt",
+    "ParentWrkshtLossGrp/WrkshtLossGrp",
+    "ParentWrkshtLossGrp/TotalAllocationLossAmt",
+    "ParentWrkshtLossGrp/TotalLossAmt",
+    "ParentWrkshtListActivityGrp/WrkshtListActivityGrp",
+    "ParentWrkshtListActivityGrp/TotalLossAmt",
+    "ParentWrkshtListActivityGrp/TotalUnallowedLossAmt",
+    "ParentWrkshtListActivityGrp/TotalAllowedLossAmt",
+    ".",
+    "$Form8582Data"
+   ],
+   "label": "11",
+   "page_section": "Part III",
+   "text": "Total losses allowed from all passive activities for 2022. Add lines 9 and 10. See instructions to find out how to report the losses on your tax return"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2023r1.zip",
+ "package_sha256": "eaebddc1b1b04b945b1748b15136408ee5dfecc8de612888260aedfd28b106f7",
+ "xsl": "PY2023R10/mef/Stylesheets/2022/IRS8582.xsl",
+ "year": 2022
+}

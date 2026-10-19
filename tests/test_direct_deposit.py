@@ -49,6 +49,7 @@ from pypdf import PdfReader
 from tenforty.attestations import (
     enforce_named_refusal, enforce_scoped_refusals,
 )
+from tenforty.forms import f540 as form_f540
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_f540 import PdfF540
 from tenforty.orchestrator import ReturnOrchestrator
@@ -526,8 +527,15 @@ class Mapping540Tests(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertGreater(line_115(results), 0)
                 self.assertEqual(amount(results), line_115(results))
-                bare = {k: v for k, v in results.items()
-                        if not k.startswith("f540_refund_")}
+                # The same return without the deposit fields: its printed
+                # line keys recomputed from the stripped inputs, as the CA
+                # assembly point would compute them.
+                printed = form_f540.printed_line_keys(year, results)
+                stripped = {k: v for k, v in results.items()
+                            if not k.startswith("f540_refund_")
+                            and k not in printed}
+                bare = {**stripped,
+                        **form_f540.printed_line_keys(year, stripped)}
                 self.assertIsNone(amount(bare))
 
 

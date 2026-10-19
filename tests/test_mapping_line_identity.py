@@ -26,6 +26,7 @@ from pypdf import PdfReader, PdfWriter
 
 from tenforty.mappings.catalog import CATALOG
 from tests.fixtures.golden_field_lines import GOLDEN_FIELD_LINES
+from tenforty.verification.anchors import row_line_tokens
 from tests.helpers import REPO_ROOT
 
 _PDFS = REPO_ROOT / "pdfs"
@@ -83,42 +84,10 @@ class GoldenLineIdentityProbeTests(unittest.TestCase):
     stated IRS line. Skips LOUDLY (per year/form) when pdftotext is absent so
     the coverage hole is never silent."""
 
-    @staticmethod
-    def _row_line_tokens(template: Path) -> dict[str, set[str]]:
-        """leaf field name -> set of IRS-line tokens on that field's text row.
-
-        Fills every text field with its own leaf name, renders, and for each
-        rendered row collects the field markers and the line-number-shaped
-        tokens (e.g. '16', '35a', '8z') sharing that row. Robust to total-line
-        rows whose prose references other line numbers: the row still contains
-        its own line label, so membership (not position) is the assertion."""
-        import re
-        reader = PdfReader(template)
-        fields = reader.get_fields() or {}
-        vals = {
-            n: _leaf(n) for n, f in fields.items() if f.get("/FT") == "/Tx"
-        }
-        writer = PdfWriter(clone_from=reader)
-        for page in writer.pages:
-            writer.update_page_form_field_values(
-                page, vals, auto_regenerate=False
-            )
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp:
-            writer.write(tmp.name)
-            txt = subprocess.run(
-                ["pdftotext", "-layout", tmp.name, "-"],
-                capture_output=True, text=True,
-            ).stdout
-        line_tok = re.compile(r"^\(?(\d{1,2}[a-z]?)$")
-        mark = re.compile(r"\b(f[12]_\d{1,2})\b")
-        out: dict[str, set[str]] = {}
-        for row in txt.splitlines():
-            toks = row.split()
-            labels = {m.group(1) for t in toks for m in [line_tok.match(t)] if m}
-            marks = {m.group(1) for t in toks for m in [mark.search(t)] if m}
-            for leaf in marks:
-                out.setdefault(leaf, set()).update(labels)
-        return out
+    # The marker probe lives in tenforty.verification.anchors (lifted
+    # verbatim by the check-suite lane, which evaluates RowLabel anchors
+    # with it); this test uses the same function.
+    _row_line_tokens = staticmethod(row_line_tokens)
 
     def test_golden_leaves_print_on_stated_lines(self):
         if shutil.which("pdftotext") is None:

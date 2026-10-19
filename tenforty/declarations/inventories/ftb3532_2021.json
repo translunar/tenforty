@@ -1,0 +1,241 @@
+{
+ "form": "ftb3532",
+ "key": 2021,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2021/ftb3532.pdf",
+ "source_sha256": "6b39c8dd7d524df52b14b3e7a3dbcad4e9c1c05de7d6d97e60b7ac93e4d67cbb",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Check one box below to identify your marital status. See instructions.",
+   "bbox": [
+    36.0,
+    135.54,
+    40.5,
+    146.71
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Not legally married/Registered Domestic Partnership during 2021.",
+   "bbox": [
+    553.0,
+    146.88,
+    567.0,
+    160.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Widow/widower (my spouse/Registered Domestic Partner died before 01/01/2021)",
+   "bbox": [
+    553.0,
+    164.88,
+    567.0,
+    178.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1c",
+   "text": "Marriage/Registered Domestic Partnership was annulled.",
+   "bbox": [
+    553.0,
+    182.88,
+    567.0,
+    196.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1d",
+   "text": "Received final decree of divorce, legal separation, dissolution, or termination of marriage/Registered Domestic Partnership by 12/31/2021.",
+   "bbox": [
+    553.0,
+    200.88,
+    567.0,
+    214.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1e",
+   "text": "Legally married/Registered Domestic Partner and did not live with spouse/Registered Domestic Partner during 2021.",
+   "bbox": [
+    553.0,
+    218.88,
+    567.0,
+    232.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1f",
+   "text": "Legally married/Registered Domestic Partner and lived with spouse/Registered Domestic Partner during 2021. List the beginning and ending dates for each period when you lived together.",
+   "bbox": [
+    553.0,
+    247.88,
+    567.0,
+    261.88
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Check one box below to identify the relationship of the person that qualifies you for the head of household filing status.",
+   "bbox": [
+    36.0,
+    331.94,
+    40.5,
+    343.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2a",
+   "text": "Son, daughter, stepson, or stepdaughter",
+   "bbox": [
+    552.62,
+    346.62,
+    567.0,
+    360.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2b",
+   "text": "Grandchild, brother, sister, half brother, half sister, stepbrother, stepsister, nephew, or niece",
+   "bbox": [
+    552.62,
+    367.62,
+    566.62,
+    381.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2c",
+   "text": "Eligible foster child",
+   "bbox": [
+    552.62,
+    388.62,
+    566.62,
+    402.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2d",
+   "text": "Father, mother, stepfather, or stepmother.",
+   "bbox": [
+    553.0,
+    409.62,
+    567.0,
+    423.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2e",
+   "text": "Grandfather, grandmother, son-in-law, daughter-in-law, father-in-law, mother-in-law, brother-in-law, sister-in-law, uncle, or aunt",
+   "bbox": [
+    552.62,
+    441.4,
+    567.0,
+    455.62
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3",
+   "text": "First Name",
+   "bbox": [
+    467.75,
+    499.25,
+    575.75,
+    517.25
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3a",
+   "text": "Was your qualifying person a full time student under age 24 in 2021?",
+   "bbox": [
+    484.05,
+    586.42,
+    497.05,
+    601.25
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3b",
+   "text": "Was your qualifying person permanently and totally disabled in 2021?",
+   "bbox": [
+    484.05,
+    608.75,
+    497.05,
+    622.75
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "4",
+   "text": "Enter qualifying person’s gross income in 2021. See instructions.",
+   "bbox": [
+    468.0,
+    629.25,
+    540.0,
+    647.75
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "5",
+   "text": "Number of days your qualifying person lived with you during 2021. See instructions.",
+   "bbox": [
+    467.75,
+    653.25,
+    498.0,
+    671.75
+   ],
+   "source": "tooltip"
+  }
+ ]
+}

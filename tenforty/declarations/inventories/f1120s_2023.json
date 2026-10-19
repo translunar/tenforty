@@ -1,0 +1,1869 @@
+{
+ "form": "f1120s",
+ "key": 2023,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2023/f1120s.pdf",
+ "source_sha256": "b50665260337fdb45b4c09403da511d02fec1f6eabc1d2b125e84c64ebacba71",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "A",
+   "text": "S election",
+   "bbox": [
+    36.0,
+    97.17,
+    40.8,
+    105.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "D",
+   "text": "Employer",
+   "bbox": [
+    457.6,
+    97.17,
+    462.79,
+    105.53
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "B",
+   "text": "Business",
+   "bbox": [
+    36.0,
+    121.17,
+    40.93,
+    129.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "E",
+   "text": "Date",
+   "bbox": [
+    457.6,
+    121.17,
+    462.14,
+    129.52
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "F",
+   "text": "Total",
+   "bbox": [
+    457.6,
+    145.29,
+    461.75,
+    153.65
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "C",
+   "text": "Check",
+   "bbox": [
+    36.0,
+    157.67,
+    41.19,
+    166.02
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "G",
+   "text": "Is",
+   "bbox": [
+    36.0,
+    169.28,
+    42.45,
+    179.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "H",
+   "text": "Check",
+   "bbox": [
+    36.0,
+    181.28,
+    42.3,
+    191.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "I",
+   "text": "Enter",
+   "bbox": [
+    38.0,
+    192.78,
+    40.51,
+    202.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "J",
+   "text": "Check",
+   "bbox": [
+    36.52,
+    204.78,
+    41.25,
+    214.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1a",
+   "text": "Gross receipts or sales",
+   "bbox": [
+    60.07,
+    229.28,
+    64.8,
+    239.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1c",
+   "text": "Balance",
+   "bbox": [
+    424.8,
+    229.28,
+    429.19,
+    239.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1b",
+   "text": "Less returns and allowances",
+   "bbox": [
+    237.6,
+    229.91,
+    242.49,
+    239.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Cost of goods sold (attach Form 1125-A)",
+   "bbox": [
+    60.07,
+    241.28,
+    64.8,
+    251.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Gross profit. Subtract line 2 from line 1c",
+   "bbox": [
+    60.07,
+    253.28,
+    64.8,
+    263.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "Net gain (loss) from Form 4797, line 17 (attach Form 4797)",
+   "bbox": [
+    60.07,
+    265.28,
+    64.8,
+    275.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "Other income (loss) (see instructions—attach statement)",
+   "bbox": [
+    60.07,
+    277.28,
+    64.8,
+    287.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "Total income (loss). Add lines 3 through 5",
+   "bbox": [
+    60.07,
+    288.78,
+    64.8,
+    298.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Compensation of officers (see instructions—attach Form 1125-E)",
+   "bbox": [
+    60.07,
+    301.28,
+    64.8,
+    311.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Salaries and wages (less employment credits)",
+   "bbox": [
+    60.07,
+    313.28,
+    64.8,
+    323.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "Repairs and maintenance",
+   "bbox": [
+    60.07,
+    325.28,
+    64.8,
+    335.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "10",
+   "text": "Bad debts",
+   "bbox": [
+    55.35,
+    337.28,
+    64.8,
+    347.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "11",
+   "text": "Rents",
+   "bbox": [
+    55.35,
+    349.28,
+    64.8,
+    359.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "12",
+   "text": "Taxes and licenses",
+   "bbox": [
+    55.35,
+    361.28,
+    64.8,
+    371.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "13",
+   "text": "Interest (see instructions)",
+   "bbox": [
+    55.35,
+    373.28,
+    64.8,
+    383.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "14",
+   "text": "Depreciation from Form 4562 not claimed on Form 1125-A or elsewhere on return",
+   "bbox": [
+    55.35,
+    385.28,
+    64.8,
+    395.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "15",
+   "text": "Depletion (Do not deduct oil and gas depletion.)",
+   "bbox": [
+    55.35,
+    397.28,
+    64.8,
+    407.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "16",
+   "text": "Advertising",
+   "bbox": [
+    55.35,
+    409.28,
+    64.8,
+    419.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "17",
+   "text": "Pension, profit-sharing, etc., plans",
+   "bbox": [
+    55.35,
+    421.28,
+    64.8,
+    431.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "18",
+   "text": "Employee benefit programs",
+   "bbox": [
+    55.35,
+    433.28,
+    64.8,
+    443.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "19",
+   "text": "Energy efficient commercial buildings deduction (attach Form 7205)",
+   "bbox": [
+    55.35,
+    445.28,
+    64.8,
+    455.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "20",
+   "text": "Other deductions (attach statement)",
+   "bbox": [
+    55.35,
+    457.28,
+    64.8,
+    467.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "21",
+   "text": "Total deductions. Add lines 7 through 20",
+   "bbox": [
+    55.35,
+    469.28,
+    64.8,
+    479.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "22",
+   "text": "Ordinary business income (loss). Subtract line 21 from line 6",
+   "bbox": [
+    55.35,
+    480.78,
+    64.8,
+    490.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "23a",
+   "text": "Excess net passive income or LIFO recapture tax (see instructions)",
+   "bbox": [
+    55.35,
+    493.28,
+    64.8,
+    503.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "23b",
+   "text": "Tax from Schedule D (Form 1120-S)",
+   "bbox": [
+    64.8,
+    505.28,
+    69.99,
+    515.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "23c",
+   "text": "Add lines 23a and 23b (see instructions for additional taxes)",
+   "bbox": [
+    64.8,
+    517.28,
+    69.68,
+    527.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "24a",
+   "text": "Current year’s estimated tax payments and preceding year’s overpayment",
+   "bbox": [
+    55.35,
+    530.78,
+    64.8,
+    540.92
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "24b",
+   "text": "Tax deposited with Form 7004",
+   "bbox": [
+    64.8,
+    553.28,
+    69.99,
+    563.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "24c",
+   "text": "Credit for federal tax paid on fuels (attach Form 4136)",
+   "bbox": [
+    64.8,
+    565.28,
+    69.68,
+    575.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "24d",
+   "text": "Elective payment election amount from Form 3800",
+   "bbox": [
+    64.8,
+    577.28,
+    69.99,
+    587.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "24z",
+   "text": "Add lines 24a through 24d",
+   "bbox": [
+    64.8,
+    589.28,
+    69.21,
+    599.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "25",
+   "text": "Estimated tax penalty (see instructions). Check if Form 2220 is attached",
+   "bbox": [
+    55.35,
+    601.28,
+    64.8,
+    611.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "26",
+   "text": "Amount owed. If line 24z is smaller than the total of lines 23c and 25, enter amount",
+   "bbox": [
+    55.35,
+    613.28,
+    64.8,
+    623.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "27",
+   "text": "Overpayment. If line 24z is larger than the total of lines 23c and 25, enter amount",
+   "bbox": [
+    55.35,
+    625.28,
+    64.8,
+    635.42
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "28",
+   "text": "Enter amount from line 27: Credited to 2024 estimated tax",
+   "bbox": [
+    55.35,
+    636.78,
+    64.8,
+    646.92
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1",
+   "text": "Check accounting method:",
+   "bbox": [
+    45.67,
+    61.28,
+    50.4,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1a",
+   "text": "Cash",
+   "bbox": [
+    180.0,
+    61.28,
+    184.88,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "1b",
+   "text": "Accrual Yes No",
+   "bbox": [
+    244.8,
+    61.28,
+    250.0,
+    71.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "2",
+   "text": "See the instructions and enter the:",
+   "bbox": [
+    45.67,
+    85.28,
+    50.4,
+    95.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "3",
+   "text": "At any time during the tax year, was any shareholder of the corporation a disregarded entity, a trust, an estate, or a",
+   "bbox": [
+    45.67,
+    110.79,
+    50.4,
+    120.93
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "4",
+   "text": "At the end of the tax year, did the corporation:",
+   "bbox": [
+    45.67,
+    133.28,
+    50.4,
+    143.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "4a",
+   "text": "Own directly 20% or more, or own, directly or indirectly, 50% or more of the total stock issued and outstanding of any",
+   "bbox": [
+    50.4,
+    147.78,
+    55.28,
+    157.92
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "4b",
+   "text": "Own directly an interest of 20% or more, or own, directly or indirectly, an interest of 50% or more in the profit, loss, or",
+   "bbox": [
+    50.4,
+    267.78,
+    55.59,
+    277.92
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "5a",
+   "text": "At the end of the tax year, did the corporation have any outstanding shares of restricted stock?",
+   "bbox": [
+    45.67,
+    385.28,
+    55.28,
+    395.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "5b",
+   "text": "At the end of the tax year, did the corporation have any outstanding stock options, warrants, or similar instruments?",
+   "bbox": [
+    50.42,
+    433.28,
+    55.61,
+    443.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "6",
+   "text": "Has this corporation filed, or is it required to file, Form 8918, Material Advisor Disclosure Statement, to provide",
+   "bbox": [
+    45.67,
+    482.78,
+    50.4,
+    492.92
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "7",
+   "text": "Check this box if the corporation issued publicly offered debt instruments with original issue discount",
+   "bbox": [
+    45.67,
+    505.28,
+    50.4,
+    515.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "8",
+   "text": "If the corporation (a) was a C corporation before it elected to be an S corporation or the corporation acquired an asset with a",
+   "bbox": [
+    45.68,
+    545.28,
+    50.41,
+    555.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "9",
+   "text": "Did the corporation have an election under section 163(j) for any real property trade or business or any farming business",
+   "bbox": [
+    45.67,
+    590.28,
+    50.4,
+    600.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10",
+   "text": "Does the corporation satisfy one or more of the following? See instructions",
+   "bbox": [
+    40.95,
+    613.28,
+    50.4,
+    623.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10a",
+   "text": "The corporation owns a pass-through entity with current, or prior year carryover, excess business interest expense.",
+   "bbox": [
+    50.4,
+    625.28,
+    55.28,
+    635.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10b",
+   "text": "The corporation’s aggregate average annual gross receipts (determined under section 448(c)) for the 3 tax years",
+   "bbox": [
+    50.4,
+    638.78,
+    55.59,
+    648.92
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "10c",
+   "text": "The corporation is a tax shelter and the corporation has business interest expense.",
+   "bbox": [
+    50.36,
+    661.27,
+    55.24,
+    671.41
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11",
+   "text": "Does the corporation satisfy both of the following conditions?",
+   "bbox": [
+    40.91,
+    685.28,
+    50.36,
+    695.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11a",
+   "text": "The corporation’s total receipts (see instructions) for the tax year were less than $250,000.",
+   "bbox": [
+    50.4,
+    697.28,
+    55.28,
+    707.42
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11b",
+   "text": "The corporation’s total assets at the end of the tax year were less than $250,000.",
+   "bbox": [
+    50.4,
+    709.28,
+    55.59,
+    719.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12",
+   "text": "During",
+   "bbox": [
+    40.94,
+    62.78,
+    50.4,
+    72.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13",
+   "text": "During",
+   "bbox": [
+    40.95,
+    97.28,
+    50.4,
+    107.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "14a",
+   "text": "Did",
+   "bbox": [
+    40.95,
+    109.28,
+    55.28,
+    119.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "14b",
+   "text": "If “Yes,”",
+   "bbox": [
+    50.4,
+    121.28,
+    55.59,
+    131.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15",
+   "text": "Is the",
+   "bbox": [
+    40.95,
+    133.28,
+    50.4,
+    143.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16",
+   "text": "At any",
+   "bbox": [
+    40.95,
+    158.78,
+    50.4,
+    168.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "1",
+   "text": "Ordinary business income (loss) (page 1, line 22)",
+   "bbox": [
+    81.67,
+    193.28,
+    86.4,
+    203.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "2",
+   "text": "Net rental real estate income (loss) (attach Form 8825)",
+   "bbox": [
+    81.67,
+    205.28,
+    86.4,
+    215.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "3a",
+   "text": "Other gross rental income (loss)",
+   "bbox": [
+    81.67,
+    217.28,
+    91.28,
+    227.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "3b",
+   "text": "Expenses from other rental activities (attach statement)",
+   "bbox": [
+    86.4,
+    229.28,
+    91.59,
+    239.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "3c",
+   "text": "Other net rental income (loss). Subtract line 3b from line 3a",
+   "bbox": [
+    86.4,
+    241.28,
+    91.28,
+    251.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "4",
+   "text": "Interest income",
+   "bbox": [
+    81.67,
+    253.28,
+    86.4,
+    263.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "5",
+   "text": "Dividends: a Ordinary dividends",
+   "bbox": [
+    81.67,
+    265.28,
+    86.4,
+    275.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "5a",
+   "text": "",
+   "bbox": [
+    481.2,
+    265.28,
+    490.8,
+    275.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "5b",
+   "text": "",
+   "bbox": [
+    380.24,
+    277.28,
+    390.16,
+    287.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "6",
+   "text": "Royalties",
+   "bbox": [
+    81.67,
+    289.28,
+    86.4,
+    299.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "7",
+   "text": "Net short-term capital gain (loss) (attach Schedule D (Form 1120-S))",
+   "bbox": [
+    81.67,
+    301.28,
+    86.4,
+    311.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "8a",
+   "text": "Net long-term capital gain (loss) (attach Schedule D (Form 1120-S))",
+   "bbox": [
+    81.67,
+    313.28,
+    86.4,
+    323.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "8b",
+   "text": "Collectibles (28%) gain (loss)",
+   "bbox": [
+    86.4,
+    325.28,
+    91.59,
+    335.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "8c",
+   "text": "Unrecaptured section 1250 gain (attach statement)",
+   "bbox": [
+    86.4,
+    337.28,
+    91.28,
+    347.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "9",
+   "text": "Net section 1231 gain (loss) (attach Form 4797)",
+   "bbox": [
+    81.67,
+    349.28,
+    86.4,
+    359.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "10",
+   "text": "Other income (loss) (see instructions) Type:",
+   "bbox": [
+    76.95,
+    360.78,
+    86.4,
+    370.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "11",
+   "text": "Section 179 deduction (attach Form 4562)",
+   "bbox": [
+    76.95,
+    373.28,
+    86.4,
+    383.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12a",
+   "text": "Charitable contributions",
+   "bbox": [
+    76.95,
+    385.28,
+    86.4,
+    395.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12b",
+   "text": "Investment interest expense",
+   "bbox": [
+    86.4,
+    397.28,
+    91.59,
+    407.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12c",
+   "text": "Section 59(e)(2) expenditures Type:",
+   "bbox": [
+    86.4,
+    409.28,
+    91.28,
+    419.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "12d",
+   "text": "Other deductions (see instructions) Type:",
+   "bbox": [
+    86.4,
+    420.78,
+    91.59,
+    430.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13a",
+   "text": "Low-income housing credit (section 42(j)(5))",
+   "bbox": [
+    76.95,
+    433.28,
+    91.28,
+    443.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13b",
+   "text": "Low-income housing credit (other)",
+   "bbox": [
+    86.4,
+    445.28,
+    91.59,
+    455.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13c",
+   "text": "Qualified rehabilitation expenditures (rental real estate) (attach Form 3468,",
+   "bbox": [
+    86.4,
+    457.28,
+    91.28,
+    467.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13d",
+   "text": "Other rental real estate credits (see instructions) Type:",
+   "bbox": [
+    86.4,
+    469.28,
+    91.59,
+    479.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13e",
+   "text": "Other rental credits (see instructions) Type:",
+   "bbox": [
+    86.4,
+    481.28,
+    91.28,
+    491.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13f",
+   "text": "Biofuel producer credit (attach Form 6478)",
+   "bbox": [
+    86.4,
+    493.28,
+    89.23,
+    503.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "13g",
+   "text": "Other credits (see instructions) Type:",
+   "bbox": [
+    86.4,
+    504.78,
+    91.59,
+    514.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "14",
+   "text": "Attach Schedule K-2 (Form 1120-S), Shareholders’ Pro Rata Share Items—International,",
+   "bbox": [
+    76.95,
+    530.78,
+    86.4,
+    540.92
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15a",
+   "text": "Post-1986 depreciation adjustment",
+   "bbox": [
+    76.95,
+    553.28,
+    86.4,
+    563.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15b",
+   "text": "Adjusted gain or loss",
+   "bbox": [
+    86.4,
+    565.28,
+    91.59,
+    575.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15c",
+   "text": "Depletion (other than oil and gas)",
+   "bbox": [
+    86.4,
+    577.28,
+    91.28,
+    587.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15d",
+   "text": "Oil, gas, and geothermal properties—gross income",
+   "bbox": [
+    86.4,
+    589.28,
+    91.59,
+    599.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15e",
+   "text": "Oil, gas, and geothermal properties—deductions",
+   "bbox": [
+    86.4,
+    601.28,
+    91.28,
+    611.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "15f",
+   "text": "Other AMT items (attach statement)",
+   "bbox": [
+    86.4,
+    613.28,
+    89.23,
+    623.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16a",
+   "text": "Tax-exempt interest income",
+   "bbox": [
+    76.95,
+    625.28,
+    86.4,
+    635.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16b",
+   "text": "Other tax-exempt income",
+   "bbox": [
+    86.4,
+    637.28,
+    91.59,
+    647.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16c",
+   "text": "Nondeductible expenses",
+   "bbox": [
+    86.4,
+    649.28,
+    91.28,
+    659.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16d",
+   "text": "Distributions (attach statement if required) (see instructions)",
+   "bbox": [
+    86.4,
+    661.28,
+    91.59,
+    671.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16e",
+   "text": "Repayment of loans from shareholders",
+   "bbox": [
+    86.4,
+    673.28,
+    91.28,
+    683.42
+   ]
+  },
+  {
+   "page": 3,
+   "section": "",
+   "label": "16f",
+   "text": "Foreign taxes paid or accrued",
+   "bbox": [
+    86.4,
+    685.28,
+    89.23,
+    695.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "17a",
+   "text": "Investment income",
+   "bbox": [
+    76.95,
+    61.28,
+    91.28,
+    71.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "17b",
+   "text": "Investment expenses",
+   "bbox": [
+    86.4,
+    73.28,
+    91.59,
+    83.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "17c",
+   "text": "Dividend distributions paid from accumulated earnings and profits",
+   "bbox": [
+    86.4,
+    85.28,
+    91.28,
+    95.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "17d",
+   "text": "Other items and amounts (attach statement)",
+   "bbox": [
+    86.4,
+    97.28,
+    91.59,
+    107.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "18",
+   "text": "Income (loss) reconciliation. Combine the total amounts on lines 1 through 10. From the result,",
+   "bbox": [
+    76.95,
+    122.78,
+    86.4,
+    132.92
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "1",
+   "text": "Cash",
+   "bbox": [
+    45.67,
+    169.28,
+    50.4,
+    179.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "2a",
+   "text": "Trade",
+   "bbox": [
+    46.2,
+    181.28,
+    55.8,
+    191.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "2b",
+   "text": "Less",
+   "bbox": [
+    50.61,
+    193.28,
+    55.8,
+    203.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "3",
+   "text": "Inventories",
+   "bbox": [
+    45.67,
+    205.28,
+    50.4,
+    215.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "4",
+   "text": "U.S.",
+   "bbox": [
+    45.67,
+    217.27,
+    50.4,
+    227.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "5",
+   "text": "Tax-exempt",
+   "bbox": [
+    45.67,
+    229.27,
+    50.4,
+    239.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "6",
+   "text": "Other",
+   "bbox": [
+    45.67,
+    241.27,
+    50.4,
+    251.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "7",
+   "text": "Loans",
+   "bbox": [
+    45.67,
+    253.27,
+    50.4,
+    263.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "8",
+   "text": "Mortgage",
+   "bbox": [
+    45.67,
+    265.27,
+    50.4,
+    275.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "9",
+   "text": "Other",
+   "bbox": [
+    45.67,
+    277.27,
+    50.4,
+    287.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "10a",
+   "text": "Buildings",
+   "bbox": [
+    41.47,
+    289.27,
+    55.8,
+    299.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "10b",
+   "text": "Less",
+   "bbox": [
+    50.61,
+    301.27,
+    55.8,
+    311.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "11a",
+   "text": "Depletable",
+   "bbox": [
+    41.47,
+    313.27,
+    55.8,
+    323.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "11b",
+   "text": "Less",
+   "bbox": [
+    50.61,
+    325.27,
+    55.8,
+    335.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "12",
+   "text": "Land",
+   "bbox": [
+    40.95,
+    337.26,
+    50.4,
+    347.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "13a",
+   "text": "Intangible",
+   "bbox": [
+    41.47,
+    349.26,
+    55.8,
+    359.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "13b",
+   "text": "Less",
+   "bbox": [
+    50.61,
+    361.26,
+    55.8,
+    371.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "14",
+   "text": "Other",
+   "bbox": [
+    40.95,
+    373.26,
+    50.4,
+    383.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "15",
+   "text": "Total",
+   "bbox": [
+    40.95,
+    385.26,
+    50.4,
+    395.4
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "16",
+   "text": "Accounts",
+   "bbox": [
+    40.95,
+    409.28,
+    50.4,
+    419.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "17",
+   "text": "Mortgages,",
+   "bbox": [
+    40.95,
+    421.28,
+    50.4,
+    431.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "19",
+   "text": "Loans",
+   "bbox": [
+    40.95,
+    445.28,
+    50.4,
+    455.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "20",
+   "text": "Mortgages,",
+   "bbox": [
+    40.95,
+    457.28,
+    50.4,
+    467.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "21",
+   "text": "Other",
+   "bbox": [
+    40.95,
+    469.27,
+    50.4,
+    479.42
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "22",
+   "text": "Capital",
+   "bbox": [
+    40.95,
+    481.27,
+    50.4,
+    491.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "23",
+   "text": "Additional",
+   "bbox": [
+    40.95,
+    493.27,
+    50.4,
+    503.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "24",
+   "text": "Retained",
+   "bbox": [
+    40.95,
+    505.27,
+    50.4,
+    515.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "25",
+   "text": "Adjustments",
+   "bbox": [
+    40.95,
+    517.27,
+    50.4,
+    527.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "26",
+   "text": "Less",
+   "bbox": [
+    40.95,
+    529.27,
+    50.4,
+    539.41
+   ]
+  },
+  {
+   "page": 4,
+   "section": "",
+   "label": "27",
+   "text": "Total",
+   "bbox": [
+    40.95,
+    541.27,
+    50.4,
+    551.41
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5",
+   "text": "Income recorded on books this year",
+   "bbox": [
+    319.27,
+    74.78,
+    324.0,
+    84.92
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "5a",
+   "text": "Tax-exempt interest $",
+   "bbox": [
+    324.0,
+    109.28,
+    328.88,
+    119.42
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "6",
+   "text": "Deductions included on Schedule K,",
+   "bbox": [
+    319.27,
+    136.28,
+    324.0,
+    146.42
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "6a",
+   "text": "Depreciation $",
+   "bbox": [
+    324.0,
+    169.28,
+    328.88,
+    179.42
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "7",
+   "text": "Add lines 5 and 6",
+   "bbox": [
+    319.27,
+    193.28,
+    324.0,
+    203.42
+   ]
+  },
+  {
+   "page": 5,
+   "section": "",
+   "label": "8",
+   "text": "Income (loss) (Schedule K, line 18).",
+   "bbox": [
+    319.27,
+    206.28,
+    324.0,
+    216.42
+   ]
+  }
+ ]
+}

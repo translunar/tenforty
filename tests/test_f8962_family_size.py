@@ -193,6 +193,10 @@ class F8962FamilySizeTests(unittest.TestCase):
                     results = orch.compute_federal(build())
                     actual = {k: v for k, v in results.items()
                               if k.startswith("f8962_")}
+                    # Box 4c's compute key (ruling A3) postdates the
+                    # snapshot: asserted here, and excluded by its exact name
+                    # only, so any other new key still fails.
+                    self.assertIs(actual.pop("f8962_line_4c_other48"), True)
                     self.assertEqual(actual, expected[key])
         # Every snapshotted scenario still exists (none silently dropped).
         self.assertEqual(seen, set(expected))

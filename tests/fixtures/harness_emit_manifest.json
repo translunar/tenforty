@@ -1,0 +1,2147 @@
+{
+ "emit_battery_sch_1/every-8z-type/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/every-8z-type/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/every-8z-type/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/every-8z-type/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/every-8z-type/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/no-8z-type/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/no-8z-type/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/no-8z-type/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/no-8z-type/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/no-8z-type/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/one-8z-type/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/one-8z-type/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/one-8z-type/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/one-8z-type/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/one-8z-type/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/at-risk-loss/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/every-expense-line/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_c/unnamed-business/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/day-job-plus-sideline/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/sole-trade/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/under-400-sideline/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/wage-base-day-job/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/wage-base-day-job/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/wage-base-day-job/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/wage-base-day-job/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_se/wage-base-day-job/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/base-maxed-day-job/2022": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Taxable income before QBI (210461) exceeds the Form 8995 sim",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/base-maxed-day-job/2023": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Taxable income before QBI (209561) exceeds the Form 8995 sim",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/base-maxed-day-job/2024": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Taxable income before QBI (208811) exceeds the Form 8995 sim",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/base-maxed-day-job/2025": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Taxable income before QBI (207661) exceeds the Form 8995 sim",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/big-sole-trade/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/big-sole-trade/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/big-sole-trade/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/big-sole-trade/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/day-job-plus-consulting/2022": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Taxable income before QBI (173308) exceeds the Form 8995 sim",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/day-job-plus-consulting/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/day-job-plus-consulting/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/day-job-plus-consulting/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/qbi-interplay/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/qbi-interplay/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/qbi-interplay/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/qbi-interplay/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/sole-trade-basic/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/sole-trade-basic/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/sole-trade-basic/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/sole-trade-basic/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/two-trades/2022": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/two-trades/2023": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/two-trades/2024": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/two-trades/2025": {
+  "forms": null,
+  "refusal": {
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
+  },
+  "routing": "native"
+ },
+ "sch_c_battery/under-threshold-sideline/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/under-threshold-sideline/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/under-threshold-sideline/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "sch_c_battery/under-threshold-sideline/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_c#1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__hoh/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare_boundary/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare_boundary/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare_boundary/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare_boundary/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/addl_medicare_boundary/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/canonical_wage_investment_rental/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/canonical_wage_investment_rental/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/canonical_wage_investment_rental/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/canonical_wage_investment_rental/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/canonical_wage_investment_rental/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/capital_loss_over_cap/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/capital_loss_over_cap/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/capital_loss_over_cap/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/capital_loss_over_cap/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/capital_loss_over_cap/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/charitable_nonitemizer_2021/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__hoh/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/investments_qdcgt__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__hoh/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemized_salt_at_cap__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemizer_with_w2_state_tax/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemizer_with_w2_state_tax/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemizer_with_w2_state_tax/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemizer_with_w2_state_tax/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/itemizer_with_w2_state_tax/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/net_short_term_gain_with_ltcg_and_qualdiv/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/net_short_term_gain_with_ltcg_and_qualdiv/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/net_short_term_gain_with_ltcg_and_qualdiv/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/net_short_term_gain_with_ltcg_and_qualdiv/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/net_short_term_gain_with_ltcg_and_qualdiv/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/owes_tax/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/owes_tax/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/owes_tax/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/owes_tax/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/owes_tax/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_2021_ui_flat133/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_capped_repayment/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_capped_repayment/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_capped_repayment/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_capped_repayment/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_capped_repayment/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_net_credit/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_net_credit/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_net_credit/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_net_credit/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_net_credit/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_partial_year_401/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_partial_year_401/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_partial_year_401/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_partial_year_401/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_partial_year_401/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8962"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/ptc_reconciliation_refused__hoh/2021": {
+  "forms": null,
+  "refusal": null,
+  "routing": "workbook"
+ },
+ "spine_battery/ptc_reconciliation_refused__hoh/2022": {
+  "forms": null,
+  "refusal": null,
+  "routing": "workbook"
+ },
+ "spine_battery/ptc_reconciliation_refused__hoh/2023": {
+  "forms": null,
+  "refusal": null,
+  "routing": "workbook"
+ },
+ "spine_battery/ptc_reconciliation_refused__hoh/2024": {
+  "forms": null,
+  "refusal": null,
+  "routing": "workbook"
+ },
+ "spine_battery/ptc_reconciliation_refused__hoh/2025": {
+  "forms": null,
+  "refusal": null,
+  "routing": "workbook"
+ },
+ "spine_battery/qbi_k1__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__hoh/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1_deduction/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1_deduction/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1_deduction/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1_deduction/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_k1_deduction/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_threshold_boundary/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_threshold_boundary/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_threshold_boundary/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_threshold_boundary/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qbi_threshold_boundary/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1",
+   "federal/sch_b",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qdcgt_15_to_20_boundary/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qdcgt_15_to_20_boundary/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qdcgt_15_to_20_boundary/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qdcgt_15_to_20_boundary/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/qdcgt_15_to_20_boundary/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__single/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__single/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__single/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged__single/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged_refused__hoh/2025": {
+  "forms": null,
+  "refusal": {
+   "fragment": "This tax year 2025 return has 1 Form 1040 age box(es) checke",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_aged_refused__single/2025": {
+  "forms": null,
+  "refusal": {
+   "fragment": "This tax year 2025 return has 1 Form 1040 age box(es) checke",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_both_aged__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_both_aged__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_both_aged__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_both_aged__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/std_deduction_both_aged_refused__mfj/2025": {
+  "forms": null,
+  "refusal": {
+   "fragment": "This tax year 2025 return has 2 Form 1040 age box(es) checke",
+   "type": "NotImplementedError"
+  },
+  "routing": "native"
+ },
+ "spine_battery/tax_table_band/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/tax_table_band/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/tax_table_band/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/tax_table_band/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/tax_table_band/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wage_with_estimated_payments/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wage_with_estimated_payments/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wage_with_estimated_payments/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wage_with_estimated_payments/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wage_with_estimated_payments/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__hoh/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__hoh/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__hoh/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__hoh/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__hoh/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__mfj/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__mfj/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__mfj/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__mfj/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/wages_only__mfj/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/zero_tax_refund/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/zero_tax_refund/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/zero_tax_refund/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/zero_tax_refund/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "spine_battery/zero_tax_refund/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ }
+}

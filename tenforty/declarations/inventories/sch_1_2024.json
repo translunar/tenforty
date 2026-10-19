@@ -1,0 +1,777 @@
+{
+ "form": "sch_1",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f1040s1.pdf",
+ "source_sha256": "2fe9bc204a82a037a50b21c6eda9949e266eafa423e604f312bc177fc721b552",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Taxable refunds, credits, or offsets of state and local income taxes",
+   "bbox": [
+    45.4,
+    174.65,
+    50.4,
+    185.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2a",
+   "text": "Alimony received",
+   "bbox": [
+    45.4,
+    186.65,
+    55.57,
+    197.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2b",
+   "text": "Date of original divorce or separation agreement (see instructions):",
+   "bbox": [
+    50.4,
+    198.65,
+    55.9,
+    209.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Business income or (loss). Attach Schedule C",
+   "bbox": [
+    45.4,
+    210.65,
+    50.4,
+    221.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Other gains or (losses). Attach Form 4797",
+   "bbox": [
+    45.4,
+    222.65,
+    50.4,
+    233.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Rental real estate, royalties, partnerships, S corporations, trusts, etc. Attach Schedule",
+   "bbox": [
+    45.4,
+    234.65,
+    50.4,
+    245.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Farm income or (loss). Attach Schedule F",
+   "bbox": [
+    45.4,
+    246.65,
+    50.4,
+    257.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Unemployment compensation",
+   "bbox": [
+    45.4,
+    258.65,
+    50.4,
+    269.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8",
+   "text": "Other income:",
+   "bbox": [
+    45.4,
+    270.65,
+    50.4,
+    281.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8a",
+   "text": "Net operating loss",
+   "bbox": [
+    50.4,
+    282.65,
+    55.57,
+    293.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8b",
+   "text": "Gambling",
+   "bbox": [
+    50.4,
+    294.65,
+    55.9,
+    305.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8c",
+   "text": "Cancellation of debt",
+   "bbox": [
+    50.4,
+    306.65,
+    55.57,
+    317.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8d",
+   "text": "Foreign earned income exclusion from Form 2555",
+   "bbox": [
+    50.4,
+    318.65,
+    55.9,
+    329.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8e",
+   "text": "Income from Form 8853",
+   "bbox": [
+    50.4,
+    330.65,
+    55.57,
+    341.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8f",
+   "text": "Income from Form 8889",
+   "bbox": [
+    50.4,
+    342.65,
+    53.4,
+    353.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8g",
+   "text": "Alaska Permanent Fund dividends",
+   "bbox": [
+    50.4,
+    354.65,
+    55.9,
+    365.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8h",
+   "text": "Jury duty pay",
+   "bbox": [
+    50.4,
+    366.65,
+    55.74,
+    377.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8i",
+   "text": "Prizes and awards",
+   "bbox": [
+    50.4,
+    378.65,
+    52.72,
+    389.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8j",
+   "text": "Activity not engaged in for profit income",
+   "bbox": [
+    50.4,
+    390.65,
+    52.9,
+    401.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8k",
+   "text": "Stock options",
+   "bbox": [
+    50.4,
+    402.65,
+    55.57,
+    413.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8l",
+   "text": "Income from the rental of personal property if you engaged in the rental for",
+   "bbox": [
+    50.4,
+    414.85,
+    52.72,
+    425.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8m",
+   "text": "Olympic and Paralympic medals and USOC prize money (see instructions)",
+   "bbox": [
+    50.4,
+    438.65,
+    58.55,
+    449.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8n",
+   "text": "Section 951(a) inclusion (see instructions)",
+   "bbox": [
+    50.4,
+    450.65,
+    55.74,
+    461.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8o",
+   "text": "Section 951A(a) inclusion (see instructions)",
+   "bbox": [
+    50.4,
+    462.65,
+    55.9,
+    473.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8p",
+   "text": "Section 461(l) excess business loss adjustment",
+   "bbox": [
+    50.4,
+    474.65,
+    55.9,
+    485.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8q",
+   "text": "Taxable distributions from an ABLE account (see instructions)",
+   "bbox": [
+    50.4,
+    486.65,
+    55.9,
+    497.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8r",
+   "text": "Scholarship and fellowship grants not reported on Form W-2",
+   "bbox": [
+    50.4,
+    498.65,
+    53.9,
+    509.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8s",
+   "text": "Nontaxable amount of Medicaid waiver payments included on Form 1040, line",
+   "bbox": [
+    50.4,
+    510.85,
+    55.23,
+    521.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8t",
+   "text": "Pension or annuity from a nonqualifed deferred compensation plan or a",
+   "bbox": [
+    50.4,
+    534.85,
+    53.57,
+    545.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8u",
+   "text": "Wages earned while incarcerated",
+   "bbox": [
+    50.4,
+    558.65,
+    55.74,
+    569.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8v",
+   "text": "Digital assets received as ordinary income not reported elsewhere. See",
+   "bbox": [
+    50.4,
+    570.85,
+    55.08,
+    581.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8z",
+   "text": "Other income. List type and amount:",
+   "bbox": [
+    50.4,
+    594.65,
+    55.07,
+    605.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Total other income. Add lines 8a through 8z",
+   "bbox": [
+    45.4,
+    618.65,
+    50.4,
+    629.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "10",
+   "text": "Combine lines 1 through 7 and 9. This is your additional income. Enter here",
+   "bbox": [
+    40.39,
+    630.85,
+    50.4,
+    641.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "11",
+   "text": "Educator expenses",
+   "bbox": [
+    40.39,
+    60.65,
+    50.4,
+    71.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "12",
+   "text": "Certain business expenses of reservists, performing artists, and fee-basis government",
+   "bbox": [
+    40.39,
+    72.85,
+    50.4,
+    83.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "13",
+   "text": "Health savings account deduction. Attach Form 8889",
+   "bbox": [
+    40.39,
+    96.65,
+    50.4,
+    107.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "14",
+   "text": "Moving expenses for members of the Armed Forces. Attach Form 3903",
+   "bbox": [
+    40.39,
+    108.65,
+    50.4,
+    119.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "15",
+   "text": "Deductible part of self-employment tax. Attach Schedule SE",
+   "bbox": [
+    40.39,
+    120.65,
+    50.4,
+    131.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "16",
+   "text": "Self-employed SEP, SIMPLE, and qualified plans",
+   "bbox": [
+    40.39,
+    132.65,
+    50.4,
+    143.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "17",
+   "text": "Self-employed health insurance deduction",
+   "bbox": [
+    40.39,
+    144.65,
+    50.4,
+    155.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "18",
+   "text": "Penalty on early withdrawal of savings",
+   "bbox": [
+    40.39,
+    156.65,
+    50.4,
+    167.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "19a",
+   "text": "Alimony paid",
+   "bbox": [
+    40.39,
+    168.65,
+    55.57,
+    179.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "19b",
+   "text": "Recipient’s SSN",
+   "bbox": [
+    50.4,
+    180.65,
+    55.9,
+    191.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "19c",
+   "text": "Date of original divorce or separation agreement (see instructions):",
+   "bbox": [
+    50.4,
+    192.65,
+    55.57,
+    203.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "20",
+   "text": "IRA deduction",
+   "bbox": [
+    40.39,
+    204.65,
+    50.4,
+    215.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "21",
+   "text": "Student loan interest deduction",
+   "bbox": [
+    40.39,
+    216.65,
+    50.4,
+    227.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "22",
+   "text": "Reserved for future use",
+   "bbox": [
+    40.39,
+    228.65,
+    50.4,
+    239.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "23",
+   "text": "Archer MSA deduction",
+   "bbox": [
+    40.39,
+    240.65,
+    50.4,
+    251.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24",
+   "text": "Other adjustments:",
+   "bbox": [
+    40.39,
+    252.65,
+    50.4,
+    263.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24a",
+   "text": "Jury duty pay (see instructions)",
+   "bbox": [
+    50.4,
+    264.65,
+    55.57,
+    275.38
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24b",
+   "text": "Deductible expenses related to income reported on line 8l from the rental of",
+   "bbox": [
+    50.4,
+    276.85,
+    55.9,
+    287.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24c",
+   "text": "Nontaxable amount of the value of Olympic and Paralympic medals and USOC",
+   "bbox": [
+    50.4,
+    300.85,
+    55.57,
+    311.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24d",
+   "text": "Reforestation amortization and expenses",
+   "bbox": [
+    50.4,
+    324.65,
+    55.9,
+    335.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24e",
+   "text": "Repayment of supplemental unemployment benefits under the Trade Act of",
+   "bbox": [
+    50.4,
+    336.85,
+    55.57,
+    347.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24f",
+   "text": "Contributions to section 501(c)(18)(D) pension plans",
+   "bbox": [
+    50.4,
+    360.65,
+    53.4,
+    371.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24g",
+   "text": "Contributions by certain chaplains to section 403(b) plans",
+   "bbox": [
+    50.4,
+    372.65,
+    55.9,
+    383.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24h",
+   "text": "Attorney fees and court costs for actions involving certain unlawful",
+   "bbox": [
+    50.4,
+    384.85,
+    55.74,
+    395.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24i",
+   "text": "Attorney fees and court costs you paid in connection with an award from the",
+   "bbox": [
+    50.4,
+    408.85,
+    52.72,
+    419.59
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24j",
+   "text": "Housing deduction from Form 2555",
+   "bbox": [
+    50.4,
+    432.65,
+    52.9,
+    443.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24k",
+   "text": "Excess deductions of section 67(e) expenses from Schedule K-1 (Form 1041)",
+   "bbox": [
+    50.4,
+    444.65,
+    55.57,
+    455.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "24z",
+   "text": "Other adjustments. List type and amount:",
+   "bbox": [
+    50.4,
+    456.65,
+    55.07,
+    467.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "25",
+   "text": "Total other adjustments. Add lines 24a through 24z",
+   "bbox": [
+    40.39,
+    480.65,
+    50.4,
+    491.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "26",
+   "text": "Add lines 11 through 23 and 25. These are your adjustments to income. Enter",
+   "bbox": [
+    40.39,
+    492.85,
+    50.4,
+    503.59
+   ]
+  }
+ ]
+}

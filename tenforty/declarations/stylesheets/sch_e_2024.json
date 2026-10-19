@@ -1,0 +1,381 @@
+{
+ "desc_classes": [
+  "styLNDesc",
+  "styLnDesc"
+ ],
+ "form": "sch_e",
+ "label_classes": [
+  "styLNLeftNumBox"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "PaymentRqrFilingForm1099Ind"
+   ],
+   "label": "A",
+   "page_section": "Part I",
+   "text": "Did you make any payments in 2024 that would require you to file Form(s) 1099? See instructions"
+  },
+  {
+   "elements": [
+    "RequiredForms1099FiledInd",
+    "PropertyRealEstAndRoyaltyGroup/PropertyDesc",
+    "PropertyUSAddress",
+    "PropertyForeignAddress",
+    "PropertyRealEstAndRoyaltyGroup",
+    "PropertyDesc",
+    "OtherPropertyTypeDesc",
+    "FairRentalDaysCnt",
+    "PersonalUseDaysCnt",
+    "QualifiedJointVentureInd",
+    "RS1040ScheduleEPropertyRealEstAndRoyaltyGroup",
+    "IRS1040ScheduleEPropertyRealEstAndRoyaltyGroup",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/RentsReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/RentsReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/RentsReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/TotalRoyaltiesReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/TotalRoyaltiesReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/TotalRoyaltiesReceivedAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/AdvertisingAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/AdvertisingAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/AdvertisingAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/AutoAndTravelAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/AutoAndTravelAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/AutoAndTravelAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/CleaningAndMaintenanceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/CleaningAndMaintenanceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/CleaningAndMaintenanceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/CommissionsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/CommissionsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/CommissionsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/InsuranceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/InsuranceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/InsuranceAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/LegalAndOtherProfFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/LegalAndOtherProfFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/LegalAndOtherProfFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/ManagementFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/ManagementFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/ManagementFeesAmt",
+    "PropertyRealEstAndRoyaltyGroup/MortgageInterestPaidBanksAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/MortgageInterestPaidBanksAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/MortgageInterestPaidBanksAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/MortgageInterestPaidBanksAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/MortgageInterestPaidOtherAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/MortgageInterestPaidOtherAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/MortgageInterestPaidOtherAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/RepairsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/RepairsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/RepairsAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/SuppliesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/SuppliesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/SuppliesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/TaxesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/TaxesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/TaxesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/UtilitiesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/UtilitiesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/UtilitiesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/DeprecExpenseOrDepletionAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/DeprecExpenseOrDepletionAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/DeprecExpenseOrDepletionAmt",
+    "Desc",
+    "PropertyRealEstAndRoyaltyGroup/OtherExpenseDetail",
+    "Amt",
+    ".",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/TotalExpensesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/TotalExpensesAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/TotalExpensesAmt",
+    "PropertyRealEstAndRoyaltyGroup/NetRentalIncomeOrLossAmt/@form6198Cd",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/NetRentalIncomeOrLossAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/NetRentalIncomeOrLossAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/NetRentalIncomeOrLossAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos]/DedRentalRealEstateLossAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 1]/DedRentalRealEstateLossAmt",
+    "PropertyRealEstAndRoyaltyGroup[$pos + 2]/DedRentalRealEstateLossAmt"
+   ],
+   "label": "B",
+   "page_section": "Part I",
+   "text": "If \"Yes,\" did you or will you file all required Form(s) 1099?"
+  },
+  {
+   "elements": [
+    "TotAllPaymentsAllRentalPropAmt"
+   ],
+   "label": "23a",
+   "page_section": "Part I",
+   "text": "Total of all amounts reported on line 3 for all rental properties"
+  },
+  {
+   "elements": [
+    "TotAllPaymentsAllRyltyPropAmt"
+   ],
+   "label": "b",
+   "page_section": "Part I",
+   "text": "Total of all amounts reported on line 4 for all royalty properties"
+  },
+  {
+   "elements": [
+    "TotalMortgageInterestPaidAmt"
+   ],
+   "label": "c",
+   "page_section": "Part I",
+   "text": "Total of all amounts reported on line 12 for all properties"
+  },
+  {
+   "elements": [
+    "TotalDepreciationAmt"
+   ],
+   "label": "d",
+   "page_section": "Part I",
+   "text": "Total of all amounts reported on line 18 for all properties"
+  },
+  {
+   "elements": [
+    "TotalAllPropTotalExpensesAmt"
+   ],
+   "label": "e",
+   "page_section": "Part I",
+   "text": "Total of all amounts reported on line 20 for all properties"
+  },
+  {
+   "elements": [
+    "IncomeAmt"
+   ],
+   "label": "24",
+   "page_section": "Part I",
+   "text": "Income. Add positive amounts shown on line 21. Do not include any losses"
+  },
+  {
+   "elements": [
+    "LossesAmt"
+   ],
+   "label": "25",
+   "page_section": "Part I",
+   "text": "Losses. Add royalty losses from line 21 and rental real estate losses from line 22. Enter total losses here"
+  },
+  {
+   "elements": [
+    "TotalIncomeOrLossAmt/@nonpassiveActivityLiteralCd",
+    "TotalIncomeOrLossAmt/@nonpassiveActivityAmt",
+    "TotalIncomeOrLossAmt",
+    "$RtnHdrData/Filer/PrimarySSN"
+   ],
+   "label": "26",
+   "page_section": "Part I",
+   "text": "Total rental real estate and royalty income or (loss). Combine lines 24 and 25. Enter the result here. If Parts II, III, IV, and line 40 on page 2 do not apply to you, also enter this amount on Schedule 1 (Form 1040), line 5. Otherwise, include this amount in the total on line 41 on page 2"
+  },
+  {
+   "elements": [
+    "PriorYearsLossesInd",
+    "PartnershipOrSCorpGroup",
+    "PartnershipOrSCorporationNm",
+    "PartnershipOrSCorpNameCd",
+    "PartnershipSCorpCd",
+    "ForeignPartnershipInd",
+    "PartnershipOrSCorpEIN",
+    "BasisComputationRequiredInd",
+    "AnyAmountIsNotAtRiskInd",
+    "IRS1040ScheduleEPartnershipOrSCorpGroupForeignPartnershipInd",
+    "IRS1040ScheduleEPartnershipOrSCorpGroupBasisComputationRequiredInd",
+    "IRS1040ScheduleEPartnershipOrSCorpGroupAnyAmountIsNotAtRiskInd",
+    "PassiveLossAllowedAmt",
+    "BusinessPassiveIncomeAmt",
+    "NonpassiveLossAmt",
+    "Section179ExpenseDeductionAmt",
+    "NonpassiveIncomeAmt"
+   ],
+   "label": "27",
+   "page_section": "Part II",
+   "text": "Are you reporting any loss not allowed in a prior year due to the at-risk or basis limitations, a prior year unallowed loss from a passive activity (if that loss was not reported on Form 8582), or unreimbursed partnership expenses? If you answered \"Yes,\" see instructions before completing this section."
+  },
+  {
+   "elements": [
+    "TotalPassiveIncomeAmt",
+    "BusTotalNonpassiveIncomeAmt"
+   ],
+   "label": "29a",
+   "page_section": "Part II",
+   "text": "Totals"
+  },
+  {
+   "elements": [
+    "TotalPassiveLossAllowedAmt",
+    "TotalNonpassiveLossAmt",
+    "TotSect179ExpenseDeductionAmt"
+   ],
+   "label": "b",
+   "page_section": "Part II",
+   "text": "Totals"
+  },
+  {
+   "elements": [
+    "TotalPrtshpSCorpIncomeAmt"
+   ],
+   "label": "30",
+   "page_section": "Part II",
+   "text": "Add columns (h) and (k) of line 29a"
+  },
+  {
+   "elements": [
+    "TotalPrtshpSCorpLossAmt"
+   ],
+   "label": "31",
+   "page_section": "Part II",
+   "text": "Add columns (g), (i), and (j) of line 29b"
+  },
+  {
+   "elements": [
+    "NetPrtshpSCorpIncomeOrLossAmt",
+    "EstateAndTrustGroup",
+    "EstateOrTrustName/BusinessNameLine1Txt",
+    "EstateOrTrustName/BusinessNameLine2Txt",
+    "EstateOrTrustEIN",
+    "PassiveDedOrLossAllowedAmt",
+    "EstateAndTrustPassiveIncomeAmt",
+    "DeductionOrLossAmt",
+    "OtherIncomeAmt"
+   ],
+   "label": "32",
+   "page_section": "Part II",
+   "text": "Total partnership and S corporation income or (loss). Combine lines 30 and 31."
+  },
+  {
+   "elements": [
+    "EstateAndTrustTotPssvIncmAmt",
+    "TotalOtherIncomeAmt"
+   ],
+   "label": "34a",
+   "page_section": "Part III",
+   "text": "Totals"
+  },
+  {
+   "elements": [
+    "TotPassiveDedOrLossAllowedAmt",
+    "TotalDeductionOrLossAmt"
+   ],
+   "label": "b",
+   "page_section": "Part III",
+   "text": "Totals"
+  },
+  {
+   "elements": [
+    "TotalEstateOrTrustIncomeAmt"
+   ],
+   "label": "35",
+   "page_section": "Part III",
+   "text": "Add columns (d) and (f) of line 34a"
+  },
+  {
+   "elements": [
+    "TotalEstateOrTrustLossAmt"
+   ],
+   "label": "36",
+   "page_section": "Part III",
+   "text": "Add columns (c) and (e) of line 34b"
+  },
+  {
+   "elements": [
+    "TotEstateAndTrustIncOrLossAmt/@schK1ESPaymentsLiteralCd",
+    "TotEstateAndTrustIncOrLossAmt/@schK1ESPaymentsAmt",
+    "TotEstateAndTrustIncOrLossAmt",
+    "REMICGroup",
+    "REMICName/BusinessNameLine1Txt",
+    "REMICName/BusinessNameLine2Txt",
+    "REMICEIN",
+    "ExcessInclusionAmt",
+    "TaxableIncomeOrNetLossAmt",
+    "REMICIncomeAmt"
+   ],
+   "label": "37",
+   "page_section": "Part III",
+   "text": "Total estate and trust income or (loss). Combine lines 35 and 36."
+  },
+  {
+   "elements": [
+    "TotalREMICIncomeAmt"
+   ],
+   "label": "39",
+   "page_section": "Part IV",
+   "text": "Combine columns (d) and (e) only. Enter the result here and include in the total on line 41 below"
+  },
+  {
+   "elements": [
+    "NetFarmRentalIncomeOrLossAmt"
+   ],
+   "label": "40",
+   "page_section": "Part V",
+   "text": "Net farm rental income or (loss) from Form 4835 . Also, complete line 42 below"
+  },
+  {
+   "elements": [
+    "TotalSuppIncomeOrLossAmt"
+   ],
+   "label": "41",
+   "page_section": "Part V",
+   "text": "Total income or (loss). Combine lines 26, 32, 37, 39, and 40. Enter the result here and on Schedule 1 (Form 1040), line 5"
+  },
+  {
+   "elements": [
+    "FarmingAndFishingIncomeAmt"
+   ],
+   "label": "42",
+   "page_section": "Part V",
+   "text": "Reconciliation of farming and fishing income. Enter your gross farming and fishing income reported on Form 4835, line 7; Schedule K-1 (Form 1065), box 14, code B; Schedule K-1 (Form 1120-S), box 17, code AN; and Schedule K-1 (Form 1041), box 14, code F. See instructions."
+  },
+  {
+   "elements": [
+    "RecnclForREProfessionalsAmt",
+    "$FormData",
+    "PropertyRealEstAndRoyaltyGroup/NetRentalIncomeOrLossAmt/@form6198Cd",
+    "TotalIncomeOrLossAmt/@nonpassiveActivityLiteralCd",
+    "TotalIncomeOrLossAmt/@nonpassiveActivityAmt",
+    "TotEstateAndTrustIncOrLossAmt/@schK1ESPaymentsLiteralCd",
+    "TotEstateAndTrustIncOrLossAmt/@schK1ESPaymentsAmt",
+    "PropertyForeignAddress",
+    "PropertyUSAddress",
+    "PropertyDesc",
+    "OtherPropertyTypeDesc",
+    "FairRentalDaysCnt",
+    "PersonalUseDaysCnt",
+    "QualifiedJointVentureInd",
+    "PartnershipOrSCorporationNm",
+    "PartnershipOrSCorpNameCd",
+    "PartnershipSCorpCd",
+    "ForeignPartnershipInd",
+    "PartnershipOrSCorpEIN",
+    "BasisComputationRequiredInd",
+    "AnyAmountIsNotAtRiskInd",
+    "PassiveLossAllowedAmt",
+    "BusinessPassiveIncomeAmt",
+    "NonpassiveLossAmt",
+    "Section179ExpenseDeductionAmt",
+    "NonpassiveIncomeAmt",
+    "EstateOrTrustName/BusinessNameLine1Txt",
+    "EstateOrTrustName/BusinessNameLine2Txt",
+    "EstateOrTrustEIN",
+    "PassiveDedOrLossAllowedAmt",
+    "EstateAndTrustPassiveIncomeAmt",
+    "DeductionOrLossAmt",
+    "OtherIncomeAmt",
+    "REMICName/BusinessNameLine1Txt",
+    "REMICName/BusinessNameLine2Txt",
+    "REMICEIN",
+    "ExcessInclusionAmt",
+    "TaxableIncomeOrNetLossAmt",
+    "REMICIncomeAmt",
+    "Amt[$Count]",
+    "Amt[($Count + 1)]",
+    "Amt[($Count + 2)]",
+    "$TargetNode"
+   ],
+   "label": "43",
+   "page_section": "Part V",
+   "text": "Reconciliation for real estate professionals. If you were a real estate professional (see instructions), enter the net income or (loss) you reported anywhere on Form 1040, Form 1040-SR, or Form 1040-NR from all rental real estate activities in which you materially participated under the passive activity loss rules"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2025r1.zip",
+ "package_sha256": "d9d47b48d15a01beaa4194e33cdd6fba357db7bc92ee8ea93657caa805c1ede5",
+ "xsl": "mef/Stylesheets/2024/IRS1040ScheduleE.xsl",
+ "year": 2024
+}

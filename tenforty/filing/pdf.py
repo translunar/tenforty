@@ -98,6 +98,43 @@ def ensure_button_marks_visible(writer: PdfWriter) -> None:
             normal[NameObject(str(state))] = mark
 
 
+def apply_blank_when_zero(pdf_fields: dict[str, str],
+                          blank_when_zero: Collection[str] | None
+                          ) -> dict[str, str]:
+    """Drop the listed DETAIL fields whose resolved value is zero ("0" or
+    "-0"), in place, and return the dict. The one implementation of the
+    drop: ``PdfFiller.fill`` uses it, and so does the runtime gate's final
+    payload (``tenforty.verification.gate``), so the gate sees exactly what
+    prints."""
+    if blank_when_zero:
+        for path in blank_when_zero:
+            if pdf_fields.get(path) in ("0", "-0"):
+                del pdf_fields[path]
+    return pdf_fields
+
+
+def stamp_field_names(template) -> Path:
+    """A temp copy of ``template`` with every text field filled with its own
+    leaf name (``f1_3`` for ``topmostSubform[0].Page1[0].f1_3[0]``), for the
+    marker probe that locates each field's printed row
+    (``tenforty.verification.anchors.row_line_tokens``). The caller deletes
+    the returned file. It lives here because the field-write primitive lives
+    only in this module (the fill chokepoint's guard)."""
+    import tempfile
+    reader = PdfReader(str(template))
+    fields = reader.get_fields() or {}
+    vals = {n: n.split(".")[-1].replace("[0]", "")
+            for n, f in fields.items() if f.get("/FT") == "/Tx"}
+    writer = PdfWriter(clone_from=reader)
+    for page in writer.pages:
+        writer.update_page_form_field_values(page, vals, auto_regenerate=False)
+    handle = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    handle.close()
+    with open(handle.name, "wb") as f:
+        writer.write(f)
+    return Path(handle.name)
+
+
 class PdfFiller:
     """Fills PDF form fields with computed tax values."""
 
@@ -248,10 +285,7 @@ class PdfFiller:
             checkbox_states=checkbox_states,
             field_formats=field_formats,
         )
-        if blank_when_zero:
-            for path in blank_when_zero:
-                if pdf_fields.get(path) in ("0", "-0"):
-                    del pdf_fields[path]
+        apply_blank_when_zero(pdf_fields, blank_when_zero)
 
         for page in writer.pages:
             writer.update_page_form_field_values(page, pdf_fields)

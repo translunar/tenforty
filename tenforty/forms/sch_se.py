@@ -90,7 +90,12 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
     line_11 = irs_round(line_6 * _MEDICARE_RATE)          # Medicare (uncapped)
     line_12 = line_10 + line_11        # SE tax: sum of the PRINTED lines
     line_13 = irs_round(line_12 * 0.5)  # deductible half of the printed line 12
-    return {
+    # Line 8a: "If $<wage base> or more, skip lines 8b through 10, and go to
+    # line 11" (the amount printed every year is line 7's wage base). On that
+    # branch 8d, 9 and 10 print nothing, so they are not emitted; line 10's
+    # Social Security portion is 0 there, so line 12 is unchanged.
+    skip_8b_through_10 = ss_wages >= line_7
+    out = {
         "sch_se_line_2_net_profit": irs_round(line_3),
         "sch_se_line_3_net_profit": irs_round(line_3),
         "sch_se_line_4a_net_earnings": irs_round(line_4c),
@@ -105,3 +110,9 @@ def compute(scenario: Scenario, upstream: dict) -> dict:
         "sch_se_line_12_se_tax": line_12,
         "sch_se_line_13_half_deduction": line_13,
     }
+    if skip_8b_through_10:
+        for key in ("sch_se_line_8d_wages_subject_to_ss",
+                    "sch_se_line_9_ss_earnings_remaining",
+                    "sch_se_line_10_ss_portion"):
+            del out[key]
+    return out

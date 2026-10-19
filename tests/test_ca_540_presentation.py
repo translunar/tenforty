@@ -15,7 +15,7 @@ from pypdf import PdfReader
 
 from tenforty.forms import f540 as form_f540
 from tenforty.mappings.pdf_f540 import (
-    PdfF540, _ADJUSTMENT_LINES, _YEAR_PRESENTATION, _line_15)
+    PdfF540, _ADJUSTMENT_LINES, _YEAR_PRESENTATION)
 from tenforty.models import CA540Return, FilingStatus
 from tenforty.params import california as ca_params
 from tests._ca_emit_helpers import CA_YEARS, emit_ca, make_ca_scenario
@@ -324,11 +324,28 @@ class TotalAmountDueEmitTests(unittest.TestCase):
 
 
 class Line15Tests(unittest.TestCase):
+    # Line 15 (line 13 - line 14) is computed in forms.f540.printed_line_keys;
+    # the mapping only formats it, a negative amount in parentheses.
+    _ZERO = {"f540_ca_tax": 0, "f540_exemption_credit": 0,
+             "f540_renter_credit": 0, "f540_estimated_payments": 0,
+             "f540_use_tax": 0, "f540_voluntary_contributions": 0,
+             "f540_estimated_tax_penalty": 0, "f540_taxable_income": 0}
+
+    def test_line_15_is_line_13_less_line_14(self):
+        for subtractions, expected in ((1500, -500), (400, 600)):
+            keys = form_f540.printed_line_keys(2025, {
+                **self._ZERO, "f540_federal_agi": 1000,
+                "sch_ca_total_subtractions": subtractions})
+            self.assertEqual(keys[form_f540.LINE_15], expected)
+
     def test_negative_line_15_is_in_parentheses(self):
-        self.assertEqual(
-            _line_15({"f540_federal_agi": 1000, "sch_ca_total_subtractions": 1500}), "(500)")
-        self.assertEqual(
-            _line_15({"f540_federal_agi": 1000, "sch_ca_total_subtractions": 400}), "600")
+        for year in CA_YEARS:
+            with self.subTest(year=year):
+                prefix = _YEAR_PRESENTATION[year][0]
+                cell = prefix + _ADJUSTMENT_LINES[year][1]
+                line_15 = PdfF540.get_derivations(year)[cell]
+                self.assertEqual(line_15({form_f540.LINE_15: -500}), "(500)")
+                self.assertEqual(line_15({form_f540.LINE_15: 600}), "600")
 
 
 class RadioTokenGeometryTests(unittest.TestCase):

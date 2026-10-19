@@ -1,0 +1,273 @@
+{
+ "form": "f8995",
+ "key": 2024,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2024/f8995.pdf",
+ "source_sha256": "08f4c0332be3262fda77744c3cc1e32b03cd7a5f3ab52b748991efb273cdd822",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1",
+   "text": "(a) Trade, business, or aggregation name",
+   "bbox": [
+    45.4,
+    187.65,
+    50.4,
+    198.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1i",
+   "text": "",
+   "bbox": [
+    49.24,
+    228.65,
+    51.56,
+    239.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1ii",
+   "text": "",
+   "bbox": [
+    48.08,
+    252.65,
+    52.72,
+    263.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1iii",
+   "text": "",
+   "bbox": [
+    46.92,
+    276.65,
+    53.88,
+    287.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1iv",
+   "text": "",
+   "bbox": [
+    46.9,
+    300.65,
+    53.9,
+    311.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1v",
+   "text": "",
+   "bbox": [
+    48.06,
+    324.66,
+    52.74,
+    335.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Total qualified business income or (loss). Combine lines 1i through 1v,",
+   "bbox": [
+    45.4,
+    337.65,
+    50.4,
+    348.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "Qualified business net (loss) carryforward from the prior year",
+   "bbox": [
+    45.4,
+    360.65,
+    50.4,
+    371.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4",
+   "text": "Total qualified business income. Combine lines 2 and 3. If zero or less, enter -0-",
+   "bbox": [
+    45.4,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5",
+   "text": "Qualified business income component. Multiply line 4 by 20% (0.20)",
+   "bbox": [
+    45.4,
+    384.65,
+    50.4,
+    395.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6",
+   "text": "Qualified REIT dividends and publicly traded partnership (PTP) income or (loss)",
+   "bbox": [
+    45.4,
+    397.85,
+    50.4,
+    408.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7",
+   "text": "Qualified REIT dividends and qualified PTP (loss) carryforward from the prior",
+   "bbox": [
+    45.4,
+    421.65,
+    50.4,
+    432.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Total qualified REIT dividends and PTP income. Combine lines 6 and 7. If zero",
+   "bbox": [
+    45.4,
+    445.65,
+    50.4,
+    456.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "REIT and PTP component. Multiply line 8 by 20% (0.20)",
+   "bbox": [
+    45.4,
+    468.65,
+    50.4,
+    479.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "10",
+   "text": "Qualified business income deduction before the income limitation. Add lines 5 and",
+   "bbox": [
+    40.39,
+    480.65,
+    50.4,
+    491.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "11",
+   "text": "Taxable income before qualified business income deduction (see instructions)",
+   "bbox": [
+    40.39,
+    492.65,
+    50.4,
+    503.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "12",
+   "text": "Enter your net capital gain, if any, increased by any qualified dividends",
+   "bbox": [
+    40.39,
+    505.85,
+    50.4,
+    516.59
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "13",
+   "text": "Subtract line 12 from line 11. If zero or less, enter -0-",
+   "bbox": [
+    40.39,
+    528.65,
+    50.4,
+    539.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "14",
+   "text": "Income limitation. Multiply line 13 by 20% (0.20)",
+   "bbox": [
+    40.39,
+    540.65,
+    50.4,
+    551.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "15",
+   "text": "Qualified business income deduction. Enter the smaller of line 10 or line 14. Also enter",
+   "bbox": [
+    40.39,
+    553.65,
+    50.4,
+    564.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "16",
+   "text": "Total qualified business (loss) carryforward. Combine lines 2 and 3. If greater than",
+   "bbox": [
+    40.39,
+    576.65,
+    50.4,
+    587.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "17",
+   "text": "Total qualified REIT dividends and PTP (loss) carryforward. Combine lines 6 and",
+   "bbox": [
+    40.39,
+    589.65,
+    50.4,
+    600.39
+   ]
+  }
+ ]
+}

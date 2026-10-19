@@ -1,0 +1,909 @@
+{
+ "form": "1040",
+ "key": 2025,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2025/f1040.pdf",
+ "source_sha256": "3d31c226df0d189ced80e039d01cf0f8820c1019681a0f0ca6264de277b7e982",
+ "lines": [
+  {
+   "page": 1,
+   "section": "",
+   "label": "1a",
+   "text": "Total amount from Form(s) W-2, box",
+   "bbox": [
+    96.35,
+    451.91,
+    100.8,
+    461.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1b",
+   "text": "Household employee wages not reported",
+   "bbox": [
+    100.8,
+    463.91,
+    105.69,
+    473.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1c",
+   "text": "Tip income not reported on line 1a",
+   "bbox": [
+    100.8,
+    475.91,
+    105.39,
+    485.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1d",
+   "text": "Medicaid waiver payments not reported",
+   "bbox": [
+    100.8,
+    487.91,
+    105.69,
+    497.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1e",
+   "text": "Taxable dependent care benefits from",
+   "bbox": [
+    100.8,
+    499.91,
+    105.39,
+    509.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1f",
+   "text": "Employer-provided adoption benefits",
+   "bbox": [
+    100.8,
+    511.91,
+    103.46,
+    521.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1g",
+   "text": "Wages from Form 8919, line 6",
+   "bbox": [
+    100.8,
+    523.91,
+    105.69,
+    533.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1h",
+   "text": "Other earned income (see instructions).",
+   "bbox": [
+    100.8,
+    535.91,
+    105.54,
+    545.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1i",
+   "text": "Nontaxable combat pay election (see",
+   "bbox": [
+    100.8,
+    547.91,
+    102.86,
+    557.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "1z",
+   "text": "Add lines 1a through 1h",
+   "bbox": [
+    100.8,
+    559.91,
+    104.95,
+    569.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2a",
+   "text": "Tax-exempt interest",
+   "bbox": [
+    96.26,
+    571.91,
+    105.3,
+    581.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2b",
+   "text": "Taxable",
+   "bbox": [
+    338.4,
+    571.91,
+    343.29,
+    581.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3a",
+   "text": "Qualified dividends",
+   "bbox": [
+    96.26,
+    583.91,
+    105.3,
+    593.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3b",
+   "text": "Ordinary",
+   "bbox": [
+    338.4,
+    583.91,
+    343.29,
+    593.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3c",
+   "text": "Check if your child’s dividends are included",
+   "bbox": [
+    100.8,
+    595.91,
+    105.39,
+    605.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "2",
+   "text": "Line 3b",
+   "bbox": [
+    352.8,
+    595.91,
+    357.25,
+    605.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4a",
+   "text": "IRA distributions",
+   "bbox": [
+    96.35,
+    607.91,
+    105.39,
+    617.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4b",
+   "text": "Taxable",
+   "bbox": [
+    338.4,
+    607.91,
+    343.29,
+    617.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "4c",
+   "text": "Check if (see instructions)",
+   "bbox": [
+    100.8,
+    619.91,
+    105.39,
+    629.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "3",
+   "text": "",
+   "bbox": [
+    417.6,
+    619.91,
+    422.05,
+    629.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5a",
+   "text": "Pensions and annuities",
+   "bbox": [
+    96.35,
+    631.91,
+    105.39,
+    641.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5b",
+   "text": "Taxable",
+   "bbox": [
+    338.4,
+    631.91,
+    343.29,
+    641.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "5c",
+   "text": "Check if (see instructions)",
+   "bbox": [
+    100.8,
+    643.91,
+    105.39,
+    653.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6a",
+   "text": "Social security benefits",
+   "bbox": [
+    96.35,
+    655.91,
+    105.39,
+    665.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6b",
+   "text": "Taxable",
+   "bbox": [
+    338.4,
+    655.91,
+    343.29,
+    665.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6c",
+   "text": "If you elect to use the lump-sum election",
+   "bbox": [
+    100.8,
+    667.91,
+    105.39,
+    677.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "6d",
+   "text": "If you are married filing separately and",
+   "bbox": [
+    100.8,
+    679.91,
+    105.69,
+    689.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7a",
+   "text": "Capital gain or (loss). Attach Schedule",
+   "bbox": [
+    96.35,
+    691.91,
+    105.39,
+    701.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "7b",
+   "text": "Check if: Schedule D not required",
+   "bbox": [
+    100.8,
+    703.91,
+    105.69,
+    713.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "8",
+   "text": "Additional income from Schedule",
+   "bbox": [
+    96.35,
+    715.91,
+    100.8,
+    725.45
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "9",
+   "text": "Add lines 1z, 2b, 3b, 4b, 5b, 6b, 7a,",
+   "bbox": [
+    96.35,
+    727.91,
+    100.8,
+    737.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "10",
+   "text": "Adjustments to income from Schedule",
+   "bbox": [
+    91.9,
+    739.91,
+    100.8,
+    749.46
+   ]
+  },
+  {
+   "page": 1,
+   "section": "",
+   "label": "11a",
+   "text": "Subtract line 10 from line 9. This is",
+   "bbox": [
+    91.9,
+    751.41,
+    105.39,
+    760.95
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "11b",
+   "text": "Amount from line 11a (adjusted gross income)",
+   "bbox": [
+    91.9,
+    37.91,
+    105.69,
+    47.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12a",
+   "text": "Someone can claim You as a dependent Your spouse as a dependent",
+   "bbox": [
+    91.9,
+    49.91,
+    105.39,
+    59.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12b",
+   "text": "Spouse itemizes on a separate return",
+   "bbox": [
+    100.8,
+    61.91,
+    105.69,
+    71.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12c",
+   "text": "You were a dual-status",
+   "bbox": [
+    292.9,
+    61.91,
+    297.5,
+    71.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12d",
+   "text": "You: Were born before January 2, 1961 Are blind",
+   "bbox": [
+    100.8,
+    73.91,
+    105.69,
+    83.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "12e",
+   "text": "Standard deduction or itemized deductions (from Schedule A)",
+   "bbox": [
+    100.8,
+    97.91,
+    105.39,
+    107.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13a",
+   "text": "Qualified business income deduction from Form 8995 or Form 8995-A",
+   "bbox": [
+    91.9,
+    109.91,
+    105.39,
+    119.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "13b",
+   "text": "Additional deductions from Schedule 1-A, line 38",
+   "bbox": [
+    100.8,
+    121.91,
+    105.69,
+    131.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "14",
+   "text": "Add lines 12e, 13a, and 13b",
+   "bbox": [
+    91.9,
+    133.91,
+    100.8,
+    143.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "15",
+   "text": "Subtract line 14 from line 11b. If zero or less, enter -0-. This is your taxable income",
+   "bbox": [
+    91.9,
+    145.41,
+    100.8,
+    154.96
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "16",
+   "text": "Tax (see instructions). Check if any from Form(s): 1 8814 2 4972",
+   "bbox": [
+    91.9,
+    157.91,
+    100.8,
+    167.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "17",
+   "text": "Amount from Schedule 2, line 3",
+   "bbox": [
+    91.9,
+    169.91,
+    100.8,
+    179.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "18",
+   "text": "Add lines 16 and 17",
+   "bbox": [
+    91.9,
+    181.91,
+    100.8,
+    191.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "19",
+   "text": "Child tax credit or credit for other dependents from Schedule 8812",
+   "bbox": [
+    91.9,
+    193.91,
+    100.8,
+    203.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "20",
+   "text": "Amount from Schedule 3, line 8",
+   "bbox": [
+    91.9,
+    205.91,
+    100.8,
+    215.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "21",
+   "text": "Add lines 19 and 20",
+   "bbox": [
+    91.9,
+    217.91,
+    100.8,
+    227.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "22",
+   "text": "Subtract line 21 from line 18. If zero or less, enter -0-",
+   "bbox": [
+    91.9,
+    229.91,
+    100.8,
+    239.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "23",
+   "text": "Other taxes, including self-employment tax, from Schedule 2, line 21",
+   "bbox": [
+    91.9,
+    241.91,
+    100.8,
+    251.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "24",
+   "text": "Add lines 22 and 23. This is your total tax",
+   "bbox": [
+    91.9,
+    253.41,
+    100.8,
+    262.95
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "25",
+   "text": "Federal income tax withheld from:",
+   "bbox": [
+    91.9,
+    265.91,
+    100.8,
+    275.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "25a",
+   "text": "Form(s) W-2",
+   "bbox": [
+    100.8,
+    277.91,
+    105.39,
+    287.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "25b",
+   "text": "Form(s) 1099",
+   "bbox": [
+    100.8,
+    289.91,
+    105.69,
+    299.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "25c",
+   "text": "Other forms (see instructions)",
+   "bbox": [
+    100.8,
+    301.91,
+    105.39,
+    311.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "25d",
+   "text": "Add lines 25a through 25c",
+   "bbox": [
+    100.8,
+    313.91,
+    105.69,
+    323.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "26",
+   "text": "2025 estimated tax payments and amount applied from 2024 return",
+   "bbox": [
+    91.9,
+    325.41,
+    100.8,
+    334.95
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "27a",
+   "text": "Earned income credit (EIC)",
+   "bbox": [
+    91.9,
+    361.91,
+    105.39,
+    371.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "27b",
+   "text": "Clergy filing Schedule SE (see instructions)",
+   "bbox": [
+    100.8,
+    373.91,
+    105.69,
+    383.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "27c",
+   "text": "If you do not want to claim the EIC, check here",
+   "bbox": [
+    100.8,
+    385.91,
+    105.39,
+    395.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "28",
+   "text": "Additional child tax credit (ACTC) from Schedule 8812. If you do not want",
+   "bbox": [
+    91.9,
+    399.31,
+    100.8,
+    408.86
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "29",
+   "text": "American opportunity credit from Form 8863, line 8",
+   "bbox": [
+    91.9,
+    421.91,
+    100.8,
+    431.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "30",
+   "text": "Refundable adoption credit from Form 8839, line 13",
+   "bbox": [
+    91.9,
+    433.91,
+    100.8,
+    443.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "31",
+   "text": "Amount from Schedule 3, line 15",
+   "bbox": [
+    91.9,
+    445.91,
+    100.8,
+    455.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "32",
+   "text": "Add lines 27a, 28, 29, 30, and 31. These are your total other payments and refundable",
+   "bbox": [
+    91.9,
+    457.91,
+    100.8,
+    467.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "33",
+   "text": "Add lines 25d, 26, and 32. These are your total payments",
+   "bbox": [
+    91.9,
+    469.41,
+    100.8,
+    478.95
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "34",
+   "text": "If line 33 is more than line 24, subtract line 24 from line 33. This is the amount",
+   "bbox": [
+    91.9,
+    481.91,
+    100.8,
+    491.45
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35a",
+   "text": "Amount of line 34 you want refunded to you. If Form 8888 is attached, check",
+   "bbox": [
+    91.9,
+    493.91,
+    105.39,
+    503.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35c",
+   "text": "Type: Checking",
+   "bbox": [
+    338.4,
+    504.91,
+    342.99,
+    514.46
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35b",
+   "text": "Routing number",
+   "bbox": [
+    100.8,
+    505.41,
+    105.69,
+    514.96
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "35d",
+   "text": "Account number",
+   "bbox": [
+    100.8,
+    517.41,
+    105.69,
+    526.95
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "36",
+   "text": "Amount of line 34 you want applied to your 2026 estimated tax",
+   "bbox": [
+    91.9,
+    529.41,
+    100.8,
+    538.96
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "37",
+   "text": "Subtract line 33 from line 24. This is the amount you owe.",
+   "bbox": [
+    91.9,
+    543.31,
+    100.8,
+    552.86
+   ]
+  },
+  {
+   "page": 2,
+   "section": "",
+   "label": "38",
+   "text": "Estimated tax penalty (see instructions)",
+   "bbox": [
+    91.9,
+    565.41,
+    100.8,
+    574.96
+   ]
+  }
+ ]
+}

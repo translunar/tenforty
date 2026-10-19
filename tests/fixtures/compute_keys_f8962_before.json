@@ -1,0 +1,89 @@
+{
+ "emitted": {
+  "spine_battery/ptc_2021_ui_flat133/2021": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_capped_repayment/2021": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_capped_repayment/2022": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_capped_repayment/2023": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_capped_repayment/2024": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_capped_repayment/2025": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_net_credit/2021": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_net_credit/2022": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_net_credit/2023": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_net_credit/2024": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_net_credit/2025": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_partial_year_401/2021": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_partial_year_401/2022": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_partial_year_401/2023": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_partial_year_401/2024": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_partial_year_401/2025": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_reconciliation__mfj/2021": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_reconciliation__mfj/2022": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_reconciliation__mfj/2023": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_reconciliation__mfj/2024": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  },
+  "spine_battery/ptc_reconciliation__mfj/2025": {
+   "topmostSubform[0].Page1[0].c1_2[2]": "/3"
+  }
+ },
+ "not_emitted": {
+  "spine_battery/owes_tax/2021": {
+   "f8962_emitted": false,
+   "key_in_any_record": false
+  },
+  "spine_battery/owes_tax/2022": {
+   "f8962_emitted": false,
+   "key_in_any_record": false
+  },
+  "spine_battery/owes_tax/2023": {
+   "f8962_emitted": false,
+   "key_in_any_record": false
+  },
+  "spine_battery/owes_tax/2024": {
+   "f8962_emitted": false,
+   "key_in_any_record": false
+  },
+  "spine_battery/owes_tax/2025": {
+   "f8962_emitted": false,
+   "key_in_any_record": false
+  }
+ }
+}

@@ -1,0 +1,507 @@
+{
+ "desc_classes": [
+  "styIRS4562LNDesc",
+  "styLNDesc"
+ ],
+ "form": "4562",
+ "label_classes": [
+  "styIRS4562LNLeftNumBox",
+  "styLNLeftNumBox"
+ ],
+ "lines": [
+  {
+   "elements": [
+    "MaximumDollarLimitationAmt"
+   ],
+   "label": "1",
+   "page_section": "Part I",
+   "text": "Maximum amount (see instructions)"
+  },
+  {
+   "elements": [
+    "TotalCostOfSection179PropAmt"
+   ],
+   "label": "2",
+   "page_section": "Part I",
+   "text": "Total cost of section 179 property placed in service (see instructions)"
+  },
+  {
+   "elements": [
+    "ThresholdCostOfSect179PropAmt"
+   ],
+   "label": "3",
+   "page_section": "Part I",
+   "text": "Threshold cost of section 179 property before reduction in limitation (see instructions)"
+  },
+  {
+   "elements": [
+    "ReductionInLimitationAmt"
+   ],
+   "label": "4",
+   "page_section": "Part I",
+   "text": "Reduction in limitation. Subtract line 3 from line 2. If zero or less, enter -0-"
+  },
+  {
+   "elements": [
+    "DollarLimitationForTaxYearAmt"
+   ],
+   "label": "5",
+   "page_section": "Part I",
+   "text": "Dollar limitation for tax year. Subtract line 4 from line 1. If zero or less, enter -0-. If married filing separately,"
+  },
+  {
+   "elements": [
+    "ElectedProperty",
+    "PropertyDesc",
+    "CostForBusinessUseOnlyAmt",
+    "ElectedCostAmt"
+   ],
+   "label": "6",
+   "page_section": "Part I",
+   "text": "(a) Description of property"
+  },
+  {
+   "elements": [
+    "TotalSection179ExpenseAmt"
+   ],
+   "label": "7",
+   "page_section": "Part I",
+   "text": "Listed property. Enter the amount from line 29."
+  },
+  {
+   "elements": [
+    "TotalElectedCostSect179PropAmt"
+   ],
+   "label": "8",
+   "page_section": "Part I",
+   "text": "Total elected cost of section 179 property. Add amounts in column (c), lines 6 and 7"
+  },
+  {
+   "elements": [
+    "TentativeDeductionAmt"
+   ],
+   "label": "9",
+   "page_section": "Part I",
+   "text": "Tentative deduction. Enter the smaller of line 5 or line 8"
+  },
+  {
+   "elements": [
+    "DisallowedDeductionCyovAmt"
+   ],
+   "label": "10",
+   "page_section": "Part I",
+   "text": "Carryover of disallowed deduction from line 13 of your 2022 Form 4562."
+  },
+  {
+   "elements": [
+    "BusinessIncomeLimitationAmt"
+   ],
+   "label": "11",
+   "page_section": "Part I",
+   "text": "Business income limitation. Enter the smaller of business income (not less than zero) or line 5. See"
+  },
+  {
+   "elements": [
+    "Section179ExpenseDeductionAmt/@section179ExpnsDedSummaryCd",
+    "Section179ExpenseDeductionAmt"
+   ],
+   "label": "12",
+   "page_section": "Part I",
+   "text": "Section 179 expense deduction. Add lines 9 and 10, but don't enter more than line 11"
+  },
+  {
+   "elements": [
+    "NextYearCarryoverAmt"
+   ],
+   "label": "13",
+   "page_section": "Part I",
+   "text": "Carryover of disallowed deduction to 2024. Add lines 9 and 10, less line 12"
+  },
+  {
+   "elements": [
+    "SpecialAllowanceAmt"
+   ],
+   "label": "14",
+   "page_section": "Part II",
+   "text": "Special depreciation allowance for qualified property (other than listed property) placed in service during the"
+  },
+  {
+   "elements": [
+    "Section168f1ElectedPropertyAmt"
+   ],
+   "label": "15",
+   "page_section": "Part II",
+   "text": "Property subject to section 168(f)(1) election"
+  },
+  {
+   "elements": [
+    "OtherDepreciationAmt"
+   ],
+   "label": "16",
+   "page_section": "Part II",
+   "text": "Other depreciation (including ACRS)"
+  },
+  {
+   "elements": [
+    "MACRSDedForAstInSrvcBfrPYAmt"
+   ],
+   "label": "17",
+   "page_section": "Part III",
+   "text": "MACRS deductions for assets placed in service in tax years beginning before 2023"
+  },
+  {
+   "elements": [
+    "GeneralAssetAccountElectionInd",
+    "GeneralDepreciationSystem",
+    "GeneralDepreciationSystem/GDS3YearProperty",
+    "GeneralDepreciationSystem/GDS5YearProperty",
+    "GeneralDepreciationSystem/GDS7YearProperty",
+    "GeneralDepreciationSystem/GDS10YearProperty",
+    "GeneralDepreciationSystem/GDS15YearProperty",
+    "GeneralDepreciationSystem/GDS20YearProperty",
+    "GeneralDepreciationSystem/GDS25YearProperty",
+    "GeneralDepreciationSystem/GDSResidentialRentalProperty",
+    "GeneralDepreciationSystem/GDSNonRsdntlRealProp",
+    "GeneralDepreciationSystem/GDSNonRsdntlRealPropSpecify",
+    "AlternativeDepreciationSystem/ADSClassLifeProperty",
+    "BasisForDepreciationAmt",
+    "RecoveryPrd",
+    "DepreciationConventionCd",
+    "DepreciationMethodCd",
+    "DepreciationDeductionAmt",
+    "MonthAndYearPlacedInServiceDt",
+    "AlternativeDepreciationSystem"
+   ],
+   "label": "18",
+   "page_section": "Part III",
+   "text": "If you are electing to group any assets placed in service during the tax year into one or more general asset accounts, check here"
+  },
+  {
+   "elements": [
+    "TotalListedDepreciationAmt"
+   ],
+   "label": "21",
+   "page_section": "Part IV",
+   "text": "Listed property. Enter amount from line 28"
+  },
+  {
+   "elements": [
+    "TotalDepreciationAmt"
+   ],
+   "label": "22",
+   "page_section": "Part IV",
+   "text": "Total. Add amounts from line 12, lines 14 through 17, lines 19 and 20 in column (g), and line 21. Enter here"
+  },
+  {
+   "elements": [
+    "Section263ACurrentYearCostAmt",
+    "EvidenceToSupportDeductionInd",
+    "EvidenceWrittenInd",
+    "GeneralDepreciationSystem/GDS3YearProperty",
+    "TotalSpecialDeprecAllwncAmt",
+    "PropertyDesc",
+    "PlacedInServiceDt",
+    "BusinessInvestmentUsePct",
+    "CostOrOtherBasisAmt",
+    "BasisForDepreciationAmt",
+    "RecoveryPrd",
+    "DeprecMthdAndConventionTypeCd",
+    "DepreciationDeductionAmt",
+    "ElectedSection179CostAmt",
+    "MoreThanHalfBusinessUseProp",
+    "DepreciationConventionAndPreCd",
+    "LessThanHalfBusinessUseProp"
+   ],
+   "label": "23",
+   "page_section": "Part IV",
+   "text": "For assets shown above and placed in service during the current year, enter the portion of the basis attributable to section 263A costs"
+  },
+  {
+   "elements": [
+    "TotalListedDepreciationAmt"
+   ],
+   "label": "28",
+   "page_section": "",
+   "text": "Add amounts in column (h), lines 25 through 27. Enter here and on line 21, page 1"
+  },
+  {
+   "elements": [
+    "TotalSection179ExpenseAmt"
+   ],
+   "label": "29",
+   "page_section": "",
+   "text": "Add amounts in column (i), line 26. Enter here and on line 7, page 1"
+  },
+  {
+   "elements": [
+    "BusinessMilesCnt",
+    "VehicleUsage[$pos + 1]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 2]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 3]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 4]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 5]/BusinessMilesCnt",
+    "CommutingMilesCnt",
+    "VehicleUsage[$pos + 1]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 2]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 3]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 4]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 5]/CommutingMilesCnt"
+   ],
+   "label": "30",
+   "page_section": "",
+   "text": "don't"
+  },
+  {
+   "elements": [
+    "OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 1]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 2]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 3]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 4]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 5]/OtherPersonalMilesCnt"
+   ],
+   "label": "32",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "TotalMilesCnt",
+    "VehicleUsage[$pos + 1]/TotalMilesCnt",
+    "VehicleUsage[$pos + 2]/TotalMilesCnt",
+    "VehicleUsage[$pos + 3]/TotalMilesCnt",
+    "VehicleUsage[$pos + 4]/TotalMilesCnt",
+    "VehicleUsage[$pos + 5]/TotalMilesCnt"
+   ],
+   "label": "33",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 1]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 2]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 3]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 4]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 5]/VehicleAvailableOffDutyHrsInd"
+   ],
+   "label": "34",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 1]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 2]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 3]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 4]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 5]/UsedPrimarilyByOwnerInd"
+   ],
+   "label": "35",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 1]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 2]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 3]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 4]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 5]/AnotherVehicleForPrsnlUseInd"
+   ],
+   "label": "36",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "VehicleUsage"
+   ],
+   "label": "30",
+   "page_section": "",
+   "text": "don't"
+  },
+  {
+   "elements": [],
+   "label": "31",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [],
+   "label": "32",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [],
+   "label": "33",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [],
+   "label": "34",
+   "page_section": "",
+   "text": "Yes"
+  },
+  {
+   "elements": [],
+   "label": "35",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [],
+   "label": "36",
+   "page_section": "",
+   "text": ""
+  },
+  {
+   "elements": [
+    "PolicyNoPrsnlOrCmmtngUseInd"
+   ],
+   "label": "37",
+   "page_section": "",
+   "text": "Do you maintain a written policy statement that prohibits all personal use of vehicles, including commuting, by your employees?"
+  },
+  {
+   "elements": [
+    "PolicyNoPrsnlExcCmmtngUseInd"
+   ],
+   "label": "38",
+   "page_section": "",
+   "text": "Do you maintain a written policy statement that prohibits personal use of vehicles, except commuting, by your employees? See the instructions for vehicles used by corporate officers, directors, or 1% or more owners"
+  },
+  {
+   "elements": [
+    "TreatAllVehUseAsPrsnlUseInd"
+   ],
+   "label": "39",
+   "page_section": "",
+   "text": "Do you treat all use of vehicles by employees as personal use?"
+  },
+  {
+   "elements": [
+    "ProvideOverNumVehAndHaveRecInd"
+   ],
+   "label": "40",
+   "page_section": "",
+   "text": "Do you provide more than five vehicles to your employees, obtain information from your employees about the use of the vehicles, and retain the information received?"
+  },
+  {
+   "elements": [
+    "MeetRqrForAutoDemoUseInd",
+    "AmortizationInfo",
+    "AmortizationInfo/AmortizationInfoTable"
+   ],
+   "label": "41",
+   "page_section": "",
+   "text": "Do you meet the requirements concerning qualified automobile demonstration use? See instructions."
+  },
+  {
+   "elements": [
+    "CostDesc",
+    "AmortizationBeginDt",
+    "AmortizableAmt",
+    "CodeSectionTxt",
+    "AmortizationPeriodOrPctTxt",
+    "AmortizationThisYearAmt",
+    "AmortizationInfo/AmortizationInfoTable"
+   ],
+   "label": "42",
+   "page_section": "Part VI",
+   "text": "Amortization of costs that begins during your 2023 tax year (see instructions):"
+  },
+  {
+   "elements": [
+    "AmortizationCostsBeforeTYAmt"
+   ],
+   "label": "43",
+   "page_section": "Part VI",
+   "text": "Amortization of costs that began before your 2023 tax year"
+  },
+  {
+   "elements": [
+    "TotalAmortizationAmt",
+    "$IRS4562Data",
+    "@section179ExpnsDedSummaryCd",
+    "@extnsUnderAnnouncementCd",
+    "Section179ExpenseDeductionAmt/@section179ExpnsDedSummaryCd",
+    "PropertyDesc",
+    "CostForBusinessUseOnlyAmt",
+    "ElectedCostAmt",
+    "BasisForDepreciationAmt",
+    "RecoveryPrd",
+    "DepreciationConventionCd",
+    "DepreciationMethodCd",
+    "DepreciationDeductionAmt",
+    "MonthAndYearPlacedInServiceDt",
+    "PlacedInServiceDt",
+    "BusinessInvestmentUsePct",
+    "CostOrOtherBasisAmt",
+    "DeprecMthdAndConventionTypeCd",
+    "ElectedSection179CostAmt",
+    "DepreciationConventionAndPreCd",
+    "BusinessMilesCnt",
+    "VehicleUsage[$pos + 1]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 2]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 3]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 4]/BusinessMilesCnt",
+    "VehicleUsage[$pos + 5]/BusinessMilesCnt",
+    "CommutingMilesCnt",
+    "VehicleUsage[$pos + 1]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 2]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 3]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 4]/CommutingMilesCnt",
+    "VehicleUsage[$pos + 5]/CommutingMilesCnt",
+    "OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 1]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 2]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 3]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 4]/OtherPersonalMilesCnt",
+    "VehicleUsage[$pos + 5]/OtherPersonalMilesCnt",
+    "TotalMilesCnt",
+    "VehicleUsage[$pos + 1]/TotalMilesCnt",
+    "VehicleUsage[$pos + 2]/TotalMilesCnt",
+    "VehicleUsage[$pos + 3]/TotalMilesCnt",
+    "VehicleUsage[$pos + 4]/TotalMilesCnt",
+    "VehicleUsage[$pos + 5]/TotalMilesCnt",
+    "VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 1]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 2]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 3]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 4]/VehicleAvailableOffDutyHrsInd",
+    "VehicleUsage[$pos + 5]/VehicleAvailableOffDutyHrsInd",
+    "UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 1]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 2]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 3]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 4]/UsedPrimarilyByOwnerInd",
+    "VehicleUsage[$pos + 5]/UsedPrimarilyByOwnerInd",
+    "AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 1]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 2]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 3]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 4]/AnotherVehicleForPrsnlUseInd",
+    "VehicleUsage[$pos + 5]/AnotherVehicleForPrsnlUseInd",
+    "CostDesc",
+    "AmortizationBeginDt",
+    "AmortizableAmt",
+    "CodeSectionTxt",
+    "AmortizationPeriodOrPctTxt",
+    "AmortizationThisYearAmt"
+   ],
+   "label": "44",
+   "page_section": "Part VI",
+   "text": "Total. Add amounts in column (f). See the instructions for where to report"
+  }
+ ],
+ "package": "https://www.irs.gov/pub/irs-schema/py2024r1.zip",
+ "package_sha256": "04756268735a28e5f7cbdc3c07c37b2336d68f05d1b448fd318c4b28b849e089",
+ "xsl": "PY2024R11/mef/Stylesheets/2023/IRS4562.xsl",
+ "year": 2023
+}

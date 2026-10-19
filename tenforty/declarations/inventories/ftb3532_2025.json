@@ -1,0 +1,230 @@
+{
+ "form": "ftb3532",
+ "key": 2025,
+ "jurisdiction": "california",
+ "source": "pdfs/california/2025/ftb3532.pdf",
+ "source_sha256": "3a63e4eed0b8668fcffad9879f0c0f3d46f15f39834b485d2a10cbac3ce679b5",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Check one box below to identify your marital status. See instructions.",
+   "bbox": [
+    36.0,
+    135.54,
+    40.5,
+    146.71
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Not legally married/RDP during 2025",
+   "bbox": [
+    47.0,
+    150.07,
+    51.5,
+    161.24
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Surviving spouse/RDP (my spouse/RDP died before 01/01/2025)",
+   "bbox": [
+    47.0,
+    168.07,
+    51.5,
+    179.24
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1c",
+   "text": "Marriage/RDP was annulled. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    186.07,
+    51.0,
+    197.24
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1d",
+   "text": "Received final decree of divorce, legal separation, dissolution, or termination of marriage/RDP by 12/31/2025. . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    204.07,
+    51.5,
+    215.24
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1e",
+   "text": "Legally married/RDP and did not live with spouse/RDP during 2025. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    222.07,
+    51.5,
+    233.24
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1f",
+   "text": "Legally married/RDP and lived with spouse/RDP during 2025. List the beginning and ending dates for each period when",
+   "bbox": [
+    47.0,
+    240.54,
+    49.5,
+    251.71
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2",
+   "text": "Check one box below to identify the relationship of the person that qualifies you for the head of household filing status.",
+   "bbox": [
+    36.0,
+    331.94,
+    40.5,
+    343.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2a",
+   "text": "Son, daughter, stepson, or stepdaughter. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    349.94,
+    51.5,
+    361.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2b",
+   "text": "Grandchild, brother, sister, half brother, half sister, stepbrother, stepsister, nephew, or niece. . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    370.94,
+    51.5,
+    382.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2c",
+   "text": "Eligible foster child. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+   "bbox": [
+    47.0,
+    391.94,
+    51.0,
+    403.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2d",
+   "text": "Father, mother, stepfather, or stepmother",
+   "bbox": [
+    47.0,
+    412.94,
+    51.5,
+    424.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part II",
+   "label": "2e",
+   "text": "Grandfather, grandmother, son-in-law, daughter-in-law, father-in-law, mother-in-law, brother-in-law,",
+   "bbox": [
+    47.0,
+    433.94,
+    51.5,
+    445.11
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3",
+   "text": "First Name.",
+   "bbox": [
+    467.75,
+    499.25,
+    575.75,
+    517.25
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3a",
+   "text": "Was your qualifying person a full time student under age 24 in 2025?",
+   "bbox": [
+    484.05,
+    586.42,
+    497.05,
+    601.25
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "3b",
+   "text": "Was your qualifying person permanently and totally disabled in 2025?",
+   "bbox": [
+    484.05,
+    608.75,
+    497.05,
+    622.75
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "4",
+   "text": "Enter qualifying person’s gross income in 2025 . See instructions.",
+   "bbox": [
+    468.0,
+    629.25,
+    540.0,
+    647.75
+   ],
+   "source": "tooltip"
+  },
+  {
+   "page": 1,
+   "section": "Part III",
+   "label": "5",
+   "text": "Number of days your qualifying person lived with you during 2025 . See instructions.",
+   "bbox": [
+    467.75,
+    653.25,
+    498.0,
+    671.75
+   ],
+   "source": "tooltip"
+  }
+ ]
+}

@@ -1,0 +1,657 @@
+{
+ "form": "sch_e",
+ "key": 2021,
+ "jurisdiction": "federal",
+ "source": "pdfs/federal/2021/f1040se.pdf",
+ "source_sha256": "297713061cebe26965b6f7d3255172cb5f61a3b5db22f419aef5adf288bb6e89",
+ "lines": [
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "A",
+   "text": "Did you make any payments",
+   "bbox": [
+    40.12,
+    132.65,
+    46.28,
+    143.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "B",
+   "text": "If “Yes,” did you or will you",
+   "bbox": [
+    40.03,
+    144.65,
+    46.37,
+    155.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1a",
+   "text": "Physical address of each",
+   "bbox": [
+    45.31,
+    156.65,
+    55.48,
+    167.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1b",
+   "text": "Type of Property",
+   "bbox": [
+    45.15,
+    204.65,
+    55.65,
+    215.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "2",
+   "text": "For each rental real estate property",
+   "bbox": [
+    160.6,
+    204.65,
+    165.6,
+    215.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "1",
+   "text": "Single Family Residence",
+   "bbox": [
+    36.0,
+    276.86,
+    41.0,
+    287.35
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "3",
+   "text": "Vacation/Short-Term Rental",
+   "bbox": [
+    165.6,
+    276.86,
+    170.6,
+    287.35
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "4",
+   "text": "Commercial",
+   "bbox": [
+    165.6,
+    288.86,
+    170.6,
+    299.35
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "5",
+   "text": "Advertising",
+   "bbox": [
+    45.4,
+    348.65,
+    50.4,
+    359.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "6",
+   "text": "Auto and travel (see instructions)",
+   "bbox": [
+    45.4,
+    360.65,
+    50.4,
+    371.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "7",
+   "text": "Cleaning and maintenance",
+   "bbox": [
+    45.4,
+    372.65,
+    50.4,
+    383.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "8",
+   "text": "Commissions.",
+   "bbox": [
+    45.4,
+    384.64,
+    50.4,
+    395.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "9",
+   "text": "Insurance",
+   "bbox": [
+    45.4,
+    396.64,
+    50.4,
+    407.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "10",
+   "text": "Legal and other professional",
+   "bbox": [
+    40.39,
+    408.64,
+    50.4,
+    419.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "11",
+   "text": "Management fees",
+   "bbox": [
+    40.39,
+    420.64,
+    50.4,
+    431.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "12",
+   "text": "Mortgage interest paid to",
+   "bbox": [
+    40.39,
+    432.64,
+    50.4,
+    443.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "13",
+   "text": "Other interest.",
+   "bbox": [
+    40.39,
+    444.64,
+    50.4,
+    455.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "14",
+   "text": "Repairs.",
+   "bbox": [
+    40.39,
+    456.64,
+    50.4,
+    467.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "15",
+   "text": "Supplies",
+   "bbox": [
+    40.39,
+    468.64,
+    50.4,
+    479.38
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "16",
+   "text": "Taxes",
+   "bbox": [
+    40.39,
+    480.64,
+    50.4,
+    491.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "17",
+   "text": "Utilities",
+   "bbox": [
+    40.39,
+    492.64,
+    50.4,
+    503.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "18",
+   "text": "Depreciation expense or",
+   "bbox": [
+    40.39,
+    504.63,
+    50.4,
+    515.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "19",
+   "text": "Other (list) ▶",
+   "bbox": [
+    40.39,
+    516.63,
+    50.4,
+    527.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "20",
+   "text": "Total expenses. Add lines",
+   "bbox": [
+    40.39,
+    528.63,
+    50.4,
+    539.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "21",
+   "text": "Subtract line 20 from line",
+   "bbox": [
+    40.39,
+    543.13,
+    50.4,
+    553.87
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "22",
+   "text": "Deductible rental real estate",
+   "bbox": [
+    40.39,
+    577.63,
+    50.4,
+    588.37
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "23a",
+   "text": "Total of all amounts reported",
+   "bbox": [
+    40.39,
+    600.65,
+    55.57,
+    611.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "23b",
+   "text": "Total of all amounts reported",
+   "bbox": [
+    50.4,
+    612.65,
+    55.9,
+    623.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "23c",
+   "text": "Total of all amounts reported",
+   "bbox": [
+    50.4,
+    624.65,
+    55.57,
+    635.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "23d",
+   "text": "Total of all amounts reported",
+   "bbox": [
+    50.4,
+    636.65,
+    55.9,
+    647.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "23e",
+   "text": "Total of all amounts reported",
+   "bbox": [
+    50.4,
+    648.65,
+    55.57,
+    659.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "24",
+   "text": "Income. Add positive amounts",
+   "bbox": [
+    40.39,
+    660.65,
+    50.4,
+    671.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "25",
+   "text": "Losses. Add royalty losses",
+   "bbox": [
+    40.39,
+    672.65,
+    50.4,
+    683.39
+   ]
+  },
+  {
+   "page": 1,
+   "section": "Part I",
+   "label": "26",
+   "text": "Total rental real estate",
+   "bbox": [
+    40.39,
+    687.15,
+    50.4,
+    697.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part I",
+   "label": "13",
+   "text": "2",
+   "bbox": [
+    466.42,
+    34.39,
+    477.54,
+    46.32
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "27",
+   "text": "Are you reporting any loss not allowed in a prior year due to the at-risk",
+   "bbox": [
+    40.39,
+    134.45,
+    50.4,
+    145.19
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "28",
+   "text": "(a) Name",
+   "bbox": [
+    40.39,
+    173.15,
+    50.4,
+    183.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "29a",
+   "text": "Totals",
+   "bbox": [
+    40.39,
+    324.65,
+    55.57,
+    335.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "29b",
+   "text": "Totals",
+   "bbox": [
+    50.4,
+    336.65,
+    55.9,
+    347.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "30",
+   "text": "Add columns (h) and (k) of line 29a.",
+   "bbox": [
+    40.39,
+    348.65,
+    50.4,
+    359.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "31",
+   "text": "Add columns (g), (i), and (j) of line 29b.",
+   "bbox": [
+    40.39,
+    360.65,
+    50.4,
+    371.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part II",
+   "label": "32",
+   "text": "Total partnership and S corporation income or (loss). Combine lines",
+   "bbox": [
+    40.39,
+    372.65,
+    50.4,
+    383.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "33",
+   "text": "(a) Name",
+   "bbox": [
+    40.39,
+    401.15,
+    50.4,
+    411.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "34a",
+   "text": "Totals",
+   "bbox": [
+    40.39,
+    504.65,
+    55.57,
+    515.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "34b",
+   "text": "Totals",
+   "bbox": [
+    50.4,
+    516.65,
+    55.9,
+    527.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "35",
+   "text": "Add columns (d) and (f) of line 34a",
+   "bbox": [
+    40.39,
+    528.65,
+    50.4,
+    539.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "36",
+   "text": "Add columns (c) and (e) of line 34b",
+   "bbox": [
+    40.39,
+    540.65,
+    50.4,
+    551.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part III",
+   "label": "37",
+   "text": "Total estate and trust income or (loss). Combine lines 35 and 36",
+   "bbox": [
+    40.39,
+    552.65,
+    50.4,
+    563.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "38",
+   "text": "(a) Name (b) Employer identification Schedules Q, line",
+   "bbox": [
+    40.39,
+    581.15,
+    50.4,
+    591.89
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part IV",
+   "label": "39",
+   "text": "Combine columns (d) and (e) only. Enter the result here and include in the",
+   "bbox": [
+    40.39,
+    612.65,
+    50.4,
+    623.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "40",
+   "text": "Net farm rental income or (loss) from Form 4835. Also, complete line 42",
+   "bbox": [
+    40.39,
+    636.65,
+    50.4,
+    647.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "41",
+   "text": "Total income or (loss). Combine lines 26, 32, 37, 39, and 40. Enter the result here and on Schedule",
+   "bbox": [
+    40.39,
+    648.65,
+    50.4,
+    659.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "42",
+   "text": "Reconciliation of farming and fishing income. Enter your gross",
+   "bbox": [
+    40.39,
+    663.65,
+    50.4,
+    674.39
+   ]
+  },
+  {
+   "page": 2,
+   "section": "Part V",
+   "label": "43",
+   "text": "Reconciliation for real estate professionals. If you were a real estate professional",
+   "bbox": [
+    40.39,
+    711.65,
+    50.4,
+    722.39
+   ]
+  }
+ ]
+}
