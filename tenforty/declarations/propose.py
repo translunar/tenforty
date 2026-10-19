@@ -43,6 +43,7 @@ KEY_PREFIX: dict[str, str] = {
     "sch_1": "sch_1",
     "sch_2": "sch_2",
     "sch_c": "sch_c",
+    "sch_e": "sch_e",
     "sch_se": "sch_se",
 }
 
