@@ -494,8 +494,7 @@ _ANCHORS = {
     # type/description text entry (x65-382) -- two entries on that row. The
     # box label sits immediately left of the amount entry (gap 4-6 pt).
     # "8z" also prints in line 9's text ("8a through 8z") with no entry box
-    # within LABEL_GAP_PT to its right. (No field is mapped for 8z yet: the
-    # known gap, graduation blocker sch_1-8z-9-mapping-gap.)
+    # within LABEL_GAP_PT to its right.
     (P1, "8z"): (_ALL, _right_of("8z")),
     # 2025 only: rows that gained boxes. 4: the entry row (y233) also holds
     # the Form 4797 / 4684 boxes. 7: label wraps (y269->y281) and the entry
