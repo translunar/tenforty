@@ -10,7 +10,7 @@ does not fire; taxable income before QBI is fixed at a synthetic 120,000.
 import unittest
 
 from tenforty.forms import f8995
-from tenforty.models import K1FanoutData
+from tenforty.models import K1FanoutData, ScheduleCBusiness, ScheduleK1
 
 from tests.helpers import make_simple_scenario
 
@@ -37,6 +37,25 @@ def _f1040_stub():
     }
 
 
+def _with_sources(scn, up):
+    """The scenario's source objects matching ``up``'s totals (as the
+    production producers guarantee): one Schedule C business for a Schedule
+    C total, one K-1 for a K-1 QBI aggregate."""
+    sch_c = up.get("sch_c")
+    if sch_c:
+        net = sch_c["sch_c_line_31_net_profit_total"]
+        sch_c["sch_c_businesses"] = [{"sch_c_line_31_net_profit": net}]
+        scn.schedule_c_businesses = [
+            ScheduleCBusiness(description="Example Bindery")]
+    qbi = up["k1_fanout"].qbi_aggregate
+    if qbi:
+        scn.schedule_k1s = [ScheduleK1(
+            entity_name="Example Entity", entity_ein="00-0000000",
+            entity_type="s_corp", material_participation=True,
+            qbi_amount=qbi)]
+    return scn, up
+
+
 class SchCQbiTests(unittest.TestCase):
     def test_sch_c_qbi_component_enters_line_1(self):
         # net profit 60,000; half-SE 4,000; SE-health 0 → QBI component 56,000.
@@ -47,7 +66,7 @@ class SchCQbiTests(unittest.TestCase):
             "sch_se": {"sch_se_line_13_half_deduction": 4_000},
         }
         scn = make_simple_scenario()  # SE-health deduction defaults to 0
-        out = f8995.compute(scn, up)
+        out = f8995.compute(*_with_sources(scn, up))
         self.assertEqual(out["f8995_line_1_qbi"], 56_000)
         self.assertGreater(out["f8995_line_15_qbi_deduction"], 0)
 
@@ -61,7 +80,7 @@ class SchCQbiTests(unittest.TestCase):
             "sch_se": {"sch_se_line_13_half_deduction": 4_000},
         }
         scn = make_simple_scenario()
-        out = f8995.compute(scn, up)
+        out = f8995.compute(*_with_sources(scn, up))
         self.assertEqual(out["f8995_line_1_qbi"], 66_000)
 
     def test_se_health_reduces_sch_c_qbi_component(self):
@@ -78,7 +97,7 @@ class SchCQbiTests(unittest.TestCase):
         }
         scn = make_simple_scenario()
         scn.config.self_employed_health_insurance_deduction = 6_000.0
-        out = f8995.compute(scn, up)
+        out = f8995.compute(*_with_sources(scn, up))
         self.assertEqual(out["f8995_line_1_qbi"], 50_000)
 
     def test_no_sch_c_leaves_qbi_unchanged(self):
@@ -89,7 +108,7 @@ class SchCQbiTests(unittest.TestCase):
             "f1040": _f1040_stub(),
         }
         scn = make_simple_scenario()
-        out = f8995.compute(scn, up)
+        out = f8995.compute(*_with_sources(scn, up))
         self.assertEqual(out["f8995_line_1_qbi"], 10_000)
 
 
