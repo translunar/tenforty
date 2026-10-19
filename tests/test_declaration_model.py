@@ -87,7 +87,8 @@ class TypesTests(unittest.TestCase):
         self.assertEqual({m.name for m in LabelRelation},
                          {"ON_ROW", "LEFT_OF", "RIGHT_OF", "AFTER_WRAPPED"})
         self.assertEqual({m.name for m in FieldRelation},
-                         {"SAME_ROW_RIGHT_OF", "NEXT_ROW_BELOW"})
+                         {"SAME_ROW_RIGHT_OF", "SAME_ROW_LEFT_OF",
+                          "NEXT_ROW_BELOW"})
         self.assertEqual(set(anchors.Anchor.__args__),
                          {Tooltip, RowLabel, NearLabel, NearField})
 

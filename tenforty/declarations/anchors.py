@@ -28,6 +28,7 @@ class LabelRelation(enum.Enum):
 class FieldRelation(enum.Enum):
     """Where a field sits relative to another declared line's field."""
     SAME_ROW_RIGHT_OF = "same_row_right_of"
+    SAME_ROW_LEFT_OF = "same_row_left_of"
     NEXT_ROW_BELOW = "next_row_below"
 
 

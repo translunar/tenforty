@@ -81,7 +81,9 @@ def _payer_rows(section, line, stem, rows, payer_mef, amount_mef):
     """Rows 2..``rows`` of a payer grid. Every row is 12.0 pt below the one
     above (measured, all years), cells abutting. Each amount chains below
     the previous row's amount (one column, x 489.6, all rows); each payer
-    below the previous row's payer.
+    sits left of its own amount (SAME_ROW_LEFT_OF, S2 ruling: dividend row
+    1's payer box is the short one beside the label, x 201.6/209.1, so a
+    payer-column chain cannot start there).
     column unconstrained: anchor vocabulary has no column relation."""
     out = []
     for i in range(2, rows + 1):
@@ -91,7 +93,8 @@ def _payer_rows(section, line, stem, rows, payer_mef, amount_mef):
         out.append(DeclaredLine(
             line=loc, description=f"payer row {i} (unlabeled)",
             key=f"{stem}_payer_{i}", kind="text", section=section,
-            anchor=NearField(above, FieldRelation.NEXT_ROW_BELOW),
+            anchor=NearField(f"{loc}(Amount)",
+                             FieldRelation.SAME_ROW_LEFT_OF),
             mef_element=payer_mef, inventory_exemption=exemption))
         out.append(DeclaredLine(
             line=f"{loc}(Amount)",
