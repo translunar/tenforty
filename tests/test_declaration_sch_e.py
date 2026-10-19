@@ -1,0 +1,125 @@
+"""The Schedule E declaration validates against each year's own inventory
+(emit-verification protocol step 4; adjudications
+/private/tmp/pilot-packet-sch_e/ADJUDICATION.md and
+/private/tmp/pilot-packet-sch_e-supp/ADJUDICATION.md).
+
+The module ships inert: graduation (registration in
+tenforty.declarations.forms with the pending removal) is a later, separate
+step, so this test reads the module directly, not the registry.
+"""
+import tempfile
+import unittest
+from pathlib import Path
+
+from tenforty.declarations import propose, registry, sch_e
+from tenforty.declarations.anchors import NearLabel
+from tenforty.declarations.model import FormDeclaration, expand
+from tenforty.declarations.validate import validate
+from tenforty.verification import anchors as anchor_eval
+from tenforty.verification import crosscheck as crosscheck_mod
+from tenforty.verification import emit_manifest
+from tenforty.verification.batteries import BATTERIES
+from tenforty.verification.coverage import coverage_cells
+from tenforty.verification.pending import PENDING_DECLARATIONS
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+YEARS = (2021, 2022, 2023, 2024, 2025)
+FORM = ("federal", "sch_e")
+
+
+class SchEDeclarationValidatesTests(unittest.TestCase):
+    def test_each_year_declared(self):
+        self.assertEqual(sorted(sch_e.DECLARATIONS), list(YEARS))
+        for year in YEARS:
+            decl = sch_e.DECLARATIONS[year]
+            with self.subTest(year=year):
+                self.assertIsInstance(decl, FormDeclaration)
+                self.assertEqual(decl.form, FORM)
+                self.assertEqual(decl.key, year)
+
+    def test_each_year_validates_clean(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                findings = validate(sch_e.DECLARATIONS[year],
+                                    siblings=sch_e.DECLARATIONS.values())
+                self.assertEqual(findings, [], "\n".join(
+                    f.message for f in findings))
+
+    def test_the_documented_witness_discrepancies_are_the_raw_findings(self):
+        # The wired in-force pin: every documented entry is a real raw
+        # stylesheet cross-check finding, and every raw finding documented.
+        for year in YEARS:
+            decl = sch_e.DECLARATIONS[year]
+            by_line = {ln.line: ln.line_id for ln in expand(decl, {})}
+            raw = crosscheck_mod.crosscheck(
+                decl, propose.stylesheet_lines("sch_e", year))
+            in_force = crosscheck_mod.discrepancies_in_force(sch_e, year)
+            with self.subTest(year=year):
+                self.assertEqual(set(in_force),
+                                 {by_line[f.line] for f in raw})
+                self.assertEqual(crosscheck_mod.crosscheck(
+                    decl, propose.stylesheet_lines("sch_e", year),
+                    discrepancies=in_force), [])
+
+    def test_explicit_phrases_print_exactly_once(self):
+        # The anchor evaluator matches whole printed tokens; a phrase that
+        # ends mid-token prints zero times. Each explicit phrase prints on
+        # its page once (Part I on page 1, Parts II-V on page 2).
+        for year in YEARS:
+            template = str(REPO_ROOT / "pdfs" / "federal" / str(year)
+                           / "f1040se.pdf")
+            for ln in sch_e.DECLARATIONS[year].lines:
+                if not isinstance(ln.anchor, NearLabel):
+                    continue
+                page = 0 if ln.section == "Part I" else 1
+                words = anchor_eval._page_words(template, page)
+                with self.subTest(year=year, line=ln.line):
+                    self.assertEqual(len(anchor_eval._phrase_boxes(
+                        words, ln.anchor.phrase)), 1, ln.anchor.phrase)
+
+    def test_ships_inert(self):
+        self.assertIn(FORM, PENDING_DECLARATIONS)
+        self.assertNotIn(FORM, {f for f, _ in registry.declared_forms()})
+
+
+def _sch_e_records():
+    """(row id, RecordedForm) for every Schedule E the registered batteries
+    emit natively (states observed, no expected values)."""
+    manifest = emit_manifest.load_manifest()
+    records = []
+    for battery in BATTERIES:
+        for name, year, build in battery.scenarios():
+            rid = emit_manifest.row_id(battery.name, name, year)
+            row = manifest.get(rid)
+            if not row or row["routing"] != "native" or row["refusal"]:
+                continue
+            if "federal/sch_e" not in (row["forms"] or ()):
+                continue
+            out = Path(tempfile.mkdtemp()) / "out"
+            records += [(rid, rec) for rec in emit_manifest.emit(
+                battery, build(), out).record if rec.form == FORM]
+    return records
+
+
+class SchECoverageTests(unittest.TestCase):
+    """Every declared state is exercised, every year, over the registered
+    batteries (the Schedule E battery carries columns B/C, lines 5-19, 22,
+    25, the line A/B answers and Part II rows a-d)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.records = _sch_e_records()
+
+    def test_every_year_has_records(self):
+        self.assertEqual(sorted({rec.key for _, rec in self.records}),
+                         list(YEARS))
+
+    def test_no_cell_is_uncovered(self):
+        report = coverage_cells(self.records,
+                                [sch_e.DECLARATIONS[y] for y in YEARS])
+        self.assertEqual(list(report.uncovered), [], "\n".join(
+            map(str, report.uncovered)))
+
+
+if __name__ == "__main__":
+    unittest.main()
