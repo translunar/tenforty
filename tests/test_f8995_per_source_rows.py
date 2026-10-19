@@ -165,15 +165,67 @@ class SelfEmployedHealthInsuranceTests(unittest.TestCase):
         self.assertIn("A39", str(ctx.exception))
 
 
+def _businesses_case(businesses, half_se):
+    """Schedule C businesses as (description, line 7 gross income, net
+    profit), with the scenario's half-SE-tax deduction."""
+    s, up = _case(businesses=[(desc, net) for desc, _, net in businesses],
+                  half_se=half_se)
+    for result, (_, gross, _) in zip(up["sch_c"]["sch_c_businesses"],
+                                     businesses):
+        result["sch_c_line_7_gross_income"] = gross
+    return s, up
+
+
+class HalfSeAllocationTests(unittest.TestCase):
+    """Ruling C (Juno): with two or more Schedule C businesses the
+    deductible half of SE tax is allocated by each business's share of
+    GROSS INCOME (Schedule C line 7), Treas. Reg. §1.199A-3(b)(1)(vi):
+    "on a proportionate basis to the gross income received from the trade
+    or business". Each row then rounds on its own (ruled footing)."""
+
+    def test_the_split_follows_gross_income_and_rows_round_on_their_own(self):
+        # Shares 3/4 and 1/4 of 1,766: 1,324.50 and 441.50. Rows
+        # 20,000 - 1,324.50 = 18,675.50 -> 18,676 and 5,000 - 441.50 =
+        # 4,558.50 -> 4,559; line 2 = 23,235, where one round of the
+        # unrounded total (23,234) would differ by a dollar.
+        s, up = _businesses_case([("Example Bindery", 30_000.0, 20_000.0),
+                                  ("Example Kiln", 10_000.0, 5_000.0)],
+                                 half_se=1_766.0)
+        out = f8995.compute(s, up)
+        self.assertEqual(_rows(out), {
+            "i": ("Example Bindery", SSN, 18_676),
+            "ii": ("Example Kiln", SSN, 4_559)})
+        self.assertEqual(out["f8995_line_2_total_qbi"], 23_235)
+
+    def test_a_loss_business_with_receipts_takes_its_share(self):
+        # Shares 4/5 and 1/5 of 1,978: 1,582.40 and 395.60.
+        s, up = _businesses_case([("Example Bindery", 40_000.0, 30_000.0),
+                                  ("Example Kiln", 10_000.0, -2_000.0)],
+                                 half_se=1_978.0)
+        self.assertEqual(_rows(f8995.compute(s, up)), {
+            "i": ("Example Bindery", SSN, 28_418),
+            "ii": ("Example Kiln", SSN, -2_396)})
+
+    def test_a_zero_gross_income_business_takes_no_share(self):
+        s, up = _businesses_case([("Example Bindery", 20_000.0, 15_000.0),
+                                  ("Example Idle Kiln", 0.0, -500.0)],
+                                 half_se=1_000.0)
+        self.assertEqual(_rows(f8995.compute(s, up)), {
+            "i": ("Example Bindery", SSN, 14_000),
+            "ii": ("Example Idle Kiln", SSN, -500)})
+
+    def test_each_business_takes_its_own_row_in_filing_order(self):
+        s, up = _businesses_case([("Example Bindery", 10_000.0, 6_000.0),
+                                  ("Example Kiln", 10_000.0, 6_000.0),
+                                  ("Example Loom", 20_000.0, 8_000.0)],
+                                 half_se=800.0)
+        self.assertEqual(_rows(f8995.compute(s, up)), {
+            "i": ("Example Bindery", SSN, 5_800),
+            "ii": ("Example Kiln", SSN, 5_800),
+            "iii": ("Example Loom", SSN, 7_600)})
+
+
 class RefusalTests(unittest.TestCase):
-    def test_two_schedule_c_businesses_are_refused(self):
-        # The half-SE-tax allocation across businesses is pending a ruling.
-        s, up = _case(businesses=[("Example Bindery", 10_000.0),
-                                  ("Example Kiln", -500.0)])
-        with self.assertRaises(NotImplementedError) as ctx:
-            f8995.compute(s, up)
-        self.assertIn("per-source rows", str(ctx.exception))
-        self.assertIn("allocat", str(ctx.exception))
 
     def test_more_than_five_sources_are_refused(self):
         s, up = _case(k1_qbis=(1_000.0,) * 6)
