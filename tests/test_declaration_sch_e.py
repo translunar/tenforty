@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.declarations import propose, registry, sch_e
+from tenforty.declarations import inventory, propose, registry, sch_e
 from tenforty.declarations.anchors import NearLabel
 from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
@@ -76,6 +76,26 @@ class SchEDeclarationValidatesTests(unittest.TestCase):
                 with self.subTest(year=year, line=ln.line):
                     self.assertEqual(len(anchor_eval._phrase_boxes(
                         words, ln.anchor.phrase)), 1, ln.anchor.phrase)
+
+    def test_inventory_backed_descriptions_are_the_inventory_text(self):
+        # Description-refresh ruling: every line the inventory prints is
+        # described by the inventory's text verbatim (line 2 included: its
+        # row text, the full caption kept in a comment).
+        for year in YEARS:
+            text = {(l.section, l.label): l.text
+                    for l in inventory.load("sch_e", year).lines}
+            for ln in sch_e.DECLARATIONS[year].lines:
+                if ln.inventory_exemption is not None:
+                    continue
+                with self.subTest(year=year, line=ln.line):
+                    self.assertEqual(ln.description, text[ln.line_id])
+
+    def test_line_41_is_the_one_value_only_line(self):
+        for year in YEARS:
+            lines = sch_e.DECLARATIONS[year].lines
+            with self.subTest(year=year):
+                self.assertEqual([ln.line for ln in lines
+                                  if ln.single_state == "value"], ["41"])
 
     def test_ships_inert(self):
         self.assertIn(FORM, PENDING_DECLARATIONS)
