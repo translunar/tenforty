@@ -135,7 +135,8 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
             right = sorted(v for v in row(w) if v[0] >= w[2] - 0.5)
             return right[0] if right else None
 
-        numbers = [w for w in words if _NUMBER.match(w[4]) and left_clear(w)]
+        numbers = [w for w in words if _NUMBER.match(w[4]) and left_clear(w)
+                   and not _attachment_sequence_number(w, words)]
         if not numbers:
             continue
         median_height = statistics.median(w[3] - w[1] for w in numbers)
@@ -169,21 +170,51 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
             events.append((w[1], 1, "letter", w[4], w))
         events.sort(key=lambda e: (e[0], e[1], e[4][0]))
 
+        # The section each event sits in. Part headings printed on ONE row
+        # ("Part I Identification ... Part II Individual Income Tax", Form
+        # 4868) divide the page into columns below them: a label belongs to
+        # the heading at or left of it. A later heading row starts over. The
+        # next page carries the last heading in reading order.
+        placed = []
+        zones = [(float("-inf"), section)]
+        last_heading = None
+        for e in events:
+            _, _, kind, value, w = e
+            if kind == "part":
+                if (last_heading is not None
+                        and abs(w[1] - last_heading[1]) < _SAME_ROW):
+                    zones.append((w[0] - _LABEL_GAP, value))
+                else:
+                    zones = [(float("-inf"), value)]
+                last_heading = w
+                section = value
+                continue
+            placed.append((e, _zone_section(zones, w), tuple(zones)))
+
         # A label column counts up within a Part. A column whose numbers fall
         # back inside one Part is a table's values (e.g. Form 4562's
         # recovery periods, "25 yrs.", "39 yrs."), not line labels.
         sequences: dict = {}
-        current = section
-        for _, _, kind, value, w in events:
-            if kind == "part":
-                current = value
-            elif kind == "number":
-                sequences.setdefault((column_of(w), current), []).append(
+        for (_, _, kind, value, w), sec, _ in placed:
+            if kind == "number":
+                sequences.setdefault((column_of(w), sec), []).append(
                     _number_of(value))
         not_labels = {col for (col, _), seq in sequences.items()
                       if any(b < a for a, b in zip(seq, seq[1:]))}
-        events = [e for e in events
-                  if not (e[2] == "number" and column_of(e[4]) in not_labels)]
+        placed = [p for p in placed
+                  if not (p[0][2] == "number"
+                          and column_of(p[0][4]) in not_labels)]
+        kept = _without_legend_rows(placed, column_of)
+        # A column whose numbers were ALL legend entries no longer bounds a
+        # line's text (Schedule E's line 2 runs past the legend's "3"/"4"
+        # column); one emptied as a table's values still does.
+        legend = [p for p in placed if p not in kept]
+        text_columns = [c for c in columns
+                        if c not in {column_of(p[0][4]) for p in legend}
+                        or any(e[2] == "number" and column_of(e[4]) == c
+                               and not any(e is p[0] for p in legend)
+                               for e in events)]
+        placed = kept
 
         def parent_column(w):
             # The label column a bare sub-letter belongs to: the nearest
@@ -196,10 +227,7 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
         # two-column page (Schedule C Part II: lines 8-17 beside 18-27) the
         # last number in reading order may be the other column's.
         last_number: dict = {}
-        for _, _, kind, value, w in events:
-            if kind == "part":
-                section = value
-                continue
+        for (_, _, kind, value, w), line_section, row_zones in placed:
             consumed = {id(w)}
             if kind == "letter":
                 label = value
@@ -216,8 +244,12 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                 if parent is None:
                     continue
                 label = parent + value
-            mids = _mid_row_sub_lines(w, label, consumed, row, left_clear,
-                                      right_neighbour, full_height)
+            mids = sorted(
+                _mid_row_sub_lines(w, label, consumed, row, left_clear,
+                                   right_neighbour, full_height)
+                + _mid_row_next_line(w, label, row, left_clear,
+                                     right_neighbour, full_height),
+                key=lambda m: m[0][0])
 
             def text_between(start, end_x, skip):
                 edge = start[2] + 2
@@ -227,7 +259,8 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                     # past its own first word.
                     first = right_neighbour(w)
                     edge = max(edge, first[0]) if first else edge
-                stop = min([lo for lo, _ in columns if lo > edge] + [end_x])
+                stop = min([lo for lo, _ in text_columns if lo > edge]
+                           + [end_x])
                 return " ".join(
                     v[4] for v in sorted(row(start) + [start])
                     if start[2] < v[0] < stop and id(v) not in skip
@@ -235,13 +268,13 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
 
             # A mid-row sub-line ends the text of the line before it.
             found = [InventoryLine(
-                page_no, section, label,
+                page_no, line_section, label,
                 text_between(w, mids[0][0][0] if mids else 1e9, consumed),
                 tuple(round(c, 2) for c in w[:4]))]
             for i, (v, mid_label) in enumerate(mids):
                 end = mids[i + 1][0][0] if i + 1 < len(mids) else 1e9
                 found.append(InventoryLine(
-                    page_no, section, mid_label,
+                    page_no, _zone_section(row_zones, v), mid_label,
                     text_between(v, end, {id(v)}),
                     tuple(round(c, 2) for c in v[:4])))
             for line in found:
@@ -249,7 +282,7 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                 # box repeating its row's label.
                 same = [i for i, o in enumerate(lines)
                         if o.page == page_no and o.label == line.label
-                        and (o.section == section
+                        and (o.section == line.section
                              or abs(o.bbox[1] - line.bbox[1]) < _BOX_REPEAT)]
                 if same:
                     earlier = lines[same[0]]
@@ -264,6 +297,104 @@ def extract_federal(pdf: Path) -> tuple[InventoryLine, ...]:
                     continue
                 lines.append(line)
     return tuple(lines)
+
+
+def _zone_section(zones, w) -> str:
+    """The section of the heading zone a word sits in: the rightmost zone
+    starting at or left of it (``zones`` ascend by start x; the first one
+    starts at -inf)."""
+    return [name for start, name in zones if start <= w[0]][-1]
+
+
+def _attachment_sequence_number(w, words) -> bool:
+    """The page header's "Attachment Sequence No. 13": the number printed
+    just right of "Sequence No.", in a larger font a few points above that
+    row's words (so the same-row tests miss the "No." to its left). It is
+    the schedule's filing order, not a line."""
+    def overlaps(a, b):            # vertical extents overlap
+        return a[1] < b[3] and b[1] < a[3]
+
+    def just_left_of(a, b):        # a ends within a label gap left of b
+        return a[0] < b[0] <= a[2] + _LABEL_GAP
+
+    return any(
+        v[4] == "No." and overlaps(v, w) and just_left_of(v, w)
+        and any(u[4] == "Sequence" and overlaps(u, v) and just_left_of(u, v)
+                for u in words)
+        for v in words)
+
+
+def _without_legend_rows(placed, column_of):
+    """``placed`` without the entries of legend rows. A legend prints an
+    enumeration in rows ("1 Single Family Residence 3 Vacation/Short-Term
+    Rental 5 Land 7 Self-Rental"), each row two or more distinct numbered
+    entries whose labels are printed again, as real lines, elsewhere in the
+    same section. A label printed on two rows of one section (farther apart
+    than a line-number box repeats) is a conflict; the fewest such rows that
+    resolve every conflict are dropped, the row with most conflicts first
+    (then the one with more entries, then the later one). A real row that
+    shares a label with a legend row (Schedule E 2021's "1b ... 2 ...") is
+    left with no conflict once the legend rows go."""
+    numbered = [p for p in placed if p[0][2] == "number"]
+
+    def same_row(a, b):
+        return a[1] == b[1] and abs(a[0][4][1] - b[0][4][1]) < _SAME_ROW
+
+    def conflict(a, b):
+        return (a[1] == b[1] and a[0][3] == b[0][3]
+                and abs(a[0][4][1] - b[0][4][1]) >= _BOX_REPEAT
+                and column_of(a[0][4]) != column_of(b[0][4]))
+
+    rows = []
+    for p in numbered:
+        row = next((r for r in rows if same_row(r[0], p)), None)
+        if row is None:
+            rows.append([p])
+        else:
+            row.append(p)
+    rows = [r for r in rows if len({p[0][3] for p in r}) >= 2]
+    dropped: set = set()
+    while True:
+        live = [p for p in numbered if id(p) not in dropped]
+
+        def conflicts(row):
+            # the row's entries that collide (not the collisions)
+            return sum(1 for p in row if any(
+                q not in row and conflict(p, q) for q in live))
+        candidates = [r for r in rows if id(r[0]) not in dropped
+                      and conflicts(r) >= 2]
+        if not candidates:
+            break
+        worst = max(candidates, key=lambda r: (
+            conflicts(r), len({p[0][3] for p in r}), r[0][0][4][1]))
+        dropped |= {id(p) for p in worst}
+    return [p for p in placed if id(p) not in dropped]
+
+
+def _mid_row_next_line(w, label, row, left_clear, right_neighbour,
+                       full_height):
+    """The NEXT line printed later on a label's row ("2 Your social security
+    number 3 Spouse's social security number", Form 4868; Schedule E "1b
+    Type of Property 2 For each rental ..."), as ``[(word, label)]``: a
+    left-clear, full-height token reading the next line number, after the
+    label's own text, with a capitalised word of its own right after it. No
+    label column need hold it."""
+    if not label[:1].isdigit():    # an item letter (A, B, ...)
+        return []
+    want = str(_number_of(label) + 1)
+    seen_text = False
+    for v in sorted(row(w)):
+        if v[0] <= w[2]:
+            continue
+        if (seen_text and v[4] == want and left_clear(v)
+                and full_height(v)):
+            nxt = right_neighbour(v)
+            if (nxt and nxt[0] - v[2] < _MID_ROW_WORD_GAP
+                    and _CAPITALISED.match(nxt[4])):
+                return [(v, want)]
+        if not _LEADER.match(v[4]):
+            seen_text = True
+    return []
 
 
 _MID_ROW_WORD_GAP = 35.0  # pt: a mid-row sub-letter's (or item letter's)
