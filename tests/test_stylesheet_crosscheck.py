@@ -13,12 +13,11 @@ Until federal forms declare, there are no generated methods; the
 non-vacuity controls (``tests/test_verification_harness.py`` S10) prove the
 check fires.
 """
-import importlib
 import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.declarations import propose, registry
+from tenforty.declarations import forms, propose, registry
 from tenforty.declarations.model import expand
 from tenforty.verification import crosscheck as crosscheck_mod
 from tenforty.verification.crosscheck import crosscheck, undeclared_amount_lines
@@ -32,9 +31,10 @@ def _federal_declarations():
 def _method(form, key):
     def test(self):
         decl = registry.for_form(form, key)
-        # The form's documented witness discrepancies, by the
-        # module-per-form convention (tenforty.declarations.<form>).
-        module = importlib.import_module(f"tenforty.declarations.{form[1]}")
+        # The form's documented witness discrepancies, from its
+        # declaration module (forms.MODULES: the single source; a catalog
+        # form name such as "8959" is not an importable module name).
+        module = forms.MODULES[form]
         findings = crosscheck(
             decl, propose.stylesheet_lines(form[1], key),
             discrepancies=crosscheck_mod.discrepancies_in_force(module, key))
