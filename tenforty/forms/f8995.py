@@ -56,8 +56,9 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     # Schedule C business it is attributable to (the §162(l) guard ties it
     # to a single business). With no Schedule C row there is nothing for it
     # to reduce here: it stays on Schedule 1 and never reaches Form 8995
-    # (D(i)); with K-1 QBI rows it is contested law and refused in
-    # _source_rows (D(ii)).
+    # (D(i)). With any K-1 QBI row it is refused in _source_rows (D(ii) and
+    # Q1): the plan's establishing business is unmodeled, and a reduction of
+    # K-1 QBI is contested law.
     has_sch_c_row = any(
         result.get("sch_c_line_31_net_profit")
         for result in sch_c.get("sch_c_businesses", []))
@@ -255,17 +256,19 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
             "upstream['sch_c'] disagrees with the scenario's businesses.")
     k1_rows = [(str(k1.entity_name), str(k1.entity_ein), k1.qbi_amount)
                for k1 in scenario.schedule_k1s if k1.qbi_amount]
-    if se_health and k1_rows and not businesses:
+    if se_health and k1_rows:
         raise NotImplementedError(
             "Form 8995: a self-employed health insurance deduction "
-            f"({se_health}) with K-1 qualified business income and no "
-            "Schedule C business. Whether that deduction reduces the K-1 "
-            "QBI is contested law: IRS FAQ A39 says it reduces the "
+            f"({se_health}) on a return with K-1 qualified business income. "
+            "Two questions decide which QBI it reduces, and tenforty "
+            "answers neither silently: (1) which business established the "
+            "health plan is not modeled (it may be a Schedule C business or "
+            "the S corporation); (2) whether the deduction reduces the "
+            "K-1's QBI is contested law: IRS FAQ A39 says it reduces the "
             "shareholder's QBI; the AICPA and the §199A(c)(4) / "
-            "§1.199A-3(b)(1)(vi) reading say it does not. tenforty records "
-            "no choice silently: refused until the contested-positions "
-            "registry lands (lane qbi-sehi-position), where the return "
-            "elects a reading explicitly.")
+            "§1.199A-3(b)(1)(vi) reading say it does not. Refused until the "
+            "contested-positions registry lands (lane qbi-sehi-position), "
+            "where the return elects a reading explicitly.")
     if abs(sum(q for _, _, q in k1_rows) - fanout.qbi_aggregate) > 0.005:
         raise ValueError(
             "Form 8995: the K-1 fanout's qbi_aggregate "
