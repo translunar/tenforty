@@ -164,6 +164,19 @@ class SelfEmployedHealthInsuranceTests(unittest.TestCase):
         self.assertIn("qbi-sehi-position", str(ctx.exception))
         self.assertIn("A39", str(ctx.exception))
 
+    def test_sehi_with_k1_rows_and_a_schedule_c_row_is_refused(self):
+        # Q1 ruling: with K-1 QBI rows present, attributing the SEHI to the
+        # Schedule C row assumes the plan is established under that
+        # business, and plan establishment is unmodeled input: refused,
+        # naming both grounds (lane qbi-sehi-position).
+        s, up = _case(k1_qbis=(10_000.0,),
+                      businesses=[("Example Bindery", 30_000.0)],
+                      half_se=2_000.0, se_health=3_000.0)
+        with self.assertRaises(NotImplementedError) as ctx:
+            f8995.compute(s, up)
+        self.assertIn("qbi-sehi-position", str(ctx.exception))
+        self.assertIn("plan", str(ctx.exception))
+
 
 def _businesses_case(businesses, half_se):
     """Schedule C businesses as (description, line 7 gross income, net
