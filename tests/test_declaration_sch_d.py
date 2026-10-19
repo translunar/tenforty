@@ -7,13 +7,17 @@ tenforty.declarations.forms with the pending removal) is a later, separate
 step, so this test reads the module directly, not the registry.
 """
 import unittest
+from pathlib import Path
 
 from tenforty.declarations import propose, registry, sch_d
+from tenforty.declarations.anchors import NearLabel
 from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
+from tenforty.verification import anchors as anchor_eval
 from tenforty.verification import crosscheck as crosscheck_mod
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
 YEARS = (2021, 2022, 2023, 2024, 2025)
 FORM = ("federal", "sch_d")
 
@@ -51,6 +55,22 @@ class SchDDeclarationValidatesTests(unittest.TestCase):
                 self.assertEqual(crosscheck_mod.crosscheck(
                     decl, propose.stylesheet_lines("sch_d", year),
                     discrepancies=in_force), [])
+
+    def test_explicit_phrases_print_exactly_once(self):
+        # The anchor evaluator matches whole printed tokens; a phrase that
+        # ends mid-token ("partnerships" for the printed "partnerships,")
+        # prints zero times. Each explicit phrase prints once on its page.
+        for year in YEARS:
+            template = str(REPO_ROOT / "pdfs" / "federal" / str(year)
+                           / "f1040sd.pdf")
+            for ln in sch_d.DECLARATIONS[year].lines:
+                if not isinstance(ln.anchor, NearLabel):
+                    continue
+                page = 1 if ln.section == "Part III" else 0
+                words = anchor_eval._page_words(template, page)
+                with self.subTest(year=year, line=ln.line):
+                    self.assertEqual(len(anchor_eval._phrase_boxes(
+                        words, ln.anchor.phrase)), 1, ln.anchor.phrase)
 
     def test_ships_inert(self):
         self.assertIn(FORM, PENDING_DECLARATIONS)
