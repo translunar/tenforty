@@ -48,18 +48,35 @@ class ContestedPosition:
     # conditions); they decide neither side.
     shared_sources: tuple[Source, ...]
     recorded: datetime.date
-    # Whether a scenario's numbers flow through this position. An election
-    # for a position the return never reaches is refused: it would do
-    # nothing.
+    # Whether a return's numbers flow through this position. Input
+    # contract: the EFFECTIVE scenario (orchestrator._build_effective_
+    # scenario), whose K-1s include those the S corporation pipeline
+    # synthesizes at compute time. An election for a position the return
+    # never reaches is refused: it would do nothing.
     reached_when: Callable[[object], bool]
+    # The load-time view: False only when the loaded scenario DEFINITELY
+    # never reaches the position (reached_when on its effective scenario
+    # must imply this). Elections are re-checked exactly at compute.
+    may_reach: Callable[[object], bool]
+
+
+def _sehi(scenario) -> bool:
+    return bool(scenario.config.self_employed_health_insurance_deduction)
 
 
 def _sehi_and_k1_qbi(scenario) -> bool:
     # Ruled condition (f8995 Q1(b)): a nonzero self-employed health
     # insurance deduction AND any K-1 carrying QBI, with or without
     # Schedule C.
-    return bool(scenario.config.self_employed_health_insurance_deduction
-                and any(k1.qbi_amount for k1 in scenario.schedule_k1s))
+    return _sehi(scenario) and any(
+        k1.qbi_amount for k1 in scenario.schedule_k1s)
+
+
+def _sehi_and_possible_k1_qbi(scenario) -> bool:
+    # At load an S corporation return's K-1 does not exist yet; its QBI is
+    # known only after the corporate pipeline runs.
+    return _sehi(scenario) and (
+        _sehi_and_k1_qbi(scenario) or scenario.s_corp_return is not None)
 
 
 _QBI_SEHI = ContestedPosition(
@@ -196,6 +213,7 @@ _QBI_SEHI = ContestedPosition(
     ),
     recorded=datetime.date(2026, 10, 18),
     reached_when=_sehi_and_k1_qbi,
+    may_reach=_sehi_and_possible_k1_qbi,
 )
 
 POSITIONS: Mapping[str, ContestedPosition] = MappingProxyType({
@@ -212,10 +230,14 @@ def reset_consulted() -> None:
     CONSULTED.clear()
 
 
-def validate_elections(scenario) -> None:
+def validate_elections(scenario, *, exact: bool = False) -> None:
     """Refuse (ValueError) a malformed ``positions`` block, an unknown
     position, an unknown choice, or an election for a position this return
-    never reaches."""
+    never reaches. At load (``exact=False``) "never reaches" is decided by
+    ``may_reach``; at compute, on the effective scenario (``exact=True``),
+    by ``reached_when``. Without an S corporation return the two views
+    coincide (the loaded scenario is the effective one), so the compute
+    re-check runs on the S corporation build path only."""
     elections = scenario.positions
     if not isinstance(elections, Mapping) or not all(
             isinstance(k, str) and isinstance(v, str)
@@ -235,7 +257,8 @@ def validate_elections(scenario) -> None:
             raise ValueError(
                 f"`positions: {slug}` is {choice!r}, which is not one of its "
                 f"choices: {valid}.")
-        if not pos.reached_when(scenario):
+        reaches = pos.reached_when if exact else pos.may_reach
+        if not reaches(scenario):
             raise ValueError(
                 f"`positions` elects {slug!r}, but this return never reaches "
                 "that position, so the election would do nothing. Remove it.")

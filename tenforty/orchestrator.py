@@ -97,6 +97,7 @@ from tenforty.filing.statement_f3115_assets import (
     render_f3115_asset_statement,
 )
 from tenforty.forms import f3115 as form_f3115
+from tenforty import positions as _positions
 from tenforty import pdf_packet
 from tenforty.mappings.pdf_schedule_x import PdfScheduleX
 from tenforty.mappings.pdf_sch_ca import PdfSchCa
@@ -1060,6 +1061,7 @@ class ReturnOrchestrator:
         # the just-appended computed K-1s, not just the original.
         enforce_compute_time(effective_scenario)
         _enforce_refusal_ledger(effective_scenario)
+        _positions.validate_elections(effective_scenario, exact=True)
         return effective_scenario, corp_results
 
     def _scenario_in_spine_scope(self, effective_scenario: Scenario) -> bool:

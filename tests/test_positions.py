@@ -14,6 +14,8 @@ from tenforty import positions
 from tenforty.models import FilingStatus, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
+from tenforty.models import SCorp199AInfo
+from tests._scorp_fixtures import _make_v1_scenario
 from tests.fixtures.spine_battery import build_wages_only
 from tests.helpers import REPO_ROOT
 
@@ -86,6 +88,7 @@ class RegistryWellFormedTests(unittest.TestCase):
         for slug, pos in positions.POSITIONS.items():
             with self.subTest(slug=slug):
                 self.assertTrue(callable(pos.reached_when))
+                self.assertTrue(callable(pos.may_reach))
 
     def test_the_label_vocabularies(self):
         self.assertEqual(positions.SOURCE_KINDS,
@@ -160,6 +163,71 @@ class QbiSehiReachabilityPredicateTests(unittest.TestCase):
         self.assertFalse(self.reached(_reaching(sehi=0.0)))
         self.assertFalse(self.reached(_reaching(qbi=0.0)))
         self.assertFalse(self.reached(_wages_only()))
+
+
+def _s_corp(sehi=3_000.0, section_199a=None, **elections):
+    """A shareholder return with an S corporation return block: its K-1
+    (and that K-1's QBI) is synthesized at compute time. All synthetic."""
+    base = _make_v1_scenario(section_199a=section_199a)
+    cfg = dataclasses.replace(
+        base.config, self_employed_health_insurance_deduction=sehi)
+    return dataclasses.replace(base, config=cfg, positions=dict(elections))
+
+
+class QbiSehiLoadTimeViewTests(unittest.TestCase):
+    """may_reach: false only when the loaded return definitely never
+    reaches the position; reached_when must imply it."""
+
+    def setUp(self):
+        self.pos = positions.POSITIONS[QBI_SEHI]
+
+    def test_an_s_corp_return_may_reach_it_before_its_k1_exists(self):
+        s = _s_corp()
+        self.assertEqual(s.schedule_k1s, [])
+        self.assertFalse(self.pos.reached_when(s))
+        self.assertTrue(self.pos.may_reach(s))
+
+    def test_zero_sehi_never_reaches_it(self):
+        self.assertFalse(self.pos.may_reach(_s_corp(sehi=0.0)))
+        self.assertFalse(self.pos.may_reach(_wages_only()))
+
+    def test_reaching_implies_may_reach(self):
+        for name, s in (("k1", _reaching()), ("no-qbi", _reaching(qbi=0.0)),
+                        ("no-sehi", _reaching(sehi=0.0)),
+                        ("wages", _wages_only()), ("s-corp", _s_corp())):
+            with self.subTest(scenario=name):
+                if self.pos.reached_when(s):
+                    self.assertTrue(self.pos.may_reach(s))
+
+
+class SCorpElectionTests(unittest.TestCase):
+    """Two-stage check: accepted at load while the S corporation K-1 does
+    not exist yet, then re-checked exactly on the effective scenario."""
+
+    def setUp(self):
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()))
+
+    def test_accepted_at_load(self):
+        self.assertEqual(_s_corp(**{QBI_SEHI: "irs-faq"}).positions,
+                         {QBI_SEHI: "irs-faq"})
+
+    def test_zero_sehi_refuses_at_load(self):
+        with self.assertRaisesRegex(ValueError, "never reaches"):
+            _s_corp(sehi=0.0, **{QBI_SEHI: "irs-faq"})
+
+    def test_kept_when_the_synthesized_k1_carries_qbi(self):
+        effective, _ = self.orch._build_effective_scenario(
+            _s_corp(**{QBI_SEHI: "irs-faq"}))
+        self.assertTrue(any(k.qbi_amount for k in effective.schedule_k1s))
+        self.assertEqual(effective.positions, {QBI_SEHI: "irs-faq"})
+
+    def test_refused_at_compute_when_the_synthesized_k1_has_no_qbi(self):
+        scenario = _s_corp(section_199a=SCorp199AInfo(qbi_override=0.0),
+                           **{QBI_SEHI: "irs-faq"})
+        with self.assertRaisesRegex(ValueError, "never reaches"):
+            self.orch._build_effective_scenario(scenario)
 
 
 class ElectionFieldTests(unittest.TestCase):
