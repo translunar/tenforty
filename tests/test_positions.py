@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import unittest.mock
 from pathlib import Path
+from types import MappingProxyType
 
 import yaml
 
@@ -48,6 +49,20 @@ def _reaching(sehi=3_000.0, qbi=10_000.0, **elections):
             entity_name="Example S Corporation", entity_ein="00-0000000",
             entity_type="s_corp", material_participation=True,
             ordinary_business_income=qbi, qbi_amount=qbi)])
+
+
+class Wired:
+    """Mixin: run with every registered position wired (phase 2's state),
+    so an election can be accepted at all. Phase 1 wires none."""
+
+    def setUp(self):
+        super().setUp()
+        wired = MappingProxyType({
+            slug: dataclasses.replace(pos, wired=True)
+            for slug, pos in positions.POSITIONS.items()})
+        patcher = unittest.mock.patch.object(positions, "POSITIONS", wired)
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
 
 class RegistryWellFormedTests(unittest.TestCase):
@@ -130,6 +145,16 @@ class QbiSehiEntryTests(unittest.TestCase):
         self.assertIn("on a proportionate basis to the gross income received "
                       "from the trade or business", src.text)
 
+    def test_the_status_keeps_the_aicpa_and_the_text_apart(self):
+        self.assertIn("the AICPA (known secondhand) argues no; the "
+                      "regulation's attribution clause and the statute's "
+                      "wage exclusion support that reading", self.pos.status)
+
+    def test_the_regulation_text_is_the_clause_with_a_bracketed_subject(self):
+        src = self._source("1.199A-3(b)(1)(vi)")
+        self.assertTrue(src.text.startswith("["))
+        self.assertIn("bracketed subject is ours", src.note)
+
     def test_aicpa_is_secondhand_commentary(self):
         src = self._source("AICPA")
         self.assertEqual((src.kind, src.fidelity),
@@ -200,11 +225,12 @@ class QbiSehiLoadTimeViewTests(unittest.TestCase):
                     self.assertTrue(self.pos.may_reach(s))
 
 
-class SCorpElectionTests(unittest.TestCase):
+class SCorpElectionTests(Wired, unittest.TestCase):
     """Two-stage check: accepted at load while the S corporation K-1 does
     not exist yet, then re-checked exactly on the effective scenario."""
 
     def setUp(self):
+        super().setUp()
         self.orch = ReturnOrchestrator(
             spreadsheets_dir=REPO_ROOT / "spreadsheets",
             work_dir=Path(tempfile.mkdtemp()))
@@ -230,7 +256,7 @@ class SCorpElectionTests(unittest.TestCase):
             self.orch._build_effective_scenario(scenario)
 
 
-class ElectionFieldTests(unittest.TestCase):
+class ElectionFieldTests(Wired, unittest.TestCase):
     """Scenario.positions: {slug: choice}, validated at construction."""
 
     def test_no_elections_by_default(self):
@@ -263,7 +289,7 @@ class ElectionFieldTests(unittest.TestCase):
                 dataclasses.replace(_reaching(), positions=bad)
 
 
-class ElectionYamlTests(unittest.TestCase):
+class ElectionYamlTests(Wired, unittest.TestCase):
     """The top-level `positions:` key reaches the Scenario."""
 
     def _load(self, positions_block, sehi):
@@ -286,10 +312,20 @@ class ElectionYamlTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "never reaches"):
             self._load({QBI_SEHI: "irs-faq"}, 0.0)
 
+    def test_an_empty_block_means_no_elections(self):
+        self.assertEqual(self._load(None, 2_000.0).positions, {})
 
-class ElectionHelperTests(unittest.TestCase):
+    def test_a_falsy_non_mapping_refuses(self):
+        for bad in ([], False, 0, ""):
+            with self.subTest(bad=bad), self.assertRaisesRegex(
+                    ValueError, "must map a position slug"):
+                self._load(bad, 2_000.0)
+
+
+class ElectionHelperTests(Wired, unittest.TestCase):
 
     def setUp(self):
+        super().setUp()
         positions.reset_consulted()
         self.addCleanup(positions.reset_consulted)
 
@@ -319,6 +355,12 @@ class ElectionHelperTests(unittest.TestCase):
             self.assertIn(choice.slug, msg)
             self.assertIn(choice.consequence, msg)
 
+    def test_a_choice_mutated_after_construction_refuses(self):
+        scenario = _reaching(**{QBI_SEHI: "irs-faq"})
+        scenario.positions[QBI_SEHI] = "maybe"
+        with self.assertRaisesRegex(ValueError, "maybe"):
+            positions.election(scenario, QBI_SEHI)
+
     def test_an_unregistered_slug_is_a_programming_error(self):
         with self.assertRaises(LookupError):
             positions.election(_reaching(), "no-such-position")
@@ -336,18 +378,51 @@ class QbiSehiReachabilityPinTests(unittest.TestCase):
         orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
                                   work_dir=Path(tempfile.mkdtemp()))
         # Before the f8995 lane merges the return computes; after, the
-        # interim qbi-sehi-position refusal fires. Either is fine here.
+        # interim Form 8995 refusal (naming this slug) fires. Either is fine
+        # here. No election: an unwired position refuses one at load.
         with unittest.mock.patch.object(
                 ReturnOrchestrator, "_compute_1040_via_workbook",
                 side_effect=AssertionError("workbook path reached")):
             try:
-                orch.compute_federal(_reaching(**{QBI_SEHI: "irs-faq"}))
+                orch.compute_federal(_reaching())
             except NotImplementedError as exc:
-                self.assertIn("qbi-sehi-position", str(exc))
+                self.assertIn(QBI_SEHI, str(exc))
         self.assertEqual(
             positions.CONSULTED, set(),
             "KNOWN GAP (positions phase 2): the Form 8995 path now consults "
             "the registry; flip this pin to assert the position is consulted")
+
+
+
+class WiredGateTests(unittest.TestCase):
+    """KNOWN GAP (positions phase 2): no position is wired yet, so an
+    election is refused at load: the computation would refuse the return
+    whatever is elected. Phase 2 sets wired=True and these flip."""
+
+    def test_nothing_is_wired_yet(self):
+        self.assertFalse(positions.POSITIONS[QBI_SEHI].wired,
+                         "KNOWN GAP flipped: positions phase 2 wired it")
+
+    def test_an_election_for_an_unwired_position_refuses(self):
+        with self.assertRaisesRegex(ValueError, "not yet consulted"):
+            _reaching(**{QBI_SEHI: "irs-faq"})
+
+
+_ELECTION_CALL = re.compile(r"election\(\s*\w+\s*,\s*[\"']([a-z0-9-]+)[\"']")
+
+
+class PositionTakingPathTests(unittest.TestCase):
+    """Spec §13: every position-taking code path references a registered
+    entry, and every entry has one. KNOWN GAP (positions phase 2): no path
+    calls positions.election() yet; phase 2 wires the Form 8995 consult and
+    this test then passes (an unexpected success fails the run)."""
+
+    @unittest.expectedFailure
+    def test_election_calls_name_exactly_the_registered_positions(self):
+        root = Path(positions.__file__).resolve().parent
+        referenced = {m.group(1) for path in root.rglob("*.py")
+                      for m in _ELECTION_CALL.finditer(path.read_text())}
+        self.assertEqual(referenced, set(positions.POSITIONS))
 
 
 if __name__ == "__main__":

@@ -141,6 +141,14 @@ def _coerce_date(value) -> datetime.date:
     return datetime.date.fromisoformat(value)
 
 
+def _load_positions(data):
+    """The top-level `positions:` block. An empty `positions:` (YAML null)
+    means no elections; every other value goes to the Scenario as written,
+    where anything but a mapping of slug to choice is refused."""
+    raw = data.get("positions", {})
+    return {} if raw is None else raw
+
+
 def _load_stated_bool(value, where: str) -> bool:
     """A stated true/false. Strings are refused, never coerced: a quoted
     "no" is truthy."""
@@ -1863,7 +1871,7 @@ def load_scenario(path: Path) -> Scenario:
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         form_3115=form_3115,
         source_documents=source_documents,
-        positions=data.get("positions") or {},
+        positions=_load_positions(data),
         acknowledges_no_personal_property_behind_stated_depreciation=(
             mid_quarter_ack),
         **form_data)

@@ -58,6 +58,10 @@ class ContestedPosition:
     # never reaches the position (reached_when on its effective scenario
     # must imply this). Elections are re-checked exactly at compute.
     may_reach: Callable[[object], bool]
+    # True once a computation consults this position (election()). Until
+    # then the computation refuses the return whatever is elected, so an
+    # election is itself refused: it would do nothing.
+    wired: bool = False
 
 
 def _sehi(scenario) -> bool:
@@ -88,9 +92,9 @@ _QBI_SEHI = ContestedPosition(
         "for the section 199A deduction?"),
     status=(
         "No binding authority either way. The IRS's informal FAQ says yes; "
-        "the AICPA, reading the regulation's attribution clause and the "
-        "statute's wage exclusion, says no; no IRS response to the AICPA "
-        "was found."),
+        "the AICPA (known secondhand) argues no; the regulation's "
+        "attribution clause and the statute's wage exclusion support that "
+        "reading. No IRS response to the AICPA was found."),
     choices=(
         Choice(
             slug="irs-faq",
@@ -135,20 +139,20 @@ _QBI_SEHI = ContestedPosition(
                     kind="authority",
                     fidelity="verbatim",
                     text=(
-                        "Deductions such as the deductible portion of the "
-                        "tax on self-employment income, the self-employed "
-                        "health insurance deduction, and the deduction for "
-                        "contributions to qualified retirement plans are "
-                        "attributable to a trade or business \"to the "
+                        "[The self-employed health insurance deduction is "
+                        "attributable to a trade or business] to the "
                         "extent that the individual's gross income from "
                         "the trade or business is taken into account in "
                         "calculating the allowable deduction, on a "
                         "proportionate basis to the gross income received "
-                        "from the trade or business.\""),
+                        "from the trade or business."),
                     note=(
-                        "Only the quoted clause is verbatim (final-rule "
-                        "PDF, cross-checked at Cornell LII); the lead-in "
-                        "summarizes the deductions the paragraph names."),
+                        "Verbatim from the final-rule PDF, cross-checked at "
+                        "Cornell LII. The bracketed subject is ours: the "
+                        "paragraph names the deductible part of "
+                        "self-employment tax, the self-employed health "
+                        "insurance deduction and qualified retirement plan "
+                        "contributions."),
                 ),
                 Source(
                     citation="I.R.C. §199A(c)(4)",
@@ -257,6 +261,13 @@ def validate_elections(scenario, *, exact: bool = False) -> None:
             raise ValueError(
                 f"`positions: {slug}` is {choice!r}, which is not one of its "
                 f"choices: {valid}.")
+        if not pos.wired:
+            raise ValueError(
+                f"`positions` elects {slug!r}, which is registered but not "
+                "yet consulted by the computation (positions phase 2 wires "
+                "it). Until then the computation refuses this return "
+                "whatever is elected, so the election would do nothing. "
+                "Remove it.")
         reaches = pos.reached_when if exact else pos.may_reach
         if not reaches(scenario):
             raise ValueError(
@@ -288,4 +299,11 @@ def election(scenario, slug: str) -> str:
     choice = scenario.positions.get(slug)
     if choice is None:
         raise NotImplementedError(refusal_message(slug))
+    # Construction validated it; this catches a positions dict mutated
+    # afterwards (filer input gone bad, so ValueError).
+    valid = [c.slug for c in POSITIONS[slug].choices]
+    if choice not in valid:
+        raise ValueError(
+            f"`positions: {slug}` is {choice!r}, which is not one of its "
+            f"choices: {valid}.")
     return choice
