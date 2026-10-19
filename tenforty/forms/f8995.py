@@ -107,7 +107,8 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
             "return; otherwise this return cannot be produced by v1."
         )
 
-    rows = _source_rows(scenario, sch_c, fanout, sch_c_qbi, se_health)
+    rows = _source_rows(scenario, sch_c, fanout, sch_c_qbi, half_se,
+                        se_health)
     # Line 2 combines lines 1i-1v AS PRINTED: the sum of each row's
     # whole-dollar QBI (ruled: the vendor workbook's own line-2 formula
     # rounds each row, then sums). line_1 is that total, the line-2 feed.
@@ -217,8 +218,77 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
 ROWS = ("i", "ii", "iii", "iv", "v")
 
 
+def _schedule_c_rows(scenario: Scenario, sch_c: dict, sch_c_qbi: float,
+                     half_se: float, se_health: float
+                     ) -> list[tuple[str, str, float]]:
+    """The Schedule C rows of Form 8995 line 1: (description, the
+    taxpayer's SSN, that business's own QBI), in filing order.
+
+    One business: its QBI is the Schedule C QBI component (net profit -
+    half-SE-tax - SE-health), exactly as before.
+
+    Two or more (ruling C, Juno): the deductible half of SE tax is
+    allocated across the businesses "on a proportionate basis to the gross
+    income received from the trade or business" (Treas. Reg.
+    §1.199A-3(b)(1)(vi)), the gross income being each business's Schedule
+    C line 7. The regulation attributes the deduction to the extent the
+    business's gross income "is taken into account in calculating the
+    allowable deduction"; in tenforty's modeled scope only Schedule C
+    income enters Schedule SE (forms/sch_se reads only Schedule C net
+    profit, and acknowledges_no_partnership_se_earnings attests no
+    partnership SE earnings), so K-1 businesses take no share. A loss
+    business with receipts takes its share; a zero-gross-income business
+    takes none. Each business with nonzero net profit or a nonzero share is
+    a row; each row rounds on its own (line 2 sums the rounded rows).
+
+    Not this rule: a qualified business LOSS nets against the positive-QBI
+    businesses in proportion to their net income (§1.199A-1(c)(2)(iii)),
+    which governs netting and carryforward, not this split."""
+    pairs = list(zip(scenario.schedule_c_businesses,
+                     sch_c.get("sch_c_businesses", [])))
+    with_profit = [(biz, result) for biz, result in pairs
+                   if result.get("sch_c_line_31_net_profit")]
+    # A business takes part in the split if it has net profit or gross
+    # income (a zero-net business with receipts takes a share).
+    active = [(biz, result) for biz, result in pairs
+              if result.get("sch_c_line_31_net_profit")
+              or result.get("sch_c_line_7_gross_income")]
+    ssn = str(scenario.config.ssn)
+    if len(active) <= 1:
+        if with_profit:
+            return [(str(with_profit[0][0].description), ssn, sch_c_qbi)]
+        if sch_c_qbi:
+            raise ValueError(
+                f"Form 8995: a Schedule C QBI component of {sch_c_qbi} with "
+                "no Schedule C business of nonzero net profit to print it "
+                "on: upstream['sch_c'] disagrees with the scenario's "
+                "businesses.")
+        return []
+    if se_health:
+        # Unreachable through the producers: forms/sch_1's §162(l) guard
+        # refuses an SE-health deduction with two or more businesses.
+        raise NotImplementedError(
+            "Form 8995: an SE-health deduction with two or more Schedule C "
+            "businesses has no ruled allocation (the §162(l) guard refuses "
+            "it upstream).")
+    gross = [float(result.get("sch_c_line_7_gross_income") or 0)
+             for _, result in pairs]
+    total_gross = sum(gross)
+    if half_se and total_gross <= 0:
+        raise ValueError(
+            "Form 8995: a half-SE-tax deduction with no Schedule C gross "
+            "income to allocate it by.")
+    rows = []
+    for (biz, result), income in zip(pairs, gross):
+        net = float(result.get("sch_c_line_31_net_profit") or 0)
+        share = half_se * income / total_gross if half_se else 0.0
+        if net or share:
+            rows.append((str(biz.description), ssn, net - share))
+    return rows
+
+
 def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
-                 sch_c_qbi: float, se_health: float
+                 sch_c_qbi: float, half_se: float, se_health: float
                  ) -> list[tuple[str, str, int]]:
     """Form 8995 line 1, one row per QBI source (Juno's ruling): (a) name,
     (b) TIN, (c) that source's OWN qualified business income, whole dollars.
@@ -230,30 +300,10 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
         component (net profit - half-SE-tax - SE-health), which is that one
         business's QBI when it is the only one.
       K-1: entity_name + entity_ein; its QBI is its own qbi_amount.
-    Two or more Schedule C businesses need the half-SE-tax allocated across
-    them, and more than five sources need an attached statement: both are
-    refused until built."""
-    per_business = sch_c.get("sch_c_businesses", [])
-    businesses = [biz for biz, result in zip(scenario.schedule_c_businesses,
-                                             per_business)
-                  if result.get("sch_c_line_31_net_profit")]
-    if len(businesses) > 1:
-        raise NotImplementedError(
-            f"Form 8995 per-source rows: {len(businesses)} Schedule C "
-            "businesses each need their own line-1 row, which needs the "
-            "deductible half of self-employment tax allocated across them. "
-            "That allocation is pending a ruling (lane f8995 multi-source "
-            "row 1, phase C); until it lands, a return with more than one "
-            "Schedule C business with nonzero net profit cannot be produced.")
-    sources: list[tuple[str, str, float]] = []
-    if businesses:
-        sources.append((str(businesses[0].description),
-                        str(scenario.config.ssn), sch_c_qbi))
-    elif sch_c_qbi:
-        raise ValueError(
-            f"Form 8995: a Schedule C QBI component of {sch_c_qbi} with no "
-            "Schedule C business of nonzero net profit to print it on: "
-            "upstream['sch_c'] disagrees with the scenario's businesses.")
+    More than five sources need an attached statement: refused until
+    built."""
+    sources = _schedule_c_rows(scenario, sch_c, sch_c_qbi, half_se,
+                               se_health)
     k1_rows = [(str(k1.entity_name), str(k1.entity_ein), k1.qbi_amount)
                for k1 in scenario.schedule_k1s if k1.qbi_amount]
     if se_health and k1_rows:
@@ -274,7 +324,7 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
             "Form 8995: the K-1 fanout's qbi_aggregate "
             f"({fanout.qbi_aggregate}) is not the sum of the scenario's K-1 "
             "qbi_amount values, so line 2 would contradict the printed rows.")
-    sources += k1_rows
+    sources = sources + k1_rows
     if len(sources) > len(ROWS):
         raise NotImplementedError(
             f"Form 8995 per-source rows: {len(sources)} QBI sources exceed "

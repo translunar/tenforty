@@ -14,6 +14,7 @@ an attached statement, not built yet: refused.
 All identities and amounts are fully synthetic (TINs are placeholder
 tokens, deliberately not EIN-shaped).
 """
+import dataclasses
 import unittest
 
 from tenforty.forms import f8995
@@ -236,6 +237,34 @@ class HalfSeAllocationTests(unittest.TestCase):
             "i": ("Example Bindery", SSN, 5_800),
             "ii": ("Example Kiln", SSN, 5_800),
             "iii": ("Example Loom", SSN, 7_600)})
+
+
+    def test_k1_rows_take_no_share(self):
+        # Q2: only Schedule C income enters Schedule SE in tenforty's scope
+        # (acknowledges_no_partnership_se_earnings), so the split's
+        # denominator is Schedule C gross income alone; the K-1 row keeps
+        # its own QBI. Shares of 900 by 15,000 / 5,000: 675 and 225.
+        s, up = _businesses_case([("Example Bindery", 15_000.0, 10_000.0),
+                                  ("Example Kiln", 5_000.0, 3_000.0)],
+                                 half_se=900.0)
+        s.schedule_k1s = [_k1(1, 4_000.0)]
+        up["k1_fanout"] = dataclasses.replace(up["k1_fanout"],
+                                              qbi_aggregate=4_000.0)
+        self.assertEqual(_rows(f8995.compute(s, up)), {
+            "i": ("Example Bindery", SSN, 9_325),
+            "ii": ("Example Kiln", SSN, 2_775),
+            "iii": ("Example Entity 1", "EX-EIN-1", 4_000)})
+
+    def test_a_zero_net_business_with_receipts_takes_a_row(self):
+        # Receipts equal to expenses: zero net profit, but 10,000 of gross
+        # income takes a share (1/2 of 600 = 300), so its QBI is -300 and
+        # it is a source with a row.
+        s, up = _businesses_case([("Example Bindery", 10_000.0, 8_000.0),
+                                  ("Example Even Kiln", 10_000.0, 0.0)],
+                                 half_se=600.0)
+        self.assertEqual(_rows(f8995.compute(s, up)), {
+            "i": ("Example Bindery", SSN, 7_700),
+            "ii": ("Example Even Kiln", SSN, -300)})
 
 
 class RefusalTests(unittest.TestCase):
