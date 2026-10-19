@@ -80,6 +80,10 @@ def _grid(section, line, description, stem, group, anchor):
     )
 
 
+# Anchor phrases end on a printed token boundary (the evaluator matches
+# whole pdftotext tokens): "partnerships,", "below.", "(loss)." carry their
+# punctuation (adjudication fixed the row and rationale; measurement
+# finalized the string).
 # Grid rows: every label wraps; the four boxes sit on the LAST row of the
 # label, so each is anchored ON_ROW on a row-unique phrase of that row,
 # except 1a and 8a: AFTER_WRAPPED on the same phrase (adjudication 1; ON_ROW
@@ -121,7 +125,7 @@ _LINES_2021 = (
            "Net short-term gain or (loss) from partnerships, S corporations, "
            "estates, and trusts from",
            "sch_d_line_5_net_short_k1", mef="NetSTGainOrLossFromSchK1Amt",
-           anchor=NearLabel("Net short-term gain or (loss) from partnerships",
+           anchor=NearLabel("Net short-term gain or (loss) from partnerships,",
                             LabelRelation.AFTER_WRAPPED)),
     # Adjudicated 2026-10-18 (option B): the st carryforward key is the
     # amount carried OUT to next year (not_printed); line 6 is unserved.
@@ -134,7 +138,7 @@ _LINES_2021 = (
            "Net short-term capital gain or (loss). Combine lines 1a through 6 "
            "in column (h). If you have any long-",
            "sch_d_line_7_net_short", mef="NetSTCapitalGainOrLossAmt",
-           anchor=NearLabel("go to Part II below", LabelRelation.ON_ROW)),
+           anchor=NearLabel("go to Part II below.", LabelRelation.ON_ROW)),
     # --- Part II ------------------------------------------------------------
     # column unconstrained: anchor vocabulary has no column relation.
     *_grid(P2, "8a", "Totals for all long-term transactions reported on Form",
@@ -179,7 +183,7 @@ _LINES_2021 = (
            "Net long-term capital gain or (loss). Combine lines 8a through 14 "
            "in column (h). Then, go to Part III",
            "sch_d_line_15_net_long", mef="NetLTCapitalGainOrLossAmt",
-           anchor=NearLabel("Net long-term capital gain or (loss)",
+           anchor=NearLabel("Net long-term capital gain or (loss).",
                             LabelRelation.AFTER_WRAPPED)),
     # --- Part III (page 2) --------------------------------------------------
     _bound(P3, "16", "Combine lines 7 and 15 and enter the result",
