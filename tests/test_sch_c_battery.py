@@ -9,21 +9,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tenforty.forms import sch_c as form_sch_c
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures import sch_c_battery as battery
 from tests.fixtures.sch_c_battery_expected import EXPECTED
 from tests.helpers import REPO_ROOT
-
-
-def _multi_business(name, year):
-    """Whether the scenario has two or more Schedule C businesses with
-    nonzero net profit: Form 8995 refuses it until phase C of the f8995
-    per-source-rows lane (the half-SE-tax allocation ruling)."""
-    scenario = battery.SCENARIOS[name](year)
-    return sum(1 for biz in scenario.schedule_c_businesses
-               if form_sch_c.net_profit_estimate(biz, year, mid_quarter=False)
-               ) >= 2
 
 
 class SchCBatteryGateTests(unittest.TestCase):
@@ -60,8 +49,6 @@ class SchCBatteryGateTests(unittest.TestCase):
         for (name, year), expected in sorted(EXPECTED.items()):
             if "refuses" in expected:
                 continue   # asserted by test_refusal_scenario_years_refuse
-            if _multi_business(name, year):
-                continue   # refused until phase C; pinned below
             native = battery.native_lines(
                 self.orch, battery.SCENARIOS[name](year))
             for form, by_line in expected.items():
@@ -80,23 +67,6 @@ class SchCBatteryGateTests(unittest.TestCase):
                             line, native[form],
                             f"native has no value for {form} line {line}")
                         self.assertEqual(native[form][line], value)
-
-    def test_multi_business_value_years_refuse_until_phase_c(self):
-        # The value scenario-years the gate above skips: two or more
-        # Schedule C businesses, which Form 8995 refuses until phase C of
-        # the f8995 per-source-rows lane lands. When it does, this goes red
-        # and the skip above is removed.
-        skipped = sorted(key for key, expected in EXPECTED.items()
-                         if "refuses" not in expected
-                         and _multi_business(*key))
-        self.assertEqual(skipped, [("two-trades", year)
-                                   for year in (2022, 2023, 2024, 2025)])
-        for name, year in skipped:
-            with self.subTest(scenario=name, year=year):
-                with self.assertRaises(NotImplementedError) as ctx:
-                    battery.native_lines(
-                        self.orch, battery.SCENARIOS[name](year))
-                self.assertIn("Form 8995 per-source rows", str(ctx.exception))
 
 
 if __name__ == "__main__":

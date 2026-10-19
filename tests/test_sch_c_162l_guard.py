@@ -112,11 +112,6 @@ class SchC162lGuardTests(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             self._compute_federal(scn)
 
-    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
-    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
-    # Schedule C businesses until the half-SE-tax allocation is ruled. An
-    # unexpected success when phase C lands is the signal to remove this.
-    @unittest.expectedFailure
     def test_two_businesses_without_se_health_ok(self):
         # Two businesses but NO SE-health -> the multi-business refusal does not
         # fire (guard is gated on nonzero SE-health); the return computes.

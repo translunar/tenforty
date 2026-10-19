@@ -8,7 +8,6 @@ from pathlib import Path
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures import sch_c_battery
 from tests.helpers import REPO_ROOT
-from tests.test_sch_c_battery import _multi_business
 
 NAMES = (
     "sole-trade-basic", "two-trades", "day-job-plus-consulting",
@@ -72,11 +71,6 @@ class SchCBatteryHarnessTests(unittest.TestCase):
             for year in sch_c_battery.YEARS:
                 if (name, year) in sch_c_battery.REFUSING:
                     continue
-                if _multi_business(name, year):
-                    # Refused until phase C of the f8995 per-source-rows
-                    # lane; pinned by test_sch_c_battery's
-                    # test_multi_business_value_years_refuse_until_phase_c.
-                    continue
                 with self.subTest(name=name, year=year):
                     scn = sch_c_battery.SCENARIOS[name](year)
                     lines = sch_c_battery.native_lines(self.orch, scn)
@@ -89,11 +83,6 @@ class SchCBatteryHarnessTests(unittest.TestCase):
                         for line, value in form_lines.items():
                             self.assertIsInstance(value, int, (form, line))
 
-    # EXPECTED FAILURE until phase C of the f8995 per-source-rows lane
-    # (ledger: f8995 multi-source row 1): Form 8995 refuses two or more
-    # Schedule C businesses until the half-SE-tax allocation is ruled. An
-    # unexpected success when phase C lands is the signal to remove this.
-    @unittest.expectedFailure
     def test_second_business_yields_a_second_schedule_c_only_when_present(self):
         scn = sch_c_battery.SCENARIOS["two-trades"](2024)
         lines = sch_c_battery.native_lines(self.orch, scn)

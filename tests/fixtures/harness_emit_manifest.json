@@ -650,32 +650,32 @@
  "sch_c_battery/two-trades/2022": {
   "forms": null,
   "refusal": {
-   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
-   "type": "NotImplementedError"
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2023": {
   "forms": null,
   "refusal": {
-   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
-   "type": "NotImplementedError"
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2024": {
   "forms": null,
   "refusal": {
-   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
-   "type": "NotImplementedError"
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
   },
   "routing": "native"
  },
  "sch_c_battery/two-trades/2025": {
   "forms": null,
   "refusal": {
-   "fragment": "Form 8995 per-source rows: 2 Schedule C businesses each need",
-   "type": "NotImplementedError"
+   "fragment": "Schedule C business 2 ('Pinewood Crafts') has other_expenses",
+   "type": "ValueError"
   },
   "routing": "native"
  },
