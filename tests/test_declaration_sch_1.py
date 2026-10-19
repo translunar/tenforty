@@ -3,9 +3,9 @@ covers every computation key, binds by meaning, and its anchors locate
 their fields (emit-verification protocol step 4; adjudication
 /private/tmp/pilot-packet-sch_1).
 
-The declaration is inert until graduation: registration and the pending
-removal land together, so these tests read the module directly, not the
-registry.
+These tests read the module directly, not the registry: declaration
+modules are side-effect-free, and registration lives in
+tenforty.declarations.forms (sch_1 graduated there).
 """
 import tempfile
 import unittest
@@ -110,10 +110,15 @@ class SchOneDeclarationValidatesTests(unittest.TestCase):
                     {ln.line_id: ln for ln in sch_1.DECLARATIONS[year].lines},
                     {ln.line_id: ln for ln in sch_1.full_table(year)})
 
-    def test_still_pending(self):
-        # Graduation (registration + unpending) is a later, separate lane.
-        self.assertIn(FORM, PENDING_DECLARATIONS)
-        self.assertNotIn(FORM, {f for f, _ in registry.declared_forms()})
+    def test_graduated(self):
+        # Graduated: registered for every year and off the pending list,
+        # together (a registered form that is still pending is a hard
+        # registry error).
+        self.assertNotIn(FORM, PENDING_DECLARATIONS)
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertIs(registry.for_form(FORM, year),
+                              sch_1.DECLARATIONS[year])
 
 
 class SchOneKeyCoverageTests(unittest.TestCase):
@@ -316,8 +321,8 @@ def _sch_1_records():
 
 
 class SchOneCoverageTests(unittest.TestCase):
-    """Coverage over this declaration (read directly; it is not registered
-    until graduation): every cell is covered, every year."""
+    """Coverage over this declaration, read directly from the module: every
+    cell is covered, every year."""
 
     @classmethod
     def setUpClass(cls):
