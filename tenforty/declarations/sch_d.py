@@ -48,11 +48,24 @@ _CAP_H = ("(h) Gain or (loss) Subtract column (e) from column (d) and combine "
           "the result with column (g)")
 
 
+# Value-only (the sch_c / sch_2 / sch_1 precedent, grounded in the producer):
+# forms/sch_d.compute's return dict sets every bound key on every Schedule D,
+# zero included, so no scenario can leave one absent. The one exception is
+# line 21, loss-only by ruling: its key is absent on a gain or zero, so it is
+# two-state (value on a loss, nothing otherwise).
+_EMITTED = ("forms/sch_d.compute sets this key on every Schedule D, zero "
+            "included, so its nothing state is unreachable")
+_TWO_STATE = frozenset({"sch_d_line_21_allowed_loss"})
+
+
 def _bound(section, line, description, key, kind="amount", *, mef=None,
            anchor=None, exemption=None):
+    value_only = key not in _TWO_STATE
     return DeclaredLine(line=line, description=description, key=key,
                         kind=kind, section=section, anchor=anchor,
-                        mef_element=mef, inventory_exemption=exemption)
+                        mef_element=mef, inventory_exemption=exemption,
+                        single_state="value" if value_only else None,
+                        single_state_reason=_EMITTED if value_only else None)
 
 
 def _unserved(section, line, description, meaning, kind="amount"):
