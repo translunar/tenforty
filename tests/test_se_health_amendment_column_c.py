@@ -77,11 +77,6 @@ class SEHealthAmendmentColumnCTests(unittest.TestCase):
         return {k: results[k] for k in form_f1040x.REQUIRED_FILED_KEYS}
 
     # -------------------------------------------------------------- Test 1
-    # EXPECTED FAILURE pending Juno's ruling on an SE-health deduction with
-    # no Schedule C (routed with the half-SE allocation question; f8995
-    # per-source rows): Form 8995 refuses a QBI component with no source
-    # row. Phase K does not merge until this is ruled and implemented.
-    @unittest.expectedFailure
     def test_column_c_recompute_honors_se_health_deduction(self):
         """Column C's recompute genuinely honors the SE-health field.
 
@@ -127,11 +122,6 @@ class SEHealthAmendmentColumnCTests(unittest.TestCase):
                 _SE_HEALTH_V)
 
     # -------------------------------------------------------------- Test 2
-    # EXPECTED FAILURE pending Juno's ruling on an SE-health deduction with
-    # no Schedule C (routed with the half-SE allocation question; f8995
-    # per-source rows): Form 8995 refuses a QBI component with no source
-    # row. Phase K does not merge until this is ruled and implemented.
-    @unittest.expectedFailure
     def test_filed_deduction_cancels_out_of_column_b(self):
         """The gap cancels — the literal motivating property.
 

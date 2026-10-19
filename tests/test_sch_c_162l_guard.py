@@ -128,11 +128,6 @@ class SchC162lGuardTests(unittest.TestCase):
         out = self._compute_federal(scn)
         self.assertEqual(out["sch_1_line_3_business_income"], 180_000)
 
-    # EXPECTED FAILURE pending Juno's ruling on an SE-health deduction with
-    # no Schedule C (routed with the half-SE allocation question; f8995
-    # per-source rows): Form 8995 refuses a QBI component with no source
-    # row. Phase K does not merge until this is ruled and implemented.
-    @unittest.expectedFailure
     def test_no_schedule_c_passthrough_unchanged(self):
         # No business at all -> the guard is skipped entirely and the stated
         # SE-health deduction passes through unchanged on line 17.

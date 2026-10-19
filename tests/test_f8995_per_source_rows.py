@@ -141,6 +141,30 @@ class LineTwoFootingTests(unittest.TestCase):
         self.assertEqual(out["f8995_line_1_qbi"], 22)
 
 
+class SelfEmployedHealthInsuranceTests(unittest.TestCase):
+    """Juno's ruling D on an SE-health (SEHI) deduction and Form 8995."""
+
+    def test_sehi_with_no_sources_leaves_form_8995_untouched(self):
+        # D(i): no Schedule C and no K-1 QBI, so there is no QBI to reduce;
+        # the deduction stays on Schedule 1 and never reaches Form 8995.
+        s, up = _case(se_health=5_000.0)
+        out = f8995.compute(s, up)
+        self.assertEqual(_rows(out), {})
+        self.assertEqual(out["f8995_line_1_qbi"], 0)
+        self.assertEqual(out["f8995_line_2_total_qbi"], 0)
+        self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], 0)
+
+    def test_sehi_with_k1_rows_and_no_schedule_c_is_refused(self):
+        # D(ii): whether a shareholder's SEHI reduces K-1 QBI is contested
+        # law; refused until the positions registry (lane
+        # qbi-sehi-position) records an election. Goes red when it lands.
+        s, up = _case(k1_qbis=(10_000.0,), se_health=3_000.0)
+        with self.assertRaises(NotImplementedError) as ctx:
+            f8995.compute(s, up)
+        self.assertIn("qbi-sehi-position", str(ctx.exception))
+        self.assertIn("A39", str(ctx.exception))
+
+
 class RefusalTests(unittest.TestCase):
     def test_two_schedule_c_businesses_are_refused(self):
         # The half-SE-tax allocation across businesses is pending a ruling.
