@@ -2317,7 +2317,8 @@ class ReturnOrchestrator:
                 output_name=f"f1040sd_{year}.pdf",
                 form=("federal", "sch_d"), key=year,
                 fill_spec=fill_spec_for(PdfSchD, year),
-                values=form_sch_d.compute(scenario, upstream=upstream),
+                values=PdfSchD.presentation_values(
+                    form_sch_d.compute(scenario, upstream=upstream)),
             ))
 
         if self._should_emit_8949_pdf(scenario, upstream):

@@ -141,10 +141,10 @@ class TestCapitalLossCarryforwardComputeTime(unittest.TestCase):
             upstream={"k1_fanout": K1FanoutData.empty()},
         )
         # Computes normally: a W-2-only return has no capital transactions,
-        # so Sch D line 16 is zero and line 21 (the §1211(b) allowed loss)
-        # is zero — reached only because the gate let compute through.
+        # so Sch D line 16 is zero — reached only because the gate let
+        # compute through. Line 21 is loss-only, so it is absent (ruled).
         self.assertEqual(0, result["sch_d_line_16_total"])
-        self.assertEqual(0, result["sch_d_line_21_allowed_loss"])
+        self.assertNotIn("sch_d_line_21_allowed_loss", result)
 
     def test_sch_d_compute_still_refuses_with_capital_transactions(self) -> None:
         s = self._scenario(False)
