@@ -1335,9 +1335,15 @@ class ReturnOrchestrator:
 
         The recon keys (engine-computed vs used depreciation, one group per
         asset-mode activity) ride in the results dict on BOTH compute paths,
-        so they reach the results snapshot and the CLI on every run."""
-        results = self._compute_1040_pipeline_core(effective_scenario)
-        return {**results, **depreciation_recon_keys(effective_scenario)}
+        so they reach the results snapshot and the CLI on every run. So does
+        the run's record of contested positions consulted, when there is one
+        (tenforty.positions.RESULTS_KEY; absent when none was reached)."""
+        with _positions.recording() as consulted:
+            results = self._compute_1040_pipeline_core(effective_scenario)
+        results = {**results, **depreciation_recon_keys(effective_scenario)}
+        if consulted:
+            results[_positions.RESULTS_KEY] = consulted
+        return results
 
     def _compute_1040_pipeline_core(
         self, effective_scenario: Scenario,

@@ -374,27 +374,61 @@ class ElectionYamlTests(Wired, unittest.TestCase):
 
 class ElectionHelperTests(Wired, unittest.TestCase):
 
-    def setUp(self):
-        super().setUp()
-        positions.reset_consulted()
-        self.addCleanup(positions.reset_consulted)
-
     def test_returns_the_election_and_records_the_consult(self):
-        self.assertEqual(
-            positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI),
-            "irs-faq")
-        self.assertEqual(positions.CONSULTED, {QBI_SEHI})
+        with positions.recording() as record:
+            self.assertEqual(positions.election(
+                _reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI), "irs-faq")
+        self.assertEqual(record, [
+            {"slug": QBI_SEHI, "choice": "irs-faq", "reached": True}])
 
-    def test_reset_clears_the_record(self):
-        positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI)
-        positions.reset_consulted()
-        self.assertEqual(positions.CONSULTED, set())
+    def test_every_entry_is_reached(self):
+        # Ruling Q-R: entries exist only for reached positions, so reached
+        # is True on every one.
+        with positions.recording() as record:
+            positions.election(_reaching(**{QBI_SEHI: "no-reduction"}),
+                               QBI_SEHI)
+        self.assertTrue(record)
+        for entry in record:
+            self.assertIs(entry["reached"], True)
+
+    def test_a_repeated_consult_records_once(self):
+        scenario = _reaching(**{QBI_SEHI: "irs-faq"})
+        with positions.recording() as record:
+            positions.election(scenario, QBI_SEHI)
+            positions.election(scenario, QBI_SEHI)
+        self.assertEqual(len(record), 1)
+
+    def test_runs_do_not_share_a_record(self):
+        with positions.recording() as first:
+            positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI)
+        with positions.recording() as second:
+            pass
+        self.assertEqual(len(first), 1)
+        self.assertEqual(second, [])
+
+    def test_outside_a_run_nothing_is_recorded(self):
+        # The emit path recomputes Form 8995 outside any run; its consult
+        # returns the election and records nowhere, not even in the run
+        # that just ended.
+        with positions.recording() as finished:
+            pass
+        self.assertEqual(positions.election(
+            _reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI), "irs-faq")
+        self.assertEqual(finished, [])
 
     def test_a_missing_election_refuses_naming_the_controversy(self):
-        with self.assertRaises(NotImplementedError) as cm:
-            positions.election(_reaching(), QBI_SEHI)
+        with positions.recording() as record:
+            with self.assertRaises(NotImplementedError) as cm:
+                positions.election(_reaching(), QBI_SEHI)
         self.assertEqual(str(cm.exception), positions.refusal_message(QBI_SEHI))
-        self.assertEqual(positions.CONSULTED, {QBI_SEHI})
+        self.assertEqual(record, [])
+
+    def test_a_consult_on_a_return_that_never_reaches_it_is_a_programming_error(
+            self):
+        with positions.recording() as record:
+            with self.assertRaisesRegex(RuntimeError, "never reaches"):
+                positions.election(_wages_only(), QBI_SEHI)
+        self.assertEqual(record, [])
 
     def test_the_refusal_message(self):
         pos = positions.POSITIONS[QBI_SEHI]
@@ -416,6 +450,47 @@ class ElectionHelperTests(Wired, unittest.TestCase):
             positions.election(_reaching(), "no-such-position")
 
 
+class ResultsRecordTests(Wired, unittest.TestCase):
+    """Ruling 5: each run's consults ride its results dict; a run that
+    reaches no position carries no record at all (silence = never
+    reached)."""
+
+    def setUp(self):
+        super().setUp()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()))
+
+    def _pipeline(self, scenario, consult):
+        def core(effective):
+            if consult:
+                positions.election(effective, QBI_SEHI)
+            return {}
+        with unittest.mock.patch.object(
+                ReturnOrchestrator, "_compute_1040_pipeline_core",
+                side_effect=core):
+            return self.orch._compute_1040_pipeline(scenario)
+
+    def test_a_consult_rides_the_results(self):
+        results = self._pipeline(_reaching(**{QBI_SEHI: "no-reduction"}),
+                                 consult=True)
+        self.assertEqual(results[positions.RESULTS_KEY], [
+            {"slug": QBI_SEHI, "choice": "no-reduction", "reached": True}])
+
+    def test_no_consult_leaves_no_record(self):
+        results = self._pipeline(_reaching(**{QBI_SEHI: "no-reduction"}),
+                                 consult=False)
+        self.assertNotIn(positions.RESULTS_KEY, results)
+
+    def test_a_non_reaching_return_carries_no_record(self):
+        with unittest.mock.patch.object(
+                ReturnOrchestrator, "_compute_1040_via_workbook",
+                side_effect=AssertionError("workbook path reached")):
+            results = self.orch.compute_federal(_wages_only())
+        self.assertIn("agi", results)
+        self.assertNotIn(positions.RESULTS_KEY, results)
+
+
 class QbiSehiReachabilityPinTests(unittest.TestCase):
     """Spec §13: every registered position is reachable, i.e. some code
     path consults it. KNOWN GAP until positions phase 2 wires the Form 8995
@@ -423,8 +498,6 @@ class QbiSehiReachabilityPinTests(unittest.TestCase):
     flips this pin to "consulted"."""
 
     def test_nothing_consults_it_yet(self):
-        positions.reset_consulted()
-        self.addCleanup(positions.reset_consulted)
         orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
                                   work_dir=Path(tempfile.mkdtemp()))
         # Before the f8995 lane merges the return computes; after, the
@@ -432,13 +505,15 @@ class QbiSehiReachabilityPinTests(unittest.TestCase):
         # here. No election: an unwired position refuses one at load.
         with unittest.mock.patch.object(
                 ReturnOrchestrator, "_compute_1040_via_workbook",
-                side_effect=AssertionError("workbook path reached")):
+                side_effect=AssertionError("workbook path reached")), \
+                unittest.mock.patch.object(
+                    positions, "election", wraps=positions.election) as spy:
             try:
                 orch.compute_federal(_reaching())
             except NotImplementedError as exc:
                 self.assertIn(QBI_SEHI, str(exc))
         self.assertEqual(
-            positions.CONSULTED, set(),
+            spy.call_count, 0,
             "KNOWN GAP (positions phase 2): the Form 8995 path now consults "
             "the registry; flip this pin to assert the position is consulted")
 

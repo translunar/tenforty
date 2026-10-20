@@ -12,6 +12,8 @@ Sources are public legal materials only. ``fidelity`` says how the
 source's own), ``paraphrased`` (substance confirmed against the source,
 wording ours), or ``secondhand`` (known only through secondary summaries).
 """
+import contextlib
+import contextvars
 import dataclasses
 import datetime
 from collections.abc import Callable, Mapping
@@ -243,13 +245,36 @@ POSITIONS: Mapping[str, ContestedPosition] = MappingProxyType({
 })
 
 
-# Every position a computation has consulted in this process (spec §13
-# reachability instrument). Tests reset it before exercising a scenario.
-CONSULTED: set[str] = set()
+# The results-dict key carrying a run's consults (ruling 5): a list of
+# {"slug", "choice", "reached"} entries, one per position the run reached
+# and consulted, in consult order. A run that reaches no position carries
+# no key at all: silence means never reached. Today an entry exists only
+# for a reached position, so "reached" is always True; a later phase may
+# add reached: False entries for elections declared but not reached.
+RESULTS_KEY = "positions_consulted"
+
+# The record of the run in progress; None outside a run (the emit path's
+# recompute of a form consults, but records nowhere).
+_RUN_RECORD: contextvars.ContextVar[list[dict] | None] = (
+    contextvars.ContextVar("positions_run_record", default=None))
 
 
-def reset_consulted() -> None:
-    CONSULTED.clear()
+@contextlib.contextmanager
+def recording():
+    """Collect the consults of one run into a fresh list (yielded).
+
+    One record per pipeline run: runs must not nest. An inner run would
+    take every consult made while it is open, and the outer run's record
+    would silently miss them. The amended-return path is two SEQUENTIAL
+    runs (amended, then original), each with its own record. A change that
+    nests runs must decide where consults belong; it must not inherit this
+    silently."""
+    record: list[dict] = []
+    token = _RUN_RECORD.set(record)
+    try:
+        yield record
+    finally:
+        _RUN_RECORD.reset(token)
 
 
 def validate_elections(scenario, *, exact: bool = False) -> None:
@@ -308,12 +333,16 @@ def refusal_message(slug: str) -> str:
 
 
 def election(scenario, slug: str) -> str:
-    """The return's election for ``slug``, recording the consult; refuses
-    (NotImplementedError, the standard message) when none is given. An
-    unregistered slug is a programming error (LookupError)."""
+    """The return's election for ``slug``, recorded in the run in progress;
+    refuses (NotImplementedError, the standard message) when none is given.
+    An unregistered slug, or a consult on a return that never reaches the
+    position, is a programming error (LookupError, RuntimeError)."""
     if slug not in POSITIONS:
         raise LookupError(f"{slug!r} is not a registered contested position.")
-    CONSULTED.add(slug)
+    if not POSITIONS[slug].reached_when(scenario):
+        raise RuntimeError(
+            f"{slug!r} consulted on a return that never reaches it: the "
+            "consulting path must gate on the position's reached_when.")
     choice = scenario.positions.get(slug)
     if choice is None:
         raise NotImplementedError(refusal_message(slug))
@@ -324,4 +353,8 @@ def election(scenario, slug: str) -> str:
         raise ValueError(
             f"`positions: {slug}` is {choice!r}, which is not one of its "
             f"choices: {valid}.")
+    record = _RUN_RECORD.get()
+    entry = {"slug": slug, "choice": choice, "reached": True}
+    if record is not None and entry not in record:
+        record.append(entry)
     return choice
