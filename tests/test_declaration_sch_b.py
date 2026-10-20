@@ -3,9 +3,9 @@ covers the computation's keys, and its anchor phrases print (emit-
 verification protocol step 4; adjudication
 /private/tmp/pilot-packet-sch_b/ADJUDICATION.md).
 
-The declaration is inert until graduation: registration and the pending
-removal land together, so these tests read the module directly, not the
-registry.
+These tests read the module directly, not the registry: declaration
+modules are side-effect-free, and registration lives in
+tenforty.declarations.forms (sch_b graduated there).
 """
 import tempfile
 import unittest
@@ -131,10 +131,15 @@ class SchBDeclarationValidatesTests(unittest.TestCase):
                     self.assertEqual(len(anchor_eval._phrase_boxes(
                         words, ln.anchor.phrase)), 1, ln.anchor.phrase)
 
-    def test_ships_inert(self):
-        # Graduation (registration + unpending) is a later, separate lane.
-        self.assertIn(FORM, PENDING_DECLARATIONS)
-        self.assertNotIn(FORM, {f for f, _ in registry.declared_forms()})
+    def test_graduated(self):
+        # Graduated: registered for every year and off the pending list,
+        # together (a registered form that is still pending is a hard
+        # registry error).
+        self.assertNotIn(FORM, PENDING_DECLARATIONS)
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertIs(registry.for_form(FORM, year),
+                              sch_b.DECLARATIONS[year])
 
 
 
