@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 from tenforty.declarations import inventory, propose, registry, sch_e
-from tenforty.declarations.anchors import NearLabel
+from tenforty.declarations.anchors import LabelRelation, NearLabel
 from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
 from tenforty.mappings.pdf_sch_e import PdfSchE
@@ -179,6 +179,47 @@ class SchEStaticCellPlacementTests(unittest.TestCase):
                     ["27", "28A(e)", "28B(e)", "28C(e)", "28D(e)"])
                 self.assertEqual(findings, [], "\n".join(
                     f.message for f in findings))
+
+
+class SchELine29bAnchorTests(unittest.TestCase):
+    """29b's row prints only a bare "b" and the repeated "Totals", so it
+    anchors on line 30's print-once caption one row below it
+    (ROW_ABOVE_LABEL, team-lead ruling 2026-10-19)."""
+
+    _P2 = "topmostSubform[0].Page2[0]."
+    # The 29a-row box in 29b's column (2021: a shaded widget) and the next
+    # column on the 29b row.
+    _NEIGHBOURS = {2021: ("R1", "R4"),
+                   **{y: ("f2_35", "f2_41") for y in YEARS if y != 2021}}
+
+    def _line(self, year):
+        return next(ln for ln in sch_e.DECLARATIONS[year].lines
+                    if ln.line == "29b")
+
+    def test_29b_anchors_above_line_30s_caption(self):
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(self._line(year).anchor, NearLabel(
+                    "Add columns (h) and (k)", LabelRelation.ROW_ABOVE_LABEL))
+
+    def test_29b_is_placed(self):
+        for year in YEARS:
+            template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+            findings = [f for f in check_placement(
+                template, sch_e.DECLARATIONS[year],
+                fill_spec_for(PdfSchE, year)) if f.line == "29b"]
+            with self.subTest(year=year):
+                self.assertEqual(findings, [], "\n".join(
+                    f.message for f in findings))
+
+    def test_29b_anchor_refuses_the_29a_row_and_the_next_column(self):
+        for year in YEARS:
+            template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+            for leaf in self._NEIGHBOURS[year]:
+                with self.subTest(year=year, box=leaf):
+                    self.assertIsNotNone(anchor_eval.evaluate(
+                        self._line(year).anchor, f"{self._P2}{leaf}[0]",
+                        template))
 
 
 if __name__ == "__main__":
