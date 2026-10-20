@@ -374,16 +374,23 @@ def _header_rows(text):
 
 # ------------------------------------------------------- Part I lines A, B
 # 2022-2025: one key per line drives a Yes/No pair (option group). The bare
-# line is the Yes box (first keyed cell in reading order, on the label row:
-# the default anchor; 2022+ baselines 149.4 / 160.9 vs box bottoms 148 /
-# 159.8); the No box is a composed sub-line of the same key. The fill writes
-# only the CHOSEN box with its export state (Yes "/1", No "/2"); an unstated
-# answer writes nothing, so both lines are two-state. "Yes", "No" and "Yes
-# No" each print on both the A and B rows (token-exact), so no caption is
-# row-unique: the No box is SAME_ROW_RIGHT_OF its Yes box (gap 28.0, dy 0.0)
-# -- the accepted convention exception (supplement ruling Q-d).
+# line is the Yes box; the No box is a composed sub-line of the same key. The
+# fill writes only the CHOSEN box with its export state (Yes "/1", No "/2");
+# an unstated answer writes nothing, so both lines are two-state.
+# Anchors are a PAIR (team-lead ruling 2026-10-20) -- trim neither:
+# - the Yes box is ON_ROW its own question's print-once phrase (row A y0
+#   642.6, row B 631.1, 11.8 pt apart; box bottoms 644.0 / 632.2). Alone it
+#   is row-specific but cannot tell its own row's No box apart;
+# - the No box is SAME_ROW_RIGHT_OF the Yes box (gap 28.0, dy 0.0), the
+#   compensating witness: with the Yes target resolved through
+#   option_widgets it accepts exactly its own box, so a Yes/No swap or both
+#   keys on the No box reds the No line, and a box on the other row reds the
+#   Yes line. "Yes"/"No" captions print on both rows (token-exact) and
+#   accept the other row's box, so they cannot anchor either line.
 # 2021: the template is outside the A/B fill table (OUT_OF_SCOPE), so 2021's
 # A/B stay unserved.
+_QUESTION = {"A": "Did you make any payments",
+             "B": "did you or will you file required"}
 _YESNO = (("A", "sch_e_payments_requiring_1099s",
            "PaymentRqrFilingForm1099Ind",
            "Yes/No: payments in the year requiring Form(s) 1099"),
@@ -400,6 +407,7 @@ def _answer_lines(year, text):
             continue
         out += [
             _bound(P1, line, text[(P1, line)], key, "checkbox", mef=mef,
+                   anchor=NearLabel(_QUESTION[line], LabelRelation.ON_ROW),
                    group=line, selects="/1"),
             _bound(P1, f"{line}(No)", f"No (line {line})", key, "checkbox",
                    mef=mef, anchor=NearField(line, _SRRO),
