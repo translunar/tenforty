@@ -795,7 +795,8 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
             rule predicts a divergence of 2 dollars
             actual: 1040 line 2b = 63,626   Sch B line 4 = 63,625  -> 1
             (the float sum is 63626.49999999999, not 63626.50; six payers
-             is inside INTEREST_MAX_ROWS, so this row is on the emit path)
+             is inside interest_max_rows(year), so this row is on the emit
+             path)
 
     WHICH float sums fall short of their decimal value is deliberately NOT
     characterised here. Nobody has measured it, and stating more than has
@@ -821,8 +822,9 @@ class K1ScheduleBEmitPathAgreesWith1040Tests(_OrchestratorTestCase):
       * The magnitude is NOT capped at one dollar; it grows with the number
         of payers. On the EMIT path the payer count is itself capped, so the
         growth is too: ``sch_b.compute`` raises NotImplementedError above
-        ``pdf_sch_b.INTEREST_MAX_ROWS`` (14) interest rows and
-        ``DIVIDEND_MAX_ROWS`` (16) dividend rows. Measured:
+        ``pdf_sch_b.interest_max_rows(year)`` (14) interest rows and
+        ``dividend_max_rows(year)`` dividend rows (16 in 2021, 15 from 2022;
+        the 16-payer rows below hold only where the cap is 16). Measured:
             ten 1099-INTs @ 0.49   ->  1040 2b = 5   Sch B line 4 = 0
             14 1099-INTs @ 0.49    ->  1040 2b = 7   Sch B line 4 = 0
             14 1099-INTs @ 0.51    ->  1040 2b = 7   Sch B line 4 = 14

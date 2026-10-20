@@ -259,6 +259,51 @@
   "refusal": null,
   "routing": "native"
  },
+ "emit_battery_sch_b/full-payer-grid/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_b/full-payer-grid/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_b/full-payer-grid/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_b/full-payer-grid/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_b/full-payer-grid/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_sch_c/at-risk-loss/2021": {
   "forms": [
    "federal/1040",

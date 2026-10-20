@@ -14,10 +14,13 @@ from pypdf import PdfReader
 
 from tenforty.filing.pdf import PdfFiller
 from tenforty.mappings.pdf_sch_b import (
-    DIVIDEND_MAX_ROWS,
-    INTEREST_MAX_ROWS,
     PdfSchB,
+    dividend_max_rows,
+    interest_max_rows,
 )
+from tenforty.orchestrator import ReturnOrchestrator
+from tests.fixtures.spine_battery import build_canonical_wage_investment_rental
+from tests.helpers import REPO_ROOT
 
 SCH_B_TEMPLATE = (
     Path(__file__).resolve().parents[1]
@@ -32,8 +35,13 @@ SCH_B_TEMPLATE_2021 = (
 
 class PdfSchBStructureTests(unittest.TestCase):
     def test_row_counts(self):
-        self.assertEqual(INTEREST_MAX_ROWS, 14)
-        self.assertEqual(DIVIDEND_MAX_ROWS, 16)
+        # The paper's capacity: 14 interest rows every year; 16 dividend
+        # rows in 2021, 15 from 2022.
+        for year in (2021, 2022, 2023, 2024, 2025):
+            with self.subTest(year=year):
+                self.assertEqual(interest_max_rows(year), 14)
+                self.assertEqual(dividend_max_rows(year),
+                                 16 if year == 2021 else 15)
 
     def test_2025_scalars_cover_totals_and_header(self):
         m = PdfSchB.get_mapping(2025)
@@ -49,15 +57,34 @@ class PdfSchBStructureTests(unittest.TestCase):
 
     def test_2025_interest_row_slots(self):
         m = PdfSchB.get_mapping(2025)
-        for i in range(1, INTEREST_MAX_ROWS + 1):
+        for i in range(1, interest_max_rows(2025) + 1):
             self.assertIn(f"interest_payer_{i}", m)
             self.assertIn(f"interest_amount_{i}", m)
 
-    def test_2025_dividend_row_slots(self):
-        m = PdfSchB.get_mapping(2025)
-        for i in range(1, DIVIDEND_MAX_ROWS + 1):
-            self.assertIn(f"dividend_payer_{i}", m)
-            self.assertIn(f"dividend_amount_{i}", m)
+    def test_dividend_row_slots_match_the_paper_each_year(self):
+        for year in (2021, 2022, 2023, 2024, 2025):
+            m = PdfSchB.get_mapping(year)
+            rows = sorted(int(k.rsplit("_", 1)[1]) for k in m
+                          if k.startswith("dividend_payer_"))
+            with self.subTest(year=year):
+                self.assertEqual(rows,
+                                 list(range(1, dividend_max_rows(year) + 1)))
+                self.assertEqual(
+                    sorted(int(k.rsplit("_", 1)[1]) for k in m
+                           if k.startswith("dividend_amount_")), rows)
+
+    def test_2022_on_line_6_is_f1_64_and_7b_is_unmapped(self):
+        # 2022-2025 templates: f1_64 is the line 6 total box; f1_65 and
+        # f1_66 are the Part III line 7b foreign-country fields, which no
+        # key serves.
+        for year in (2022, 2023, 2024, 2025):
+            m = PdfSchB.get_mapping(year)
+            with self.subTest(year=year):
+                self.assertEqual(m["total_ordinary_dividends"],
+                                 "topmostSubform[0].Page1[0].f1_64[0]")
+                self.assertEqual(
+                    [k for k, v in m.items()
+                     if v.endswith(("f1_65[0]", "f1_66[0]"))], [])
 
     def test_2025_every_value_is_a_real_pdf_field(self):
         if not SCH_B_TEMPLATE.exists():
@@ -139,6 +166,30 @@ class TestPdfSchB2021EmitRoundTrip(unittest.TestCase):
         for key, expected in values.items():
             with self.subTest(field=key):
                 self.assertEqual(read.get(field_mapping[key]), str(expected))
+
+
+
+class SchBLineSixEmitTests(unittest.TestCase):
+    """The emitted 2022-2025 Schedule B prints the dividend total in the
+    line 6 box and leaves the Part III line 7b fields empty."""
+
+    def test_line_6_carries_the_total(self):
+        for year in (2022, 2024, 2025):
+            with tempfile.TemporaryDirectory() as tmp, \
+                    self.subTest(year=year):
+                orch = ReturnOrchestrator(
+                    spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                    work_dir=Path(tmp) / "work")
+                scenario = build_canonical_wage_investment_rental(year)
+                results = orch.compute_federal(scenario)
+                emitted = orch.emit_pdfs(scenario, results, Path(tmp) / "out")
+                fields = PdfReader(str(emitted["sch_b"])).get_fields()
+                page = "topmostSubform[0].Page1[0]."
+                value = {n: str(fields[page + n].get("/V") or "")
+                         for n in ("f1_64[0]", "f1_65[0]", "f1_66[0]")}
+                self.assertEqual(value["f1_64[0]"], "5000")
+                self.assertEqual(value["f1_65[0]"], "")
+                self.assertEqual(value["f1_66[0]"], "")
 
 
 if __name__ == "__main__":
