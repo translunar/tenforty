@@ -638,6 +638,14 @@ _NOT_PRINTED = {
         "intermediate: Part II's pass-through total feeding line 41's "
         "total_income; Schedule E prints no separate cell for it "
         "(first-round adjudication 1)"),
+    # Consumed by the orchestrator's Schedule E fill to choose which line-28
+    # column (e) box to check; the box itself is bound by 28A-D(e).
+    **{f"sch_e_part_ii_row_{r}_basis_computation_required": (
+        f"intermediate: selects the row {r.upper()} line-28 column (e) "
+        f"basis-computation box (bound by 28{r.upper()}(e) 2022-2025; a "
+        "2021 return that sets it refuses, see OUT_OF_SCOPE); the flag "
+        "itself prints nowhere")
+       for r in "abcd"},
 }
 
 
