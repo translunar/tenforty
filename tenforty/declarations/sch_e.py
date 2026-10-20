@@ -572,10 +572,17 @@ def _part_ii_totals(text):
                "sch_e_line_29a_total_nonpassive_income",
                mef="BusTotalNonpassiveIncomeAmt",
                anchor=NearField("29a", _SRRO), exemption=_q1("29a")),
-        # column unconstrained: anchor vocabulary has no column relation.
+        # 29b's row prints only a bare "b" and "Totals" (4x on page 2), and
+        # "29a" prints twice 2022+, so the box anchors on line 30's
+        # print-once caption one row below (ROW_ABOVE_LABEL, team-lead
+        # ruling 2026-10-19): abut 0.9 pt every year (29a row 12.9), box x0
+        # 100.8 (2021) / 93.6 under the phrase's [64.8, 159.7] (next column
+        # 180.0 / 187.2). It selects 29b's column (g) box, unlike "Totals".
         _bound(P2, "29b", text[(P2, "29b")],
                "sch_e_line_29b_total_passive_loss",
-               mef="TotalPassiveLossAllowedAmt"),
+               mef="TotalPassiveLossAllowedAmt",
+               anchor=NearLabel("Add columns (h) and (k)",
+                                LabelRelation.ROW_ABOVE_LABEL)),
         _bound(P2, "29b(i)", "Totals, column (i) Nonpassive loss allowed",
                "sch_e_line_29b_total_nonpassive_loss",
                mef="TotalNonpassiveLossAmt",
