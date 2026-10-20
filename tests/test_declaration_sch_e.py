@@ -223,6 +223,36 @@ class SchELine29bAnchorTests(unittest.TestCase):
                         template))
 
 
+class SchEAnswerLinePlacementTests(unittest.TestCase):
+    """Lines A/B: each Yes box anchors ON_ROW its own question's print-once
+    phrase (row-specific; it cannot tell its own row's No box apart), and
+    each No box anchors SAME_ROW_RIGHT_OF the Yes line's resolved box
+    (column order). The pair together refuses every constructed mis-map
+    (team-lead ruling 2026-10-20)."""
+
+    _PHRASE = {"A": "Did you make any payments",
+               "B": "did you or will you file required"}
+
+    def test_yes_lines_anchor_on_their_question(self):
+        for year in YEARS[1:]:
+            lines = {ln.line: ln for ln in sch_e.DECLARATIONS[year].lines}
+            for line, phrase in self._PHRASE.items():
+                with self.subTest(year=year, line=line):
+                    self.assertEqual(lines[line].anchor, NearLabel(
+                        phrase, LabelRelation.ON_ROW))
+
+    def test_answer_lines_are_placed(self):
+        for year in YEARS[1:]:
+            template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+            findings = [f for f in check_placement(
+                template, sch_e.DECLARATIONS[year],
+                fill_spec_for(PdfSchE, year))
+                if f.line in ("A", "A(No)", "B", "B(No)")]
+            with self.subTest(year=year):
+                self.assertEqual(findings, [], "\n".join(
+                    f.message for f in findings))
+
+
 class SchEAnswerLineResolutionTests(unittest.TestCase):
     """Lines A/B are option lines (selects "/1" Yes, "/2" No): the gate and
     the check-suite resolve each through the CANONICAL spec's translation
