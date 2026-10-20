@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.3 — 2026-10-19
+
+Verification release: Form 8959 graduates. No scenario-schema changes.
+
+### Verified forms
+
+- **Form 8959 (Additional Medicare Tax) is now a verified form** (two
+  independent declarations, machine-compared, adjudicated against the
+  official paper; runtime gate enforced). Lines 2, 3, 14 and 23 — which
+  tenforty's model can never populate — are documented as such pending a
+  zero-lines attestation design.
+
+### Internal
+
+- `tenforty/declarations/forms.py` gains a single `MODULES` registry
+  mapping each form to its declaration module, with duplicate refusal and
+  identity pins (fixes an importlib guess that broke on numeric form
+  names).
+- New Schedule E emit battery: 35 scenarios exercising the full Schedule E
+  surface (multi-property columns, royalties, Part II rows), feeding the
+  in-flight Schedule E declaration lane.
+
 ## 0.2.2 — 2026-10-19
 
 Verification release: Schedule D graduates, and two protections land for
