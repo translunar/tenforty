@@ -32,6 +32,7 @@ column order):
 """
 
 import re
+from collections.abc import Callable, Mapping
 
 from tenforty.mappings.registry import PdfFormMapping
 
@@ -518,8 +519,39 @@ _Q1099_CELLS: dict[str, dict[bool, tuple[str, str]]] = {
     "filed_required_1099s": {
         True: (_P1 + "c1_2[0]", "/1"), False: (_P1 + "c1_2[1]", "/2")},
 }
-_Q1099_BY_YEAR: dict[int, dict[str, dict[bool, tuple[str, str]]]] = {
-    y: _Q1099_CELLS for y in (2022, 2023, 2024, 2025)}
+_Q1099_YEARS = (2022, 2023, 2024, 2025)
+# {question: {answer: export state}}: the value the orchestrator writes under
+# sch_e_<question>, and the option line's `selects` in the declaration.
+_ANSWER_STATES: dict[str, dict[bool, str]] = {
+    question: {answer: state for answer, (_path, state) in cells.items()}
+    for question, cells in _Q1099_CELLS.items()}
+
+
+def _answer_box(question: str, state: str):
+    """Translation derivation for one Yes/No widget: its on-state when the
+    question's key holds that state, nothing when it holds the other state
+    or no answer. Any other value is a producer bug and fails loud."""
+    key = f"sch_e_{question}"
+    states = set(_ANSWER_STATES[question].values())
+
+    def derive(values: Mapping[str, object]) -> str | None:
+        answer = values.get(key)
+        if answer is None:
+            return None
+        if answer not in states:
+            raise ValueError(
+                f"Schedule E {key} must be one of {sorted(states)}, "
+                f"got {answer!r}.")
+        return state if answer == state else None
+    return derive
+
+
+# Lines A/B as option groups: one derivation per widget (field path ->
+# derivation), from _Q1099_CELLS, TY2022-2025. 2021 serves neither line.
+_ANSWER_DERIVATIONS: dict[str, Callable[[Mapping[str, object]], object]] = {
+    path: _answer_box(question, state)
+    for question, cells in _Q1099_CELLS.items()
+    for path, state in cells.values()}
 
 
 # Page 2 line 27 ("Are you reporting any loss not allowed in a prior year
@@ -548,21 +580,35 @@ _BASIS_CELLS: dict[str, tuple[str, str]] = {
 _BASIS_YEARS = (2022, 2023, 2024, 2025)
 
 
+def _with_conditional_cells(fields: dict, year: int) -> dict:
+    """``fields`` plus the line 27 "No" box and (2022-2025) the line 28
+    column (e) boxes as static scalars. The orchestrator writes their VALUES
+    only when a return calls for them (an unwritten key prints nothing); the
+    field paths live here so they never depend on the scenario."""
+    scalars = dict(fields["scalars"])
+    scalars["sch_e_line_27_no"] = _LINE_27_CELLS[False][0]
+    if year in _BASIS_YEARS:
+        for letter, (path, _on) in _BASIS_CELLS.items():
+            scalars[f"sch_e_part_ii_row_{letter}_basis_computation_box"] = path
+    return {**fields, "scalars": scalars}
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
     # 2023's field tree is byte-identical to 2024's (verified: identical
-    # AcroForm field-path sets), so one payload serves all three years. 2022
+    # AcroForm field-path sets), so 2023-2025 build equal payloads. 2022
     # zero-pads single-digit text-field leaves (see _to_2022).
     _MAPPINGS: dict[int, dict] = {
-        2021: _FIELDS_2021,
-        2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+        2021: _with_conditional_cells(_FIELDS_2021, 2021),
+        2022: _with_conditional_cells(_FIELDS_2022, 2022),
+        **{y: _with_conditional_cells(_FIELDS, y) for y in (2023, 2024, 2025)}}
 
     @classmethod
     def get_line_27_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
         """{answer: (field_path, on_state)} for the line 27 Yes/No pair.
-        Additive to the value mapping, like the line A/B cells: the
-        orchestrator writes only the chosen answer's on-state."""
+        The No box is a static scalar (``sch_e_line_27_no``); the
+        orchestrator writes its on-state only when Part II is used."""
         if year not in _LINE_27_YEARS:
             raise ValueError(
                 f"No Schedule E line 27 (prior-year unallowed loss question) "
@@ -574,7 +620,8 @@ class PdfSchE(PdfFormMapping[dict]):
         cls, year: int,
     ) -> dict[str, tuple[str, str]]:
         """{row letter: (field_path, on_state)} for line 28 column (e).
-        Additive to the value mapping, like the line A/B cells: the
+        Each box is a static scalar
+        (``sch_e_part_ii_row_<letter>_basis_computation_box``); the
         orchestrator writes the on-state only for rows whose compute carries
         ``sch_e_part_ii_row_<letter>_basis_computation_required``."""
         if year not in _BASIS_YEARS:
@@ -586,15 +633,17 @@ class PdfSchE(PdfFormMapping[dict]):
                 f"form by hand.")
         return _BASIS_CELLS
 
+    # {question: {answer: export state}} for lines A/B (Yes /1, No /2).
+    ANSWER_STATES = _ANSWER_STATES
+    ANSWER_YEARS = _Q1099_YEARS
+
     @classmethod
-    def get_1099_question_cells(
+    def get_derivations(
         cls, year: int,
-    ) -> dict[str, dict[bool, tuple[str, str]]]:
-        """{question: {answer: (field_path, on_state)}} for lines A
-        (``payments_requiring_1099s``) and B (``filed_required_1099s``).
-        Additive to the value mapping: the orchestrator writes only the CHOSEN
-        answer's on-state, so a Yes/No pair can never carry two marks."""
-        if year not in _Q1099_BY_YEAR:
-            raise ValueError(
-                f"No Schedule E line A/B (1099 question) cells for year {year}")
-        return _Q1099_BY_YEAR[year]
+    ) -> dict[str, Callable[[Mapping[str, object]], object]]:
+        """Field path -> derivation. Lines A/B (2022-2025): each Yes/No
+        widget turns ON only for its own answer's export state, so a pair
+        never carries two marks and an unstated answer writes nothing."""
+        if year not in cls._MAPPINGS:
+            raise ValueError(f"No Schedule E derivations for year {year}")
+        return _ANSWER_DERIVATIONS if year in _Q1099_YEARS else {}

@@ -2379,13 +2379,13 @@ class ReturnOrchestrator:
             merged["taxpayer_name_page2"] = merged.get("taxpayer_name")
             merged["taxpayer_ssn_page2"] = merged.get("taxpayer_ssn")
             sch_e_values = merged
-            # Scenario-answer cells, merged into the scalars by extend in the
-            # order they are added here.
-            sch_e_cells: dict[str, str] = {}
+            # Every Schedule E field path lives in the canonical spec; only
+            # VALUES are added here, per scenario.
             sch_e_spec_values = sch_e_values  # downstream compute inputs stay clean
-            # Lines A/B (Form 1099 questions): only the CHOSEN answer's box is
-            # written (its export on-state), so each Yes/No pair is mutually
-            # exclusive; unstated answers add nothing (boxes stay blank).
+            # Lines A/B (Form 1099 questions): the answer's export state is
+            # written under sch_e_<question>; the mapping's translation
+            # derivations turn ON only that answer's box, so each Yes/No pair
+            # is mutually exclusive; unstated answers add nothing.
             validate_sche_1099_answers(scenario.config)
             q_stated = {
                 "payments_requiring_1099s":
@@ -2393,28 +2393,32 @@ class ReturnOrchestrator:
                 "filed_required_1099s": scenario.config.filed_required_1099s,
             }
             if any(a is not None for a in q_stated.values()):
-                q_cells = PdfSchE.get_1099_question_cells(year)
+                if year not in PdfSchE.ANSWER_YEARS:
+                    raise ValueError(
+                        f"No Schedule E line A/B (1099 question) cells for "
+                        f"year {year}")
                 q_values = dict(sch_e_spec_values)
                 for question, answer in q_stated.items():
                     if answer is None:
                         continue
-                    q_path, q_on = q_cells[question][answer]
-                    sch_e_cells[f"sch_e_{question}"] = q_path
-                    q_values[f"sch_e_{question}"] = q_on
+                    q_values[f"sch_e_{question}"] = (
+                        PdfSchE.ANSWER_STATES[question][answer])
                 sch_e_spec_values = q_values
             # Line 27 (prior-year unallowed loss question): answered "No"
             # whenever Part II is used. A return that would have to answer
             # "Yes" never reaches here -- the emit-stage refusal ledger
-            # (sch_e_line_27_prior_year_unallowed_loss) stops it first.
+            # (sch_e_line_27_prior_year_unallowed_loss) stops it first. The
+            # No box's field path is in the static mapping; only the value
+            # is written here.
             if self._should_emit_sch_e_part_ii(scenario):
-                l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
-                sch_e_cells["sch_e_line_27_no"] = l27_path
+                _l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
                 sch_e_spec_values = {
                     **sch_e_spec_values, "sch_e_line_27_no": l27_on}
             # Line 28 column (e) (basis computation required): written only
-            # for rows the compute flags (an S corporation box 1 loss). A
-            # year with no cell mapping refuses rather than emit the loss row
-            # without its required box.
+            # for rows the compute flags (an S corporation box 1 loss); the
+            # boxes' field paths are in the static mapping. A year with no
+            # cell mapping refuses rather than emit the loss row without its
+            # required box.
             basis_rows = [
                 letter for letter in ("a", "b", "c", "d")
                 if sch_e_spec_values.get(
@@ -2424,17 +2428,17 @@ class ReturnOrchestrator:
                 basis_cells = PdfSchE.get_basis_computation_cells(year)
                 b_values = dict(sch_e_spec_values)
                 for letter in basis_rows:
-                    b_path, b_on = basis_cells[letter]
+                    _b_path, b_on = basis_cells[letter]
                     key = f"sch_e_part_ii_row_{letter}_basis_computation_box"
-                    sch_e_cells[key] = b_path
                     b_values[key] = b_on
                 sch_e_spec_values = b_values
             specs.append(_FederalFormSpec(
                 name="sch_e", template=_fed("f1040se.pdf"),
                 output_name=f"f1040se_{year}.pdf",
                 form=("federal", "sch_e"), key=year,
-                fill_spec=fill_spec_for(PdfSchE, year).extend(
-                    mapping=sch_e_cells),
+                # Flat: the chokepoint takes derivations (lines A/B) only on
+                # a flat fill; Schedule E's repeaters are empty.
+                fill_spec=fill_spec_for(PdfSchE, year).flattened(),
                 values=sch_e_spec_values,
             ))
 

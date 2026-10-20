@@ -20,7 +20,7 @@ module name (Form 8959 is "8959"; its module is ``f8959``).
 """
 from tenforty.declarations import registry
 from tenforty.declarations import (
-    f8959, sch_1, sch_2, sch_b, sch_c, sch_d, sch_se)
+    f8959, sch_1, sch_2, sch_b, sch_c, sch_d, sch_e, sch_se)
 
 
 def modules_by_form(modules):
@@ -35,7 +35,8 @@ def modules_by_form(modules):
     return by_form
 
 
-MODULES = modules_by_form((sch_se, sch_c, sch_2, sch_1, sch_d, f8959, sch_b))
+MODULES = modules_by_form(
+    (sch_se, sch_c, sch_2, sch_1, sch_d, f8959, sch_b, sch_e))
 
 for _module in MODULES.values():
     for _decl in _module.DECLARATIONS.values():

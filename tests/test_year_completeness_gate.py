@@ -9,6 +9,7 @@ import unittest
 from tenforty import years as year_manifest
 from tenforty.attestations import _CA_ATTESTATIONS
 from tenforty.ca_divergences import load_catalog as load_divergence_catalog
+from tenforty.mappings import catalog as catalog_mod
 from tenforty.mappings.catalog import (
     AMENDMENT_KNOWN_GAPS,
     CATALOG,
@@ -299,6 +300,8 @@ class DerivationsSurfaceCompletenessTests(unittest.TestCase):
                 if not any(nonempty.values()):
                     continue  # form carries no derivations in any year — exempt
                 for year in supported:
+                    if (juris, form, year) in catalog_mod.DERIVATION_YEAR_EXEMPTIONS:
+                        continue  # re-guarded in DerivationYearExemptionTests
                     with self.subTest(juris=juris, form=form, year=year):
                         self.assertTrue(
                             nonempty[year],
@@ -326,6 +329,74 @@ class DerivationsSurfaceCompletenessTests(unittest.TestCase):
                         len(dict(derivations)), 0,
                         f"{form} {year}: listed in ZERO_DERIVATION_FORMS but "
                         f"carries derivations — remove it from the allowlist")
+
+
+def _derivations_by_year(juris, form):
+    """{supported non-gapped year: derivation count} for one catalog form."""
+    years = (year_manifest.CALIFORNIA_YEARS if juris == "california"
+             else year_manifest.FEDERAL_YEARS)
+    cls = CATALOG[(juris, form)].mapping_cls
+    supported = DerivationsSurfaceCompletenessTests._supported_years(
+        juris, form, years)
+    return {y: (len(dict(cls.get_derivations(y)))
+                if hasattr(cls, "get_derivations") else 0)
+            for y in supported}
+
+
+def _exemption_staleness(juris, form, year):
+    """Why a (juris, form, year) derivation exemption is stale, or None.
+    Live only while BOTH hold: the exempt year genuinely carries no
+    derivations, and some sibling supported year carries some (otherwise
+    the form is derivation-free and needs no year exemption)."""
+    counts = _derivations_by_year(juris, form)
+    if year not in counts:
+        return f"{form} {year} is not a supported non-gapped year"
+    if counts[year]:
+        return (f"{form} {year} carries {counts[year]} derivations: the "
+                "exemption is stale; remove it")
+    if not any(n for y, n in counts.items() if y != year):
+        return (f"{form} carries no derivations in any sibling year: a year "
+                "exemption is vacuous; remove it")
+    return None
+
+
+class DerivationYearExemptionTests(unittest.TestCase):
+    """DERIVATION_YEAR_EXEMPTIONS: (juris, form, year) -> reason, for a year
+    a form deliberately does not serve its derivations in (team-lead ruling
+    2026-10-20, Schedule E 2021 lines A/B). Each entry is re-guarded both
+    ways; the surface check skips exactly the listed years."""
+
+    def test_every_exemption_has_a_reason(self):
+        for key, reason in catalog_mod.DERIVATION_YEAR_EXEMPTIONS.items():
+            with self.subTest(entry=key):
+                self.assertEqual(len(key), 3)
+                self.assertGreater(len(reason.strip()), 15)
+
+    def test_every_exemption_is_live(self):
+        for juris, form, year in sorted(catalog_mod.DERIVATION_YEAR_EXEMPTIONS):
+            with self.subTest(juris=juris, form=form, year=year):
+                self.assertIsNone(_exemption_staleness(juris, form, year))
+
+    def test_the_staleness_guard_fires_on_both_legs(self):
+        # Reachable negative space, chosen from the live catalog: a year that
+        # carries derivations (leg 1) and a form that carries none (leg 2).
+        _ = catalog_mod.DERIVATION_YEAR_EXEMPTIONS
+        with_derivations = with_none = None
+        for (juris, form), _entry in sorted(CATALOG.items()):
+            if juris != "federal" or form in year_manifest.SCORP_FORMS:
+                continue
+            counts = _derivations_by_year(juris, form)
+            if not counts:
+                continue
+            if with_derivations is None and any(counts.values()):
+                year = next(y for y, n in counts.items() if n)
+                with_derivations = (juris, form, year)
+            if with_none is None and not any(counts.values()):
+                with_none = (juris, form, next(iter(counts)))
+        self.assertIsNotNone(with_derivations)
+        self.assertIsNotNone(with_none)
+        self.assertIn("is stale", _exemption_staleness(*with_derivations))
+        self.assertIn("is vacuous", _exemption_staleness(*with_none))
 
 
 class UnsupportedYearRaisesEverywhereTests(unittest.TestCase):

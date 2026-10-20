@@ -58,7 +58,6 @@ KNOWN_NON_FILL_GETTERS: dict[str, str] = {
     "get_accounting_method_cells": "100S question L accounting-method cells: the stated method's box, via extend",
     "get_entity_type_cells": "100S K-1 entity-type radio: the stated type's state, via extend",
     "get_resident_cells": "100S K-1 resident radio: the stated answer's state, via extend",
-    "get_1099_question_cells": "Schedule E lines A/B: the stated answer's box per question, via extend",
     "get_line_27_cells": "Schedule E line 27 'No' box when Part II is used, via extend",
     "get_basis_computation_cells": "Schedule E line 28(e) basis box for flagged rows, via extend",
 }

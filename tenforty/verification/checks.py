@@ -294,7 +294,21 @@ def _placement(template: Path, decl: FormDeclaration, spec) -> list[Finding]:
         other = None
         if isinstance(anchor, anchor_eval.NearField):
             other_line = by_line.get(anchor.other_line)
-            other = scalars.get(other_line.key) if other_line else None
+            if other_line is not None and other_line.selects is not None:
+                # An option-line target resolves like the option line itself
+                # (option_widgets), to exactly one widget.
+                targets = option_widgets(spec, other_line.key,
+                                         other_line.selects)
+                if len(targets) != 1:
+                    findings.append(_finding(
+                        decl, ln.line, "placement",
+                        f"line {ln.line} ({ln.key!r}): NearField("
+                        f"{anchor.other_line!r}): the option-line target "
+                        f"resolves to {len(targets)} widgets {targets}."))
+                    continue
+                other = targets[0][0]
+            else:
+                other = scalars.get(other_line.key) if other_line else None
         result = anchor_eval.evaluate(anchor, field_path, template,
                                       other_field=other)
         if result is not None:
