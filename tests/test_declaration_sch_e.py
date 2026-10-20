@@ -15,12 +15,15 @@ from tenforty.declarations import inventory, propose, registry, sch_e
 from tenforty.declarations.anchors import NearLabel
 from tenforty.declarations.model import FormDeclaration, expand
 from tenforty.declarations.validate import validate
+from tenforty.mappings.pdf_sch_e import PdfSchE
 from tenforty.verification import anchors as anchor_eval
 from tenforty.verification import crosscheck as crosscheck_mod
 from tenforty.verification import emit_manifest
 from tenforty.verification import undeclared as undeclared_mod
 from tenforty.verification.batteries import BATTERIES
+from tenforty.verification.checks import check_placement
 from tenforty.verification.coverage import coverage_cells
+from tenforty.verification.fill import fill_spec_for
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -151,6 +154,31 @@ class SchECoverageTests(unittest.TestCase):
             if not any(p.fullmatch(key) for p in undeclared_mod._key_patterns(
                 [sch_e.DECLARATIONS[rec.key]]))})
         self.assertEqual(undeclared, [], "\n".join(map(str, undeclared)))
+
+
+class SchEStaticCellPlacementTests(unittest.TestCase):
+    """Lines the orchestrator writes conditionally (line 27, line 28
+    column (e)) are placed on the STATIC mapping: the field path lives in
+    the mapping whatever a scenario writes, so placement never depends on
+    the values (Q2 ruling: a spec-absent cell would be indistinguishable
+    from an unmapped one)."""
+
+    def test_line_27_and_basis_boxes_place_on_the_static_mapping(self):
+        for year in YEARS:
+            template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+            decl = sch_e.DECLARATIONS[year]
+            wanted = {ln.line for ln in decl.lines
+                      if ln.key == "sch_e_line_27_no"
+                      or ln.key.endswith("_basis_computation_box")}
+            findings = [f for f in check_placement(
+                template, decl, fill_spec_for(PdfSchE, year))
+                if f.line in wanted]
+            with self.subTest(year=year):
+                self.assertEqual(
+                    sorted(wanted), ["27"] if year == 2021 else
+                    ["27", "28A(e)", "28B(e)", "28C(e)", "28D(e)"])
+                self.assertEqual(findings, [], "\n".join(
+                    f.message for f in findings))
 
 
 if __name__ == "__main__":
