@@ -245,6 +245,18 @@ class SchEAnswerLineResolutionTests(unittest.TestCase):
                     self.assertEqual(option_widgets(spec, ln.key, ln.selects),
                                      [(widget, ln.selects)])
 
+    def test_an_out_of_domain_answer_fails_loud(self):
+        # A bool (or any value but "/1"/"/2") is a producer bug: every A/B
+        # widget's derivation refuses it rather than printing nothing.
+        derivations = fill_spec_for(PdfSchE, 2025).derivations
+        for path, derive in derivations.items():
+            key = ("sch_e_payments_requiring_1099s" if ".c1_1[" in path
+                   else "sch_e_filed_required_1099s")
+            for bad in (True, "Yes", "/Off"):
+                with self.subTest(widget=path, value=bad):
+                    with self.assertRaises(ValueError):
+                        derive({key: bad})
+
     def test_2021_answer_lines_stay_unserved(self):
         self.assertEqual(
             [ln.line for ln in sch_e.DECLARATIONS[2021].lines
@@ -265,7 +277,8 @@ def _emit_row(battery_name, scenario_name, year):
 
 
 class SchEEmitSpecIsCanonicalTests(unittest.TestCase):
-    """The orchestrator fills Schedule E from the CANONICAL spec and writes
+    """The orchestrator fills Schedule E from the CANONICAL spec (flattened:
+    the chokepoint takes the A/B derivations only on a flat fill) and writes
     only values: no per-scenario field paths (FillSpec.extend) for the A/B
     answers, line 27 or line 28 column (e) (Q1/Q2 rulings). Red the moment
     an extend() for Schedule E returns."""
@@ -279,7 +292,8 @@ class SchEEmitSpecIsCanonicalTests(unittest.TestCase):
             records = _emit_row("emit_battery_sch_e", name, year)
             with self.subTest(row=name, year=year):
                 self.assertEqual(len(records), 1)
-                self.assertEqual(records[0].spec, fill_spec_for(PdfSchE, year))
+                self.assertEqual(records[0].spec,
+                                 fill_spec_for(PdfSchE, year).flattened())
 
 
 if __name__ == "__main__":
