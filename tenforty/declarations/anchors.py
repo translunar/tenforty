@@ -23,6 +23,11 @@ class LabelRelation(enum.Enum):
     LEFT_OF = "left_of"
     RIGHT_OF = "right_of"
     AFTER_WRAPPED = "after_wrapped"   # on the row after a label that wraps
+    # On the row directly above a print-once phrase, beginning under its
+    # span (a row whose own label is a bare letter or repeated word, e.g.
+    # Schedule E 29b above line 30). The mirror (row directly below) is
+    # unshipped: no line needs it.
+    ROW_ABOVE_LABEL = "row_above_label"
 
 
 class FieldRelation(enum.Enum):
