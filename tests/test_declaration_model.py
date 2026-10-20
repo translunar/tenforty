@@ -85,7 +85,8 @@ class TypesTests(unittest.TestCase):
         self.assertEqual((ROW_PT, COLUMN_PT, NEXT_ROW_PT, LABEL_GAP_PT,
                           WRAP_PT), (2, 5, 20, 12, 14))
         self.assertEqual({m.name for m in LabelRelation},
-                         {"ON_ROW", "LEFT_OF", "RIGHT_OF", "AFTER_WRAPPED"})
+                         {"ON_ROW", "LEFT_OF", "RIGHT_OF", "AFTER_WRAPPED",
+                          "ROW_ABOVE_LABEL"})
         self.assertEqual({m.name for m in FieldRelation},
                          {"SAME_ROW_RIGHT_OF", "SAME_ROW_LEFT_OF",
                           "NEXT_ROW_BELOW"})

@@ -734,3 +734,41 @@ class ButtonInkTests(unittest.TestCase):
         rec = _emit_3532(2024, "unmarried", template=self._blank_yes_template())
         _without_need_appearances(rec.pdf_path)
         self.assertEqual(checks.check_ink(rec, _ftb3532_decl(2024)), [])
+
+
+class NearFieldOptionTargetTests(unittest.TestCase):
+    """A NearField anchor whose target line is an option line (selects set)
+    resolves the target's field through option_widgets -- the adjudicated
+    resolution path for option lines -- requiring exactly one widget
+    (team-lead ruling 2026-10-20, Schedule E A(No)/B(No) anchored right of
+    the Yes box)."""
+
+    @staticmethod
+    def _sch_e(year):
+        from tenforty.declarations import sch_e
+        from tenforty.mappings.pdf_sch_e import PdfSchE
+        template = REPO_ROOT / "pdfs" / "federal" / str(year) / "f1040se.pdf"
+        return template, sch_e.DECLARATIONS[year], fill_spec_for(PdfSchE, year)
+
+    def test_a_no_box_places_right_of_its_resolved_yes_box(self):
+        for year in (2022, 2023, 2024, 2025):
+            template, decl, spec = self._sch_e(year)
+            lines = {f.line: f.message for f in checks.check_placement(
+                template, decl, spec) if f.line in ("A(No)", "B(No)")}
+            with self.subTest(year=year):
+                self.assertEqual(lines, {})
+
+    def test_an_ambiguous_option_target_is_a_finding(self):
+        # A spurious extra derivation also turns ON for line A's "/1": the
+        # target (line A) resolves to two widgets, while A(No) itself still
+        # resolves to its own box -- so A(No) must report the ambiguity
+        # rather than evaluate against either widget.
+        template, decl, spec = self._sch_e(2025)
+        derivations = dict(spec.derivations)
+        derivations["topmostSubform[0].Page1[0].SPURIOUS[0]"] = (
+            lambda v: "/1" if v.get("sch_e_payments_requiring_1099s")
+            == "/1" else None)
+        tampered = dataclasses.replace(spec, derivations=derivations)
+        message = {f.line: f.message for f in checks.check_placement(
+            template, decl, tampered)}.get("A(No)", "")
+        self.assertIn("resolves to 2 widgets", message)

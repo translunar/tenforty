@@ -13,6 +13,7 @@ line a declaration says it is. The anchor data types live in
   on the field's page (``pdftotext -bbox``); twice is an ambiguity finding,
   except for RIGHT_OF / LEFT_OF, where exactly one occurrence on the field's
   row within LABEL_GAP_PT of the field's labelled side resolves it.
+  ROW_ABOVE_LABEL never disambiguates: the phrase must print once.
 - ``NearField(other_line, relation)``: relative to another declared line's
   field.
 
@@ -263,6 +264,11 @@ def _near_label(anchor: NearLabel, field_path, rect, box) -> Finding | None:
               and box[0] - rect[2] <= LABEL_GAP_PT)
     elif rel is LabelRelation.AFTER_WRAPPED:
         ok = 0 <= box[1] - rect[3] <= WRAP_PT or _overlaps_row(rect, box)
+    elif rel is LabelRelation.ROW_ABOVE_LABEL:
+        # The field's bottom meets the phrase's top (y-up), and the field
+        # begins under the phrase's span.
+        ok = (abs(rect[1] - box[3]) < ROW_PT
+              and box[0] - COLUMN_PT < rect[0] < box[2])
     else:
         raise TypeError(f"unknown label relation {rel}")
     if ok:

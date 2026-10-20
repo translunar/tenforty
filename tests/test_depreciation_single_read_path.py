@@ -44,6 +44,9 @@ ALLOWED_STRING_CONSTANTS: dict[tuple[str, str], str] = {
     ("mappings/pdf_sch_e.py", "_COLUMN_CELLS"):
         "PDF key suffix table: names line 18's widget per column, reads no "
         "amount",
+    ("declarations/sch_e.py", "_GRID"):
+        "declaration key-suffix table: names line 18's declared key per "
+        "column, reads no amount",
 }
 
 
