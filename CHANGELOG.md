@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.4 — 2026-10-20
+
+Verification release: Schedule B graduates. No scenario-schema changes.
+
+### Verified forms
+
+- **Schedule B (Interest and Ordinary Dividends) is now a verified form**
+  (two independent blind declarations, machine-compared, adjudicated
+  against the official paper; runtime gate enforced). Line 3 — which
+  tenforty's model can never populate — is documented as such pending the
+  zero-lines attestation design.
+
+### Fixed
+
+- Schedule B line 6 prints in its own box on 2022–2025 forms (it
+  previously landed in the wrong column).
+- The dividend payer grid enforces the form's 15-row cap.
+
+### Internal
+
+- New anchor vocabulary `FieldRelation.SAME_ROW_LEFT_OF`; Schedule B payer
+  rows 2..N are declared under positional locators, anchored left of
+  their amount cells.
+- Full-payer-grid emit battery (5 new manifest rows).
+
 ## 0.2.3 — 2026-10-19
 
 Verification release: Form 8959 graduates. No scenario-schema changes.
