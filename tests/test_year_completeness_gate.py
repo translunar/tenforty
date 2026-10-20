@@ -300,6 +300,8 @@ class DerivationsSurfaceCompletenessTests(unittest.TestCase):
                 if not any(nonempty.values()):
                     continue  # form carries no derivations in any year — exempt
                 for year in supported:
+                    if (juris, form, year) in catalog_mod.DERIVATION_YEAR_EXEMPTIONS:
+                        continue  # re-guarded in DerivationYearExemptionTests
                     with self.subTest(juris=juris, form=form, year=year):
                         self.assertTrue(
                             nonempty[year],

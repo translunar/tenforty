@@ -156,6 +156,14 @@ KNOWN_GAPS: frozenset[tuple[str, str, int]] = frozenset({
 # listed form ever grows a derivation.
 ZERO_DERIVATION_FORMS: frozenset[tuple[str, str]] = frozenset()
 
+# (juris, form, year) -> reason: a supported year a form deliberately does not
+# serve its derivations in, while sibling years do. Exempt from
+# test_derivations_surface_complete for exactly that year; each entry is
+# re-guarded both ways (the year genuinely carries no derivations AND a sibling
+# year carries some), so an entry reddens the moment the year is served or the
+# siblings drop theirs.
+DERIVATION_YEAR_EXEMPTIONS: dict[tuple[str, str, int], str] = {}
+
 # Amendment-tier gaps — a DISTINCT allowlist from KNOWN_GAPS above. The
 # amendment tier is MIXED-keyed, so this frozenset would hold two key SHAPES:
 #   - f1040x is REVISION-keyed → ("f1040x", revision)  e.g. ("f1040x", "rev-2025-12")
