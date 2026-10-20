@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.2.5 — 2026-10-20
+
+Verification release: Schedule E graduates. No scenario-schema changes.
+
+### Verified forms
+
+- **Schedule E (Supplemental Income and Loss) is now a verified form**
+  (two independent blind declarations, machine-compared, adjudicated
+  against the official paper; runtime gate enforced). Tax year 2021 keeps
+  its existing refusal; its derivations surface is exempted through the
+  new per-year exemption mechanism rather than silently skipped.
+
+### Internal
+
+- New anchor vocabulary `LabelRelation.ROW_ABOVE_LABEL` for a field whose
+  row sits immediately above a print-once label row (Schedule E line 29b);
+  a print-once violation refuses loudly instead of falling through.
+- The placement checker resolves NearField targets that are option lines
+  through the shared option-widget ruling.
+- `DERIVATION_YEAR_EXEMPTIONS`: per-(jurisdiction, form, year) exemptions
+  from the derivations-surface completeness gate, each guarded against
+  staleness in both directions (an exempt year must be genuinely empty
+  and a sibling year non-empty).
+- Scenario-conditional fill-site cells are normalized at the producer:
+  the orchestrator writes values only, so declared specs stay statically
+  resolvable.
+- The depreciation single-read-path guard allowlists the Schedule E
+  declaration's line-18 key-suffix table (it names keys and reads no
+  amounts), mirroring the existing entry for the PDF mapping's sibling
+  table.
+
 ## 0.2.4 — 2026-10-20
 
 Verification release: Schedule B graduates. No scenario-schema changes.
