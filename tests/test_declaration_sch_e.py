@@ -3,9 +3,9 @@
 /private/tmp/pilot-packet-sch_e/ADJUDICATION.md and
 /private/tmp/pilot-packet-sch_e-supp/ADJUDICATION.md).
 
-The module ships inert: graduation (registration in
-tenforty.declarations.forms with the pending removal) is a later, separate
-step, so this test reads the module directly, not the registry.
+These tests read the module directly, not the registry: declaration
+modules are side-effect-free, and registration lives in
+tenforty.declarations.forms (sch_e graduated there).
 """
 import tempfile
 import unittest
@@ -102,9 +102,15 @@ class SchEDeclarationValidatesTests(unittest.TestCase):
                 self.assertEqual([ln.line for ln in lines
                                   if ln.single_state == "value"], ["41"])
 
-    def test_ships_inert(self):
-        self.assertIn(FORM, PENDING_DECLARATIONS)
-        self.assertNotIn(FORM, {f for f, _ in registry.declared_forms()})
+    def test_graduated(self):
+        # Graduated: registered for every year and off the pending list,
+        # together (a registered form that is still pending is a hard
+        # registry error).
+        self.assertNotIn(FORM, PENDING_DECLARATIONS)
+        for year in YEARS:
+            with self.subTest(year=year):
+                self.assertIs(registry.for_form(FORM, year),
+                              sch_e.DECLARATIONS[year])
 
 
 def _sch_e_records():

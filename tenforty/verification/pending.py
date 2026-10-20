@@ -32,6 +32,7 @@ _GRADUATED = frozenset({
     ("federal", "sch_d"),
     ("federal", "8959"),
     ("federal", "sch_b"),
+    ("federal", "sch_e"),
 })
 
 PENDING_DECLARATIONS: Mapping[tuple[str, str], str] = {
