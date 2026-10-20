@@ -121,7 +121,10 @@ _QBI_SEHI = ContestedPosition(
                 "determining QBI."),
             consequence=(
                 "The shareholder's QBI is reduced by the deduction, which "
-                "can lower the section 199A deduction."),
+                "can lower the section 199A deduction. With more than one S "
+                "corporation K-1, how the reduction is allocated among them "
+                "is unruled law; tenforty refuses that return under this "
+                "election."),
             sources=(
                 Source(
                     citation="IRS, Qualified business income deduction "
@@ -236,6 +239,8 @@ _QBI_SEHI = ContestedPosition(
     recorded=datetime.date(2026, 10, 18),
     reached_when=_sehi_and_s_corp_k1_qbi,
     may_reach=_sehi_and_possible_s_corp_k1_qbi,
+    # Consulted by Form 8995 (forms/f8995._k1_sehi_reduction).
+    wired=True,
 )
 
 # Consumers must read positions.POSITIONS via the module: a from-import
@@ -307,8 +312,8 @@ def validate_elections(scenario, *, exact: bool = False) -> None:
         if not pos.wired:
             raise ValueError(
                 f"`positions` elects {slug!r}, which is registered but not "
-                "yet consulted by the computation (positions phase 2 wires "
-                "it). Until then the computation refuses this return "
+                "yet consulted by the computation. Until a computation "
+                "consults it, the computation refuses this return "
                 "whatever is elected, so the election would do nothing. "
                 "Remove it.")
         reaches = pos.reached_when if exact else pos.may_reach

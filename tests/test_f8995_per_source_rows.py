@@ -17,6 +17,7 @@ tokens, deliberately not EIN-shaped).
 import dataclasses
 import unittest
 
+from tenforty import positions
 from tenforty.forms import f8995
 from tenforty.models import K1FanoutData, ScheduleCBusiness, ScheduleK1
 from tenforty.rounding import irs_round
@@ -155,22 +156,24 @@ class SelfEmployedHealthInsuranceTests(unittest.TestCase):
         self.assertEqual(out["f8995_line_2_total_qbi"], 0)
         self.assertEqual(out["f8995_line_16_qbi_loss_carryforward"], 0)
 
-    def test_sehi_with_k1_rows_and_no_schedule_c_is_refused(self):
+    def test_sehi_with_k1_rows_and_no_schedule_c_needs_an_election(self):
         # D(ii): whether a shareholder's SEHI reduces K-1 QBI is contested
-        # law, registered as qbi-sehi-shareholder-reduction; refused until
-        # positions phase 2 wires the consult. Goes red when it lands.
+        # law, registered as qbi-sehi-shareholder-reduction. Form 8995
+        # consults it; with no election the return is refused naming the
+        # controversy (tests/test_qbi_sehi_position_mechanics.py covers
+        # both elections).
         s, up = _case(k1_qbis=(10_000.0,), se_health=3_000.0)
         with self.assertRaises(NotImplementedError) as ctx:
             f8995.compute(s, up)
-        self.assertIn("qbi-sehi-shareholder-reduction", str(ctx.exception))
-        self.assertIn("not yet consulted", str(ctx.exception))
+        self.assertEqual(str(ctx.exception), positions.refusal_message(
+            "qbi-sehi-shareholder-reduction"))
         self.assertIn("A39", str(ctx.exception))
 
     def test_sehi_with_k1_rows_and_a_schedule_c_row_is_refused(self):
         # Q1 ruling: with K-1 QBI rows present, attributing the SEHI to the
         # Schedule C row assumes the plan is established under that
-        # business, and plan establishment is unmodeled input: refused,
-        # naming both grounds (the second is qbi-sehi-shareholder-reduction).
+        # business, and plan establishment is unmodeled input: refused
+        # whatever is elected, naming the plan and the position.
         s, up = _case(k1_qbis=(10_000.0,),
                       businesses=[("Example Bindery", 30_000.0)],
                       half_se=2_000.0, se_health=3_000.0)

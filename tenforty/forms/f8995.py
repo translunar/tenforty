@@ -10,9 +10,12 @@ K-1-only scenarios rarely realize a meaningful STCL worth netting; a
 scenario with a meaningful STCL will slightly under-state the deduction.
 """
 
+from tenforty import positions
 from tenforty.params.federal import load as load_federal_params
 from tenforty.models import K1FanoutData, Scenario
 from tenforty.rounding import irs_round
+
+QBI_SEHI = "qbi-sehi-shareholder-reduction"
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
@@ -56,14 +59,17 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
     # Schedule C business it is attributable to (the §162(l) guard ties it
     # to a single business). With no Schedule C row there is nothing for it
     # to reduce here: it stays on Schedule 1 and never reaches Form 8995
-    # (D(i)). With any K-1 QBI row it is refused in _source_rows (D(ii) and
-    # Q1): the plan's establishing business is unmodeled, and a reduction of
-    # K-1 QBI is contested law.
+    # (D(i)). With any K-1 QBI row, _k1_sehi_reduction decides: the S
+    # corporation shape consults the contested position, and every other
+    # shape is refused (the plan's establishing business is unmodeled).
     has_sch_c_row = any(
         result.get("sch_c_line_31_net_profit")
         for result in sch_c.get("sch_c_businesses", []))
     sch_c_qbi = sch_c_net - half_se - (se_health if has_sch_c_row else 0.0)
-    qbi_total = fanout.qbi_aggregate + sch_c_qbi
+    # The reduction comes off the K-1's row before anything aggregates it,
+    # so the 8995-A threshold gate and lines 1-2 all see the same figure.
+    k1_reduction = _k1_sehi_reduction(scenario, se_health)
+    qbi_total = fanout.qbi_aggregate - k1_reduction + sch_c_qbi
     # 1040 line 3a TOTAL (1099-DIV + K-1). Previously this read
     # fanout.qualified_dividends_aggregate, which carries ONLY the K-1
     # component — so line 12 omitted every 1099-DIV qualified dividend and
@@ -108,7 +114,7 @@ def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
         )
 
     rows = _source_rows(scenario, sch_c, fanout, sch_c_qbi, half_se,
-                        se_health)
+                        se_health, k1_reduction)
     # Line 2 combines lines 1i-1v AS PRINTED: the sum of each row's
     # whole-dollar QBI (ruled: the vendor workbook's own line-2 formula
     # rounds each row, then sums). line_1 is that total, the line-2 feed.
@@ -287,8 +293,56 @@ def _schedule_c_rows(scenario: Scenario, sch_c: dict, sch_c_qbi: float,
     return rows
 
 
+def _k1_sehi_reduction(scenario: Scenario, se_health: float) -> float:
+    """How much of the self-employed health insurance deduction comes off
+    the K-1 QBI row (0 when none does).
+
+    Only a return with both the deduction and K-1 QBI is in question. On
+    the S corporation shape (positions.POSITIONS[QBI_SEHI].reached_when:
+    no Schedule C business and no K-1 QBI but an S corporation's) the
+    return's election decides (phase-2 ruling): no-reduction leaves the
+    K-1's QBI whole; irs-faq subtracts the whole deduction from that K-1's
+    row, with no floor (a negative row nets and carries forward like any
+    qualified business loss). With two or more S corporation K-1s the
+    irs-faq election is refused: which entity's premiums sourced the
+    deduction is not modeled, and no authority allocates it. Every other
+    shape is refused whatever is elected."""
+    if not (se_health and any(k1.qbi_amount for k1 in scenario.schedule_k1s)):
+        return 0.0
+    if not positions.POSITIONS[QBI_SEHI].reached_when(scenario):
+        raise NotImplementedError(
+            "Form 8995: a self-employed health insurance deduction "
+            f"({se_health}) on a return with K-1 qualified business income "
+            "and a Schedule C business or a K-1 other than an S "
+            "corporation's. Which business established the health plan is "
+            "not modeled (it may be a Schedule C business, a partnership or "
+            "the S corporation), so which QBI the deduction reduces is "
+            "unknown, and tenforty does not guess. The contested position "
+            f"{QBI_SEHI} (tenforty.positions) is consulted only when the "
+            "deduction can come from an S corporation alone: no Schedule C "
+            "business and no K-1 qualified business income but an S "
+            "corporation's.")
+    choice = positions.election(scenario, QBI_SEHI)
+    if choice == "no-reduction":
+        return 0.0
+    s_corp_k1s = [k1 for k1 in scenario.schedule_k1s if k1.qbi_amount]
+    if len(s_corp_k1s) > 1:
+        raise NotImplementedError(
+            f"Form 8995: under the irs-faq election for {QBI_SEHI}, the "
+            f"self-employed health insurance deduction ({se_health}) "
+            "reduces the QBI of the S corporation whose premiums sourced "
+            f"it, and this return has {len(s_corp_k1s)} S corporation K-1s "
+            "with QBI. Which entity's premiums sourced the deduction is not "
+            "an input tenforty models, and how the reduction is allocated "
+            "among them is unruled law (no authority supports a pro-rata "
+            "split), so this return is refused until the positions lane "
+            "models that attribution.")
+    return se_health
+
+
 def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
-                 sch_c_qbi: float, half_se: float, se_health: float
+                 sch_c_qbi: float, half_se: float, se_health: float,
+                 k1_reduction: float = 0.0
                  ) -> list[tuple[str, str, int]]:
     """Form 8995 line 1, one row per QBI source (Juno's ruling): (a) name,
     (b) TIN, (c) that source's OWN qualified business income, whole dollars.
@@ -299,34 +353,23 @@ def _source_rows(scenario: Scenario, sch_c: dict, fanout: K1FanoutData,
         instructions: never an LLC EIN); its QBI is the Schedule C QBI
         component (net profit - half-SE-tax - SE-health), which is that one
         business's QBI when it is the only one.
-      K-1: entity_name + entity_ein; its QBI is its own qbi_amount.
+      K-1: entity_name + entity_ein; its QBI is its own qbi_amount, less
+        ``k1_reduction`` (the irs-faq election's SEHI reduction; nonzero
+        only with exactly one K-1 carrying QBI).
     More than five sources need an attached statement: refused until
     built."""
     sources = _schedule_c_rows(scenario, sch_c, sch_c_qbi, half_se,
                                se_health)
     k1_rows = [(str(k1.entity_name), str(k1.entity_ein), k1.qbi_amount)
                for k1 in scenario.schedule_k1s if k1.qbi_amount]
-    if se_health and k1_rows:
-        raise NotImplementedError(
-            "Form 8995: a self-employed health insurance deduction "
-            f"({se_health}) on a return with K-1 qualified business income. "
-            "Two questions decide which QBI it reduces, and tenforty "
-            "answers neither silently: (1) which business established the "
-            "health plan is not modeled (it may be a Schedule C business or "
-            "the S corporation); (2) whether the deduction reduces the "
-            "K-1's QBI is contested law: IRS FAQ A39 says it reduces the "
-            "shareholder's QBI; the AICPA and the §199A(c)(4) / "
-            "§1.199A-3(b)(1)(vi) reading say it does not. It is registered "
-            "as the contested position qbi-sehi-shareholder-reduction "
-            "(tenforty.positions); elections for it are registered but not "
-            "yet consulted by this computation, so the return is refused "
-            "whatever is elected until positions phase 2 wires the "
-            "consult.")
     if abs(sum(q for _, _, q in k1_rows) - fanout.qbi_aggregate) > 0.005:
         raise ValueError(
             "Form 8995: the K-1 fanout's qbi_aggregate "
             f"({fanout.qbi_aggregate}) is not the sum of the scenario's K-1 "
             "qbi_amount values, so line 2 would contradict the printed rows.")
+    if k1_reduction:
+        (name, tin, qbi), = k1_rows
+        k1_rows = [(name, tin, qbi - k1_reduction)]
     sources = sources + k1_rows
     if len(sources) > len(ROWS):
         raise NotImplementedError(

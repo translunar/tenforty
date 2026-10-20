@@ -59,18 +59,31 @@ def _reaching(sehi=3_000.0, qbi=10_000.0, extra_k1s=(), businesses=(),
                                for d in businesses])
 
 
-class Wired:
-    """Mixin: run with every registered position wired (phase 2's state),
-    so an election can be accepted at all. Phase 1 wires none."""
+class _Wiring:
+    """Mixin base: run with every registered position's ``wired`` set to
+    WIRED, whatever the registry's own state."""
+    WIRED: bool
 
     def setUp(self):
         super().setUp()
-        wired = MappingProxyType({
-            slug: dataclasses.replace(pos, wired=True)
+        patched = MappingProxyType({
+            slug: dataclasses.replace(pos, wired=self.WIRED)
             for slug, pos in positions.POSITIONS.items()})
-        patcher = unittest.mock.patch.object(positions, "POSITIONS", wired)
+        patcher = unittest.mock.patch.object(positions, "POSITIONS", patched)
         patcher.start()
         self.addCleanup(patcher.stop)
+
+
+class Wired(_Wiring):
+    """Mixin: every registered position wired, so an election can be
+    accepted at all."""
+    WIRED = True
+
+
+class Unwired(_Wiring):
+    """Mixin: every registered position unwired (the state of a position
+    registered before any computation consults it)."""
+    WIRED = False
 
 
 class RegistryWellFormedTests(unittest.TestCase):
@@ -493,40 +506,37 @@ class ResultsRecordTests(Wired, unittest.TestCase):
 
 class QbiSehiReachabilityPinTests(unittest.TestCase):
     """Spec §13: every registered position is reachable, i.e. some code
-    path consults it. KNOWN GAP until positions phase 2 wires the Form 8995
-    consult: nothing consults qbi-sehi-shareholder-reduction yet. Phase 2
-    flips this pin to "consulted"."""
+    path consults it. Form 8995 consults qbi-sehi-shareholder-reduction on
+    the S corporation shape."""
 
-    def test_nothing_consults_it_yet(self):
+    def test_form_8995_consults_it(self):
         orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
                                   work_dir=Path(tempfile.mkdtemp()))
-        # Before the f8995 lane merges the return computes; after, the
-        # interim Form 8995 refusal (naming this slug) fires. Either is fine
-        # here. No election: an unwired position refuses one at load.
         with unittest.mock.patch.object(
                 ReturnOrchestrator, "_compute_1040_via_workbook",
                 side_effect=AssertionError("workbook path reached")), \
                 unittest.mock.patch.object(
                     positions, "election", wraps=positions.election) as spy:
-            try:
-                orch.compute_federal(_reaching())
-            except NotImplementedError as exc:
-                self.assertIn(QBI_SEHI, str(exc))
-        self.assertEqual(
-            spy.call_count, 0,
-            "KNOWN GAP (positions phase 2): the Form 8995 path now consults "
-            "the registry; flip this pin to assert the position is consulted")
+            results = orch.compute_federal(_reaching(**{QBI_SEHI: "irs-faq"}))
+        self.assertGreaterEqual(spy.call_count, 1)
+        self.assertEqual([e["slug"] for e in results[positions.RESULTS_KEY]],
+                         [QBI_SEHI])
 
 
+class WiredStateTests(unittest.TestCase):
 
-class WiredGateTests(unittest.TestCase):
-    """KNOWN GAP (positions phase 2): no position is wired yet, so an
-    election is refused at load: the computation would refuse the return
-    whatever is elected. Phase 2 sets wired=True and these flip."""
+    def test_the_qbi_sehi_position_is_wired(self):
+        self.assertTrue(positions.POSITIONS[QBI_SEHI].wired)
 
-    def test_nothing_is_wired_yet(self):
-        self.assertFalse(positions.POSITIONS[QBI_SEHI].wired,
-                         "KNOWN GAP flipped: positions phase 2 wired it")
+    def test_an_election_on_a_reaching_return_is_accepted(self):
+        self.assertEqual(_reaching(**{QBI_SEHI: "irs-faq"}).positions,
+                         {QBI_SEHI: "irs-faq"})
+
+
+class WiredGateTests(Unwired, unittest.TestCase):
+    """An election for a registered position no computation consults yet
+    is refused at load: the computation would refuse the return whatever is
+    elected."""
 
     def test_an_election_for_an_unwired_position_refuses(self):
         with self.assertRaisesRegex(ValueError, "not yet consulted"):
@@ -685,11 +695,8 @@ class PositionTakingPathTests(unittest.TestCase):
         self.referenced = _election_slugs(
             Path(positions.__file__).resolve().parent)
 
-    def test_no_path_consults_a_position_yet(self):
-        # KNOWN GAP (positions phase 2): nothing calls election() yet.
-        # Phase 2 wires the Form 8995 consult; flip this deliberately.
-        self.assertEqual(self.referenced, set(),
-                         "KNOWN GAP flipped: a path now calls election()")
+    def test_form_8995_is_the_one_consulting_path(self):
+        self.assertEqual(self.referenced, {QBI_SEHI})
 
     def test_an_entry_is_wired_exactly_when_a_path_consults_it(self):
         wired = {slug for slug, pos in positions.POSITIONS.items()
