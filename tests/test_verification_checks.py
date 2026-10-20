@@ -759,16 +759,15 @@ class NearFieldOptionTargetTests(unittest.TestCase):
                 self.assertEqual(lines, {})
 
     def test_an_ambiguous_option_target_is_a_finding(self):
-        # Line A's derivations tampered so "/1" turns BOTH A widgets on: the
-        # target resolves to two widgets, and A(No) must say so rather than
-        # evaluate against either.
+        # A spurious extra derivation also turns ON for line A's "/1": the
+        # target (line A) resolves to two widgets, while A(No) itself still
+        # resolves to its own box -- so A(No) must report the ambiguity
+        # rather than evaluate against either widget.
         template, decl, spec = self._sch_e(2025)
-        p1 = "topmostSubform[0].Page1[0]."
         derivations = dict(spec.derivations)
-        for leaf in ("c1_1[0]", "c1_1[1]"):
-            derivations[p1 + leaf] = (
-                lambda v: "/1" if v.get("sch_e_payments_requiring_1099s")
-                == "/1" else None)
+        derivations["topmostSubform[0].Page1[0].SPURIOUS[0]"] = (
+            lambda v: "/1" if v.get("sch_e_payments_requiring_1099s")
+            == "/1" else None)
         tampered = dataclasses.replace(spec, derivations=derivations)
         message = {f.line: f.message for f in checks.check_placement(
             template, decl, tampered)}.get("A(No)", "")
