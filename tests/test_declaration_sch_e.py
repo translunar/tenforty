@@ -24,6 +24,7 @@ from tenforty.verification.batteries import BATTERIES
 from tenforty.verification.checks import check_placement
 from tenforty.verification.coverage import coverage_cells
 from tenforty.verification.fill import fill_spec_for
+from tenforty.verification.options import option_widgets
 from tenforty.verification.pending import PENDING_DECLARATIONS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -220,6 +221,65 @@ class SchELine29bAnchorTests(unittest.TestCase):
                     self.assertIsNotNone(anchor_eval.evaluate(
                         self._line(year).anchor, f"{self._P2}{leaf}[0]",
                         template))
+
+
+class SchEAnswerLineResolutionTests(unittest.TestCase):
+    """Lines A/B are option lines (selects "/1" Yes, "/2" No): the gate and
+    the check-suite resolve each through the CANONICAL spec's translation
+    derivations to exactly one widget (option-line ruling 2026-10-17; step-4
+    ruling 2026-10-20). Widgets: line A c1_1, line B c1_2; Yes [0] /1, No
+    [1] /2 (2022-2025; 2021 unserved)."""
+
+    _P1 = "topmostSubform[0].Page1[0]."
+    _GROUP = {"A": "c1_1", "B": "c1_2"}
+
+    def test_each_answer_line_resolves_to_its_own_widget(self):
+        for year in YEARS[1:]:
+            spec = fill_spec_for(PdfSchE, year)
+            for ln in sch_e.DECLARATIONS[year].lines:
+                if ln.selects is None:
+                    continue
+                index = 0 if ln.selects == "/1" else 1
+                widget = f"{self._P1}{self._GROUP[ln.group]}[{index}]"
+                with self.subTest(year=year, line=ln.line):
+                    self.assertEqual(option_widgets(spec, ln.key, ln.selects),
+                                     [(widget, ln.selects)])
+
+    def test_2021_answer_lines_stay_unserved(self):
+        self.assertEqual(
+            [ln.line for ln in sch_e.DECLARATIONS[2021].lines
+             if ln.selects is not None], [])
+        self.assertEqual(dict(fill_spec_for(PdfSchE, 2021).derivations), {})
+
+
+def _emit_row(battery_name, scenario_name, year):
+    for battery in BATTERIES:
+        if battery.name != battery_name:
+            continue
+        for name, y, build in battery.scenarios():
+            if (name, y) == (scenario_name, year):
+                out = Path(tempfile.mkdtemp()) / "out"
+                return [rec for rec in emit_manifest.emit(
+                    battery, build(), out).record if rec.form == FORM]
+    raise LookupError((battery_name, scenario_name, year))
+
+
+class SchEEmitSpecIsCanonicalTests(unittest.TestCase):
+    """The orchestrator fills Schedule E from the CANONICAL spec and writes
+    only values: no per-scenario field paths (FillSpec.extend) for the A/B
+    answers, line 27 or line 28 column (e) (Q1/Q2 rulings). Red the moment
+    an extend() for Schedule E returns."""
+
+    def test_emitted_spec_equals_fill_spec_for(self):
+        rows = (("rental-losses-b-and-c", 2024),   # A Yes, B No
+                ("rental-loss-a", 2023),           # A No, B blank
+                ("three-rentals-every-expense", 2022),  # A Yes, B Yes
+                ("k1-rows-rotation-3", 2025))      # line 27 No + 28A(e) box
+        for name, year in rows:
+            records = _emit_row("emit_battery_sch_e", name, year)
+            with self.subTest(row=name, year=year):
+                self.assertEqual(len(records), 1)
+                self.assertEqual(records[0].spec, fill_spec_for(PdfSchE, year))
 
 
 if __name__ == "__main__":
