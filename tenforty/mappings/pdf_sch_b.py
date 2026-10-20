@@ -12,14 +12,14 @@ The 2025 Sch B PDF uses flat, sequential field names (``f1_01`` through
 The mapping declares every payer/amount slot as an explicit scalar.
 Compute writes slots 1..N for N payers and leaves the
 remaining slots unset; overflow is enforced in compute against the
-14-interest / 16-dividend row caps.
+paper's row caps (``interest_max_rows`` / ``dividend_max_rows``, read off
+each year's mapping).
 
-Field-to-line assignment was established by filling every text field on
-``pdfs/federal/2025/f1040sb.pdf`` with its own short name, flattening
-via LibreOffice, rasterizing, and reading the rendered form (the
-``filing/pdf.py`` probe methodology used for Form 4868).
-
-Assignment (2025):
+Field-to-line assignment (2022-2025), re-measured 2026-10-19 from the
+widget rects of each year's template (the original 2025 probe assigned 16
+dividend rows and put line 6 on f1_66; the 2022-2025 paper prints 15
+dividend rows, and f1_65/f1_66 are the Part III line 7b foreign-country
+fields, found by the emit-verification harness's placement check):
     f1_01 = taxpayer name, f1_02 = taxpayer SSN
     Line 1 interest rows:
         row 1 payer / amount = f1_03 / f1_04  (payer inside Line1_ReadOrder)
@@ -27,8 +27,10 @@ Assignment (2025):
     f1_31 = Line 2 (sum),  f1_32 = Line 3 (excludable), f1_33 = Line 4 (taxable)
     Line 5 dividend rows:
         row 1 payer / amount = f1_34 / f1_35  (payer inside ReadOrderControl)
-        rows 2..16           = f1_36 / f1_37 .. f1_64 / f1_65
-    f1_66 = Line 6 (sum)
+        rows 2..15           = f1_36 / f1_37 .. f1_62 / f1_63
+    f1_64 = Line 6 (sum)
+    f1_65 / f1_66 = Part III line 7b (foreign country names): unmapped,
+    no key serves line 7b
 """
 
 from tenforty.mappings.registry import PdfFormMapping
@@ -71,11 +73,8 @@ _DIVIDEND_ROW_FIELDS: list[tuple[str, str]] = [
     (f"{_PAGE1}.f1_58[0]", f"{_PAGE1}.f1_59[0]"),
     (f"{_PAGE1}.f1_60[0]", f"{_PAGE1}.f1_61[0]"),
     (f"{_PAGE1}.f1_62[0]", f"{_PAGE1}.f1_63[0]"),
-    (f"{_PAGE1}.f1_64[0]", f"{_PAGE1}.f1_65[0]"),
 ]
 
-INTEREST_MAX_ROWS = len(_INTEREST_ROW_FIELDS)   # 14
-DIVIDEND_MAX_ROWS = len(_DIVIDEND_ROW_FIELDS)   # 16
 
 
 def _build_fields() -> dict[str, str]:
@@ -85,7 +84,7 @@ def _build_fields() -> dict[str, str]:
         "total_interest": f"{_PAGE1}.f1_31[0]",
         "excludable_savings_bond": f"{_PAGE1}.f1_32[0]",
         "taxable_interest": f"{_PAGE1}.f1_33[0]",
-        "total_ordinary_dividends": f"{_PAGE1}.f1_66[0]",
+        "total_ordinary_dividends": f"{_PAGE1}.f1_64[0]",
     }
     for i, (payer, amount) in enumerate(_INTEREST_ROW_FIELDS, start=1):
         m[f"interest_payer_{i}"] = payer
@@ -114,8 +113,9 @@ class PdfSchB(PdfFormMapping[dict[str, str]]):
     }
 
 # 2022's Schedule B keeps 2023's identical field-NAME inventory and mapped paths.
-# Geometry has one isolated horizontal nudge (dividend row f1_65 -14.4pt x), which
-# cannot change a line assignment. So 2022 reuses the 2023 payload.
+# Its geometry differs only in one Part III field (f1_65, the first line 7b
+# country field, starts at x 259.2 rather than 273.6), which is unmapped.
+# So 2022 reuses the 2023 payload.
 PdfSchB._MAPPINGS[2022] = PdfSchB._MAPPINGS[2023]
 
 # 2021 fresh probe (air-gapped) — field tree differs from 2022 (f1_N vs f1_0N
@@ -193,3 +193,19 @@ PdfSchB._MAPPINGS[2021] = {
 
     "total_ordinary_dividends": "topmostSubform[0].Page1[0].f1_66[0]", # line 6
 }
+
+
+def _row_count(year: int, prefix: str) -> int:
+    return sum(1 for key in PdfSchB.get_mapping(year)
+               if key.startswith(prefix))
+
+
+def interest_max_rows(year: int) -> int:
+    """The paper's interest-payer rows for ``year`` (14 every year)."""
+    return _row_count(year, "interest_payer_")
+
+
+def dividend_max_rows(year: int) -> int:
+    """The paper's dividend-payer rows for ``year``: 16 in 2021, 15 from
+    2022 (the 2022 re-layout dropped a row)."""
+    return _row_count(year, "dividend_payer_")

@@ -3,7 +3,9 @@
 import unittest
 
 from tenforty.forms.sch_b import compute
-from tenforty.mappings.pdf_sch_b import DIVIDEND_MAX_ROWS, INTEREST_MAX_ROWS
+import dataclasses
+
+from tenforty.mappings.pdf_sch_b import dividend_max_rows, interest_max_rows
 from tenforty.models import Form1099DIV, Form1099INT
 
 from tests.helpers import make_simple_scenario
@@ -87,7 +89,7 @@ class SchBOverflowTests(unittest.TestCase):
         scenario = make_simple_scenario()
         scenario.form1099_int = [
             Form1099INT(payer=f"Bank {i}", interest=10.0)
-            for i in range(INTEREST_MAX_ROWS + 1)
+            for i in range(interest_max_rows(scenario.config.year) + 1)
         ]
         with self.assertRaisesRegex(NotImplementedError, "multi-page"):
             compute(scenario, upstream={})
@@ -96,10 +98,29 @@ class SchBOverflowTests(unittest.TestCase):
         scenario = make_simple_scenario()
         scenario.form1099_div = [
             Form1099DIV(payer=f"Broker {i}", ordinary_dividends=10.0)
-            for i in range(DIVIDEND_MAX_ROWS + 1)
+            for i in range(dividend_max_rows(scenario.config.year) + 1)
         ]
         with self.assertRaisesRegex(NotImplementedError, "multi-page"):
             compute(scenario, upstream={})
+
+    def _dividends(self, year, count):
+        scenario = make_simple_scenario()
+        scenario.config = dataclasses.replace(scenario.config, year=year)
+        scenario.form1099_div = [
+            Form1099DIV(payer=f"Broker {i}", ordinary_dividends=10.0)
+            for i in range(count)]
+        return scenario
+
+    def test_a_16th_dividend_payer_refuses_from_2022(self):
+        # The 2022-2025 paper prints 15 dividend rows.
+        for year in (2022, 2023, 2024, 2025):
+            with self.subTest(year=year), self.assertRaisesRegex(
+                    NotImplementedError, "15 rows"):
+                compute(self._dividends(year, 16), upstream={})
+
+    def test_16_dividend_payers_fit_in_2021(self):
+        result = compute(self._dividends(2021, 16), upstream={})
+        self.assertEqual(len(result["dividend_payers"]), 16)
 
 
 if __name__ == "__main__":

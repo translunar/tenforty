@@ -350,6 +350,80 @@ class NearFieldSameRowTests(unittest.TestCase):
         self.assertIn("same_row_right_of", finding.message)
 
 
+class NearFieldSameRowLeftOfTests(unittest.TestCase):
+    """NearField SAME_ROW_LEFT_OF, the mirror of SAME_ROW_RIGHT_OF (sch_b S2
+    ruling): abutting cells are left-of (gap 0), overlap is not. The same
+    Form 8995 2024 line-1 row i cells (NearFieldSameRowTests)."""
+
+    YEAR = NearFieldSameRowTests.YEAR
+
+    @classmethod
+    def setUpClass(cls):
+        from tenforty.declarations.anchors import FieldRelation
+        from tenforty.mappings.pdf_f8995 import PdfF8995
+        cls.REL = FieldRelation.SAME_ROW_LEFT_OF
+        spec = fill_spec_for(PdfF8995, cls.YEAR)
+        scalars = (spec.mapping["scalars"] if spec.kind == "repeater"
+                   else spec.mapping)
+        cls.a = scalars["f8995_line_1i_name"]
+        cls.b = scalars["f8995_line_1i_tin"]
+        cls.c = scalars["f8995_line_1i_qbi"]
+        cls.template = REPO_ROOT / "pdfs" / "federal" / str(cls.YEAR) / "f8995.pdf"
+
+    def _evaluate(self, field, other_line, other_field):
+        from tenforty.declarations.anchors import NearField
+        from tenforty.verification import anchors as anchor_eval
+        return anchor_eval.evaluate(NearField(other_line, self.REL), field,
+                                    self.template, other_field=other_field)
+
+    def test_an_abutting_cell_is_left_of(self):
+        self.assertIsNone(self._evaluate(self.b, "1i(c)", self.c))
+
+    def test_a_gapped_cell_is_left_of(self):
+        self.assertIsNone(self._evaluate(self.a, "1i(b)", self.b))
+
+    def test_a_cell_to_the_right_is_not_left_of(self):
+        finding = self._evaluate(self.c, "1i(b)", self.b)
+        self.assertIsNotNone(finding)
+        self.assertIn("same_row_left_of", finding.message)
+
+
+class NearFieldRowMirrorTests(unittest.TestCase):
+    """The two same-row relations are mirror images: x is left of y exactly
+    when y is right of x; an overlapping pair is neither."""
+
+    RECTS = {
+        "left": (100.0, 200.0, 150.0, 212.0),
+        "abutting": (150.0, 200.0, 220.0, 212.0),
+        "gapped": (300.0, 200.0, 360.0, 212.0),
+        "overlapping": (140.0, 200.0, 210.0, 212.0),
+        "next_row": (300.0, 188.0, 360.0, 200.0),
+    }
+
+    def _ok(self, relation, rect, other):
+        from tenforty.declarations.anchors import NearField
+        from tenforty.verification import anchors as anchor_eval
+        return anchor_eval._near_field(NearField("x", relation), "f", rect,
+                                       other) is None
+
+    def test_left_of_mirrors_right_of(self):
+        from tenforty.declarations.anchors import FieldRelation
+        for x, rx in self.RECTS.items():
+            for y, ry in self.RECTS.items():
+                if x == y:
+                    continue
+                with self.subTest(x=x, y=y):
+                    self.assertEqual(
+                        self._ok(FieldRelation.SAME_ROW_LEFT_OF, rx, ry),
+                        self._ok(FieldRelation.SAME_ROW_RIGHT_OF, ry, rx))
+
+    def test_an_overlap_is_neither(self):
+        from tenforty.declarations.anchors import FieldRelation
+        left, over = self.RECTS["left"], self.RECTS["overlapping"]
+        self.assertFalse(self._ok(FieldRelation.SAME_ROW_LEFT_OF, left, over))
+        self.assertFalse(self._ok(FieldRelation.SAME_ROW_RIGHT_OF, over, left))
+
+
 class InkTests(unittest.TestCase):
 
     def test_valued_text_lines_carry_ink(self):
