@@ -18,6 +18,7 @@ from tenforty.declarations.validate import validate
 from tenforty.verification import anchors as anchor_eval
 from tenforty.verification import crosscheck as crosscheck_mod
 from tenforty.verification import emit_manifest
+from tenforty.verification import undeclared as undeclared_mod
 from tenforty.verification.batteries import BATTERIES
 from tenforty.verification.coverage import coverage_cells
 from tenforty.verification.pending import PENDING_DECLARATIONS
@@ -139,6 +140,17 @@ class SchECoverageTests(unittest.TestCase):
                                 [sch_e.DECLARATIONS[y] for y in YEARS])
         self.assertEqual(list(report.uncovered), [], "\n".join(
             map(str, report.uncovered)))
+
+    def test_every_filled_key_is_bound_or_not_printed(self):
+        # The undeclared-key check (spec §2.3) on the module itself: every
+        # key a battery Schedule E is filled from matches a declared line's
+        # key or a not_printed entry of that year's declaration.
+        undeclared = sorted({
+            (rid, key) for rid, rec in self.records
+            for key in rec.values
+            if not any(p.fullmatch(key) for p in undeclared_mod._key_patterns(
+                [sch_e.DECLARATIONS[rec.key]]))})
+        self.assertEqual(undeclared, [], "\n".join(map(str, undeclared)))
 
 
 if __name__ == "__main__":
