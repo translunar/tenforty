@@ -842,5 +842,302 @@ class ItemLetterTests(unittest.TestCase):
                                        load("f1120s", year).lines])
 
 
+
+def _extract_synthetic_lines(words):
+    """Every line of a one-page synthetic template, sections included."""
+    with unittest.mock.patch.object(inventory, "_page_words",
+                                    lambda pdf: [words]):
+        return list(extract_federal(Path("synthetic")))
+
+
+class LegendRowTests(unittest.TestCase):
+    """An enumeration printed in rows ("Type of Property: 1 Single Family
+    Residence 3 Vacation/Short-Term Rental 5 Land ... / 2 Multi-Family ...
+    4 Commercial 6 Royalties ...") is not lines (extractor species 2,
+    legend-capture; its entries used to hold the real lines' keys). A row
+    of two or more distinct numbered entries is a legend when at least TWO
+    of them collide with a same-label entry of the same section, on another
+    row, in a DIFFERENT label column. A real row carries at most one such
+    collision (a stray repeat), or collides only within its own column (a
+    stacked checkbox enumeration): the first rule, any collision at all,
+    dropped real lines on Schedule C, Forms 1120-S and 100S and the 2025
+    Form 1040 (team-lead ruling, extractor-species-2 STOP)."""
+
+    def test_synthetic_legend_rows_yield_to_the_real_lines(self):
+        lines = _extract_synthetic([
+            _word(40, 100, "1a"), _word(56, 100, "Address"),
+            _word(40, 120, "1b"), _word(56, 120, "Type"),
+            _word(44, 140, "1"), _word(54, 140, "Single"),
+            _word(200, 140, "3"), _word(210, 140, "Vacation"),
+            _word(300, 140, "5"), _word(310, 140, "Land"),
+            _word(44, 152, "2"), _word(54, 152, "Multi"),
+            _word(200, 152, "4"), _word(210, 152, "Commercial"),
+            _word(300, 152, "6"), _word(310, 152, "Royalties"),
+            _word(40, 180, "3"), _word(52, 180, "Rents"),
+            _word(40, 200, "4"), _word(52, 200, "Royalties"),
+            _word(40, 220, "5"), _word(52, 220, "Advertising"),
+            _word(40, 240, "6"), _word(52, 240, "Auto")])
+        self.assertEqual(sorted(lines), ["1a", "1b", "3", "4", "5", "6"])
+        self.assertEqual(lines["3"].text, "Rents")
+        self.assertEqual(lines["6"].text, "Auto")
+
+    def test_synthetic_single_stray_collision_keeps_its_row(self):
+        # Schedule C's shape: a stray "13" box on line 24's row repeats the
+        # left column's 13 -- one collision, so line 24 stays a line.
+        lines = _extract_synthetic([
+            _word(40, 100, "13"), _word(56, 100, "Depreciation"),
+            _word(40, 120, "14"), _word(56, 120, "Employee"),
+            _word(180, 140, "13"), _word(300, 140, "24"),
+            _word(316, 140, "Travel"),
+            _word(180, 160, "14"), _word(300, 160, "25"),
+            _word(316, 160, "Utilities")])
+        self.assertEqual(lines["24"].text, "Travel")
+        self.assertEqual(lines["25"].text, "Utilities")
+
+    def test_synthetic_same_column_stacked_enumeration_is_not_a_legend(self):
+        # Form 1040 (2025) line 16's "1 8814 2 4972 3 ___" digits stack in
+        # one x column on several rows: they collide only within their own
+        # column, so the rule leaves them as they were (their stray lines are
+        # ruled unfiltered; see the 1040 2025 pin below).
+        # The real shape: a row holding only "2" above two rows of "2 ... 3".
+        lines = _extract_synthetic([
+            _word(40, 100, "16"), _word(56, 100, "Tax"),
+            _word(300, 100, "Form", 20), _word(353, 100, "2"),
+            _word(363, 100, "Alpha"),
+            _word(40, 130, "17"), _word(56, 130, "Amount"),
+            _word(300, 130, "Form", 20), _word(353, 130, "2"),
+            _word(363, 130, "Alpha"), _word(418, 130, "3"),
+            _word(428, 130, "Beta"),
+            _word(40, 160, "18"), _word(56, 160, "Total"),
+            _word(300, 160, "Form", 20), _word(353, 160, "2"),
+            _word(363, 160, "Alpha"), _word(418, 160, "3"),
+            _word(428, 160, "Beta")])
+        self.assertIn("2", lines)
+        self.assertIn("3", lines)
+        # The rows' own lines stay too: collisions within one column never
+        # make a row a legend, however many (line 18's row has two).
+        self.assertEqual([lines[n].text for n in ("16", "17", "18")],
+                         ["Tax Form", "Amount Form", "Total Form"])
+
+    def test_synthetic_two_column_rows_are_not_a_legend(self):
+        # Rows of two distinct labels with no label printed again: the
+        # Schedule C Part II shape (8 | 18, 9 | 19) keeps every line.
+        lines = _extract_synthetic([
+            _word(40, 100, "8"), _word(52, 100, "Advertising"),
+            _word(300, 100, "18"), _word(316, 100, "Office"),
+            _word(40, 120, "9"), _word(52, 120, "Car"),
+            _word(300, 120, "19"), _word(316, 120, "Pension")])
+        self.assertEqual(sorted(lines), ["18", "19", "8", "9"])
+
+    def test_synthetic_same_row_box_repeat_is_not_a_legend(self):
+        # A line-number box repeating its row's label is one line.
+        lines = _extract_synthetic([
+            _word(40, 100, "3"), _word(52, 100, "Rents"),
+            _word(300, 100, "3"),
+            _word(40, 120, "4"), _word(52, 120, "Royalties"),
+            _word(300, 120, "4")])
+        self.assertEqual(sorted(lines), ["3", "4"])
+        self.assertEqual(lines["3"].text, "Rents")
+
+    _OFFICIAL = {"2": "For each rental real estate property",
+                 "3": "Rents received", "4": "Royalties received",
+                 "5": "Advertising", "6": "Auto and travel",
+                 "7": "Cleaning and maintenance", "8": "Commissions"}
+    _PART_I = (["A", "B", "1a", "1b"] + [str(n) for n in range(2, 23)]
+               + ["23a", "23b", "23c", "23d", "23e", "24", "25", "26"])
+
+    def test_regression_sch_c_line_24_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("sch_c", year).lines
+                     if l.page == 1 and l.section == "Part II"}
+            with self.subTest(year=year):
+                self.assertEqual(lines["24"].text, "Travel and meals:")
+                self.assertEqual(lines["24a"].text, "Travel")
+                self.assertTrue(lines["24b"].text.startswith(
+                    "Deductible meals"), lines["24b"].text)
+                self.assertNotIn("23a", lines)
+
+    def test_regression_f1120s_lines_12a_and_15a_every_year(self):
+        for year in _YEARS:
+            page3 = {l.label: l for l in load("f1120s", year).lines
+                     if l.page == 3}
+            with self.subTest(year=year):
+                self.assertIn("charitable contributions",
+                              page3["12a"].text.lower())
+                self.assertTrue(page3["15a"].text.startswith(
+                    "Post-1986 depreciation adjustment"), page3["15a"].text)
+                self.assertNotIn("11b", page3)
+
+    def test_regression_f100s_schedule_f_line_19_every_year(self):
+        for year in _YEARS:
+            keys = {(l.page, l.section, l.label)
+                    for l in load("f100s", year).lines}
+            with self.subTest(year=year):
+                self.assertIn((4, "Schedule F", "19"), keys)
+
+    def test_regression_1040_2025_checkbox_digit_stays(self):
+        # Ruled UNFILTERED (inventory-extractor lane adjudication,
+        # 2026-10-17: the 1040 2025 stray "2"/"3" checkbox-digit labels
+        # stay; the proposer's Jaccard cross-check cannot false-confirm on
+        # their texts, and filtering would overfit). The legend rule must
+        # leave it in place.
+        (digit,) = [l for l in load("1040", 2025).lines
+                    if l.page == 1 and l.section == "" and l.label == "3"]
+        self.assertEqual(digit.text, "")
+
+    def test_sch_e_part_i_is_its_printed_lines_every_year(self):
+        for year in _YEARS:
+            lines = [l for l in load("sch_e", year).lines
+                     if l.page == 1 and l.section == "Part I"]
+            with self.subTest(year=year):
+                self.assertEqual(sorted(l.label for l in lines),
+                                 sorted(self._PART_I))
+            by_label = {l.label: l for l in lines}
+            for label, printed in self._OFFICIAL.items():
+                with self.subTest(year=year, line=label):
+                    self.assertTrue(
+                        by_label[label].text.startswith(printed),
+                        by_label[label].text)
+
+
+class MidRowNextNumberTests(unittest.TestCase):
+    """The next line printed later on a label's row ("2 Your social security
+    number 3 Spouse's social security number"; Schedule E "1b Type of
+    Property 2 For each rental ...") is its own line, though no label column
+    holds it, and the earlier line's text ends where it starts (extractor
+    species 2)."""
+
+    def test_synthetic_next_number_mid_row(self):
+        lines = _extract_synthetic([
+            _word(40, 100, "1"), _word(52, 100, "Name"),
+            _word(40, 130, "2"), _word(52, 130, "Your"),
+            _word(80, 130, "social"),
+            _word(170, 130, "3"), _word(182, 130, "Spouse’s"),
+            _word(230, 130, "social")])
+        self.assertEqual(sorted(lines), ["1", "2", "3"])
+        self.assertEqual(lines["2"].text, "Your social")
+        self.assertEqual(lines["3"].text, "Spouse’s social")
+
+    def test_synthetic_next_number_after_a_sub_lettered_label(self):
+        lines = _extract_synthetic([
+            _word(40, 100, "1a"), _word(56, 100, "Address"),
+            _word(40, 120, "1b"), _word(56, 120, "Type"),
+            _word(146, 120, "2"), _word(162, 120, "For"),
+            _word(184, 120, "each")])
+        self.assertEqual(sorted(lines), ["1a", "1b", "2"])
+        self.assertEqual(lines["1b"].text, "Type")
+        self.assertEqual(lines["2"].text, "For each")
+
+    def test_synthetic_reference_in_the_text_is_not_a_line(self):
+        # "line 3" (no label gap) and a non-next number are text.
+        lines = _extract_synthetic([
+            _word(40, 100, "1"), _word(52, 100, "Name"),
+            _word(40, 130, "2"), _word(52, 130, "Subtract"),
+            _word(100, 130, "line", 20), _word(122, 130, "3"),
+            _word(170, 130, "5"), _word(182, 130, "From")])
+        self.assertEqual(sorted(lines), ["1", "2"])
+        self.assertEqual(lines["2"].text, "Subtract line 3 5 From")
+
+    def test_synthetic_next_number_without_its_own_text_is_not_a_line(self):
+        lines = _extract_synthetic([
+            _word(40, 100, "1"), _word(52, 100, "Name"),
+            _word(40, 130, "2"), _word(52, 130, "Enter"),
+            _word(170, 130, "3"), _word(182, 130, "000")])
+        self.assertEqual(sorted(lines), ["1", "2"])
+
+    def test_4868_lines_2_and_3_every_year(self):
+        for year in _YEARS:
+            lines = {l.label: l for l in load("4868", year).lines}
+            with self.subTest(year=year):
+                self.assertEqual(lines["2"].text, "Your social security number")
+                self.assertEqual(lines["3"].text,
+                                 "Spouse’s social security number")
+
+    def test_sch_e_line_1b_ends_where_line_2_starts_every_year(self):
+        for year in _YEARS:
+            (line_1b,) = [l for l in load("sch_e", year).lines
+                          if l.page == 1 and l.label == "1b"]
+            with self.subTest(year=year):
+                self.assertEqual(line_1b.text, "Type of Property")
+
+
+class HeaderSequenceNumberTests(unittest.TestCase):
+    """The page header's "Attachment Sequence No. 13" is not a line: its
+    number, printed in a larger font a few points above its row's words,
+    used to pass as a label (extractor species 2, header token)."""
+
+    def _page(self, word="Sequence"):
+        return [
+            _word(382, 37.5, "Attachment"), _word(420, 37.5, word),
+            _word(453, 37.5, "No.", 12), _word(466, 34.4, "13", 12),
+            _word(41, 60, "Part"), _word(64, 60, "II", 8),
+            _word(40, 100, "27"), _word(56, 100, "Are"),
+            _word(466, 100, "27", 12),
+            _word(40, 120, "28"), _word(56, 120, "Name"),
+            _word(466, 120, "28", 12)]
+
+    def test_synthetic_sequence_number_is_not_a_line(self):
+        lines = _extract_synthetic_lines(self._page())
+        self.assertEqual(sorted((l.section, l.label) for l in lines),
+                         [("Part II", "27"), ("Part II", "28")])
+
+    def test_synthetic_other_header_number_is_still_read(self):
+        # Narrow by design: only the Attachment Sequence number.
+        lines = _extract_synthetic_lines(self._page(word="Item"))
+        self.assertIn("13", [l.label for l in lines])
+
+    def test_sch_e_page_2_has_no_part_i_line_every_year(self):
+        for year in _YEARS:
+            with self.subTest(year=year):
+                self.assertEqual(
+                    [l.label for l in load("sch_e", year).lines
+                     if l.page == 2 and l.section == "Part I"], [])
+
+
+class SharedRowHeadingTests(unittest.TestCase):
+    """Two Part headings printed on one row ("Part I Identification ...
+    Part II Individual Income Tax", Form 4868) divide the page into
+    columns: a line belongs to the heading at or left of it, not to the
+    row's last heading (extractor species 2, section misattribution)."""
+
+    _ROW = [_word(41, 100, "Part"), _word(64, 100, "I", 5),
+            _word(77, 100, "Identification"),
+            _word(306, 100, "Part"), _word(329, 100, "II", 8),
+            _word(343, 100, "Individual")]
+
+    def test_synthetic_shared_row_headings(self):
+        lines = _extract_synthetic_lines(self._ROW + [
+            _word(40, 120, "1"), _word(52, 120, "Your"),
+            _word(40, 140, "2"), _word(52, 140, "Social"),
+            _word(312, 120, "4"), _word(324, 120, "Estimate"),
+            _word(312, 135, "5"), _word(324, 135, "Total")])
+        self.assertEqual(sorted((l.label, l.section) for l in lines),
+                         [("1", "Part I"), ("2", "Part I"),
+                          ("4", "Part II"), ("5", "Part II")])
+
+    def test_synthetic_a_later_single_heading_takes_the_whole_row(self):
+        lines = _extract_synthetic_lines(self._ROW + [
+            _word(40, 120, "1"), _word(52, 120, "Your"),
+            _word(40, 140, "2"), _word(52, 140, "Social"),
+            _word(312, 120, "4"), _word(324, 120, "Estimate"),
+            _word(312, 135, "5"), _word(324, 135, "Total"),
+            _word(41, 200, "Part"), _word(64, 200, "III", 11),
+            _word(312, 220, "6"), _word(324, 220, "Six"),
+            _word(312, 240, "7"), _word(324, 240, "Seven")])
+        sections = {l.label: l.section for l in lines}
+        self.assertEqual((sections["6"], sections["7"]),
+                         ("Part III", "Part III"))
+
+    def test_4868_parts_every_year(self):
+        for year in _YEARS:
+            lines = load("4868", year).lines
+            with self.subTest(year=year):
+                self.assertEqual(
+                    sorted((l.section, l.label) for l in lines),
+                    [("Part I", "1"), ("Part I", "2"), ("Part I", "3"),
+                     ("Part II", "4"), ("Part II", "5"), ("Part II", "6"),
+                     ("Part II", "7"), ("Part II", "8"), ("Part II", "9")])
+
+
 if __name__ == "__main__":
     unittest.main()
