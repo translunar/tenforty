@@ -2405,16 +2405,18 @@ class ReturnOrchestrator:
             # Line 27 (prior-year unallowed loss question): answered "No"
             # whenever Part II is used. A return that would have to answer
             # "Yes" never reaches here -- the emit-stage refusal ledger
-            # (sch_e_line_27_prior_year_unallowed_loss) stops it first.
+            # (sch_e_line_27_prior_year_unallowed_loss) stops it first. The
+            # No box's field path is in the static mapping; only the value
+            # is written here.
             if self._should_emit_sch_e_part_ii(scenario):
-                l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
-                sch_e_cells["sch_e_line_27_no"] = l27_path
+                _l27_path, l27_on = PdfSchE.get_line_27_cells(year)[False]
                 sch_e_spec_values = {
                     **sch_e_spec_values, "sch_e_line_27_no": l27_on}
             # Line 28 column (e) (basis computation required): written only
-            # for rows the compute flags (an S corporation box 1 loss). A
-            # year with no cell mapping refuses rather than emit the loss row
-            # without its required box.
+            # for rows the compute flags (an S corporation box 1 loss); the
+            # boxes' field paths are in the static mapping. A year with no
+            # cell mapping refuses rather than emit the loss row without its
+            # required box.
             basis_rows = [
                 letter for letter in ("a", "b", "c", "d")
                 if sch_e_spec_values.get(
@@ -2424,9 +2426,8 @@ class ReturnOrchestrator:
                 basis_cells = PdfSchE.get_basis_computation_cells(year)
                 b_values = dict(sch_e_spec_values)
                 for letter in basis_rows:
-                    b_path, b_on = basis_cells[letter]
+                    _b_path, b_on = basis_cells[letter]
                     key = f"sch_e_part_ii_row_{letter}_basis_computation_box"
-                    sch_e_cells[key] = b_path
                     b_values[key] = b_on
                 sch_e_spec_values = b_values
             specs.append(_FederalFormSpec(

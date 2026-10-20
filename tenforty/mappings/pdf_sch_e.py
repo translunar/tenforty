@@ -548,21 +548,35 @@ _BASIS_CELLS: dict[str, tuple[str, str]] = {
 _BASIS_YEARS = (2022, 2023, 2024, 2025)
 
 
+def _with_conditional_cells(fields: dict, year: int) -> dict:
+    """``fields`` plus the line 27 "No" box and (2022-2025) the line 28
+    column (e) boxes as static scalars. The orchestrator writes their VALUES
+    only when a return calls for them (an unwritten key prints nothing); the
+    field paths live here so they never depend on the scenario."""
+    scalars = dict(fields["scalars"])
+    scalars["sch_e_line_27_no"] = _LINE_27_CELLS[False][0]
+    if year in _BASIS_YEARS:
+        for letter, (path, _on) in _BASIS_CELLS.items():
+            scalars[f"sch_e_part_ii_row_{letter}_basis_computation_box"] = path
+    return {**fields, "scalars": scalars}
+
+
 class PdfSchE(PdfFormMapping[dict]):
     _FORM_NAME = "Schedule E"
 
     # 2023's field tree is byte-identical to 2024's (verified: identical
-    # AcroForm field-path sets), so one payload serves all three years. 2022
+    # AcroForm field-path sets), so 2023-2025 build equal payloads. 2022
     # zero-pads single-digit text-field leaves (see _to_2022).
     _MAPPINGS: dict[int, dict] = {
-        2021: _FIELDS_2021,
-        2022: _FIELDS_2022, 2023: _FIELDS, 2024: _FIELDS, 2025: _FIELDS}
+        2021: _with_conditional_cells(_FIELDS_2021, 2021),
+        2022: _with_conditional_cells(_FIELDS_2022, 2022),
+        **{y: _with_conditional_cells(_FIELDS, y) for y in (2023, 2024, 2025)}}
 
     @classmethod
     def get_line_27_cells(cls, year: int) -> dict[bool, tuple[str, str]]:
         """{answer: (field_path, on_state)} for the line 27 Yes/No pair.
-        Additive to the value mapping, like the line A/B cells: the
-        orchestrator writes only the chosen answer's on-state."""
+        The No box is a static scalar (``sch_e_line_27_no``); the
+        orchestrator writes its on-state only when Part II is used."""
         if year not in _LINE_27_YEARS:
             raise ValueError(
                 f"No Schedule E line 27 (prior-year unallowed loss question) "
@@ -574,7 +588,8 @@ class PdfSchE(PdfFormMapping[dict]):
         cls, year: int,
     ) -> dict[str, tuple[str, str]]:
         """{row letter: (field_path, on_state)} for line 28 column (e).
-        Additive to the value mapping, like the line A/B cells: the
+        Each box is a static scalar
+        (``sch_e_part_ii_row_<letter>_basis_computation_box``); the
         orchestrator writes the on-state only for rows whose compute carries
         ``sch_e_part_ii_row_<letter>_basis_computation_required``."""
         if year not in _BASIS_YEARS:
