@@ -13,7 +13,7 @@ from types import MappingProxyType
 import yaml
 
 from tenforty import positions
-from tenforty.models import FilingStatus, ScheduleK1
+from tenforty.models import FilingStatus, ScheduleCBusiness, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 from tenforty.models import SCorp199AInfo
@@ -36,20 +36,27 @@ def _wages_only(**elections):
     return dataclasses.replace(base, positions=dict(elections))
 
 
-def _reaching(sehi=3_000.0, qbi=10_000.0, **elections):
+def _k1(entity_type, qbi, n=1):
+    return ScheduleK1(
+        entity_name=f"Example Entity {n}", entity_ein="00-0000000",
+        entity_type=entity_type, material_participation=True,
+        ordinary_business_income=qbi, qbi_amount=qbi)
+
+
+def _reaching(sehi=3_000.0, qbi=10_000.0, extra_k1s=(), businesses=(),
+              **elections):
     """Wages, a self-employed health insurance deduction and an S
-    corporation K-1 carrying QBI: the shape the QBI/SEHI position reaches.
-    All synthetic."""
+    corporation K-1 carrying QBI: the shape the QBI/SEHI position reaches
+    (``extra_k1s`` / ``businesses`` vary it). All synthetic."""
     base = build_wages_only(2024, FilingStatus.SINGLE)
     cfg = dataclasses.replace(
         base.config, self_employed_health_insurance_deduction=sehi,
         **{k: True for k in _K1_ACKS})
     return dataclasses.replace(
         base, config=cfg, positions=dict(elections),
-        schedule_k1s=[ScheduleK1(
-            entity_name="Example S Corporation", entity_ein="00-0000000",
-            entity_type="s_corp", material_participation=True,
-            ordinary_business_income=qbi, qbi_amount=qbi)])
+        schedule_k1s=[_k1("s_corp", qbi), *extra_k1s],
+        schedule_c_businesses=[ScheduleCBusiness(description=d)
+                               for d in businesses])
 
 
 class Wired:
@@ -175,20 +182,50 @@ class QbiSehiEntryTests(unittest.TestCase):
 
 
 
+def _shapes():
+    """(name, scenario) over the gate's shapes, reaching or not."""
+    return (
+        ("s-corp k1", _reaching()),
+        ("two s-corp k1s", _reaching(extra_k1s=[_k1("s_corp", 5_000.0, 2)])),
+        ("s-corp k1 + zero-qbi partnership k1",
+         _reaching(extra_k1s=[_k1("partnership", 0.0, 2)])),
+        ("s-corp k1 + partnership k1 with qbi",
+         _reaching(extra_k1s=[_k1("partnership", 5_000.0, 2)])),
+        ("partnership k1 only", dataclasses.replace(
+            _reaching(), schedule_k1s=[_k1("partnership", 10_000.0)])),
+        ("s-corp k1 + schedule c",
+         _reaching(businesses=["Example Bindery"])),
+        ("schedule c only", dataclasses.replace(
+            _reaching(businesses=["Example Bindery"]), schedule_k1s=[])),
+        ("no qbi", _reaching(qbi=0.0)),
+        ("no sehi", _reaching(sehi=0.0)),
+        ("wages", _wages_only()),
+    )
+
+
 class QbiSehiReachabilityPredicateTests(unittest.TestCase):
-    """The ruled condition: a nonzero SEHI deduction AND any K-1 with QBI,
-    with or without Schedule C."""
+    """The ruled shape gate (S corporation only): a nonzero SEHI deduction
+    sourced from the S corporation, read by shape as no Schedule C
+    business, at least one S corporation K-1 with QBI, and no other K-1
+    with QBI."""
 
     def setUp(self):
         self.reached = positions.POSITIONS[QBI_SEHI].reached_when
 
-    def test_sehi_and_k1_qbi_reach_it(self):
+    def test_sehi_and_s_corp_k1_qbi_reach_it(self):
         self.assertTrue(self.reached(_reaching()))
 
     def test_either_alone_does_not(self):
         self.assertFalse(self.reached(_reaching(sehi=0.0)))
         self.assertFalse(self.reached(_reaching(qbi=0.0)))
         self.assertFalse(self.reached(_wages_only()))
+
+    def test_the_shapes(self):
+        reaching = {"s-corp k1", "two s-corp k1s",
+                    "s-corp k1 + zero-qbi partnership k1"}
+        for name, s in _shapes():
+            with self.subTest(shape=name):
+                self.assertIs(self.reached(s), name in reaching)
 
 
 def _s_corp(sehi=3_000.0, section_199a=None, **elections):
@@ -218,12 +255,24 @@ class QbiSehiLoadTimeViewTests(unittest.TestCase):
         self.assertFalse(self.pos.may_reach(_wages_only()))
 
     def test_reaching_implies_may_reach(self):
-        for name, s in (("k1", _reaching()), ("no-qbi", _reaching(qbi=0.0)),
-                        ("no-sehi", _reaching(sehi=0.0)),
-                        ("wages", _wages_only()), ("s-corp", _s_corp())):
+        for name, s in (*_shapes(), ("s-corp", _s_corp())):
             with self.subTest(scenario=name):
                 if self.pos.reached_when(s):
                     self.assertTrue(self.pos.may_reach(s))
+
+    def test_a_schedule_c_or_partnership_return_definitely_never_reaches_it(
+            self):
+        # The loaded view is exact for what the S corporation pipeline
+        # cannot change: it only appends S corporation K-1s.
+        for name, s in (
+                ("schedule c", dataclasses.replace(
+                    _s_corp(), schedule_c_businesses=[
+                        ScheduleCBusiness(description="Example Bindery")])),
+                ("partnership k1 with qbi", dataclasses.replace(
+                    _s_corp(),
+                    schedule_k1s=[_k1("partnership", 5_000.0)]))):
+            with self.subTest(scenario=name):
+                self.assertFalse(self.pos.may_reach(s))
 
 
 class SCorpElectionTests(Wired, unittest.TestCase):

@@ -17,6 +17,8 @@ import datetime
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
+from tenforty.models import EntityType
+
 SOURCE_KINDS = frozenset({"authority", "commentary"})
 FIDELITIES = frozenset({"verbatim", "paraphrased", "secondhand"})
 
@@ -68,19 +70,33 @@ def _sehi(scenario) -> bool:
     return bool(scenario.config.self_employed_health_insurance_deduction)
 
 
-def _sehi_and_k1_qbi(scenario) -> bool:
-    # Ruled condition (f8995 Q1(b)): a nonzero self-employed health
-    # insurance deduction AND any K-1 carrying QBI, with or without
-    # Schedule C.
-    return _sehi(scenario) and any(
+def _s_corp_shape(scenario) -> bool:
+    # The shape that can carry S-corporation-sourced SEHI (phase-2 ruling;
+    # the source is unmodeled, so it is read by shape): no Schedule C
+    # business and no K-1 with QBI other than an S corporation's. With a
+    # Schedule C business, which business established the plan is
+    # unmodeled; a partnership K-1 with QBI is not this question. Form 8995
+    # refuses both.
+    return not scenario.schedule_c_businesses and not any(
+        k1.qbi_amount for k1 in scenario.schedule_k1s
+        if k1.entity_type != EntityType.S_CORP)
+
+
+def _sehi_and_s_corp_k1_qbi(scenario) -> bool:
+    # Ruled shape gate: a nonzero self-employed health insurance deduction,
+    # at least one S corporation K-1 carrying QBI, and the S corporation
+    # shape above (under which any K-1 carrying QBI is an S corporation's).
+    return _sehi(scenario) and _s_corp_shape(scenario) and any(
         k1.qbi_amount for k1 in scenario.schedule_k1s)
 
 
-def _sehi_and_possible_k1_qbi(scenario) -> bool:
+def _sehi_and_possible_s_corp_k1_qbi(scenario) -> bool:
     # At load an S corporation return's K-1 does not exist yet; its QBI is
-    # known only after the corporate pipeline runs.
-    return _sehi(scenario) and (
-        _sehi_and_k1_qbi(scenario) or scenario.s_corp_return is not None)
+    # known only after the corporate pipeline runs. That pipeline only
+    # appends S corporation K-1s, so the shape test is already exact here.
+    return _sehi(scenario) and _s_corp_shape(scenario) and (
+        _sehi_and_s_corp_k1_qbi(scenario)
+        or scenario.s_corp_return is not None)
 
 
 _QBI_SEHI = ContestedPosition(
@@ -216,8 +232,8 @@ _QBI_SEHI = ContestedPosition(
         ),
     ),
     recorded=datetime.date(2026, 10, 18),
-    reached_when=_sehi_and_k1_qbi,
-    may_reach=_sehi_and_possible_k1_qbi,
+    reached_when=_sehi_and_s_corp_k1_qbi,
+    may_reach=_sehi_and_possible_s_corp_k1_qbi,
 )
 
 # Consumers must read positions.POSITIONS via the module: a from-import
