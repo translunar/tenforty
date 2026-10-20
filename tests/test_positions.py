@@ -421,8 +421,11 @@ def _election_slugs(root: Path) -> set[str]:
     """Every position slug an ``election(...)`` call under ``root`` names
     (a bare ``election`` or any ``x.election``). The slug argument must be
     a string literal or a module-level string constant of that file; any
-    other form fails loudly rather than being skipped."""
-    referenced, unresolved = set(), []
+    other form fails loudly rather than being skipped. So does any way of
+    reaching ``election`` other than calling it by that name (an import
+    alias, a bound alias, a rebinding), and a constant rebound anywhere in
+    its file (a local that shadows it would resolve to the wrong value)."""
+    referenced, unresolved, aliased, shadowed = set(), [], [], []
     for path in sorted(root.rglob("*.py")):
         tree = ast.parse(path.read_text(), filename=str(path))
         constants = {
@@ -431,6 +434,37 @@ def _election_slugs(root: Path) -> set[str]:
             and isinstance(node.value, ast.Constant)
             and isinstance(node.value.value, str)
             for target in node.targets if isinstance(target, ast.Name)}
+        called = {id(node.func) for node in ast.walk(tree)
+                  if isinstance(node, ast.Call)}
+        bindings: dict[str, int] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and not isinstance(
+                    node.ctx, ast.Load):
+                names = [node.id]
+            elif isinstance(node, ast.arg):
+                names = [node.arg]
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                   ast.ClassDef)):
+                names = [node.name]
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                names = [a.asname or a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ExceptHandler) and node.name:
+                names = [node.name]
+            else:
+                names = []
+            for name in names:
+                bindings[name] = bindings.get(name, 0) + 1
+            if isinstance(node, ast.ImportFrom) and any(
+                    a.name == "election" and a.asname not in (None, "election")
+                    for a in node.names):
+                aliased.append(f"{path}:{node.lineno}")
+            elif (isinstance(node, ast.Name) and node.id == "election"
+                  and (not isinstance(node.ctx, ast.Load)
+                       or id(node) not in called)):
+                aliased.append(f"{path}:{node.lineno}")
+            elif (isinstance(node, ast.Attribute) and node.attr == "election"
+                  and id(node) not in called):
+                aliased.append(f"{path}:{node.lineno}")
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
@@ -444,9 +478,20 @@ def _election_slugs(root: Path) -> set[str]:
             if isinstance(slug, ast.Constant) and isinstance(slug.value, str):
                 referenced.add(slug.value)
             elif isinstance(slug, ast.Name) and slug.id in constants:
-                referenced.add(constants[slug.id])
+                if bindings.get(slug.id, 0) > 1:
+                    shadowed.append(f"{path}:{node.lineno}")
+                else:
+                    referenced.add(constants[slug.id])
             else:
                 unresolved.append(f"{path}:{node.lineno}")
+    if aliased:
+        raise AssertionError(
+            "election reached through an alias or rebinding, which the scan "
+            f"cannot follow: {aliased}")
+    if shadowed:
+        raise AssertionError(
+            "election() calls whose slug constant is rebound (shadowed) in "
+            f"its file, so its value there is not the module's: {shadowed}")
     if unresolved:
         raise AssertionError(
             "election() calls whose slug is neither a string literal nor a "
@@ -474,6 +519,38 @@ class ElectionScanTests(unittest.TestCase):
     def test_an_unresolvable_slug_fails_loudly(self):
         with self.assertRaisesRegex(AssertionError, "neither a string"):
             self._scan("def f(s, x):\n    positions.election(s, x())\n")
+
+    def test_an_aliased_import_fails_loudly(self):
+        # N1: a call through an import alias would not match by name.
+        with self.assertRaisesRegex(AssertionError, "alias"):
+            self._scan(
+                "from tenforty.positions import election as consult\n"
+                'def f(s):\n    consult(s, "a-slug")\n')
+
+    def test_a_bound_alias_fails_loudly(self):
+        # N1: nor would a call through a name bound to election itself.
+        for source in ('consult = election\n'
+                       'def f(s):\n    consult(s, "a-slug")\n',
+                       'consult = positions.election\n'
+                       'def f(s):\n    consult(s, "a-slug")\n'):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(AssertionError, "alias"):
+                    self._scan(source)
+
+    def test_a_shadowed_constant_fails_loudly(self):
+        # N2: a local rebinding of a module constant must not resolve to the
+        # module's value.
+        for source in ('SLUG = "b-slug"\n'
+                       'def f(s, SLUG):\n    election(s, SLUG)\n',
+                       'SLUG = "b-slug"\n'
+                       'def f(s):\n    SLUG = s.pick()\n'
+                       '    election(s, SLUG)\n',
+                       'SLUG = "b-slug"\n'
+                       'def f(s):\n    for SLUG in s.picks:\n'
+                       '        election(s, SLUG)\n'):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(AssertionError, "shadow"):
+                    self._scan(source)
 
 
 class PositionTakingPathTests(unittest.TestCase):
