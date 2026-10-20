@@ -13,7 +13,7 @@ from types import MappingProxyType
 import yaml
 
 from tenforty import positions
-from tenforty.models import FilingStatus, ScheduleK1
+from tenforty.models import FilingStatus, ScheduleCBusiness, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.scenario import load_scenario
 from tenforty.models import SCorp199AInfo
@@ -36,34 +36,54 @@ def _wages_only(**elections):
     return dataclasses.replace(base, positions=dict(elections))
 
 
-def _reaching(sehi=3_000.0, qbi=10_000.0, **elections):
+def _k1(entity_type, qbi, n=1):
+    return ScheduleK1(
+        entity_name=f"Example Entity {n}", entity_ein="00-0000000",
+        entity_type=entity_type, material_participation=True,
+        ordinary_business_income=qbi, qbi_amount=qbi)
+
+
+def _reaching(sehi=3_000.0, qbi=10_000.0, extra_k1s=(), businesses=(),
+              **elections):
     """Wages, a self-employed health insurance deduction and an S
-    corporation K-1 carrying QBI: the shape the QBI/SEHI position reaches.
-    All synthetic."""
+    corporation K-1 carrying QBI: the shape the QBI/SEHI position reaches
+    (``extra_k1s`` / ``businesses`` vary it). All synthetic."""
     base = build_wages_only(2024, FilingStatus.SINGLE)
     cfg = dataclasses.replace(
         base.config, self_employed_health_insurance_deduction=sehi,
         **{k: True for k in _K1_ACKS})
     return dataclasses.replace(
         base, config=cfg, positions=dict(elections),
-        schedule_k1s=[ScheduleK1(
-            entity_name="Example S Corporation", entity_ein="00-0000000",
-            entity_type="s_corp", material_participation=True,
-            ordinary_business_income=qbi, qbi_amount=qbi)])
+        schedule_k1s=[_k1("s_corp", qbi), *extra_k1s],
+        schedule_c_businesses=[ScheduleCBusiness(description=d)
+                               for d in businesses])
 
 
-class Wired:
-    """Mixin: run with every registered position wired (phase 2's state),
-    so an election can be accepted at all. Phase 1 wires none."""
+class _Wiring:
+    """Mixin base: run with every registered position's ``wired`` set to
+    WIRED, whatever the registry's own state."""
+    WIRED: bool
 
     def setUp(self):
         super().setUp()
-        wired = MappingProxyType({
-            slug: dataclasses.replace(pos, wired=True)
+        patched = MappingProxyType({
+            slug: dataclasses.replace(pos, wired=self.WIRED)
             for slug, pos in positions.POSITIONS.items()})
-        patcher = unittest.mock.patch.object(positions, "POSITIONS", wired)
+        patcher = unittest.mock.patch.object(positions, "POSITIONS", patched)
         patcher.start()
         self.addCleanup(patcher.stop)
+
+
+class Wired(_Wiring):
+    """Mixin: every registered position wired, so an election can be
+    accepted at all."""
+    WIRED = True
+
+
+class Unwired(_Wiring):
+    """Mixin: every registered position unwired (the state of a position
+    registered before any computation consults it)."""
+    WIRED = False
 
 
 class RegistryWellFormedTests(unittest.TestCase):
@@ -175,20 +195,50 @@ class QbiSehiEntryTests(unittest.TestCase):
 
 
 
+def _shapes():
+    """(name, scenario) over the gate's shapes, reaching or not."""
+    return (
+        ("s-corp k1", _reaching()),
+        ("two s-corp k1s", _reaching(extra_k1s=[_k1("s_corp", 5_000.0, 2)])),
+        ("s-corp k1 + zero-qbi partnership k1",
+         _reaching(extra_k1s=[_k1("partnership", 0.0, 2)])),
+        ("s-corp k1 + partnership k1 with qbi",
+         _reaching(extra_k1s=[_k1("partnership", 5_000.0, 2)])),
+        ("partnership k1 only", dataclasses.replace(
+            _reaching(), schedule_k1s=[_k1("partnership", 10_000.0)])),
+        ("s-corp k1 + schedule c",
+         _reaching(businesses=["Example Bindery"])),
+        ("schedule c only", dataclasses.replace(
+            _reaching(businesses=["Example Bindery"]), schedule_k1s=[])),
+        ("no qbi", _reaching(qbi=0.0)),
+        ("no sehi", _reaching(sehi=0.0)),
+        ("wages", _wages_only()),
+    )
+
+
 class QbiSehiReachabilityPredicateTests(unittest.TestCase):
-    """The ruled condition: a nonzero SEHI deduction AND any K-1 with QBI,
-    with or without Schedule C."""
+    """The ruled shape gate (S corporation only): a nonzero SEHI deduction
+    sourced from the S corporation, read by shape as no Schedule C
+    business, at least one S corporation K-1 with QBI, and no other K-1
+    with QBI."""
 
     def setUp(self):
         self.reached = positions.POSITIONS[QBI_SEHI].reached_when
 
-    def test_sehi_and_k1_qbi_reach_it(self):
+    def test_sehi_and_s_corp_k1_qbi_reach_it(self):
         self.assertTrue(self.reached(_reaching()))
 
     def test_either_alone_does_not(self):
         self.assertFalse(self.reached(_reaching(sehi=0.0)))
         self.assertFalse(self.reached(_reaching(qbi=0.0)))
         self.assertFalse(self.reached(_wages_only()))
+
+    def test_the_shapes(self):
+        reaching = {"s-corp k1", "two s-corp k1s",
+                    "s-corp k1 + zero-qbi partnership k1"}
+        for name, s in _shapes():
+            with self.subTest(shape=name):
+                self.assertIs(self.reached(s), name in reaching)
 
 
 def _s_corp(sehi=3_000.0, section_199a=None, **elections):
@@ -218,12 +268,24 @@ class QbiSehiLoadTimeViewTests(unittest.TestCase):
         self.assertFalse(self.pos.may_reach(_wages_only()))
 
     def test_reaching_implies_may_reach(self):
-        for name, s in (("k1", _reaching()), ("no-qbi", _reaching(qbi=0.0)),
-                        ("no-sehi", _reaching(sehi=0.0)),
-                        ("wages", _wages_only()), ("s-corp", _s_corp())):
+        for name, s in (*_shapes(), ("s-corp", _s_corp())):
             with self.subTest(scenario=name):
                 if self.pos.reached_when(s):
                     self.assertTrue(self.pos.may_reach(s))
+
+    def test_a_schedule_c_or_partnership_return_definitely_never_reaches_it(
+            self):
+        # The loaded view is exact for what the S corporation pipeline
+        # cannot change: it only appends S corporation K-1s.
+        for name, s in (
+                ("schedule c", dataclasses.replace(
+                    _s_corp(), schedule_c_businesses=[
+                        ScheduleCBusiness(description="Example Bindery")])),
+                ("partnership k1 with qbi", dataclasses.replace(
+                    _s_corp(),
+                    schedule_k1s=[_k1("partnership", 5_000.0)]))):
+            with self.subTest(scenario=name):
+                self.assertFalse(self.pos.may_reach(s))
 
 
 class SCorpElectionTests(Wired, unittest.TestCase):
@@ -325,27 +387,61 @@ class ElectionYamlTests(Wired, unittest.TestCase):
 
 class ElectionHelperTests(Wired, unittest.TestCase):
 
-    def setUp(self):
-        super().setUp()
-        positions.reset_consulted()
-        self.addCleanup(positions.reset_consulted)
-
     def test_returns_the_election_and_records_the_consult(self):
-        self.assertEqual(
-            positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI),
-            "irs-faq")
-        self.assertEqual(positions.CONSULTED, {QBI_SEHI})
+        with positions.recording() as record:
+            self.assertEqual(positions.election(
+                _reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI), "irs-faq")
+        self.assertEqual(record, [
+            {"slug": QBI_SEHI, "choice": "irs-faq", "reached": True}])
 
-    def test_reset_clears_the_record(self):
-        positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI)
-        positions.reset_consulted()
-        self.assertEqual(positions.CONSULTED, set())
+    def test_every_entry_is_reached(self):
+        # Ruling Q-R: entries exist only for reached positions, so reached
+        # is True on every one.
+        with positions.recording() as record:
+            positions.election(_reaching(**{QBI_SEHI: "no-reduction"}),
+                               QBI_SEHI)
+        self.assertTrue(record)
+        for entry in record:
+            self.assertIs(entry["reached"], True)
+
+    def test_a_repeated_consult_records_once(self):
+        scenario = _reaching(**{QBI_SEHI: "irs-faq"})
+        with positions.recording() as record:
+            positions.election(scenario, QBI_SEHI)
+            positions.election(scenario, QBI_SEHI)
+        self.assertEqual(len(record), 1)
+
+    def test_runs_do_not_share_a_record(self):
+        with positions.recording() as first:
+            positions.election(_reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI)
+        with positions.recording() as second:
+            pass
+        self.assertEqual(len(first), 1)
+        self.assertEqual(second, [])
+
+    def test_outside_a_run_nothing_is_recorded(self):
+        # The emit path recomputes Form 8995 outside any run; its consult
+        # returns the election and records nowhere, not even in the run
+        # that just ended.
+        with positions.recording() as finished:
+            pass
+        self.assertEqual(positions.election(
+            _reaching(**{QBI_SEHI: "irs-faq"}), QBI_SEHI), "irs-faq")
+        self.assertEqual(finished, [])
 
     def test_a_missing_election_refuses_naming_the_controversy(self):
-        with self.assertRaises(NotImplementedError) as cm:
-            positions.election(_reaching(), QBI_SEHI)
+        with positions.recording() as record:
+            with self.assertRaises(NotImplementedError) as cm:
+                positions.election(_reaching(), QBI_SEHI)
         self.assertEqual(str(cm.exception), positions.refusal_message(QBI_SEHI))
-        self.assertEqual(positions.CONSULTED, {QBI_SEHI})
+        self.assertEqual(record, [])
+
+    def test_a_consult_on_a_return_that_never_reaches_it_is_a_programming_error(
+            self):
+        with positions.recording() as record:
+            with self.assertRaisesRegex(RuntimeError, "never reaches"):
+                positions.election(_wages_only(), QBI_SEHI)
+        self.assertEqual(record, [])
 
     def test_the_refusal_message(self):
         pos = positions.POSITIONS[QBI_SEHI]
@@ -367,42 +463,80 @@ class ElectionHelperTests(Wired, unittest.TestCase):
             positions.election(_reaching(), "no-such-position")
 
 
-class QbiSehiReachabilityPinTests(unittest.TestCase):
-    """Spec §13: every registered position is reachable, i.e. some code
-    path consults it. KNOWN GAP until positions phase 2 wires the Form 8995
-    consult: nothing consults qbi-sehi-shareholder-reduction yet. Phase 2
-    flips this pin to "consulted"."""
+class ResultsRecordTests(Wired, unittest.TestCase):
+    """Ruling 5: each run's consults ride its results dict; a run that
+    reaches no position carries no record at all (silence = never
+    reached)."""
 
-    def test_nothing_consults_it_yet(self):
-        positions.reset_consulted()
-        self.addCleanup(positions.reset_consulted)
-        orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
-                                  work_dir=Path(tempfile.mkdtemp()))
-        # Before the f8995 lane merges the return computes; after, the
-        # interim Form 8995 refusal (naming this slug) fires. Either is fine
-        # here. No election: an unwired position refuses one at load.
+    def setUp(self):
+        super().setUp()
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(tempfile.mkdtemp()))
+
+    def _pipeline(self, scenario, consult):
+        def core(effective):
+            if consult:
+                positions.election(effective, QBI_SEHI)
+            return {}
+        with unittest.mock.patch.object(
+                ReturnOrchestrator, "_compute_1040_pipeline_core",
+                side_effect=core):
+            return self.orch._compute_1040_pipeline(scenario)
+
+    def test_a_consult_rides_the_results(self):
+        results = self._pipeline(_reaching(**{QBI_SEHI: "no-reduction"}),
+                                 consult=True)
+        self.assertEqual(results[positions.RESULTS_KEY], [
+            {"slug": QBI_SEHI, "choice": "no-reduction", "reached": True}])
+
+    def test_no_consult_leaves_no_record(self):
+        results = self._pipeline(_reaching(**{QBI_SEHI: "no-reduction"}),
+                                 consult=False)
+        self.assertNotIn(positions.RESULTS_KEY, results)
+
+    def test_a_non_reaching_return_carries_no_record(self):
         with unittest.mock.patch.object(
                 ReturnOrchestrator, "_compute_1040_via_workbook",
                 side_effect=AssertionError("workbook path reached")):
-            try:
-                orch.compute_federal(_reaching())
-            except NotImplementedError as exc:
-                self.assertIn(QBI_SEHI, str(exc))
-        self.assertEqual(
-            positions.CONSULTED, set(),
-            "KNOWN GAP (positions phase 2): the Form 8995 path now consults "
-            "the registry; flip this pin to assert the position is consulted")
+            results = self.orch.compute_federal(_wages_only())
+        self.assertIn("agi", results)
+        self.assertNotIn(positions.RESULTS_KEY, results)
 
 
+class QbiSehiReachabilityPinTests(unittest.TestCase):
+    """Spec §13: every registered position is reachable, i.e. some code
+    path consults it. Form 8995 consults qbi-sehi-shareholder-reduction on
+    the S corporation shape."""
 
-class WiredGateTests(unittest.TestCase):
-    """KNOWN GAP (positions phase 2): no position is wired yet, so an
-    election is refused at load: the computation would refuse the return
-    whatever is elected. Phase 2 sets wired=True and these flip."""
+    def test_form_8995_consults_it(self):
+        orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                                  work_dir=Path(tempfile.mkdtemp()))
+        with unittest.mock.patch.object(
+                ReturnOrchestrator, "_compute_1040_via_workbook",
+                side_effect=AssertionError("workbook path reached")), \
+                unittest.mock.patch.object(
+                    positions, "election", wraps=positions.election) as spy:
+            results = orch.compute_federal(_reaching(**{QBI_SEHI: "irs-faq"}))
+        self.assertGreaterEqual(spy.call_count, 1)
+        self.assertEqual([e["slug"] for e in results[positions.RESULTS_KEY]],
+                         [QBI_SEHI])
 
-    def test_nothing_is_wired_yet(self):
-        self.assertFalse(positions.POSITIONS[QBI_SEHI].wired,
-                         "KNOWN GAP flipped: positions phase 2 wired it")
+
+class WiredStateTests(unittest.TestCase):
+
+    def test_the_qbi_sehi_position_is_wired(self):
+        self.assertTrue(positions.POSITIONS[QBI_SEHI].wired)
+
+    def test_an_election_on_a_reaching_return_is_accepted(self):
+        self.assertEqual(_reaching(**{QBI_SEHI: "irs-faq"}).positions,
+                         {QBI_SEHI: "irs-faq"})
+
+
+class WiredGateTests(Unwired, unittest.TestCase):
+    """An election for a registered position no computation consults yet
+    is refused at load: the computation would refuse the return whatever is
+    elected."""
 
     def test_an_election_for_an_unwired_position_refuses(self):
         with self.assertRaisesRegex(ValueError, "not yet consulted"):
@@ -421,8 +555,11 @@ def _election_slugs(root: Path) -> set[str]:
     """Every position slug an ``election(...)`` call under ``root`` names
     (a bare ``election`` or any ``x.election``). The slug argument must be
     a string literal or a module-level string constant of that file; any
-    other form fails loudly rather than being skipped."""
-    referenced, unresolved = set(), []
+    other form fails loudly rather than being skipped. So does any way of
+    reaching ``election`` other than calling it by that name (an import
+    alias, a bound alias, a rebinding), and a constant rebound anywhere in
+    its file (a local that shadows it would resolve to the wrong value)."""
+    referenced, unresolved, aliased, shadowed = set(), [], [], []
     for path in sorted(root.rglob("*.py")):
         tree = ast.parse(path.read_text(), filename=str(path))
         constants = {
@@ -431,6 +568,37 @@ def _election_slugs(root: Path) -> set[str]:
             and isinstance(node.value, ast.Constant)
             and isinstance(node.value.value, str)
             for target in node.targets if isinstance(target, ast.Name)}
+        called = {id(node.func) for node in ast.walk(tree)
+                  if isinstance(node, ast.Call)}
+        bindings: dict[str, int] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Name) and not isinstance(
+                    node.ctx, ast.Load):
+                names = [node.id]
+            elif isinstance(node, ast.arg):
+                names = [node.arg]
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                   ast.ClassDef)):
+                names = [node.name]
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                names = [a.asname or a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ExceptHandler) and node.name:
+                names = [node.name]
+            else:
+                names = []
+            for name in names:
+                bindings[name] = bindings.get(name, 0) + 1
+            if isinstance(node, ast.ImportFrom) and any(
+                    a.name == "election" and a.asname not in (None, "election")
+                    for a in node.names):
+                aliased.append(f"{path}:{node.lineno}")
+            elif (isinstance(node, ast.Name) and node.id == "election"
+                  and (not isinstance(node.ctx, ast.Load)
+                       or id(node) not in called)):
+                aliased.append(f"{path}:{node.lineno}")
+            elif (isinstance(node, ast.Attribute) and node.attr == "election"
+                  and id(node) not in called):
+                aliased.append(f"{path}:{node.lineno}")
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
@@ -444,9 +612,20 @@ def _election_slugs(root: Path) -> set[str]:
             if isinstance(slug, ast.Constant) and isinstance(slug.value, str):
                 referenced.add(slug.value)
             elif isinstance(slug, ast.Name) and slug.id in constants:
-                referenced.add(constants[slug.id])
+                if bindings.get(slug.id, 0) > 1:
+                    shadowed.append(f"{path}:{node.lineno}")
+                else:
+                    referenced.add(constants[slug.id])
             else:
                 unresolved.append(f"{path}:{node.lineno}")
+    if aliased:
+        raise AssertionError(
+            "election reached through an alias or rebinding, which the scan "
+            f"cannot follow: {aliased}")
+    if shadowed:
+        raise AssertionError(
+            "election() calls whose slug constant is rebound (shadowed) in "
+            f"its file, so its value there is not the module's: {shadowed}")
     if unresolved:
         raise AssertionError(
             "election() calls whose slug is neither a string literal nor a "
@@ -475,6 +654,38 @@ class ElectionScanTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "neither a string"):
             self._scan("def f(s, x):\n    positions.election(s, x())\n")
 
+    def test_an_aliased_import_fails_loudly(self):
+        # N1: a call through an import alias would not match by name.
+        with self.assertRaisesRegex(AssertionError, "alias"):
+            self._scan(
+                "from tenforty.positions import election as consult\n"
+                'def f(s):\n    consult(s, "a-slug")\n')
+
+    def test_a_bound_alias_fails_loudly(self):
+        # N1: nor would a call through a name bound to election itself.
+        for source in ('consult = election\n'
+                       'def f(s):\n    consult(s, "a-slug")\n',
+                       'consult = positions.election\n'
+                       'def f(s):\n    consult(s, "a-slug")\n'):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(AssertionError, "alias"):
+                    self._scan(source)
+
+    def test_a_shadowed_constant_fails_loudly(self):
+        # N2: a local rebinding of a module constant must not resolve to the
+        # module's value.
+        for source in ('SLUG = "b-slug"\n'
+                       'def f(s, SLUG):\n    election(s, SLUG)\n',
+                       'SLUG = "b-slug"\n'
+                       'def f(s):\n    SLUG = s.pick()\n'
+                       '    election(s, SLUG)\n',
+                       'SLUG = "b-slug"\n'
+                       'def f(s):\n    for SLUG in s.picks:\n'
+                       '        election(s, SLUG)\n'):
+            with self.subTest(source=source):
+                with self.assertRaisesRegex(AssertionError, "shadow"):
+                    self._scan(source)
+
 
 class PositionTakingPathTests(unittest.TestCase):
     """Spec §13: every position-taking code path references a registered
@@ -484,11 +695,8 @@ class PositionTakingPathTests(unittest.TestCase):
         self.referenced = _election_slugs(
             Path(positions.__file__).resolve().parent)
 
-    def test_no_path_consults_a_position_yet(self):
-        # KNOWN GAP (positions phase 2): nothing calls election() yet.
-        # Phase 2 wires the Form 8995 consult; flip this deliberately.
-        self.assertEqual(self.referenced, set(),
-                         "KNOWN GAP flipped: a path now calls election()")
+    def test_form_8995_is_the_one_consulting_path(self):
+        self.assertEqual(self.referenced, {QBI_SEHI})
 
     def test_an_entry_is_wired_exactly_when_a_path_consults_it(self):
         wired = {slug for slug, pos in positions.POSITIONS.items()
