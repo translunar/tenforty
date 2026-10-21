@@ -12,10 +12,14 @@ Sources are public legal materials only. ``fidelity`` says how the
 source's own), ``paraphrased`` (substance confirmed against the source,
 wording ours), or ``secondhand`` (known only through secondary summaries).
 """
+import contextlib
+import contextvars
 import dataclasses
 import datetime
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
+
+from tenforty.models import EntityType
 
 SOURCE_KINDS = frozenset({"authority", "commentary"})
 FIDELITIES = frozenset({"verbatim", "paraphrased", "secondhand"})
@@ -68,19 +72,33 @@ def _sehi(scenario) -> bool:
     return bool(scenario.config.self_employed_health_insurance_deduction)
 
 
-def _sehi_and_k1_qbi(scenario) -> bool:
-    # Ruled condition (f8995 Q1(b)): a nonzero self-employed health
-    # insurance deduction AND any K-1 carrying QBI, with or without
-    # Schedule C.
-    return _sehi(scenario) and any(
+def _s_corp_shape(scenario) -> bool:
+    # The shape that can carry S-corporation-sourced SEHI (phase-2 ruling;
+    # the source is unmodeled, so it is read by shape): no Schedule C
+    # business and no K-1 with QBI other than an S corporation's. With a
+    # Schedule C business, which business established the plan is
+    # unmodeled; a partnership K-1 with QBI is not this question. Form 8995
+    # refuses both.
+    return not scenario.schedule_c_businesses and not any(
+        k1.qbi_amount for k1 in scenario.schedule_k1s
+        if k1.entity_type != EntityType.S_CORP)
+
+
+def _sehi_and_s_corp_k1_qbi(scenario) -> bool:
+    # Ruled shape gate: a nonzero self-employed health insurance deduction,
+    # at least one S corporation K-1 carrying QBI, and the S corporation
+    # shape above (under which any K-1 carrying QBI is an S corporation's).
+    return _sehi(scenario) and _s_corp_shape(scenario) and any(
         k1.qbi_amount for k1 in scenario.schedule_k1s)
 
 
-def _sehi_and_possible_k1_qbi(scenario) -> bool:
+def _sehi_and_possible_s_corp_k1_qbi(scenario) -> bool:
     # At load an S corporation return's K-1 does not exist yet; its QBI is
-    # known only after the corporate pipeline runs.
-    return _sehi(scenario) and (
-        _sehi_and_k1_qbi(scenario) or scenario.s_corp_return is not None)
+    # known only after the corporate pipeline runs. That pipeline only
+    # appends S corporation K-1s, so the shape test is already exact here.
+    return _sehi(scenario) and _s_corp_shape(scenario) and (
+        _sehi_and_s_corp_k1_qbi(scenario)
+        or scenario.s_corp_return is not None)
 
 
 _QBI_SEHI = ContestedPosition(
@@ -103,7 +121,10 @@ _QBI_SEHI = ContestedPosition(
                 "determining QBI."),
             consequence=(
                 "The shareholder's QBI is reduced by the deduction, which "
-                "can lower the section 199A deduction."),
+                "can lower the section 199A deduction. With more than one S "
+                "corporation K-1, how the reduction is allocated among them "
+                "is unruled law; tenforty refuses that return under this "
+                "election."),
             sources=(
                 Source(
                     citation="IRS, Qualified business income deduction "
@@ -216,8 +237,10 @@ _QBI_SEHI = ContestedPosition(
         ),
     ),
     recorded=datetime.date(2026, 10, 18),
-    reached_when=_sehi_and_k1_qbi,
-    may_reach=_sehi_and_possible_k1_qbi,
+    reached_when=_sehi_and_s_corp_k1_qbi,
+    may_reach=_sehi_and_possible_s_corp_k1_qbi,
+    # Consulted by Form 8995 (forms/f8995._k1_sehi_reduction).
+    wired=True,
 )
 
 # Consumers must read positions.POSITIONS via the module: a from-import
@@ -227,13 +250,36 @@ POSITIONS: Mapping[str, ContestedPosition] = MappingProxyType({
 })
 
 
-# Every position a computation has consulted in this process (spec §13
-# reachability instrument). Tests reset it before exercising a scenario.
-CONSULTED: set[str] = set()
+# The results-dict key carrying a run's consults (ruling 5): a list of
+# {"slug", "choice", "reached"} entries, one per position the run reached
+# and consulted, in consult order. A run that reaches no position carries
+# no key at all: silence means never reached. Today an entry exists only
+# for a reached position, so "reached" is always True; a later phase may
+# add reached: False entries for elections declared but not reached.
+RESULTS_KEY = "positions_consulted"
+
+# The record of the run in progress; None outside a run (the emit path's
+# recompute of a form consults, but records nowhere).
+_RUN_RECORD: contextvars.ContextVar[list[dict] | None] = (
+    contextvars.ContextVar("positions_run_record", default=None))
 
 
-def reset_consulted() -> None:
-    CONSULTED.clear()
+@contextlib.contextmanager
+def recording():
+    """Collect the consults of one run into a fresh list (yielded).
+
+    One record per pipeline run: runs must not nest. An inner run would
+    take every consult made while it is open, and the outer run's record
+    would silently miss them. The amended-return path is two SEQUENTIAL
+    runs (amended, then original), each with its own record. A change that
+    nests runs must decide where consults belong; it must not inherit this
+    silently."""
+    record: list[dict] = []
+    token = _RUN_RECORD.set(record)
+    try:
+        yield record
+    finally:
+        _RUN_RECORD.reset(token)
 
 
 def validate_elections(scenario, *, exact: bool = False) -> None:
@@ -266,8 +312,8 @@ def validate_elections(scenario, *, exact: bool = False) -> None:
         if not pos.wired:
             raise ValueError(
                 f"`positions` elects {slug!r}, which is registered but not "
-                "yet consulted by the computation (positions phase 2 wires "
-                "it). Until then the computation refuses this return "
+                "yet consulted by the computation. Until a computation "
+                "consults it, the computation refuses this return "
                 "whatever is elected, so the election would do nothing. "
                 "Remove it.")
         reaches = pos.reached_when if exact else pos.may_reach
@@ -292,12 +338,16 @@ def refusal_message(slug: str) -> str:
 
 
 def election(scenario, slug: str) -> str:
-    """The return's election for ``slug``, recording the consult; refuses
-    (NotImplementedError, the standard message) when none is given. An
-    unregistered slug is a programming error (LookupError)."""
+    """The return's election for ``slug``, recorded in the run in progress;
+    refuses (NotImplementedError, the standard message) when none is given.
+    An unregistered slug, or a consult on a return that never reaches the
+    position, is a programming error (LookupError, RuntimeError)."""
     if slug not in POSITIONS:
         raise LookupError(f"{slug!r} is not a registered contested position.")
-    CONSULTED.add(slug)
+    if not POSITIONS[slug].reached_when(scenario):
+        raise RuntimeError(
+            f"{slug!r} consulted on a return that never reaches it: the "
+            "consulting path must gate on the position's reached_when.")
     choice = scenario.positions.get(slug)
     if choice is None:
         raise NotImplementedError(refusal_message(slug))
@@ -308,4 +358,8 @@ def election(scenario, slug: str) -> str:
         raise ValueError(
             f"`positions: {slug}` is {choice!r}, which is not one of its "
             f"choices: {valid}.")
+    record = _RUN_RECORD.get()
+    entry = {"slug": slug, "choice": choice, "reached": True}
+    if record is not None and entry not in record:
+        record.append(entry)
     return choice
