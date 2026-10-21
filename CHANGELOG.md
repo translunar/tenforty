@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.2.6 — 2026-10-21
+
+Feature release: contested-position elections (phase 2 of the registry
+shipped in 0.2.2). One optional scenario key gains meaning; no existing
+computed output changes.
+
+### Added
+
+- **Contested positions can now be elected.** The `positions:` scenario
+  key is consulted at compute time. The first live position is
+  `qbi-sehi-shareholder-reduction` — whether a >2% S-corp shareholder's
+  self-employed health insurance deduction reduces QBI (the IRS's informal
+  FAQ says yes; the AICPA and the regulation's text argue no; no binding
+  authority resolves it). A return whose shape reaches the question must
+  elect a side:
+
+  ```yaml
+  positions:
+    qbi-sehi-shareholder-reduction: irs-faq    # or: no-reduction
+  ```
+
+  `irs-faq` subtracts the SEHI from that K-1's QBI row before the
+  Form 8995 totals (no zero floor); `no-reduction` leaves QBI unchanged.
+  Without an election the shape still refuses, with the controversy
+  explained.
+- **Results record the consulted positions.** When a position actually
+  fires, the results dict carries `positions_consulted` (slug, choice,
+  reached), so a return's output states which contested elections shaped
+  it. Absent when no position was reached.
+
+### Behavior change
+
+- The SEHI-alongside-K-1-QBI shape, hard-refused since 0.2.2, computes
+  again when an election is given. Multiple K-1s with QBI under `irs-faq`
+  refuse rather than inventing a pro-rata split the guidance never states.
+
+### Internal
+
+- The election-consultation scan fails loudly on aliased imports and on
+  local bindings that shadow `election()`, instead of silently missing
+  them.
+
 ## 0.2.5 — 2026-10-20
 
 Verification release: Schedule E graduates. No scenario-schema changes.
