@@ -17,6 +17,7 @@ from tenforty.forms.depreciation.resolver import (
     resolve as resolve_depreciation,
 )
 from tenforty.oracle.engine import SpreadsheetEngine
+from tenforty.rounding import irs_round
 from tenforty.forms import f1040 as form_1040
 from tenforty.forms import f4868 as form_4868
 from tenforty.forms import f8949 as form_f8949
@@ -677,6 +678,40 @@ def _net_ptc_without_schedule_3(scenario: Scenario,
         "REVIEW USE, with this gap, set the top-level scenario key "
         "`acknowledges_schedule_3_not_produced: true`; do not file the "
         "result as printed.")
+
+
+# The Form 1040 line-32 components ("total other payments and refundable
+# credits", lines 27-31) as result keys. A year prints only the ones its PDF
+# maps; the 2021 recovery rebate credit (line 30) has no key at all.
+_LINE_32_COMPONENT_KEYS = (
+    "eic", "additional_child_tax_credit", "american_opportunity_credit",
+    "adoption_credit_8839", "schedule3_payments",
+)
+
+
+def _line_32_unfooted(year: int, results: dict) -> str | None:
+    """The Form 1040 refusal for a harvested line 32 that the printed
+    line-32 components do not add up to: the workbook summed in a payment
+    or refundable credit tenforty cannot print, so the page would not foot.
+    None when line 32 was not harvested (the native path) or it foots."""
+    line_32 = results.get("total_other_payments")
+    if line_32 is None:
+        return None
+    mapped = Pdf1040.get_mapping(year)
+    printed = {key: irs_round(results[key]) for key in _LINE_32_COMPONENT_KEYS
+               if key in mapped and results.get(key) is not None}
+    if irs_round(line_32) == sum(printed.values()):
+        return None
+    shown = ", ".join(f"{key} {value}" for key, value in printed.items())
+    return (
+        f"Form 1040 line 32 (total other payments and refundable credits) "
+        f"is {irs_round(line_32)} as the workbook computed it, but the "
+        f"line-32 components tenforty prints add up to "
+        f"{sum(printed.values())} ({shown or 'none'}). The workbook included "
+        "a payment or refundable credit (Form 1040 lines 27-31) that "
+        "tenforty cannot print, so the page would not foot (line 32 would "
+        "not equal the lines above it as printed). tenforty does not yet "
+        "support this return.")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -2327,7 +2362,8 @@ class ReturnOrchestrator:
             # path, and the single shared implementation of the arithmetic
             # lives in forms/f4868.py. See Pdf1040.get_derivations for why
             # not a spine output key.
-            refusal=_net_ptc_without_schedule_3(scenario, results),
+            refusal=(_net_ptc_without_schedule_3(scenario, results)
+                     or _line_32_unfooted(year, results)),
         ))
 
         specs.append(_FederalFormSpec(
