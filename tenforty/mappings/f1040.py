@@ -557,6 +557,9 @@ class F1040(FormMapping):
 
     SHEET_MAP: dict[int, dict[str, str]] = {
         2024: {
+            # Form 1040 line 32 (total other payments and refundable
+            # credits): unnamed in every year; direct cell ref on 1040.
+            "total_other_payments": "1040",
             "w2_wages_1": "W-2s",
             "w2_fed_withheld_1": "W-2s",
             "w2_ss_wages_1": "W-2s",
@@ -708,6 +711,9 @@ class F1040(FormMapping):
             **_f8949_all_sheet_map(_F8949_BOX_SLOTS_2024),
         },
         2025: {
+            # Form 1040 line 32 (total other payments and refundable
+            # credits): unnamed in every year; direct cell ref on 1040.
+            "total_other_payments": "1040",
             "w2_wages_1": "W-2s",
             "w2_fed_withheld_1": "W-2s",
             "w2_ss_wages_1": "W-2s",
@@ -1412,6 +1418,11 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 32 = SUM(EIC, lines 28-31) on the 1040 sheet,
+            # harvested by address (no named range). Its terms are pinned
+            # in tests/test_eic_harvest.py; the emit refuses when it does
+            # not equal the line-32 components tenforty prints.
+            "total_other_payments": "AD95",
         },
         2025: {
             "wages": "Wages",
@@ -1553,6 +1564,8 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 32 by address; see the 2024 block.
+            "total_other_payments": "AL123",
         },
     }
 
@@ -1637,6 +1650,7 @@ F1040.INPUTS[2023] = F1040.inherit(2024, {
 }, source="inputs")
 F1040.OUTPUTS[2023] = F1040.inherit(2024, {
     "sch_a_line_5e_salt_capped": "M29",   # 'Sch. A' col -1 (2024 N29)
+    "total_other_payments": "AD92",       # 1040 line 32 (2024 AD95)
 }, source="outputs")
 F1040.SHEET_MAP[2023] = dict(F1040.SHEET_MAP[2024])
 
@@ -1683,6 +1697,7 @@ F1040.INPUTS[2022] = F1040.inherit(2023, {
 F1040.OUTPUTS[2022] = F1040.inherit(2023, {
     "sch_a_line_5e_salt_capped": "M30",   # 'Sch. A' +1 row (2023 M29)
     "f8582_line_11_oracle": "AE44",       # '8582' +1 row (2023 AE43)
+    "total_other_payments": "AC86",       # 1040 line 32 (2023 AD92)
 }, source="outputs")
 F1040.SHEET_MAP[2022] = dict(F1040.SHEET_MAP[2023])
 
@@ -1844,7 +1859,9 @@ def _wire_2021() -> None:
         # input is 2021-scoped here and deliberately NOT inherited into later years.
         "charitable_nonitemizer": "Charitable",
     }, source="inputs")
-    outputs = F1040.inherit(2022, {}, source="outputs")  # Sch.A M30 unchanged
+    outputs = F1040.inherit(2022, {  # Sch.A M30 unchanged
+        "total_other_payments": "AC82",  # 1040 line 32 (2022 AC86)
+    }, source="outputs")
     F1040.INPUTS[2021] = {k: v for k, v in inputs.items() if k not in excluded}
     F1040.OUTPUTS[2021] = {k: v for k, v in outputs.items()
                            if k not in excluded}
