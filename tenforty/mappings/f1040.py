@@ -1406,6 +1406,12 @@ class F1040(FormMapping):
             # range resolves automatically), so no SHEET_MAP entry needed.
             "f8962_net_ptc": "PTC_Net",
             "f8962_repayment": "PTC_Excess",
+            # Form 1040 line 27 (earned income credit). Workbook-scoped name
+            # in every year (the 1040 sheet's line-27 cell; the address
+            # drifts). Tot_Payments already sums it through line 32, so
+            # without this key the credit reached line 33 while line 27
+            # printed blank.
+            "eic": "EIC",
         },
         2025: {
             "wages": "Wages",
@@ -1541,6 +1547,12 @@ class F1040(FormMapping):
             # no SHEET_MAP entry needed (see 2024 note above).
             "f8962_net_ptc": "PTC_Net",
             "f8962_repayment": "PTC_Excess",
+            # Form 1040 line 27 (earned income credit). Workbook-scoped name
+            # in every year (the 1040 sheet's line-27 cell; the address
+            # drifts). Tot_Payments already sums it through line 32, so
+            # without this key the credit reached line 33 while line 27
+            # printed blank.
+            "eic": "EIC",
         },
     }
 
