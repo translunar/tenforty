@@ -399,6 +399,20 @@ def compute(raw_1040: dict, upstream: dict[str, dict]) -> dict:
     if translated.get("f8959_tax_total") is None:
         translated["f8959_tax_total"] = 0
 
+    # estimated_tax_payments (1040 line 26), harvested since ruling R-S4-3
+    # from the SAME `EstimatedTaxPayments` cell its input writes. The
+    # flattener writes that input only when it is nonzero, so a return with
+    # no estimated payments leaves the cell blank and the engine reads None —
+    # present-as-None, which defeats every consumer's `.get(key, default)`
+    # (the 1040-X line-13 `None - None` the 624d408 oracle run hit). Blank
+    # provably means zero, so normalize HERE, at the one translation
+    # chokepoint for workbook results, rather than in each consumer: the
+    # native spine always emits a number, and every consumer (1040-X line
+    # 13, the payments-footing guard, the line-26 print) then sees the same
+    # contract on both paths. Scoped to this ONE key, like f8959_tax_total.
+    if translated.get("estimated_tax_payments") is None:
+        translated["estimated_tax_payments"] = 0
+
     # schedule2_tax (1040 line 17 = Schedule 2 line 3). ITS CAPTION IS NOT THE
     # SAME IN ALL FIVE YEARS, and the 2024-25 one is the familiar one: the
     # vendor sheet reads "Add lines 1z and 2" at 'Sch. 2'!E35 in 2024-2025 but
