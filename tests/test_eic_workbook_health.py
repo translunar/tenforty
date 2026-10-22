@@ -12,6 +12,8 @@ from unittest import mock
 
 import openpyxl
 
+from tenforty.mappings.f1040 import (
+    EIC_FORM_4797_NO_KEY, F1040, eic_form_4797_no_answer)
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.federal import load as load_params
@@ -50,8 +52,15 @@ class WorkbookConstantsMatchParamsTests(unittest.TestCase):
 
 
 class AnswerCellStructureTests(unittest.TestCase):
-    """Each question has exactly one INPUT cell (blank in the template) and
-    a formula for its other answer. A vendor relayout fails here."""
+    """Each eligibility question has exactly one INPUT cell (blank in the
+    template) and a formula for its other answer; Step 2 Q3 (Form 4797) is
+    the one question with two input cells (ruling R-S7-6a). A vendor
+    relayout fails here.
+
+    Every input — including the Q3 "No" cell production now writes — is
+    blank in the TEMPLATE: production's write lands in the compute-time copy
+    the engine makes, never in the template. That is not a contradiction;
+    do not "fix" it."""
 
     def test_inputs_are_blank_and_the_derived_side_is_a_formula(self):
         for year in YEARS:
@@ -67,6 +76,20 @@ class AnswerCellStructureTests(unittest.TestCase):
                 with self.subTest(year=year, diagnostic=key):
                     self.assertTrue(str(wb[sheet][cell].value)
                                     .startswith("="))
+            for key, (cell, formula) in cells["stops"].items():
+                with self.subTest(year=year, stop=key):
+                    self.assertEqual(wb[cells["sheet"]][cell].value, formula)
+
+    def test_the_form_4797_no_cell_is_productions(self):
+        # The adapter answers Q3 in the very cell production writes.
+        for year in YEARS:
+            sheet, cell = adapter.EIC_WORKBOOK_CELLS[year]["inputs"][
+                EIC_FORM_4797_NO_KEY]
+            with self.subTest(year=year):
+                self.assertEqual(
+                    (sheet, cell),
+                    (F1040.SHEET_MAP[year][EIC_FORM_4797_NO_KEY],
+                     F1040.get_inputs(year)[EIC_FORM_4797_NO_KEY]))
 
 
 class AdapterWritesEveryAnswerTests(unittest.TestCase):
@@ -89,11 +112,11 @@ class AdapterWritesEveryAnswerTests(unittest.TestCase):
         cells = adapter.EIC_WORKBOOK_CELLS[year]
         wb = self._written(year, eic_battery.battery_for(
             year, "single")["plateau"](year))
+        special = {"eic_answer_qualifying_children": 0,
+                   EIC_FORM_4797_NO_KEY: eic_form_4797_no_answer(year)}
         for key, (sheet, cell) in cells["inputs"].items():
             with self.subTest(input=key):
-                expected = 0 if key == "eic_answer_qualifying_children" \
-                    else None
-                self.assertEqual(wb[sheet][cell].value, expected)
+                self.assertEqual(wb[sheet][cell].value, special.get(key))
         for cell, formula in cells["derived"].items():
             self.assertEqual(wb[cells["sheet"]][cell].value, formula)
 

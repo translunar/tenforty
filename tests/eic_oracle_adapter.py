@@ -9,15 +9,20 @@ this adapter writes EVERY answer explicitly from the scenario's
   * swapping the engine's mapping for one that maps those keys (and the
     sheet's own diagnostic cells, as extra outputs).
 
-Each question on the EIC sheet has exactly ONE input cell; its other
-answer is a formula (pinned per year by tests/test_eic_workbook_health.py),
-so "every answer explicitly" means each INPUT cell set to "X" or cleared,
-never the derived side.
+Each eligibility question on the EIC sheet has exactly ONE input cell; its
+other answer is a formula (pinned per year by
+tests/test_eic_workbook_health.py), so "every answer explicitly" means each
+INPUT cell set to "X" or cleared, never the derived side. The ONE exception
+is Step 2 question 3 (Form 4797), whose "Yes" and "No" are both plain input
+cells: production answers it (ruling R-S7-6a,
+mappings.f1040.EIC_FORM_4797_QUESTION), and this adapter writes production's
+identical formula and clears "Yes".
 """
 import contextlib
 from unittest import mock
 
-from tenforty.mappings.f1040 import F1040
+from tenforty.mappings.f1040 import (
+    EIC_FORM_4797_NO_KEY, F1040, eic_form_4797_no_answer)
 from tenforty.models import FilingStatus, Scenario, parse_filing_status
 
 # Per year: the EIC sheet, its hardcoded constants (health check), each
@@ -52,6 +57,9 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
             "eic_answer_dependent_you": ("1040", "O84"),
             "eic_answer_dependent_spouse": ("1040", "X84"),
             "eic_answer_clergy": ("Line 27a (EIC)", "B235"),
+            # Step 2 Q3 (Form 4797): both answers are inputs (R-S7-6a).
+            "eic_answer_form_4797_yes": ("Line 27a (EIC)", "B65"),
+            EIC_FORM_4797_NO_KEY: ("Line 27a (EIC)", "H65"),
         },
         # The derived side of each question, formula text pinned EXACTLY
         # (ruling R-S7-2): with every input blank these yield the
@@ -74,6 +82,18 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
             "eic_diag_prompt_an": ("Line 27a (EIC)", "AN1"),
             "eic_diag_prompt_ao": ("Line 27a (EIC)", "AO1"),
             "eic_diag_prompt_ap": ("Line 27a (EIC)", "AP1"),
+        },
+        # Ruling R-S7-9a: each STOP a denied row must positively reach,
+        # read back after recalculation -> its formula, pinned EXACTLY.
+        "stops": {
+            "eic_stop_agi_limit": ("G21", '=H21="X"'),           # Step 1 Q1
+            "eic_stop_ssn": ("G28", '=OR(NOT(A28),H28<>"")'),    # Step 1 Q2
+            "eic_stop_age": ("G185", "=AND(K164,G172,NOT(A185))"),  # Step 4 Q2
+            "eic_stop_main_home": ("G199", '=H199<>""'),         # Step 4 Q3
+            "eic_stop_qc_of_another": ("A216", '=AND(G206,B216<>"")'),  # Q5
+            "eic_stop_dependent": ("A226",
+                                   '=AND(G216,DependentYOU<>"")'),  # Q6
+            "eic_stop_credit_zero": ("A321", "=AND(A310,L316=0)"),  # Wks A
         },
     },
 }
@@ -111,6 +131,9 @@ def answers(scenario: Scenario) -> dict[str, object]:
         # No scenario input can state clergy/church-employee income (its
         # unreachability is pinned): always answered "No" (input cleared).
         "eic_answer_clergy": None,
+        # Form 4797 is unreachable too: production's own answer (R-S7-6a).
+        "eic_answer_form_4797_yes": None,
+        EIC_FORM_4797_NO_KEY: eic_form_4797_no_answer(scenario.config.year),
     }
 
 
@@ -124,8 +147,13 @@ def answering_mapping(year: int) -> type:
     cells = EIC_WORKBOOK_CELLS[year]
     extra_in = {k: cell for k, (_, cell) in cells["inputs"].items()}
     extra_out = {k: cell for k, (_, cell) in cells["diagnostics"].items()}
+    extra_out.update({k: cell for k, (cell, _) in cells["stops"].items()})
+    # The Q3 "No" cell is read back too: the investment row's stop.
+    extra_out["eic_stop_form_4797_no"] = cells["inputs"][EIC_FORM_4797_NO_KEY][1]
     extra_sheets = {k: sheet for k, (sheet, _) in
                     {**cells["inputs"], **cells["diagnostics"]}.items()}
+    extra_sheets.update({k: cells["sheet"] for k in
+                         [*cells["stops"], "eic_stop_form_4797_no"]})
 
     class _Answering:
         SHEET_MAP = {year: {**F1040.SHEET_MAP[year], **extra_sheets}}

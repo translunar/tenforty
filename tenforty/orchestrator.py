@@ -63,7 +63,8 @@ from tenforty.verification.record import (
 from tenforty.params import ca_scorp
 from tenforty.params import california as params_california
 from tenforty.oracle.flattener import flatten_scenario
-from tenforty.mappings.f1040 import F1040
+from tenforty.mappings.f1040 import (
+    EIC_FORM_4797_NO_KEY, F1040, eic_form_4797_no_answer)
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
@@ -2039,6 +2040,9 @@ class ReturnOrchestrator:
 
         flat_inputs = flatten_scenario(effective_scenario)
         _refuse_unmapped_w2_inputs(flat_inputs, year)
+        # EIC Step 2 Q3 (Form 4797): answered "No" whenever the sheet asks
+        # (ruling R-S7-6a; see mappings.f1040.EIC_FORM_4797_QUESTION).
+        flat_inputs[EIC_FORM_4797_NO_KEY] = eic_form_4797_no_answer(year)
         raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,

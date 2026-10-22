@@ -31,6 +31,11 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # the engine, or the sentinel proves the engine was reached — no
     # recalculation, so no real soffice is ever invoked.
     "test_eic_workbook_guard.py",
+    # EIC Form 4797 answer (R-S7-6a): static openpyxl reads, the engine's own
+    # input writer on a temp copy (no recalculation), and one workbook-path
+    # hand-off whose orch.engine.compute is patched with a Stop sentinel —
+    # no real soffice is ever invoked.
+    "test_eic_form_4797_answer.py",
     # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
     # at the top of _compute_1040_via_workbook, before any engine call. The
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute

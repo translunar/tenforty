@@ -4,8 +4,13 @@ For each (2025, status) battery row, the native result and the workbook's —
 computed through the oracle-only answer adapter, which writes every EIC
 answer from the scenario's facts (tests/eic_oracle_adapter.py) — agree to
 the penny on line 27 (`eic`), line 32 and line 33. A row counts as evidence
-only when the workbook's own status cells raise no "Please answer" prompt
-(spec §10.3 item 2); the health constants are pinned on the fast tier
+only when the workbook's own state confirms it (spec §10.3 item 2; ruling
+R-S7-9a): a CREDITED row raises no "Please answer" prompt and is not denied
+(NoEICredit, A1, FALSE); a DENIED row positively reaches the workbook STOP
+for the same rule native cites (DENIAL_STOPS) with NoEICredit TRUE. The
+sheet's Step 5 prompt (AP1) is not gated on NoEICredit, so it fires on
+every row stopped earlier — denied rows are exempt from AP1 only, never
+from the stop. The health constants are pinned on the fast tier
 (tests/test_eic_workbook_health.py). Divergences go to adjudication, never
 an allowlist.
 
@@ -62,6 +67,35 @@ DIVERGENCES = {
     ("single", "agi_over_earned"): (323, 324),
 }
 
+# Ruling R-S7-9a: kind -> (stop output, its reached value, native's rule).
+# Stop outputs are read back by the adapter (EIC_WORKBOOK_CELLS "stops").
+DENIAL_STOPS = {
+    "over_ceiling": ("eic_stop_agi_limit", True, "Step 1, question 1"),
+    "fact_ssn_not_valid": ("eic_stop_ssn", True, "Step 1, question 2"),
+    "investment_over_limit": ("eic_stop_form_4797_no", "X",
+                              "Step 2, question 2"),
+    "age_lower_bound_out": ("eic_stop_age", True, "Step 4, question 2"),
+    "fact_main_home_not_in_us": ("eic_stop_main_home", True,
+                                 "Step 4, question 3"),
+    "fact_qualifying_child_of_another": ("eic_stop_qc_of_another", True,
+                                         "Step 4, question 5"),
+    "fact_claimable_as_dependent": ("eic_stop_dependent", True,
+                                    "Step 4, question 6"),
+    "just_under_ceiling": ("eic_stop_credit_zero", True,
+                           "Worksheet A, credit line"),
+    "earned_income_below_min": ("eic_stop_credit_zero", True,
+                                "Worksheet A, earned income"),
+}
+
+# Ruling R-S7-9a, adjudicated observation (static prediction; the oracle run
+# after d9dec1f is its first LibreOffice confirmation — a contradiction is a
+# finding, STOP and enumerate): Step 4 Q6's "Yes. STOP" (A226) is in
+# neither NoEICredit's OR-chain (A1) nor N1, so the workbook stops the flow
+# (credit 0) without declaring the denial. Same species as R-S7-7 (a STOP
+# missing from the OR-chain); harmless in dollars; production is
+# guard-protected (an unfavorable fact refuses on the workbook path, R-S7-2).
+UNDECLARED_DENIALS = {("single", "fact_claimable_as_dependent")}
+
 
 def _n(value) -> int:
     return int(round(value or 0))
@@ -96,13 +130,46 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
                     if k not in excluded}
         self.assertEqual(set(self.pairs), expected)
 
-    def test_every_row_is_fully_answered(self):
+    def _denied(self, status, kind):
+        native, workbook = self.pairs[(status, kind)]
+        expected = DIVERGENCES.get((status, kind),
+                                   (None, _n(native.get("eic"))))[1]
+        return expected == 0
+
+    def _prompt_free(self, status, kind, workbook, prompts):
+        for prompt in prompts:
+            with self.subTest(status=status, kind=kind, cell=prompt):
+                self.assertFalse(
+                    str(workbook.get(prompt) or "").startswith("Please"),
+                    workbook.get(prompt))
+
+    def test_every_denied_row_has_its_stop(self):
+        denied = {k for (s, k) in self.pairs if self._denied(s, k)}
+        self.assertLessEqual(denied, set(DENIAL_STOPS))
+        self.assertLessEqual(UNDECLARED_DENIALS, {
+            (s, k) for (s, k) in self.pairs if self._denied(s, k)})
+
+    def test_credited_rows_are_fully_answered_and_not_denied(self):
         for (status, kind), (_, workbook) in sorted(self.pairs.items()):
-            for prompt in _PROMPTS:
-                with self.subTest(status=status, kind=kind, cell=prompt):
-                    self.assertFalse(
-                        str(workbook.get(prompt) or "").startswith("Please"),
-                        workbook.get(prompt))
+            if self._denied(status, kind):
+                continue
+            self._prompt_free(status, kind, workbook, _PROMPTS)
+            with self.subTest(status=status, kind=kind, cell="A1"):
+                self.assertEqual(workbook.get("eic_diag_no_credit"), False)
+
+    def test_denied_rows_stop_where_native_stops(self):
+        for (status, kind), (native, workbook) in sorted(self.pairs.items()):
+            if not self._denied(status, kind):
+                continue
+            stop, reached, rule = DENIAL_STOPS[kind]
+            with self.subTest(status=status, kind=kind, check="native"):
+                self.assertEqual(native["eic_determination"]["rule"], rule)
+            with self.subTest(status=status, kind=kind, check=stop):
+                self.assertEqual(workbook.get(stop), reached)
+            with self.subTest(status=status, kind=kind, cell="A1"):
+                self.assertEqual(workbook.get("eic_diag_no_credit"),
+                                 (status, kind) not in UNDECLARED_DENIALS)
+            self._prompt_free(status, kind, workbook, _PROMPTS[:2])
 
     def test_line_27_32_33_agree_to_the_penny(self):
         for (status, kind), (native, workbook) in sorted(self.pairs.items()):

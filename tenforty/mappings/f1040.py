@@ -1927,3 +1927,45 @@ for _key, _probe in WORKBOOK_PROBES_2021.items():
     F1040.OUTPUTS[2021][_key] = _probe.cell
     F1040.SHEET_MAP[2021][_key] = _probe.sheet
 del _key, _probe
+
+
+# --- EIC Step 2 question 3 (Form 4797), 2021-2025 (ruling R-S7-6a) ----------
+#
+# When investment income exceeds the limit the sheet asks "Are you filing
+# Form 4797?" (Q3); "No" means STOP, and only then. The "No" cell sits in
+# NoEICredit's OR-chain unconditionally (A1 ... <no cell><>"" ...), so a bare
+# "X" would deny every return. Unanswered, the stop never fires and the table
+# credit flows through. tenforty never produces Form 4797 (the
+# unreachability proof: tests/test_eic_grid_gates.py UNREACHABLE_ITEMS
+# "form_4797"), so the workbook path answers "No" exactly when the sheet
+# asks: a formula keyed to the year's own Q2 "Yes" cell. Addresses read by
+# formula consumers; pinned per year by tests/test_eic_form_4797_answer.py.
+class _EicForm4797Question(NamedTuple):
+    sheet: str
+    q2_yes: str   # Step 2 Q2 "Yes" (investment income over the limit)
+    q3_yes: str   # Q3 "Yes, filing Form 4797" (left blank)
+    q3_no: str    # "No" -- the STOP cell in NoEICredit (A1)
+
+
+EIC_FORM_4797_QUESTION: dict[int, _EicForm4797Question] = {
+    2025: _EicForm4797Question("Line 27a (EIC)", "B60", "B65", "H65"),
+    2024: _EicForm4797Question("Line 27 (EIC)", "B60", "B65", "H65"),
+    2023: _EicForm4797Question("Line 27 (EIC)", "B59", "B64", "H64"),
+    2022: _EicForm4797Question("Line 27 (EIC)", "B59", "B64", "H64"),
+    2021: _EicForm4797Question("Line 27a (EIC)", "B59", "B63", "H63"),
+}
+EIC_FORM_4797_NO_KEY = "eic_form_4797_no"
+
+
+def eic_form_4797_no_answer(year: int) -> str:
+    """The Q3 "No" cell's value: "X" exactly when Q2 is answered Yes."""
+    return f'=IF({EIC_FORM_4797_QUESTION[year].q2_yes}<>"","X","")'
+
+
+for _year, _q in EIC_FORM_4797_QUESTION.items():
+    # Per-year copies: some years' maps were built from another's.
+    F1040.INPUTS[_year] = {**F1040.INPUTS[_year],
+                           EIC_FORM_4797_NO_KEY: _q.q3_no}
+    F1040.SHEET_MAP[_year] = {**F1040.SHEET_MAP[_year],
+                              EIC_FORM_4797_NO_KEY: _q.sheet}
+del _year, _q
