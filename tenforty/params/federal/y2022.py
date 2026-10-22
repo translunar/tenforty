@@ -153,4 +153,16 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf
     # sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
     aged_born_before=datetime.date(1958, 1, 2),
+    # Childless EIC (§32, zero qualifying children): pending transcription;
+    # this year's EIC cells land with the per-year ladder.
+    eic_credit_pct=None,
+    eic_phaseout_pct=None,
+    eic_earned_income_amount=None,
+    eic_max_credit=None,
+    eic_phaseout_threshold=None,
+    eic_completed_phaseout=None,
+    eic_investment_income_limit=None,
+    eic_min_earned_income=None,
+    eic_min_age=None,
+    eic_max_age=None,
 )

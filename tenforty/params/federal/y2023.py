@@ -140,4 +140,16 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf
     # sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
     aged_born_before=datetime.date(1959, 1, 2),
+    # Childless EIC (§32, zero qualifying children): pending transcription;
+    # this year's EIC cells land with the per-year ladder.
+    eic_credit_pct=None,
+    eic_phaseout_pct=None,
+    eic_earned_income_amount=None,
+    eic_max_credit=None,
+    eic_phaseout_threshold=None,
+    eic_completed_phaseout=None,
+    eic_investment_income_limit=None,
+    eic_min_earned_income=None,
+    eic_min_age=None,
+    eic_max_age=None,
 )

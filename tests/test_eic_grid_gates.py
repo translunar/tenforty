@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 _EIC_STATUSES = frozenset({FilingStatus.SINGLE.value,
                            FilingStatus.MARRIED_FILING_JOINTLY.value})
 # The one scalar whose None is a stated value (no upper age bound), not a gap.
-_NULLABLE_SCALARS = frozenset({"eic_age_max"})
+_NULLABLE_SCALARS = frozenset({"eic_max_age"})
 _MISSING = object()
 
 

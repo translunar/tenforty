@@ -51,6 +51,21 @@ WAIVED: dict[str, str] = {
                              "add one when a medical itemizer enters scope",
     "prior_year_salt_cap": "battery pins prior_year_itemized=False, "
                            "short-circuiting the Sch 1 tax-benefit rule",
+    # Childless EIC (step 4 of the childless-EITC rollout). TEMPORARY: the
+    # EIC rows join the native-vs-workbook parity battery only with the
+    # oracle EIC-answer adapter (rollout step 7) — before that the workbook
+    # would figure the credit on its own default answers, which is not
+    # evidence. Until then each field is driven at its boundary by
+    # tests/test_eic_compute.py and cross-checked against the published EIC
+    # Table by tests/test_eic_table_crosscheck.py. Shrink at step 7.
+    **{name: "childless EIC: boundary-driven by tests/test_eic_compute.py "
+             "and the EIC Table cross-check until the parity rows land "
+             "(rollout step 7)"
+       for name in ("eic_credit_pct", "eic_phaseout_pct",
+                    "eic_earned_income_amount", "eic_max_credit",
+                    "eic_phaseout_threshold", "eic_completed_phaseout",
+                    "eic_investment_income_limit", "eic_min_earned_income",
+                    "eic_min_age", "eic_max_age")},
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
     "excess_business_loss_threshold":

@@ -84,9 +84,9 @@ _EIC_KINDS_MFJ: tuple[str, ...] = ("mfj_one_spouse_in_age_band",)
 def required_eic_kinds(year: int, status: str) -> tuple[str, ...]:
     """Battery kinds a declared (year, status) must carry. The upper-age
     pair is required unless the year's params state there is no upper bound
-    (``eic_age_max`` explicitly None); absent params require it."""
+    (``eic_max_age`` explicitly None); absent params require it."""
     kinds = _EIC_KINDS_EVERY_CELL
-    if getattr(load_params(year), "eic_age_max", _UNSET) is not None:
+    if getattr(load_params(year), "eic_max_age", _UNSET) is not None:
         kinds += _EIC_KINDS_UPPER_AGE
     if status == "married_filing_jointly":
         kinds += _EIC_KINDS_MFJ

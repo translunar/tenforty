@@ -81,6 +81,26 @@ class FederalParams:
     # Exclusive age cutoff for the tax year: a person born strictly before
     # this date meets the condition. None = pending transcription.
     aged_born_before: datetime.date | None
+    # Earned income credit, ZERO qualifying children (childless-EITC leg),
+    # IRC §32 and the year's Rev. Proc. None = pending transcription for a
+    # year whose (year, status) cells are not yet in
+    # years.NATIVE_EIC_STATUSES. Percentages are decimal fractions.
+    eic_credit_pct: float | None
+    eic_phaseout_pct: float | None
+    eic_earned_income_amount: int | None
+    eic_max_credit: int | None
+    # Per status ("single", "married_filing_jointly"): the AGI (or, if
+    # greater, earned income) above which the credit phases out, and at or
+    # above which none is allowed.
+    eic_phaseout_threshold: dict[str, int] | None
+    eic_completed_phaseout: dict[str, int] | None
+    eic_investment_income_limit: int | None
+    # The smallest earned income the year's EIC Table gives a credit for.
+    eic_min_earned_income: int | None
+    # Age test: attained eic_min_age, and has NOT attained eic_max_age,
+    # before the close of the year.
+    eic_min_age: int | None
+    eic_max_age: int | None
 
     def for_status(self, status: "FilingStatus | str") -> "StatusView":
         """Projection of these params onto one filing status. Per-status
@@ -114,19 +134,21 @@ PER_STATUS_FEDERAL_FIELDS: tuple[str, ...] = (
 # years.NATIVE_EIC_STATUSES rather than the spine grid: a year or status not
 # declared there carries them as None, pending transcription. Kept OUT of
 # PER_STATUS_FEDERAL_FIELDS so the spine gate never demands an EIC column for
-# a (year, status) that does not compute the credit (ruling R-P2). Names are
-# provisional until the independent transcription's schema is reconciled.
+# a (year, status) that does not compute the credit (ruling R-P2). Names
+# follow the independent attestation's schema.
 PER_STATUS_EIC_FIELDS: tuple[str, ...] = (
-    "eic_phaseout_begin",
-    "eic_phaseout_end",
+    "eic_phaseout_threshold",
+    "eic_completed_phaseout",
 )
 EIC_SCALAR_FIELDS: tuple[str, ...] = (
-    "eic_credit_rate",
+    "eic_credit_pct",
+    "eic_phaseout_pct",
     "eic_earned_income_amount",
-    "eic_phaseout_rate",
+    "eic_max_credit",
     "eic_investment_income_limit",
-    "eic_age_min",
-    "eic_age_max",
+    "eic_min_earned_income",
+    "eic_min_age",
+    "eic_max_age",
 )
 
 
