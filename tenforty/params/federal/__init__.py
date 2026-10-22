@@ -110,6 +110,25 @@ PER_STATUS_FEDERAL_FIELDS: tuple[str, ...] = (
     "additional_standard_deduction",
 )
 
+# Earned income credit (zero qualifying children) fields, gated over
+# years.NATIVE_EIC_STATUSES rather than the spine grid: a year or status not
+# declared there carries them as None, pending transcription. Kept OUT of
+# PER_STATUS_FEDERAL_FIELDS so the spine gate never demands an EIC column for
+# a (year, status) that does not compute the credit (ruling R-P2). Names are
+# provisional until the independent transcription's schema is reconciled.
+PER_STATUS_EIC_FIELDS: tuple[str, ...] = (
+    "eic_phaseout_begin",
+    "eic_phaseout_end",
+)
+EIC_SCALAR_FIELDS: tuple[str, ...] = (
+    "eic_credit_rate",
+    "eic_earned_income_amount",
+    "eic_phaseout_rate",
+    "eic_investment_income_limit",
+    "eic_age_min",
+    "eic_age_max",
+)
+
 
 def load(year: int) -> FederalParams:
     if (year not in year_manifest.FEDERAL_YEARS

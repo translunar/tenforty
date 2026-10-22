@@ -61,6 +61,29 @@ def native_spine_supports(year: int, status_value: str) -> bool:
     return status_value in NATIVE_SPINE_STATUSES.get(year, ())
 
 
+# Native childless earned income credit (Form 1040 line 27) support grid:
+# which (year, status) cells compute the zero-qualifying-children EIC on the
+# native spine. A subset of NATIVE_SPINE_STATUSES, SINGLE and MFJ only (the
+# childless-EITC spec). Declaring a cell is gated at test time — the EIC
+# params, the EIC battery kinds and the refusal-reachability fixtures must
+# all exist for it (tests/test_eic_grid_gates.py) — so a declaration cannot
+# outrun its data. Written out per year; each year's row lands with its own
+# params, table and parity evidence.
+NATIVE_EIC_STATUSES: dict[int, tuple[str, ...]] = {
+    2021: (),
+    2022: (),
+    2023: (),
+    2024: (),
+    2025: ("single",),
+}
+
+
+def native_eic_supports(year: int, status_value: str) -> bool:
+    """True iff ``status_value`` is declared for ``year`` in
+    NATIVE_EIC_STATUSES."""
+    return status_value in NATIVE_EIC_STATUSES.get(year, ())
+
+
 # Full California pipeline: 540 compute + PDF emit + divergence catalog.
 CALIFORNIA_YEARS: tuple[int, ...] = (2021, 2022, 2023, 2024, 2025)
 
