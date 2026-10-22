@@ -211,10 +211,12 @@ def _build_oracle_routed_qbi_scenario() -> Scenario:
     cannot exercise.
 
     Wages $8,000 + K-1 ordinary business income $10,000 -> AGI $18,000,
-    comfortably under the 2025 single/0-dependent EIC-ceiling-gate estimate
-    ($26,214), so `_scenario_in_spine_scope` is False. QBI deduction is
-    $450 (20% of the $2,250 taxable-income-before-QBI, the binding limit —
-    not 20% of the $10,000 QBI itself).
+    under the EIC-ceiling-gate estimate, so `_scenario_in_spine_scope` is
+    False. TY2024 (ruling R-S6-3): the test's subject is the WORKBOOK path,
+    and only a cell whose childless credit is not native yet still routes
+    an EIC-possible return there (transitional routing, R-S6-1); move it
+    when (2024, single) lands in NATIVE_EIC_STATUSES. The QBI deduction is
+    nonzero (Form 8995's binding limit: 20% of taxable income before QBI).
     """
     defaults = scope_out_attestation_defaults()
     for name in (
@@ -233,7 +235,8 @@ def _build_oracle_routed_qbi_scenario() -> Scenario:
     defaults["digital_assets"] = False  # emit refuses an unanswered question
     return Scenario(
         config=TaxReturnConfig(
-            year=2025,
+            # TY2024 (ruling R-S6-3): see the docstring.
+            year=2024,
             filing_status=FilingStatus.SINGLE,
             birthdate="1980-01-01",
             state="TX",
@@ -314,6 +317,11 @@ class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
         raw = self.field_values.get(field_name, "")
         return float(raw.replace(",", "").replace("$", "")) if raw else 0.0
 
+    def _line(self, key: str) -> float:
+        from tenforty.mappings.pdf_1040 import Pdf1040
+        return self._field(
+            Pdf1040.get_mapping(self.scenario.config.year)[key])
+
     def test_scenario_is_oracle_routed(self):
         # Confirm the routing claim rather than assume it: single filer,
         # low enough AGI estimate to fail the native spine's EIC-ceiling
@@ -326,22 +334,24 @@ class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
         self.assertGreater(self.results["qbi_deduction"], 0)
 
     def test_line_14_equals_line_12_plus_line_13(self):
-        # Line 12 (applied_deduction, f2_02) + Line 13a (qbi_deduction,
-        # f2_03) must equal Line 14 (deductions_plus_qbi, f2_05) — read from
+        # Line 12 (applied_deduction) + Line 13 (qbi_deduction) must equal
+        # Line 14 (deductions_plus_qbi) — read from
         # the ACTUAL emitted boxes, independently of the results dict.
-        line_12 = self._field("topmostSubform[0].Page2[0].f2_02[0]")
-        line_13 = self._field("topmostSubform[0].Page2[0].f2_03[0]")
-        line_14 = self._field("topmostSubform[0].Page2[0].f2_05[0]")
+        # Read by semantic key: the scenario's year decides the form's
+        # layout (TY2024 prints lines 11-15 on page 1), ruling R-S6-3.
+        line_12 = self._line("applied_deduction")
+        line_13 = self._line("qbi_deduction")
+        line_14 = self._line("deductions_plus_qbi")
         self.assertGreater(line_13, 0)
         self.assertEqual(line_12 + line_13, line_14)
 
     def test_line_15_equals_line_11_minus_line_14(self):
-        # Line 11 (AGI, f2_01) minus Line 14 (deductions_plus_qbi, f2_05)
-        # must equal Line 15 (taxable_income, f2_06) — again read from the
+        # Line 11 (agi) minus Line 14 (deductions_plus_qbi) must equal
+        # Line 15 (taxable_income) — again read from the
         # actual boxes.
-        line_11 = self._field("topmostSubform[0].Page2[0].f2_01[0]")
-        line_14 = self._field("topmostSubform[0].Page2[0].f2_05[0]")
-        line_15 = self._field("topmostSubform[0].Page2[0].f2_06[0]")
+        line_11 = self._line("agi")
+        line_14 = self._line("deductions_plus_qbi")
+        line_15 = self._line("taxable_income")
         self.assertEqual(line_11 - line_14, line_15)
 
 

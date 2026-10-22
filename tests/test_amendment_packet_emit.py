@@ -94,9 +94,10 @@ def _build_eic_eligible_qbi_scenario(k1_qbi_amount: float) -> Scenario:
     fixes), plus an S-corp K-1 so Form 8995 yields a nonzero QBI deduction.
 
     Wages $8,000 + K-1 ordinary business income (== `k1_qbi_amount`) keeps
-    the EIC cheap-ceiling-gate estimate under the 2025 single/0-dependent
-    ceiling ($26,214) for both the $10,000 and $15,000 K-1 amounts this test
-    uses, so both the "original" and "amended" twins stay oracle-routed.
+    the EIC cheap-ceiling-gate estimate under the year's no-child ceiling for
+    both the $10,000 and $15,000 K-1 amounts this test uses, so both the
+    "original" and "amended" twins stay oracle-routed (TY2024: see the
+    config comment, ruling R-S6-3).
     """
     defaults = scope_out_attestation_defaults()
     for name in (
@@ -114,7 +115,11 @@ def _build_eic_eligible_qbi_scenario(k1_qbi_amount: float) -> Scenario:
     defaults["prior_year_itemized"] = False
     cfg = TaxReturnConfig(
         digital_assets=False,
-        year=2025,
+        # TY2024 (ruling R-S6-3): the test's subject is the WORKBOOK path, and
+        # only a cell whose childless credit is not native yet still routes
+        # there (transitional routing, R-S6-1). Move it when (2024, single)
+        # lands in NATIVE_EIC_STATUSES.
+        year=2024,
         filing_status=FilingStatus.SINGLE,
         birthdate="1980-01-01",
         state="TX",
@@ -1132,20 +1137,22 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         on top, per the assembler's L3 = L1 - L2 and L5 = AGI - L2 - QBI-
         adjacent arithmetic driven off `total_deductions`).
 
-        Scenario (`_build_eic_eligible_qbi_scenario`): single filer, wages
-        $8,000 (well under the 2025 EIC-ceiling gate's threshold even after
-        adding K-1 income), so `_scenario_in_spine_scope` is False and
-        `_compute_1040_pipeline` routes to `_compute_1040_via_workbook` — the
-        oracle path this bug fixes. Verified directly below, not assumed.
-        Original K-1: ordinary_business_income = qbi_amount = $10,000 -> AGI
-        $18,000, QBI deduction $450 (binding limit: 20% of the $2,250
-        taxable-income-before-QBI, not 20% of the $10,000 QBI itself).
-        Amended K-1: bumped to $15,000 -> AGI $23,000, QBI deduction $1,450.
-        The standard deduction ($15,750, single) is unchanged by the K-1
-        bump, so 12c-exclusive total_deductions is $15,750 on BOTH sides;
-        pre-fix, the oracle path's (buggy, 14-inclusive) total_deductions
-        would have been $16,200 (original) / $17,200 (amended) instead —
-        wrong on line 2, and wrong differently on each side.
+        Scenario (`_build_eic_eligible_qbi_scenario`, TY2024 since ruling
+        R-S6-3 — a cell that still routes an EIC-possible return to the
+        workbook): single filer, wages $8,000 (under the EIC-ceiling gate's
+        threshold even after adding K-1 income), so `_scenario_in_spine_scope`
+        is False and `_compute_1040_pipeline` routes to
+        `_compute_1040_via_workbook` — the oracle path this bug fixes.
+        Verified directly below, not assumed. Original K-1:
+        ordinary_business_income = qbi_amount = $10,000; amended K-1: $15,000.
+        In both, Form 8995's binding limit is 20% of taxable income before
+        QBI (not 20% of the QBI itself), so the QBI deduction differs between
+        the twins while the standard deduction (the year's single amount,
+        read from params) does not. 12c-exclusive total_deductions is
+        therefore that standard deduction on BOTH sides; pre-fix, the oracle
+        path's (buggy, 14-inclusive) total_deductions would have added each
+        side's QBI deduction — wrong on line 2, and wrong differently on each
+        side.
 
         NOTE — two separate, pre-existing gaps surfaced while building this
         test have since been FIXED IN PRODUCTION, so this test now consumes
@@ -1187,11 +1194,15 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         corrected = dict(corrected_fed)
 
         case = AmendmentCase(
-            year=2025, explanation="Corrected K-1 qualified business income.",
+            year=2024, explanation="Corrected K-1 qualified business income.",
             original_refund_received=0.0, original_refund_applied=0.0)
         out = form_f1040x.assemble(filed, corrected, case)
 
-        applied_deduction = 15_750.0  # 2025 single standard deduction
+        # The year's single standard deduction, from attested params (the
+        # scenario moved to TY2024, ruling R-S6-3; no amount is typed in).
+        from tenforty.params.federal import load as load_federal_params
+        applied_deduction = float(
+            load_federal_params(2024).standard_deduction["single"])
         self.assertEqual(orig_fed["applied_deduction"], applied_deduction)
         self.assertEqual(corrected_fed["applied_deduction"], applied_deduction)
 
