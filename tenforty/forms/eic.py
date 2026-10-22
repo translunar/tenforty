@@ -118,6 +118,14 @@ def compute_eic(scenario: Scenario, spine: dict, params: FederalParams,
         return {**out, "eic": credit,
                 "eic_determination": determination.as_dict()}
 
+    # The instructions' own order: Step 1 (AGI) before Step 2 (investment
+    # income) and Step 4 (age); Step 5 question 3 (earned income).
+    if agi >= params.eic_completed_phaseout[key]:
+        return result(0, Determination(False, "agi_at_or_over_limit",
+                                       "Step 1, question 1"))
+    if earned >= params.eic_completed_phaseout[key]:
+        return result(0, Determination(
+            False, "earned_income_at_or_over_limit", "Step 5, question 3"))
     if invest > params.eic_investment_income_limit:
         return result(0, Determination(
             False, "investment_income_over_limit", "Step 2, question 2"))

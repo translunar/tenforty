@@ -690,28 +690,59 @@ _LINE_32_COMPONENT_KEYS = (
 
 
 def _line_32_unfooted(year: int, results: dict) -> str | None:
-    """The Form 1040 refusal for a harvested line 32 that the printed
-    line-32 components do not add up to: the workbook summed in a payment
-    or refundable credit tenforty cannot print, so the page would not foot.
-    None when line 32 was not harvested (the native path) or it foots."""
-    line_32 = results.get("total_other_payments")
-    if line_32 is None:
-        return None
+    """The Form 1040 payments-footing refusal: ONE implementation, both
+    paths, no acknowledgment bypass (ruling R-P1). Two checks, on the
+    amounts as they print (a key the year's PDF does not map, or a None,
+    prints nothing and counts 0):
+
+    1. line 32 equals the line-32 components tenforty prints — else the
+       computation summed in a payment or refundable credit (lines 27-31)
+       that tenforty cannot print;
+    2. line 33 equals 25d + 26 + 32 — else line 33 carries an amount no
+       printed line holds (on the native path, a net premium tax credit,
+       which is line-31 content behind Schedule 3).
+
+    None when the page foots."""
     mapped = Pdf1040.get_mapping(year)
-    printed = {key: irs_round(results[key]) for key in _LINE_32_COMPONENT_KEYS
-               if key in mapped and results.get(key) is not None}
-    if irs_round(line_32) == sum(printed.values()):
+
+    def printed(key: str) -> int:
+        value = results.get(key)
+        return irs_round(value) if key in mapped and value is not None else 0
+
+    line_32 = results.get("total_other_payments")
+    components = {key: irs_round(results[key]) for key in _LINE_32_COMPONENT_KEYS
+                  if key in mapped and results.get(key) is not None}
+    if line_32 is not None and irs_round(line_32) != sum(components.values()):
+        shown = ", ".join(f"{key} {value}" for key, value in components.items())
+        return (
+            f"Form 1040 line 32 (total other payments and refundable credits) "
+            f"is {irs_round(line_32)} as computed, but the line-32 components "
+            f"tenforty prints add up to {sum(components.values())} "
+            f"({shown or 'none'}). The computation included a payment or "
+            "refundable credit (Form 1040 lines 27-31) that tenforty cannot "
+            "print, so the page would not foot (line 32 would not equal the "
+            "lines above it as printed). tenforty does not yet support this "
+            "return.")
+    line_33 = results.get("total_payments")
+    if line_33 is None:
         return None
-    shown = ", ".join(f"{key} {value}" for key, value in printed.items())
+    parts = (printed("federal_withheld"), printed("estimated_tax_payments"),
+             printed("total_other_payments"))
+    if irs_round(line_33) == sum(parts):
+        return None
+    net_ptc = results.get("f8962_net_ptc") or 0
+    cause = (
+        f" The difference includes a net premium tax credit of {net_ptc} "
+        "(Form 8962 line 26), which reaches line 33 through Schedule 3 line 9 "
+        "and Form 1040 line 31; tenforty does not produce Schedule 3, so "
+        "line 31 cannot print. The Schedule 3 / Form 8962 emit leg is the "
+        "path forward; until it lands this return is refused, with or "
+        "without `acknowledges_schedule_3_not_produced`."
+        if net_ptc else "")
     return (
-        f"Form 1040 line 32 (total other payments and refundable credits) "
-        f"is {irs_round(line_32)} as the workbook computed it, but the "
-        f"line-32 components tenforty prints add up to "
-        f"{sum(printed.values())} ({shown or 'none'}). The workbook included "
-        "a payment or refundable credit (Form 1040 lines 27-31) that "
-        "tenforty cannot print, so the page would not foot (line 32 would "
-        "not equal the lines above it as printed). tenforty does not yet "
-        "support this return.")
+        f"Form 1040 line 33 (total payments) is {irs_round(line_33)}, but "
+        f"lines 25d + 26 + 32 as printed are {parts[0]} + {parts[1]} + "
+        f"{parts[2]} = {sum(parts)}: the page would not foot.{cause}")
 
 
 @dataclasses.dataclass(frozen=True)

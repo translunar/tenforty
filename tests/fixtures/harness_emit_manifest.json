@@ -2299,12 +2299,11 @@
   "routing": "native"
  },
  "spine_battery/ptc_2021_ui_flat133/2021": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 10428, but lines 25d +",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_capped_repayment/2021": {
@@ -2358,48 +2357,43 @@
   "routing": "native"
  },
  "spine_battery/ptc_net_credit/2021": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 5556, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_net_credit/2022": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 5580, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_net_credit/2023": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 5721, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_net_credit/2024": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 5910, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_net_credit/2025": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 6006, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_partial_year_401/2021": {
@@ -2453,48 +2447,43 @@
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation__mfj/2021": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 6444, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation__mfj/2022": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 6486, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation__mfj/2023": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 6657, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation__mfj/2024": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 6948, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation__mfj/2025": {
-  "forms": [
-   "federal/1040",
-   "federal/4868",
-   "federal/f8962"
-  ],
-  "refusal": null,
+  "forms": null,
+  "refusal": {
+   "fragment": "Form 1040 line 33 (total payments) is 7092, but lines 25d + ",
+   "type": "NotImplementedError"
+  },
   "routing": "native"
  },
  "spine_battery/ptc_reconciliation_refused__hoh/2021": {

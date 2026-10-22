@@ -101,33 +101,47 @@ class NetPtcAmendmentTests(unittest.TestCase):
 
 
 class NetPtcAttestedEmitTests(unittest.TestCase):
-    """The attested emit proceeds and prints the known-unfooted page:
-    line 33 carries the net PTC while lines 31 and 32 print blank, so
-    line 33 is not 25d + 26 + 32 as printed."""
+    """With the acknowledgment, the 1040 payments-footing guard still
+    applies (ruling R-P1: one guard, both paths, no acknowledgment bypass).
+    A NONZERO net PTC sits in line 33 with no printed line holding it, so
+    the emit refuses; a net PTC of exactly 0 is arithmetic-neutral and the
+    acknowledged return still emits, footing."""
 
-    def test_line_33_does_not_foot_from_the_printed_lines(self):
+    def test_a_nonzero_net_ptc_refuses_even_acknowledged(self):
         with tempfile.TemporaryDirectory() as tmp:
             scenario = spine_battery.build_ptc_net_credit(YEAR)
             self.assertIs(getattr(scenario, FLAG), True)
             orch = _orch(tmp)
             results = orch.compute_federal(scenario)
+            self.assertGreater(results["f8962_net_ptc"], 0)
+            out = Path(tmp) / "out"
+            with self.assertRaises(NotImplementedError) as cm:
+                orch.emit_pdfs(scenario, results, out)
+            msg = str(cm.exception)
+            for needle in ("line 33", "line 31", "Schedule 3", "Form 8962",
+                           "would not foot", FLAG):
+                self.assertIn(needle, msg)
+            self.assertEqual(sorted(out.glob("*.pdf")), [])
+
+    def test_a_zero_net_ptc_acknowledged_return_emits_and_foots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = dataclasses.replace(
+                spine_battery.build_ptc_capped_repayment(YEAR), **{FLAG: True})
+            orch = _orch(tmp)
+            results = orch.compute_federal(scenario)
+            self.assertEqual(results["f8962_net_ptc"], 0)
             emitted = orch.emit_pdfs(scenario, results, Path(tmp) / "out")
             scalars = Pdf1040.get_mapping(YEAR)
             fields = pypdf.PdfReader(str(emitted["1040"])).get_fields()
 
             def printed(key):
                 value = fields[scalars[key]].get("/V")
-                return str(value) if value not in (None, "") else ""
+                return int(value) if value not in (None, "") else 0
 
-            self.assertEqual(printed("schedule3_payments"), "")
-            self.assertEqual(printed("total_other_payments"), "")
-            line_25d = int(printed("federal_withheld") or 0)
-            line_26 = int(printed("estimated_tax_payments") or 0)
-            line_33 = int(printed("total_payments"))
-            net_ptc = results["f8962_net_ptc"]
-            self.assertGreater(net_ptc, 0)
-            self.assertEqual(line_33, line_25d + line_26 + net_ptc)
-            self.assertNotEqual(line_33, line_25d + line_26)
+            self.assertEqual(printed("total_payments"),
+                             printed("federal_withheld")
+                             + printed("estimated_tax_payments")
+                             + printed("total_other_payments"))
 
 
 class AcknowledgmentPlumbingTests(unittest.TestCase):

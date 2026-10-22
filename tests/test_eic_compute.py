@@ -80,14 +80,39 @@ class CreditCurveTests(unittest.TestCase):
                 self.assertEqual(_eic(earned, status=status)["eic"],
                                  eic_from_table(earned, YEAR, status))
 
-    def test_at_the_ceiling_there_is_no_credit(self):
+    def test_agi_at_the_ceiling_stops_at_step_1(self):
         for status in (SINGLE, MFJ):
             with self.subTest(status=status):
-                out = _eic(P.eic_completed_phaseout[_key(status)],
-                           status=status)
+                ceiling = P.eic_completed_phaseout[_key(status)]
+                out = _eic(1000, agi=ceiling, status=status)
                 self.assertEqual(out["eic"], 0)
                 self.assertEqual(out["eic_determination"]["reason"],
-                                 "credit_is_zero")
+                                 "agi_at_or_over_limit")
+                # One under: Step 1 passes and the table decides (the last
+                # dollars below the ceiling can read $0 off a footnoted bin).
+                under = _eic(1000, agi=ceiling - 1, status=status)
+                self.assertNotEqual(under["eic_determination"]["reason"],
+                                    "agi_at_or_over_limit")
+                self.assertEqual(under["eic"], min(
+                    eic_from_table(1000, YEAR, status),
+                    eic_from_table(ceiling - 1, YEAR, status)))
+
+    def test_earned_income_at_the_ceiling_stops_at_step_5(self):
+        for status in (SINGLE, MFJ):
+            with self.subTest(status=status):
+                ceiling = P.eic_completed_phaseout[_key(status)]
+                out = _eic(ceiling, agi=1000, status=status)
+                self.assertEqual(out["eic"], 0)
+                self.assertEqual(out["eic_determination"]["reason"],
+                                 "earned_income_at_or_over_limit")
+
+    def test_high_income_needs_no_birthdate(self):
+        # Step 1 stops before the age test reads a birth date.
+        scenario = _scenario(birthdate="")
+        out = _eic(P.eic_completed_phaseout["single"] + 50_000,
+                   scenario=scenario)
+        self.assertEqual(out["eic_determination"]["reason"],
+                         "agi_at_or_over_limit")
 
     def test_ceiling_agrees_with_the_routing_gate_param(self):
         # spec §5.2: the MFJ completed phaseout is the existing MFJ-column
@@ -227,3 +252,37 @@ class ScopeTests(unittest.TestCase):
     def test_only_single_and_mfj(self):
         with self.assertRaises(ValueError):
             _eic(5000, scenario=_scenario(FilingStatus.HEAD_OF_HOUSEHOLD))
+
+
+class SpineWiringTests(unittest.TestCase):
+    """compute_spine lines 27a / 32 / 33 (no routing yet: called directly)."""
+
+    def _spine(self, year, wages):
+        from tenforty.forms.f1040_spine import compute_spine
+        from tests.fixtures.spine_battery import _w2
+        scenario = Scenario(config=_battery_config(year),
+                            w2s=[_w2(year, "Example Employer", wages, 0.0)])
+        return compute_spine(scenario, load_params(year), {})
+
+    def test_a_plateau_credit_reaches_lines_27_32_and_33(self):
+        out = self._spine(YEAR, float(P.eic_earned_income_amount + 100))
+        self.assertEqual(out["eic"], P.eic_max_credit)
+        self.assertEqual(out["total_other_payments"], out["eic"])
+        self.assertEqual(out["total_payments"],
+                         out["federal_withheld"] + out["estimated_tax_payments"]
+                         + out["total_other_payments"])
+        self.assertTrue(out["eic_determination"]["eligible"])
+
+    def test_no_credit_prints_nothing_but_keeps_the_record(self):
+        out = self._spine(YEAR, float(P.eic_completed_phaseout["single"]
+                                      + 10_000))
+        self.assertNotIn("eic", out)
+        self.assertIsNone(out["total_other_payments"])
+        self.assertEqual(out["eic_determination"]["reason"],
+                         "agi_at_or_over_limit")
+
+    def test_a_year_outside_the_eic_grid_computes_nothing(self):
+        out = self._spine(2024, 9000.0)
+        self.assertNotIn("eic", out)
+        self.assertNotIn("eic_determination", out)
+        self.assertIsNone(out["total_other_payments"])
