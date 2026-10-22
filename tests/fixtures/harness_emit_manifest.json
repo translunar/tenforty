@@ -1,4 +1,82 @@
 {
+ "emit_battery_f8959/additional-medicare-withheld/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/additional-medicare-withheld/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/additional-medicare-withheld/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/additional-medicare-withheld/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/additional-medicare-withheld/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/sch_2"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/se-over-threshold/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_f8959/se-over-threshold/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/8959",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_f8995/five-sources/2021": {
   "forms": [
    "federal/1040",
@@ -259,6 +337,156 @@
   "refusal": null,
   "routing": "native"
  },
+ "emit_battery_sch_1/se-health-insurance/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/se-health-insurance/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/se-health-insurance/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/se-health-insurance/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/se-health-insurance/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8995",
+   "federal/sch_1",
+   "federal/sch_2",
+   "federal/sch_c#1",
+   "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/state-refund-absorbed-by-cap/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/state-refund-absorbed-by-cap/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/state-refund-absorbed-by-cap/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/state-refund-absorbed-by-cap/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/state-refund-absorbed-by-cap/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/taxable-state-refund/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/taxable-state-refund/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/taxable-state-refund/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/taxable-state-refund/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_1/taxable-state-refund/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_1"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
  "emit_battery_sch_b/full-payer-grid/2021": {
   "forms": [
    "federal/1040",
@@ -485,6 +713,206 @@
    "federal/sch_2",
    "federal/sch_c#1",
    "federal/sch_se"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-a-d-adjusted/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-a-d-adjusted/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-a-d-adjusted/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-a-d-adjusted/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-a-d-adjusted/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-b-e-basis-not-reported/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-b-e-basis-not-reported/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-b-e-basis-not-reported/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-b-e-basis-not-reported/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/box-b-e-basis-not-reported/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/f8949",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/capital-gain-distributions/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/capital-gain-distributions/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/capital-gain-distributions/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/capital-gain-distributions/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/capital-gain-distributions/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_b",
+   "federal/sch_d"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/k1-capital-gains/2021": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/k1-capital-gains/2022": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/k1-capital-gains/2023": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/k1-capital-gains/2024": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d",
+   "federal/sch_e"
+  ],
+  "refusal": null,
+  "routing": "native"
+ },
+ "emit_battery_sch_d/k1-capital-gains/2025": {
+  "forms": [
+   "federal/1040",
+   "federal/4868",
+   "federal/sch_d",
+   "federal/sch_e"
   ],
   "refusal": null,
   "routing": "native"

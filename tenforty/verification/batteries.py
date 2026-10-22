@@ -90,6 +90,25 @@ def _sch_b_emit_scenarios():
                 emit_battery_sch_b.build, name, year)
 
 
+def _f8959_emit_scenarios():
+    from tests.fixtures import emit_battery_f8959
+    years = sorted({y for name in emit_battery_f8959.SCENARIOS
+                    for y in emit_battery_f8959.years_for(name)})
+    for year in years:
+        for name in emit_battery_f8959.SCENARIOS:
+            if year in emit_battery_f8959.years_for(name):
+                yield name, year, functools.partial(
+                    emit_battery_f8959.build, name, year)
+
+
+def _sch_d_emit_scenarios():
+    from tests.fixtures import emit_battery_sch_d
+    for year in emit_battery_sch_d.YEARS:
+        for name in emit_battery_sch_d.SCENARIOS:
+            yield name, year, functools.partial(
+                emit_battery_sch_d.build, name, year)
+
+
 BATTERIES: tuple[BatteryRef, ...] = (
     BatteryRef("spine_battery", "tests.fixtures.spine_battery",
                _spine_scenarios, "run_full_return"),
@@ -107,4 +126,8 @@ BATTERIES: tuple[BatteryRef, ...] = (
                _sch_e_emit_scenarios, "run_full_return"),
     BatteryRef("emit_battery_sch_b", "tests.fixtures.emit_battery_sch_b",
                _sch_b_emit_scenarios, "run_full_return"),
+    BatteryRef("emit_battery_f8959", "tests.fixtures.emit_battery_f8959",
+               _f8959_emit_scenarios, "run_full_return"),
+    BatteryRef("emit_battery_sch_d", "tests.fixtures.emit_battery_sch_d",
+               _sch_d_emit_scenarios, "run_full_return"),
 )
