@@ -15,7 +15,12 @@ import dataclasses
 import datetime
 
 from tenforty.eic_table import eic_from_table
-from tenforty.models import FilingStatus, Scenario, parse_filing_status
+from tenforty.models import (
+    EntityType,
+    FilingStatus,
+    Scenario,
+    parse_filing_status,
+)
 from tenforty.params.federal import FederalParams
 from tenforty.rounding import irs_round
 
@@ -44,7 +49,16 @@ def meets_age_test(config, year: int, params: FederalParams) -> bool:
     spouse — attained ``eic_min_age`` and had not attained ``eic_max_age``
     by the end of the year. Stated as the instructions state it, by birth
     date: born before January 2 of (year - min_age + 1) and, where there is
-    an upper bound, after December 31 of (year - max_age)."""
+    an upper bound, after December 31 of (year - max_age) — for 2025, born
+    after December 31, 1960 and before January 2, 2001.
+
+    Ruling R-T2: this IS the operative rule, not an integer age comparison.
+    The statute says "has attained age 25 but not attained age 65 before the
+    close of the taxable year"; read with the day-before-birthday
+    convention, the two readings differ only on the Dec-31/Jan-1 boundary,
+    and the IRS's published birth-date range governs. The independent
+    attestation flagged that ambiguity; it was adjudicated, not resolved by
+    picking whichever reading matched."""
     born_before = datetime.date(year - params.eic_min_age + 1, 1, 2)
     born_after = (None if params.eic_max_age is None
                   else datetime.date(year - params.eic_max_age, 12, 31))
@@ -144,5 +158,100 @@ def compute_eic(scenario: Scenario, spine: dict, params: FederalParams,
     if credit == 0:
         return result(0, Determination(
             False, "credit_is_zero", f"Worksheet {worksheet}, credit line"))
+    # The TENTATIVE credit (every eligibility fact assumed favorable) is
+    # positive: only now do the Worksheet 1 shapes and the stated facts
+    # matter (spec §4.1 trigger, §5.5).
+    refuse_worksheet_1_shapes(scenario)
+    denial = apply_eligibility_facts(scenario, status)
+    if denial is not None:
+        return result(0, denial)
     return result(credit, Determination(True, None,
                                         f"Worksheet {worksheet}"))
+
+
+def refuse_worksheet_1_shapes(scenario: Scenario) -> None:
+    """Pub. 596 Worksheet 1 investment income (rental, K-1, passive
+    activity) is not modeled: refuse on a return whose credit would be
+    positive. ORDER IS LOAD-BEARING (ruling on the step-5 plan): the K-1
+    self-employment check runs before the any-K-1 check, or a K-1 with SE
+    earnings would always name the broader cause and its own refusal would
+    be unreachable."""
+    if any(k1.entity_type == EntityType.PARTNERSHIP
+           and k1.partnership_self_employment_earnings
+           for k1 in scenario.schedule_k1s):
+        raise NotImplementedError(
+            "k1_self_employment_earnings: this return's earned income "
+            "credit would include self-employment earnings from a "
+            "partnership Schedule K-1 (box 14), which tenforty does not "
+            "support for the credit.")
+    if scenario.schedule_k1s:
+        raise NotImplementedError(
+            "worksheet_1_k1: this return has a Schedule K-1 and would "
+            "qualify for the earned income credit. Its investment income "
+            "then needs Publication 596 Worksheet 1, which tenforty does "
+            "not support.")
+    if scenario.rental_properties:
+        raise NotImplementedError(
+            "worksheet_1_rental: this return has rental property (Schedule "
+            "E) and would qualify for the earned income credit. Its "
+            "investment income then needs Publication 596 Worksheet 1, "
+            "which tenforty does not support.")
+
+
+def apply_eligibility_facts(scenario: Scenario,
+                            status: FilingStatus) -> Determination | None:
+    """The stated eic_eligibility facts, in the year's instructions' order
+    and joint-return wording (2025 Form 1040 instructions, line 27a Steps 1
+    and 4). None when every fact allows the credit; a Determination when
+    one denies it; a refusal when the block is missing or a fact needs an
+    input tenforty does not have."""
+    block = scenario.eic_eligibility
+    if block is None:
+        raise NotImplementedError(
+            "eic_eligibility_missing: this return would qualify for the "
+            "earned income credit (line 27a) if every eligibility fact is "
+            "favorable, so the top-level `eic_eligibility` block is "
+            "required: taxpayer (and spouse on a joint return) facts "
+            "main_home_in_us_more_than_half_year, can_be_claimed_as_dependent, "
+            "could_be_qualifying_child_of_another, ssn_valid_for_employment, "
+            "nonresident_alien_any_part_of_year; and "
+            "prior_eic_disallowance_requires_8862.")
+    if block.prior_eic_disallowance_requires_8862:
+        raise NotImplementedError(
+            "prior_eic_disallowance_8862: a prior earned income credit was "
+            "reduced or disallowed, so Form 8862 must be attached to claim "
+            "it; tenforty does not produce Form 8862.")
+    joint = status is FilingStatus.MARRIED_FILING_JOINTLY
+    people = [block.taxpayer] + ([block.spouse] if joint else [])
+    # Step 1 Q2: "Do you, and your spouse if filing a joint return, have"
+    # an SSN valid for EIC purposes.
+    if not all(p.ssn_valid_for_employment for p in people):
+        return Determination(False, "ssn_not_valid", "Step 1, question 2")
+    # Step 1 Q4 / "Nonresident aliens": the credit continues only if the
+    # filing-status election to treat a nonresident alien spouse as a U.S.
+    # resident was made — an input tenforty does not have. A joint return
+    # cannot be decided, so it refuses; a single filer stops.
+    if any(p.nonresident_alien_any_part_of_year for p in people):
+        if joint:
+            raise NotImplementedError(
+                "nonresident_alien_spouse_election: a spouse on this joint "
+                "return was a nonresident alien for part of the year. The "
+                "earned income credit then depends on the filing-status "
+                "election to treat a nonresident alien spouse as a U.S. "
+                "resident for the entire year, which tenforty does not "
+                "model.")
+        return Determination(False, "nonresident_alien", "Step 1, question 4")
+    # Step 4 Q3: "Was your main home, and your spouse's if filing a joint
+    # return, in the United States for more than half" the year.
+    if not all(p.main_home_in_us_more_than_half_year for p in people):
+        return Determination(False, "main_home_not_in_us",
+                             "Step 4, question 3")
+    # Step 4 Q4: a joint return skips questions 5 and 6.
+    if not joint:
+        if block.taxpayer.could_be_qualifying_child_of_another:
+            return Determination(False, "qualifying_child_of_another",
+                                 "Step 4, question 5")
+        if block.taxpayer.can_be_claimed_as_dependent:
+            return Determination(False, "claimable_as_dependent",
+                                 "Step 4, question 6")
+    return None

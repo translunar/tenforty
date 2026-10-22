@@ -62,7 +62,8 @@ def eic_battery_gaps(grid: Mapping[int, tuple[str, ...]], *,
 
 
 def eic_refusal_gaps(grid: Mapping[int, tuple[str, ...]], *,
-                     required: Callable[[int], tuple[str, ...]],
+                     required: Callable[[int, tuple[str, ...]],
+                                        tuple[str, ...]],
                      fixtures: Mapping[str, Mapping[int, str]],
                      reaches: Callable[[str, str], bool],
                      ) -> list[tuple[int, str]]:
@@ -70,7 +71,7 @@ def eic_refusal_gaps(grid: Mapping[int, tuple[str, ...]], *,
     refusal has no fixture, or whose fixture does not reach it."""
     gaps = []
     for year in sorted(y for y, statuses in grid.items() if statuses):
-        for key in required(year):
+        for key in required(year, grid[year]):
             path = fixtures.get(key, {}).get(year)
             if path is None or not reaches(key, path):
                 gaps.append((year, key))
@@ -78,10 +79,23 @@ def eic_refusal_gaps(grid: Mapping[int, tuple[str, ...]], *,
 
 
 def _reaches(key: str, path: str) -> bool:
-    """The fixture loads and its federal compute refuses naming ``key``."""
+    """load_scenario then compute_federal refuses, naming ``key`` (a
+    load-time refusal counts). The workbook path is patched to raise, so no
+    fixture can reach LibreOffice.
+
+    STEP-5 INSTRUMENT (TODO, rollout step 6): routing is forced native,
+    because until the routing change an EIC-possible in-grid return still
+    leaves the native spine. Step 6 deletes the _scenario_in_spine_scope
+    patch, so these same fixtures then prove reachability through the real
+    routing."""
     from tenforty.orchestrator import ReturnOrchestrator
     import tempfile
-    with tempfile.TemporaryDirectory() as tmp:
+    from unittest import mock
+    with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            side_effect=AssertionError("workbook path reached")), \
+            mock.patch.object(ReturnOrchestrator, "_scenario_in_spine_scope",
+                              return_value=True):
         orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
                                   work_dir=Path(tmp))
         try:
@@ -182,7 +196,7 @@ class EicGateLivenessTests(unittest.TestCase):
 
     def test_refusal_gate_names_missing_and_unreaching_fixtures(self):
         gaps = eic_refusal_gaps(
-            self.GRID, required=lambda y: ("reached", "unreached", "absent"),
+            self.GRID, required=lambda y, s: ("reached", "unreached", "absent"),
             fixtures={"reached": {2025: "r.yaml"},
                       "unreached": {2025: "u.yaml"}},
             reaches=lambda key, path: path == "r.yaml")
@@ -190,7 +204,7 @@ class EicGateLivenessTests(unittest.TestCase):
 
     def test_refusal_gate_skips_years_with_no_declared_cell(self):
         self.assertEqual(eic_refusal_gaps(
-            {2024: ()}, required=lambda y: ("k",), fixtures={},
+            {2024: ()}, required=lambda y, s: ("k",), fixtures={},
             reaches=lambda key, path: False), [])
 
 

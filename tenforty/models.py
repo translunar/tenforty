@@ -1641,6 +1641,31 @@ class Form3115:
     assets: tuple[Form3115Asset, ...]
 
 
+@dataclass(frozen=True)
+class EicPersonFacts:
+    """One person's earned-income-credit facts, stated as facts about the
+    person — never as answers to the federal EIC questions — so a state
+    credit can read them too."""
+    main_home_in_us_more_than_half_year: bool
+    can_be_claimed_as_dependent: bool
+    could_be_qualifying_child_of_another: bool
+    ssn_valid_for_employment: bool
+    nonresident_alien_any_part_of_year: bool
+    # 2021 only (the ARPA specified-student rule); None in every other year.
+    specified_student_2021: bool | None = None
+
+
+@dataclass(frozen=True)
+class EicEligibility:
+    """The top-level `eic_eligibility:` block. `spouse` is present exactly
+    on a married-filing-jointly return."""
+    taxpayer: EicPersonFacts
+    prior_eic_disallowance_requires_8862: bool
+    spouse: EicPersonFacts | None = None
+    # 2021 only (the ARPA 2019-earned-income election); None otherwise.
+    lookback_2019_earned_income: float | None = None
+
+
 @dataclass
 class Scenario:
     config: TaxReturnConfig
@@ -1674,11 +1699,15 @@ class Scenario:
     # asset model cannot tell a listed asset from any other. Scenario-level,
     # not a config field.
     acknowledges_no_listed_property: bool | None = None
-    # Stated ONLY to emit a return with a net premium tax credit anyway, for
-    # draft/review use: the credit prints inside Form 1040 line 33 through
-    # Schedule 3 and lines 31/32, which tenforty does not produce, so the
-    # page does not foot. Scenario-level, not a config field.
+    # Accepted but inert: a nonzero net premium tax credit is refused by the
+    # 1040 payments-footing guard whether or not this is stated (rulings
+    # R-P1, R-S4-2); kept so existing scenarios still load (its removal is a
+    # schema decision). Scenario-level, not a config field.
     acknowledges_schedule_3_not_produced: bool | None = None
+    # Facts about the people on the return that the earned income credit
+    # turns on (EicEligibility). Required only when the credit would be
+    # positive with every fact favorable; see forms/eic.py.
+    eic_eligibility: "EicEligibility | None" = None
     # Contested-law elections, {position slug: chosen side}
     # (tenforty.positions). Each is validated at construction: a known
     # position, one of its choices, and a position this return reaches.

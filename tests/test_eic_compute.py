@@ -19,6 +19,7 @@ from tenforty.models import (
 )
 from tenforty.params.federal import load as load_params
 from tests.fixtures.spine_battery import _battery_config
+from tests.fixtures.eic_battery import favorable_eligibility
 
 YEAR = 2025
 P = load_params(YEAR)
@@ -27,7 +28,8 @@ SINGLE, MFJ = FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY
 
 def _scenario(status=SINGLE, **config):
     base = _battery_config(YEAR, status)
-    return Scenario(config=dataclasses.replace(base, **config))
+    return Scenario(config=dataclasses.replace(base, **config),
+                    eic_eligibility=favorable_eligibility(status.value))
 
 
 def _eic(earned, agi=None, status=SINGLE, scenario=None, sched=None,
@@ -261,7 +263,8 @@ class SpineWiringTests(unittest.TestCase):
         from tenforty.forms.f1040_spine import compute_spine
         from tests.fixtures.spine_battery import _w2
         scenario = Scenario(config=_battery_config(year),
-                            w2s=[_w2(year, "Example Employer", wages, 0.0)])
+                            w2s=[_w2(year, "Example Employer", wages, 0.0)],
+                            eic_eligibility=favorable_eligibility())
         return compute_spine(scenario, load_params(year), {})
 
     def test_a_plateau_credit_reaches_lines_27_32_and_33(self):

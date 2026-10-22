@@ -8,7 +8,9 @@ All identities and amounts are fully synthetic.
 """
 from collections.abc import Callable
 
-from tenforty.models import Scenario
+import dataclasses
+
+from tenforty.models import EicEligibility, EicPersonFacts, Scenario
 from tenforty.params.federal import load as load_params
 from tests.fixtures.spine_battery import _battery_config, _w2
 
@@ -116,11 +118,126 @@ EIC_REFUSALS_EVERY_YEAR: tuple[str, ...] = (
 EIC_REFUSALS_BY_YEAR: dict[int, tuple[str, ...]] = {
     2021: ("arpa_youth_age_18", "specified_student_2021_missing"),
 }
+# Refusals only a declared cell of this status can reach.
+EIC_REFUSALS_BY_STATUS: dict[str, tuple[str, ...]] = {
+    "married_filing_jointly": ("nonresident_alien_spouse_election",),
+}
 
 
-def required_eic_refusals(year: int) -> tuple[str, ...]:
-    return EIC_REFUSALS_EVERY_YEAR + EIC_REFUSALS_BY_YEAR.get(year, ())
+def required_eic_refusals(year: int,
+                          statuses: tuple[str, ...]) -> tuple[str, ...]:
+    keys = EIC_REFUSALS_EVERY_YEAR + EIC_REFUSALS_BY_YEAR.get(year, ())
+    for status in statuses:
+        keys += EIC_REFUSALS_BY_STATUS.get(status, ())
+    return keys
 
 
 # refusal key -> {year: scenario YAML path} reaching it through load_scenario.
-EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {}
+_R = "tests/fixtures/eic_refusals"
+EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {
+    key: {2025: f"{_R}/{key}_2025.yaml"}
+    for key in ("eic_eligibility_missing", "prior_eic_disallowance_8862",
+                "worksheet_1_rental", "worksheet_1_k1", "statutory_employee",
+                "k1_self_employment_earnings", "year_scoped_eic_fact")}
+
+
+def favorable_person(**overrides) -> EicPersonFacts:
+    """Every eligibility fact stated favorable, unless overridden."""
+    return dataclasses.replace(EicPersonFacts(
+        main_home_in_us_more_than_half_year=True,
+        can_be_claimed_as_dependent=False,
+        could_be_qualifying_child_of_another=False,
+        ssn_valid_for_employment=True,
+        nonresident_alien_any_part_of_year=False), **overrides)
+
+
+def favorable_eligibility(status: str = "single",
+                          **overrides) -> EicEligibility:
+    """A complete, all-favorable eic_eligibility block for ``status``."""
+    joint = status == "married_filing_jointly"
+    return dataclasses.replace(EicEligibility(
+        taxpayer=favorable_person(),
+        spouse=favorable_person() if joint else None,
+        prior_eic_disallowance_requires_8862=False), **overrides)
+
+
+# --- (2025, single) rows: every required kind, placed off the attested
+# params (never a typed-in threshold). Each row states a favorable block
+# unless its kind is a fact row.
+
+def _eic_row(year: int, wages: float, *, birthdate: str | None = None,
+             interest: float = 0.0, schedule_c=None,
+             eligibility=None, **config_overrides) -> Scenario:
+    from tenforty.models import Form1099INT
+    config = _battery_config(year, **config_overrides)
+    if birthdate is not None:
+        config = dataclasses.replace(config, birthdate=birthdate)
+    return Scenario(
+        config=config,
+        w2s=[_w2(year, "Synthetic Employer EIC", wages,
+                 federal_tax_withheld=0.0)] if wages else [],
+        form1099_int=([Form1099INT(payer="Example Bank", interest=interest)]
+                      if interest else []),
+        schedule_c_businesses=list(schedule_c or []),
+        eic_eligibility=eligibility or favorable_eligibility())
+
+
+def _rows_single(year: int) -> dict[str, Callable[[int], Scenario]]:
+    import datetime
+    from tenforty.models import ScheduleCBusiness
+    p = load_params(year)
+    begin = p.eic_phaseout_threshold["single"]
+    end = p.eic_completed_phaseout["single"]
+    plateau = p.eic_earned_income_amount + 100
+    min_cut = datetime.date(year - p.eic_min_age + 1, 1, 2)
+    max_cut = datetime.date(year - p.eic_max_age, 12, 31)
+    day = datetime.timedelta(days=1)
+    fact = lambda **o: favorable_eligibility(  # noqa: E731
+        taxpayer=favorable_person(**o))
+    return {
+        "plateau": lambda y: _eic_row(y, plateau),
+        "phase_in": lambda y: _eic_row(y, p.eic_earned_income_amount // 2),
+        "phase_out": lambda y: _eic_row(y, (begin + end) // 2),
+        "just_under_ceiling": lambda y: _eic_row(y, end - 1),
+        "over_ceiling": lambda y: _eic_row(y, end + 1000),
+        # Earned income on the plateau; interest lifts AGI into the phaseout.
+        "agi_over_earned": lambda y: _eic_row(
+            y, plateau, interest=(begin + end) // 2 - plateau),
+        # Low wages keep AGI under the ceiling beside the limit's interest.
+        "investment_at_limit": lambda y: _eic_row(
+            y, 2000, interest=p.eic_investment_income_limit),
+        "investment_over_limit": lambda y: _eic_row(
+            y, 2000, interest=p.eic_investment_income_limit + 1),
+        "age_lower_bound_in": lambda y: _eic_row(
+            y, plateau, birthdate=(min_cut - day).isoformat()),
+        "age_lower_bound_out": lambda y: _eic_row(
+            y, plateau, birthdate=min_cut.isoformat()),
+        "age_upper_bound_in": lambda y: _eic_row(
+            y, plateau, birthdate=(max_cut + day).isoformat()),
+        "age_upper_bound_out": lambda y: _eic_row(
+            y, plateau, birthdate=max_cut.isoformat()),
+        "sch_c_worksheet_b": lambda y: _eic_row(y, 3000, schedule_c=[
+            ScheduleCBusiness(description="Example Route",
+                              gross_receipts=3000.0)]),
+        # A loss answers Schedule C line 32: all investment at risk (32a).
+        "sch_c_net_loss": lambda y: _eic_row(y, 6000, schedule_c=[
+            ScheduleCBusiness(description="Example Route",
+                              gross_receipts=0.0, supplies=500.0)],
+            acknowledges_sch_c_all_investment_at_risk=True),
+        "fact_ssn_not_valid": lambda y: _eic_row(
+            y, plateau, eligibility=fact(ssn_valid_for_employment=False)),
+        "fact_nonresident_alien": lambda y: _eic_row(
+            y, plateau,
+            eligibility=fact(nonresident_alien_any_part_of_year=True)),
+        "fact_main_home_not_in_us": lambda y: _eic_row(
+            y, plateau,
+            eligibility=fact(main_home_in_us_more_than_half_year=False)),
+        "fact_qualifying_child_of_another": lambda y: _eic_row(
+            y, plateau,
+            eligibility=fact(could_be_qualifying_child_of_another=True)),
+        "fact_claimable_as_dependent": lambda y: _eic_row(
+            y, plateau, eligibility=fact(can_be_claimed_as_dependent=True)),
+    }
+
+
+EIC_ROWS[(2025, "single")] = _rows_single(2025)

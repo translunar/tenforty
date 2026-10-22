@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import difflib
 from pathlib import Path
 
 import pypdf
@@ -26,6 +27,9 @@ from tenforty.models import (
     CA540Return,
     DepreciableAsset,
     DepreciationOverride,
+    EicEligibility,
+    EicPersonFacts,
+    parse_filing_status,
     EntityType,
     FilingStatus,
     HeadOfHouseholdFacts,
@@ -124,7 +128,7 @@ _KNOWN_TOP_LEVEL_KEYS: frozenset[str] = frozenset(
     {"config", "s_corp_return", "ca540", "itemized_deductions", "form_1095a",
      _attestations.FORM_3115_KEY,
      _MID_QUARTER_ACK_KEY, _LISTED_PROPERTY_ACK_KEY, _SCHEDULE_3_ACK_KEY,
-     "positions"}
+     "positions", "eic_eligibility"}
     | set(_FORM_REGISTRY) | set(_DEPRECIATION_ACTIVITY_REGISTRY)
 )
 
@@ -953,6 +957,96 @@ def _load_form_1095a_month(key: str, data: dict) -> Form1095AMonth:
         slcsp=float(data.get("slcsp", 0.0)),
         aptc=float(data.get("aptc", 0.0)),
     )
+
+
+_EIC_PERSON_FACTS = tuple(
+    f.name for f in dataclasses.fields(EicPersonFacts)
+    if f.name != "specified_student_2021")
+_EIC_BLOCK_KEYS = frozenset({
+    "taxpayer", "spouse", "prior_eic_disallowance_requires_8862",
+    "lookback_2019_earned_income"})
+# Keys that exist only for tax year 2021 (the ARPA rules).
+_EIC_2021_ONLY = ("specified_student_2021", "lookback_2019_earned_income")
+
+
+def _refuse_unknown_eic_keys(keys, known, where: str) -> None:
+    for key in sorted(set(keys) - set(known)):
+        close = difflib.get_close_matches(key, sorted(known), n=1)
+        hint = f" Did you mean {close[0]!r}?" if close else ""
+        raise ValueError(
+            f"Unknown key {key!r} in {where}.{hint} Known keys: "
+            f"{sorted(known)}")
+
+
+def _refuse_year_scoped_eic_key(key: str, where: str, year: int) -> None:
+    if year != 2021:
+        raise ValueError(
+            f"year_scoped_eic_fact: {where}.{key} exists only for tax year "
+            f"2021 (the American Rescue Plan's one-year earned income credit "
+            f"rules); this return is for {year}. Remove it.")
+
+
+def _load_eic_person(data, where: str, year: int) -> EicPersonFacts:
+    if not isinstance(data, dict):
+        raise ValueError(f"{where} must be a mapping of facts; got {data!r}")
+    _refuse_unknown_eic_keys(
+        data, _EIC_PERSON_FACTS + ("specified_student_2021",), where)
+    missing = [k for k in _EIC_PERSON_FACTS if k not in data]
+    if missing:
+        raise ValueError(f"{where} is missing fact(s) {missing}: each is a "
+                         f"true/false statement about this person.")
+    facts = {k: _load_stated_bool(data[k], f"{where}.{k}")
+             for k in _EIC_PERSON_FACTS}
+    student = data.get("specified_student_2021")
+    if "specified_student_2021" in data:
+        _refuse_year_scoped_eic_key("specified_student_2021", where, year)
+        if student is not None:
+            student = _load_stated_bool(student, f"{where}.specified_student_2021")
+    return EicPersonFacts(**facts, specified_student_2021=student)
+
+
+def _load_eic_eligibility(data, config: TaxReturnConfig) -> EicEligibility | None:
+    """The top-level `eic_eligibility:` block (childless-EITC spec §4).
+    Fail-closed like `form_1095a`: unknown keys (with a did-you-mean),
+    missing facts, non-boolean facts, a spouse on a non-joint return (or none
+    on a joint one), and the 2021-only keys in any other year all refuse.
+    Whether the block is REQUIRED is decided at compute time (forms/eic.py):
+    only when the credit would be positive with every fact favorable."""
+    if data is None:
+        return None
+    where = "eic_eligibility"
+    if not isinstance(data, dict):
+        raise ValueError(f"{where} must be a mapping; got {data!r}")
+    _refuse_unknown_eic_keys(data, _EIC_BLOCK_KEYS, where)
+    joint = parse_filing_status(config.filing_status) is (
+        FilingStatus.MARRIED_FILING_JOINTLY)
+    if "taxpayer" not in data:
+        raise ValueError(f"{where}.taxpayer is required.")
+    if joint and "spouse" not in data:
+        raise ValueError(f"{where}.spouse is required on a "
+                         f"married_filing_jointly return.")
+    if not joint and "spouse" in data:
+        raise ValueError(f"{where}.spouse applies only to a "
+                         f"married_filing_jointly return.")
+    if "prior_eic_disallowance_requires_8862" not in data:
+        raise ValueError(f"{where}.prior_eic_disallowance_requires_8862 is "
+                         f"required (true/false).")
+    lookback = data.get("lookback_2019_earned_income")
+    if "lookback_2019_earned_income" in data:
+        _refuse_year_scoped_eic_key("lookback_2019_earned_income", where,
+                                    config.year)
+        if lookback is not None:
+            lookback = _load_stated_number(
+                lookback, f"{where}.lookback_2019_earned_income")
+    return EicEligibility(
+        taxpayer=_load_eic_person(data["taxpayer"], f"{where}.taxpayer",
+                                  config.year),
+        spouse=(_load_eic_person(data["spouse"], f"{where}.spouse",
+                                 config.year) if joint else None),
+        prior_eic_disallowance_requires_8862=_load_stated_bool(
+            data["prior_eic_disallowance_requires_8862"],
+            f"{where}.prior_eic_disallowance_requires_8862"),
+        lookback_2019_earned_income=lookback)
 
 
 def _load_form_1095a(data: dict | None, config: TaxReturnConfig) -> Form1095A | None:
@@ -1874,6 +1968,8 @@ def load_scenario(path: Path) -> Scenario:
         config=config, s_corp_return=s_corp_return, ca540=ca540,
         acknowledges_no_listed_property=listed_property_ack,
         acknowledges_schedule_3_not_produced=schedule_3_ack,
+        eic_eligibility=_load_eic_eligibility(
+            data.get("eic_eligibility"), config),
         itemized_deductions=itemized_deductions, form_1095a=form_1095a,
         form_3115=form_3115,
         source_documents=source_documents,
