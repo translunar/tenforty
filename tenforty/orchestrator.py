@@ -64,7 +64,8 @@ from tenforty.params import ca_scorp
 from tenforty.params import california as params_california
 from tenforty.oracle.flattener import flatten_scenario
 from tenforty.mappings.f1040 import (
-    EIC_FORM_4797_NO_KEY, F1040, eic_form_4797_no_answer)
+    EIC_FORM_4797_NO_KEY, EIC_NO_CREDIT_DECLARED_KEY, F1040,
+    eic_form_4797_no_answer)
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
@@ -1235,6 +1236,34 @@ _EIC_FAVORABLE = {
 }
 
 
+class WorkbookEicInconsistent(NotImplementedError):
+    """Ruling R-S7-10: the recalculated workbook declares no earned income
+    credit (NoEICredit TRUE) yet its line 27 carries one. `harvested` is the
+    engine's output for the refused return, kept for diagnosis."""
+
+    def __init__(self, message: str, harvested: dict):
+        super().__init__(message)
+        self.harvested = harvested
+
+
+def refuse_inconsistent_workbook_eic(raw: dict) -> None:
+    """FAIL-CLOSED (ruling R-S7-10). In every workbook year the EIC sheet's
+    Step 2 stop (investment income over the limit) is display-only:
+    NoEICredit turns TRUE but line 27 never reads it, so the table credit
+    is printed anyway. Refuse exactly when the sheet's own verdict and its
+    line 27 disagree that way; never when NoEICredit is TRUE with no credit,
+    or FALSE with one."""
+    eic = raw.get("eic") or 0
+    if raw.get(EIC_NO_CREDIT_DECLARED_KEY) == True and round(eic) > 0:  # noqa: E712 (LibreOffice may store TRUE as 1)
+        raise WorkbookEicInconsistent(
+            f"workbook_eic_inconsistent: the workbook declares that this "
+            f"return cannot take the earned income credit (its NoEICredit "
+            f"verdict is TRUE), yet its line 27 carries ${round(eic)}. The "
+            f"workbook's line 27 does not honor that verdict, so this return "
+            f"is refused rather than filed with a credit the workbook itself "
+            f"disallows.", dict(raw))
+
+
 def refuse_workbook_eic_facts(scenario: Scenario) -> None:
     """FAIL-CLOSED (ruling R-S7-2): an `eic_eligibility` block the workbook
     path cannot honor. Production never writes the workbook's EIC answers;
@@ -2050,6 +2079,8 @@ class ReturnOrchestrator:
             inputs=flat_inputs,
             work_dir=self.work_dir / "federal",
         )
+        refuse_inconsistent_workbook_eic(raw)
+        raw.pop(EIC_NO_CREDIT_DECLARED_KEY, None)
 
         # Supplement: the oracle's OUTPUTS only read W-2 withholding
         # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding

@@ -1969,3 +1969,19 @@ for _year, _q in EIC_FORM_4797_QUESTION.items():
     F1040.SHEET_MAP[_year] = {**F1040.SHEET_MAP[_year],
                               EIC_FORM_4797_NO_KEY: _q.sheet}
 del _year, _q
+
+
+# --- EIC NoEICredit harvest, 2021-2025 (ruling R-S7-10) ----------------------
+#
+# The sheet's own "no credit" verdict (named range NoEICredit, A1 of the EIC
+# sheet in every year). Line 27 never reads it — in every year the Step 2
+# stop is display-only — so the workbook path harvests it and refuses a
+# return whose line 27 contradicts it (orchestrator
+# refuse_inconsistent_workbook_eic). Consumed there and dropped: it never
+# reaches the results.
+EIC_NO_CREDIT_DECLARED_KEY = "eic_no_credit_declared"
+
+for _year in EIC_FORM_4797_QUESTION:
+    F1040.OUTPUTS[_year] = {**F1040.OUTPUTS[_year],
+                            EIC_NO_CREDIT_DECLARED_KEY: "NoEICredit"}
+del _year

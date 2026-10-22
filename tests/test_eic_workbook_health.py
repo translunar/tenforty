@@ -13,7 +13,8 @@ from unittest import mock
 import openpyxl
 
 from tenforty.mappings.f1040 import (
-    EIC_FORM_4797_NO_KEY, F1040, eic_form_4797_no_answer)
+    EIC_FORM_4797_NO_KEY, EIC_FORM_4797_QUESTION, F1040,
+    eic_form_4797_no_answer)
 from tenforty.oracle.engine import SpreadsheetEngine
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.federal import load as load_params
@@ -49,6 +50,63 @@ class WorkbookConstantsMatchParamsTests(unittest.TestCase):
                     expected = expected[column]
                 with self.subTest(year=year, cell=f"{sheet}!{cell}"):
                     self.assertEqual(wb[sheet][cell].value, expected)
+
+
+# Ruling R-S7-10: line 27 as each template computes it. 2021-2024 carry no
+# "no credit" gate at all; 2025 zeroes only through AI117 <- EIC_No_Box (O1),
+# whose OR-chain has no Step 2 term. NoEICredit (A1) feeds neither, so the
+# Step 2 stop is display-only in every year — the link that was never pinned.
+LINE_27 = {
+    2025: ("'1040'!$AF$113",
+           '=IF(AX113<>"",ROUND(AX113,0),IF(AI117<>"",0,EarnedIncomeCredit))'),
+    2024: ("'1040'!$Z$90",
+           '=IF(AN90<>"",ROUND(AN90,0),EarnedIncomeCredit)'),
+    2023: ("'1040'!$Z$87",
+           '=IF(AN87<>"",ROUND(AN87,0),EarnedIncomeCredit)'),
+    2022: ("'1040'!$Y$81",
+           '=IF(AM81<>"",ROUND(AM81,0),EarnedIncomeCredit)'),
+    2021: ("'1040'!$Y$72",
+           '=IF(AM72<>"",ROUND(AM72,0),EarnedIncomeCredit)'),
+}
+LINE_27_GATE_2025 = {
+    ("1040", "AI117"): '=IF(EIC_No_Box,"X","")',
+    ("Line 27a (EIC)", "O1"): "=OR(G28,A157,G199,A216,A321,A430,O462)",
+}
+
+
+def _named(wb, name):
+    sheet, cell = wb.defined_names[name].attr_text.replace("$", "").split("!")
+    return sheet.strip("'"), cell
+
+
+class LineTwentySevenTests(unittest.TestCase):
+    """Ruling R-S7-10, per workbook year: what line 27 reads, and that the
+    sheet's own verdict NoEICredit sees the Form 4797 answer. A relayout or a
+    vendor fix (line 27 starting to honor NoEICredit) fails here — then
+    revisit refuse_inconsistent_workbook_eic."""
+
+    def test_the_eic_name_and_its_formula(self):
+        for year, (target, formula) in sorted(LINE_27.items()):
+            wb = _workbook(year)
+            with self.subTest(year=year):
+                self.assertEqual(wb.defined_names["EIC"].attr_text, target)
+                sheet, cell = _named(wb, "EIC")
+                self.assertEqual(wb[sheet][cell].value, formula)
+
+    def test_the_2025_gate_has_no_step_2_term(self):
+        wb = _workbook(2025)
+        self.assertEqual(_named(wb, "EIC_No_Box"), ("Line 27a (EIC)", "O1"))
+        for (sheet, cell), formula in LINE_27_GATE_2025.items():
+            with self.subTest(cell=f"{sheet}!{cell}"):
+                self.assertEqual(wb[sheet][cell].value, formula)
+
+    def test_no_eic_credit_sees_the_form_4797_answer(self):
+        self.assertEqual(set(LINE_27), set(EIC_FORM_4797_QUESTION))
+        for year, q in sorted(EIC_FORM_4797_QUESTION.items()):
+            wb = _workbook(year)
+            with self.subTest(year=year):
+                self.assertEqual(_named(wb, "NoEICredit"), (q.sheet, "A1"))
+                self.assertIn(f'{q.q3_no}<>""', wb[q.sheet]["A1"].value)
 
 
 class AnswerCellStructureTests(unittest.TestCase):
