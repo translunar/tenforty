@@ -212,7 +212,9 @@ def _build_oracle_routed_qbi_scenario() -> Scenario:
 
     Wages $8,000 + K-1 ordinary business income $10,000 -> AGI $18,000,
     comfortably under the 2025 single/0-dependent EIC-ceiling-gate estimate
-    ($26,214), so `_scenario_in_spine_scope` is False. QBI deduction is
+    ($26,214). Since the childless-EITC routing change such a return
+    computes natively; the oracle class below FORCES the workbook route
+    (ruling R-S6-4). QBI deduction is
     $450 (20% of the $2,250 taxable-income-before-QBI, the binding limit —
     not 20% of the $10,000 QBI itself).
     """
@@ -291,8 +293,15 @@ class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
     `schedule_k1s` at all. The gap was structural (no QBI-bearing parity
     fixture existed), not a hole in the gate's own logic."""
 
+    # ROUTING IS FORCED (ruling R-S6-4). A real TY2025 single EIC-possible
+    # return now computes natively (2025 single is a declared childless-EIC
+    # cell), so this test forces the workbook route to keep its subject — the
+    # workbook translation — with its TY2025 figures untouched. It follows
+    # that translation's own lifetime: when the workbook path retires for
+    # TY2025 it retires (or is re-derived) with it.
     @classmethod
     def setUpClass(cls):
+        from unittest import mock
         cls._tmpdir = tempfile.mkdtemp()
         out_dir = Path(cls._tmpdir)
         scenario = _build_oracle_routed_qbi_scenario()
@@ -302,8 +311,18 @@ class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
         )
         cls.orch = orch
         cls.scenario = scenario
-        cls.results = orch.compute_federal(scenario)
-        emitted = orch.emit_pdfs(scenario, cls.results, out_dir)
+        cls.workbook_calls = []
+        real = ReturnOrchestrator._compute_1040_via_workbook
+
+        def spy(self_, *args, **kwargs):
+            cls.workbook_calls.append(args)
+            return real(self_, *args, **kwargs)
+        with mock.patch.object(ReturnOrchestrator, "_scenario_in_spine_scope",
+                               return_value=False), \
+                mock.patch.object(ReturnOrchestrator,
+                                  "_compute_1040_via_workbook", spy):
+            cls.results = orch.compute_federal(scenario)
+            emitted = orch.emit_pdfs(scenario, cls.results, out_dir)
         reader = pypdf.PdfReader(str(emitted["1040"]))
         fields = reader.get_fields() or {}
         cls.field_values = {
@@ -315,12 +334,9 @@ class TestPdf1040FillOraclePathQbiConsistency(unittest.TestCase):
         return float(raw.replace(",", "").replace("$", "")) if raw else 0.0
 
     def test_scenario_is_oracle_routed(self):
-        # Confirm the routing claim rather than assume it: single filer,
-        # low enough AGI estimate to fail the native spine's EIC-ceiling
-        # gate -> _compute_1040_pipeline falls back to
-        # _compute_1040_via_workbook (the oracle path).
-        eff, _ = self.orch._build_effective_scenario(self.scenario)
-        self.assertFalse(self.orch._scenario_in_spine_scope(eff))
+        # The route is FORCED (see setUpClass, ruling R-S6-4); confirm the
+        # workbook translation actually ran rather than assume it.
+        self.assertEqual(len(self.workbook_calls), 1)
 
     def test_qbi_deduction_is_nonzero(self):
         self.assertGreater(self.results["qbi_deduction"], 0)

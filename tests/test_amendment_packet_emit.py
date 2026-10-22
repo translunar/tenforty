@@ -1134,9 +1134,10 @@ class AmendmentPacketEmitTests(unittest.TestCase):
 
         Scenario (`_build_eic_eligible_qbi_scenario`): single filer, wages
         $8,000 (well under the 2025 EIC-ceiling gate's threshold even after
-        adding K-1 income), so `_scenario_in_spine_scope` is False and
-        `_compute_1040_pipeline` routes to `_compute_1040_via_workbook` — the
-        oracle path this bug fixes. Verified directly below, not assumed.
+        adding K-1 income). Since the childless-EITC routing change such a
+        return computes natively, so the test FORCES `_compute_1040_via_workbook`
+        (ruling R-S6-4) — the oracle path this bug fixes — and verifies both
+        twins took it, not assumed.
         Original K-1: ordinary_business_income = qbi_amount = $10,000 -> AGI
         $18,000, QBI deduction $450 (binding limit: 20% of the $2,250
         taxable-income-before-QBI, not 20% of the $10,000 QBI itself).
@@ -1166,19 +1167,27 @@ class AmendmentPacketEmitTests(unittest.TestCase):
         original = _build_eic_eligible_qbi_scenario(10_000.0)
         amended = _build_eic_eligible_qbi_scenario(15_000.0)
 
-        eff_original, _ = self.orch._build_effective_scenario(original)
-        eff_amended, _ = self.orch._build_effective_scenario(amended)
-        self.assertFalse(
-            self.orch._scenario_in_spine_scope(eff_original),
-            "original scenario unexpectedly routed to the native spine, not "
-            "the oracle/workbook path this test targets")
-        self.assertFalse(
-            self.orch._scenario_in_spine_scope(eff_amended),
-            "amended scenario unexpectedly routed to the native spine, not "
-            "the oracle/workbook path this test targets")
+        # ROUTING IS FORCED (ruling R-S6-4): a real TY2025 single EIC-possible
+        # return now computes natively (2025 single is a declared
+        # childless-EIC cell), so both twins are sent down the workbook path
+        # explicitly — the subject is that path's translation — with the
+        # TY2025 figures below untouched. This test follows the workbook
+        # translation's own lifetime for TY2025.
+        from unittest import mock
+        workbook_calls = []
+        real = ReturnOrchestrator._compute_1040_via_workbook
 
-        orig_fed = self.orch.compute_federal(original)
-        corrected_fed = self.orch.compute_federal(amended)
+        def spy(self_, *args, **kwargs):
+            workbook_calls.append(args)
+            return real(self_, *args, **kwargs)
+        with mock.patch.object(ReturnOrchestrator, "_scenario_in_spine_scope",
+                               return_value=False), \
+                mock.patch.object(ReturnOrchestrator,
+                                  "_compute_1040_via_workbook", spy):
+            orig_fed = self.orch.compute_federal(original)
+            corrected_fed = self.orch.compute_federal(amended)
+        # Both twins went through the workbook translation, not assumed.
+        self.assertEqual(len(workbook_calls), 2)
         self.assertGreater(orig_fed["qbi_deduction"], 0)
         self.assertGreater(corrected_fed["qbi_deduction"], 0)
         self.assertNotEqual(orig_fed["qbi_deduction"], corrected_fed["qbi_deduction"])
