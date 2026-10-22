@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 from tenforty.declarations import registry
-from tenforty.verification import checks, emit_manifest, pending
+from tenforty.verification import checks, emit_manifest, pending, zero_lines
 from tenforty.verification.batteries import BATTERIES
 from tenforty.verification.coverage import WORKBOOK_LABEL, coverage_cells
 from tenforty.verification.undeclared import undeclared_keys
@@ -215,6 +215,24 @@ class CoverageTests(unittest.TestCase):
             print(f"{WORKBOOK_LABEL}: {cell}")
         self.assertEqual(list(report.uncovered), [],
                          f"uncovered cells; see {path}")
+
+
+class AlwaysZeroLineTests(unittest.TestCase):
+    """[R-ZL-1] option 2: a declared value-only line that computes 0 in
+    every native battery record is a finding unless ATTESTED_ZERO or
+    PENDING accounts for it (tenforty/verification/zero_lines.py)."""
+
+    def test_every_always_zero_line_is_accounted_for(self):
+        records = []
+        for battery, name, year, build in _scenarios():
+            rid = emit_manifest.row_id(battery.name, name, year)
+            row = MANIFEST.get(rid)
+            if not row or row["routing"] != "native" or row["refusal"]:
+                continue
+            records += [(rid, r) for r in emitted(battery, name, year,
+                                                  build).record]
+        found = zero_lines.findings(records)
+        self.assertEqual(found, [], "\n".join(found))
 
 
 class UndeclaredKeyTests(unittest.TestCase):
