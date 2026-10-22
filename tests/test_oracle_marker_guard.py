@@ -20,6 +20,12 @@ TESTS_DIR = REPO_ROOT / "tests"
 # and justified.
 _MOCKED_ENGINE_ALLOWLIST = {
     "test_oracle_engine.py",  # patches subprocess.run; no real soffice
+    # Childless-EIC workbook health + answer-adapter mechanics: uses only
+    # SpreadsheetEngine._write_inputs (the engine's openpyxl writer, no
+    # recalculation), and its one _compute_1040_via_workbook call runs under
+    # mock.patch.object(orch.engine, "compute", ...) raising a sentinel
+    # before any recalculation, so no real soffice is ever invoked.
+    "test_eic_workbook_health.py",
     # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
     # at the top of _compute_1040_via_workbook, before any engine call. The
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute
