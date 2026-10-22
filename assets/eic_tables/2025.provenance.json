@@ -1,0 +1,7 @@
+{
+ "source": "pdfs/federal/2025/i1040tt.pdf",
+ "source_sha256": "8ae019bd3b28b07b37e46e18597d8e899222a2224ce7482c015b130033403532",
+ "edition": "Publication 1040 (2025) Catalog Number 46895T",
+ "csv_sha256": "e5c0a0a2f5aa29cb13e37a4928cc4354b9f75b6411d6551addcb889974dc0ff2",
+ "script": "scripts/ingest_eic_table.py"
+}
