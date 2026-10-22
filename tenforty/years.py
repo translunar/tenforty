@@ -73,7 +73,7 @@ NATIVE_EIC_STATUSES: dict[int, tuple[str, ...]] = {
     2021: (),
     2022: (),
     2023: (),
-    2024: (),
+    2024: ("single", "married_filing_jointly"),
     2025: ("single", "married_filing_jointly"),
 }
 

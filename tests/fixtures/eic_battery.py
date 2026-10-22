@@ -285,6 +285,6 @@ EIC_ROWS[(2025, "single")] = _rows(2025, "single")
 # 2025 MFJ rows exist ahead of the cell's declaration (spec step 7: parity
 # first, then the grid row).
 EIC_ROWS[(2025, "married_filing_jointly")] = _rows(2025, "married_filing_jointly")
-# 2024 rows (step 8) exist ahead of the cells' declaration: parity first.
+# 2024 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2024, "single")] = _rows(2024, "single")
 EIC_ROWS[(2024, "married_filing_jointly")] = _rows(2024, "married_filing_jointly")

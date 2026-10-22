@@ -50,7 +50,7 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
 YEARS = (2024, 2025)
-AHEAD_OF_GRID: frozenset[int] = frozenset({2024})
+AHEAD_OF_GRID: frozenset[int] = frozenset()
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
     "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
@@ -88,9 +88,11 @@ DIVERGENCES = {
     # published table (assets/eic_tables/2025.csv) reads 323: $1 high here.
     (2025, "single", "phase_out"): (323, 324),
     (2025, "single", "agi_over_earned"): (323, 324),
-    # R-S7-7, 2024: the same B39 gap; the workbook figure is declared
-    # nonzero and pinned once the first comparison shows it (R-S7-14).
-    (2024, "single", "fact_nonresident_alien"): (0, NONZERO),
+    # R-S7-7, 2024: the same B39 gap. Workbook figure pinned after the first
+    # comparison (0e34ac9, R-S8-5): the table credit at the row's earned
+    # income, as for its identical-input sibling `plateau` (632, penny-equal
+    # on that run) — B39 has no dollar path in the 2024 sheet.
+    (2024, "single", "fact_nonresident_alien"): (0, 632),
     # R-T2 / R-S7-1 (R-S8-3 placement): born Jan 1 of (year-64) is under 65
     # at year end (Pub. 596's asymmetric age-65 rule), so native grants; the
     # workbook's symmetric day-before age denies. Native predicted PRE-RUN
@@ -105,10 +107,12 @@ DIVERGENCES = {
 REFUSED_DIVERGENCES = {
     (2025, "single", "investment_over_limit"): 155,
     (2025, "married_filing_jointly", "investment_over_limit"): 155,
-    # 2024: the same display-only Step 2 stop (all years); pinned exactly
-    # after the first comparison (R-S7-14).
-    (2024, "single", "investment_over_limit"): NONZERO,
-    (2024, "married_filing_jointly", "investment_over_limit"): NONZERO,
+    # 2024: the same display-only Step 2 stop (all years). Pinned after the
+    # first comparison (0e34ac9, R-S8-5): Worksheet A's credit at the row's
+    # earned income and AGI, the same table bins as its sibling
+    # `investment_at_limit` (155, penny-equal on that run).
+    (2024, "single", "investment_over_limit"): 155,
+    (2024, "married_filing_jointly", "investment_over_limit"): 155,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
