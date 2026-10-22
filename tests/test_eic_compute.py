@@ -285,7 +285,10 @@ class SpineWiringTests(unittest.TestCase):
                          "agi_at_or_over_limit")
 
     def test_a_year_outside_the_eic_grid_computes_nothing(self):
-        out = self._spine(2024, 9000.0)
+        # The newest still-transitional cell (ruling R-S8-6).
+        from tenforty.models import FilingStatus
+        from tests.helpers import transitional_eic_year
+        out = self._spine(transitional_eic_year(FilingStatus.SINGLE), 9000.0)
         self.assertNotIn("eic", out)
         self.assertNotIn("eic_determination", out)
         self.assertIsNone(out["total_other_payments"])

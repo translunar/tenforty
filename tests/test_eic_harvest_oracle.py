@@ -15,9 +15,13 @@ import pypdf
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures import eic_battery
-from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
+from tenforty.models import FilingStatus
+from tests.helpers import (
+    SPREADSHEETS_DIR, needs_libreoffice, transitional_eic_year)
 
-YEAR = eic_battery.YEAR
+# The newest still-transitional cell: these rows must route to the workbook
+# (ruling R-S8-6; the assertion in setUpClass pins it).
+YEAR = transitional_eic_year(FilingStatus.SINGLE)
 LINE_32_COMPONENTS = (
     "eic", "additional_child_tax_credit", "american_opportunity_credit",
     "adoption_credit_8839", "schedule3_payments",

@@ -28,7 +28,7 @@ from tenforty.forms import sch_c as form_sch_c
 from tenforty.models import ScheduleCBusiness, Scenario, W2
 from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.federal import load as load_federal_params
-from tests.helpers import REPO_ROOT, make_simple_scenario
+from tests.helpers import REPO_ROOT, make_simple_scenario, transitional_eic_year
 
 # Year 2025, single, 0 dependents -> EIC income ceiling[0] = 26_214 (y2025.py).
 # Choose synthetic amounts so WAGES ALONE are below the ceiling but WAGES + Sch C
@@ -149,10 +149,10 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
         # the estimate — is pinned on eic_possible ...
         from tenforty.orchestrator import eic_possible
         self.assertTrue(eic_possible(scn))
-        # ... and the routing + fail-closed refusal on a still-transitional
-        # cell (2024 single, R-S6-1); dies with (2024, single)'s landing.
+        # ... and the routing + fail-closed refusal on the newest
+        # still-transitional cell (R-S6-1; ruling R-S8-6).
         scn = dataclasses.replace(scn, config=dataclasses.replace(
-            scn.config, year=2024))
+            scn.config, year=transitional_eic_year("single")))
         self.assertFalse(self._in_scope(scn))
         # Out of the native spine, Schedule C refuses (the workbook path does
         # not wire it) -- fail-closed, never a silent native compute -- and

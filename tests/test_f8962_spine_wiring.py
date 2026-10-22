@@ -28,7 +28,8 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import scope_out_attestation_defaults
+from tests.helpers import (
+    scope_out_attestation_defaults, transitional_eic_year)
 
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -123,11 +124,12 @@ class F8962SpineWiringTests(unittest.TestCase):
         # Wages below the EIC ceiling → out of native-spine scope. With a
         # 1095-A present, silent workbook fallback would drop the PTC, so the
         # orchestrator must refuse rather than route to the (8962-less) workbook.
-        # TY2024 (ruling R-S6-2): only a cell whose childless credit is not
-        # native yet still routes out (transitional routing, R-S6-1); a
-        # declared cell computes natively (NativeEicWithPtcTests).
+        # The newest still-transitional cell (ruling R-S8-6): only a cell
+        # whose childless credit is not native yet still routes out
+        # (R-S6-1); a declared cell computes natively (NativeEicWithPtcTests).
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
-        scenario = _scenario(10_000, 500, block, year=2024)
+        scenario = _scenario(10_000, 500, block,
+                             year=transitional_eic_year("single"))
         with self.assertRaisesRegex(
             NotImplementedError, "out of native-1040-spine scope",
         ):
@@ -181,11 +183,12 @@ class CarveOutMessageTests(unittest.TestCase):
         )
 
     def _message(self):
-        # TY2024: still transitional (ruling R-S6-2); see test_c above.
+        # The newest still-transitional cell (R-S8-6); see test_c above.
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
         with self.assertRaises(NotImplementedError) as ctx:
-            self.orch.compute_federal(_scenario(10_000, 500, block,
-                                                year=2024))
+            self.orch.compute_federal(_scenario(
+                10_000, 500, block,
+                year=transitional_eic_year("single")))
         return str(ctx.exception)
 
     def test_message_names_the_declared_native_grid(self):

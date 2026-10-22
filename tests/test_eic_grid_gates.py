@@ -303,3 +303,25 @@ class UpperAgeWindowTests(unittest.TestCase):
                     wages = sum(w.wages for w in rows[kind](year).w2s)
                     self.assertLess(low, wages)
                     self.assertLess(wages, high)
+
+
+class TransitionalEicYearTests(unittest.TestCase):
+    """Ruling R-S8-6: the workbook-route vehicles' year helper. Moves one
+    rung per step-8 grid row; this pin is updated with each row."""
+
+    def test_the_newest_undeclared_cell_on_the_current_grid(self):
+        from tests.helpers import transitional_eic_year
+        for status in ("single", "married_filing_jointly"):
+            with self.subTest(status=status):
+                self.assertEqual(transitional_eic_year(status), 2023)
+
+    def test_a_fully_declared_grid_fails_loudly(self):
+        from unittest import mock
+        from tests.helpers import transitional_eic_year
+        everything = {year: ("single", "married_filing_jointly")
+                      for year in years.NATIVE_SPINE_STATUSES}
+        with mock.patch.dict(years.NATIVE_EIC_STATUSES, everything):
+            with self.assertRaises(AssertionError) as ctx:
+                transitional_eic_year("single")
+        self.assertIn("planned mass-retirement event", str(ctx.exception))
+        self.assertIn("'single'", str(ctx.exception))

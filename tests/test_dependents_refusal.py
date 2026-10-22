@@ -21,7 +21,8 @@ from unittest import mock
 
 from tenforty.models import W2, FilingStatus, Scenario
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import REPO_ROOT, hoh_facts, make_simple_scenario
+from tests.helpers import (
+    REPO_ROOT, hoh_facts, make_simple_scenario, transitional_eic_year)
 
 _STATUSES = (FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY,
              FilingStatus.HEAD_OF_HOUSEHOLD)
@@ -53,13 +54,12 @@ def _scenario(status, dependents=("Example Child",), year=2025,
 
 def _workbook_routed(dependents=("Child A", "Child B")):
     """Single, $20k wages: below the EIC income ceiling, so the scope gate
-    sends it to the workbook path. TY2024 (ruling R-S6-2): a cell whose
-    childless credit is not native yet keeps that route (transitional
-    routing, R-S6-1); move it when (2024, single) lands in
-    NATIVE_EIC_STATUSES."""
+    sends it to the workbook path. Year: the newest still-transitional cell
+    (tests.helpers.transitional_eic_year, ruling R-S8-6): a cell whose
+    childless credit is not native yet keeps that route (R-S6-1)."""
     base = _scenario(FilingStatus.SINGLE, dependents=dependents)
     base = dataclasses.replace(base, config=dataclasses.replace(
-        base.config, year=2024))
+        base.config, year=transitional_eic_year(FilingStatus.SINGLE)))
     return dataclasses.replace(base, w2s=[W2(
         employer="Synthetic Co", wages=20_000, federal_tax_withheld=1_000,
         ss_wages=20_000, ss_tax_withheld=1_240, medicare_wages=20_000,

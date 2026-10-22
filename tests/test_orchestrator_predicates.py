@@ -13,7 +13,7 @@ from tenforty.models import (
     RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator, eic_possible
-from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_attestation_defaults
+from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_attestation_defaults, transitional_eic_year
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -418,10 +418,9 @@ class SpineScopeRoutingTests(unittest.TestCase):
         s.w2s = [self._low_wage()]
         # Ruling R-S6-2: the subject is the estimate (possibly eligible) ...
         self.assertTrue(eic_possible(s))
-        # ... and on a cell whose childless credit is not native yet (2024
-        # single, transitional routing R-S6-1) it still routes OUT. This
-        # instance dies when (2024, single) lands in NATIVE_EIC_STATUSES.
-        s.config.year = 2024
+        # ... and on the newest cell whose childless credit is not native yet
+        # (transitional routing R-S6-1; ruling R-S8-6) it still routes OUT.
+        s.config.year = transitional_eic_year("single")
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
 
     def test_capital_loss_does_not_pull_eligible_filer_into_spine(self) -> None:
@@ -437,10 +436,10 @@ class SpineScopeRoutingTests(unittest.TestCase):
             short_term=True,
         )]
         # Ruling R-S6-2: the loss clamps to 0, so the estimate still says
-        # possibly eligible; on a still-transitional cell (2024 single) the
-        # filer still routes out. Dies with (2024, single)'s landing.
+        # possibly eligible; on the newest still-transitional cell (ruling
+        # R-S8-6) the filer still routes out.
         self.assertTrue(eic_possible(s))
-        s.config.year = 2024
+        s.config.year = transitional_eic_year("single")
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
 
 

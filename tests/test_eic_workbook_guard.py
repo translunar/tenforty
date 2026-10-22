@@ -23,9 +23,11 @@ from tenforty.params.federal import load as load_params
 from tests.eic_oracle_adapter import eic_answers_adapter
 from tests.fixtures.eic_battery import favorable_eligibility, favorable_person
 from tests.fixtures.spine_battery import _battery_config, _w2
-from tests.helpers import SPREADSHEETS_DIR
+from tests.helpers import SPREADSHEETS_DIR, transitional_eic_year
 
-YEAR = 2024  # a transitional cell: EIC-possible returns route to the workbook
+# The newest still-transitional cell, where EIC-possible returns route to the
+# workbook (ruling R-S8-6); single and MFJ are declared together per year.
+YEAR = transitional_eic_year(FilingStatus.SINGLE)
 
 
 class _Engine(Exception):

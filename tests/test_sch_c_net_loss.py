@@ -24,7 +24,7 @@ from tenforty.models import (
     K1FanoutData, RentalProperty, ScheduleCBusiness, ScheduleK1, Scenario,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import REPO_ROOT, make_simple_scenario
+from tests.helpers import REPO_ROOT, make_simple_scenario, transitional_eic_year
 
 ATTESTATION = "acknowledges_sch_c_all_investment_at_risk"
 
@@ -290,18 +290,18 @@ class SchCLossEicRoutingTests(unittest.TestCase):
         self.assertFalse(eic_possible(self._wage_scenario(wages)))
         self.assertLess(wages - 5_000.0, ceiling)
         self.assertTrue(eic_possible(self._wage_scenario(wages, big_loss)))
-        # Routing, on a still-transitional cell (2024 single, R-S6-1): the
-        # loss sends the filer out of spine scope. Dies with (2024, single)'s
-        # landing in NATIVE_EIC_STATUSES.
-        wages_2024 = load_federal_params(2024).eic_income_ceiling[0] + 1_000.0
+        # Routing, on the newest still-transitional cell (R-S6-1; ruling
+        # R-S8-6): the loss sends the filer out of spine scope.
+        year = transitional_eic_year("single")
+        wages_then = load_federal_params(year).eic_income_ceiling[0] + 1_000.0
 
-        def in_2024(*businesses):
-            scn = self._wage_scenario(wages_2024, *businesses)
+        def in_year(*businesses):
+            scn = self._wage_scenario(wages_then, *businesses)
             return dataclasses.replace(scn, config=dataclasses.replace(
-                scn.config, year=2024))
-        self.assertTrue(self.orch._scenario_in_spine_scope(in_2024()))
+                scn.config, year=year))
+        self.assertTrue(self.orch._scenario_in_spine_scope(in_year()))
         self.assertFalse(self.orch._scenario_in_spine_scope(
-            in_2024(big_loss)))
+            in_year(big_loss)))
 
     def test_small_loss_well_above_the_ceiling_stays_native(self):
         self.assertTrue(self.orch._scenario_in_spine_scope(
