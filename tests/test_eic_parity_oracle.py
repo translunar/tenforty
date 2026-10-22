@@ -19,6 +19,10 @@ Rows NOT compared here, each for a stated reason:
     outright (orchestrator: "cannot carry Schedule C / Schedule SE"), so the
     oracle has no evidence to offer; they stay native-unit-tested.
 2025 MFJ is compared ahead of its EIC-grid declaration (parity first).
+
+ADJUDICATED DIVERGENCES (DIVERGENCES below) are rows where the workbook was
+ruled wrong; each asserts BOTH sides exactly, so a change on either side
+fails loudly. They are not an allowlist: they stay at their own bins.
 """
 import tempfile
 import unittest
@@ -40,6 +44,23 @@ EXCLUDED = {
                                "fact_nonresident_alien"},
 }
 _PROMPTS = ("eic_diag_prompt_an", "eic_diag_prompt_ao", "eic_diag_prompt_ap")
+_KEYS = ("eic", "total_other_payments", "total_payments")
+
+# (status, kind) -> (native, workbook) on every key in _KEYS: the oracle
+# evidence of d9dec1f's first comparison, adjudicated workbook-wrong.
+DIVERGENCES = {
+    # R-S7-7: Step 1 Q4's "Yes" branch (B39) only says "See Non-resident
+    # aliens, later"; B39 is absent from NoEICredit's OR-chain
+    # (A1 '=OR(N1,H21<>"",H28<>"",B34<>"",H65<>"",B157<>"",H294<>"",
+    # L316=0,EarnedIncomeWSB<=0,O458<=0)'), so a single NRA keeps the credit.
+    ("single", "fact_nonresident_alien"): (0, 649),
+    # R-S7-8: the workbook's EIC Table is rebuilt from derived slopes
+    # (N7 '=ROUND(N3/N4,4)', N9 '=-ROUND(N3/(N6-N5),7)' = -0.0764969, not
+    # the statutory 7.65%), so its 14,850-14,900 bin reads 324 where the
+    # published table (assets/eic_tables/2025.csv) reads 323: $1 high here.
+    ("single", "phase_out"): (323, 324),
+    ("single", "agi_over_earned"): (323, 324),
+}
 
 
 def _n(value) -> int:
@@ -85,7 +106,18 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
 
     def test_line_27_32_33_agree_to_the_penny(self):
         for (status, kind), (native, workbook) in sorted(self.pairs.items()):
-            for key in ("eic", "total_other_payments", "total_payments"):
+            if (status, kind) in DIVERGENCES:
+                continue
+            for key in _KEYS:
                 with self.subTest(status=status, kind=kind, key=key):
                     self.assertEqual(_n(native.get(key)),
                                      _n(workbook.get(key)))
+
+    def test_each_adjudicated_divergence_holds_on_both_sides(self):
+        self.assertLessEqual(set(DIVERGENCES), set(self.pairs))
+        for (status, kind), expected in sorted(DIVERGENCES.items()):
+            native, workbook = self.pairs[(status, kind)]
+            for key in _KEYS:
+                with self.subTest(status=status, kind=kind, key=key):
+                    self.assertEqual((_n(native.get(key)),
+                                      _n(workbook.get(key))), expected)
