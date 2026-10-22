@@ -138,7 +138,8 @@ EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {
     key: {2025: f"{_R}/{key}_2025.yaml"}
     for key in ("eic_eligibility_missing", "prior_eic_disallowance_8862",
                 "worksheet_1_rental", "worksheet_1_k1", "statutory_employee",
-                "k1_self_employment_earnings", "year_scoped_eic_fact")}
+                "k1_self_employment_earnings", "year_scoped_eic_fact",
+                "nonresident_alien_spouse_election")}
 
 
 def favorable_person(**overrides) -> EicPersonFacts:

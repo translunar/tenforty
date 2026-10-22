@@ -224,29 +224,39 @@ def apply_eligibility_facts(scenario: Scenario,
     joint = status is FilingStatus.MARRIED_FILING_JOINTLY
     people = [block.taxpayer] + ([block.spouse] if joint else [])
     # Step 1 Q2: "Do you, and your spouse if filing a joint return, have"
-    # an SSN valid for EIC purposes.
+    # an SSN valid for EIC purposes — both spouses (ruling R-S5-2). Open item
+    # O-E4: the 2025 text has NO one-spouse exception; re-verify per year as
+    # each year's instructions land, never carry it forward.
     if not all(p.ssn_valid_for_employment for p in people):
         return Determination(False, "ssn_not_valid", "Step 1, question 2")
-    # Step 1 Q4 / "Nonresident aliens": the credit continues only if the
-    # filing-status election to treat a nonresident alien spouse as a U.S.
-    # resident was made — an input tenforty does not have. A joint return
-    # cannot be decided, so it refuses; a single filer stops.
+    # Step 1 Q4 / "Nonresident aliens" (Definitions and Special Rules): "If
+    # you checked the box in the Filing Status section to treat a nonresident
+    # alien or dual-status alien spouse as a U.S. resident for the entire
+    # year, go to Step 2. Otherwise, stop." Ruling R-S5-3 (O-E2 closed as
+    # fail-closed pending an input): a single filer stops; a joint return
+    # cannot be decided without that election, so it refuses.
     if any(p.nonresident_alien_any_part_of_year for p in people):
         if joint:
             raise NotImplementedError(
                 "nonresident_alien_spouse_election: a spouse on this joint "
                 "return was a nonresident alien for part of the year. The "
-                "earned income credit then depends on the filing-status "
+                "earned income credit then turns on the filing-status "
                 "election to treat a nonresident alien spouse as a U.S. "
-                "resident for the entire year, which tenforty does not "
-                "model.")
+                "resident for the entire year. That election exists in the "
+                "law, but tenforty has no input for it, so this return "
+                "cannot be computed.")
         return Determination(False, "nonresident_alien", "Step 1, question 4")
     # Step 4 Q3: "Was your main home, and your spouse's if filing a joint
-    # return, in the United States for more than half" the year.
+    # return, in the United States for more than half" the year — the
+    # spouse's home is included (ruling R-S5-2).
     if not all(p.main_home_in_us_more_than_half_year for p in people):
         return Determination(False, "main_home_not_in_us",
                              "Step 4, question 3")
-    # Step 4 Q4: a joint return skips questions 5 and 6.
+    # Step 4 Q4: "Are you filing a joint return for 2025? Yes. Skip
+    # questions 5 and 6". So on a joint return the qualifying-child-of-
+    # another and claimable-dependent facts are deliberately unread — the
+    # instructions' own skip, not a gap (ruling R-S5-2); the uniform schema
+    # still carries the keys.
     if not joint:
         if block.taxpayer.could_be_qualifying_child_of_another:
             return Determination(False, "qualifying_child_of_another",

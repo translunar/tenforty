@@ -267,3 +267,43 @@ class EicUnreachableInputTests(unittest.TestCase):
                           ("ScheduleK1", "section_1231_gain")):
             with self.subTest(cls=cls):
                 self.assertIn(name, census[cls])
+
+
+class Step5InstrumentTests(unittest.TestCase):
+    """Ruling R-S5-1: _reaches forces native routing ONLY while real routing
+    still sends an EIC-possible return to the workbook."""
+
+    def test_the_routing_patch_is_still_needed(self):
+        # When the step-6 routing change lands (scope = grid only), this goes
+        # red: delete the _scenario_in_spine_scope patch in _reaches, and
+        # this test, in that same commit, so the same fixtures prove
+        # reachability through REAL routing. A fixture that then fails is a
+        # finding, never a fixture to adjust.
+        from tenforty.orchestrator import ReturnOrchestrator
+        import tempfile
+        scenario = load_scenario(REPO_ROOT / eic_battery.EIC_REFUSAL_FIXTURES[
+            "eic_eligibility_missing"][2025])
+        with tempfile.TemporaryDirectory() as tmp:
+            orch = ReturnOrchestrator(
+                spreadsheets_dir=REPO_ROOT / "spreadsheets",
+                work_dir=Path(tmp))
+            self.assertFalse(orch._scenario_in_spine_scope(scenario))
+
+
+class StatusScopedRefusalTests(unittest.TestCase):
+    """Ruling R-S5-3: the joint-return refusal has a reaching fixture now,
+    though no MFJ cell is declared yet (the gate requires it once one is)."""
+
+    def test_the_joint_nra_fixture_reaches_with_mfj_declared(self):
+        from unittest import mock
+        key = "nonresident_alien_spouse_election"
+        path = eic_battery.EIC_REFUSAL_FIXTURES[key][2025]
+        with mock.patch.dict(years.NATIVE_EIC_STATUSES,
+                             {2025: ("single", "married_filing_jointly")}):
+            self.assertIn(key, eic_battery.required_eic_refusals(
+                2025, years.NATIVE_EIC_STATUSES[2025]))
+            self.assertTrue(_reaches(key, path))
+
+    def test_it_is_not_required_while_no_mfj_cell_is_declared(self):
+        self.assertNotIn("nonresident_alien_spouse_election",
+                         eic_battery.required_eic_refusals(2025, ("single",)))
