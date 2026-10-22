@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tenforty"
 version = "0.2.7"
-description = "Tax preparation harness — spreadsheet-driven, test-verified"
+description = "Open-source US federal + California tax preparation — native compute, cross-checked against independent oracles, fills official IRS/FTB PDFs"
 requires-python = ">=3.12"
 dependencies = [
     "openpyxl>=3.1",
