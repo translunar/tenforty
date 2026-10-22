@@ -1247,21 +1247,34 @@ class WorkbookEicInconsistent(NotImplementedError):
 
 
 def refuse_inconsistent_workbook_eic(raw: dict) -> None:
-    """FAIL-CLOSED (ruling R-S7-10). In every workbook year the EIC sheet's
-    Step 2 stop (investment income over the limit) is display-only:
-    NoEICredit turns TRUE but line 27 never reads it, so the table credit
-    is printed anyway. Refuse exactly when the sheet's own verdict and its
-    line 27 disagree that way; never when NoEICredit is TRUE with no credit,
-    or FALSE with one."""
-    eic = raw.get("eic") or 0
-    if raw.get(EIC_NO_CREDIT_DECLARED_KEY) == True and round(eic) > 0:  # noqa: E712 (LibreOffice may store TRUE as 1)
+    """FAIL-CLOSED (rulings R-S7-10, R-S7-10a). In every workbook year the
+    EIC sheet's Step 2 stop (investment income over the limit) is
+    display-only: NoEICredit turns TRUE but line 27 never reads it, so the
+    table credit is printed anyway. When line 27 is positive, the only
+    harvested verdict that lets the credit through is exactly bool False:
+    TRUE refuses (the sheet contradicts itself), and so does anything else
+    — 1, None, a missing key — because a verdict that cannot be read is not
+    a "credit allowed". With no credit the verdict is irrelevant. Pops the
+    verdict from `raw` (it never reaches the results)."""
+    declared = raw.pop(EIC_NO_CREDIT_DECLARED_KEY, None)
+    eic = round(raw.get("eic") or 0)
+    if eic <= 0 or declared is False:
+        return
+    harvested = {**raw, EIC_NO_CREDIT_DECLARED_KEY: declared}
+    if declared is True:
         raise WorkbookEicInconsistent(
             f"workbook_eic_inconsistent: the workbook declares that this "
             f"return cannot take the earned income credit (its NoEICredit "
-            f"verdict is TRUE), yet its line 27 carries ${round(eic)}. The "
+            f"verdict is TRUE), yet its line 27 carries ${eic}. The "
             f"workbook's line 27 does not honor that verdict, so this return "
             f"is refused rather than filed with a credit the workbook itself "
-            f"disallows.", dict(raw))
+            f"disallows.", harvested)
+    raise WorkbookEicInconsistent(
+        f"workbook_eic_inconsistent: the workbook's line 27 carries ${eic} "
+        f"of earned income credit, but its NoEICredit verdict could not be "
+        f"read as TRUE or FALSE (harvested: {declared!r}), so whether the "
+        f"workbook itself allows that credit is unknown and this return is "
+        f"refused.", harvested)
 
 
 def refuse_workbook_eic_facts(scenario: Scenario) -> None:
@@ -2080,7 +2093,6 @@ class ReturnOrchestrator:
             work_dir=self.work_dir / "federal",
         )
         refuse_inconsistent_workbook_eic(raw)
-        raw.pop(EIC_NO_CREDIT_DECLARED_KEY, None)
 
         # Supplement: the oracle's OUTPUTS only read W-2 withholding
         # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding

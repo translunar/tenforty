@@ -28,6 +28,12 @@ Rows NOT compared here, each for a stated reason:
 ADJUDICATED DIVERGENCES (DIVERGENCES below) are rows where the workbook was
 ruled wrong; each asserts BOTH sides exactly, so a change on either side
 fails loudly. They are not an allowlist: they stay at their own bins.
+REFUSED DIVERGENCES (R-S7-10/10a) are rows where the workbook contradicts
+itself — NoEICredit TRUE yet line 27 positive — so production refuses
+(workbook_eic_inconsistent); each asserts native's 0, the exact refusal,
+and the line 27 the sheet computed, read from the refusal's harvest. NO
+other row may refuse: a credited row refusing means the NoEICredit harvest
+is not an exact bool (R-S7-10a) — STOP and enumerate.
 """
 import tempfile
 import unittest
@@ -35,7 +41,7 @@ from pathlib import Path
 from unittest import mock
 
 from tenforty import years
-from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.orchestrator import ReturnOrchestrator, WorkbookEicInconsistent
 from tests.eic_oracle_adapter import eic_answers_adapter
 from tests.fixtures import eic_battery
 from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
@@ -66,6 +72,14 @@ DIVERGENCES = {
     ("single", "phase_out"): (323, 324),
     ("single", "agi_over_earned"): (323, 324),
 }
+
+# Rulings R-S7-10/10a: (status, kind) -> the line 27 the sheet computed
+# despite declaring no credit (the oracle on ec4ea3d: 155 on both rows).
+REFUSED_DIVERGENCES = {
+    ("single", "investment_over_limit"): 155,
+    ("married_filing_jointly", "investment_over_limit"): 155,
+}
+REFUSAL = "workbook_eic_inconsistent: "
 
 # Ruling R-S7-9a: kind -> (stop output, its reached value, native's rule).
 # Stop outputs are read back by the adapter (EIC_WORKBOOK_CELLS "stops").
@@ -106,7 +120,7 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.pairs = {}
+        cls.pairs, cls.refusals = {}, {}
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
                 years.NATIVE_EIC_STATUSES,
                 {YEAR: ("single", "married_filing_jointly")}):
@@ -121,7 +135,13 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
                     native = orch.compute_federal(scenario)
                     eff, _ = orch._build_effective_scenario(scenario)
                     with eic_answers_adapter(orch):
-                        workbook = orch._compute_1040_via_workbook(eff)
+                        try:
+                            workbook = orch._compute_1040_via_workbook(eff)
+                        except WorkbookEicInconsistent as refusal:
+                            # The refused compute's harvest: R-S7-9a's
+                            # display pins read it through production.
+                            workbook = refusal.harvested
+                            cls.refusals[(status, kind)] = str(refusal)
                     cls.pairs[(status, kind)] = (native, workbook)
 
     def test_the_compared_rows(self):
@@ -171,9 +191,25 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
                                  (status, kind) not in UNDECLARED_DENIALS)
             self._prompt_free(status, kind, workbook, _PROMPTS[:2])
 
+    def test_only_the_adjudicated_rows_refuse(self):
+        self.assertEqual(sorted(self.refusals), sorted(REFUSED_DIVERGENCES))
+
+    def test_each_refused_divergence_holds_on_both_sides(self):
+        for (status, kind), line_27 in sorted(REFUSED_DIVERGENCES.items()):
+            native, harvested = self.pairs[(status, kind)]
+            with self.subTest(status=status, kind=kind, side="native"):
+                self.assertEqual(_n(native.get("eic")), 0)
+            with self.subTest(status=status, kind=kind, side="refusal"):
+                self.assertTrue(self.refusals.get((status, kind), "")
+                                .startswith(REFUSAL),
+                                self.refusals.get((status, kind)))
+            with self.subTest(status=status, kind=kind, side="line_27"):
+                self.assertEqual(_n(harvested.get("eic")), line_27)
+
     def test_line_27_32_33_agree_to_the_penny(self):
         for (status, kind), (native, workbook) in sorted(self.pairs.items()):
-            if (status, kind) in DIVERGENCES:
+            if (status, kind) in DIVERGENCES or (
+                    status, kind) in REFUSED_DIVERGENCES:
                 continue
             for key in _KEYS:
                 with self.subTest(status=status, kind=kind, key=key):
