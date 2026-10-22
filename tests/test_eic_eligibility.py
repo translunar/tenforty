@@ -222,8 +222,8 @@ class Worksheet1OrderTests(unittest.TestCase):
 
 
 class BatteryRowOutcomeTests(unittest.TestCase):
-    """Each (2025, single) row computes natively (routing forced native
-    until rollout step 6; the workbook path raises) to its kind's outcome."""
+    """Each (2025, single) row computes natively through the real routing
+    (the workbook path raises) to its kind's outcome."""
 
     EXPECT_REASON = {
         "over_ceiling": "agi_at_or_over_limit",
@@ -249,10 +249,7 @@ class BatteryRowOutcomeTests(unittest.TestCase):
         rows = eic_battery.battery_for(YEAR, "single")
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
                 ReturnOrchestrator, "_compute_1040_via_workbook",
-                side_effect=AssertionError("workbook path reached")), \
-                mock.patch.object(ReturnOrchestrator,
-                                  "_scenario_in_spine_scope",
-                                  return_value=True):
+                side_effect=AssertionError("workbook path reached")):
             orch = ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR,
                                       work_dir=Path(tmp))
             for kind, build in rows.items():

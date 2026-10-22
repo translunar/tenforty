@@ -1092,20 +1092,112 @@ def eic_gate_child_count(config: TaxReturnConfig) -> int:
     return len(config.dependents) + (1 if hoh else 0)
 
 
-def refuse_hoh_possible_eic(config: TaxReturnConfig) -> None:
-    """FAIL-CLOSED: a possibly EIC-eligible head-of-household return (ruling
-    Q2: refuse, never reroute).
+def eic_possible(effective_scenario: Scenario) -> bool:
+    """The CHEAP published-threshold EIC test — it never computes the
+    credit. True when the return has positive earned income (W-2 wages plus
+    the Schedule C estimate) and an AGI estimate below the year's EIC income
+    ceiling for its child-candidate count (``eic_gate_child_count``). The
+    ceiling is the MFJ (largest) column and the estimate errs high, as the
+    comments below explain. Moved verbatim out of the routing gate
+    (childless-EITC spec §7.1): it now feeds the pre-split child-candidate
+    refusal and the transitional routing clause."""
+    from tenforty.params.federal import load as load_params
+    cfg = effective_scenario.config
+    earned_income = sum(w.wages for w in effective_scenario.w2s)
+    # Earned income for the EIC gate includes Schedule C net profit (the
+    # same non-raising estimates the AGI estimate below uses): a filer
+    # with no W-2 but a small business is the EIC's core population.
+    sch_c_profit = 0.0
+    if effective_scenario.schedule_c_businesses:
+        sch_c_profit = sum(
+            form_sch_c.net_profit_estimate(
+                biz, cfg.year,
+                mid_quarter=mid_quarter_applies(effective_scenario))
+            for biz in effective_scenario.schedule_c_businesses)
+    if earned_income + sch_c_profit <= 0:
+        # No earned income → no EIC possible.
+        return False
 
-    Called only once the gate has ruled the return out of native-spine
-    scope on a DECLARED (year, head_of_household), where out of scope can
-    only mean EIC-possible (pinned by HohEicGateTests). Neither path
-    computes the EIC with a qualifying child: the native spine performs no
-    EIC math, and the workbook path receives no child count, so it would
-    figure the credit as if the filer had no qualifying child.
-    """
+    params = load_params(cfg.year)
+    ceilings = params.eic_income_ceiling or {}
+    if not ceilings:
+        # No ceiling data → cannot cheaply rule EIC in or out; as before the
+        # move, the return is treated as not EIC-possible.
+        return False
+
+    # Cheap AGI estimate for the EIC-ceiling gate — include ALL scenario
+    # income components, not wages + interest + ordinary dividends only. A
+    # filer whose income is K-1 / rental / capital-gain rather than wages is
+    # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
+    # native spine; the old wages-only estimate mis-routed such a filer to
+    # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
+    # Every component here EXCEPT Schedule C (see its own note below) is
+    # clamped at 0, so this estimate only ever RISES
+    # vs the old wages-only value: it can route MORE scenarios native, never
+    # fewer, and leaves a genuinely low-income filer (no other income)
+    # unchanged. Overestimating is safe for the gate — it rules EIC OUT
+    # (routes native) only when the estimate CLEARS the ceiling; a possibly-
+    # eligible low-income filer stays below it and still routes to the
+    # workbook, which performs the real EIC math. (Adjustments are ignored,
+    # which can only make the estimate higher than true AGI — same safe
+    # direction.)
+    mid_quarter = mid_quarter_applies(effective_scenario)
+    agi_estimate = (
+        earned_income
+        + sum(f.interest for f in effective_scenario.form1099_int)
+        + sum(f.ordinary_dividends + f.capital_gain_distributions
+              for f in effective_scenario.form1099_div)
+        + sum(g.unemployment_compensation + g.state_tax_refund
+              + g.rtaa_payments + g.taxable_grants
+              + g.agriculture_payments + g.market_gain
+              for g in effective_scenario.form1099_g)
+        + sum(_k1_positive_income(k)
+              for k in effective_scenario.schedule_k1s)
+        + sum(max(0.0, _rental_net_income(
+                  r, cfg.year, mid_quarter=mid_quarter))
+              for r in effective_scenario.rental_properties)
+        + max(0.0, sum(b.proceeds - b.cost_basis
+                       for b in effective_scenario.form1099_b))
+        # Schedule C net profit OR LOSS, netted across businesses and NOT
+        # clamped. Every other component above is clamped at 0 (an
+        # overestimate), but a Schedule C loss is now a real, allowed
+        # reduction of AGI: clamping it would let a filer whose WAGES
+        # clear the ceiling but whose wages-less-loss do not route to the
+        # native spine, which performs no EIC math. Counting the loss
+        # sends that possibly-eligible filer out of spine scope, where
+        # the workbook path refuses Schedule C outright (fail-closed).
+        # This estimate runs BEFORE sch_c.compute's refusals, so it uses
+        # the non-raising estimate (summed once above, for earned income).
+        + sch_c_profit
+    )
+    num_children = min(eic_gate_child_count(cfg), max(ceilings))
+    ceiling = ceilings.get(num_children, max(ceilings.values()))
+    # Below the ceiling → possibly EIC-eligible.
+    return agi_estimate < ceiling
+
+
+def refuse_eic_with_child_candidate(scenario: Scenario) -> None:
+    """FAIL-CLOSED, pre-split and unconditional (childless-EITC spec §7.1;
+    replaces refuse_hoh_possible_eic): an EIC-possible return with a
+    qualifying-child CANDIDATE refuses. tenforty computes only the childless
+    credit, so such a return must never compute — natively it would get the
+    childless credit (zero for head of household, which the childless
+    credit excludes), a silent drop of a credit the filer may be owed
+    (spec §7.2's hazard box; HohEicEquivalenceTests pin this).
+
+    Candidate count = ``eic_gate_child_count`` (claimed dependents, plus one
+    for head of household). Called after ``refuse_dependents`` in the
+    compute core and the emit chokepoint, so a dependent-bearing return
+    names its real cause; today only head of household reaches this."""
+    config = scenario.config
+    if eic_gate_child_count(config) == 0 or not eic_possible(scenario):
+        return
     if (parse_filing_status(config.filing_status)
             is not FilingStatus.HEAD_OF_HOUSEHOLD):
-        return
+        raise NotImplementedError(
+            "This return may be eligible for the Earned Income Credit with a "
+            "qualifying child, which tenforty does not compute. File this "
+            "return by hand.")
     raise NotImplementedError(
         "This head_of_household return may be eligible for the Earned Income "
         "Credit with a qualifying child: its earned income and estimated AGI "
@@ -1180,90 +1272,26 @@ class ReturnOrchestrator:
         (which performs no EIC math). The workbook then computes any real EIC.
         """
         from tenforty import years as year_manifest
-        from tenforty.params.federal import load as load_params
 
         # (year × status) membership in the native-spine support grid; an
         # undeclared status is out of scope exactly as non-single was before.
         # parse_filing_status: config.filing_status may have been assigned a
         # raw value string after construction (it accepts enum or string).
-        if not year_manifest.native_spine_supports(
-                effective_scenario.config.year,
-                parse_filing_status(
-                    effective_scenario.config.filing_status).value):
+        status = parse_filing_status(
+            effective_scenario.config.filing_status).value
+        year = effective_scenario.config.year
+        if not year_manifest.native_spine_supports(year, status):
             return False
+        # TRANSITIONAL CLAUSE (ruling R-S6-1): an EIC-possible return on a
+        # cell whose childless credit is not native yet keeps the workbook
+        # route, which computes and prints the credit. Without it the native
+        # spine would compute such a return with no credit at all. It
+        # retires cell by cell as years.NATIVE_EIC_STATUSES grows, and is
+        # deleted when that grid covers every SINGLE/MFJ spine cell
+        # (TransitionalRoutingEndpointTests goes red then).
+        return (year_manifest.native_eic_supports(year, status)
+                or not eic_possible(effective_scenario))
 
-        cfg = effective_scenario.config
-        earned_income = sum(w.wages for w in effective_scenario.w2s)
-        # Earned income for the EIC gate includes Schedule C net profit (the
-        # same non-raising estimates the AGI estimate below uses): a filer
-        # with no W-2 but a small business is the EIC's core population.
-        sch_c_profit = 0.0
-        if effective_scenario.schedule_c_businesses:
-            sch_c_profit = sum(
-                form_sch_c.net_profit_estimate(
-                    biz, cfg.year,
-                    mid_quarter=mid_quarter_applies(effective_scenario))
-                for biz in effective_scenario.schedule_c_businesses)
-        if earned_income + sch_c_profit <= 0:
-            # No earned income → no EIC possible; nothing else here takes a
-            # declared (year, status) out of spine scope.
-            return True
-
-        params = load_params(cfg.year)
-        ceilings = params.eic_income_ceiling or {}
-        if not ceilings:
-            # No ceiling data → cannot cheaply rule EIC in or out; be safe.
-            return True
-
-        # Cheap AGI estimate for the EIC-ceiling gate — include ALL scenario
-        # income components, not wages + interest + ordinary dividends only. A
-        # filer whose income is K-1 / rental / capital-gain rather than wages is
-        # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
-        # native spine; the old wages-only estimate mis-routed such a filer to
-        # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
-        # Every component here EXCEPT Schedule C (see its own note below) is
-        # clamped at 0, so this estimate only ever RISES
-        # vs the old wages-only value: it can route MORE scenarios native, never
-        # fewer, and leaves a genuinely low-income filer (no other income)
-        # unchanged. Overestimating is safe for the gate — it rules EIC OUT
-        # (routes native) only when the estimate CLEARS the ceiling; a possibly-
-        # eligible low-income filer stays below it and still routes to the
-        # workbook, which performs the real EIC math. (Adjustments are ignored,
-        # which can only make the estimate higher than true AGI — same safe
-        # direction.)
-        mid_quarter = mid_quarter_applies(effective_scenario)
-        agi_estimate = (
-            earned_income
-            + sum(f.interest for f in effective_scenario.form1099_int)
-            + sum(f.ordinary_dividends + f.capital_gain_distributions
-                  for f in effective_scenario.form1099_div)
-            + sum(g.unemployment_compensation + g.state_tax_refund
-                  + g.rtaa_payments + g.taxable_grants
-                  + g.agriculture_payments + g.market_gain
-                  for g in effective_scenario.form1099_g)
-            + sum(_k1_positive_income(k)
-                  for k in effective_scenario.schedule_k1s)
-            + sum(max(0.0, _rental_net_income(
-                      r, cfg.year, mid_quarter=mid_quarter))
-                  for r in effective_scenario.rental_properties)
-            + max(0.0, sum(b.proceeds - b.cost_basis
-                           for b in effective_scenario.form1099_b))
-            # Schedule C net profit OR LOSS, netted across businesses and NOT
-            # clamped. Every other component above is clamped at 0 (an
-            # overestimate), but a Schedule C loss is now a real, allowed
-            # reduction of AGI: clamping it would let a filer whose WAGES
-            # clear the ceiling but whose wages-less-loss do not route to the
-            # native spine, which performs no EIC math. Counting the loss
-            # sends that possibly-eligible filer out of spine scope, where
-            # the workbook path refuses Schedule C outright (fail-closed).
-            # This estimate runs BEFORE sch_c.compute's refusals, so it uses
-            # the non-raising estimate (summed once above, for earned income).
-            + sch_c_profit
-        )
-        num_children = min(eic_gate_child_count(cfg), max(ceilings))
-        ceiling = ceilings.get(num_children, max(ceilings.values()))
-        # Below the ceiling → possibly EIC-eligible → out of spine scope.
-        return agi_estimate >= ceiling
 
     def _refuse_possible_excess_business_loss(self, scenario: Scenario) -> None:
         """FAIL-CLOSED GUARD -- IRC §461(l) excess business loss (Form 461).
@@ -1438,24 +1466,11 @@ class ReturnOrchestrator:
             # real cause (unknown tax-family size) on every path, including
             # statuses the spine grid does not declare yet.
             tax_family_size(effective_scenario.config)
-        # Every path, before the split: no compute path models dependents.
+        # Every path, before the split: no compute path models dependents,
+        # and none computes the EIC with a qualifying child (spec §7.1).
         refuse_dependents(effective_scenario)
+        refuse_eic_with_child_candidate(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
-            # An EIC-possible head-of-household return refuses here, before
-            # the 1095-A refusal below and before any workbook reroute. On a
-            # declared (year, status) out of scope means EIC-possible; an
-            # undeclared one keeps its routing (its cause is the grid).
-            # Deliberate (ruled, EIC lane design note; mirrors the
-            # never-misname logic): an undeclared (year, head_of_household)
-            # keeps grid-cause routing rather than this refusal, and the
-            # workbook would then figure the EIC as if childless. Any future
-            # year that adds head of household must declare it in the grid.
-            from tenforty import years as year_manifest
-            if year_manifest.native_spine_supports(
-                    effective_scenario.config.year,
-                    parse_filing_status(
-                        effective_scenario.config.filing_status).value):
-                refuse_hoh_possible_eic(effective_scenario.config)
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
                 # scenario whose filer class is outside the declared native
@@ -2313,9 +2328,10 @@ class ReturnOrchestrator:
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
         from tenforty.params.federal import load as load_params
-        # Dependents refuse before any form is prepared (the same refusal
-        # the compute core runs).
+        # Dependents and EIC child candidates refuse before any form is
+        # prepared (the same refusals the compute core runs).
         refuse_dependents(scenario)
+        refuse_eic_with_child_candidate(scenario)
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):

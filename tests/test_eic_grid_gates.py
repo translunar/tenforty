@@ -80,22 +80,16 @@ def eic_refusal_gaps(grid: Mapping[int, tuple[str, ...]], *,
 
 def _reaches(key: str, path: str) -> bool:
     """load_scenario then compute_federal refuses, naming ``key`` (a
-    load-time refusal counts). The workbook path is patched to raise, so no
-    fixture can reach LibreOffice.
-
-    STEP-5 INSTRUMENT (TODO, rollout step 6): routing is forced native,
-    because until the routing change an EIC-possible in-grid return still
-    leaves the native spine. Step 6 deletes the _scenario_in_spine_scope
-    patch, so these same fixtures then prove reachability through the real
-    routing."""
+    load-time refusal counts), through the REAL routing (the step-5
+    routing patch was deleted with the step-6 routing change, ruling
+    R-S5-1). The workbook path is patched to raise, so a fixture that would
+    leave the native spine fails here instead of reaching LibreOffice."""
     from tenforty.orchestrator import ReturnOrchestrator
     import tempfile
     from unittest import mock
     with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
             ReturnOrchestrator, "_compute_1040_via_workbook",
-            side_effect=AssertionError("workbook path reached")), \
-            mock.patch.object(ReturnOrchestrator, "_scenario_in_spine_scope",
-                              return_value=True):
+            side_effect=AssertionError("workbook path reached")):
         orch = ReturnOrchestrator(spreadsheets_dir=REPO_ROOT / "spreadsheets",
                                   work_dir=Path(tmp))
         try:
@@ -267,27 +261,6 @@ class EicUnreachableInputTests(unittest.TestCase):
                           ("ScheduleK1", "section_1231_gain")):
             with self.subTest(cls=cls):
                 self.assertIn(name, census[cls])
-
-
-class Step5InstrumentTests(unittest.TestCase):
-    """Ruling R-S5-1: _reaches forces native routing ONLY while real routing
-    still sends an EIC-possible return to the workbook."""
-
-    def test_the_routing_patch_is_still_needed(self):
-        # When the step-6 routing change lands (scope = grid only), this goes
-        # red: delete the _scenario_in_spine_scope patch in _reaches, and
-        # this test, in that same commit, so the same fixtures prove
-        # reachability through REAL routing. A fixture that then fails is a
-        # finding, never a fixture to adjust.
-        from tenforty.orchestrator import ReturnOrchestrator
-        import tempfile
-        scenario = load_scenario(REPO_ROOT / eic_battery.EIC_REFUSAL_FIXTURES[
-            "eic_eligibility_missing"][2025])
-        with tempfile.TemporaryDirectory() as tmp:
-            orch = ReturnOrchestrator(
-                spreadsheets_dir=REPO_ROOT / "spreadsheets",
-                work_dir=Path(tmp))
-            self.assertFalse(orch._scenario_in_spine_scope(scenario))
 
 
 class StatusScopedRefusalTests(unittest.TestCase):
