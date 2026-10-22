@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.2.7 — 2026-10-21
+
+Feature release: the earned income credit prints on Form 1040, and a new
+footing guard refuses any 1040 whose printed payments section does not
+add up.
+
+### Added
+
+- **EIC prints on line 27.** For workbook-routed returns (2021–2025),
+  the earned income credit is harvested from the workbook and printed on
+  Form 1040 line 27, and total other payments and refundable credits on
+  line 32 — previously both lines were blank and the credit appeared
+  only inside the line-33 total.
+- **Fast- and oracle-tier EIC batteries.** Synthetic childless-EIC
+  scenarios (plateau, phase-out, over-ceiling) pin the harvest mapping;
+  oracle tests verify the emitted 1040's payment lines foot.
+
+### Behavior change
+
+- **New refusal: line 32 must foot.** Emit now checks that the printed
+  line-32 component lines sum to the printed line-32 total, and refuses
+  (with an explanation) instead of emitting a 1040 whose visible numbers
+  don't add up. Previously such a return emitted silently inconsistent.
+- **The footing guard outranks the Schedule 3 acknowledgment.** For
+  workbook-routed drafts carrying a net premium tax credit, the
+  acknowledgment flag no longer permits an unfooted payments section —
+  it covers a missing schedule, not self-contradictory printed
+  arithmetic.
+
 ## 0.2.6 — 2026-10-21
 
 Feature release: contested-position elections (phase 2 of the registry
