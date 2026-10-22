@@ -130,16 +130,30 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2024.pdf
     # sha256 0ae53ed5020d69e6571d40cd7955b7735f44a28df483626d128628d2810e93d4
     aged_born_before=datetime.date(1960, 1, 2),
-    # Childless EIC (§32, zero qualifying children): pending transcription;
-    # this year's EIC cells land with the per-year ladder.
-    eic_credit_pct=None,
-    eic_phaseout_pct=None,
-    eic_earned_income_amount=None,
-    eic_max_credit=None,
-    eic_phaseout_threshold=None,
-    eic_completed_phaseout=None,
-    eic_investment_income_limit=None,
-    eic_min_earned_income=None,
-    eic_min_age=None,
-    eic_max_age=None,
+    # Childless EIC (zero qualifying children). Statute first:
+    # IRC §32(b)(1) table, "No qualifying children" row — credit percentage
+    # 7.65, phaseout percentage 7.65 (§32(n)'s special rules cover only
+    # taxable years beginning in 2021; 2024 Pub. 596 "What's New" lists only
+    # inflation changes); §32(c)(1)(A)(ii)(II) — "has attained age 25 but not
+    # attained age 65 before the close of the taxable year".
+    # https://www.law.cornell.edu/uscode/text/26/32
+    eic_credit_pct=0.0765,
+    eic_phaseout_pct=0.0765,
+    # Rev. Proc. 2023-34 §3.06(1) table, "None" column (sha256 above):
+    # earned income amount, maximum amount of credit, threshold and
+    # completed phaseout amounts (MFJ / all other filing statuses).
+    eic_earned_income_amount=8_260,
+    eic_max_credit=632,
+    eic_phaseout_threshold={_S: 10_330, _MFJ: 17_250},
+    eic_completed_phaseout={_S: 18_591, _MFJ: 25_511},
+    # Rev. Proc. 2023-34 §3.06(2): not allowed if investment income
+    # "exceeds $11,600" (§32(i)); 2024 Form 1040 instructions Step 2 Q2.
+    eic_investment_income_limit=11_600,
+    # 2024 EIC Table (Instructions for Form 1040 Tax Tables (2024), Cat. No.
+    # 24327A): the first row is "At least 1, But less than 50"; Worksheets
+    # A/B stop at zero. Ages: 2024 Form 1040 instructions, born after
+    # December 31, 1959, and before January 2, 2000.
+    eic_min_earned_income=1,
+    eic_min_age=25,
+    eic_max_age=65,
 )
