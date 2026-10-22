@@ -145,6 +145,14 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
             description="small", gross_receipts=12_000.0, supplies=2_000.0))
         ceiling = load_federal_params(2025).eic_income_ceiling[0]
         self.assertLess(10_000.0, ceiling)          # possibly EIC-eligible
+        # Ruling R-S6-2: the subject — Schedule C profit is earned income for
+        # the estimate — is pinned on eic_possible ...
+        from tenforty.orchestrator import eic_possible
+        self.assertTrue(eic_possible(scn))
+        # ... and the routing + fail-closed refusal on a still-transitional
+        # cell (2024 single, R-S6-1); dies with (2024, single)'s landing.
+        scn = dataclasses.replace(scn, config=dataclasses.replace(
+            scn.config, year=2024))
         self.assertFalse(self._in_scope(scn))
         # Out of the native spine, Schedule C refuses (the workbook path does
         # not wire it) -- fail-closed, never a silent native compute -- and

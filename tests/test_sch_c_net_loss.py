@@ -283,13 +283,25 @@ class SchCLossEicRoutingTests(unittest.TestCase):
         big_loss = ScheduleCBusiness(
             description="Synthetic Loss Shop", gross_receipts=0.0,
             supplies=5_000.0)
-        # Wages alone are in scope ...
-        self.assertTrue(self.orch._scenario_in_spine_scope(
-            self._wage_scenario(wages)))
-        # ... wages less the loss are under the ceiling.
+        from tenforty.orchestrator import eic_possible
+        # Ruling R-S6-2. The subject: the Schedule C loss counts in the
+        # estimate — wages alone clear the ceiling, wages less the loss do
+        # not.
+        self.assertFalse(eic_possible(self._wage_scenario(wages)))
         self.assertLess(wages - 5_000.0, ceiling)
+        self.assertTrue(eic_possible(self._wage_scenario(wages, big_loss)))
+        # Routing, on a still-transitional cell (2024 single, R-S6-1): the
+        # loss sends the filer out of spine scope. Dies with (2024, single)'s
+        # landing in NATIVE_EIC_STATUSES.
+        wages_2024 = load_federal_params(2024).eic_income_ceiling[0] + 1_000.0
+
+        def in_2024(*businesses):
+            scn = self._wage_scenario(wages_2024, *businesses)
+            return dataclasses.replace(scn, config=dataclasses.replace(
+                scn.config, year=2024))
+        self.assertTrue(self.orch._scenario_in_spine_scope(in_2024()))
         self.assertFalse(self.orch._scenario_in_spine_scope(
-            self._wage_scenario(wages, big_loss)))
+            in_2024(big_loss)))
 
     def test_small_loss_well_above_the_ceiling_stays_native(self):
         self.assertTrue(self.orch._scenario_in_spine_scope(

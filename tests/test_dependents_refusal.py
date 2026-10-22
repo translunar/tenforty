@@ -53,8 +53,13 @@ def _scenario(status, dependents=("Example Child",), year=2025,
 
 def _workbook_routed(dependents=("Child A", "Child B")):
     """Single, $20k wages: below the EIC income ceiling, so the scope gate
-    sends it to the workbook path."""
+    sends it to the workbook path. TY2024 (ruling R-S6-2): a cell whose
+    childless credit is not native yet keeps that route (transitional
+    routing, R-S6-1); move it when (2024, single) lands in
+    NATIVE_EIC_STATUSES."""
     base = _scenario(FilingStatus.SINGLE, dependents=dependents)
+    base = dataclasses.replace(base, config=dataclasses.replace(
+        base.config, year=2024))
     return dataclasses.replace(base, w2s=[W2(
         employer="Synthetic Co", wages=20_000, federal_tax_withheld=1_000,
         ss_wages=20_000, ss_tax_withheld=1_240, medicare_wages=20_000,

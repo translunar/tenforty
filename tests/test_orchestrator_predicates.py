@@ -12,7 +12,7 @@ from tenforty.models import (
     DepreciableAsset, Form1099B, Form1099DIV, Form1099INT, ItemizedDeductions,
     RentalProperty, Scenario, ScheduleK1, TaxReturnConfig, W2,
 )
-from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.orchestrator import ReturnOrchestrator, eic_possible
 from tests.helpers import make_k1_scenario, make_simple_scenario, scope_out_attestation_defaults
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -416,6 +416,12 @@ class SpineScopeRoutingTests(unittest.TestCase):
         # workbook. The fix must not pull these into the spine.
         s = make_simple_scenario()
         s.w2s = [self._low_wage()]
+        # Ruling R-S6-2: the subject is the estimate (possibly eligible) ...
+        self.assertTrue(eic_possible(s))
+        # ... and on a cell whose childless credit is not native yet (2024
+        # single, transitional routing R-S6-1) it still routes OUT. This
+        # instance dies when (2024, single) lands in NATIVE_EIC_STATUSES.
+        s.config.year = 2024
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
 
     def test_capital_loss_does_not_pull_eligible_filer_into_spine(self) -> None:
@@ -430,6 +436,11 @@ class SpineScopeRoutingTests(unittest.TestCase):
             date_sold="2025-06-01", proceeds=1_000.0, cost_basis=6_000.0,
             short_term=True,
         )]
+        # Ruling R-S6-2: the loss clamps to 0, so the estimate still says
+        # possibly eligible; on a still-transitional cell (2024 single) the
+        # filer still routes out. Dies with (2024, single)'s landing.
+        self.assertTrue(eic_possible(s))
+        s.config.year = 2024
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
 
 
