@@ -3,6 +3,7 @@ oracle-only answer adapter's mechanics (tests/eic_oracle_adapter.py) — all
 static: openpyxl reads and the engine's own input writer, never a
 recalculation, so nothing here reaches LibreOffice. All values synthetic or
 read from params; nothing typed in."""
+import csv
 import functools
 import shutil
 import tempfile
@@ -20,7 +21,7 @@ from tenforty.orchestrator import ReturnOrchestrator
 from tenforty.params.federal import load as load_params
 from tests import eic_oracle_adapter as adapter
 from tests.fixtures import eic_battery
-from tests.helpers import SPREADSHEETS_DIR
+from tests.helpers import REPO_ROOT, SPREADSHEETS_DIR
 
 YEARS = tuple(sorted(adapter.EIC_WORKBOOK_CELLS))
 
@@ -107,6 +108,32 @@ class LineTwentySevenTests(unittest.TestCase):
             with self.subTest(year=year):
                 self.assertEqual(_named(wb, "NoEICredit"), (q.sheet, "A1"))
                 self.assertIn(f'{q.q3_no}<>""', wb[q.sheet]["A1"].value)
+
+
+class LiteralTableTests(unittest.TestCase):
+    """Years whose workbook EIC Table holds LITERAL values (2024; 2025's is
+    rebuilt from derived slopes, R-S7-8): the sheet's whole table equals the
+    ingested published table (assets/eic_tables/<year>.csv) — every bin,
+    every column. A vendor edit or a re-ingest drift fails here."""
+
+    def test_the_sheet_table_is_the_published_table(self):
+        years = [y for y in YEARS
+                 if adapter.EIC_WORKBOOK_CELLS[y].get("literal_table")]
+        self.assertTrue(years)
+        for year in years:
+            ws = _workbook(year)["EIC Table"]
+            sheet = {}
+            for row in ws.iter_rows(min_row=3, max_col=10, values_only=True):
+                if all(isinstance(v, (int, float)) for v in row):
+                    sheet[(int(row[0]), int(row[1]))] = [int(v)
+                                                         for v in row[2:]]
+            with open(REPO_ROOT / "assets" / "eic_tables" / f"{year}.csv",
+                      newline="") as fh:
+                published = {(int(r[0]), int(r[1])): [int(v) for v in r[2:]]
+                             for r in list(csv.reader(fh))[1:]}
+            with self.subTest(year=year):
+                self.assertEqual(len(sheet), len(published))
+                self.assertEqual(sheet, published)
 
 
 class AnswerCellStructureTests(unittest.TestCase):

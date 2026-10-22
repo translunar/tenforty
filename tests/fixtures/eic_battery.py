@@ -135,7 +135,7 @@ def required_eic_refusals(year: int,
 # refusal key -> {year: scenario YAML path} reaching it through load_scenario.
 _R = "tests/fixtures/eic_refusals"
 EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {
-    key: {2025: f"{_R}/{key}_2025.yaml"}
+    key: {year: f"{_R}/{key}_{year}.yaml" for year in (2024, 2025)}
     for key in ("eic_eligibility_missing", "prior_eic_disallowance_8862",
                 "worksheet_1_rental", "worksheet_1_k1", "statutory_employee",
                 "k1_self_employment_earnings", "year_scoped_eic_fact",
@@ -271,3 +271,6 @@ EIC_ROWS[(2025, "single")] = _rows(2025, "single")
 # 2025 MFJ rows exist ahead of the cell's declaration (spec step 7: parity
 # first, then the grid row).
 EIC_ROWS[(2025, "married_filing_jointly")] = _rows(2025, "married_filing_jointly")
+# 2024 rows (step 8) exist ahead of the cells' declaration: parity first.
+EIC_ROWS[(2024, "single")] = _rows(2024, "single")
+EIC_ROWS[(2024, "married_filing_jointly")] = _rows(2024, "married_filing_jointly")

@@ -96,6 +96,61 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
             "eic_stop_credit_zero": ("A321", "=AND(A310,L316=0)"),  # Wks A
         },
     },
+    # 2024: read by formula consumers in the 2024 template (step 8; no
+    # carry-over from 2025 — Steps 3-6 sit on different rows, the children
+    # answer is the N5 override, and the EIC Table holds literal values, so
+    # it is pinned whole against the ingested CSV instead of by constants).
+    2024: {
+        "sheet": "Line 27 (EIC)",
+        "literal_table": True,
+        "constants": {
+            ("Line 27 (EIC)", "N58"): "eic_investment_income_limit",
+            ("Line 27 (EIC)", "N168"): "eic_min_age",
+            ("Line 27 (EIC)", "N169"): "eic_max_age",
+        },
+        "inputs": {
+            # N5 is the "Override" for the qualifying-children count:
+            # B109 '=IF(N5<>"",ROUND(N5,0),Dependents!AQ38)'.
+            "eic_answer_qualifying_children": ("Line 27 (EIC)", "N5"),
+            "eic_answer_ssn_not_valid": ("Line 27 (EIC)", "H28"),
+            "eic_answer_nonresident_alien": ("Line 27 (EIC)", "B39"),
+            "eic_answer_main_home_not_us": ("Line 27 (EIC)", "H186"),
+            "eic_answer_qc_of_another": ("Line 27 (EIC)", "B203"),
+            "eic_answer_dependent_you": ("1040", "J32"),
+            "eic_answer_dependent_spouse": ("1040", "P32"),
+            "eic_answer_clergy": ("Line 27 (EIC)", "B222"),
+            "eic_answer_form_4797_yes": ("Line 27 (EIC)", "B65"),
+            EIC_FORM_4797_NO_KEY: ("Line 27 (EIC)", "H65"),
+        },
+        "derived": {
+            "B28": '=IF(A28,"X","")',
+            "H39": '=IF(AND(B39="",NOT(EIC_Check)),"X","")',
+            "B109": '=IF(N5<>"",ROUND(N5,0),Dependents!AQ38)',
+            "B186": '=IF(A186,"X","")',
+            "H203": '=IF(G203,"X","")',
+            "B213": '=IF(A213,"X","")',
+            "H213": '=IF(G213,"X","")',
+            "H222": '=IF(G222,"X","")',
+        },
+        "diagnostics": {
+            "eic_diag_no_credit": ("Line 27 (EIC)", "A1"),
+            "eic_diag_summary": ("Line 27 (EIC)", "C1"),
+            "eic_diag_prompt_an": ("Line 27 (EIC)", "AN1"),
+            "eic_diag_prompt_ao": ("Line 27 (EIC)", "AO1"),
+            "eic_diag_prompt_ap": ("Line 27 (EIC)", "AP1"),
+        },
+        # The SSN row's stop awaits adjudication: 2024 G28
+        # '=AND(EIC_trigger,NOT(A28))' is structurally always FALSE.
+        "stops": {
+            "eic_stop_agi_limit": ("G21", '=H21="X"'),           # Step 1 Q1
+            "eic_stop_age": ("G177", "=AND(K159,G164,NOT(A177))"),  # Step 4 Q2
+            "eic_stop_main_home": ("G186", '=H186<>""'),         # Step 4 Q3
+            "eic_stop_qc_of_another": ("A203", '=AND(G193,B203<>"")'),  # Q5
+            "eic_stop_dependent": ("A213",
+                                   '=AND(G203,DependentYOU<>"")'),  # Q6
+            "eic_stop_credit_zero": ("A307", "=AND(A297,L303=0)"),  # Wks A
+        },
+    },
 }
 
 _X = "X"

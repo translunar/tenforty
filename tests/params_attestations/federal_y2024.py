@@ -12,6 +12,11 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
   this field is the LARGEST AGI at which ANY filing status can still claim the
   EITC = the MFJ-column maximum by construction. Transcribed the MFJ column of
   the official EITC completed-phaseout amounts.
+- Childless EIC (TY2024) transcription notes: IRC §32 was read from Cornell LII
+  (unofficial) and the govinfo 2023 edition; uscode.house.gov returned 404 and the
+  govinfo 2024 edition was NOT verified, so no 2024 amendment of §32 could be
+  ruled out against an official current source. Indexed (§32(j)) amounts were
+  not recomputed from CPI. Page numbers for the IRS PDFs were approximate.
 - `qualifying_widow` (qualifying surviving spouse, QSS): sources explicitly give
   QSS = MFJ amounts for standard deduction, tax brackets, and QDCGT breakpoints.
   For QBI (§199A) the official Form 8995 text puts QSS under "all other returns"
@@ -58,6 +63,11 @@ SOURCES: tuple[str, ...] = (
     "SSA OASDI contribution and benefit base 2024 = $168,600; human-verified "
     "by Juno via browser 2026-07-11 (ssa.gov blocks automated WebFetch/curl "
     "access) — for ss_wage_base.",
+    "26 U.S.C. §32 (law.cornell.edu/uscode/text/26/32; govinfo USCODE-2023 "
+    "edition): credit/phaseout percentages, age test; IRS 2024 Instructions for "
+    "Form 1040 line 27 and EIC Table (irs.gov/pub/irs-prior/i1040gi--2024.pdf); "
+    "IRS Publication 596 (2024) (irs.gov/pub/irs-prior/p596--2024.pdf) — for the "
+    "childless eic_* fields.",
     "QSS QBI (§199A) threshold adjudicated by Juno against Rev. Proc. 2023-34 "
     "§3.27 verbatim, 2026-07-11: QSS falls under 'All Other Returns' "
     "($191,950), not the MFJ row — a Layer-1 attestation catch of a params bug.",
@@ -279,21 +289,33 @@ ATTESTED: dict[str, object] = {
         "qualifying_widow": 1550,
     },
     "aged_born_before": datetime.date(1960, 1, 2),
+    # Childless (zero qualifying children) earned income credit, TY2024.
+    # Percentages: IRC §32(b)(1) (statutory, not indexed). Dollar amounts:
+    # Rev. Proc. 2023-34 §3.06 (Earned Income Credit), "None" column, corroborated
+    # by 2024 Form 1040 Instructions (line 27) and Pub. 596 (2024); statute
+    # (§32(a)/(b)/(i), (c)(1)(A)(ii)(II)) for ages. No source conflict reported.
+    "eic_credit_pct": 0.0765,
+    "eic_phaseout_pct": 0.0765,
+    "eic_earned_income_amount": 8260,
+    "eic_max_credit": 632,
+    # §3.06: "All other filing statuses" -> single; "Married Filing Jointly".
+    "eic_phaseout_threshold": {
+        "single": 10330,
+        "married_filing_jointly": 17250,
+    },
+    "eic_completed_phaseout": {
+        "single": 18591,
+        "married_filing_jointly": 25511,
+    },
+    # Rev. Proc. 2023-34 §3.06(2) / §32(i); Instructions Step 2; Pub. 596 Rule 6.
+    "eic_investment_income_limit": 11600,
+    # Lower bound of the first row of the 2024 EIC Table (0 children).
+    "eic_min_earned_income": 1,
+    # §32(c)(1)(A)(ii)(II): "has attained age 25 but not attained age 65".
+    # eic_max_age is the statute's age that must NOT have been attained.
+    "eic_min_age": 25,
+    "eic_max_age": 65,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
 }
-
-
-# Childless earned income credit fields (zero qualifying children): not yet
-# transcribed for this year. They land, attested, with this year's EIC cells
-# (childless-EITC per-year ladder); until then both sides hold None.
-_EIC_PENDING = (
-    "eic_credit_pct", "eic_phaseout_pct", "eic_earned_income_amount",
-    "eic_max_credit", "eic_phaseout_threshold", "eic_completed_phaseout",
-    "eic_investment_income_limit", "eic_min_earned_income", "eic_min_age",
-    "eic_max_age",
-)
-ATTESTED.update({name: None for name in _EIC_PENDING})
-PENDING_TRANSCRIPTION.update({
-    name: "childless EIC: lands with this year's EIC cells" for name in _EIC_PENDING})
