@@ -23,7 +23,6 @@ Rows NOT compared here, each for a stated reason:
   * Schedule C rows (Worksheet B) — the workbook path refuses Schedule C
     outright (orchestrator: "cannot carry Schedule C / Schedule SE"), so the
     oracle has no evidence to offer; they stay native-unit-tested.
-2025 MFJ is compared ahead of its EIC-grid declaration (parity first).
 
 ADJUDICATED DIVERGENCES (DIVERGENCES below) are rows where the workbook was
 ruled wrong; each asserts BOTH sides exactly, so a change on either side
@@ -38,9 +37,7 @@ is not an exact bool (R-S7-10a) — STOP and enumerate.
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from tenforty import years
 from tenforty.orchestrator import ReturnOrchestrator, WorkbookEicInconsistent
 from tests.eic_oracle_adapter import eic_answers_adapter
 from tests.fixtures import eic_battery
@@ -121,9 +118,7 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pairs, cls.refusals = {}, {}
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-                years.NATIVE_EIC_STATUSES,
-                {YEAR: ("single", "married_filing_jointly")}):
+        with tempfile.TemporaryDirectory() as tmp:
             orch = ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR,
                                       work_dir=Path(tmp))
             for status, excluded in EXCLUDED.items():

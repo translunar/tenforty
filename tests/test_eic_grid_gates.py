@@ -264,8 +264,8 @@ class EicUnreachableInputTests(unittest.TestCase):
 
 
 class StatusScopedRefusalTests(unittest.TestCase):
-    """Ruling R-S5-3: the joint-return refusal has a reaching fixture now,
-    though no MFJ cell is declared yet (the gate requires it once one is)."""
+    """Ruling R-S5-3: the joint-return refusal is required exactly where an
+    MFJ cell is declared, and its fixture reaches it."""
 
     def test_the_joint_nra_fixture_reaches_with_mfj_declared(self):
         from unittest import mock
@@ -277,6 +277,9 @@ class StatusScopedRefusalTests(unittest.TestCase):
                 2025, years.NATIVE_EIC_STATUSES[2025]))
             self.assertTrue(_reaches(key, path))
 
-    def test_it_is_not_required_while_no_mfj_cell_is_declared(self):
+    def test_a_declaration_without_mfj_does_not_require_it(self):
+        # The requirement is status-scoped: a year declaring only SINGLE
+        # (as 2025 did before its MFJ cell landed) is not asked for the
+        # joint-return refusal.
         self.assertNotIn("nonresident_alien_spouse_election",
                          eic_battery.required_eic_refusals(2025, ("single",)))
