@@ -37,14 +37,22 @@ is not an exact bool (R-S7-10a) — STOP and enumerate.
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+from tenforty import years
 from tenforty.orchestrator import ReturnOrchestrator, WorkbookEicInconsistent
 from tests.eic_oracle_adapter import eic_answers_adapter
 from tests.fixtures import eic_battery
 from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 
-YEAR = 2025
-EXCLUDED = {
+# Years compared, and the subset compared AHEAD of its EIC-grid row (spec
+# §12: parity, then the grid row). Native is forced for those years only;
+# GridStateTests pins that they are undeclared and every other year is, so a
+# reverted grid row cannot hide behind a force-native patch (R-S7-13).
+YEARS = (2025,)
+AHEAD_OF_GRID: frozenset[int] = frozenset()
+STATUSES = ("single", "married_filing_jointly")
+_EXCLUDED_KINDS = {
     "single": {"age_upper_bound_in", "age_upper_bound_out",
                "sch_c_worksheet_b", "sch_c_net_loss"},
     "married_filing_jointly": {"age_upper_bound_in", "age_upper_bound_out",
@@ -54,27 +62,38 @@ EXCLUDED = {
 _PROMPTS = ("eic_diag_prompt_an", "eic_diag_prompt_ao", "eic_diag_prompt_ap")
 _KEYS = ("eic", "total_other_payments", "total_payments")
 
-# (status, kind) -> (native, workbook) on every key in _KEYS: the oracle
-# evidence of d9dec1f's first comparison, adjudicated workbook-wrong.
+
+class _Nonzero:
+    """A workbook figure declared before its first comparison: asserted
+    nonzero now, pinned exactly once the oracle has shown it (R-S7-14)."""
+
+    def __repr__(self):
+        return "NONZERO (pinned post-first-comparison)"
+
+
+NONZERO = _Nonzero()
+
+# (year, status, kind) -> (native, workbook) on every key in _KEYS:
+# adjudicated workbook-wrong.
 DIVERGENCES = {
     # R-S7-7: Step 1 Q4's "Yes" branch (B39) only says "See Non-resident
     # aliens, later"; B39 is absent from NoEICredit's OR-chain
     # (A1 '=OR(N1,H21<>"",H28<>"",B34<>"",H65<>"",B157<>"",H294<>"",
     # L316=0,EarnedIncomeWSB<=0,O458<=0)'), so a single NRA keeps the credit.
-    ("single", "fact_nonresident_alien"): (0, 649),
+    (2025, "single", "fact_nonresident_alien"): (0, 649),
     # R-S7-8: the workbook's EIC Table is rebuilt from derived slopes
     # (N7 '=ROUND(N3/N4,4)', N9 '=-ROUND(N3/(N6-N5),7)' = -0.0764969, not
     # the statutory 7.65%), so its 14,850-14,900 bin reads 324 where the
     # published table (assets/eic_tables/2025.csv) reads 323: $1 high here.
-    ("single", "phase_out"): (323, 324),
-    ("single", "agi_over_earned"): (323, 324),
+    (2025, "single", "phase_out"): (323, 324),
+    (2025, "single", "agi_over_earned"): (323, 324),
 }
 
-# Rulings R-S7-10/10a: (status, kind) -> the line 27 the sheet computed
-# despite declaring no credit (the oracle on ec4ea3d: 155 on both rows).
+# Rulings R-S7-10/10a: (year, status, kind) -> the line 27 the sheet
+# computed despite declaring no credit (the oracle on ec4ea3d: 155).
 REFUSED_DIVERGENCES = {
-    ("single", "investment_over_limit"): 155,
-    ("married_filing_jointly", "investment_over_limit"): 155,
+    (2025, "single", "investment_over_limit"): 155,
+    (2025, "married_filing_jointly", "investment_over_limit"): 155,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
@@ -98,18 +117,36 @@ DENIAL_STOPS = {
                                 "Worksheet A, earned income"),
 }
 
-# Ruling R-S7-9a, adjudicated observation (static prediction; the oracle run
-# after d9dec1f is its first LibreOffice confirmation — a contradiction is a
-# finding, STOP and enumerate): Step 4 Q6's "Yes. STOP" (A226) is in
-# neither NoEICredit's OR-chain (A1) nor N1, so the workbook stops the flow
-# (credit 0) without declaring the denial. Same species as R-S7-7 (a STOP
-# missing from the OR-chain); harmless in dollars; production is
-# guard-protected (an unfavorable fact refuses on the workbook path, R-S7-2).
-UNDECLARED_DENIALS = {("single", "fact_claimable_as_dependent")}
+# Ruling R-S7-9a, adjudicated observation: Step 4 Q6's "Yes. STOP" (2025
+# A226) is in neither NoEICredit's OR-chain (A1) nor N1, so the workbook
+# stops the flow (credit 0) without declaring the denial. Same species as
+# R-S7-7 (a STOP missing from the OR-chain); harmless in dollars; production
+# is guard-protected (an unfavorable fact refuses on the workbook path,
+# R-S7-2). Confirmed by the oracle on 59653a6.
+UNDECLARED_DENIALS = {(2025, "single", "fact_claimable_as_dependent")}
 
 
 def _n(value) -> int:
     return int(round(value or 0))
+
+
+def _expected_rows():
+    return {(y, s, k) for y in YEARS for s in STATUSES
+            for k in eic_battery.battery_for(y, s)
+            if k not in _EXCLUDED_KINDS[s]}
+
+
+class GridStateTests(unittest.TestCase):
+    """The force-native scope is exactly the years compared ahead of their
+    grid row (fast tier: no LibreOffice)."""
+
+    def test_only_years_ahead_of_the_grid_are_undeclared(self):
+        for year in YEARS:
+            for status in STATUSES:
+                with self.subTest(year=year, status=status):
+                    self.assertEqual(
+                        years.native_eic_supports(year, status),
+                        year not in AHEAD_OF_GRID)
 
 
 @needs_libreoffice
@@ -118,104 +155,117 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.pairs, cls.refusals = {}, {}
+        ahead = {y: STATUSES for y in AHEAD_OF_GRID}
         with tempfile.TemporaryDirectory() as tmp:
             orch = ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR,
                                       work_dir=Path(tmp))
-            for status, excluded in EXCLUDED.items():
-                for kind, build in eic_battery.battery_for(
-                        YEAR, status).items():
-                    if kind in excluded:
-                        continue
-                    scenario = build(YEAR)
+            for year, status, kind in sorted(_expected_rows()):
+                scenario = eic_battery.battery_for(year, status)[kind](year)
+                with mock.patch.dict(years.NATIVE_EIC_STATUSES, ahead):
                     native = orch.compute_federal(scenario)
-                    eff, _ = orch._build_effective_scenario(scenario)
-                    with eic_answers_adapter(orch):
-                        try:
-                            workbook = orch._compute_1040_via_workbook(eff)
-                        except WorkbookEicInconsistent as refusal:
-                            # The refused compute's harvest: R-S7-9a's
-                            # display pins read it through production.
-                            workbook = refusal.harvested
-                            cls.refusals[(status, kind)] = str(refusal)
-                    cls.pairs[(status, kind)] = (native, workbook)
+                eff, _ = orch._build_effective_scenario(scenario)
+                with eic_answers_adapter(orch):
+                    try:
+                        workbook = orch._compute_1040_via_workbook(eff)
+                    except WorkbookEicInconsistent as refusal:
+                        # The refused compute's harvest: R-S7-9a's display
+                        # pins read it through production.
+                        workbook = refusal.harvested
+                        cls.refusals[(year, status, kind)] = str(refusal)
+                cls.pairs[(year, status, kind)] = (native, workbook)
 
     def test_the_compared_rows(self):
-        expected = {(s, k) for s, excluded in EXCLUDED.items()
-                    for k in eic_battery.battery_for(YEAR, s)
-                    if k not in excluded}
-        self.assertEqual(set(self.pairs), expected)
+        self.assertEqual(set(self.pairs), _expected_rows())
 
-    def _denied(self, status, kind):
-        native, workbook = self.pairs[(status, kind)]
-        expected = DIVERGENCES.get((status, kind),
-                                   (None, _n(native.get("eic"))))[1]
+    def _denied(self, row):
+        native, _ = self.pairs[row]
+        expected = DIVERGENCES.get(row, (None, _n(native.get("eic"))))[1]
         return expected == 0
 
-    def _prompt_free(self, status, kind, workbook, prompts):
+    def _prompt_free(self, row, workbook, prompts):
+        year, status, kind = row
         for prompt in prompts:
-            with self.subTest(status=status, kind=kind, cell=prompt):
+            with self.subTest(year=year, status=status, kind=kind,
+                              cell=prompt):
                 self.assertFalse(
                     str(workbook.get(prompt) or "").startswith("Please"),
                     workbook.get(prompt))
 
     def test_every_denied_row_has_its_stop(self):
-        denied = {k for (s, k) in self.pairs if self._denied(s, k)}
-        self.assertLessEqual(denied, set(DENIAL_STOPS))
-        self.assertLessEqual(UNDECLARED_DENIALS, {
-            (s, k) for (s, k) in self.pairs if self._denied(s, k)})
+        denied = {row for row in self.pairs if self._denied(row)}
+        self.assertLessEqual({k for (_, _, k) in denied}, set(DENIAL_STOPS))
+        self.assertLessEqual(UNDECLARED_DENIALS, denied)
 
     def test_credited_rows_are_fully_answered_and_not_denied(self):
-        for (status, kind), (_, workbook) in sorted(self.pairs.items()):
-            if self._denied(status, kind):
+        for row, (_, workbook) in sorted(self.pairs.items()):
+            if self._denied(row):
                 continue
-            self._prompt_free(status, kind, workbook, _PROMPTS)
-            with self.subTest(status=status, kind=kind, cell="A1"):
+            self._prompt_free(row, workbook, _PROMPTS)
+            year, status, kind = row
+            with self.subTest(year=year, status=status, kind=kind, cell="A1"):
                 self.assertEqual(workbook.get("eic_diag_no_credit"), False)
 
     def test_denied_rows_stop_where_native_stops(self):
-        for (status, kind), (native, workbook) in sorted(self.pairs.items()):
-            if not self._denied(status, kind):
+        for row, (native, workbook) in sorted(self.pairs.items()):
+            if not self._denied(row):
                 continue
+            year, status, kind = row
             stop, reached, rule = DENIAL_STOPS[kind]
-            with self.subTest(status=status, kind=kind, check="native"):
+            with self.subTest(year=year, status=status, kind=kind,
+                              check="native"):
                 self.assertEqual(native["eic_determination"]["rule"], rule)
-            with self.subTest(status=status, kind=kind, check=stop):
+            with self.subTest(year=year, status=status, kind=kind,
+                              check=stop):
                 self.assertEqual(workbook.get(stop), reached)
-            with self.subTest(status=status, kind=kind, cell="A1"):
+            with self.subTest(year=year, status=status, kind=kind, cell="A1"):
                 self.assertEqual(workbook.get("eic_diag_no_credit"),
-                                 (status, kind) not in UNDECLARED_DENIALS)
-            self._prompt_free(status, kind, workbook, _PROMPTS[:2])
+                                 row not in UNDECLARED_DENIALS)
+            self._prompt_free(row, workbook, _PROMPTS[:2])
 
     def test_only_the_adjudicated_rows_refuse(self):
         self.assertEqual(sorted(self.refusals), sorted(REFUSED_DIVERGENCES))
 
     def test_each_refused_divergence_holds_on_both_sides(self):
-        for (status, kind), line_27 in sorted(REFUSED_DIVERGENCES.items()):
-            native, harvested = self.pairs[(status, kind)]
-            with self.subTest(status=status, kind=kind, side="native"):
+        for row, line_27 in sorted(REFUSED_DIVERGENCES.items()):
+            year, status, kind = row
+            native, harvested = self.pairs[row]
+            with self.subTest(year=year, status=status, kind=kind,
+                              side="native"):
                 self.assertEqual(_n(native.get("eic")), 0)
-            with self.subTest(status=status, kind=kind, side="refusal"):
-                self.assertTrue(self.refusals.get((status, kind), "")
-                                .startswith(REFUSAL),
-                                self.refusals.get((status, kind)))
-            with self.subTest(status=status, kind=kind, side="line_27"):
-                self.assertEqual(_n(harvested.get("eic")), line_27)
-
-    def test_line_27_32_33_agree_to_the_penny(self):
-        for (status, kind), (native, workbook) in sorted(self.pairs.items()):
-            if (status, kind) in DIVERGENCES or (
-                    status, kind) in REFUSED_DIVERGENCES:
-                continue
-            for key in _KEYS:
-                with self.subTest(status=status, kind=kind, key=key):
-                    self.assertEqual(_n(native.get(key)),
-                                     _n(workbook.get(key)))
+            with self.subTest(year=year, status=status, kind=kind,
+                              side="refusal"):
+                self.assertTrue(self.refusals.get(row, "").startswith(REFUSAL),
+                                self.refusals.get(row))
+            with self.subTest(year=year, status=status, kind=kind,
+                              side="line_27"):
+                if line_27 is NONZERO:
+                    self.assertGreater(_n(harvested.get("eic")), 0)
+                else:
+                    self.assertEqual(_n(harvested.get("eic")), line_27)
 
     def test_each_adjudicated_divergence_holds_on_both_sides(self):
         self.assertLessEqual(set(DIVERGENCES), set(self.pairs))
-        for (status, kind), expected in sorted(DIVERGENCES.items()):
-            native, workbook = self.pairs[(status, kind)]
+        for row, (native_value, workbook_value) in sorted(
+                DIVERGENCES.items()):
+            year, status, kind = row
+            native, workbook = self.pairs[row]
             for key in _KEYS:
-                with self.subTest(status=status, kind=kind, key=key):
-                    self.assertEqual((_n(native.get(key)),
-                                      _n(workbook.get(key))), expected)
+                with self.subTest(year=year, status=status, kind=kind,
+                                  key=key):
+                    self.assertEqual(_n(native.get(key)), native_value)
+                    if workbook_value is NONZERO:
+                        self.assertGreater(_n(workbook.get(key)), 0)
+                    else:
+                        self.assertEqual(_n(workbook.get(key)),
+                                         workbook_value)
+
+    def test_line_27_32_33_agree_to_the_penny(self):
+        for row, (native, workbook) in sorted(self.pairs.items()):
+            if row in DIVERGENCES or row in REFUSED_DIVERGENCES:
+                continue
+            year, status, kind = row
+            for key in _KEYS:
+                with self.subTest(year=year, status=status, kind=kind,
+                                  key=key):
+                    self.assertEqual(_n(native.get(key)),
+                                     _n(workbook.get(key)))
