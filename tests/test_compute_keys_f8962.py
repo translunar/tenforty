@@ -14,6 +14,14 @@ emit manifest lists as emitting Form 8962 (21 rows, every year 2021-2025),
 the pre-move derivation's output; plus a no-1095-A row every year
 (spine_battery/owes_tax), on which the form is not emitted and no record
 carries the key. The capture asserted that coverage.
+
+Since the 1040 payments-footing guard (ruling R-P1), the before rows whose
+net PTC is nonzero refuse at emit instead (ruling R-S4-5): those rows are
+skipped here, the before-fixture keeps its d92773e provenance untouched, and
+a two-way pin requires the dropped rows to be EXACTLY the emit manifest's
+line-33 refusal rows, so a future silent drop goes red. The f8962 port lane
+(branch f8962-ptc), when it resumes, inherits this pin and may re-capture
+the fixture under its own provenance if its port changes the emit set.
 """
 import ast
 import inspect
@@ -36,14 +44,23 @@ KEY = "f8962_line_4c_other48"
 BOX_4C = "topmostSubform[0].Page1[0].c1_2[2]"
 
 
+_MANIFEST = em.load_manifest()
+
+
+def _refusing(rid) -> bool:
+    """The current emit manifest records this row as a refusal."""
+    return bool(_MANIFEST[rid]["refusal"])
+
+
 def _emits(row_ids):
-    """row id -> EmitResult for the named BATTERIES rows."""
+    """row id -> EmitResult for the named BATTERIES rows that still emit
+    (a row the manifest records as refusing is skipped; see the docstring)."""
     tmp = Path(tempfile.mkdtemp())
     out = {}
     for battery in BATTERIES:
         for name, year, build in battery.scenarios():
             rid = em.row_id(battery.name, name, year)
-            if rid in row_ids:
+            if rid in row_ids and not _refusing(rid):
                 out[rid] = em.emit(battery, build(), tmp / rid.replace("/", "__"))
     return out
 
@@ -66,6 +83,8 @@ class NewKeysMatchOldDerivationTests(_Rows):
 
     def test_box_4c_prints_its_before_value(self):
         for rid, cells in sorted(self.before["emitted"].items()):
+            if _refusing(rid):
+                continue
             with self.subTest(row=rid):
                 (record,) = self.f8962_records(rid)
                 field = PdfReader(str(record.pdf_path)).get_fields()[BOX_4C]
@@ -76,6 +95,24 @@ class NewKeysMatchOldDerivationTests(_Rows):
         self.assertEqual({rid.rsplit("/", 1)[1] for rid in self.before["emitted"]},
                          {str(y) for y in _YEARS})
         self.assertEqual(len(self.before["not_emitted"]), len(_YEARS))
+        # Every year keeps box-4c evidence after the R-P1 drops.
+        still = [r for r in self.before["emitted"] if not _refusing(r)]
+        self.assertEqual({r.rsplit("/", 1)[1] for r in still},
+                         {str(y) for y in _YEARS})
+
+    def test_dropped_rows_are_exactly_the_line_33_refusals(self):
+        # Two-way pin (ruling R-S4-5): a before row stops emitting only as
+        # an R-P1 payments-footing refusal, and every such refusal among the
+        # before rows is accounted for here.
+        dropped = {r for r in self.before["emitted"] if _refusing(r)}
+        self.assertEqual(dropped, set(self.before["emitted"])
+                         - set(self.results))
+        line_33 = {r for r in self.before["emitted"]
+                   if _refusing(r) and "line 33" in
+                   _MANIFEST[r]["refusal"]["fragment"]
+                   and _MANIFEST[r]["refusal"]["type"] == "NotImplementedError"}
+        self.assertEqual(dropped, line_33)
+        self.assertEqual(len(dropped), 11)
 
 
 class ModeledScopePinTests(_Rows):
@@ -84,6 +121,8 @@ class ModeledScopePinTests(_Rows):
 
     def test_every_emitted_8962_carries_the_key_true(self):
         for rid in sorted(self.before["emitted"]):
+            if _refusing(rid):
+                continue
             with self.subTest(row=rid):
                 (record,) = self.f8962_records(rid)
                 self.assertIs(record.values.get(KEY), True)
