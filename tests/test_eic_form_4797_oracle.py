@@ -25,9 +25,7 @@ identities synthetic.
 import tempfile
 import unittest
 from pathlib import Path
-from unittest import mock
 
-from tenforty import years
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.fixtures import eic_battery
 from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
@@ -61,10 +59,8 @@ class Form4797AnswerOnTheWorkbookPathTests(unittest.TestCase):
                             orch._compute_1040_via_workbook(eff))
                     except NotImplementedError as refusal:
                         cls.refusals[(status, kind)] = str(refusal)
-                    with mock.patch.dict(years.NATIVE_EIC_STATUSES,
-                                         {YEAR: STATUSES}):
-                        cls.native[(status, kind)] = orch.compute_federal(
-                            scenario)
+                    cls.native[(status, kind)] = orch.compute_federal(
+                        scenario)
 
     def test_investment_income_over_the_limit_is_refused(self):
         for status in STATUSES:
