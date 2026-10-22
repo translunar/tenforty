@@ -190,6 +190,19 @@ def _eic_row(year: int, wages: float, *, status: str = "single",
         eic_eligibility=eligibility or favorable_eligibility(status))
 
 
+def upper_age_window(year: int, status: str) -> tuple[int, int]:
+    """Ruling R-S8-3: an upper-age row is an AGED filer (it checks the Form
+    1040 age box), so at or under the Schedule R AGI limit tenforty refuses
+    (credit for the elderly, not modeled) before any EIC is figured. The
+    rows sit strictly between that limit (both spouses aged on a joint
+    return) and the year's completed phaseout, where the credit is still
+    figured. Both bounds are read from code/params, never typed in."""
+    from tenforty.orchestrator import _SCHEDULE_R_AGI_LIMITS
+    boxes = 2 if status == "married_filing_jointly" else 1
+    return (_SCHEDULE_R_AGI_LIMITS[(status, boxes)],
+            load_params(year).eic_completed_phaseout[status])
+
+
 def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
     import datetime
     from tenforty.models import ScheduleCBusiness
@@ -200,6 +213,7 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
     min_cut = datetime.date(year - p.eic_min_age + 1, 1, 2)
     max_cut = datetime.date(year - p.eic_max_age, 12, 31)
     day = datetime.timedelta(days=1)
+    upper_age_wages = sum(upper_age_window(year, status)) // 2
     row = lambda *a, **k: _eic_row(*a, status=status, **k)  # noqa: E731
     fact = lambda **o: favorable_eligibility(  # noqa: E731
         status, taxpayer=favorable_person(**o))
@@ -224,9 +238,9 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
         "age_lower_bound_out": lambda y: row(
             y, plateau, birthdate=min_cut.isoformat()),
         "age_upper_bound_in": lambda y: row(
-            y, plateau, birthdate=(max_cut + day).isoformat()),
+            y, upper_age_wages, birthdate=(max_cut + day).isoformat()),
         "age_upper_bound_out": lambda y: row(
-            y, plateau, birthdate=max_cut.isoformat()),
+            y, upper_age_wages, birthdate=max_cut.isoformat()),
         "sch_c_worksheet_b": lambda y: row(y, 3000, schedule_c=[
             ScheduleCBusiness(description="Example Route",
                               gross_receipts=3000.0)]),

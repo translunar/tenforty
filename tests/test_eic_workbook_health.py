@@ -164,6 +164,9 @@ class AnswerCellStructureTests(unittest.TestCase):
             for key, (cell, formula) in cells["stops"].items():
                 with self.subTest(year=year, stop=key):
                     self.assertEqual(wb[cells["sheet"]][cell].value, formula)
+            for cell, formula in cells.get("observations", {}).items():
+                with self.subTest(year=year, observation=cell):
+                    self.assertEqual(wb[cells["sheet"]][cell].value, formula)
 
     def test_the_form_4797_no_cell_is_productions(self):
         # The adapter answers Q3 in the very cell production writes.

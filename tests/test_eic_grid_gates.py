@@ -283,3 +283,23 @@ class StatusScopedRefusalTests(unittest.TestCase):
         # joint-return refusal.
         self.assertNotIn("nonresident_alien_spouse_election",
                          eic_battery.required_eic_refusals(2025, ("single",)))
+
+
+class UpperAgeWindowTests(unittest.TestCase):
+    """Ruling R-S8-3: every year with battery rows has a non-empty window
+    between the Schedule R AGI limit and the completed phaseout, and its
+    upper-age pair sits strictly inside it (an aged filer at or under the
+    limit is refused before any EIC is figured). An empty window would keep
+    that year's eic_max_age waiver, citing the Schedule R refusal."""
+
+    def test_each_year_has_a_window_and_the_rows_sit_inside(self):
+        for (year, status), rows in sorted(eic_battery.EIC_ROWS.items()):
+            if "age_upper_bound_in" not in rows:
+                continue
+            low, high = eic_battery.upper_age_window(year, status)
+            with self.subTest(year=year, status=status):
+                self.assertLess(low + 1, high)
+                for kind in ("age_upper_bound_in", "age_upper_bound_out"):
+                    wages = sum(w.wages for w in rows[kind](year).w2s)
+                    self.assertLess(low, wages)
+                    self.assertLess(wages, high)

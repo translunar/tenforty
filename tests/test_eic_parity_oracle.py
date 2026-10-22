@@ -49,16 +49,17 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # §12: parity, then the grid row). Native is forced for those years only;
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
-YEARS = (2025,)
-AHEAD_OF_GRID: frozenset[int] = frozenset()
+YEARS = (2024, 2025)
+AHEAD_OF_GRID: frozenset[int] = frozenset({2024})
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
-    "single": {"age_upper_bound_in", "age_upper_bound_out",
-               "sch_c_worksheet_b", "sch_c_net_loss"},
-    "married_filing_jointly": {"age_upper_bound_in", "age_upper_bound_out",
-                               "sch_c_worksheet_b", "sch_c_net_loss",
+    "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
+    "married_filing_jointly": {"sch_c_worksheet_b", "sch_c_net_loss",
                                "fact_nonresident_alien"},
 }
+# Year-scoped exclusions: the 2025 upper-age rows refuse natively (the
+# Schedule 1-A seniors refusal, P5-1), so there is no native value.
+_EXCLUDED_IN_YEAR = {2025: {"age_upper_bound_in", "age_upper_bound_out"}}
 _PROMPTS = ("eic_diag_prompt_an", "eic_diag_prompt_ao", "eic_diag_prompt_ap")
 _KEYS = ("eic", "total_other_payments", "total_payments")
 
@@ -87,6 +88,16 @@ DIVERGENCES = {
     # published table (assets/eic_tables/2025.csv) reads 323: $1 high here.
     (2025, "single", "phase_out"): (323, 324),
     (2025, "single", "agi_over_earned"): (323, 324),
+    # R-S7-7, 2024: the same B39 gap; the workbook figure is declared
+    # nonzero and pinned once the first comparison shows it (R-S7-14).
+    (2024, "single", "fact_nonresident_alien"): (0, NONZERO),
+    # R-T2 / R-S7-1 (R-S8-3 placement): born Jan 1 of (year-64) is under 65
+    # at year end (Pub. 596's asymmetric age-65 rule), so native grants; the
+    # workbook's symmetric day-before age denies. Native predicted PRE-RUN
+    # from the ingested published table (assets/eic_tables/2024.csv) at the
+    # row's wages; workbook 0.
+    (2024, "single", "age_upper_bound_in"): (43, 0),
+    (2024, "married_filing_jointly", "age_upper_bound_in"): (18, 0),
 }
 
 # Rulings R-S7-10/10a: (year, status, kind) -> the line 27 the sheet
@@ -94,6 +105,10 @@ DIVERGENCES = {
 REFUSED_DIVERGENCES = {
     (2025, "single", "investment_over_limit"): 155,
     (2025, "married_filing_jointly", "investment_over_limit"): 155,
+    # 2024: the same display-only Step 2 stop (all years); pinned exactly
+    # after the first comparison (R-S7-14).
+    (2024, "single", "investment_over_limit"): NONZERO,
+    (2024, "married_filing_jointly", "investment_over_limit"): NONZERO,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
@@ -105,6 +120,11 @@ DENIAL_STOPS = {
     "investment_over_limit": ("eic_stop_form_4797_no", "X",
                               "Step 2, question 2"),
     "age_lower_bound_out": ("eic_stop_age", True, "Step 4, question 2"),
+    # Upper bound: "out" is denied on both sides; "in" is the R-T2
+    # divergence, denied on the workbook side only (its native rule check is
+    # skipped there; the divergence asserts native exactly).
+    "age_upper_bound_out": ("eic_stop_age", True, "Step 4, question 2"),
+    "age_upper_bound_in": ("eic_stop_age", True, "Step 4, question 2"),
     "fact_main_home_not_in_us": ("eic_stop_main_home", True,
                                  "Step 4, question 3"),
     "fact_qualifying_child_of_another": ("eic_stop_qc_of_another", True,
@@ -116,6 +136,13 @@ DENIAL_STOPS = {
     "earned_income_below_min": ("eic_stop_credit_zero", True,
                                 "Worksheet A, earned income"),
 }
+# Per-year overrides. 2024 (R-S8-2 (a)): G28 is dead in that template, so
+# the SSN row's stop is EIC_trigger (M34) read back FALSE — the flow stops at
+# Step 1 Q2, the rule native cites.
+DENIAL_STOPS_IN_YEAR = {
+    2024: {"fact_ssn_not_valid": ("eic_stop_ssn", False,
+                                  "Step 1, question 2")},
+}
 
 # Ruling R-S7-9a, adjudicated observation: Step 4 Q6's "Yes. STOP" (2025
 # A226) is in neither NoEICredit's OR-chain (A1) nor N1, so the workbook
@@ -123,7 +150,10 @@ DENIAL_STOPS = {
 # R-S7-7 (a STOP missing from the OR-chain); harmless in dollars; production
 # is guard-protected (an unfavorable fact refuses on the workbook path,
 # R-S7-2). Confirmed by the oracle on 59653a6.
-UNDECLARED_DENIALS = {(2025, "single", "fact_claimable_as_dependent")}
+# 2024: the same gap by static read (Q6 "Yes. STOP" A213 is in neither A1
+# nor N1) — a first-comparison prediction; a contradiction is a finding.
+UNDECLARED_DENIALS = {(2025, "single", "fact_claimable_as_dependent"),
+                      (2024, "single", "fact_claimable_as_dependent")}
 
 
 def _n(value) -> int:
@@ -133,7 +163,12 @@ def _n(value) -> int:
 def _expected_rows():
     return {(y, s, k) for y in YEARS for s in STATUSES
             for k in eic_battery.battery_for(y, s)
-            if k not in _EXCLUDED_KINDS[s]}
+            if k not in _EXCLUDED_KINDS[s]
+            and k not in _EXCLUDED_IN_YEAR.get(y, ())}
+
+
+def _stop(year, kind):
+    return DENIAL_STOPS_IN_YEAR.get(year, {}).get(kind, DENIAL_STOPS[kind])
 
 
 class GridStateTests(unittest.TestCase):
@@ -210,10 +245,14 @@ class EicNativeWorkbookParityTests(unittest.TestCase):
             if not self._denied(row):
                 continue
             year, status, kind = row
-            stop, reached, rule = DENIAL_STOPS[kind]
-            with self.subTest(year=year, status=status, kind=kind,
-                              check="native"):
-                self.assertEqual(native["eic_determination"]["rule"], rule)
+            stop, reached, rule = _stop(year, kind)
+            if row not in DIVERGENCES:
+                # A divergence row's native side is asserted exactly there
+                # (the workbook denies where native credits).
+                with self.subTest(year=year, status=status, kind=kind,
+                                  check="native"):
+                    self.assertEqual(native["eic_determination"]["rule"],
+                                     rule)
             with self.subTest(year=year, status=status, kind=kind,
                               check=stop):
                 self.assertEqual(workbook.get(stop), reached)

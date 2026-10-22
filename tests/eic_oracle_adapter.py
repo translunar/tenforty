@@ -139,10 +139,11 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
             "eic_diag_prompt_ao": ("Line 27 (EIC)", "AO1"),
             "eic_diag_prompt_ap": ("Line 27 (EIC)", "AP1"),
         },
-        # The SSN row's stop awaits adjudication: 2024 G28
-        # '=AND(EIC_trigger,NOT(A28))' is structurally always FALSE.
         "stops": {
             "eic_stop_agi_limit": ("G21", '=H21="X"'),           # Step 1 Q1
+            # Ruling R-S8-2 (a): the SSN row's stop is EIC_trigger turning
+            # FALSE (the flow stops at Step 1 Q2) — read back FALSE there.
+            "eic_stop_ssn": ("M34", "=AND(A28,NOT(A34))"),
             "eic_stop_age": ("G177", "=AND(K159,G164,NOT(A177))"),  # Step 4 Q2
             "eic_stop_main_home": ("G186", '=H186<>""'),         # Step 4 Q3
             "eic_stop_qc_of_another": ("A203", '=AND(G193,B203<>"")'),  # Q5
@@ -150,6 +151,10 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
                                    '=AND(G203,DependentYOU<>"")'),  # Q6
             "eic_stop_credit_zero": ("A307", "=AND(A297,L303=0)"),  # Wks A
         },
+        # Adjudicated observations (R-S8-2, defect catalog #6): G28 can never
+        # be TRUE (EIC_trigger requires A28), so the 2025-shaped SSN stop is
+        # dead here. Pinned so a vendor fix reviving it is re-adjudicated.
+        "observations": {"G28": "=AND(EIC_trigger,NOT(A28))"},
     },
 }
 

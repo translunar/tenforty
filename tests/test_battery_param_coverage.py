@@ -57,6 +57,10 @@ EXERCISED: dict[str, tuple[str, ...]] = {
     "eic_min_earned_income": ("eic:earned_income_below_min",
                               "eic:earned_income_at_min"),
     "eic_min_age": ("eic:age_lower_bound_in", "eic:age_lower_bound_out"),
+    # Step 8 (R-S8-3): the 2022-2024 upper-age rows compute (placed above the
+    # Schedule R AGI limit), so the boundary is exercised; the 2025 pair
+    # still refuses upstream (Schedule 1-A seniors refusal, P5-1).
+    "eic_max_age": ("eic:age_upper_bound_in", "eic:age_upper_bound_out"),
 }
 
 # field -> reason it is consciously NOT exercised. Shrinking this map is
@@ -68,15 +72,6 @@ WAIVED: dict[str, str] = {
                              "add one when a medical itemizer enters scope",
     "prior_year_salt_cap": "battery pins prior_year_itemized=False, "
                            "short-circuiting the Sch 1 tax-benefit rule",
-    # eic_max_age (ruling R-S7-4 / P5-1): no 2025 battery row can exercise
-    # its boundary — both 2025 upper-age rows are aged filers, refused
-    # upstream by the Schedule 1-A seniors refusal before any credit is
-    # figured. Its boundary is driven by tests/test_eic_compute.py AgeTests
-    # and becomes EXERCISED by the step-8 (2022-2024) upper-age rows, where
-    # nothing refuses first; this waiver is removed then.
-    "eic_max_age": "2025 upper-age rows refuse upstream (Schedule 1-A "
-                   "seniors refusal, P5-1); boundary unit-driven by "
-                   "tests/test_eic_compute.py AgeTests until the step-8 rows",
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
     "excess_business_loss_threshold":
