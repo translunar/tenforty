@@ -60,10 +60,9 @@ class AnswerCellStructureTests(unittest.TestCase):
             for key, (sheet, cell) in cells["inputs"].items():
                 with self.subTest(year=year, input=key):
                     self.assertIsNone(wb[sheet][cell].value)
-            for cell in cells["derived"]:
+            for cell, formula in cells["derived"].items():
                 with self.subTest(year=year, derived=cell):
-                    self.assertTrue(str(wb[cells["sheet"]][cell].value)
-                                    .startswith("="))
+                    self.assertEqual(wb[cells["sheet"]][cell].value, formula)
             for key, (sheet, cell) in cells["diagnostics"].items():
                 with self.subTest(year=year, diagnostic=key):
                     self.assertTrue(str(wb[sheet][cell].value)
@@ -95,9 +94,8 @@ class AdapterWritesEveryAnswerTests(unittest.TestCase):
                 expected = 0 if key == "eic_answer_qualifying_children" \
                     else None
                 self.assertEqual(wb[sheet][cell].value, expected)
-        for cell in cells["derived"]:
-            self.assertTrue(str(wb[cells["sheet"]][cell].value)
-                            .startswith("="))
+        for cell, formula in cells["derived"].items():
+            self.assertEqual(wb[cells["sheet"]][cell].value, formula)
 
     def test_each_unfavorable_fact_marks_only_its_own_answer(self):
         # Pure: which answer each stated fact sets (the cell it lands in is

@@ -26,6 +26,11 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # mock.patch.object(orch.engine, "compute", ...) raising a sentinel
     # before any recalculation, so no real soffice is ever invoked.
     "test_eic_workbook_health.py",
+    # Workbook-path EIC fact guard (R-S7-2): every test patches
+    # orch.engine.compute with a sentinel side_effect; the guard raises before
+    # the engine, or the sentinel proves the engine was reached — no
+    # recalculation, so no real soffice is ever invoked.
+    "test_eic_workbook_guard.py",
     # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
     # at the top of _compute_1040_via_workbook, before any engine call. The
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute

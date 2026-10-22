@@ -10,8 +10,10 @@ only when the workbook's own status cells raise no "Please answer" prompt
 an allowlist.
 
 Rows NOT compared here, each for a stated reason:
-  * age-bound rows — awaiting the team-lead ruling on the Jan-1 upper-bound
-    reading (the workbook's integer age vs the IRS birth-date range);
+  * UPPER age-bound rows — awaiting the final ruling on the Jan-1
+    upper-bound reading (R-S7-1i); in 2025 they refuse natively anyway (the
+    Schedule 1-A seniors refusal). The LOWER-bound rows are compared: both
+    readings agree there (R-S7-1i);
   * rows that refuse natively (no native value to compare);
   * Schedule C rows (Worksheet B) — the workbook path refuses Schedule C
     outright (orchestrator: "cannot carry Schedule C / Schedule SE"), so the
@@ -31,11 +33,9 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 
 YEAR = 2025
 EXCLUDED = {
-    "single": {"age_lower_bound_in", "age_lower_bound_out",
-               "age_upper_bound_in", "age_upper_bound_out",
+    "single": {"age_upper_bound_in", "age_upper_bound_out",
                "sch_c_worksheet_b", "sch_c_net_loss"},
-    "married_filing_jointly": {"age_lower_bound_in", "age_lower_bound_out",
-                               "age_upper_bound_in", "age_upper_bound_out",
+    "married_filing_jointly": {"age_upper_bound_in", "age_upper_bound_out",
                                "sch_c_worksheet_b", "sch_c_net_loss",
                                "fact_nonresident_alien"},
 }

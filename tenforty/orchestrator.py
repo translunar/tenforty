@@ -1213,6 +1213,73 @@ def refuse_eic_with_child_candidate(scenario: Scenario) -> None:
         "hand.")
 
 
+_EIC_FACT_LABELS = {
+    "ssn_valid_for_employment": "has no SSN valid for the EIC",
+    "nonresident_alien_any_part_of_year":
+        "was a nonresident alien for part of the year",
+    "main_home_in_us_more_than_half_year":
+        "did not have a main home in the United States for more than half "
+        "the year",
+    "could_be_qualifying_child_of_another":
+        "could be the qualifying child of another person",
+    "can_be_claimed_as_dependent":
+        "can be claimed as a dependent on someone else's return",
+}
+_EIC_FAVORABLE = {
+    "ssn_valid_for_employment": True,
+    "nonresident_alien_any_part_of_year": False,
+    "main_home_in_us_more_than_half_year": True,
+    "could_be_qualifying_child_of_another": False,
+    "can_be_claimed_as_dependent": False,
+}
+
+
+def refuse_workbook_eic_facts(scenario: Scenario) -> None:
+    """FAIL-CLOSED (ruling R-S7-2): an `eic_eligibility` block the workbook
+    path cannot honor. Production never writes the workbook's EIC answers;
+    with every answer input blank its derived answers are exactly the
+    all-favorable facts (pinned per year by the formula-text pins in
+    tests/test_eic_workbook_health.py). So the workbook is right for an
+    all-favorable block and silently wrong for any other: refuse a stated
+    unfavorable fact, Form 8862 applying, or a block on a filing status
+    that is not single / married filing jointly (spec §10.1). The 2025
+    joint wording skips the qualifying-child-of-another and claimable-
+    dependent questions on a joint return, so those facts are not checked
+    there, as on the native path."""
+    block = scenario.eic_eligibility
+    if block is None:
+        return
+    status = parse_filing_status(scenario.config.filing_status)
+    joint = status is FilingStatus.MARRIED_FILING_JOINTLY
+
+    def refuse(why: str) -> None:
+        raise NotImplementedError(
+            f"workbook_eic_fact_not_modeled: this return is computed on the "
+            f"workbook path, where tenforty does not write the earned income "
+            f"credit's eligibility answers — the workbook assumes every fact "
+            f"is favorable. {why} So this return cannot be computed: the "
+            f"workbook would ignore that and could grant a credit the filer "
+            f"is not allowed.")
+    if status not in (FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY):
+        refuse(f"The scenario states `eic_eligibility` facts on a "
+               f"{status.value} return, which tenforty does not compute the "
+               f"earned income credit for.")
+    if block.prior_eic_disallowance_requires_8862:
+        refuse("The scenario states prior_eic_disallowance_requires_8862: "
+               "true (Form 8862 is required to claim the credit).")
+    people = [("taxpayer", block.taxpayer)] + (
+        [("spouse", block.spouse)] if joint else [])
+    for who, person in people:
+        for fact, favorable in _EIC_FAVORABLE.items():
+            if joint and fact in ("could_be_qualifying_child_of_another",
+                                  "can_be_claimed_as_dependent"):
+                continue
+            if getattr(person, fact) != favorable:
+                refuse(f"The scenario states that the {who} "
+                       f"{_EIC_FACT_LABELS[fact]} ({fact}: "
+                       f"{getattr(person, fact)}).")
+
+
 class ReturnOrchestrator:
     """Coordinates computation across forms in dependency order."""
 
@@ -1885,6 +1952,11 @@ class ReturnOrchestrator:
         Remains reachable as a test-only oracle after the cutover task
         repoints _compute_1040_pipeline at the native spine.
         """
+        # The oracle-only EIC answer adapter (tests/eic_oracle_adapter.py,
+        # the sole writer of the workbook's EIC answers) marks the
+        # orchestrator; nothing in production sets the mark.
+        if not getattr(self, "_eic_answers_adapter", False):
+            refuse_workbook_eic_facts(effective_scenario)
         # FAIL-CLOSED GUARD — Schedule C / Schedule SE on the workbook path.
         # The native spine wires Schedule C (net profit) and Schedule SE
         # (self-employment tax) into the 1040. This XLSX workbook path (taken

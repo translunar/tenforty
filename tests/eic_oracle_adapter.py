@@ -53,9 +53,20 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
             "eic_answer_dependent_spouse": ("1040", "X84"),
             "eic_answer_clergy": ("Line 27a (EIC)", "B235"),
         },
-        # The derived side of each question: must stay a formula.
-        "derived": ("B28", "H39", "B112", "B199", "H216", "B226", "H226",
-                    "H235"),
+        # The derived side of each question, formula text pinned EXACTLY
+        # (ruling R-S7-2): with every input blank these yield the
+        # all-favorable answers, the premise the workbook-path guard rests on.
+        # A relayout or flipped default must fail here, loudly.
+        "derived": {
+            "B28": '=IF(A28,"X","")',
+            "H39": '=IF(AND(B39="",NOT(EIC_Check)),"X","")',
+            "B112": '=IF(K112<>"",ROUND(K112,0),N6)',
+            "B199": '=IF(A199,"X","")',
+            "H216": '=IF(G216,"X","")',
+            "B226": '=IF(A226,"X","")',
+            "H226": '=IF(G226,"X","")',
+            "H235": '=IF(G235,"X","")',
+        },
         # answer-status cells read back after recalculation
         "diagnostics": {
             "eic_diag_no_credit": ("Line 27a (EIC)", "A1"),
@@ -105,6 +116,11 @@ def answers(scenario: Scenario) -> dict[str, object]:
 
 def answering_mapping(year: int) -> type:
     """F1040 extended with the year's answer inputs and diagnostic outputs."""
+    if year not in EIC_WORKBOOK_CELLS:
+        raise ValueError(
+            f"the EIC answer cells for {year} are not located yet (spec "
+            f"§10.2 gate): add the year to EIC_WORKBOOK_CELLS, read by "
+            f"formula consumers, before any {year} parity row")
     cells = EIC_WORKBOOK_CELLS[year]
     extra_in = {k: cell for k, (_, cell) in cells["inputs"].items()}
     extra_out = {k: cell for k, (_, cell) in cells["diagnostics"].items()}
