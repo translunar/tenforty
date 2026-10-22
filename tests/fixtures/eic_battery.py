@@ -249,6 +249,13 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
         "fact_claimable_as_dependent": lambda y: row(
             y, plateau, eligibility=fact(can_be_claimed_as_dependent=True)),
     }
+    # eic_min_earned_income at its boundary (not a required kind: the
+    # coverage map's exerciser for that param, ruling R-S7-4). One dollar
+    # under the minimum is no earned income at all.
+    rows["earned_income_below_min"] = lambda y: row(
+        y, float(p.eic_min_earned_income - 1))
+    rows["earned_income_at_min"] = lambda y: row(
+        y, float(p.eic_min_earned_income))
     if status == "married_filing_jointly":
         # Only the taxpayer under the lower bound: the spouse (the battery's
         # in-band birth date) satisfies the test for both.

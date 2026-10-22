@@ -10,6 +10,7 @@ from unittest import mock
 from tenforty import years as year_manifest
 from tenforty.models import FilingStatus
 from tenforty.params.federal import PER_STATUS_FEDERAL_FIELDS, FederalParams
+from tests.fixtures import eic_battery
 from tests.fixtures.spine_battery import (
     REQUIRED_STATUS_SCENARIO_KINDS,
     battery_for,
@@ -40,6 +41,22 @@ EXERCISED: dict[str, tuple[str, ...]] = {
     # driven in tests/test_age_condition.py::AgeConditionBoundaryTests.
     "additional_standard_deduction": ("std_deduction_aged__single",),
     "aged_born_before": ("std_deduction_aged__single",),
+    # Childless EIC (ruling R-S7-4): exercised by tests/fixtures/eic_battery
+    # rows, named "eic:<kind>" (the universe below includes them; each is
+    # compared native-vs-workbook in tests/test_eic_parity_oracle.py through
+    # the answer adapter, except the Schedule C rows, which the workbook
+    # path refuses — R-S7-3; no field below rests on those alone).
+    "eic_credit_pct": ("eic:phase_in",),
+    "eic_earned_income_amount": ("eic:plateau",),
+    "eic_max_credit": ("eic:plateau",),
+    "eic_phaseout_pct": ("eic:phase_out",),
+    "eic_phaseout_threshold": ("eic:agi_over_earned", "eic:phase_out"),
+    "eic_completed_phaseout": ("eic:just_under_ceiling", "eic:over_ceiling"),
+    "eic_investment_income_limit": ("eic:investment_at_limit",
+                                    "eic:investment_over_limit"),
+    "eic_min_earned_income": ("eic:earned_income_below_min",
+                              "eic:earned_income_at_min"),
+    "eic_min_age": ("eic:age_lower_bound_in", "eic:age_lower_bound_out"),
 }
 
 # field -> reason it is consciously NOT exercised. Shrinking this map is
@@ -51,21 +68,15 @@ WAIVED: dict[str, str] = {
                              "add one when a medical itemizer enters scope",
     "prior_year_salt_cap": "battery pins prior_year_itemized=False, "
                            "short-circuiting the Sch 1 tax-benefit rule",
-    # Childless EIC (step 4 of the childless-EITC rollout). TEMPORARY: the
-    # EIC rows join the native-vs-workbook parity battery only with the
-    # oracle EIC-answer adapter (rollout step 7) — before that the workbook
-    # would figure the credit on its own default answers, which is not
-    # evidence. Until then each field is driven at its boundary by
-    # tests/test_eic_compute.py and cross-checked against the published EIC
-    # Table by tests/test_eic_table_crosscheck.py. Shrink at step 7.
-    **{name: "childless EIC: boundary-driven by tests/test_eic_compute.py "
-             "and the EIC Table cross-check until the parity rows land "
-             "(rollout step 7)"
-       for name in ("eic_credit_pct", "eic_phaseout_pct",
-                    "eic_earned_income_amount", "eic_max_credit",
-                    "eic_phaseout_threshold", "eic_completed_phaseout",
-                    "eic_investment_income_limit", "eic_min_earned_income",
-                    "eic_min_age", "eic_max_age")},
+    # eic_max_age (ruling R-S7-4 / P5-1): no 2025 battery row can exercise
+    # its boundary — both 2025 upper-age rows are aged filers, refused
+    # upstream by the Schedule 1-A seniors refusal before any credit is
+    # figured. Its boundary is driven by tests/test_eic_compute.py AgeTests
+    # and becomes EXERCISED by the step-8 (2022-2024) upper-age rows, where
+    # nothing refuses first; this waiver is removed then.
+    "eic_max_age": "2025 upper-age rows refuse upstream (Schedule 1-A "
+                   "seniors refusal, P5-1); boundary unit-driven by "
+                   "tests/test_eic_compute.py AgeTests until the step-8 rows",
     "eic_income_ceiling": "exercised as the routing guard (scope gate), "
                           "not as a computed value",
     "excess_business_loss_threshold":
@@ -275,6 +286,10 @@ class BatteryParamCoverageTests(unittest.TestCase):
         names: set[str] = set()
         for year in year_manifest.FEDERAL_YEARS + year_manifest.FEDERAL_COMPUTE_ONLY_YEARS:
             names |= {n for n, _ in battery_for(year)}
+        # Ruling R-S7-4: the childless-EIC battery's rows join the universe
+        # (union only — the spine names above are unchanged), as "eic:<kind>".
+        names |= {f"eic:{kind}" for rows in eic_battery.EIC_ROWS.values()
+                  for kind in rows}
         for field, scenarios in EXERCISED.items():
             for scenario in scenarios:
                 with self.subTest(field=field, scenario=scenario):

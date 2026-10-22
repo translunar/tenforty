@@ -234,6 +234,7 @@ class BatteryRowOutcomeTests(unittest.TestCase):
         "fact_main_home_not_in_us": "main_home_not_in_us",
         "fact_qualifying_child_of_another": "qualifying_child_of_another",
         "fact_claimable_as_dependent": "claimable_as_dependent",
+        "earned_income_below_min": "no_earned_income",
     }
 
     # 2025: the EIC upper age bound (born after Dec 31 of year - max age)
@@ -274,7 +275,8 @@ class BatteryRowOutcomeTests(unittest.TestCase):
     def test_credited_rows_print_a_credit(self):
         for kind in ("plateau", "phase_in", "phase_out", "agi_over_earned",
                      "investment_at_limit", "age_lower_bound_in",
-                     "sch_c_worksheet_b", "sch_c_net_loss"):
+                     "sch_c_worksheet_b", "sch_c_net_loss",
+                     "earned_income_at_min"):
             with self.subTest(kind=kind):
                 self.assertGreater(self.out[kind].get("eic", 0), 0)
 
@@ -313,12 +315,13 @@ class MfjBatteryRowOutcomeTests(unittest.TestCase):
         "age_lower_bound_out": "age_test_not_met",
         "fact_ssn_not_valid": "ssn_not_valid",
         "fact_main_home_not_in_us": "main_home_not_in_us",
+        "earned_income_below_min": "no_earned_income",
     }
     CREDITED = ("plateau", "phase_in", "phase_out", "agi_over_earned",
                 "investment_at_limit", "age_lower_bound_in",
                 "mfj_one_spouse_in_age_band",
                 "fact_qualifying_child_of_another",
-                "fact_claimable_as_dependent")
+                "fact_claimable_as_dependent", "earned_income_at_min")
 
     @classmethod
     def setUpClass(cls):
@@ -340,10 +343,13 @@ class MfjBatteryRowOutcomeTests(unittest.TestCase):
                     cls.refused[kind] = str(exc)
 
     def test_every_required_kind_is_present(self):
-        self.assertEqual(
-            set(self.out) | set(self.refused),
-            set(eic_battery.required_eic_kinds(
-                YEAR, "married_filing_jointly")))
+        present = set(self.out) | set(self.refused)
+        required = set(eic_battery.required_eic_kinds(
+            YEAR, "married_filing_jointly"))
+        self.assertLessEqual(required, present)
+        # The rest are the coverage map's boundary exercisers (R-S7-4).
+        self.assertEqual(present - required,
+                         {"earned_income_below_min", "earned_income_at_min"})
 
     def test_refused_rows_name_their_cause(self):
         self.assertEqual(set(self.refused), set(self.REFUSED))
