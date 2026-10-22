@@ -47,7 +47,7 @@ from tests.fixtures import sch_c_battery
 from tests.fixtures.spine_battery import (
     build_addl_medicare_boundary,
     build_canonical_wage_investment_rental,
-    build_ptc_net_credit,
+    build_ptc_capped_repayment,
     build_qbi_k1_deduction,
     build_wages_only,
 )
@@ -94,7 +94,13 @@ def _run_full_return_sch_c(orch, out):
 
 
 def _run_full_return_ptc(orch, out):
-    return orch.run_full_return(build_ptc_net_credit(2024), out)
+    # A 1095-A return whose net PTC is 0, acknowledged (ruling R-S4-1): a
+    # nonzero net PTC no longer emits (the 1040 footing guard, R-P1), so the
+    # case moved to the zero-net shape; its snapshot was captured at that
+    # swap, not before the chokepoint reroute like the others.
+    scenario = dataclasses.replace(build_ptc_capped_repayment(2024),
+                                   acknowledges_schedule_3_not_produced=True)
+    return orch.run_full_return(scenario, out)
 
 
 def _run_full_return_qbi_k1(orch, out):

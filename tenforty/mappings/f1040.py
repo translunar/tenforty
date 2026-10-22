@@ -1418,6 +1418,11 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 26 (estimated tax payments): the same
+            # workbook-scoped name the INPUT writes, read back so line 26
+            # prints. Tot_Payments sums it, so without this the page did
+            # not foot (ruling R-S4-3; the eic / line-32 disease).
+            "estimated_tax_payments": "EstimatedTaxPayments",
             # Form 1040 line 32 = SUM(EIC, lines 28-31) on the 1040 sheet,
             # harvested by address (no named range). Its terms are pinned
             # in tests/test_eic_harvest.py; the emit refuses when it does
@@ -1564,6 +1569,11 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 26 (estimated tax payments): the same
+            # workbook-scoped name the INPUT writes, read back so line 26
+            # prints. Tot_Payments sums it, so without this the page did
+            # not foot (ruling R-S4-3; the eic / line-32 disease).
+            "estimated_tax_payments": "EstimatedTaxPayments",
             # Form 1040 line 32 by address; see the 2024 block.
             "total_other_payments": "AL123",
         },

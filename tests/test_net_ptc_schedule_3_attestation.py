@@ -1,10 +1,12 @@
 """A net premium tax credit prints inside Form 1040 line 33 through
 Schedule 3 lines 9-15 and 1040 lines 31/32, none of which tenforty
 produces: the page cannot foot and the Schedule 3 it references is not
-attached. Emitting such a return refuses unless the scenario states
-`acknowledges_schedule_3_not_produced: true` (draft/review use, with the
-gap). Juno's ruling; Schedule 3 support is queued for the end of the
-program. All identities synthetic."""
+attached. Emitting such a return refuses (Juno's ruling). Stating
+`acknowledges_schedule_3_not_produced: true` no longer lets it emit: the
+1040 payments-footing guard refuses a nonzero net PTC either way (ruling
+R-P1), and the refusal no longer advertises the key (R-S4-2). The key stays
+accepted; with a net PTC of 0 the acknowledged return emits and foots.
+All identities synthetic."""
 import dataclasses
 import tempfile
 import unittest
@@ -48,9 +50,13 @@ class NetPtcRefusalTests(unittest.TestCase):
                 orch.emit_pdfs(scenario, results, out)
             msg = str(cm.exception)
             for needle in ("Schedule 3", "line 31", "line 32", "line 33",
-                           "will not foot", "not attached", "queued",
-                           f"{FLAG}: true", "DRAFT"):
+                           "will not foot", "not attached", "Form 8962",
+                           "cannot be emitted", "No acknowledgment"):
                 self.assertIn(needle, msg)
+            # Ruling R-S4-2: the message must not advertise the
+            # acknowledgment — setting it no longer lets the return emit.
+            for advice in (FLAG, "DRAFT", "emit anyway"):
+                self.assertNotIn(advice, msg)
             self.assertEqual(sorted(out.glob("*.pdf")), [])
 
     def test_a_false_acknowledgment_refuses_too(self):

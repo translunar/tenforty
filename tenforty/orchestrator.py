@@ -662,7 +662,11 @@ def _net_ptc_without_schedule_3(scenario: Scenario,
     """The Form 1040 refusal for a net premium tax credit (Juno's ruling):
     line 33 includes it, but it reaches line 33 through Schedule 3 and
     lines 31/32, which tenforty does not produce. None when there is no net
-    credit or the scenario acknowledges the gap."""
+    credit or the scenario states the acknowledgment — which no longer lets
+    the return emit: the payments-footing guard (_line_32_unfooted, ruling
+    R-P1) refuses it instead. The key stays accepted (removing it is a
+    schema break, queued for a 0.3.0 decision); its message must not
+    advertise it (ruling R-S4-2)."""
     net_ptc = results.get("f8962_net_ptc") or 0
     if net_ptc <= 0 or scenario.acknowledges_schedule_3_not_produced is True:
         return None
@@ -673,11 +677,11 @@ def _net_ptc_without_schedule_3(scenario: Scenario,
         "line 32), and tenforty does not produce Schedule 3: lines 31 and "
         "32 would print blank, the page will not foot (line 33 would not "
         "equal lines 25d + 26 + 32 as printed), and the Schedule 3 that "
-        "line 31 references is not attached. Schedule 3 support is queued "
-        "for the end of the harness program. To emit anyway FOR DRAFT OR "
-        "REVIEW USE, with this gap, set the top-level scenario key "
-        "`acknowledges_schedule_3_not_produced: true`; do not file the "
-        "result as printed.")
+        "line 31 references is not attached. A return with a net premium "
+        "tax credit cannot be emitted until tenforty produces Schedule 3 "
+        "and carries Form 8962 through to line 31 (that port is in "
+        "progress). No acknowledgment bypasses the printed arithmetic: the "
+        "1040 must foot as printed.")
 
 
 # The Form 1040 line-32 components ("total other payments and refundable

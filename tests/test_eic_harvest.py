@@ -86,6 +86,24 @@ class EicHarvestWiringTests(unittest.TestCase):
                 self.assertEqual(sheet, "1040")
                 self.assertIn("EarnedIncomeCredit", wb[sheet][cell].value)
 
+    def test_line_26_harvests_the_name_its_input_writes(self):
+        # Ruling R-S4-3: read back the name the input writes, every year,
+        # and Tot_Payments sums that cell.
+        for year, wb in self.workbooks.items():
+            with self.subTest(year=year):
+                self.assertEqual(
+                    F1040.get_outputs(year).get("estimated_tax_payments"),
+                    "EstimatedTaxPayments")
+                self.assertEqual(
+                    F1040.get_inputs(year).get("estimated_tax_payments"),
+                    "EstimatedTaxPayments")
+                sheet, cell = _resolve(wb, "EstimatedTaxPayments")
+                self.assertEqual(sheet, "1040")
+                _, total = _resolve(wb, "Tot_Payments")
+                self.assertIn(cell, wb["1040"][total].value)
+                self.assertIn("estimated_tax_payments",
+                              Pdf1040.get_mapping(year))
+
     def test_line_32_output_harvests_the_pinned_cell(self):
         for year, (cell, _) in LINE_32.items():
             with self.subTest(year=year):

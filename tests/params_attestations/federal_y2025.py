@@ -48,6 +48,7 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
       (born after 1960-12-31 and before 2001-01-02). No statutory basis given.
     * Statute currency: OLRC current §32 could not be fetched, so no other
       2025 amendment to §32 could be ruled out (none found in Pub. L. 119-21).
+      ADJUDICATED 2026-10-22 (R-T2): accepted as a standing note; Pub. L. 119-21 checked and the 2025 Pub. 596 What's New silent is adequate evidence for 2025.
 """
 import datetime
 import math
@@ -340,6 +341,11 @@ ATTESTED: dict[str, object] = {
     # $649.485; §32 contains no rounding rule for the credit. The table also
     # shows $649 in the 8,450-8,500 bracket, where the transcriber's
     # midpoint-rule reconstruction gives $648 (inference, not a source).
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): The IRS-published figures
+    # govern: they are what Rev. Proc. 2024-40 and the 2025 Form 1040
+    # instructions bind filers to, both independent readings attested them, and
+    # production reads the published EIC Table. The statute-arithmetic delta
+    # stays documented in the flag above; this resolves it.
     "eic_max_credit": 649,
     # Rev. Proc. 2024-40 §2.06(1), column "None", rows "Threshold Phaseout
     # Amount (All other filing statuses)" / "(Married Filing Jointly)"; MFJ
@@ -361,6 +367,11 @@ ATTESTED: dict[str, object] = {
     # equal threshold + $649/0.0765 rounded, i.e. they phase out the already
     # rounded $649 rather than $649.485. No source explains this. Attested the
     # IRS-published figures.
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): The IRS-published figures
+    # govern: they are what Rev. Proc. 2024-40 and the 2025 Form 1040
+    # instructions bind filers to, both independent readings attested them, and
+    # production reads the published EIC Table. The statute-arithmetic delta
+    # stays documented in the flag above; this resolves it.
     "eic_completed_phaseout": {
         "single": 19104,
         "married_filing_jointly": 26214,
@@ -385,6 +396,13 @@ ATTESTED: dict[str, object] = {
     # reached ON the 65th birthday. The statute applies a single "attained"
     # concept; no fetched source gives a statutory basis for the asymmetry.
     # (The 2021-only §32(n) ages 19/24/18 and no-maximum rule do not apply.)
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): Params stay as attested.
+    # The eligibility code implements the instructions' birth-date range
+    # verbatim (born after December 31, 1960 and before January 2, 2001 for
+    # 2025), not an integer age comparison; the day-before-birthday convention
+    # only matters at the Dec-31/Jan-1 boundary and the IRS range is the
+    # operational rule. The statute ambiguity noted above is carried into the
+    # eligibility code.
     "eic_min_age": 25,
     "eic_max_age": 65,
 
