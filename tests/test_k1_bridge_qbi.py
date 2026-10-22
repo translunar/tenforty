@@ -235,8 +235,13 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     (`Deduction` diagnostic, numeric probe) legitimately preempts it.
 
     Vehicle (team-lead ruling, declare-fallout): the BELOW-threshold half
-    runs on a 2025 SINGLE, EIC-POSSIBLE filer (low wages + a K-1) -- EIC is
-    never on the native spine, so this vehicle is permanent.
+    runs on a SINGLE, EIC-POSSIBLE filer (low wages + a K-1), which routes
+    to the workbook. Since the childless-EITC routing change that holds only
+    on a cell whose childless credit is not native yet (transitional routing,
+    R-S6-1), so the vehicle is TY2024 single (ruling R-S6-4: its figures
+    derive from that year's params, nothing re-derived by hand). It is NOT
+    permanent any more: it dies when (2024, single) lands in
+    NATIVE_EIC_STATUSES.
 
     The ABOVE-threshold half is RETIRED (ruled at back-year-2024 step 8). Its
     end-to-end guard fire was proven at declare-fallout on a 2024
@@ -251,15 +256,15 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
 
     @pytest.mark.oracle
     def test_below_threshold_still_computes_via_workbook(self):
-        """8,000 of wages + 10,000 of K-1 QBI income, 2025 single: the cheap
+        """8,000 of wages + 10,000 of K-1 QBI income, 2024 single: the cheap
         EIC estimate is under the 0-child ceiling, so the return routes to
         the workbook; taxable income before QBI (wages + K-1 less the single
         standard deduction, from params) is below the threshold and QBI is
         positive, so it must compute -- asserted on the real figures."""
         single = FilingStatus.SINGLE
         scenario = _workbook_qbi_scenario(
-            2025, single, wages=8_000.0, qbi=10_000.0)
-        view = load_federal_params(2025).for_status(single)
+            2024, single, wages=8_000.0, qbi=10_000.0)
+        view = load_federal_params(2024).for_status(single)
         expected = 8_000 + 10_000 - view.standard_deduction
         self.assertGreater(expected, 0)
         self.assertLess(expected, view.qbi_threshold)

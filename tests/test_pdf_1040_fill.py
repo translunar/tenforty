@@ -24,6 +24,7 @@ from tenforty.models import (
 from tenforty.orchestrator import ReturnOrchestrator
 
 from tests.helpers import needs_libreoffice, scope_out_attestation_defaults
+from tests.fixtures.eic_battery import favorable_eligibility
 
 REPO_ROOT = Path(__file__).parent.parent
 F1040_TEMPLATE = REPO_ROOT / "pdfs" / "federal" / "2025" / "f1040.pdf"
@@ -76,6 +77,14 @@ def _build_synthetic_scenario() -> Scenario:
                 qualified_dividends=200.00,
             )
         ],
+        # The return is EIC-possible (2025 single, low wages), which since
+        # the childless-EITC routing change computes NATIVELY on a declared
+        # cell, so its eligibility facts are stated (all favorable). This
+        # class's subject — the 2025 Form 1040 mapping read back from the
+        # emitted PDF — is routing-indifferent (ruling R-S6-4); its pinned
+        # figures are unchanged (the native credit equals the 484 the
+        # workbook figured).
+        eic_eligibility=favorable_eligibility(),
     )
 
 
