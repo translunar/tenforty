@@ -291,3 +291,75 @@ class BatteryRowOutcomeTests(unittest.TestCase):
                 self.assertEqual(
                     self.out[kind]["eic_determination"]["rule"],
                     "Worksheet B")
+
+
+class MfjBatteryRowOutcomeTests(unittest.TestCase):
+    """The (2025, MFJ) rows, ahead of the cell's declaration (spec step 7:
+    parity first, then the grid row): computed natively with 2025 MFJ
+    patched into years.NATIVE_EIC_STATUSES, the workbook path raising.
+    2025 joint wording (R-S5-2): Step 4 Q5/Q6 are skipped, so those two fact
+    rows still get the credit."""
+
+    REFUSED = {
+        "age_upper_bound_in": "Schedule 1-A",
+        "age_upper_bound_out": "Schedule 1-A",
+        "sch_c_worksheet_b": "Schedule SE is figured per person",
+        "sch_c_net_loss": "Schedule SE is figured per person",
+        "fact_nonresident_alien": "nonresident_alien_spouse_election",
+    }
+    DENIED = {
+        "over_ceiling": "agi_at_or_over_limit",
+        "investment_over_limit": "investment_income_over_limit",
+        "age_lower_bound_out": "age_test_not_met",
+        "fact_ssn_not_valid": "ssn_not_valid",
+        "fact_main_home_not_in_us": "main_home_not_in_us",
+    }
+    CREDITED = ("plateau", "phase_in", "phase_out", "agi_over_earned",
+                "investment_at_limit", "age_lower_bound_in",
+                "mfj_one_spouse_in_age_band",
+                "fact_qualifying_child_of_another",
+                "fact_claimable_as_dependent")
+
+    @classmethod
+    def setUpClass(cls):
+        from tenforty import years
+        cls.out, cls.refused = {}, {}
+        rows = eic_battery.battery_for(YEAR, "married_filing_jointly")
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
+                years.NATIVE_EIC_STATUSES,
+                {YEAR: ("single", "married_filing_jointly")}), \
+                mock.patch.object(
+                    ReturnOrchestrator, "_compute_1040_via_workbook",
+                    side_effect=AssertionError("workbook path reached")):
+            orch = ReturnOrchestrator(spreadsheets_dir=SPREADSHEETS_DIR,
+                                      work_dir=Path(tmp))
+            for kind, build in rows.items():
+                try:
+                    cls.out[kind] = orch.compute_federal(build(YEAR))
+                except NotImplementedError as exc:
+                    cls.refused[kind] = str(exc)
+
+    def test_every_required_kind_is_present(self):
+        self.assertEqual(
+            set(self.out) | set(self.refused),
+            set(eic_battery.required_eic_kinds(
+                YEAR, "married_filing_jointly")))
+
+    def test_refused_rows_name_their_cause(self):
+        self.assertEqual(set(self.refused), set(self.REFUSED))
+        for kind, fragment in self.REFUSED.items():
+            with self.subTest(kind=kind):
+                self.assertIn(fragment, self.refused[kind])
+
+    def test_denied_rows_carry_their_reason(self):
+        for kind, reason in self.DENIED.items():
+            with self.subTest(kind=kind):
+                self.assertNotIn("eic", self.out[kind])
+                self.assertEqual(
+                    self.out[kind]["eic_determination"]["reason"], reason)
+
+    def test_credited_rows_print_a_credit(self):
+        for kind in self.CREDITED:
+            with self.subTest(kind=kind):
+                self.assertGreater(self.out[kind].get("eic", 0), 0)
+        self.assertEqual(self.out["plateau"]["eic"], P.eic_max_credit)

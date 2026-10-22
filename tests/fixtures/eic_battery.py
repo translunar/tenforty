@@ -166,79 +166,101 @@ def favorable_eligibility(status: str = "single",
 # params (never a typed-in threshold). Each row states a favorable block
 # unless its kind is a fact row.
 
-def _eic_row(year: int, wages: float, *, birthdate: str | None = None,
-             interest: float = 0.0, schedule_c=None,
-             eligibility=None, **config_overrides) -> Scenario:
-    from tenforty.models import Form1099INT
-    config = _battery_config(year, **config_overrides)
+def _eic_row(year: int, wages: float, *, status: str = "single",
+             birthdate: str | None = None, interest: float = 0.0,
+             schedule_c=None, eligibility=None,
+             **config_overrides) -> Scenario:
+    from tenforty.models import Form1099INT, FilingStatus
+    joint = status == "married_filing_jointly"
+    config = _battery_config(year, FilingStatus(status), **config_overrides)
     if birthdate is not None:
-        config = dataclasses.replace(config, birthdate=birthdate)
+        # On a joint return EITHER spouse meets the age test, so an age-bound
+        # row places both spouses at the bound.
+        config = dataclasses.replace(
+            config, birthdate=birthdate,
+            **({"spouse_birthdate": birthdate} if joint else {}))
     return Scenario(
         config=config,
         w2s=[_w2(year, "Synthetic Employer EIC", wages,
-                 federal_tax_withheld=0.0)] if wages else [],
+                 federal_tax_withheld=0.0,
+                 owner="taxpayer" if joint else None)] if wages else [],
         form1099_int=([Form1099INT(payer="Example Bank", interest=interest)]
                       if interest else []),
         schedule_c_businesses=list(schedule_c or []),
-        eic_eligibility=eligibility or favorable_eligibility())
+        eic_eligibility=eligibility or favorable_eligibility(status))
 
 
-def _rows_single(year: int) -> dict[str, Callable[[int], Scenario]]:
+def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
     import datetime
     from tenforty.models import ScheduleCBusiness
     p = load_params(year)
-    begin = p.eic_phaseout_threshold["single"]
-    end = p.eic_completed_phaseout["single"]
+    begin = p.eic_phaseout_threshold[status]
+    end = p.eic_completed_phaseout[status]
     plateau = p.eic_earned_income_amount + 100
     min_cut = datetime.date(year - p.eic_min_age + 1, 1, 2)
     max_cut = datetime.date(year - p.eic_max_age, 12, 31)
     day = datetime.timedelta(days=1)
+    row = lambda *a, **k: _eic_row(*a, status=status, **k)  # noqa: E731
     fact = lambda **o: favorable_eligibility(  # noqa: E731
-        taxpayer=favorable_person(**o))
-    return {
-        "plateau": lambda y: _eic_row(y, plateau),
-        "phase_in": lambda y: _eic_row(y, p.eic_earned_income_amount // 2),
-        "phase_out": lambda y: _eic_row(y, (begin + end) // 2),
-        "just_under_ceiling": lambda y: _eic_row(y, end - 1),
-        "over_ceiling": lambda y: _eic_row(y, end + 1000),
-        # Earned income on the plateau; interest lifts AGI into the phaseout.
-        "agi_over_earned": lambda y: _eic_row(
-            y, plateau, interest=(begin + end) // 2 - plateau),
+        status, taxpayer=favorable_person(**o))
+    rows = {
+        "plateau": lambda y: row(y, plateau),
+        "phase_in": lambda y: row(y, p.eic_earned_income_amount // 2),
+        "phase_out": lambda y: row(y, (begin + end) // 2),
+        "just_under_ceiling": lambda y: row(y, end - 1),
+        "over_ceiling": lambda y: row(y, end + 1000),
+        # Earned income on the plateau; interest lifts AGI into the phaseout
+        # while staying within the investment-income limit.
+        "agi_over_earned": lambda y: row(
+            y, plateau, interest=min(p.eic_investment_income_limit,
+                                     (begin + end) // 2 - plateau)),
         # Low wages keep AGI under the ceiling beside the limit's interest.
-        "investment_at_limit": lambda y: _eic_row(
+        "investment_at_limit": lambda y: row(
             y, 2000, interest=p.eic_investment_income_limit),
-        "investment_over_limit": lambda y: _eic_row(
+        "investment_over_limit": lambda y: row(
             y, 2000, interest=p.eic_investment_income_limit + 1),
-        "age_lower_bound_in": lambda y: _eic_row(
+        "age_lower_bound_in": lambda y: row(
             y, plateau, birthdate=(min_cut - day).isoformat()),
-        "age_lower_bound_out": lambda y: _eic_row(
+        "age_lower_bound_out": lambda y: row(
             y, plateau, birthdate=min_cut.isoformat()),
-        "age_upper_bound_in": lambda y: _eic_row(
+        "age_upper_bound_in": lambda y: row(
             y, plateau, birthdate=(max_cut + day).isoformat()),
-        "age_upper_bound_out": lambda y: _eic_row(
+        "age_upper_bound_out": lambda y: row(
             y, plateau, birthdate=max_cut.isoformat()),
-        "sch_c_worksheet_b": lambda y: _eic_row(y, 3000, schedule_c=[
+        "sch_c_worksheet_b": lambda y: row(y, 3000, schedule_c=[
             ScheduleCBusiness(description="Example Route",
                               gross_receipts=3000.0)]),
         # A loss answers Schedule C line 32: all investment at risk (32a).
-        "sch_c_net_loss": lambda y: _eic_row(y, 6000, schedule_c=[
+        "sch_c_net_loss": lambda y: row(y, 6000, schedule_c=[
             ScheduleCBusiness(description="Example Route",
                               gross_receipts=0.0, supplies=500.0)],
             acknowledges_sch_c_all_investment_at_risk=True),
-        "fact_ssn_not_valid": lambda y: _eic_row(
+        "fact_ssn_not_valid": lambda y: row(
             y, plateau, eligibility=fact(ssn_valid_for_employment=False)),
-        "fact_nonresident_alien": lambda y: _eic_row(
+        "fact_nonresident_alien": lambda y: row(
             y, plateau,
             eligibility=fact(nonresident_alien_any_part_of_year=True)),
-        "fact_main_home_not_in_us": lambda y: _eic_row(
+        "fact_main_home_not_in_us": lambda y: row(
             y, plateau,
             eligibility=fact(main_home_in_us_more_than_half_year=False)),
-        "fact_qualifying_child_of_another": lambda y: _eic_row(
+        "fact_qualifying_child_of_another": lambda y: row(
             y, plateau,
             eligibility=fact(could_be_qualifying_child_of_another=True)),
-        "fact_claimable_as_dependent": lambda y: _eic_row(
+        "fact_claimable_as_dependent": lambda y: row(
             y, plateau, eligibility=fact(can_be_claimed_as_dependent=True)),
     }
+    if status == "married_filing_jointly":
+        # Only the taxpayer under the lower bound: the spouse (the battery's
+        # in-band birth date) satisfies the test for both.
+        def one_spouse_in_band(y):
+            scenario = row(y, plateau)
+            return dataclasses.replace(scenario, config=dataclasses.replace(
+                scenario.config, birthdate=min_cut.isoformat()))
+        rows["mfj_one_spouse_in_age_band"] = one_spouse_in_band
+    return rows
 
 
-EIC_ROWS[(2025, "single")] = _rows_single(2025)
+EIC_ROWS[(2025, "single")] = _rows(2025, "single")
+# 2025 MFJ rows exist ahead of the cell's declaration (spec step 7: parity
+# first, then the grid row).
+EIC_ROWS[(2025, "married_filing_jointly")] = _rows(2025, "married_filing_jointly")
