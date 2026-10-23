@@ -50,7 +50,7 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
 YEARS = (2023, 2024, 2025)
-AHEAD_OF_GRID: frozenset[int] = frozenset({2023})
+AHEAD_OF_GRID: frozenset[int] = frozenset()
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
     "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
@@ -100,11 +100,13 @@ DIVERGENCES = {
     # row's wages; workbook 0.
     (2024, "single", "age_upper_bound_in"): (43, 0),
     (2024, "married_filing_jointly", "age_upper_bound_in"): (18, 0),
-    # 2023 (R-S8-8): the same B39 gap (nonzero, pinned post-first-
-    # comparison) and the R-T2 Jan-1 rows, native from the ingested
-    # published table at the row's wages (the MFJ row: one aged spouse,
-    # option α), workbook 0.
-    (2023, "single", "fact_nonresident_alien"): (0, NONZERO),
+    # 2023 (R-S8-8): the same B39 gap — workbook figure pinned after the
+    # first comparison (9009897): the table credit at the row's earned
+    # income, as for its identical-input sibling `plateau` (600, penny-equal
+    # on that run). The R-T2 Jan-1 rows: native from the ingested published
+    # table at the row's wages (the MFJ row: one aged spouse, option α),
+    # workbook 0.
+    (2023, "single", "fact_nonresident_alien"): (0, 600),
     (2023, "single", "age_upper_bound_in"): (5, 0),
     (2023, "married_filing_jointly", "age_upper_bound_in"): (160, 0),
 }
@@ -120,9 +122,12 @@ REFUSED_DIVERGENCES = {
     # `investment_at_limit` (155, penny-equal on that run).
     (2024, "single", "investment_over_limit"): 155,
     (2024, "married_filing_jointly", "investment_over_limit"): 155,
-    # 2023: the same display-only stop; armed via H64 in 2023's A1.
-    (2023, "single", "investment_over_limit"): NONZERO,
-    (2023, "married_filing_jointly", "investment_over_limit"): NONZERO,
+    # 2023: the same display-only stop; armed via H64 in 2023's A1. Pinned
+    # after the first comparison (9009897): Worksheet A at the row's earned
+    # income and AGI, the same bins as `investment_at_limit` (155,
+    # penny-equal on that run).
+    (2023, "single", "investment_over_limit"): 155,
+    (2023, "married_filing_jointly", "investment_over_limit"): 155,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 

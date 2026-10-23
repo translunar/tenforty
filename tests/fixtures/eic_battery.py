@@ -310,6 +310,6 @@ EIC_ROWS[(2025, "married_filing_jointly")] = _rows(2025, "married_filing_jointly
 # 2024 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2024, "single")] = _rows(2024, "single")
 EIC_ROWS[(2024, "married_filing_jointly")] = _rows(2024, "married_filing_jointly")
-# 2023 rows (step 8) exist ahead of the cells' declaration: parity first.
+# 2023 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2023, "single")] = _rows(2023, "single")
 EIC_ROWS[(2023, "married_filing_jointly")] = _rows(2023, "married_filing_jointly")

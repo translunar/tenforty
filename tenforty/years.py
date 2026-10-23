@@ -72,7 +72,7 @@ def native_spine_supports(year: int, status_value: str) -> bool:
 NATIVE_EIC_STATUSES: dict[int, tuple[str, ...]] = {
     2021: (),
     2022: (),
-    2023: (),
+    2023: ("single", "married_filing_jointly"),
     2024: ("single", "married_filing_jointly"),
     2025: ("single", "married_filing_jointly"),
 }
