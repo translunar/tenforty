@@ -85,6 +85,14 @@ class CalEitcRefusalTests(unittest.TestCase):
         refuse_caleitc_not_modeled(_ca(w2s=[_w2(40_000.0)]))
         self._refuses(_ca(w2s=[_w2(40_000.0)], schedule_c=[loss]))
 
+    def test_positive_se_counts_as_net_earnings(self):
+        # R-S8-17: profit enters x 0.9235 (net SE earnings). A 2025 SE-only
+        # filer at $35,000 profit is raw-above the 32,900 ceiling but
+        # scaled-below it (32,322.50): plausibly eligible, so it refuses.
+        business = ScheduleCBusiness(description="Example Route",
+                                     gross_receipts=35_000.0)
+        self._refuses(_ca(2025, schedule_c=[business]))
+
     def test_zero_earned_income_refuses_only_with_a_dependent(self):
         refuse_caleitc_not_modeled(_ca())
         self._refuses(_ca(dependents=["Child A"]))

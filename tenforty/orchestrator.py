@@ -1236,17 +1236,24 @@ _EIC_FAVORABLE = {
 }
 
 
+# Net SE earnings factor (IRC §1402(a)(12): 100% less half of 15.3%),
+# constant 2021-2025 (ruling R-S8-17).
+_SE_NET_EARNINGS_FACTOR = 0.9235
+
+
 def refuse_caleitc_not_modeled(scenario: Scenario) -> None:
-    """FAIL-CLOSED (spec §12.11; rulings R-S8-12, R-S8-14): tenforty does
-    not compute Form 540 line 75 (CalEITC) or line 76 (YCTC), so a CA return
-    that could claim either refuses rather than file with the credit
-    silently omitted. The FTB 3514 earned-income definition is not modeled,
-    so the reading is the most inclusive one: the W-2 term is the lesser of
-    total wages and the CA box-16 wages — the CA reading only when some W-2
-    is attributed to CA — plus net Schedule C profit and partnership SE
-    earnings (losses reduce). Refuse when 0 < earned <= the year's ceiling
-    (inclusive), or earned <= 0 with any dependent (YCTC needs no earned
-    income); earned <= 0 with no dependent is ineligible for both."""
+    """FAIL-CLOSED (spec §12.11; rulings R-S8-12, R-S8-14, R-S8-17):
+    tenforty does not compute Form 540 line 75 (CalEITC) or line 76 (YCTC),
+    so a CA return that could claim either refuses rather than file with
+    the credit silently omitted. The FTB 3514 earned-income definition is
+    not modeled, so the reading is the most inclusive one: the W-2 term is
+    the lesser of total wages and the CA box-16 wages — the CA reading only
+    when some W-2 is attributed to CA — plus Schedule C profit and
+    partnership SE earnings, a positive amount as net SE earnings (x
+    0.9235), a loss in full: both lean toward refusing. Refuse when 0 <
+    earned <= the year's ceiling (inclusive), or earned <= 0 with any
+    dependent (YCTC needs no earned income); earned <= 0 with no dependent
+    is ineligible for both."""
     from tenforty.params import california as ca_params
     cfg = scenario.config
     ceiling = ca_params.load(cfg.year).caleitc_max_earned_income
@@ -1254,13 +1261,13 @@ def refuse_caleitc_not_modeled(scenario: Scenario) -> None:
     attributed = [w for w in scenario.w2s if w.state == "CA"]
     if attributed:
         wages = min(wages, sum(w.state_wages for w in attributed))
-    self_employment = sum(
-        form_sch_c.net_profit_estimate(
-            biz, cfg.year, mid_quarter=mid_quarter_applies(scenario))
-        for biz in scenario.schedule_c_businesses)
-    self_employment += sum(k1.partnership_self_employment_earnings
-                           for k1 in scenario.schedule_k1s)
-    earned = wages + self_employment
+    amounts = [form_sch_c.net_profit_estimate(
+        biz, cfg.year, mid_quarter=mid_quarter_applies(scenario))
+        for biz in scenario.schedule_c_businesses]
+    amounts += [k1.partnership_self_employment_earnings
+                for k1 in scenario.schedule_k1s]
+    earned = wages + sum(a * _SE_NET_EARNINGS_FACTOR if a > 0 else a
+                         for a in amounts)
     if 0 < earned <= ceiling or (earned <= 0 and cfg.dependents):
         raise NotImplementedError(
             f"caleitc_not_modeled: this California return may qualify for "
