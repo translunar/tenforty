@@ -113,5 +113,10 @@ PARAMS = CaliforniaParams(
     # income on line 19 is over $100,000, use the tax rate schedule"
     # (restated p.93). Inclusive: line 19 <= ceiling uses the table.
     tax_table_taxable_income_ceiling=100_000,
+    # CalEITC (FTB 3514 instructions, 2022):
+    # "Both your earned income and federal adjusted gross income (AGI)
+    # must be less than $30,001 to qualify for the California credit."
+    # https://www.ftb.ca.gov/forms/2022/2022-3514-instructions.html
+    # Inclusive maximum = that bound less $1.
     caleitc_max_earned_income=30_000,
 )
