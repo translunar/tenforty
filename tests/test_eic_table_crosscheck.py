@@ -16,8 +16,9 @@ a red routed to team-lead, not a new exception.
 Adjudicated divergences (ruling R-S8-9): IRC §32(f) — the credit is
 determined under the Secretary's tables — so where the print departs from
 R-T1 the print governs, pinned as a FROZEN per-year list (PINNED_DIVERGENCES),
-each bin exactly $1 below R-T1. (An unrounded max-credit base explains 2023
-but not 2024/2025: a model only.)
+each bin exactly $1 from R-T1 with its sign written out (R-S8-18).
+(An unrounded max-credit base explains 2023 but not 2024/2025: a model
+only.)
 
 A footnoted bin is split in the CSV only for its marked column: every other
 column printed one value for the whole $50 bin, so it is checked at the
@@ -78,40 +79,55 @@ def mismatches(year: int) -> list[tuple]:
 # Ruling R-S8-9: year -> (column, bin lower bound, printed credit) for every
 # bin where the published table prints $1 below R-T1. Written out from the
 # adjudicated ingest; NEVER recomputed (a re-ingest shift must go red).
-PINNED_DIVERGENCES: dict[int, frozenset[tuple[str, int, int]]] = {
+PINNED_DIVERGENCES: dict[int, frozenset[tuple[str, int, int, int]]] = {
+    # (column, bin lower bound, printed credit, printed - R-T1), delta in
+    # exactly {-1, +1} (ruling R-S8-18).
+    2022: frozenset({
+        # [9,150, 9,200) straddles the 9,160 threshold; the print holds the
+        # max there (a model only).
+        ("single_0", 9150, 560, +1), ("single_0", 11050, 413, -1),
+        ("single_0", 13050, 260, -1), ("single_0", 15050, 107, -1),
+    }),
     2023: frozenset({
-    # single_0: 38 bins
-    ("single_0", 9950, 586), ("single_0", 10250, 563),
-    ("single_0", 10500, 544), ("single_0", 10550, 540),
-    ("single_0", 10800, 521), ("single_0", 11100, 498),
-    ("single_0", 11350, 479), ("single_0", 11400, 475),
-    ("single_0", 11650, 456), ("single_0", 11700, 452),
-    ("single_0", 11950, 433), ("single_0", 12250, 410),
-    ("single_0", 12500, 391), ("single_0", 12550, 387),
-    ("single_0", 12800, 368), ("single_0", 13100, 345),
-    ("single_0", 13350, 326), ("single_0", 13400, 322),
-    ("single_0", 13650, 303), ("single_0", 13700, 299),
-    ("single_0", 13950, 280), ("single_0", 14250, 257),
-    ("single_0", 14500, 238), ("single_0", 14550, 234),
-    ("single_0", 14800, 215), ("single_0", 15100, 192),
-    ("single_0", 15350, 173), ("single_0", 15400, 169),
-    ("single_0", 15650, 150), ("single_0", 15700, 146),
-    ("single_0", 15950, 127), ("single_0", 16250, 104),
-    ("single_0", 16500, 85), ("single_0", 16550, 81), ("single_0", 16800, 62),
-    ("single_0", 17100, 39), ("single_0", 17350, 20), ("single_0", 17400, 16),
-    # mfj_0: 35 bins
-    ("mfj_0", 16650, 576), ("mfj_0", 16900, 557), ("mfj_0", 16950, 553),
-    ("mfj_0", 17200, 534), ("mfj_0", 17500, 511), ("mfj_0", 17750, 492),
-    ("mfj_0", 17800, 488), ("mfj_0", 18050, 469), ("mfj_0", 18350, 446),
-    ("mfj_0", 18650, 423), ("mfj_0", 18900, 404), ("mfj_0", 18950, 400),
-    ("mfj_0", 19200, 381), ("mfj_0", 19500, 358), ("mfj_0", 19750, 339),
-    ("mfj_0", 19800, 335), ("mfj_0", 20050, 316), ("mfj_0", 20350, 293),
-    ("mfj_0", 20650, 270), ("mfj_0", 20900, 251), ("mfj_0", 20950, 247),
-    ("mfj_0", 21200, 228), ("mfj_0", 21500, 205), ("mfj_0", 21750, 186),
-    ("mfj_0", 21800, 182), ("mfj_0", 22050, 163), ("mfj_0", 22350, 140),
-    ("mfj_0", 22650, 117), ("mfj_0", 22900, 98), ("mfj_0", 22950, 94),
-    ("mfj_0", 23200, 75), ("mfj_0", 23500, 52), ("mfj_0", 23750, 33),
-    ("mfj_0", 23800, 29), ("mfj_0", 24050, 10),
+        # single_0: 38 bins
+        ("single_0", 9950, 586, -1), ("single_0", 10250, 563, -1),
+        ("single_0", 10500, 544, -1), ("single_0", 10550, 540, -1),
+        ("single_0", 10800, 521, -1), ("single_0", 11100, 498, -1),
+        ("single_0", 11350, 479, -1), ("single_0", 11400, 475, -1),
+        ("single_0", 11650, 456, -1), ("single_0", 11700, 452, -1),
+        ("single_0", 11950, 433, -1), ("single_0", 12250, 410, -1),
+        ("single_0", 12500, 391, -1), ("single_0", 12550, 387, -1),
+        ("single_0", 12800, 368, -1), ("single_0", 13100, 345, -1),
+        ("single_0", 13350, 326, -1), ("single_0", 13400, 322, -1),
+        ("single_0", 13650, 303, -1), ("single_0", 13700, 299, -1),
+        ("single_0", 13950, 280, -1), ("single_0", 14250, 257, -1),
+        ("single_0", 14500, 238, -1), ("single_0", 14550, 234, -1),
+        ("single_0", 14800, 215, -1), ("single_0", 15100, 192, -1),
+        ("single_0", 15350, 173, -1), ("single_0", 15400, 169, -1),
+        ("single_0", 15650, 150, -1), ("single_0", 15700, 146, -1),
+        ("single_0", 15950, 127, -1), ("single_0", 16250, 104, -1),
+        ("single_0", 16500, 85, -1), ("single_0", 16550, 81, -1),
+        ("single_0", 16800, 62, -1), ("single_0", 17100, 39, -1),
+        ("single_0", 17350, 20, -1), ("single_0", 17400, 16, -1),
+        # mfj_0: 35 bins
+        ("mfj_0", 16650, 576, -1), ("mfj_0", 16900, 557, -1),
+        ("mfj_0", 16950, 553, -1), ("mfj_0", 17200, 534, -1),
+        ("mfj_0", 17500, 511, -1), ("mfj_0", 17750, 492, -1),
+        ("mfj_0", 17800, 488, -1), ("mfj_0", 18050, 469, -1),
+        ("mfj_0", 18350, 446, -1), ("mfj_0", 18650, 423, -1),
+        ("mfj_0", 18900, 404, -1), ("mfj_0", 18950, 400, -1),
+        ("mfj_0", 19200, 381, -1), ("mfj_0", 19500, 358, -1),
+        ("mfj_0", 19750, 339, -1), ("mfj_0", 19800, 335, -1),
+        ("mfj_0", 20050, 316, -1), ("mfj_0", 20350, 293, -1),
+        ("mfj_0", 20650, 270, -1), ("mfj_0", 20900, 251, -1),
+        ("mfj_0", 20950, 247, -1), ("mfj_0", 21200, 228, -1),
+        ("mfj_0", 21500, 205, -1), ("mfj_0", 21750, 186, -1),
+        ("mfj_0", 21800, 182, -1), ("mfj_0", 22050, 163, -1),
+        ("mfj_0", 22350, 140, -1), ("mfj_0", 22650, 117, -1),
+        ("mfj_0", 22900, 98, -1), ("mfj_0", 22950, 94, -1),
+        ("mfj_0", 23200, 75, -1), ("mfj_0", 23500, 52, -1),
+        ("mfj_0", 23750, 33, -1), ("mfj_0", 23800, 29, -1),
+        ("mfj_0", 24050, 10, -1),
     }),
 }
 
@@ -124,23 +140,25 @@ class EicTableCrosscheckTests(unittest.TestCase):
         for year in YEARS:
             with self.subTest(year=year):
                 self.assertEqual(
-                    {(c, lo, printed)
-                     for _, c, lo, _, printed, _ in mismatches(year)},
+                    {(c, lo, printed, printed - expected)
+                     for _, c, lo, _, printed, expected in mismatches(year)},
                     PINNED_DIVERGENCES.get(year, frozenset()))
 
-    def test_each_pinned_bin_prints_one_below_the_rule(self):
-        # Both sides exact: the printed value literally, and R-T1 - 1 from
-        # the attested params — a moved print and a moved param both fire.
+    def test_each_pinned_bin_prints_one_off_the_rule(self):
+        # Both sides exact: the printed value literally, and R-T1 + delta
+        # from the attested params, delta exactly -1 or +1 (R-S8-18) — a
+        # moved print, a moved param or a new pattern all fire.
         for year, pinned in sorted(PINNED_DIVERGENCES.items()):
             params = load_params(year)
-            for column, lo, printed in sorted(pinned):
+            for column, lo, printed, delta in sorted(pinned):
                 bins = {b_lo: (b_hi, value) for b_lo, b_hi, value in
                         _printed_bins(load_table(year), column)}
                 with self.subTest(year=year, column=column, lower=lo):
+                    self.assertIn(delta, (-1, 1))
                     hi, value = bins[lo]
                     self.assertEqual(value, printed)
                     self.assertEqual(printed, _expected(
-                        params, COLUMNS[column], lo, hi) - 1)
+                        params, COLUMNS[column], lo, hi) + delta)
 
     def test_the_exception_is_exactly_one_bin_per_column(self):
         # The earned-income-amount bin is the ONLY place the rule departs
