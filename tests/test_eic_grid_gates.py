@@ -316,6 +316,30 @@ class UpperAgeWindowTests(unittest.TestCase):
                     self.assertLess(wages, high)
 
 
+class UpperAgeWaiverTests(unittest.TestCase):
+    """Ruling R-S8-11: the 2022 single upper-age waiver is DERIVED from the
+    Schedule R limits and params (never typed), and a waived cell carries no
+    upper-age rows and does not require them."""
+
+    def test_2022_single_has_no_window_from_its_own_inputs(self):
+        from tenforty.orchestrator import _SCHEDULE_R_AGI_LIMITS
+        from tenforty.params.federal import load as load_params
+        limit = _SCHEDULE_R_AGI_LIMITS[("single", 1)]
+        ceiling = load_params(2022).eic_completed_phaseout["single"]
+        self.assertGreaterEqual(limit + 1, ceiling)
+        self.assertFalse(eic_battery.upper_age_window_open(2022, "single"))
+
+    def test_waived_cells_carry_and_require_no_upper_age_rows(self):
+        for (year, status), rows in sorted(eic_battery.EIC_ROWS.items()):
+            if eic_battery.upper_age_window_open(year, status):
+                continue
+            with self.subTest(year=year, status=status):
+                self.assertNotIn("age_upper_bound_in", rows)
+                self.assertNotIn("age_upper_bound_out", rows)
+                self.assertNotIn("age_upper_bound_in",
+                                 eic_battery.required_eic_kinds(year, status))
+
+
 class TransitionalEicYearTests(unittest.TestCase):
     """Ruling R-S8-6: the workbook-route vehicles' year helper. Moves one
     rung per step-8 grid row; this pin is updated with each row."""

@@ -262,6 +262,68 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
         # (bin lower bound, column) -> (sheet value, published value)
         "table_literal_exceptions": {(17640, "mfj_0"): (500, 504)},
     },
+    # 2022: read by formula consumers in the 2022 template (step 8). Steps
+    # 1-2 sit as in 2023; Q6 (dependent) is row 210; the EIC Table is rebuilt
+    # from derived slopes (9,475 formula cells), so its constants are pinned
+    # against params. The Q4 "No" derive (H38) is inverted in this template
+    # and restored by production (catalog #10; tests/test_eic_q4_answer.py).
+    2022: {
+        "sheet": "Line 27 (EIC)",
+        "constants": {
+            ("Line 27 (EIC)", "N57"): "eic_investment_income_limit",
+            ("Line 27 (EIC)", "N167"): "eic_min_age",
+            ("Line 27 (EIC)", "N168"): "eic_max_age",
+            ("EIC Table", "N3"): ("eic_max_credit", None),
+            ("EIC Table", "R3"): ("eic_max_credit", None),
+            ("EIC Table", "N4"): ("eic_earned_income_amount", None),
+            ("EIC Table", "R4"): ("eic_earned_income_amount", None),
+            ("EIC Table", "N5"): ("eic_phaseout_threshold", "single"),
+            ("EIC Table", "R5"): ("eic_phaseout_threshold",
+                                  "married_filing_jointly"),
+            ("EIC Table", "N6"): ("eic_completed_phaseout", "single"),
+            ("EIC Table", "R6"): ("eic_completed_phaseout",
+                                  "married_filing_jointly"),
+        },
+        "inputs": {
+            "eic_answer_qualifying_children": ("Line 27 (EIC)", "N5"),
+            "eic_answer_ssn_not_valid": ("Line 27 (EIC)", "H27"),
+            "eic_answer_nonresident_alien": ("Line 27 (EIC)", "B38"),
+            "eic_answer_main_home_not_us": ("Line 27 (EIC)", "H185"),
+            "eic_answer_qc_of_another": ("Line 27 (EIC)", "B202"),
+            "eic_answer_dependent_you": ("1040", "I24"),
+            "eic_answer_dependent_spouse": ("1040", "O24"),
+            "eic_answer_clergy": ("Line 27 (EIC)", "B219"),
+            "eic_answer_form_4797_yes": ("Line 27 (EIC)", "B64"),
+            EIC_FORM_4797_NO_KEY: ("Line 27 (EIC)", "H64"),
+        },
+        "derived": {
+            "B27": '=IF(A27,"X","")',
+            "B108": '=IF(N5<>"",ROUND(N5,0),Dependents!AQ38)',
+            "B185": '=IF(A185,"X","")',
+            "H202": '=IF(G202,"X","")',
+            "B210": '=IF(A210,"X","")',
+            "H210": '=IF(G210,"X","")',
+            "H219": '=IF(G219,"X","")',
+        },
+        "diagnostics": {
+            "eic_diag_no_credit": ("Line 27 (EIC)", "A1"),
+            "eic_diag_summary": ("Line 27 (EIC)", "C1"),
+            "eic_diag_prompt_an": ("Line 27 (EIC)", "AN1"),
+            "eic_diag_prompt_ao": ("Line 27 (EIC)", "AO1"),
+            "eic_diag_prompt_ap": ("Line 27 (EIC)", "AP1"),
+        },
+        "stops": {
+            "eic_stop_agi_limit": ("G21", '=H21="X"'),           # Step 1 Q1
+            "eic_stop_ssn": ("M33", "=AND(A27,NOT(A33))"),       # R-S8-2 shape
+            "eic_stop_age": ("G176", "=AND(K158,G163,NOT(A176))"),  # Step 4 Q2
+            "eic_stop_main_home": ("G185", '=H185<>""'),         # Step 4 Q3
+            "eic_stop_qc_of_another": ("A202", '=AND(G192,B202<>"")'),  # Q5
+            "eic_stop_dependent": ("A210",
+                                   '=AND(G202,DependentYOU<>"")'),  # Q6
+            "eic_stop_credit_zero": ("A298", "=AND(A288,L294=0)"),  # Wks A
+        },
+        "observations": {"G27": "=AND(EIC_trigger,NOT(A27))"},
+    },
 }
 
 _X = "X"

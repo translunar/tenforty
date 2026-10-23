@@ -88,7 +88,8 @@ def required_eic_kinds(year: int, status: str) -> tuple[str, ...]:
     pair is required unless the year's params state there is no upper bound
     (``eic_max_age`` explicitly None); absent params require it."""
     kinds = _EIC_KINDS_EVERY_CELL
-    if getattr(load_params(year), "eic_max_age", _UNSET) is not None:
+    if (getattr(load_params(year), "eic_max_age", _UNSET) is not None
+            and upper_age_window_open(year, status)):
         kinds += _EIC_KINDS_UPPER_AGE
     if status == "married_filing_jointly":
         kinds += _EIC_KINDS_MFJ
@@ -135,7 +136,7 @@ def required_eic_refusals(year: int,
 # refusal key -> {year: scenario YAML path} reaching it through load_scenario.
 _R = "tests/fixtures/eic_refusals"
 EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {
-    key: {year: f"{_R}/{key}_{year}.yaml" for year in (2023, 2024, 2025)}
+    key: {year: f"{_R}/{key}_{year}.yaml" for year in (2022, 2023, 2024, 2025)}
     for key in ("eic_eligibility_missing", "prior_eic_disallowance_8862",
                 "worksheet_1_rental", "worksheet_1_k1", "statutory_employee",
                 "k1_self_employment_earnings", "year_scoped_eic_fact",
@@ -203,6 +204,18 @@ def upper_age_both_aged(year: int, status: str) -> bool:
         return True
     two = _SCHEDULE_R_AGI_LIMITS[(status, 2)]
     return two + 1 < load_params(year).eic_completed_phaseout[status]
+
+
+def upper_age_window_open(year: int, status: str) -> bool:
+    """Ruling R-S8-11: whether an upper-age row can compute at all. Where
+    the Schedule R AGI limit meets or passes the completed phaseout (2022
+    single: 17,500 vs 16,480) every aged filer under the ceiling refuses
+    upstream, so the pair is waived for that (year, status) — derived, never
+    typed, so the waiver lifts itself if either input moves."""
+    if getattr(load_params(year), "eic_completed_phaseout", None) is None:
+        return True  # no params yet: the requirement stands (gate reports)
+    low, high = upper_age_window(year, status)
+    return low + 1 < high
 
 
 def upper_age_window(year: int, status: str) -> tuple[int, int]:
@@ -285,6 +298,10 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
         "fact_claimable_as_dependent": lambda y: row(
             y, plateau, eligibility=fact(can_be_claimed_as_dependent=True)),
     }
+    if not upper_age_window_open(year, status):
+        # Waived (R-S8-11): no wages place an aged filer above the Schedule R
+        # limit and under the completed phaseout.
+        del rows["age_upper_bound_in"], rows["age_upper_bound_out"]
     # eic_min_earned_income at its boundary (not a required kind: the
     # coverage map's exerciser for that param, ruling R-S7-4). One dollar
     # under the minimum is no earned income at all.
@@ -318,3 +335,6 @@ EIC_ROWS[(2023, "married_filing_jointly")] = _rows(2023, "married_filing_jointly
 # (published 504). The bin is the subject: never relocated.
 EIC_ROWS[(2023, "married_filing_jointly")]["catalog_9_bin"] = (
     lambda y: _eic_row(y, 17_645.0, status="married_filing_jointly"))
+# 2022 rows (step 8) exist ahead of the cells' declaration: parity first.
+EIC_ROWS[(2022, "single")] = _rows(2022, "single")
+EIC_ROWS[(2022, "married_filing_jointly")] = _rows(2022, "married_filing_jointly")
