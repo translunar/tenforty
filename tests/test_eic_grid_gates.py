@@ -293,6 +293,9 @@ class UpperAgeWindowTests(unittest.TestCase):
     that year's eic_max_age waiver, citing the Schedule R refusal."""
 
     def test_each_year_has_a_window_and_the_rows_sit_inside(self):
+        from tenforty.orchestrator import (
+            _SCHEDULE_R_AGI_LIMITS, form_1040_age_box_values)
+        from tenforty.params.federal import load as load_params
         for (year, status), rows in sorted(eic_battery.EIC_ROWS.items()):
             if "age_upper_bound_in" not in rows:
                 continue
@@ -300,8 +303,16 @@ class UpperAgeWindowTests(unittest.TestCase):
             with self.subTest(year=year, status=status):
                 self.assertLess(low + 1, high)
                 for kind in ("age_upper_bound_in", "age_upper_bound_out"):
-                    wages = sum(w.wages for w in rows[kind](year).w2s)
-                    self.assertLess(low, wages)
+                    scenario = rows[kind](year)
+                    # The limit for THIS row's own count of aged spouses
+                    # (R-S8-8: derived from the row's birthdates).
+                    boxes = sum(form_1040_age_box_values(
+                        scenario.config,
+                        load_params(year).aged_born_before).values())
+                    limit = _SCHEDULE_R_AGI_LIMITS[(status, boxes)]
+                    self.assertEqual(limit, low)
+                    wages = sum(w.wages for w in scenario.w2s)
+                    self.assertLess(limit, wages)
                     self.assertLess(wages, high)
 
 

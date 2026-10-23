@@ -49,8 +49,8 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # §12: parity, then the grid row). Native is forced for those years only;
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
-YEARS = (2024, 2025)
-AHEAD_OF_GRID: frozenset[int] = frozenset()
+YEARS = (2023, 2024, 2025)
+AHEAD_OF_GRID: frozenset[int] = frozenset({2023})
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
     "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
@@ -100,6 +100,13 @@ DIVERGENCES = {
     # row's wages; workbook 0.
     (2024, "single", "age_upper_bound_in"): (43, 0),
     (2024, "married_filing_jointly", "age_upper_bound_in"): (18, 0),
+    # 2023 (R-S8-8): the same B39 gap (nonzero, pinned post-first-
+    # comparison) and the R-T2 Jan-1 rows, native from the ingested
+    # published table at the row's wages (the MFJ row: one aged spouse,
+    # option α), workbook 0.
+    (2023, "single", "fact_nonresident_alien"): (0, NONZERO),
+    (2023, "single", "age_upper_bound_in"): (5, 0),
+    (2023, "married_filing_jointly", "age_upper_bound_in"): (160, 0),
 }
 
 # Rulings R-S7-10/10a: (year, status, kind) -> the line 27 the sheet
@@ -113,6 +120,9 @@ REFUSED_DIVERGENCES = {
     # `investment_at_limit` (155, penny-equal on that run).
     (2024, "single", "investment_over_limit"): 155,
     (2024, "married_filing_jointly", "investment_over_limit"): 155,
+    # 2023: the same display-only stop; armed via H64 in 2023's A1.
+    (2023, "single", "investment_over_limit"): NONZERO,
+    (2023, "married_filing_jointly", "investment_over_limit"): NONZERO,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
@@ -146,6 +156,9 @@ DENIAL_STOPS = {
 DENIAL_STOPS_IN_YEAR = {
     2024: {"fact_ssn_not_valid": ("eic_stop_ssn", False,
                                   "Step 1, question 2")},
+    # 2023: G27 is dead the same way (R-S8-8 3b); EIC_trigger is M33.
+    2023: {"fact_ssn_not_valid": ("eic_stop_ssn", False,
+                                  "Step 1, question 2")},
 }
 
 # Ruling R-S7-9a, adjudicated observation: Step 4 Q6's "Yes. STOP" (2025
@@ -158,6 +171,15 @@ DENIAL_STOPS_IN_YEAR = {
 # nor N1) — a first-comparison prediction; a contradiction is a finding.
 UNDECLARED_DENIALS = {(2025, "single", "fact_claimable_as_dependent"),
                       (2024, "single", "fact_claimable_as_dependent")}
+# 2023 (catalog #7, R-S8-8 3d): 2023's A1 has no N1 term, so EVERY Step 4
+# stop is outside the verdict — static predictions, first comparison.
+UNDECLARED_DENIALS |= {
+    (2023, status, kind)
+    for status in ("single", "married_filing_jointly")
+    for kind in ("age_lower_bound_out", "age_upper_bound_out",
+                 "age_upper_bound_in", "fact_main_home_not_in_us")
+} | {(2023, "single", "fact_qualifying_child_of_another"),
+     (2023, "single", "fact_claimable_as_dependent")}
 
 
 def _n(value) -> int:

@@ -135,7 +135,7 @@ def required_eic_refusals(year: int,
 # refusal key -> {year: scenario YAML path} reaching it through load_scenario.
 _R = "tests/fixtures/eic_refusals"
 EIC_REFUSAL_FIXTURES: dict[str, dict[int, str]] = {
-    key: {year: f"{_R}/{key}_{year}.yaml" for year in (2024, 2025)}
+    key: {year: f"{_R}/{key}_{year}.yaml" for year in (2023, 2024, 2025)}
     for key in ("eic_eligibility_missing", "prior_eic_disallowance_8862",
                 "worksheet_1_rental", "worksheet_1_k1", "statutory_employee",
                 "k1_self_employment_earnings", "year_scoped_eic_fact",
@@ -167,7 +167,8 @@ def favorable_eligibility(status: str = "single",
 # unless its kind is a fact row.
 
 def _eic_row(year: int, wages: float, *, status: str = "single",
-             birthdate: str | None = None, interest: float = 0.0,
+             birthdate: str | None = None,
+             spouse_birthdate: str | None = None, interest: float = 0.0,
              schedule_c=None, eligibility=None,
              **config_overrides) -> Scenario:
     from tenforty.models import Form1099INT, FilingStatus
@@ -178,7 +179,8 @@ def _eic_row(year: int, wages: float, *, status: str = "single",
         # row places both spouses at the bound.
         config = dataclasses.replace(
             config, birthdate=birthdate,
-            **({"spouse_birthdate": birthdate} if joint else {}))
+            **({"spouse_birthdate": spouse_birthdate or birthdate}
+               if joint else {}))
     return Scenario(
         config=config,
         w2s=[_w2(year, "Synthetic Employer EIC", wages,
@@ -190,15 +192,29 @@ def _eic_row(year: int, wages: float, *, status: str = "single",
         eic_eligibility=eligibility or favorable_eligibility(status))
 
 
+def upper_age_both_aged(year: int, status: str) -> bool:
+    """Whether a joint upper-age row places BOTH spouses at the bound.
+    Rulings R-S8-3 / R-S8-8(3f), scoped per window: both spouses, unless the
+    two-box Schedule R limit leaves no room under the year's completed
+    phaseout (2023 MFJ) — then ONE aged spouse at the bound and the other
+    under the lower age bound (out of band on both sides, never aged)."""
+    from tenforty.orchestrator import _SCHEDULE_R_AGI_LIMITS
+    if status != "married_filing_jointly":
+        return True
+    two = _SCHEDULE_R_AGI_LIMITS[(status, 2)]
+    return two + 1 < load_params(year).eic_completed_phaseout[status]
+
+
 def upper_age_window(year: int, status: str) -> tuple[int, int]:
     """Ruling R-S8-3: an upper-age row is an AGED filer (it checks the Form
     1040 age box), so at or under the Schedule R AGI limit tenforty refuses
     (credit for the elderly, not modeled) before any EIC is figured. The
-    rows sit strictly between that limit (both spouses aged on a joint
-    return) and the year's completed phaseout, where the credit is still
+    rows sit strictly between that limit (for the row's own count of aged
+    spouses) and the year's completed phaseout, where the credit is still
     figured. Both bounds are read from code/params, never typed in."""
     from tenforty.orchestrator import _SCHEDULE_R_AGI_LIMITS
-    boxes = 2 if status == "married_filing_jointly" else 1
+    boxes = (2 if status == "married_filing_jointly"
+             and upper_age_both_aged(year, status) else 1)
     return (_SCHEDULE_R_AGI_LIMITS[(status, boxes)],
             load_params(year).eic_completed_phaseout[status])
 
@@ -214,6 +230,10 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
     max_cut = datetime.date(year - p.eic_max_age, 12, 31)
     day = datetime.timedelta(days=1)
     upper_age_wages = sum(upper_age_window(year, status)) // 2
+    # One-aged-spouse variant (R-S8-8 option α): the spouse is born on the
+    # lower-bound cut, i.e. under the minimum age — out of band, never aged.
+    upper_age_spouse = (None if upper_age_both_aged(year, status)
+                        else min_cut.isoformat())
     row = lambda *a, **k: _eic_row(*a, status=status, **k)  # noqa: E731
     fact = lambda **o: favorable_eligibility(  # noqa: E731
         status, taxpayer=favorable_person(**o))
@@ -238,9 +258,11 @@ def _rows(year: int, status: str) -> dict[str, Callable[[int], Scenario]]:
         "age_lower_bound_out": lambda y: row(
             y, plateau, birthdate=min_cut.isoformat()),
         "age_upper_bound_in": lambda y: row(
-            y, upper_age_wages, birthdate=(max_cut + day).isoformat()),
+            y, upper_age_wages, birthdate=(max_cut + day).isoformat(),
+            spouse_birthdate=upper_age_spouse),
         "age_upper_bound_out": lambda y: row(
-            y, upper_age_wages, birthdate=max_cut.isoformat()),
+            y, upper_age_wages, birthdate=max_cut.isoformat(),
+            spouse_birthdate=upper_age_spouse),
         "sch_c_worksheet_b": lambda y: row(y, 3000, schedule_c=[
             ScheduleCBusiness(description="Example Route",
                               gross_receipts=3000.0)]),
@@ -288,3 +310,6 @@ EIC_ROWS[(2025, "married_filing_jointly")] = _rows(2025, "married_filing_jointly
 # 2024 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2024, "single")] = _rows(2024, "single")
 EIC_ROWS[(2024, "married_filing_jointly")] = _rows(2024, "married_filing_jointly")
+# 2023 rows (step 8) exist ahead of the cells' declaration: parity first.
+EIC_ROWS[(2023, "single")] = _rows(2023, "single")
+EIC_ROWS[(2023, "married_filing_jointly")] = _rows(2023, "married_filing_jointly")
