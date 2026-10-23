@@ -22,7 +22,7 @@ if not isinstance(config, dict) or not config.get("denylist_patterns"):
 
 builtin = [
     r"\b(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b",
-    r"\b(?!00-0000000\b)\d{2}-\d{7}\b",
+    r"\b(?!00-000000[09]\b)\d{2}-\d{7}\b",
 ]
 patterns = [(f"builtin-{i}", re.compile(p)) for i, p in enumerate(builtin)]
 patterns += [
