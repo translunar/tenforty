@@ -313,3 +313,8 @@ EIC_ROWS[(2024, "married_filing_jointly")] = _rows(2024, "married_filing_jointly
 # 2023 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2023, "single")] = _rows(2023, "single")
 EIC_ROWS[(2023, "married_filing_jointly")] = _rows(2023, "married_filing_jointly")
+# Ruling R-S8-10 (P2, catalog #9): a lookup amount inside the published bin
+# [17,600, 17,650) that the 2023 workbook splits at 17,640 and types 500
+# (published 504). The bin is the subject: never relocated.
+EIC_ROWS[(2023, "married_filing_jointly")]["catalog_9_bin"] = (
+    lambda y: _eic_row(y, 17_645.0, status="married_filing_jointly"))

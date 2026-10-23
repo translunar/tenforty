@@ -223,6 +223,44 @@ EIC_WORKBOOK_CELLS: dict[int, dict] = {
         # slope is ROUND(600/7320,4) — first-comparison adjudication item.
         "observations": {"G27": "=AND(EIC_trigger,NOT(A27))"},
         "table_observations": {"R4": 7320},
+        # Ruling R-S8-10: the 2023 EIC Table is LITERAL apart from these
+        # formula cells (frozen here, never derived from the sheet), and one
+        # typed cell that departs from the published table (catalog #9).
+        "literal_table": True,
+        "table_formulas": {
+            "C3": (
+                '=IF($L3>N$5,MAX(0,N$3+ROUND((N$9*($L3-N$5)),0)),'
+                'IF($L3>N$4,N$3,ROUND($L3*N$7,0)))'),
+            "D3": (
+                '=IF($L3>O$5,MAX(0,O$3+ROUND((O$9*($L3-O$5)),0)),'
+                'IF($L3>O$4,O$3,ROUND($L3*O$7,0)))'),
+            "E3": (
+                '=IF($L3>P$5,MAX(0,P$3+ROUND((P$9*($L3-P$5)),0)),'
+                'IF($L3>P$4,P$3,ROUND($L3*P$7,0)))'),
+            "F3": (
+                '=IF($L3>Q$5,MAX(0,Q$3+ROUND((Q$9*($L3-Q$5)),0)),'
+                'IF($L3>Q$4,Q$3,ROUND($L3*Q$7,0)))'),
+            "G3": (
+                '=IF($L3>R$5,MAX(0,R$3+ROUND((R$9*($L3-R$5)),0)),'
+                'IF($L3>R$4,R$3,ROUND($L3*R$7,0)))'),
+            "H3": (
+                '=IF($L3>S$5,MAX(0,S$3+ROUND((S$9*($L3-S$5)),0)),'
+                'IF($L3>S$4,S$3,ROUND($L3*S$7,0)))'),
+            "I3": (
+                '=IF($L3>T$5,MAX(0,T$3+ROUND((T$9*($L3-T$5)),0)),'
+                'IF($L3>T$4,T$3,ROUND($L3*T$7,0)))'),
+            "J3": (
+                '=IF($L3>U$5,MAX(0,U$3+ROUND((U$9*($L3-U$5)),0)),'
+                'IF($L3>U$4,U$3,ROUND($L3*U$7,0)))'),
+            "J1276": (
+                '=IF($L1276>U$5,MAX(0,U$3+ROUND((U$9*($L1276-U$5)),0)),'
+                'IF($L1276>U$4,U$3,ROUND($L1276*U$7,0)))'),
+            "J1277": (
+                '=IF($L1277>U$5,MAX(0,U$3+ROUND((U$9*($L1277-U$5)),0)),'
+                'IF($L1277>U$4,U$3,ROUND($L1277*U$7,0)))'),
+        },
+        # (bin lower bound, column) -> (sheet value, published value)
+        "table_literal_exceptions": {(17640, "mfj_0"): (500, 504)},
     },
 }
 

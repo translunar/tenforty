@@ -117,23 +117,47 @@ class LiteralTableTests(unittest.TestCase):
     every column. A vendor edit or a re-ingest drift fails here."""
 
     def test_the_sheet_table_is_the_published_table(self):
+        # Each published bin is read from the sheet row that contains it (a
+        # bin the publication splits for one column's footnote may be one
+        # row on the sheet). Frozen exceptions per year (R-S8-10): formula
+        # cells, pinned as text, and typed cells departing from the print.
         years = [y for y in YEARS
                  if adapter.EIC_WORKBOOK_CELLS[y].get("literal_table")]
         self.assertTrue(years)
         for year in years:
+            cells = adapter.EIC_WORKBOOK_CELLS[year]
+            formulas = cells.get("table_formulas", {})
+            exceptions = cells.get("table_literal_exceptions", {})
             ws = _workbook(year)["EIC Table"]
-            sheet = {}
-            for row in ws.iter_rows(min_row=3, max_col=10, values_only=True):
-                if all(isinstance(v, (int, float)) for v in row):
-                    sheet[(int(row[0]), int(row[1]))] = [int(v)
-                                                         for v in row[2:]]
+            rows, found = [], {}
+            for row in ws.iter_rows(min_row=3, max_col=10):
+                lo, hi = row[0].value, row[1].value
+                if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+                    rows.append((int(lo), int(hi), row[2:]))
+                for cell in row[2:]:
+                    if str(cell.value).startswith("="):
+                        found[cell.coordinate] = cell.value
+            with self.subTest(year=year, check="formula cells"):
+                self.assertEqual(found, {k: "".join(v) if isinstance(v, tuple)
+                                         else v for k, v in formulas.items()})
             with open(REPO_ROOT / "assets" / "eic_tables" / f"{year}.csv",
                       newline="") as fh:
-                published = {(int(r[0]), int(r[1])): [int(v) for v in r[2:]]
-                             for r in list(csv.reader(fh))[1:]}
-            with self.subTest(year=year):
-                self.assertEqual(len(sheet), len(published))
-                self.assertEqual(sheet, published)
+                reader = list(csv.reader(fh))
+            columns = reader[0][2:]
+            mismatched = {}
+            for record in reader[1:]:
+                lo, hi = int(record[0]), int(record[1])
+                s_lo, s_hi, sheet_cells = max(
+                    (r for r in rows if r[0] <= lo), key=lambda r: r[0])
+                self.assertLessEqual(hi, s_hi, (year, lo, hi))
+                for column, printed, cell in zip(columns, record[2:],
+                                                 sheet_cells):
+                    if cell.coordinate in found:
+                        continue
+                    if cell.value != int(printed):
+                        mismatched[(s_lo, column)] = (cell.value, int(printed))
+            with self.subTest(year=year, check="literal cells"):
+                self.assertEqual(mismatched, exceptions)
 
 
 class AnswerCellStructureTests(unittest.TestCase):

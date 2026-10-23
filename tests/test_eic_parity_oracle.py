@@ -109,6 +109,10 @@ DIVERGENCES = {
     (2023, "single", "fact_nonresident_alien"): (0, 600),
     (2023, "single", "age_upper_bound_in"): (5, 0),
     (2023, "married_filing_jointly", "age_upper_bound_in"): (160, 0),
+    # R-S8-10 (P2, catalog #9): the 2023 workbook's typed MFJ cell at
+    # [17,640, 17,650) reads 500; the published bin [17,600, 17,650) prints
+    # 504. Both sides exact, from the two literal tables.
+    (2023, "married_filing_jointly", "catalog_9_bin"): (504, 500),
 }
 
 # Rulings R-S7-10/10a: (year, status, kind) -> the line 27 the sheet
