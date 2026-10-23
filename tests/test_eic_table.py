@@ -22,7 +22,7 @@ from tenforty.models import FilingStatus
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS = REPO_ROOT / "assets" / "eic_tables"
-INGESTED_YEARS = (2024, 2025)
+INGESTED_YEARS = (2023, 2024, 2025)
 
 
 def _line(*blocks) -> str:
@@ -133,12 +133,14 @@ class AssetProvenanceTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(
                     (ASSETS / f"{year}.csv").read_bytes()).hexdigest(),
                     prov["csv_sha256"])
-                # The booklet's own cover stamp; its title changed between
-                # editions (2024: "Instructions for Form 1040 Tax Tables").
+                # The booklet's own cover stamp; its form changed between
+                # editions (2024: "Instructions for Form 1040 Tax Tables";
+                # 2023: only a revision date and "Cat. No.").
                 self.assertRegex(
                     prov["edition"] or "",
-                    rf"^(Publication 1040|Instructions for Form 1040 Tax "
-                    rf"Tables) \({year}\) Catalog Number \S+$")
+                    rf"^((Publication 1040|Instructions for Form 1040 Tax "
+                    rf"Tables) \({year}\) Catalog Number \S+"
+                    rf"|[A-Z][a-z]{{2}} \d{{1,2}}, {year}\s+Cat\. No\. \S+)$")
 
     @unittest.skipUnless(shutil.which("pdftotext"), "pdftotext not installed")
     def test_reingest_reproduces_the_committed_csv(self):

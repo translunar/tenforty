@@ -158,10 +158,12 @@ def ingest(year: int) -> tuple[Path, Path]:
     cover = subprocess.run(["pdftotext", "-layout", "-f", "1", "-l", "1",
                             str(source), "-"], check=True,
                            capture_output=True, text=True).stdout
-    # The cover stamp's title varies by edition ("Publication 1040 (2025)",
-    # "Instructions for Form 1040 Tax Tables (2024)").
+    # The cover stamp varies by edition ("Publication 1040 (2025) Catalog
+    # Number ...", "Instructions for Form 1040 Tax Tables (2024) Catalog
+    # Number ...", 2023: only "Aug 22, 2023   Cat. No. ...").
     stamp = re.search(r"(?:Publication 1040|Instructions for Form 1040 Tax "
-                      r"Tables) \(\d{4}\)\s+Catalog Number \S+", cover)
+                      r"Tables) \(\d{4}\)\s+Catalog Number \S+", cover) \
+        or re.search(r"[A-Z][a-z]{2} \d{1,2}, \d{4}\s+Cat\. No\. \S+", cover)
     provenance = {
         "source": str(source.relative_to(_REPO_ROOT)),
         "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
