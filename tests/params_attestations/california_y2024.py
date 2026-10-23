@@ -20,6 +20,13 @@ SOURCES: tuple[str, ...] = (
     "(pdfs/california/2024/tax_rate_schedules.pdf), Schedules X, Y, Z",
     "FTB 2024 Personal Income Tax Booklet, pp. 25-26 (Nonrefundable Renter's "
     "Credit Qualification Record: AGI limits and credit amounts)",
+    "FTB CalEITC 'Eligibility and credit information' page "
+    "(https://www.ftb.ca.gov/file/personal/credits/caleitc/eligibility-and-credit-information.html, "
+    "retrieved via curl, last updated 04/16/2026), '2024 CalEITC credit' table, "
+    "column 'CalEITC, YCTC, FYTC max income' (caleitc_max_earned_income); and FTB 2024 "
+    "FTB 3514 booklet (https://www.ftb.ca.gov/forms/2024/2024-3514-booklet.html), "
+    "'B. Differences in California and Federal Law' / Step 1 (exclusive-bound wording "
+    "cross-check) and Earned Income Tax Credit Table last bracket.",
 )
 
 # rate_schedule canonical shape (per schema docstring +
@@ -142,6 +149,20 @@ ATTESTED: dict[str, object] = {
     # all filing statuses (the text is not status-keyed). REV: none on
     # p.13 or p.75.
     "tax_table_taxable_income_ceiling": 100000,
+    # caleitc_max_earned_income: maximum earned income with which a taxpayer can
+    # qualify for CalEITC. Attested by an air-gapped transcriber from FTB web pages
+    # (fetched via curl; WebFetch was 403) and the FTB 3514 instructions. The
+    # statute (R&TC 17052 / 17052.1) could NOT be read from leginfo (HTTP 403) and
+    # was seen only via the third-party mirror california.public.law, which shows
+    # a single (current) version and dropped the (m)/(n)/(o) table cells; no
+    # statute text is relied on for this value. Same limit for every filing
+    # status and number of children.
+    # Source wording: FTB eligibility page 2024 table, column "CalEITC, YCTC, FYTC
+    # max income" for all child counts; 3514 instructions: earned income and
+    # federal AGI "must be less than" the next whole dollar (exclusive bound, so
+    # maximum qualifying amount is that bound minus $1). Value attested =
+    # published maximum.
+    "caleitc_max_earned_income": 31950,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {

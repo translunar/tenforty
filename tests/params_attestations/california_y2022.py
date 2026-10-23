@@ -45,6 +45,13 @@ SOURCES: tuple[str, ...] = (
     # (ca_2022_reverify.py, air-gapped from this file) and compared
     # mechanically by team-lead: FULL AGREEMENT, 12/12 comparisons, with the
     # rate schedules' base-tax chains internally consistent. Values unchanged.
+    "FTB CalEITC 'Eligibility and credit information' page "
+    "(https://www.ftb.ca.gov/file/personal/credits/caleitc/eligibility-and-credit-information.html, "
+    "retrieved via curl, last updated 04/16/2026), '2022 CalEITC credit' table, "
+    "column 'California maximum income' (caleitc_max_earned_income); and FTB 2022 "
+    "FTB 3514 instructions (https://www.ftb.ca.gov/forms/2022/2022-3514-instructions.html), "
+    "'B. Differences in California and Federal Law' / Step 1 (exclusive-bound wording "
+    "cross-check) and Earned Income Tax Credit Table last bracket.",
 )
 
 ATTESTED: dict[str, object] = {
@@ -197,6 +204,20 @@ ATTESTED: dict[str, object] = {
     # all filing statuses (the text is not status-keyed). REV: none on
     # p.13 or p.93.
     "tax_table_taxable_income_ceiling": 100000,
+    # caleitc_max_earned_income: maximum earned income with which a taxpayer can
+    # qualify for CalEITC. Attested by an air-gapped transcriber from FTB web pages
+    # (fetched via curl; WebFetch was 403) and the FTB 3514 instructions. The
+    # statute (R&TC 17052 / 17052.1) could NOT be read from leginfo (HTTP 403) and
+    # was seen only via the third-party mirror california.public.law, which shows
+    # a single (current) version and dropped the (m)/(n)/(o) table cells; no
+    # statute text is relied on for this value. Same limit for every filing
+    # status and number of children.
+    # Source wording: FTB eligibility page 2022 table, column "California maximum
+    # income" for all child counts; 3514 instructions: earned income and federal
+    # AGI "must be less than" the next whole dollar (exclusive bound, so the
+    # maximum qualifying amount is that bound minus $1); table's last bracket
+    # ends at the same figure. Value attested = published maximum.
+    "caleitc_max_earned_income": 30000,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {

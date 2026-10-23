@@ -115,4 +115,5 @@ PARAMS = CaliforniaParams(
     # income on line 19 is over $100,000, use the tax rate schedule"
     # (restated p.93). Inclusive: line 19 <= ceiling uses the table.
     tax_table_taxable_income_ceiling=100_000,
+    caleitc_max_earned_income=30_000,
 )
