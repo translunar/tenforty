@@ -22,7 +22,7 @@ from tenforty.models import FilingStatus
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSETS = REPO_ROOT / "assets" / "eic_tables"
-INGESTED_YEARS = (2023, 2024, 2025)
+INGESTED_YEARS = (2022, 2023, 2024, 2025)
 
 
 def _line(*blocks) -> str:
@@ -243,6 +243,14 @@ class LookupTests(unittest.TestCase):
         with mock.patch("tenforty.eic_table.load_table", return_value=rows):
             self.assertEqual(eic_from_table(59186, 2022, mfj, 3), 4)
             self.assertEqual(eic_from_table(59187, 2022, mfj, 3), 0)
+
+    def test_2022_ends_on_its_credited_bin(self):
+        # R-S8-16 on the real asset: the last bin [59,150, 59,187) prints 4
+        # in mfj_3; at its upper edge the table has run out.
+        mfj = FilingStatus.MARRIED_FILING_JOINTLY
+        self.assertEqual(load_table(2022)[-1][:2], (59150, 59187))
+        self.assertEqual(eic_from_table(59186, 2022, mfj, 3), 4)
+        self.assertEqual(eic_from_table(59187, 2022, mfj, 3), 0)
 
     def test_below_the_first_bin_is_not_a_lookup(self):
         with self.assertRaises(ValueError):

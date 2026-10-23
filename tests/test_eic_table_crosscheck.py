@@ -30,7 +30,7 @@ from collections import defaultdict
 from tenforty.eic_table import load_table
 from tenforty.params.federal import load as load_params
 
-YEARS = (2023, 2024, 2025)
+YEARS = (2022, 2023, 2024, 2025)
 COLUMNS = {"single_0": "single", "mfj_0": "married_filing_jointly"}
 
 
