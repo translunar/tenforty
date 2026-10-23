@@ -231,15 +231,55 @@ PENDING_TRANSCRIPTION: dict[str, str] = {
 }
 
 
-# Childless earned income credit fields (zero qualifying children): not yet
-# transcribed for this year. They land, attested, with this year's EIC cells
-# (childless-EITC per-year ladder); until then both sides hold None.
-_EIC_PENDING = (
-    "eic_credit_pct", "eic_phaseout_pct", "eic_earned_income_amount",
-    "eic_max_credit", "eic_phaseout_threshold", "eic_completed_phaseout",
-    "eic_investment_income_limit", "eic_min_earned_income", "eic_min_age",
-    "eic_max_age",
+# Childless (zero qualifying children) earned income credit, TY2022.
+# Independent free-form transcription; sources: 26 U.S.C. §32 (2022 ed.,
+# govinfo), 2022 Instructions for Form 1040, IRS Pub. 596 (2022), Rev. Proc.
+# 2021-45 §3.06. Filing-status note: the sources' "single" column covers
+# Single / HOH / Qualifying surviving spouse; MFJ has its own column.
+ATTESTED.update({
+    "eic_credit_pct": 0.0765,  # 26 U.S.C. §32(b)(1) table, "No qualifying children", credit percentage "7.65"
+    "eic_phaseout_pct": 0.0765,  # §32(b)(1) table, same row, phaseout percentage "7.65"
+    "eic_earned_income_amount": 7320,  # Rev. Proc. 2021-45 §3.06(1), column "None", "earned income amount" (indexed; statute base is unindexed)
+    # Rev. Proc. 2021-45 §3.06(1) "maximum amount of credit". NOTE (transcription
+    # conflict note 3): §32(a)(1) formula, 7.65% x 7,320, gives 559.98; the
+    # sources do not state the rounding step that yields the printed value.
+    "eic_max_credit": 560,
+    # Rev. Proc. 2021-45 §3.06(1), column "None", "threshold phaseout amount".
+    # AMBIGUITY FLAG (transcription conflict note 2): 2022 Form 1040
+    # Instructions, EIC Worksheet A line 5 uses a different trigger ("$9,200
+    # ($15,300 if married filing jointly)"); the sources do not explain the
+    # difference. Attested here is the Rev. Proc. value, the higher-precedence source.
+    "eic_phaseout_threshold": {
+        "single": 9160,
+        "married_filing_jointly": 15290,  # includes the §32(b)(2)(B) joint-return increase, indexed
+    },
+    # Rev. Proc. 2021-45 §3.06(1), column "None", "completed phaseout amount"
+    # (amount at or above which no credit is allowed); same figures as the
+    # 1040 instructions Step 1 q.1 / Step 5 q.3 and Pub. 596 Rules 1 and 15.
+    "eic_completed_phaseout": {
+        "single": 16480,
+        "married_filing_jointly": 22610,
+    },
+    "eic_investment_income_limit": 10300,  # Rev. Proc. 2021-45 §3.06(2); Pub. 596 Rule 6 "$10,300 or less"; credit denied above this (statute base $10,000, §32(i)(1))
+    # Lower bound of the first EIC Table row (no-child column) in the 2022 Form
+    # 1040 instructions. The transcription states "the lowest table row starts
+    # at $1" (and the first row is 1 to 50) but gives no dedicated minimum.
+    "eic_min_earned_income": 1,
+    "eic_min_age": 25,  # §32(c)(1)(A)(ii)(II) "has attained age 25"; Pub. 596 Rule 11; 2022 1040 instr. Step 4 q.2
+    "eic_max_age": 65,  # §32(c)(1)(A)(ii)(II) "not attained age 65 before the close of the taxable year" (must NOT have attained)
+})
+SOURCES += (
+    "26 U.S.C. §32 (2022 Edition), govinfo.gov USCODE-2022-title26 sec32: "
+    "§32(b)(1) percentages table, §32(c)(1)(A)(ii)(II) age test (eic_credit_pct, "
+    "eic_phaseout_pct, eic_min_age, eic_max_age); §32(i)(1) investment income "
+    "base. (uscode.house.gov returned a server error; Cornell LII summary not used.)",
+    "2022 Instructions for Form 1040, irs.gov/pub/irs-pdf (\"2022 Instruction 1040\"): "
+    "EIC Steps 1, 2, 4, 5, Worksheet A, 2022 EIC Table (eic_min_earned_income, "
+    "completed phaseout, investment income, age cross-checks).",
+    "IRS Publication 596 (2022 edition, irs.gov/pub/irs-prior/p596--2022.pdf): Rules 1, 6, 11, 15 "
+    "(cross-checks). The irs-pdf/p596.pdf URL served a later-year edition and was discarded.",
+    "IRS Rev. Proc. 2021-45 §3.06(1)-(2), https://www.irs.gov/pub/irs-drop/rp-21-45.pdf: "
+    "EIC table column \"None\" (eic_earned_income_amount, eic_max_credit, "
+    "eic_phaseout_threshold, eic_completed_phaseout) and investment income limit "
+    "(eic_investment_income_limit).",
 )
-ATTESTED.update({name: None for name in _EIC_PENDING})
-PENDING_TRANSCRIPTION.update({
-    name: "childless EIC: lands with this year's EIC cells" for name in _EIC_PENDING})
