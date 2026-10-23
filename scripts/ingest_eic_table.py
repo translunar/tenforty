@@ -64,9 +64,12 @@ def _pages(source: Path) -> list[str]:
             and "This booklet only contains" not in p]
 
 
-def parse_page(text: str) -> list[tuple[int, int, list]]:
+def parse_page(text: str, terminal: dict | None = None
+               ) -> list[tuple[int, int, list]]:
     """Bins on one page, footnote markers resolved: (lower, upper, cells)
-    where a split bin yields two entries."""
+    where a split bin yields two entries. A footnote whose split IS the bin's
+    upper edge (the table ends there: 2022) yields only its credited part;
+    ``terminal`` records {column: (lower, upper)} for it (ruling R-S8-16)."""
     footnotes = {}
     for m in _FOOTNOTE.finditer(re.sub(r"\s+", " ", text)):
         marker, at_least, less_than, kids, credit, or_more = m.groups()
@@ -99,7 +102,7 @@ def parse_page(text: str) -> list[tuple[int, int, list]]:
             if marker not in footnotes:
                 raise ValueError(f"bin {lower}: marker {marker} unresolved")
             at_least, split, kids, credit = footnotes[marker]
-            if at_least != lower or not lower < split < upper:
+            if at_least != lower or not lower < split <= upper:
                 raise ValueError(f"bin {lower}: footnote {marker} covers "
                                  f"[{at_least}, {split}), not this bin")
             if col % 4 != kids:
@@ -108,13 +111,21 @@ def parse_page(text: str) -> list[tuple[int, int, list]]:
             used.add(marker)
             first = cells[:col] + [credit] + cells[col + 1:]
             second = cells[:col] + [0] + cells[col + 1:]
+            if split == upper:
+                # The footnote's "$X or more ... can't take the credit"
+                # clause (required by _FOOTNOTE) ends the table here.
+                bins.append((lower, split, first))
+                if terminal is not None:
+                    terminal[col] = (lower, split)
+                continue
             bins += [(lower, split, first), (split, upper, second)]
     if used != set(footnotes):
         raise ValueError(f"footnotes never used: {set(footnotes) - used}")
     return bins
 
 
-def sanity_check(rows: list[tuple[int, int, list]]) -> None:
+def sanity_check(rows: list[tuple[int, int, list]],
+                 terminal: dict | None = None) -> None:
     if not rows:
         raise ValueError("no bins parsed")
     for (lo, hi, _), (nlo, _, _) in zip(rows, rows[1:]):
@@ -128,7 +139,9 @@ def sanity_check(rows: list[tuple[int, int, list]]) -> None:
             raise ValueError(f"{name}: not non-decreasing up to its peak")
         if any(b > a for a, b in zip(falling, falling[1:])):
             raise ValueError(f"{name}: not non-increasing after its peak")
-        if series[-1] != 0:
+        if series[-1] != 0 and (terminal or {}).get(col) != rows[-1][:2]:
+            # Nonzero only where the parser recorded this column's footnote
+            # ending the table at exactly this last bin (R-S8-16).
             raise ValueError(f"{name}: last bin is not 0")
 
 
@@ -138,11 +151,11 @@ def source_pdf(year: int) -> Path:
 
 def rows_for(year: int) -> list[tuple[int, int, list]]:
     """The year's checked bins, parsed from the source (writes nothing)."""
-    rows = []
+    rows, terminal = [], {}
     for text in _pages(source_pdf(year)):
-        rows += parse_page(text)
+        rows += parse_page(text, terminal=terminal)
     rows.sort(key=lambda r: r[0])
-    sanity_check(rows)
+    sanity_check(rows, terminal=terminal)
     return rows
 
 

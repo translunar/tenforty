@@ -81,6 +81,18 @@ class ParsePageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "never used"):
             parse_page(text)
 
+    def test_a_footnote_ending_the_table_keeps_only_its_credited_part(self):
+        # 2022's last row is a truncated bin whose upper edge IS the split
+        # (ruling R-S8-16): one credited part, recorded as terminal.
+        text = "\n".join([
+            _line(["59,150", "59,187", 0, 0, 0, 0, 0, 0, 0, "**"]),
+            _FOOT.format(m="**", a="59,150", b="59,187", k="three", c=4),
+        ])
+        terminal = {}
+        self.assertEqual(parse_page(text, terminal=terminal),
+                         [(59150, 59187, [0, 0, 0, 0, 0, 0, 0, 4])])
+        self.assertEqual(terminal, {7: (59150, 59187)})
+
     def test_a_footnote_for_another_bin_refuses(self):
         text = "\n".join([
             _line([100, 150, "*", 0, 0, 0, 0, 0, 0, 0]),
@@ -116,6 +128,20 @@ class SanityCheckTests(unittest.TestCase):
     def test_rejects_a_nonzero_last_bin(self):
         with self.assertRaisesRegex(ValueError, "last bin"):
             sanity_check(self._rows([1, 9, 4]))
+
+    def test_a_credited_last_bin_needs_its_terminal_footnote(self):
+        # R-S8-16: the relaxation is conditional on the footnote that ends
+        # the table ("... or more ... can't take the credit"), recorded by
+        # the parser for that column and that last bin — never assumed.
+        rows = self._rows([1, 9, 0])
+        last_lo, last_hi, cells = rows[-1]
+        rows[-1] = (last_lo, last_hi, cells[:7] + [4])
+        sanity_check(rows, terminal={7: (last_lo, last_hi)})
+        for terminal in (None, {6: (last_lo, last_hi)},
+                         {7: (last_lo - 50, last_lo)}):
+            with self.subTest(terminal=terminal):
+                with self.assertRaisesRegex(ValueError, "last bin"):
+                    sanity_check(rows, terminal=terminal)
 
 
 class AssetProvenanceTests(unittest.TestCase):
@@ -205,6 +231,18 @@ class LookupTests(unittest.TestCase):
         for children in range(4):
             self.assertEqual(eic_from_table(top, self.YEAR,
                                             FilingStatus.SINGLE, children), 0)
+
+    def test_the_table_has_run_out_at_its_upper_edge(self):
+        # R-S8-16: at or above the last bin's UPPER edge the credit is 0, even
+        # where the last bin itself is credited (2022's mfj_3, 59,150-59,187).
+        from unittest import mock
+        zero = {f"{s}_{n}": 0 for s in ("single", "mfj") for n in range(4)}
+        rows = [(59100, 59150, {**zero, "mfj_3": 8}),
+                (59150, 59187, {**zero, "mfj_3": 4})]
+        mfj = FilingStatus.MARRIED_FILING_JOINTLY
+        with mock.patch("tenforty.eic_table.load_table", return_value=rows):
+            self.assertEqual(eic_from_table(59186, 2022, mfj, 3), 4)
+            self.assertEqual(eic_from_table(59187, 2022, mfj, 3), 0)
 
     def test_below_the_first_bin_is_not_a_lookup(self):
         with self.assertRaises(ValueError):

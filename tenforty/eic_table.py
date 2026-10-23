@@ -45,10 +45,10 @@ def load_table(year: int) -> tuple[tuple[int, int, dict[str, int]], ...]:
 def eic_from_table(amount: float, year: int, filing_status: FilingStatus,
                    children: int = 0) -> int:
     """The credit the year's EIC Table prints for ``amount``. At or above
-    the table's top an amount reads the last bin, which the ingest sanity
-    check pins to 0 in every column (each has run out there). An amount
-    below the first bin is not a table lookup: the caller decides (no
-    earned income → no credit)."""
+    the last bin's upper edge the table has run out: 0 (every table's last
+    clause is "... or more ... can't take the credit"; 2022's last bin is
+    itself credited, ruling R-S8-16). An amount below the first bin is not
+    a table lookup: the caller decides (no earned income → no credit)."""
     if filing_status not in _COLUMN_BY_STATUS:
         raise ValueError(f"the EIC Table has no column for {filing_status}")
     if not 0 <= children <= 3:
@@ -58,5 +58,7 @@ def eic_from_table(amount: float, year: int, filing_status: FilingStatus,
     if amount < rows[0][0]:
         raise ValueError(f"the {year} EIC Table starts at {rows[0][0]}; "
                          f"got {amount}")
+    if amount >= rows[-1][1]:
+        return 0
     idx = bisect_right([r[0] for r in rows], amount) - 1
     return rows[idx][2][f"{_COLUMN_BY_STATUS[filing_status]}_{children}"]
