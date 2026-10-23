@@ -49,8 +49,8 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # §12: parity, then the grid row). Native is forced for those years only;
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
-YEARS = (2023, 2024, 2025)
-AHEAD_OF_GRID: frozenset[int] = frozenset()
+YEARS = (2022, 2023, 2024, 2025)
+AHEAD_OF_GRID: frozenset[int] = frozenset({2022})
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
     "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
@@ -113,6 +113,12 @@ DIVERGENCES = {
     # [17,640, 17,650) reads 500; the published bin [17,600, 17,650) prints
     # 504. Both sides exact, from the two literal tables.
     (2023, "married_filing_jointly", "catalog_9_bin"): (504, 500),
+    # 2022 (R-S8-11): the same B39-species gap (the Q4 "Yes" B38 is not in
+    # 2022's A1), nonzero, pinned post-first-comparison; the R-T2 Jan-1 MFJ
+    # row (option α; single is waived), native from the ingested published
+    # table at the row's wages, workbook 0.
+    (2022, "single", "fact_nonresident_alien"): (0, NONZERO),
+    (2022, "married_filing_jointly", "age_upper_bound_in"): (98, 0),
 }
 
 # Rulings R-S7-10/10a: (year, status, kind) -> the line 27 the sheet
@@ -132,6 +138,10 @@ REFUSED_DIVERGENCES = {
     # penny-equal on that run).
     (2023, "single", "investment_over_limit"): 155,
     (2023, "married_filing_jointly", "investment_over_limit"): 155,
+    # 2022: armed only because production restores the Q4 answer (catalog
+    # #10, R-S8-11); pinned post-first-comparison.
+    (2022, "single", "investment_over_limit"): NONZERO,
+    (2022, "married_filing_jointly", "investment_over_limit"): NONZERO,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
@@ -168,6 +178,9 @@ DENIAL_STOPS_IN_YEAR = {
     # 2023: G27 is dead the same way (R-S8-8 3b); EIC_trigger is M33.
     2023: {"fact_ssn_not_valid": ("eic_stop_ssn", False,
                                   "Step 1, question 2")},
+    # 2022: G27 dead too; EIC_trigger is M33.
+    2022: {"fact_ssn_not_valid": ("eic_stop_ssn", False,
+                                  "Step 1, question 2")},
 }
 
 # Ruling R-S7-9a, adjudicated observation: Step 4 Q6's "Yes. STOP" (2025
@@ -189,6 +202,16 @@ UNDECLARED_DENIALS |= {
                  "age_upper_bound_in", "fact_main_home_not_in_us")
 } | {(2023, "single", "fact_qualifying_child_of_another"),
      (2023, "single", "fact_claimable_as_dependent")}
+# 2022: A1 has no N1 term either (the catalog #7 species) — static
+# predictions, first comparison. Single has no upper-age rows (waived).
+UNDECLARED_DENIALS |= {
+    (2022, status, kind)
+    for status in ("single", "married_filing_jointly")
+    for kind in ("age_lower_bound_out", "fact_main_home_not_in_us")
+} | {(2022, "married_filing_jointly", "age_upper_bound_out"),
+     (2022, "married_filing_jointly", "age_upper_bound_in"),
+     (2022, "single", "fact_qualifying_child_of_another"),
+     (2022, "single", "fact_claimable_as_dependent")}
 
 
 def _n(value) -> int:
