@@ -40,6 +40,11 @@ _MOCKED_ENGINE_ALLOWLIST = {
     # orch.engine.compute with a harvested-fixture return_value, so the
     # workbook path runs on fixture output — no recalculation, no soffice.
     "test_eic_workbook_consistency.py",
+    # EIC 2022 Q4 restore (catalog #10, R-S8-11): static openpyxl reads, the
+    # engine's own input writer on a temp copy, and workbook-path hand-offs
+    # whose orch.engine.compute is patched (a Stop sentinel / a Mock that is
+    # asserted never called) — no recalculation, no soffice.
+    "test_eic_q4_answer.py",
     # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
     # at the top of _compute_1040_via_workbook, before any engine call. The
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute

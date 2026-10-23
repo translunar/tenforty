@@ -1985,3 +1985,32 @@ for _year in EIC_FORM_4797_QUESTION:
     F1040.OUTPUTS[_year] = {**F1040.OUTPUTS[_year],
                             EIC_NO_CREDIT_DECLARED_KEY: "NoEICredit"}
 del _year
+
+
+# --- EIC Step 1 question 4 (nonresident alien), 2022 only (catalog #10,
+# ruling R-S8-11) --------------------------------------------------------------
+#
+# The 2022 template's derived "No" answer is inverted:
+# H38 '=IF(AND(B38="",EIC_Check),"X","")' (2023: '=IF(B38="","X","")'; 2025:
+# NOT(EIC_Check)). On an ordinary return Q4 is left unanswered, so
+# EIC_Started (A38) is FALSE and E48:E50 drop taxable interest, dividends and
+# capital gains from investment income — the Step 2 gate never fires and the
+# R-S7-10 refusal is never armed. The workbook path restores the derive the
+# other years carry: "No" exactly when "Yes" (B38) is not answered.
+# (R-S7-2 refuses a stated nonresident-alien fact before this is written.)
+EIC_Q4_NO_KEY = "eic_q4_nonresident_alien_no"
+EIC_Q4_NO_CELL: dict[int, tuple[str, str]] = {
+    2022: ("Line 27 (EIC)", "H38"),
+}
+
+
+def eic_q4_no_answer(year: int) -> str:
+    """The restored Q4 "No" derive for ``year`` (keyed to its "Yes" cell)."""
+    sheet, cell = EIC_Q4_NO_CELL[year]
+    return f'=IF(B{cell[1:]}="","X","")'
+
+
+for _year, (_sheet, _cell) in EIC_Q4_NO_CELL.items():
+    F1040.INPUTS[_year] = {**F1040.INPUTS[_year], EIC_Q4_NO_KEY: _cell}
+    F1040.SHEET_MAP[_year] = {**F1040.SHEET_MAP[_year], EIC_Q4_NO_KEY: _sheet}
+del _year, _sheet, _cell
