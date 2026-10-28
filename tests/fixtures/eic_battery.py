@@ -335,6 +335,6 @@ EIC_ROWS[(2023, "married_filing_jointly")] = _rows(2023, "married_filing_jointly
 # (published 504). The bin is the subject: never relocated.
 EIC_ROWS[(2023, "married_filing_jointly")]["catalog_9_bin"] = (
     lambda y: _eic_row(y, 17_645.0, status="married_filing_jointly"))
-# 2022 rows (step 8) exist ahead of the cells' declaration: parity first.
+# 2022 rows (step 8; the cells are declared after their first comparison).
 EIC_ROWS[(2022, "single")] = _rows(2022, "single")
 EIC_ROWS[(2022, "married_filing_jointly")] = _rows(2022, "married_filing_jointly")

@@ -348,7 +348,7 @@ class TransitionalEicYearTests(unittest.TestCase):
         from tests.helpers import transitional_eic_year
         for status in ("single", "married_filing_jointly"):
             with self.subTest(status=status):
-                self.assertEqual(transitional_eic_year(status), 2022)
+                self.assertEqual(transitional_eic_year(status), 2021)
 
     def test_a_fully_declared_grid_fails_loudly(self):
         from unittest import mock

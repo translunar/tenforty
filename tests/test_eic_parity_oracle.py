@@ -50,7 +50,7 @@ from tests.helpers import SPREADSHEETS_DIR, needs_libreoffice
 # GridStateTests pins that they are undeclared and every other year is, so a
 # reverted grid row cannot hide behind a force-native patch (R-S7-13).
 YEARS = (2022, 2023, 2024, 2025)
-AHEAD_OF_GRID: frozenset[int] = frozenset({2022})
+AHEAD_OF_GRID: frozenset[int] = frozenset()
 STATUSES = ("single", "married_filing_jointly")
 _EXCLUDED_KINDS = {
     "single": {"sch_c_worksheet_b", "sch_c_net_loss"},
@@ -114,10 +114,12 @@ DIVERGENCES = {
     # 504. Both sides exact, from the two literal tables.
     (2023, "married_filing_jointly", "catalog_9_bin"): (504, 500),
     # 2022 (R-S8-11): the same B39-species gap (the Q4 "Yes" B38 is not in
-    # 2022's A1), nonzero, pinned post-first-comparison; the R-T2 Jan-1 MFJ
-    # row (option α; single is waived), native from the ingested published
+    # 2022's A1) — workbook figure pinned after the first comparison
+    # (b849875): the table credit at the row's earned income, as for its
+    # identical-input sibling `plateau` (560); the R-T2 Jan-1 MFJ row
+    # (option α; single is waived), native from the ingested published
     # table at the row's wages, workbook 0.
-    (2022, "single", "fact_nonresident_alien"): (0, NONZERO),
+    (2022, "single", "fact_nonresident_alien"): (0, 560),
     (2022, "married_filing_jointly", "age_upper_bound_in"): (98, 0),
 }
 
@@ -139,9 +141,11 @@ REFUSED_DIVERGENCES = {
     (2023, "single", "investment_over_limit"): 155,
     (2023, "married_filing_jointly", "investment_over_limit"): 155,
     # 2022: armed only because production restores the Q4 answer (catalog
-    # #10, R-S8-11); pinned post-first-comparison.
-    (2022, "single", "investment_over_limit"): NONZERO,
-    (2022, "married_filing_jointly", "investment_over_limit"): NONZERO,
+    # #10, R-S8-11). Pinned after the first comparison (b849875): Worksheet A
+    # at the row's earned income and AGI, the same bins as
+    # `investment_at_limit` (155).
+    (2022, "single", "investment_over_limit"): 155,
+    (2022, "married_filing_jointly", "investment_over_limit"): 155,
 }
 REFUSAL = "workbook_eic_inconsistent: "
 
