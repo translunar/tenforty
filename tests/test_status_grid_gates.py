@@ -34,7 +34,10 @@ from tenforty.params import california as ca_params
 from tenforty.params.california import PER_STATUS_CALIFORNIA_FIELDS
 from tenforty.params import f8962 as f8962_params
 from tenforty.params.f8962 import PER_STATUS_F8962_FIELDS
-from tenforty.params.federal import PER_STATUS_FEDERAL_FIELDS
+from tenforty.params.federal import (
+    PER_STATUS_EIC_FIELDS,
+    PER_STATUS_FEDERAL_FIELDS,
+)
 from tenforty.params.federal import load as load_federal
 from tests.fixtures.spine_battery import (
     DECLARED_REFUSAL_CELLS,
@@ -262,7 +265,14 @@ class PerStatusFieldRegistryTests(unittest.TestCase):
     def test_registry_equals_status_keyed_dict_fields_every_year(self):
         all_years = years.FEDERAL_YEARS + years.FEDERAL_COMPUTE_ONLY_YEARS
         expected = _status_keyed_fields(load_federal(y) for y in all_years)
-        self.assertEqual(set(PER_STATUS_FEDERAL_FIELDS), expected)
+        # The EIC per-status fields are gated over NATIVE_EIC_STATUSES, not
+        # this grid (ruling R-P2); together the two registries are exactly
+        # the status-keyed fields, and they never overlap.
+        self.assertEqual(
+            set(PER_STATUS_FEDERAL_FIELDS) & set(PER_STATUS_EIC_FIELDS), set())
+        self.assertEqual(
+            set(PER_STATUS_FEDERAL_FIELDS) | set(PER_STATUS_EIC_FIELDS),
+            expected)
         self.assertEqual(len(PER_STATUS_FEDERAL_FIELDS),
                          len(set(PER_STATUS_FEDERAL_FIELDS)))
 

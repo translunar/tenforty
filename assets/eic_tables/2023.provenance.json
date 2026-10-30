@@ -1,0 +1,7 @@
+{
+ "source": "pdfs/federal/2023/i1040tt.pdf",
+ "source_sha256": "d3d2ad3a1f167a3a9db369fecc2faa4b15b94ec6918e7263db00eac95e066ed4",
+ "edition": "Aug 22, 2023                                       Cat. No. 24327A",
+ "csv_sha256": "8a253ad52f5bef88d0d8af155d7701bbd5225f05c41c5719417ada80194b7122",
+ "script": "scripts/ingest_eic_table.py"
+}

@@ -231,3 +231,17 @@ NOT_APPLICABLE: dict[str, str] = {
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
 }
+
+
+# Childless earned income credit fields (zero qualifying children): not yet
+# transcribed for this year. They land, attested, with this year's EIC cells
+# (childless-EITC per-year ladder); until then both sides hold None.
+_EIC_PENDING = (
+    "eic_credit_pct", "eic_phaseout_pct", "eic_earned_income_amount",
+    "eic_max_credit", "eic_phaseout_threshold", "eic_completed_phaseout",
+    "eic_investment_income_limit", "eic_min_earned_income", "eic_min_age",
+    "eic_max_age",
+)
+ATTESTED.update({name: None for name in _EIC_PENDING})
+PENDING_TRANSCRIPTION.update({
+    name: "childless EIC: lands with this year's EIC cells" for name in _EIC_PENDING})

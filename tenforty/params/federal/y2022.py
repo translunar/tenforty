@@ -153,4 +153,29 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2022.pdf
     # sha256 fcd5f84c414ca4d9553779bb558172554299807b3fe2649825aa2c06723de4c9
     aged_born_before=datetime.date(1958, 1, 2),
+    # Childless EIC (zero qualifying children). Statute first:
+    # IRC §32(b)(1) table, "No qualifying children" row — credit percentage
+    # 7.65, phaseout percentage 7.65 (§32(n)'s special rules cover only
+    # taxable years beginning in 2021); §32(c)(1)(A)(ii)(II) — "has attained
+    # age 25 but not attained age 65 before the close of the taxable year".
+    # https://www.law.cornell.edu/uscode/text/26/32
+    eic_credit_pct=0.0765,
+    eic_phaseout_pct=0.0765,
+    # Rev. Proc. 2021-45 §3.06(1) table, "None" column (sha256 above):
+    # earned income amount, maximum amount of credit, threshold and
+    # completed phaseout amounts (single etc. / married filing jointly).
+    eic_earned_income_amount=7_320,
+    eic_max_credit=560,
+    eic_phaseout_threshold={_S: 9_160, _MFJ: 15_290},
+    eic_completed_phaseout={_S: 16_480, _MFJ: 22_610},
+    # 2022 Form 1040 instructions Step 2 Q2: "Is your investment income more
+    # than $10,300?" (§32(i); Rev. Proc. 2021-45 §3.06(2)).
+    eic_investment_income_limit=10_300,
+    # 2022 EIC Table (Tax and Earned Income Credit Tables (2022), Cat. No.
+    # 24327A): the first row is "At least 1, But less than 50"; Worksheets
+    # A/B stop at zero. Ages: 2022 Form 1040 instructions, born after
+    # December 31, 1957, and before January 2, 1998.
+    eic_min_earned_income=1,
+    eic_min_age=25,
+    eic_max_age=65,
 )

@@ -30,6 +30,25 @@ Notes on judgment calls / air-gap gaps (flagged for controller adjudication):
 - `qualifying_widow` (QSS) = MFJ for standard deduction, brackets, and QDCGT
   (sources say so explicitly); for QBI, official Form 8995 puts QSS under "all
   other returns" (single amount) — transcribed accordingly and flagged.
+- EIC zero-qualifying-children fields (`eic_credit_pct`, `eic_phaseout_pct`,
+  `eic_earned_income_amount`, `eic_max_credit`, `eic_phaseout_threshold`,
+  `eic_completed_phaseout`, `eic_investment_income_limit`,
+  `eic_min_earned_income`, `eic_min_age`, `eic_max_age`): added 2026-10-21
+  from an independent free-form transcription (sources fetched 2026-10-21:
+  IRC §32 GPO 2024 ed. + LII cross-check, Pub. L. 119-21, Rev. Proc. 2024-40,
+  2025 Form 1040 instructions, Pub. 596 (2025)). Conflicts reported by the
+  transcriber, NOT resolved here (flagged inline for controller adjudication):
+    * `eic_max_credit`: statute arithmetic (7.65% x $8,490) = $649.485; IRS
+      gives $649 and §32 has no credit-rounding rule.
+    * `eic_completed_phaseout`: statute arithmetic gives $19,110 / $26,220;
+      every IRS source gives $19,104 / $26,214 (phasing out the
+      already-rounded $649). Attested the IRS figures.
+    * `eic_min_age` / `eic_max_age`: statute uses one "attained age" concept;
+      Pub. 596 reaches 25 the day before the birthday but 65 ON the birthday
+      (born after 1960-12-31 and before 2001-01-02). No statutory basis given.
+    * Statute currency: OLRC current §32 could not be fetched, so no other
+      2025 amendment to §32 could be ruled out (none found in Pub. L. 119-21).
+      ADJUDICATED 2026-10-22 (R-T2): accepted as a standing note; Pub. L. 119-21 checked and the 2025 Pub. 596 What's New silent is adequate evidence for 2025.
 """
 import datetime
 import math
@@ -88,6 +107,31 @@ SOURCES: tuple[str, ...] = (
     "line — for nonitemizer_charitable_cap = None. (OBBBA's new permanent "
     "IRC §170(p) non-itemizer charitable deduction takes effect for tax "
     "years beginning after 2025, i.e. TY2026, not TY2025.)",
+    "26 U.S.C. §32, United States Code 2024 Edition (GPO/govinfo, "
+    "govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-"
+    "subtitleA-chap1-subchapA-partIV-subpartC-sec32.htm), fetched 2026-10-21; "
+    "cross-checked against law.cornell.edu/uscode/text/26/32 (LII; last "
+    "amendment Pub. L. 117-2) — §32(b)(1) 7.65% credit/phaseout percentage "
+    "(no qualifying children), §32(b)(2), §32(c)(1)(A)(ii)(II) age 25-65, "
+    "§32(i), §32(j) — for the eic_* zero-children fields. §32(n) is "
+    "2021-only and does not apply to 2025.",
+    "Public Law 119-21 (H.R. 1, July 4, 2025) enrolled text "
+    "(govinfo.gov/content/pkg/PLAW-119publ21/pdf/PLAW-119publ21.pdf): "
+    "searched, contains no amendment to IRC §32. OLRC prelim §32 "
+    "(uscode.house.gov) could NOT be fetched ('Page Not Found'), so no other "
+    "2025 amendment to §32 could be independently ruled out.",
+    "Rev. Proc. 2024-40 (irs.gov/pub/irs-drop/rp-24-40.pdf) §2.06(1) table, "
+    "column 'None' (printed p. 10 / PDF p. 9): TY2025 EIC earned income "
+    "amount, maximum credit, threshold and completed phaseout amounts; "
+    "§2.06(2): excessive investment income limit — for the eic_* fields.",
+    "IRS 2025 Instructions for Form 1040 (and 1040-SR) "
+    "(irs.gov/pub/irs-pdf/i1040gi.pdf), line 27a Steps 1-5 (pp. 40-42), EIC "
+    "Worksheets A/B (pp. 46-48), EIC Table (pp. 49-60) — cross-check of the "
+    "eic_* zero-children fields.",
+    "IRS Publication 596 (2025), Earned Income Credit "
+    "(irs.gov/pub/irs-pdf/p596.pdf): Rules 1, 6, 11, 15, EIC Eligibility "
+    "Checklist (p. 24), EIC Table (pp. 29-40) — cross-check of the eic_* "
+    "zero-children fields.",
 )
 
 # The only deliberately not-applicable field for 2025 is
@@ -277,6 +321,90 @@ ATTESTED: dict[str, object] = {
         2: 64430,
         3: 68675,  # 3 or more qualifying children
     },
+
+    # ---- EIC, ZERO qualifying children (single / MFJ only). Independent
+    # transcription 2026-10-21; see module docstring notes and SOURCES. ----
+    # IRC §32(b)(1) table, row "No qualifying children": credit percentage
+    # 7.65 and phaseout percentage 7.65. Same for both statuses. NOT stated in
+    # Rev. Proc. 2024-40 / Form 1040 instr. / Pub. 596 (they give only the
+    # resulting dollar amounts). The 15.3% of §32(n)(3) was 2021-only.
+    "eic_credit_pct": 0.0765,
+    "eic_phaseout_pct": 0.0765,
+    # Rev. Proc. 2024-40 §2.06(1), column "None", row "Earned Income Amount"
+    # (statutory base $4,220, §32(b)(2)(A), indexed from 1995, rounded to
+    # nearest $10 per §32(j)(2)(A)). Same for both statuses. Corroborated by
+    # Pub. 596 (2025) ch. 4 "Nontaxable combat pay", p. 20.
+    "eic_earned_income_amount": 8490,
+    # Rev. Proc. 2024-40 §2.06(1), column "None", row "Maximum Amount of
+    # Credit"; EIC Table "0" columns show 649 for both Single and MFJ.
+    # CONFLICT (reported, not resolved): §32(a) arithmetic 7.65% x $8,490 =
+    # $649.485; §32 contains no rounding rule for the credit. The table also
+    # shows $649 in the 8,450-8,500 bracket, where the transcriber's
+    # midpoint-rule reconstruction gives $648 (inference, not a source).
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): The IRS-published figures
+    # govern: they are what Rev. Proc. 2024-40 and the 2025 Form 1040
+    # instructions bind filers to, both independent readings attested them, and
+    # production reads the published EIC Table. The statute-arithmetic delta
+    # stays documented in the flag above; this resolves it.
+    "eic_max_credit": 649,
+    # Rev. Proc. 2024-40 §2.06(1), column "None", rows "Threshold Phaseout
+    # Amount (All other filing statuses)" / "(Married Filing Jointly)"; MFJ
+    # includes the inflation-adjusted §32(b)(2)(B) joint-return increase
+    # (statutory $5,000, 2008 base). Corroborated by Form 1040 instr. EIC
+    # Worksheet A line 5 (p. 46) / Worksheet B line 10 (p. 48). Statutory
+    # base phaseout amount $5,280 (§32(b)(2)(A)).
+    "eic_phaseout_threshold": {
+        "single": 10620,
+        "married_filing_jointly": 17730,
+    },
+    # Rev. Proc. 2024-40 §2.06(1), column "None", rows "Completed Phaseout
+    # Amount" — AGI (or, if greater, earned income) at or above which no
+    # credit is allowed. Also the AGI limit and the earned-income limit
+    # ("must be less than"): Form 1040 instr. line 27a Step 1 Q1 (p. 40) and
+    # Step 5 Q3 (p. 42); Pub. 596 Rule 1 (p. 4), Rule 15 (p. 19).
+    # CONFLICT (reported, not resolved): literal §32(a)(2) arithmetic reaches
+    # zero at $19,110 (single) / $26,220 (MFJ), $6 higher; the IRS figures
+    # equal threshold + $649/0.0765 rounded, i.e. they phase out the already
+    # rounded $649 rather than $649.485. No source explains this. Attested the
+    # IRS-published figures.
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): The IRS-published figures
+    # govern: they are what Rev. Proc. 2024-40 and the 2025 Form 1040
+    # instructions bind filers to, both independent readings attested them, and
+    # production reads the published EIC Table. The statute-arithmetic delta
+    # stays documented in the flag above; this resolves it.
+    "eic_completed_phaseout": {
+        "single": 19104,
+        "married_filing_jointly": 26214,
+    },
+    # Rev. Proc. 2024-40 §2.06(2): credit not allowed if aggregate investment
+    # income EXCEEDS this amount (statutory base $10,000, §32(i)(1); rounded
+    # to next lowest $50 per §32(j)(2)(B)). Same for both statuses. Form 1040
+    # instr. Step 2 Q2 ("more than"), Pub. 596 Rule 6 ("or less") — same test.
+    "eic_investment_income_limit": 11950,
+    # Pub. 596 (2025) EIC Eligibility Checklist Q6 (p. 24): total earned
+    # income must be "at least $1"; EIC Table's first row "At least 1";
+    # Form 1040 instr. Worksheet B line 4b: zero or less -> no credit. IRS
+    # publications only, no statutory citation given. Same for both statuses.
+    "eic_min_earned_income": 1,
+    # IRC §32(c)(1)(A)(ii)(II): "has attained age 25 but not attained age 65
+    # before the close of the taxable year"; on MFJ EITHER spouse may meet the
+    # test (statute; Pub. 596 Rule 11, p. 17; Form 1040 instr. Step 4 Q2).
+    # Same for both statuses (min age attained; max age NOT attained).
+    # CONFLICT (reported, not resolved): IRS birth-date range "born after
+    # December 31, 1960, and before January 2, 2001" applies two conventions —
+    # Pub. 596 p. 17: age 25 reached the day before the 25th birthday, age 65
+    # reached ON the 65th birthday. The statute applies a single "attained"
+    # concept; no fetched source gives a statutory basis for the asymmetry.
+    # (The 2021-only §32(n) ages 19/24/18 and no-maximum rule do not apply.)
+    # ADJUDICATED 2026-10-22 (team-lead ruling R-T2): Params stay as attested.
+    # The eligibility code implements the instructions' birth-date range
+    # verbatim (born after December 31, 1960 and before January 2, 2001 for
+    # 2025), not an integer age comparison; the day-before-birthday convention
+    # only matters at the Dec-31/Jan-1 boundary and the IRS range is the
+    # operational rule. The statute ambiguity noted above is carried into the
+    # eligibility code.
+    "eic_min_age": 25,
+    "eic_max_age": 65,
 
     # IRC §461(l) excess-business-loss threshold — 2025 Form 461, line 15:
     # "Enter $313,000 (or $626,000 if married filing jointly)". Supplied by

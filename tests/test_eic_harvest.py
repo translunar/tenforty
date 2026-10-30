@@ -86,6 +86,24 @@ class EicHarvestWiringTests(unittest.TestCase):
                 self.assertEqual(sheet, "1040")
                 self.assertIn("EarnedIncomeCredit", wb[sheet][cell].value)
 
+    def test_line_26_harvests_the_name_its_input_writes(self):
+        # Ruling R-S4-3: read back the name the input writes, every year,
+        # and Tot_Payments sums that cell.
+        for year, wb in self.workbooks.items():
+            with self.subTest(year=year):
+                self.assertEqual(
+                    F1040.get_outputs(year).get("estimated_tax_payments"),
+                    "EstimatedTaxPayments")
+                self.assertEqual(
+                    F1040.get_inputs(year).get("estimated_tax_payments"),
+                    "EstimatedTaxPayments")
+                sheet, cell = _resolve(wb, "EstimatedTaxPayments")
+                self.assertEqual(sheet, "1040")
+                _, total = _resolve(wb, "Tot_Payments")
+                self.assertIn(cell, wb["1040"][total].value)
+                self.assertIn("estimated_tax_payments",
+                              Pdf1040.get_mapping(year))
+
     def test_line_32_output_harvests_the_pinned_cell(self):
         for year, (cell, _) in LINE_32.items():
             with self.subTest(year=year):
@@ -127,10 +145,15 @@ class Line32FootingGuardTests(unittest.TestCase):
     YEAR = 2024
 
     def _emit(self, tmp, **harvested):
+        """Inject workbook-style harvest keys. Like the workbook's own
+        Tot_Payments, line 33 includes a harvested line 32."""
         orch = _orch(tmp)
         scenario = spine_battery.build_wages_only(self.YEAR,
                                                   FilingStatus.SINGLE)
-        results = {**orch.compute_federal(scenario), **harvested}
+        results = orch.compute_federal(scenario)
+        results = {**results, **harvested, "total_payments": (
+            results["total_payments"]
+            + (harvested.get("total_other_payments") or 0))}
         return orch.emit_pdfs(scenario, results, Path(tmp) / "out")
 
     def test_footing_line_32_prints_with_line_27(self):
@@ -158,6 +181,20 @@ class Line32FootingGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(NotImplementedError):
                 self._emit(tmp, eic=None, total_other_payments=632)
+
+    def test_estimated_payments_count_in_the_line_33_check(self):
+        # Line 26 is one of the three printed addends of line 33.
+        with tempfile.TemporaryDirectory() as tmp:
+            orch = _orch(tmp)
+            scenario = spine_battery.build_wage_with_estimated_payments(
+                self.YEAR)
+            results = orch.compute_federal(scenario)
+            self.assertGreater(results["estimated_tax_payments"], 0)
+            emitted = orch.emit_pdfs(scenario, results, Path(tmp) / "out")
+            printed = _printed(emitted["1040"], self.YEAR)
+            self.assertEqual(int(printed("total_payments")),
+                             int(printed("federal_withheld"))
+                             + int(printed("estimated_tax_payments")))
 
     def test_no_harvested_line_32_is_not_guarded(self):
         # The native path never harvests line 32: nothing to compare.

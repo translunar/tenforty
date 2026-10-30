@@ -252,9 +252,11 @@ class DownstreamAgreementTests(_OrchestratorCase):
             schedules["f8582"]["f8582_line_1b_activities_with_loss"], 0)
 
     def test_spine_scope_estimate_sees_the_asset_mode_loss(self):
-        """`_scenario_in_spine_scope` estimates AGI from positive rental net
-        income; resolved depreciation enters that estimate."""
+        """The EIC-possible estimate (`orchestrator.eic_possible`, moved
+        verbatim out of `_scenario_in_spine_scope`, ruling R-S6-2) reads
+        positive rental net income; resolved depreciation enters it."""
         from unittest import mock
+        from tenforty.orchestrator import eic_possible
         s = _scenario(_rental(rents=24_000.0, assets=[_building()]))
         seen = []
         real = _rental_net_income
@@ -264,7 +266,7 @@ class DownstreamAgreementTests(_OrchestratorCase):
             return seen[-1]
 
         with mock.patch("tenforty.orchestrator._rental_net_income", spy):
-            self.orchestrator._scenario_in_spine_scope(s)
+            eic_possible(s)
         self.assertEqual(seen, [24_000.0 - BUILDING_DEPRECIATION])
 
 

@@ -50,6 +50,7 @@ from dataclasses import dataclass
 
 from tenforty import years as year_manifest
 from tenforty.forms import f8962 as form_f8962
+from tenforty.forms.eic import compute_eic
 from tenforty.forms.f1040_tax import qdcgt_tax
 from tenforty.models import (
     FilingStatus, HohMaritalStatus, K1FanoutData, Scenario,
@@ -883,11 +884,31 @@ def compute_spine(
     # Schedule 3 line 9 → total other payments (line 31), which rolls into
     # total payments, so it ADDS here. f8962_net_ptc is 0 when no 1095-A is
     # present.
-    # The native spine still does NOT compute the Earned Income Credit (line
-    # 27a) — EIC-eligible scenarios fall back to the XLSX oracle in
-    # _compute_1040_pipeline (see _scenario_in_spine_scope), so the spine never
-    # reaches a filer who claims EIC.
-    total_payments = federal_withheld + estimated_payments + f8962_net_ptc
+    #
+    # 1040 line 27a — earned income credit with zero qualifying children,
+    # figured only for a (year, status) declared in years.NATIVE_EIC_STATUSES
+    # (forms/eic.py). The `eic` key is set only when the credit is positive:
+    # a filer with no credit takes none, so lines 27a and 32 print blank as
+    # before; the determination record is kept either way.
+    eic_out: dict = {}
+    if year_manifest.native_eic_supports(params.year, filing_status.value):
+        eic_out = compute_eic(scenario, {
+            "wages": wages, "agi": agi,
+            "taxable_interest": taxable_interest_total,
+            "ordinary_dividends": ordinary_divs_total,
+            "capital_gain_loss": schd_line21_allowed,
+        }, params, schedule_results)
+    eic = eic_out.get("eic") or 0
+    if not eic:
+        eic_out.pop("eic", None)
+    # 1040 line 32 — the sum of the PRINTED line 27-31 components (ruling
+    # R-P1): today line 27a alone. The net PTC is line-31 content, which
+    # cannot print without Schedule 3 behind it, so it is NOT in line 32;
+    # the 1040 footing guard (orchestrator._line_32_unfooted) then refuses a
+    # return whose line 33 carries a nonzero net PTC no printed line holds.
+    total_other_payments = eic or None
+    total_payments = (federal_withheld + estimated_payments + f8962_net_ptc
+                      + eic)
 
     # 1040 line 35a — Amount overpaid.
     # Overpaid is computed against the FULL tax liability including Schedule 2:
@@ -1173,6 +1194,8 @@ def compute_spine(
         "estimated_tax_payments": estimated_payments,  # line 26
         "additional_medicare_withheld": addl_medicare_withheld,
         "total_payments": total_payments,
+        "total_other_payments": total_other_payments,  # line 32 (R-P1)
+        **eic_out,                   # line 27a + its determination record
         "overpaid": overpaid,        # line 34
         "refund": refund,            # line 35a (full-refund default election)
         "amount_owed": amount_owed,  # line 37 (had no producer before)

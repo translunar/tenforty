@@ -20,6 +20,31 @@ TESTS_DIR = REPO_ROOT / "tests"
 # and justified.
 _MOCKED_ENGINE_ALLOWLIST = {
     "test_oracle_engine.py",  # patches subprocess.run; no real soffice
+    # Childless-EIC workbook health + answer-adapter mechanics: uses only
+    # SpreadsheetEngine._write_inputs (the engine's openpyxl writer, no
+    # recalculation), and its one _compute_1040_via_workbook call runs under
+    # mock.patch.object(orch.engine, "compute", ...) raising a sentinel
+    # before any recalculation, so no real soffice is ever invoked.
+    "test_eic_workbook_health.py",
+    # Workbook-path EIC fact guard (R-S7-2): every test patches
+    # orch.engine.compute with a sentinel side_effect; the guard raises before
+    # the engine, or the sentinel proves the engine was reached — no
+    # recalculation, so no real soffice is ever invoked.
+    "test_eic_workbook_guard.py",
+    # EIC Form 4797 answer (R-S7-6a): static openpyxl reads, the engine's own
+    # input writer on a temp copy (no recalculation), and one workbook-path
+    # hand-off whose orch.engine.compute is patched with a Stop sentinel —
+    # no real soffice is ever invoked.
+    "test_eic_form_4797_answer.py",
+    # EIC workbook-consistency refusal (R-S7-10): every test patches
+    # orch.engine.compute with a harvested-fixture return_value, so the
+    # workbook path runs on fixture output — no recalculation, no soffice.
+    "test_eic_workbook_consistency.py",
+    # EIC 2022 Q4 restore (catalog #10, R-S8-11): static openpyxl reads, the
+    # engine's own input writer on a temp copy, and workbook-path hand-offs
+    # whose orch.engine.compute is patched (a Stop sentinel / a Mock that is
+    # asserted never called) — no recalculation, no soffice.
+    "test_eic_q4_answer.py",
     # SE-health workbook-path fail-closed guard (ticket (dd)): the guard raises
     # at the top of _compute_1040_via_workbook, before any engine call. The
     # "fires" test raises there; the "field=0" test mocks orch.engine.compute

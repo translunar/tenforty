@@ -1,0 +1,65 @@
+# Childless-EIC refusal fixture: reaches `year_scoped_eic_fact`.
+# A 2021-only key (lookback_2019_earned_income) on a 2022 return.
+# All identities and amounts are synthetic.
+config:
+  year: 2022
+  filing_status: single
+  birthdate: '1990-06-15'
+  state: CA
+  has_foreign_accounts: false
+  acknowledges_no_wash_sale_adjustments: false
+  acknowledges_no_other_basis_adjustments: false
+  acknowledges_no_28_rate_gain: false
+  acknowledges_no_unrecaptured_section_1250: false
+  acknowledges_no_1120s_schedule_l_needed: false
+  acknowledges_no_1120s_schedule_m_needed: false
+  acknowledges_constant_shareholder_ownership: false
+  acknowledges_no_section_1375_tax: false
+  acknowledges_no_section_1374_tax: false
+  acknowledges_cogs_aggregate_only: false
+  acknowledges_officer_comp_aggregate_only: false
+  acknowledges_no_elective_payment_election: false
+  acknowledges_no_540nr_filing: false
+  acknowledges_no_ca_amt_preferences: false
+  acknowledges_no_ca_nol_carryover: false
+  acknowledges_no_ca_depreciation_divergence: false
+  acknowledges_no_ca_ira_basis_divergence: false
+  acknowledges_no_ca_rdp_status: false
+  acknowledges_no_excess_business_loss_carryover: false
+  acknowledges_no_1031_personal_property_divergence: false
+  acknowledges_no_ic_worker_reclassification: false
+  acknowledges_no_other_state_tax_credit: false
+  acknowledges_no_railroad_retirement_benefits: false
+  acknowledges_no_paid_family_leave_benefits: false
+  acknowledges_sch_a_sales_tax_unsupported: false
+  acknowledges_qbi_below_threshold: false
+  acknowledges_unlimited_at_risk: false
+  basis_tracked_externally: false
+  acknowledges_no_partnership_se_earnings: false
+  acknowledges_no_section_1231_gain: false
+  acknowledges_no_more_than_four_k1s: false
+  acknowledges_no_k1_credits: false
+  acknowledges_no_section_179: false
+  acknowledges_no_estate_trust_k1: false
+  acknowledges_no_capital_loss_carryforward: true
+  acknowledges_no_federal_amt: true
+  acknowledges_sch_c_all_investment_at_risk: false
+  acknowledges_form_7203_attached_separately: false
+  prior_year_itemized: false
+w2s:
+- employer: Synthetic Employer EIC
+  wages: 9000.0
+  federal_tax_withheld: 300.0
+  ss_wages: 9000.0
+  ss_tax_withheld: 558.0
+  medicare_wages: 9000.0
+  medicare_tax_withheld: 130.5
+eic_eligibility:
+  taxpayer:
+    main_home_in_us_more_than_half_year: true
+    can_be_claimed_as_dependent: false
+    could_be_qualifying_child_of_another: false
+    ssn_valid_for_employment: true
+    nonresident_alien_any_part_of_year: false
+  prior_eic_disallowance_requires_8862: false
+  lookback_2019_earned_income: 5000.0

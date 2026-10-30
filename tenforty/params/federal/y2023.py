@@ -140,4 +140,30 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf
     # sha256 90c8759c7a829d8c74296187cdbdb47bc9025480fffc41ff5e7225889c8fea7e
     aged_born_before=datetime.date(1959, 1, 2),
+    # Childless EIC (zero qualifying children). Statute first:
+    # IRC §32(b)(1) table, "No qualifying children" row — credit percentage
+    # 7.65, phaseout percentage 7.65 (§32(n)'s special rules cover only
+    # taxable years beginning in 2021; 2023 Pub. 596 "What's New" lists only
+    # inflation changes); §32(c)(1)(A)(ii)(II) — "has attained age 25 but not
+    # attained age 65 before the close of the taxable year".
+    # https://www.law.cornell.edu/uscode/text/26/32
+    eic_credit_pct=0.0765,
+    eic_phaseout_pct=0.0765,
+    # Rev. Proc. 2022-38 §3.06(1) table, "None" column (sha256 above):
+    # earned income amount, maximum amount of credit, threshold and
+    # completed phaseout amounts (single etc. / married filing jointly).
+    eic_earned_income_amount=7_840,
+    eic_max_credit=600,
+    eic_phaseout_threshold={_S: 9_800, _MFJ: 16_370},
+    eic_completed_phaseout={_S: 17_640, _MFJ: 24_210},
+    # Rev. Proc. 2022-38 §3.06(2): not allowed if investment income
+    # "exceeds $11,000" (§32(i)); 2023 Form 1040 instructions Step 2 Q2.
+    eic_investment_income_limit=11_000,
+    # 2023 EIC Table (Tax and Earned Income Credit Tables (2023), Cat. No.
+    # 24327A): the first row is "At least 1, But less than 50"; Worksheets
+    # A/B stop at zero. Ages: 2023 Form 1040 instructions, born after
+    # December 31, 1958, and before January 2, 1999.
+    eic_min_earned_income=1,
+    eic_min_age=25,
+    eic_max_age=65,
 )

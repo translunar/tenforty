@@ -112,4 +112,11 @@ PARAMS = CaliforniaParams(
     # income on line 19 is over $100,000, use the tax rate schedule"
     # (restated p.75). Inclusive: line 19 <= ceiling uses the table.
     tax_table_taxable_income_ceiling=100_000,
+    # CalEITC (FTB 3514 instructions, 2025):
+    # "... must be less than $32,901 to qualify for the California
+    # credit."
+    # https://www.ftb.ca.gov/forms/2025/2025-3514-booklet.pdf
+    # sha256 9096ff0ec8a240717753f3f0345f2fa85a7bfaba4a8bcb194f316394a4e15538
+    # Inclusive maximum = that bound less $1.
+    caleitc_max_earned_income=32_900,
 )

@@ -40,6 +40,13 @@ SOURCES: tuple[str, ...] = (
     "retrieved read-only via curl, last updated 02/20/2026): verbatim "
     "'$53,994 or less if ... single or married/RDP filing separately' and "
     "'$60 credit if you are: Single, Married/RDP filing separately'",
+    "FTB CalEITC 'Eligibility and credit information' page "
+    "(https://www.ftb.ca.gov/file/personal/credits/caleitc/eligibility-and-credit-information.html, "
+    "retrieved via curl, last updated 04/16/2026), '2025 CalEITC credit' table and "
+    "requirements list (caleitc_max_earned_income); and FTB 2025 FTB 3514 booklet "
+    "(https://www.ftb.ca.gov/forms/2025/2025-3514-booklet.html), 'B. Differences in "
+    "California and Federal Law' / Step 1 (exclusive-bound wording cross-check) and "
+    "Earned Income Tax Credit Table last bracket.",
 )
 
 # rate_schedule canonical shape (per schema docstring +
@@ -160,6 +167,19 @@ ATTESTED: dict[str, object] = {
     # all filing statuses (the text is not status-keyed). REV: none on
     # p.13 or p.75.
     "tax_table_taxable_income_ceiling": 100000,
+    # caleitc_max_earned_income: maximum earned income with which a taxpayer can
+    # qualify for CalEITC. Attested by an air-gapped transcriber from FTB web pages
+    # (fetched via curl; WebFetch was 403) and the FTB 3514 instructions. The
+    # statute (R&TC 17052 / 17052.1) could NOT be read from leginfo (HTTP 403) and
+    # was seen only via the third-party mirror california.public.law, which shows
+    # a single (current) version and dropped the (m)/(n)/(o) table cells; no
+    # statute text is relied on for this value. Same limit for every filing
+    # status and number of children.
+    # Source wording: FTB eligibility page requirements list "earned income of at
+    # least $1 and not more than" the figure ("up to" on the overview page);
+    # 3514 instructions: "must be less than" the next whole dollar (exclusive
+    # bound, minus $1). Inclusive wording used as stated.
+    "caleitc_max_earned_income": 32900,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {

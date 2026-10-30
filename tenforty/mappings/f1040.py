@@ -1418,6 +1418,11 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 26 (estimated tax payments): the same
+            # workbook-scoped name the INPUT writes, read back so line 26
+            # prints. Tot_Payments sums it, so without this the page did
+            # not foot (ruling R-S4-3; the eic / line-32 disease).
+            "estimated_tax_payments": "EstimatedTaxPayments",
             # Form 1040 line 32 = SUM(EIC, lines 28-31) on the 1040 sheet,
             # harvested by address (no named range). Its terms are pinned
             # in tests/test_eic_harvest.py; the emit refuses when it does
@@ -1564,6 +1569,11 @@ class F1040(FormMapping):
             # without this key the credit reached line 33 while line 27
             # printed blank.
             "eic": "EIC",
+            # Form 1040 line 26 (estimated tax payments): the same
+            # workbook-scoped name the INPUT writes, read back so line 26
+            # prints. Tot_Payments sums it, so without this the page did
+            # not foot (ruling R-S4-3; the eic / line-32 disease).
+            "estimated_tax_payments": "EstimatedTaxPayments",
             # Form 1040 line 32 by address; see the 2024 block.
             "total_other_payments": "AL123",
         },
@@ -1917,3 +1927,90 @@ for _key, _probe in WORKBOOK_PROBES_2021.items():
     F1040.OUTPUTS[2021][_key] = _probe.cell
     F1040.SHEET_MAP[2021][_key] = _probe.sheet
 del _key, _probe
+
+
+# --- EIC Step 2 question 3 (Form 4797), 2021-2025 (ruling R-S7-6a) ----------
+#
+# When investment income exceeds the limit the sheet asks "Are you filing
+# Form 4797?" (Q3); "No" means STOP, and only then. The "No" cell sits in
+# NoEICredit's OR-chain unconditionally (A1 ... <no cell><>"" ...), so a bare
+# "X" would deny every return. Unanswered, the stop never fires and the table
+# credit flows through. tenforty never produces Form 4797 (the
+# unreachability proof: tests/test_eic_grid_gates.py UNREACHABLE_ITEMS
+# "form_4797"), so the workbook path answers "No" exactly when the sheet
+# asks: a formula keyed to the year's own Q2 "Yes" cell. Addresses read by
+# formula consumers; pinned per year by tests/test_eic_form_4797_answer.py.
+class _EicForm4797Question(NamedTuple):
+    sheet: str
+    q2_yes: str   # Step 2 Q2 "Yes" (investment income over the limit)
+    q3_yes: str   # Q3 "Yes, filing Form 4797" (left blank)
+    q3_no: str    # "No" -- the STOP cell in NoEICredit (A1)
+
+
+EIC_FORM_4797_QUESTION: dict[int, _EicForm4797Question] = {
+    2025: _EicForm4797Question("Line 27a (EIC)", "B60", "B65", "H65"),
+    2024: _EicForm4797Question("Line 27 (EIC)", "B60", "B65", "H65"),
+    2023: _EicForm4797Question("Line 27 (EIC)", "B59", "B64", "H64"),
+    2022: _EicForm4797Question("Line 27 (EIC)", "B59", "B64", "H64"),
+    2021: _EicForm4797Question("Line 27a (EIC)", "B59", "B63", "H63"),
+}
+EIC_FORM_4797_NO_KEY = "eic_form_4797_no"
+
+
+def eic_form_4797_no_answer(year: int) -> str:
+    """The Q3 "No" cell's value: "X" exactly when Q2 is answered Yes."""
+    return f'=IF({EIC_FORM_4797_QUESTION[year].q2_yes}<>"","X","")'
+
+
+for _year, _q in EIC_FORM_4797_QUESTION.items():
+    # Per-year copies: some years' maps were built from another's.
+    F1040.INPUTS[_year] = {**F1040.INPUTS[_year],
+                           EIC_FORM_4797_NO_KEY: _q.q3_no}
+    F1040.SHEET_MAP[_year] = {**F1040.SHEET_MAP[_year],
+                              EIC_FORM_4797_NO_KEY: _q.sheet}
+del _year, _q
+
+
+# --- EIC NoEICredit harvest, 2021-2025 (ruling R-S7-10) ----------------------
+#
+# The sheet's own "no credit" verdict (named range NoEICredit, A1 of the EIC
+# sheet in every year). Line 27 never reads it — in every year the Step 2
+# stop is display-only — so the workbook path harvests it and refuses a
+# return whose line 27 contradicts it (orchestrator
+# refuse_inconsistent_workbook_eic). Consumed there and dropped: it never
+# reaches the results.
+EIC_NO_CREDIT_DECLARED_KEY = "eic_no_credit_declared"
+
+for _year in EIC_FORM_4797_QUESTION:
+    F1040.OUTPUTS[_year] = {**F1040.OUTPUTS[_year],
+                            EIC_NO_CREDIT_DECLARED_KEY: "NoEICredit"}
+del _year
+
+
+# --- EIC Step 1 question 4 (nonresident alien), 2022 only (catalog #10,
+# ruling R-S8-11) --------------------------------------------------------------
+#
+# The 2022 template's derived "No" answer is inverted:
+# H38 '=IF(AND(B38="",EIC_Check),"X","")' (2023: '=IF(B38="","X","")'; 2025:
+# NOT(EIC_Check)). On an ordinary return Q4 is left unanswered, so
+# EIC_Started (A38) is FALSE and E48:E50 drop taxable interest, dividends and
+# capital gains from investment income — the Step 2 gate never fires and the
+# R-S7-10 refusal is never armed. The workbook path restores the derive the
+# other years carry: "No" exactly when "Yes" (B38) is not answered.
+# (R-S7-2 refuses a stated nonresident-alien fact before this is written.)
+EIC_Q4_NO_KEY = "eic_q4_nonresident_alien_no"
+EIC_Q4_NO_CELL: dict[int, tuple[str, str]] = {
+    2022: ("Line 27 (EIC)", "H38"),
+}
+
+
+def eic_q4_no_answer(year: int) -> str:
+    """The restored Q4 "No" derive for ``year`` (keyed to its "Yes" cell)."""
+    sheet, cell = EIC_Q4_NO_CELL[year]
+    return f'=IF(B{cell[1:]}="","X","")'
+
+
+for _year, (_sheet, _cell) in EIC_Q4_NO_CELL.items():
+    F1040.INPUTS[_year] = {**F1040.INPUTS[_year], EIC_Q4_NO_KEY: _cell}
+    F1040.SHEET_MAP[_year] = {**F1040.SHEET_MAP[_year], EIC_Q4_NO_KEY: _sheet}
+del _year, _sheet, _cell

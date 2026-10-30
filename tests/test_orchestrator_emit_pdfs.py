@@ -72,8 +72,12 @@ def make_scenario_with_identity() -> Scenario:
     )
 
 
+# A results dict whose printed payments foot: line 33 (total_payments) is
+# carried by line 25d (federal_withheld). The 1040 payments-footing guard
+# refuses a line 33 no printed line holds (ruling R-P1).
 SAMPLE_RESULTS = {
     "total_tax": 15000,
+    "federal_withheld": 12000,
     "total_payments": 12000,
     "wages": 90000,
 }

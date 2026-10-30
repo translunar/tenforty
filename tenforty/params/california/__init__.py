@@ -46,6 +46,10 @@ class CaliforniaParams:
     # takes its tax from the Tax Table; above it, from the Tax Rate
     # Schedules. INCLUSIVE ceiling, one amount for every filing status.
     tax_table_taxable_income_ceiling: int
+    # CalEITC (FTB 3514): the maximum earned income with which a taxpayer
+    # can qualify ("must be less than $X+1"). INCLUSIVE. Exerciser record
+    # (R-S8-15): the per-year boundary pairs in tests/test_caleitc_gate.py.
+    caleitc_max_earned_income: int
 
     def for_status(self, status: "FilingStatus | str") -> "StatusView":
         """Projection of these params onto one filing status. Per-status

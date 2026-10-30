@@ -33,7 +33,7 @@ from tenforty.models import (
 from tenforty.orchestrator import (
     ReturnOrchestrator,
     eic_gate_child_count,
-    refuse_hoh_possible_eic,
+    refuse_eic_with_child_candidate,
 )
 from tenforty.params.federal import load as load_params
 from tests.fixtures.spine_battery import (
@@ -158,28 +158,43 @@ class HohEicGateTests(unittest.TestCase):
                         side_effect=_never_the_workbook):
                     orch.compute_federal(scn)
 
-    def test_between_ceilings_head_of_household_is_out_of_spine_scope(self):
-        # The precondition refuse_hoh_possible_eic relies on: on a declared
-        # (year, head_of_household), out of scope means EIC-possible.
+    def test_the_refusal_does_not_depend_on_routing(self):
+        # Spec §7.2's silent-drop hazard: the refusal runs pre-split, so even
+        # with the return routed native (the grid-only end state) an
+        # EIC-possible head-of-household return refuses instead of computing
+        # the childless credit (zero for head of household).
         orch = _orchestrator(self)
         for year in _YEARS:
             with self.subTest(year=year):
-                eff, _ = orch._build_effective_scenario(
-                    _scenario(year, _HOH, _between_ceilings(year)))
-                self.assertFalse(orch._scenario_in_spine_scope(eff))
+                scn = _scenario(year, _HOH, _between_ceilings(year))
+                with mock.patch.object(
+                        ReturnOrchestrator, "_scenario_in_spine_scope",
+                        return_value=True), mock.patch.object(
+                        ReturnOrchestrator, "_compute_1040_via_workbook",
+                        side_effect=_never_the_workbook):
+                    with self.assertRaisesRegex(NotImplementedError,
+                                                "Earned Income Credit"):
+                        orch.compute_federal(scn)
 
 
-class RefuseHohPossibleEicUnitTests(unittest.TestCase):
-    def test_refuses_head_of_household(self):
+class RefuseEicWithChildCandidateUnitTests(unittest.TestCase):
+    def test_refuses_an_eic_possible_head_of_household(self):
         with self.assertRaises(NotImplementedError) as ctx:
-            refuse_hoh_possible_eic(_battery_config(2025, _HOH))
+            refuse_eic_with_child_candidate(
+                _scenario(2025, _HOH, _between_ceilings(2025)))
         self.assertIn("Pub. 596", str(ctx.exception))
 
-    def test_other_statuses_pass(self):
+    def test_head_of_household_above_its_ceiling_passes(self):
+        refuse_eic_with_child_candidate(
+            _scenario(2025, _HOH, _above_one_child_ceiling(2025)))
+
+    def test_childless_statuses_pass(self):
+        # No child candidate: the childless credit is computed, never refused.
         for status in (FilingStatus.SINGLE,
                        FilingStatus.MARRIED_FILING_JOINTLY):
             with self.subTest(status=status.value):
-                refuse_hoh_possible_eic(_battery_config(2025, status))
+                refuse_eic_with_child_candidate(
+                    _scenario(2025, status, _between_ceilings(2025)))
 
 
 class HohEicRefusalOrderTests(unittest.TestCase):

@@ -83,7 +83,8 @@ class TestBalanceDueSingle(unittest.TestCase):
             acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
-        results = {"total_tax": 15000, "total_payments": 12000, "wages": 90000}
+        results = {"total_tax": 15000, "federal_withheld": 12000,
+                   "total_payments": 12000, "wages": 90000}
         self._fields = _emit(self._orchestrator, scenario, results, self._tmp)
 
     def test_line4_estimated_total_tax(self):
@@ -148,7 +149,8 @@ class TestRefundCase(unittest.TestCase):
             acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
-        results = {"total_tax": 10000, "total_payments": 12500}
+        results = {"total_tax": 10000, "federal_withheld": 12500,
+                   "total_payments": 12500}
         self._fields = _emit(self._orchestrator, scenario, results, self._tmp)
 
     def test_line4_estimated_total_tax(self):
@@ -204,7 +206,8 @@ class TestMFJSpouseSSN(unittest.TestCase):
             acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
-        results = {"total_tax": 20000, "total_payments": 18000}
+        results = {"total_tax": 20000, "federal_withheld": 18000,
+                   "total_payments": 18000}
         self._fields = _emit(self._orchestrator, scenario, results, self._tmp)
 
     def test_spouse_ssn_populated(self):
@@ -256,7 +259,8 @@ class TestSingleFilerSpouseFieldsBlank(unittest.TestCase):
             acknowledges_no_paid_family_leave_benefits=False,
         )
         scenario = Scenario(config=config)
-        results = {"total_tax": 5000, "total_payments": 4000}
+        results = {"total_tax": 5000, "federal_withheld": 4000,
+                   "total_payments": 4000}
         self._fields = _emit(self._orchestrator, scenario, results, self._tmp)
 
     def test_spouse_ssn_absent_or_empty(self):

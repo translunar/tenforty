@@ -74,6 +74,39 @@ class F1040ComputeTests(unittest.TestCase):
         self.assertEqual(result["f8959_tax_total"], 123.0)
 
 
+class EstimatedTaxPaymentsHarvestNormalizationTests(unittest.TestCase):
+    """Form 1040 line 26 (`estimated_tax_payments`), harvested on the
+    workbook path since ruling R-S4-3, is the SAME cell its input writes —
+    and the flattener writes that input only when it is nonzero. So a return
+    with no estimated payments harvests a BLANK cell, which the engine reads
+    as None: present-as-None defeats every consumer's `.get(key, default)`
+    (the 1040-X line-13 TypeError the 624d408 oracle run found). Blank
+    provably means zero here, so f1040.compute normalizes it, matching the
+    native spine's always-numeric value."""
+
+    def test_none_normalizes_to_zero_and_a_value_passes_through(self):
+        self.assertEqual(compute(raw_1040={"estimated_tax_payments": None},
+                                 upstream={})["estimated_tax_payments"], 0)
+        self.assertEqual(compute(raw_1040={"estimated_tax_payments": 8000.0},
+                                 upstream={})["estimated_tax_payments"],
+                         8000.0)
+
+    def test_the_premise_blank_means_zero(self):
+        # The normalization is safe only while the flattener leaves the
+        # input cell blank exactly when there are no estimated payments.
+        import dataclasses
+        from tenforty.oracle.flattener import flatten_scenario
+        from tests.helpers import make_simple_scenario
+        s = make_simple_scenario()
+        self.assertNotIn("estimated_tax_payments", flatten_scenario(
+            dataclasses.replace(s, config=dataclasses.replace(
+                s.config, estimated_tax_payments=0.0))))
+        self.assertEqual(flatten_scenario(dataclasses.replace(
+            s, config=dataclasses.replace(
+                s.config, estimated_tax_payments=500.0)))[
+                    "estimated_tax_payments"], 500.0)
+
+
 class Schedule2TaxHarvestNormalizationTests(unittest.TestCase):
     """1040 line 17 (`schedule2_tax`) prints "0", not blank, in all 5 years.
 

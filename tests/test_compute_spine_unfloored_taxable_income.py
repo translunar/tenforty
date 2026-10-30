@@ -25,6 +25,7 @@ from tenforty.forms.f1040_spine import compute_spine
 from tenforty.params.federal import load as load_federal_params
 
 from tests.helpers import make_simple_scenario
+from tests.fixtures.eic_battery import favorable_eligibility
 
 
 # Synthetic wages chosen to sit well below the single-filer standard deduction,
@@ -45,7 +46,11 @@ def _low_income_scenario():
         medicare_wages=_LOW_WAGES,
         medicare_tax_withheld=0,
     )
-    return dataclasses.replace(scenario, w2s=[w2])
+    # Low wages make the childless earned income credit possible, so the
+    # eligibility facts are stated (favorable); the credit is not this
+    # test's subject.
+    return dataclasses.replace(scenario, w2s=[w2],
+                               eic_eligibility=favorable_eligibility())
 
 
 class UnflooredTaxableIncomeBeforeQBITests(unittest.TestCase):

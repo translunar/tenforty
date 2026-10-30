@@ -528,13 +528,15 @@ class ReadersUseTheReturnsAnswerTests(unittest.TestCase):
                 return seen[-1]
             return wrapper
 
-        orchestrator = self._orchestrator()
+        # The AGI estimate lives in eic_possible (moved verbatim out of the
+        # routing gate, ruling R-S6-2); routing short-circuits before it on a
+        # declared EIC cell, so the estimate is exercised directly.
         with mock.patch.object(
                 module, "_rental_net_income", spy(module._rental_net_income)):
-            orchestrator._scenario_in_spine_scope(self._rental_scenario())
+            module.eic_possible(self._rental_scenario())
         with mock.patch.object(
                 sch_c, "net_profit_estimate", spy(sch_c.net_profit_estimate)):
-            orchestrator._scenario_in_spine_scope(self._business_scenario())
+            module.eic_possible(self._business_scenario())
         self.assertEqual(seen, [-1_050.0, -1_050.0])
 
     def test_workbook_flattener(self):

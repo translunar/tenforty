@@ -28,17 +28,19 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import scope_out_attestation_defaults
+from tests.helpers import (
+    scope_out_attestation_defaults, transitional_eic_year)
 
 REPO_ROOT = Path(__file__).parent.parent
 
 
-def _scenario(wages: float, withheld: float, form_1095a=None) -> Scenario:
+def _scenario(wages: float, withheld: float, form_1095a=None,
+              year: int = 2025) -> Scenario:
     """Single-filer W-2-only scenario. AGI == wages (no adjustments), so the
     8962 MAGI the orchestrator derives is wages + block.tax_exempt_interest."""
     return Scenario(
         config=TaxReturnConfig(
-            year=2025,
+            year=year,
             filing_status="single",
             birthdate="1990-06-15",
             state="TX",
@@ -122,8 +124,12 @@ class F8962SpineWiringTests(unittest.TestCase):
         # Wages below the EIC ceiling → out of native-spine scope. With a
         # 1095-A present, silent workbook fallback would drop the PTC, so the
         # orchestrator must refuse rather than route to the (8962-less) workbook.
+        # The newest still-transitional cell (ruling R-S8-6): only a cell
+        # whose childless credit is not native yet still routes out
+        # (R-S6-1); a declared cell computes natively (NativeEicWithPtcTests).
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
-        scenario = _scenario(10_000, 500, block)
+        scenario = _scenario(10_000, 500, block,
+                             year=transitional_eic_year("single"))
         with self.assertRaisesRegex(
             NotImplementedError, "out of native-1040-spine scope",
         ):
@@ -177,9 +183,12 @@ class CarveOutMessageTests(unittest.TestCase):
         )
 
     def _message(self):
+        # The newest still-transitional cell (R-S8-6); see test_c above.
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
         with self.assertRaises(NotImplementedError) as ctx:
-            self.orch.compute_federal(_scenario(10_000, 500, block))
+            self.orch.compute_federal(_scenario(
+                10_000, 500, block,
+                year=transitional_eic_year("single")))
         return str(ctx.exception)
 
     def test_message_names_the_declared_native_grid(self):
@@ -191,6 +200,68 @@ class CarveOutMessageTests(unittest.TestCase):
         message = self._message()
         self.assertNotIn("does not compute Form 8962", message)
         self.assertNotIn("NO Form 8962", message)
+
+
+class NativeEicWithPtcTests(unittest.TestCase):
+    """Ruling R-S6-2 (G3, an EITC release item): on a DECLARED childless-EIC
+    cell (2025 single) an EIC-possible return carrying a Form 1095-A no
+    longer refuses as out of scope — it computes natively, credit and Form
+    8962 together. The eligibility block is required (the credit is
+    positive), and the 1040 payments-footing guard (R-P1) still refuses its
+    emit while the net PTC is nonzero; a zero net PTC emits and foots."""
+
+    def setUp(self):
+        from unittest import mock
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.orch = ReturnOrchestrator(
+            spreadsheets_dir=REPO_ROOT / "spreadsheets",
+            work_dir=Path(self._tmp.name) / "work")
+        patcher = mock.patch.object(
+            ReturnOrchestrator, "_compute_1040_via_workbook",
+            side_effect=AssertionError("workbook path reached"))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _scenario(self, aptc, eligibility=True):
+        from tests.fixtures.eic_battery import favorable_eligibility
+        from tests.fixtures.spine_battery import _battery_config, _w2
+        return Scenario(
+            config=_battery_config(2025),
+            w2s=[_w2(2025, "Synthetic Employer P", 10_000.0, 500.0)],
+            form_1095a=Form1095A(months=_months(
+                premium=500, slcsp=500, aptc=aptc)),
+            eic_eligibility=favorable_eligibility() if eligibility else None)
+
+    def test_computes_natively_with_the_credit_and_form_8962(self):
+        results = self.orch.compute_federal(self._scenario(aptc=0))
+        self.assertGreater(results["eic"], 0)
+        self.assertGreater(results["f8962_net_ptc"], 0)
+
+    def test_the_eligibility_block_is_required(self):
+        with self.assertRaisesRegex(NotImplementedError,
+                                    "^eic_eligibility_missing"):
+            self.orch.compute_federal(self._scenario(aptc=0, eligibility=False))
+
+    def test_a_nonzero_net_ptc_still_refuses_at_emit(self):
+        scenario = self._scenario(aptc=0)
+        results = self.orch.compute_federal(scenario)
+        # Unacknowledged, the net-PTC refusal names it first; acknowledged,
+        # the payments-footing guard would. Either way: no emit.
+        with self.assertRaisesRegex(
+                NotImplementedError,
+                r"(?s)net premium tax credit.*line 33.*not foot"):
+            self.orch.emit_pdfs(scenario, results, Path(self._tmp.name) / "o")
+
+    def test_a_zero_net_ptc_emits_and_foots(self):
+        # APTC above the allowed credit: a repayment, net PTC 0.
+        scenario = self._scenario(aptc=900)
+        results = self.orch.compute_federal(scenario)
+        self.assertEqual(results["f8962_net_ptc"], 0)
+        self.assertGreater(results["eic"], 0)
+        emitted = self.orch.emit_pdfs(scenario, results,
+                                      Path(self._tmp.name) / "z")
+        self.assertIn("1040", emitted)
 
 
 if __name__ == "__main__":

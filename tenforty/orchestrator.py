@@ -63,7 +63,9 @@ from tenforty.verification.record import (
 from tenforty.params import ca_scorp
 from tenforty.params import california as params_california
 from tenforty.oracle.flattener import flatten_scenario
-from tenforty.mappings.f1040 import F1040
+from tenforty.mappings.f1040 import (
+    EIC_FORM_4797_NO_KEY, EIC_NO_CREDIT_DECLARED_KEY, EIC_Q4_NO_CELL,
+    EIC_Q4_NO_KEY, F1040, eic_form_4797_no_answer, eic_q4_no_answer)
 from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_4868 import Pdf4868
 from tenforty.mappings.pdf_sch_b import PdfSchB
@@ -662,7 +664,11 @@ def _net_ptc_without_schedule_3(scenario: Scenario,
     """The Form 1040 refusal for a net premium tax credit (Juno's ruling):
     line 33 includes it, but it reaches line 33 through Schedule 3 and
     lines 31/32, which tenforty does not produce. None when there is no net
-    credit or the scenario acknowledges the gap."""
+    credit or the scenario states the acknowledgment — which no longer lets
+    the return emit: the payments-footing guard (_line_32_unfooted, ruling
+    R-P1) refuses it instead. The key stays accepted (removing it is a
+    schema break, queued for a 0.3.0 decision); its message must not
+    advertise it (ruling R-S4-2)."""
     net_ptc = results.get("f8962_net_ptc") or 0
     if net_ptc <= 0 or scenario.acknowledges_schedule_3_not_produced is True:
         return None
@@ -673,11 +679,11 @@ def _net_ptc_without_schedule_3(scenario: Scenario,
         "line 32), and tenforty does not produce Schedule 3: lines 31 and "
         "32 would print blank, the page will not foot (line 33 would not "
         "equal lines 25d + 26 + 32 as printed), and the Schedule 3 that "
-        "line 31 references is not attached. Schedule 3 support is queued "
-        "for the end of the harness program. To emit anyway FOR DRAFT OR "
-        "REVIEW USE, with this gap, set the top-level scenario key "
-        "`acknowledges_schedule_3_not_produced: true`; do not file the "
-        "result as printed.")
+        "line 31 references is not attached. A return with a net premium "
+        "tax credit cannot be emitted until tenforty produces Schedule 3 "
+        "and carries Form 8962 through to line 31 (that port is in "
+        "progress). No acknowledgment bypasses the printed arithmetic: the "
+        "1040 must foot as printed.")
 
 
 # The Form 1040 line-32 components ("total other payments and refundable
@@ -690,28 +696,59 @@ _LINE_32_COMPONENT_KEYS = (
 
 
 def _line_32_unfooted(year: int, results: dict) -> str | None:
-    """The Form 1040 refusal for a harvested line 32 that the printed
-    line-32 components do not add up to: the workbook summed in a payment
-    or refundable credit tenforty cannot print, so the page would not foot.
-    None when line 32 was not harvested (the native path) or it foots."""
-    line_32 = results.get("total_other_payments")
-    if line_32 is None:
-        return None
+    """The Form 1040 payments-footing refusal: ONE implementation, both
+    paths, no acknowledgment bypass (ruling R-P1). Two checks, on the
+    amounts as they print (a key the year's PDF does not map, or a None,
+    prints nothing and counts 0):
+
+    1. line 32 equals the line-32 components tenforty prints — else the
+       computation summed in a payment or refundable credit (lines 27-31)
+       that tenforty cannot print;
+    2. line 33 equals 25d + 26 + 32 — else line 33 carries an amount no
+       printed line holds (on the native path, a net premium tax credit,
+       which is line-31 content behind Schedule 3).
+
+    None when the page foots."""
     mapped = Pdf1040.get_mapping(year)
-    printed = {key: irs_round(results[key]) for key in _LINE_32_COMPONENT_KEYS
-               if key in mapped and results.get(key) is not None}
-    if irs_round(line_32) == sum(printed.values()):
+
+    def printed(key: str) -> int:
+        value = results.get(key)
+        return irs_round(value) if key in mapped and value is not None else 0
+
+    line_32 = results.get("total_other_payments")
+    components = {key: irs_round(results[key]) for key in _LINE_32_COMPONENT_KEYS
+                  if key in mapped and results.get(key) is not None}
+    if line_32 is not None and irs_round(line_32) != sum(components.values()):
+        shown = ", ".join(f"{key} {value}" for key, value in components.items())
+        return (
+            f"Form 1040 line 32 (total other payments and refundable credits) "
+            f"is {irs_round(line_32)} as computed, but the line-32 components "
+            f"tenforty prints add up to {sum(components.values())} "
+            f"({shown or 'none'}). The computation included a payment or "
+            "refundable credit (Form 1040 lines 27-31) that tenforty cannot "
+            "print, so the page would not foot (line 32 would not equal the "
+            "lines above it as printed). tenforty does not yet support this "
+            "return.")
+    line_33 = results.get("total_payments")
+    if line_33 is None:
         return None
-    shown = ", ".join(f"{key} {value}" for key, value in printed.items())
+    parts = (printed("federal_withheld"), printed("estimated_tax_payments"),
+             printed("total_other_payments"))
+    if irs_round(line_33) == sum(parts):
+        return None
+    net_ptc = results.get("f8962_net_ptc") or 0
+    cause = (
+        f" The difference includes a net premium tax credit of {net_ptc} "
+        "(Form 8962 line 26), which reaches line 33 through Schedule 3 line 9 "
+        "and Form 1040 line 31; tenforty does not produce Schedule 3, so "
+        "line 31 cannot print. The Schedule 3 / Form 8962 emit leg is the "
+        "path forward; until it lands this return is refused, with or "
+        "without `acknowledges_schedule_3_not_produced`."
+        if net_ptc else "")
     return (
-        f"Form 1040 line 32 (total other payments and refundable credits) "
-        f"is {irs_round(line_32)} as the workbook computed it, but the "
-        f"line-32 components tenforty prints add up to "
-        f"{sum(printed.values())} ({shown or 'none'}). The workbook included "
-        "a payment or refundable credit (Form 1040 lines 27-31) that "
-        "tenforty cannot print, so the page would not foot (line 32 would "
-        "not equal the lines above it as printed). tenforty does not yet "
-        "support this return.")
+        f"Form 1040 line 33 (total payments) is {irs_round(line_33)}, but "
+        f"lines 25d + 26 + 32 as printed are {parts[0]} + {parts[1]} + "
+        f"{parts[2]} = {sum(parts)}: the page would not foot.{cause}")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1057,20 +1094,112 @@ def eic_gate_child_count(config: TaxReturnConfig) -> int:
     return len(config.dependents) + (1 if hoh else 0)
 
 
-def refuse_hoh_possible_eic(config: TaxReturnConfig) -> None:
-    """FAIL-CLOSED: a possibly EIC-eligible head-of-household return (ruling
-    Q2: refuse, never reroute).
+def eic_possible(effective_scenario: Scenario) -> bool:
+    """The CHEAP published-threshold EIC test — it never computes the
+    credit. True when the return has positive earned income (W-2 wages plus
+    the Schedule C estimate) and an AGI estimate below the year's EIC income
+    ceiling for its child-candidate count (``eic_gate_child_count``). The
+    ceiling is the MFJ (largest) column and the estimate errs high, as the
+    comments below explain. Moved verbatim out of the routing gate
+    (childless-EITC spec §7.1): it now feeds the pre-split child-candidate
+    refusal and the transitional routing clause."""
+    from tenforty.params.federal import load as load_params
+    cfg = effective_scenario.config
+    earned_income = sum(w.wages for w in effective_scenario.w2s)
+    # Earned income for the EIC gate includes Schedule C net profit (the
+    # same non-raising estimates the AGI estimate below uses): a filer
+    # with no W-2 but a small business is the EIC's core population.
+    sch_c_profit = 0.0
+    if effective_scenario.schedule_c_businesses:
+        sch_c_profit = sum(
+            form_sch_c.net_profit_estimate(
+                biz, cfg.year,
+                mid_quarter=mid_quarter_applies(effective_scenario))
+            for biz in effective_scenario.schedule_c_businesses)
+    if earned_income + sch_c_profit <= 0:
+        # No earned income → no EIC possible.
+        return False
 
-    Called only once the gate has ruled the return out of native-spine
-    scope on a DECLARED (year, head_of_household), where out of scope can
-    only mean EIC-possible (pinned by HohEicGateTests). Neither path
-    computes the EIC with a qualifying child: the native spine performs no
-    EIC math, and the workbook path receives no child count, so it would
-    figure the credit as if the filer had no qualifying child.
-    """
+    params = load_params(cfg.year)
+    ceilings = params.eic_income_ceiling or {}
+    if not ceilings:
+        # No ceiling data → cannot cheaply rule EIC in or out; as before the
+        # move, the return is treated as not EIC-possible.
+        return False
+
+    # Cheap AGI estimate for the EIC-ceiling gate — include ALL scenario
+    # income components, not wages + interest + ordinary dividends only. A
+    # filer whose income is K-1 / rental / capital-gain rather than wages is
+    # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
+    # native spine; the old wages-only estimate mis-routed such a filer to
+    # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
+    # Every component here EXCEPT Schedule C (see its own note below) is
+    # clamped at 0, so this estimate only ever RISES
+    # vs the old wages-only value: it can route MORE scenarios native, never
+    # fewer, and leaves a genuinely low-income filer (no other income)
+    # unchanged. Overestimating is safe for the gate — it rules EIC OUT
+    # (routes native) only when the estimate CLEARS the ceiling; a possibly-
+    # eligible low-income filer stays below it and still routes to the
+    # workbook, which performs the real EIC math. (Adjustments are ignored,
+    # which can only make the estimate higher than true AGI — same safe
+    # direction.)
+    mid_quarter = mid_quarter_applies(effective_scenario)
+    agi_estimate = (
+        earned_income
+        + sum(f.interest for f in effective_scenario.form1099_int)
+        + sum(f.ordinary_dividends + f.capital_gain_distributions
+              for f in effective_scenario.form1099_div)
+        + sum(g.unemployment_compensation + g.state_tax_refund
+              + g.rtaa_payments + g.taxable_grants
+              + g.agriculture_payments + g.market_gain
+              for g in effective_scenario.form1099_g)
+        + sum(_k1_positive_income(k)
+              for k in effective_scenario.schedule_k1s)
+        + sum(max(0.0, _rental_net_income(
+                  r, cfg.year, mid_quarter=mid_quarter))
+              for r in effective_scenario.rental_properties)
+        + max(0.0, sum(b.proceeds - b.cost_basis
+                       for b in effective_scenario.form1099_b))
+        # Schedule C net profit OR LOSS, netted across businesses and NOT
+        # clamped. Every other component above is clamped at 0 (an
+        # overestimate), but a Schedule C loss is now a real, allowed
+        # reduction of AGI: clamping it would let a filer whose WAGES
+        # clear the ceiling but whose wages-less-loss do not route to the
+        # native spine, which performs no EIC math. Counting the loss
+        # sends that possibly-eligible filer out of spine scope, where
+        # the workbook path refuses Schedule C outright (fail-closed).
+        # This estimate runs BEFORE sch_c.compute's refusals, so it uses
+        # the non-raising estimate (summed once above, for earned income).
+        + sch_c_profit
+    )
+    num_children = min(eic_gate_child_count(cfg), max(ceilings))
+    ceiling = ceilings.get(num_children, max(ceilings.values()))
+    # Below the ceiling → possibly EIC-eligible.
+    return agi_estimate < ceiling
+
+
+def refuse_eic_with_child_candidate(scenario: Scenario) -> None:
+    """FAIL-CLOSED, pre-split and unconditional (childless-EITC spec §7.1;
+    replaces refuse_hoh_possible_eic): an EIC-possible return with a
+    qualifying-child CANDIDATE refuses. tenforty computes only the childless
+    credit, so such a return must never compute — natively it would get the
+    childless credit (zero for head of household, which the childless
+    credit excludes), a silent drop of a credit the filer may be owed
+    (spec §7.2's hazard box; HohEicEquivalenceTests pin this).
+
+    Candidate count = ``eic_gate_child_count`` (claimed dependents, plus one
+    for head of household). Called after ``refuse_dependents`` in the
+    compute core and the emit chokepoint, so a dependent-bearing return
+    names its real cause; today only head of household reaches this."""
+    config = scenario.config
+    if eic_gate_child_count(config) == 0 or not eic_possible(scenario):
+        return
     if (parse_filing_status(config.filing_status)
             is not FilingStatus.HEAD_OF_HOUSEHOLD):
-        return
+        raise NotImplementedError(
+            "This return may be eligible for the Earned Income Credit with a "
+            "qualifying child, which tenforty does not compute. File this "
+            "return by hand.")
     raise NotImplementedError(
         "This head_of_household return may be eligible for the Earned Income "
         "Credit with a qualifying child: its earned income and estimated AGI "
@@ -1084,6 +1213,158 @@ def refuse_hoh_possible_eic(config: TaxReturnConfig) -> None:
         "Pub. 596, Rule 9). There is no acknowledge-and-proceed: the return "
         "would miss a refundable credit you may be owed. File this return by "
         "hand.")
+
+
+_EIC_FACT_LABELS = {
+    "ssn_valid_for_employment": "has no SSN valid for the EIC",
+    "nonresident_alien_any_part_of_year":
+        "was a nonresident alien for part of the year",
+    "main_home_in_us_more_than_half_year":
+        "did not have a main home in the United States for more than half "
+        "the year",
+    "could_be_qualifying_child_of_another":
+        "could be the qualifying child of another person",
+    "can_be_claimed_as_dependent":
+        "can be claimed as a dependent on someone else's return",
+}
+_EIC_FAVORABLE = {
+    "ssn_valid_for_employment": True,
+    "nonresident_alien_any_part_of_year": False,
+    "main_home_in_us_more_than_half_year": True,
+    "could_be_qualifying_child_of_another": False,
+    "can_be_claimed_as_dependent": False,
+}
+
+
+# Net SE earnings factor (IRC §1402(a)(12): 100% less half of 15.3%),
+# constant 2021-2025 (ruling R-S8-17).
+_SE_NET_EARNINGS_FACTOR = 0.9235
+
+
+def refuse_caleitc_not_modeled(scenario: Scenario) -> None:
+    """FAIL-CLOSED (spec §12.11; rulings R-S8-12, R-S8-14, R-S8-17):
+    tenforty does not compute Form 540 line 75 (CalEITC) or line 76 (YCTC),
+    so a CA return that could claim either refuses rather than file with
+    the credit silently omitted. The FTB 3514 earned-income definition is
+    not modeled, so the reading is the most inclusive one: the W-2 term is
+    the lesser of total wages and the CA box-16 wages — the CA reading only
+    when some W-2 is attributed to CA — plus Schedule C profit and
+    partnership SE earnings, a positive amount as net SE earnings (x
+    0.9235), a loss in full: both lean toward refusing. Refuse when 0 <
+    earned <= the year's ceiling (inclusive), or earned <= 0 with any
+    dependent (YCTC needs no earned income); earned <= 0 with no dependent
+    is ineligible for both."""
+    from tenforty.params import california as ca_params
+    cfg = scenario.config
+    ceiling = ca_params.load(cfg.year).caleitc_max_earned_income
+    wages = sum(w.wages for w in scenario.w2s)
+    attributed = [w for w in scenario.w2s if w.state == "CA"]
+    if attributed:
+        wages = min(wages, sum(w.state_wages for w in attributed))
+    amounts = [form_sch_c.net_profit_estimate(
+        biz, cfg.year, mid_quarter=mid_quarter_applies(scenario))
+        for biz in scenario.schedule_c_businesses]
+    amounts += [k1.partnership_self_employment_earnings
+                for k1 in scenario.schedule_k1s]
+    earned = wages + sum(a * _SE_NET_EARNINGS_FACTOR if a > 0 else a
+                         for a in amounts)
+    if 0 < earned <= ceiling or (earned <= 0 and cfg.dependents):
+        raise NotImplementedError(
+            f"caleitc_not_modeled: this California return may qualify for "
+            f"the California Earned Income Tax Credit or the Young Child Tax "
+            f"Credit (FTB 3514; Form 540 line 75 and line 76), which tenforty "
+            f"does not compute: its earned income (${earned:,.0f}) is at or "
+            f"under the {cfg.year} CalEITC maximum of ${ceiling:,}"
+            + (" with a dependent" if earned <= 0 else "")
+            + ". Refusing rather than file the return with a credit the "
+            f"filer may be owed left off.")
+
+
+class WorkbookEicInconsistent(NotImplementedError):
+    """Ruling R-S7-10: the recalculated workbook declares no earned income
+    credit (NoEICredit TRUE) yet its line 27 carries one. `harvested` is the
+    engine's output for the refused return, kept for diagnosis."""
+
+    def __init__(self, message: str, harvested: dict):
+        super().__init__(message)
+        self.harvested = harvested
+
+
+def refuse_inconsistent_workbook_eic(raw: dict) -> None:
+    """FAIL-CLOSED (rulings R-S7-10, R-S7-10a). In every workbook year the
+    EIC sheet's Step 2 stop (investment income over the limit) is
+    display-only: NoEICredit turns TRUE but line 27 never reads it, so the
+    table credit is printed anyway. When line 27 is positive, the only
+    harvested verdict that lets the credit through is exactly bool False:
+    TRUE refuses (the sheet contradicts itself), and so does anything else
+    — 1, None, a missing key — because a verdict that cannot be read is not
+    a "credit allowed". With no credit the verdict is irrelevant. Pops the
+    verdict from `raw` (it never reaches the results)."""
+    declared = raw.pop(EIC_NO_CREDIT_DECLARED_KEY, None)
+    eic = round(raw.get("eic") or 0)
+    if eic <= 0 or declared is False:
+        return
+    harvested = {**raw, EIC_NO_CREDIT_DECLARED_KEY: declared}
+    if declared is True:
+        raise WorkbookEicInconsistent(
+            f"workbook_eic_inconsistent: the workbook declares that this "
+            f"return cannot take the earned income credit (its NoEICredit "
+            f"verdict is TRUE), yet its line 27 carries ${eic}. The "
+            f"workbook's line 27 does not honor that verdict, so this return "
+            f"is refused rather than filed with a credit the workbook itself "
+            f"disallows.", harvested)
+    raise WorkbookEicInconsistent(
+        f"workbook_eic_inconsistent: the workbook's line 27 carries ${eic} "
+        f"of earned income credit, but its NoEICredit verdict could not be "
+        f"read as TRUE or FALSE (harvested: {declared!r}), so whether the "
+        f"workbook itself allows that credit is unknown and this return is "
+        f"refused.", harvested)
+
+
+def refuse_workbook_eic_facts(scenario: Scenario) -> None:
+    """FAIL-CLOSED (ruling R-S7-2): an `eic_eligibility` block the workbook
+    path cannot honor. Production never writes the workbook's EIC answers;
+    with every answer input blank its derived answers are exactly the
+    all-favorable facts (pinned per year by the formula-text pins in
+    tests/test_eic_workbook_health.py). So the workbook is right for an
+    all-favorable block and silently wrong for any other: refuse a stated
+    unfavorable fact, Form 8862 applying, or a block on a filing status
+    that is not single / married filing jointly (spec §10.1). The 2025
+    joint wording skips the qualifying-child-of-another and claimable-
+    dependent questions on a joint return, so those facts are not checked
+    there, as on the native path."""
+    block = scenario.eic_eligibility
+    if block is None:
+        return
+    status = parse_filing_status(scenario.config.filing_status)
+    joint = status is FilingStatus.MARRIED_FILING_JOINTLY
+
+    def refuse(why: str) -> None:
+        raise NotImplementedError(
+            f"workbook_eic_fact_not_modeled: this return is computed on the "
+            f"workbook path, where tenforty does not write the earned income "
+            f"credit's eligibility answers — the workbook assumes every fact "
+            f"is favorable. {why} So this return cannot be computed: the "
+            f"workbook would ignore that and could grant a credit the filer "
+            f"is not allowed.")
+    if status not in (FilingStatus.SINGLE, FilingStatus.MARRIED_FILING_JOINTLY):
+        refuse(f"The scenario states `eic_eligibility` facts on a "
+               f"{status.value} return, which tenforty does not compute the "
+               f"earned income credit for.")
+    if block.prior_eic_disallowance_requires_8862:
+        refuse("The scenario states prior_eic_disallowance_requires_8862: "
+               "true (Form 8862 is required to claim the credit).")
+    people = [("taxpayer", block.taxpayer)] + (
+        [("spouse", block.spouse)] if joint else [])
+    for who, person in people:
+        for fact, favorable in _EIC_FAVORABLE.items():
+            if joint and fact in ("could_be_qualifying_child_of_another",
+                                  "can_be_claimed_as_dependent"):
+                continue
+            if getattr(person, fact) != favorable:
+                refuse(f"The scenario states that the {who} "
+                       f"{_EIC_FACT_LABELS[fact]} ({fact}: "
+                       f"{getattr(person, fact)}).")
 
 
 class ReturnOrchestrator:
@@ -1145,90 +1426,26 @@ class ReturnOrchestrator:
         (which performs no EIC math). The workbook then computes any real EIC.
         """
         from tenforty import years as year_manifest
-        from tenforty.params.federal import load as load_params
 
         # (year × status) membership in the native-spine support grid; an
         # undeclared status is out of scope exactly as non-single was before.
         # parse_filing_status: config.filing_status may have been assigned a
         # raw value string after construction (it accepts enum or string).
-        if not year_manifest.native_spine_supports(
-                effective_scenario.config.year,
-                parse_filing_status(
-                    effective_scenario.config.filing_status).value):
+        status = parse_filing_status(
+            effective_scenario.config.filing_status).value
+        year = effective_scenario.config.year
+        if not year_manifest.native_spine_supports(year, status):
             return False
+        # TRANSITIONAL CLAUSE (ruling R-S6-1): an EIC-possible return on a
+        # cell whose childless credit is not native yet keeps the workbook
+        # route, which computes and prints the credit. Without it the native
+        # spine would compute such a return with no credit at all. It
+        # retires cell by cell as years.NATIVE_EIC_STATUSES grows, and is
+        # deleted when that grid covers every SINGLE/MFJ spine cell
+        # (TransitionalRoutingEndpointTests goes red then).
+        return (year_manifest.native_eic_supports(year, status)
+                or not eic_possible(effective_scenario))
 
-        cfg = effective_scenario.config
-        earned_income = sum(w.wages for w in effective_scenario.w2s)
-        # Earned income for the EIC gate includes Schedule C net profit (the
-        # same non-raising estimates the AGI estimate below uses): a filer
-        # with no W-2 but a small business is the EIC's core population.
-        sch_c_profit = 0.0
-        if effective_scenario.schedule_c_businesses:
-            sch_c_profit = sum(
-                form_sch_c.net_profit_estimate(
-                    biz, cfg.year,
-                    mid_quarter=mid_quarter_applies(effective_scenario))
-                for biz in effective_scenario.schedule_c_businesses)
-        if earned_income + sch_c_profit <= 0:
-            # No earned income → no EIC possible; nothing else here takes a
-            # declared (year, status) out of spine scope.
-            return True
-
-        params = load_params(cfg.year)
-        ceilings = params.eic_income_ceiling or {}
-        if not ceilings:
-            # No ceiling data → cannot cheaply rule EIC in or out; be safe.
-            return True
-
-        # Cheap AGI estimate for the EIC-ceiling gate — include ALL scenario
-        # income components, not wages + interest + ordinary dividends only. A
-        # filer whose income is K-1 / rental / capital-gain rather than wages is
-        # still high-AGI and EIC-INELIGIBLE, and must stay on the validated
-        # native spine; the old wages-only estimate mis-routed such a filer to
-        # the workbook (real AGI 133k read as 15k during the 2022 reconcile).
-        # Every component here EXCEPT Schedule C (see its own note below) is
-        # clamped at 0, so this estimate only ever RISES
-        # vs the old wages-only value: it can route MORE scenarios native, never
-        # fewer, and leaves a genuinely low-income filer (no other income)
-        # unchanged. Overestimating is safe for the gate — it rules EIC OUT
-        # (routes native) only when the estimate CLEARS the ceiling; a possibly-
-        # eligible low-income filer stays below it and still routes to the
-        # workbook, which performs the real EIC math. (Adjustments are ignored,
-        # which can only make the estimate higher than true AGI — same safe
-        # direction.)
-        mid_quarter = mid_quarter_applies(effective_scenario)
-        agi_estimate = (
-            earned_income
-            + sum(f.interest for f in effective_scenario.form1099_int)
-            + sum(f.ordinary_dividends + f.capital_gain_distributions
-                  for f in effective_scenario.form1099_div)
-            + sum(g.unemployment_compensation + g.state_tax_refund
-                  + g.rtaa_payments + g.taxable_grants
-                  + g.agriculture_payments + g.market_gain
-                  for g in effective_scenario.form1099_g)
-            + sum(_k1_positive_income(k)
-                  for k in effective_scenario.schedule_k1s)
-            + sum(max(0.0, _rental_net_income(
-                      r, cfg.year, mid_quarter=mid_quarter))
-                  for r in effective_scenario.rental_properties)
-            + max(0.0, sum(b.proceeds - b.cost_basis
-                           for b in effective_scenario.form1099_b))
-            # Schedule C net profit OR LOSS, netted across businesses and NOT
-            # clamped. Every other component above is clamped at 0 (an
-            # overestimate), but a Schedule C loss is now a real, allowed
-            # reduction of AGI: clamping it would let a filer whose WAGES
-            # clear the ceiling but whose wages-less-loss do not route to the
-            # native spine, which performs no EIC math. Counting the loss
-            # sends that possibly-eligible filer out of spine scope, where
-            # the workbook path refuses Schedule C outright (fail-closed).
-            # This estimate runs BEFORE sch_c.compute's refusals, so it uses
-            # the non-raising estimate (summed once above, for earned income).
-            + sch_c_profit
-        )
-        num_children = min(eic_gate_child_count(cfg), max(ceilings))
-        ceiling = ceilings.get(num_children, max(ceilings.values()))
-        # Below the ceiling → possibly EIC-eligible → out of spine scope.
-        return agi_estimate >= ceiling
 
     def _refuse_possible_excess_business_loss(self, scenario: Scenario) -> None:
         """FAIL-CLOSED GUARD -- IRC §461(l) excess business loss (Form 461).
@@ -1403,24 +1620,11 @@ class ReturnOrchestrator:
             # real cause (unknown tax-family size) on every path, including
             # statuses the spine grid does not declare yet.
             tax_family_size(effective_scenario.config)
-        # Every path, before the split: no compute path models dependents.
+        # Every path, before the split: no compute path models dependents,
+        # and none computes the EIC with a qualifying child (spec §7.1).
         refuse_dependents(effective_scenario)
+        refuse_eic_with_child_candidate(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
-            # An EIC-possible head-of-household return refuses here, before
-            # the 1095-A refusal below and before any workbook reroute. On a
-            # declared (year, status) out of scope means EIC-possible; an
-            # undeclared one keeps its routing (its cause is the grid).
-            # Deliberate (ruled, EIC lane design note; mirrors the
-            # never-misname logic): an undeclared (year, head_of_household)
-            # keeps grid-cause routing rather than this refusal, and the
-            # workbook would then figure the EIC as if childless. Any future
-            # year that adds head of household must declare it in the grid.
-            from tenforty import years as year_manifest
-            if year_manifest.native_spine_supports(
-                    effective_scenario.config.year,
-                    parse_filing_status(
-                        effective_scenario.config.filing_status).value):
-                refuse_hoh_possible_eic(effective_scenario.config)
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
                 # scenario whose filer class is outside the declared native
@@ -1835,6 +2039,11 @@ class ReturnOrchestrator:
         Remains reachable as a test-only oracle after the cutover task
         repoints _compute_1040_pipeline at the native spine.
         """
+        # The oracle-only EIC answer adapter (tests/eic_oracle_adapter.py,
+        # the sole writer of the workbook's EIC answers) marks the
+        # orchestrator; nothing in production sets the mark.
+        if not getattr(self, "_eic_answers_adapter", False):
+            refuse_workbook_eic_facts(effective_scenario)
         # FAIL-CLOSED GUARD — Schedule C / Schedule SE on the workbook path.
         # The native spine wires Schedule C (net profit) and Schedule SE
         # (self-employment tax) into the 1040. This XLSX workbook path (taken
@@ -1917,6 +2126,14 @@ class ReturnOrchestrator:
 
         flat_inputs = flatten_scenario(effective_scenario)
         _refuse_unmapped_w2_inputs(flat_inputs, year)
+        # EIC Step 2 Q3 (Form 4797): answered "No" whenever the sheet asks
+        # (ruling R-S7-6a; see mappings.f1040.EIC_FORM_4797_QUESTION).
+        flat_inputs[EIC_FORM_4797_NO_KEY] = eic_form_4797_no_answer(year)
+        # 2022's inverted Q4 default (catalog #10, ruling R-S8-11): restore
+        # the "No" derive (see mappings.f1040.EIC_Q4_NO_CELL). Runs after the
+        # R-S7-2 refusal at the top of this method.
+        if year in EIC_Q4_NO_CELL:
+            flat_inputs[EIC_Q4_NO_KEY] = eic_q4_no_answer(year)
         raw = self.engine.compute(
             spreadsheet_path=spreadsheet,
             mapping=F1040,
@@ -1924,6 +2141,7 @@ class ReturnOrchestrator:
             inputs=flat_inputs,
             work_dir=self.work_dir / "federal",
         )
+        refuse_inconsistent_workbook_eic(raw)
 
         # Supplement: the oracle's OUTPUTS only read W-2 withholding
         # (W2_FedTaxWH) into "federal_withheld". 1099-G box 4 withholding
@@ -2278,9 +2496,10 @@ class ReturnOrchestrator:
         # _compute_sch_c_and_se, before any PDF is rendered.
         from tenforty import years as year_manifest
         from tenforty.params.federal import load as load_params
-        # Dependents refuse before any form is prepared (the same refusal
-        # the compute core runs).
+        # Dependents and EIC child candidates refuse before any form is
+        # prepared (the same refusals the compute core runs).
         refuse_dependents(scenario)
+        refuse_eic_with_child_candidate(scenario)
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):
@@ -3359,6 +3578,7 @@ class ReturnOrchestrator:
         ``f540.compute`` raises NotImplementedError above the CA AGI phaseout
         threshold; that propagates unwrapped.
         """
+        refuse_caleitc_not_modeled(scenario)
         # Acknowledgment gate (spec §2.5): a gated + triggered Schedule CA
         # divergence must be applied or reviewed, or the return REFUSES. Run
         # BEFORE any form compute so a refusal never yields a partial result.

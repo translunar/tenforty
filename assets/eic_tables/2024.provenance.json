@@ -1,0 +1,7 @@
+{
+ "source": "pdfs/federal/2024/i1040tt.pdf",
+ "source_sha256": "fb82d748af260815c65e50591ec69cfb566e9c71ea7589abee06ac7de9a7be09",
+ "edition": "Instructions for Form 1040 Tax Tables (2024) Catalog Number 24327A",
+ "csv_sha256": "890050e8f3e0c07a902a529dba6e2dff242b8d56ce731243e64e1a91d5f0acb4",
+ "script": "scripts/ingest_eic_table.py"
+}

@@ -23,6 +23,13 @@ SOURCES: tuple[str, ...] = (
     "exemption, $446/dependent)",
     "2023 California Tax Rate Schedules (pdfs/california/2023/tax_rate_schedules.pdf), "
     "Schedules X, Y, Z (Personal Income Tax Booklet 2023 Page 75)",
+    "FTB CalEITC 'Eligibility and credit information' page "
+    "(https://www.ftb.ca.gov/file/personal/credits/caleitc/eligibility-and-credit-information.html, "
+    "retrieved via curl, last updated 04/16/2026), '2023 CalEITC credit' table, "
+    "column 'CalEITC max income' (caleitc_max_earned_income); and FTB 2023 "
+    "FTB 3514 booklet (https://www.ftb.ca.gov/forms/2023/2023-3514-booklet.html), "
+    "'B. Differences in California and Federal Law' / Step 1 (exclusive-bound wording "
+    "cross-check) and Earned Income Tax Credit Table last bracket.",
 )
 
 ATTESTED: dict[str, object] = {
@@ -153,6 +160,22 @@ ATTESTED: dict[str, object] = {
     # all filing statuses (the text is not status-keyed). REV: none on
     # p.13 or p.75.
     "tax_table_taxable_income_ceiling": 100000,
+    # caleitc_max_earned_income: maximum earned income with which a taxpayer can
+    # qualify for CalEITC. Attested by an air-gapped transcriber from FTB web pages
+    # (fetched via curl; WebFetch was 403) and the FTB 3514 instructions. The
+    # statute (R&TC 17052 / 17052.1) could NOT be read from leginfo (HTTP 403) and
+    # was seen only via the third-party mirror california.public.law, which shows
+    # a single (current) version and dropped the (m)/(n)/(o) table cells; no
+    # statute text is relied on for this value. Same limit for every filing
+    # status and number of children.
+    # CONFLICT/AMBIGUITY FLAG: the FTB eligibility page publishes two figures for
+    # 2023: column "CalEITC max income" and a separate column "YCTC/FYTC max
+    # income" (one dollar lower). The 3514 instructions state the YCTC/FYTC
+    # complete phase-out one dollar above the latter, consistent in effect, and
+    # state the CalEITC limit as "less than" the next whole dollar (exclusive
+    # bound, minus $1). Attested the CalEITC-column figure (the maximum earnings
+    # with which a taxpayer can qualify for CalEITC), not the YCTC/FYTC figure.
+    "caleitc_max_earned_income": 30950,
 }
 
 PENDING_TRANSCRIPTION: dict[str, str] = {

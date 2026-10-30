@@ -360,3 +360,75 @@ SOURCES: tuple[str, ...] = (
 
 PENDING_TRANSCRIPTION: dict[str, str] = {
 }
+
+
+# Childless earned income credit fields (zero qualifying children), attested
+# from an independent free-form transcription (see the SOURCES entries for
+# the EIC). Precedence: statute > 2023 Form 1040 instructions > Pub. 596 >
+# Rev. Proc. 2022-38; the transcription found no numeric conflict among them.
+ATTESTED.update({
+    # IRC section 32(b)(1) table, row "No qualifying children": credit
+    # percentage 7.65 (statutory, not indexed). Stored as a decimal fraction.
+    "eic_credit_pct": 0.0765,
+    # IRC section 32(b)(1) table, same row: phaseout percentage 7.65.
+    "eic_phaseout_pct": 0.0765,
+    # Rev. Proc. 2022-38 section 3.06(1), "Earned Income Amount", None column.
+    # Statute base ($4,220) is unindexed; the 2023 value is the Rev. Proc.'s.
+    "eic_earned_income_amount": 7840,
+    # Rev. Proc. 2022-38 section 3.06(1), "Maximum Amount of Credit", None
+    # column. NOTE: unrounded credit pct x earned income amount is 599.76; the
+    # Rev. Proc. and the EIC Table show the rounded whole-dollar figure.
+    "eic_max_credit": 600,
+    # Rev. Proc. 2022-38 section 3.06(1), "Threshold Phaseout Amount", None
+    # column: row "Single, Surviving Spouse, or Head of Household" and row
+    # "Married Filing Jointly" (includes the section 32(b)(2)(B) increase).
+    "eic_phaseout_threshold": {
+        "single": 9800,
+        "married_filing_jointly": 16370,
+    },
+    # Rev. Proc. 2022-38 section 3.06(1), "Completed Phaseout Amount", None
+    # column; same figures repeated in the 1040 instructions (Step 1 q.1,
+    # Step 5 q.3) and Pub. 596 Table 1.
+    "eic_completed_phaseout": {
+        "single": 17640,
+        "married_filing_jointly": 24210,
+    },
+    # Rev. Proc. 2022-38 section 3.06(2) (investment income not allowed above
+    # this amount); 1040 instructions Step 2 q.2; Pub. 596 Rule 6.
+    "eic_investment_income_limit": 11000,
+    # 2023 Form 1040 instructions EIC Table: first row of the 0-children
+    # columns is "At least 1 / But less than 50" (lower bound of first row).
+    "eic_min_earned_income": 1,
+    # IRC section 32(c)(1)(A)(ii)(II): "has attained age 25 but not attained
+    # age 65 before the close of the taxable year"; matches 1040 instructions
+    # Step 4 q.2 and Pub. 596 Rule 11. Section 32(n) (ARPA 2021-only) does not
+    # apply to 2023.
+    "eic_min_age": 25,
+    # Upper bound as the statute states it (the age that must NOT have been
+    # attained), same citation as eic_min_age.
+    "eic_max_age": 65,
+})
+
+SOURCES += (
+    "IRC section 32 (earned income credit), United States Code 2023 Edition, "
+    "govinfo.gov (USCODE-2023-title26, sec. 32) -- section 32(b)(1) for "
+    "eic_credit_pct, eic_phaseout_pct; section 32(c)(1)(A)(ii)(II) for "
+    "eic_min_age, eic_max_age; section 32(i)(1) base for the investment income "
+    "limit. Edition notes amendments only through Pub. L. 117-2 (2021); it is "
+    "the 2023 compilation, not a point-in-time 'as of Dec 31 2023' print, so "
+    "no later-2023 enactment could be independently excluded. Section 32(n) "
+    "(2021-only) is inapplicable to 2023.",
+    "IRS Rev. Proc. 2022-38 section 3.06(1)-(2), "
+    "https://www.irs.gov/pub/irs-drop/rp-22-38.pdf -- for eic_earned_income_"
+    "amount, eic_max_credit, eic_phaseout_threshold, eic_completed_phaseout, "
+    "eic_investment_income_limit.",
+    "2023 Instructions for Form 1040 and 1040-SR, line 27 and EIC Table, "
+    "https://www.irs.gov/pub/irs-prior/i1040gi--2023.pdf -- Steps 1-5 and "
+    "EIC Table first row, for eic_min_earned_income, eic_min_age, eic_max_age "
+    "and cross-check of the Rev. Proc. amounts.",
+    "IRS Publication 596 (2023), Earned Income Credit (rev. Dec 12, 2023), "
+    "https://www.irs.gov/pub/irs-prior/p596--2023.pdf -- Table 1, Rules 1-7, "
+    "11-15, ch. 4 (not all table pages read). Cross-check only. Not fetched or "
+    "checked for the EIC: the Federal Register and any IRS erratum or later "
+    "revision of the above.",
+)

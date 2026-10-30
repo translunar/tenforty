@@ -1,10 +1,12 @@
 """A net premium tax credit prints inside Form 1040 line 33 through
 Schedule 3 lines 9-15 and 1040 lines 31/32, none of which tenforty
 produces: the page cannot foot and the Schedule 3 it references is not
-attached. Emitting such a return refuses unless the scenario states
-`acknowledges_schedule_3_not_produced: true` (draft/review use, with the
-gap). Juno's ruling; Schedule 3 support is queued for the end of the
-program. All identities synthetic."""
+attached. Emitting such a return refuses (Juno's ruling). Stating
+`acknowledges_schedule_3_not_produced: true` no longer lets it emit: the
+1040 payments-footing guard refuses a nonzero net PTC either way (ruling
+R-P1), and the refusal no longer advertises the key (R-S4-2). The key stays
+accepted; with a net PTC of 0 the acknowledged return emits and foots.
+All identities synthetic."""
 import dataclasses
 import tempfile
 import unittest
@@ -48,9 +50,13 @@ class NetPtcRefusalTests(unittest.TestCase):
                 orch.emit_pdfs(scenario, results, out)
             msg = str(cm.exception)
             for needle in ("Schedule 3", "line 31", "line 32", "line 33",
-                           "will not foot", "not attached", "queued",
-                           f"{FLAG}: true", "DRAFT"):
+                           "will not foot", "not attached", "Form 8962",
+                           "cannot be emitted", "No acknowledgment"):
                 self.assertIn(needle, msg)
+            # Ruling R-S4-2: the message must not advertise the
+            # acknowledgment — setting it no longer lets the return emit.
+            for advice in (FLAG, "DRAFT", "emit anyway"):
+                self.assertNotIn(advice, msg)
             self.assertEqual(sorted(out.glob("*.pdf")), [])
 
     def test_a_false_acknowledgment_refuses_too(self):
@@ -101,33 +107,47 @@ class NetPtcAmendmentTests(unittest.TestCase):
 
 
 class NetPtcAttestedEmitTests(unittest.TestCase):
-    """The attested emit proceeds and prints the known-unfooted page:
-    line 33 carries the net PTC while lines 31 and 32 print blank, so
-    line 33 is not 25d + 26 + 32 as printed."""
+    """With the acknowledgment, the 1040 payments-footing guard still
+    applies (ruling R-P1: one guard, both paths, no acknowledgment bypass).
+    A NONZERO net PTC sits in line 33 with no printed line holding it, so
+    the emit refuses; a net PTC of exactly 0 is arithmetic-neutral and the
+    acknowledged return still emits, footing."""
 
-    def test_line_33_does_not_foot_from_the_printed_lines(self):
+    def test_a_nonzero_net_ptc_refuses_even_acknowledged(self):
         with tempfile.TemporaryDirectory() as tmp:
             scenario = spine_battery.build_ptc_net_credit(YEAR)
             self.assertIs(getattr(scenario, FLAG), True)
             orch = _orch(tmp)
             results = orch.compute_federal(scenario)
+            self.assertGreater(results["f8962_net_ptc"], 0)
+            out = Path(tmp) / "out"
+            with self.assertRaises(NotImplementedError) as cm:
+                orch.emit_pdfs(scenario, results, out)
+            msg = str(cm.exception)
+            for needle in ("line 33", "line 31", "Schedule 3", "Form 8962",
+                           "would not foot", FLAG):
+                self.assertIn(needle, msg)
+            self.assertEqual(sorted(out.glob("*.pdf")), [])
+
+    def test_a_zero_net_ptc_acknowledged_return_emits_and_foots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario = dataclasses.replace(
+                spine_battery.build_ptc_capped_repayment(YEAR), **{FLAG: True})
+            orch = _orch(tmp)
+            results = orch.compute_federal(scenario)
+            self.assertEqual(results["f8962_net_ptc"], 0)
             emitted = orch.emit_pdfs(scenario, results, Path(tmp) / "out")
             scalars = Pdf1040.get_mapping(YEAR)
             fields = pypdf.PdfReader(str(emitted["1040"])).get_fields()
 
             def printed(key):
                 value = fields[scalars[key]].get("/V")
-                return str(value) if value not in (None, "") else ""
+                return int(value) if value not in (None, "") else 0
 
-            self.assertEqual(printed("schedule3_payments"), "")
-            self.assertEqual(printed("total_other_payments"), "")
-            line_25d = int(printed("federal_withheld") or 0)
-            line_26 = int(printed("estimated_tax_payments") or 0)
-            line_33 = int(printed("total_payments"))
-            net_ptc = results["f8962_net_ptc"]
-            self.assertGreater(net_ptc, 0)
-            self.assertEqual(line_33, line_25d + line_26 + net_ptc)
-            self.assertNotEqual(line_33, line_25d + line_26)
+            self.assertEqual(printed("total_payments"),
+                             printed("federal_withheld")
+                             + printed("estimated_tax_payments")
+                             + printed("total_other_payments"))
 
 
 class AcknowledgmentPlumbingTests(unittest.TestCase):

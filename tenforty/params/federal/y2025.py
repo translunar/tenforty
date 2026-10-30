@@ -134,4 +134,27 @@ PARAMS = FederalParams(
     # https://www.irs.gov/pub/irs-prior/i1040gi--2025.pdf
     # sha256 482e9c487c608f1bbeaceef35bc3c0933e8b35443cfff447e4279d590468364a
     aged_born_before=datetime.date(1961, 1, 2),
+    # Childless EIC (zero qualifying children). Statute first:
+    # IRC §32(b)(1) table, "No qualifying children" row — credit percentage
+    # 7.65, phaseout percentage 7.65 (no 2025 amendment: 2025 Pub. 596
+    # "What's New" lists none); §32(c)(1)(A)(ii)(II) — "has attained age 25
+    # but not attained age 65 before the close of the taxable year".
+    # https://www.law.cornell.edu/uscode/text/26/32
+    eic_credit_pct=0.0765,
+    eic_phaseout_pct=0.0765,
+    # Rev. Proc. 2024-40 §3.06(1) table, "None" column (sha256 above):
+    # earned income amount, maximum amount of credit, threshold and
+    # completed phaseout amounts (MFJ / all other filing statuses).
+    eic_earned_income_amount=8_490,
+    eic_max_credit=649,
+    eic_phaseout_threshold={_S: 10_620, _MFJ: 17_730},
+    eic_completed_phaseout={_S: 19_104, _MFJ: 26_214},
+    # Rev. Proc. 2024-40 §3.06(2): not allowed if investment income
+    # "exceeds $11,950" (§32(i)); 2025 Form 1040 instructions Step 2 Q2.
+    eic_investment_income_limit=11_950,
+    # 2025 EIC Table (Publication 1040 (2025), Cat. No. 46895T): the first
+    # row is "At least 1, But less than 50"; Worksheets A/B stop at zero.
+    eic_min_earned_income=1,
+    eic_min_age=25,
+    eic_max_age=65,
 )
