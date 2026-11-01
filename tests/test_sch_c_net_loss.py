@@ -290,8 +290,8 @@ class SchCLossEicRoutingTests(unittest.TestCase):
         self.assertFalse(eic_possible(self._wage_scenario(wages)))
         self.assertLess(wages - 5_000.0, ceiling)
         self.assertTrue(eic_possible(self._wage_scenario(wages, big_loss)))
-        # Routing, on the newest still-transitional cell (R-S6-1; ruling
-        # R-S8-6): the loss sends the filer out of spine scope.
+        # The scope predicate on 2021, whose credit is never native (ruling
+        # R-S8-21): the loss sends the filer out of spine scope.
         year = transitional_eic_year("single")
         wages_then = load_federal_params(year).eic_income_ceiling[0] + 1_000.0
 

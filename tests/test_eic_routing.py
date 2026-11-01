@@ -1,7 +1,7 @@
 """Routing after the childless-EITC routing change (spec §7, Option B;
-ruling R-S6-1 transitional routing). Equivalence with the pre-change
-behavior, the transitional clause's anti-silent-drop coverage, and its
-enforced endpoint. All identities synthetic; amounts from params.
+ruling R-S6-1 transitional routing; 2021 refuses, ruling R-S8-21). Equivalence
+with the pre-change behavior and the transitional clause's anti-silent-drop
+coverage. All identities synthetic; amounts from params.
 
 Spec §7.2 hazard box (the checklist): an EIC-possible head-of-household
 return must never compute natively — the childless credit is zero for head

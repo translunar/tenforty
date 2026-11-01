@@ -217,15 +217,14 @@ def make_k1_scenario() -> Scenario:
 
 def transitional_eic_year(status) -> int:
     """The newest tax year whose native-spine (year, ``status``) cell has NO
-    native childless EIC yet (years.NATIVE_EIC_STATUSES): there an
-    EIC-possible return still routes to the workbook (the R-S6-1 transitional
-    population). Tests whose subject is that workbook route take their
-    vehicle from here (ruling R-S8-6), so each step-8 rung moves them with no
-    edits; their figures derive from that year's params.
+    native childless EIC (years.NATIVE_EIC_STATUSES): 2021, whose row stays
+    empty. Rulings R-S8-21/R-S8-22 were the R-S8-6 mass-retirement event: an
+    EIC-possible return on that cell now refuses before any workbook route,
+    so this year no longer yields a workbook vehicle. It stays for tests of
+    the scope predicate and the spine, which still read that cell directly.
 
-    Fails LOUDLY when no such year remains — the planned mass-retirement
-    event (childless-EITC plan, step 8): every vehicle goes red together and
-    each subject is ruled dead or re-vehicled. Never a skip."""
+    Fails LOUDLY if no such year remains, which would mean a 2021 row was
+    declared against ruling R-S8-21. Never a skip."""
     from tenforty import years
     value = getattr(status, "value", status)
     cells = [year for year in sorted(years.NATIVE_SPINE_STATUSES)
