@@ -1,0 +1,31 @@
+# Nightly COLD oracle tier: full LibreOffice recalculation of every workbook
+# answer. Cold is automatic — the result cache is opt-in (TENFORTY_ORACLE_CACHE=1)
+# and this job never sets it. Audits the cache and catches oracle regressions
+# within a day. Destination: .github/workflows/oracle-nightly-cold.yml
+name: oracle-nightly-cold
+on:
+  schedule:
+    - cron: "0 9 * * *"   # 09:00 UTC = 1am PST / 2am PDT
+  workflow_dispatch:
+jobs:
+  oracle-cold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install LibreOffice (headless) + fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc fonts-liberation
+      - name: Record instrument versions (oracle numbers are per-LO-version)
+        run: |
+          soffice --version
+          python --version
+      - run: python -m pip install -e ".[dev]"
+      - name: Oracle tier (STRICTLY SERIAL — never -n)
+        env:
+          TENFORTY_ORACLE_OK: "1"
+        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/ -m oracle -q

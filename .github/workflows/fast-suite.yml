@@ -1,0 +1,21 @@
+# Fast (native Python) suite on every push — no LibreOffice anywhere.
+name: fast-suite
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: fast-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fast:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Fast tier (documented command, CLAUDE.md standard 2)
+        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/ -m "not oracle" -q -n 4 --dist load
