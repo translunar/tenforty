@@ -34,6 +34,8 @@ include = ["tenforty*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# An unregistered marker is a collection error; replaces deleted test_markers.py's guard.
+addopts = "--strict-markers"
 markers = [
     "oracle: tests that diff Python compute against the XLSX oracle (slow; requires LibreOffice)",
 ]
