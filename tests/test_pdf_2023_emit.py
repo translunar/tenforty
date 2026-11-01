@@ -27,6 +27,7 @@ from tenforty.mappings.pdf_1040 import Pdf1040
 from tenforty.mappings.pdf_sch_1 import PdfSch1
 from tenforty.models import Form1099G
 from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.rounding import irs_round
 from tests.fixtures.spine_battery import build_canonical_wage_investment_rental
 from tests.helpers import REPO_ROOT, needs_libreoffice
 
@@ -43,7 +44,7 @@ def _int_value(fields: dict, path: str) -> int:
     if raw is None:
         raise AssertionError(f"field {path!r} is blank in the emitted PDF")
     text = str(raw).replace(",", "").replace("$", "").strip()
-    return int(round(float(text)))
+    return irs_round(float(text))
 
 
 @needs_libreoffice
@@ -100,17 +101,17 @@ class Emit2023Tests(unittest.TestCase):
             # --- Form 1040 money lines (spine results onto the right lines) ---
             self.assertEqual(
                 _int_value(f1040_fields, f1040_map["wages"]),
-                int(round(results["wages"])),
+                irs_round(results["wages"]),
                 "wages did not land on Form 1040 line 1a",
             )
             self.assertEqual(
                 _int_value(f1040_fields, f1040_map["total_income"]),
-                int(round(results["total_income"])),
+                irs_round(results["total_income"]),
                 "total income did not land on Form 1040 line 9",
             )
             self.assertEqual(
                 _int_value(f1040_fields, f1040_map["agi"]),
-                int(round(results["agi"])),
+                irs_round(results["agi"]),
                 "AGI did not land on Form 1040 line 11",
             )
 
