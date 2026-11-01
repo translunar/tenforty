@@ -8,9 +8,9 @@ test drives a married-filing-separately filer with a loss well over that cap
 through the REAL production entry points (``ReturnOrchestrator.compute_federal``
 → ``emit_pdfs``) and reads 1040 line 7a back out of the filled PDF.
 
-ROUTING — THIS IS NOT THE NATIVE SPINE. tenforty's native 1040 spine is
-single-filers-only: ``ReturnOrchestrator._scenario_in_spine_scope`` returns
-False for any filing status other than ``FilingStatus.SINGLE``, and
+ROUTING — THIS IS NOT THE NATIVE SPINE. No year declares married filing
+separately in ``years.NATIVE_SPINE_STATUSES``, so
+``ReturnOrchestrator._scenario_in_spine_scope`` returns False for it, and
 ``f1040_spine.compute_spine`` raises NotImplementedError if reached anyway. An
 MFS scenario therefore routes to the XLSX WORKBOOK oracle path
 (``_compute_1040_via_workbook``). For an MFS filer, the workbook *is*
@@ -26,11 +26,11 @@ Part (b) is genuinely ours and was genuinely untested for this filer class.
 
 WHAT IS **NOT** PINNED HERE: the NATIVE cap logic in ``sch_d.compute`` /
 ``f1040_spine.compute_income_preamble``. That code is UNREACHABLE for MFS BY
-DESIGN — no MFS scenario can reach it while the spine is single-only. A green
+DESIGN — no MFS scenario can reach it while the grid omits MFS. A green
 run here says nothing whatsoever about a native MFS path, because no such path
 exists. ``MFSCapTests`` in ``tests/test_capital_loss_cap_regression.py`` covers
 the native cap arithmetic by calling the shared preamble function directly.
-REVISIT THIS FILE when the native spine grows filing statuses: at that point
+REVISIT THIS FILE if a year declares MFS native: at that point
 the scenario below starts routing native, ``test_mfs_scenario_routes_to_the_
 workbook_not_the_native_spine`` fails as its designed signal, and this test
 should be re-pointed at (or duplicated for) the native path.
@@ -72,8 +72,10 @@ lines 176-177 (2026-10-15, gitignored) record L29 firing on every MFS workbook
 compute in the oracle tier. 2021-2024 are read from the workbook formulas, pending
 oracle observation.
 
-THE TESTS KEEP THEIR ASSERTIONS and stay ``xfail(strict=True)``: the §1211(b) MFS
-EMIT PLUMBING IS UNPINNED END-TO-END, and this file names that gap. The tripwire's
+THE TESTS KEEP THEIR ASSERTIONS and stay ``xfail(strict=True,
+raises=NotImplementedError)``, so only a refusal counts as the expected failure: a
+wrong figure's AssertionError fails the run. The §1211(b) MFS EMIT PLUMBING IS
+UNPINNED END-TO-END, and this file names that gap. The tripwire's
 audience is whoever builds a lived-apart input: these then XPASS, strict-xfail
 turns that into a FAILURE, and that person restores them as live pins. Do not
 allowlist the probe, and do not patch a mapping in to make them pass: that would
@@ -265,11 +267,11 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         )
 
     def test_mfs_scenario_routes_to_the_workbook_not_the_native_spine(self):
-        """Premise check, and a tripwire for the day the spine grows statuses.
+        """Premise check, and a tripwire for the day the spine declares MFS.
 
         The whole scope disclosure in this module's docstring depends on MFS
         being out of native-spine scope. Assert it rather than assume it. WHEN
-        THIS FAILS: the native spine has been extended past single filers —
+        THIS FAILS: the native spine has been extended to MFS —
         that is the designed signal, not a regression. Re-point this file (or
         add a native sibling) at the now-reachable native cap path, and revisit
         the harvest narrowing below, which exists only because the WORKBOOK
@@ -285,13 +287,14 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             self.assertFalse(
                 orch._scenario_in_spine_scope(effective),
                 "MFS scenario now routes to the NATIVE spine. If the spine "
-                "was deliberately extended to more filing statuses, this is "
+                "was deliberately extended to MFS, this is "
                 "the designed signal: this file's scope disclosure and its "
                 "income-section-only harvest are both stale and must be "
                 "revisited.",
             )
 
-    @pytest.mark.xfail(strict=True, reason=_LIVED_APART_XFAIL_REASON)
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_emitted_1040_line_7a_is_the_halved_mfs_cap(self):
         """THE CENTRAL ASSERTION: 1040 line 7a on the filled PDF == -1,500.
 
@@ -319,7 +322,8 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             f"raw Schedule D line 16 total reached line 7a.",
         )
 
-    @pytest.mark.xfail(strict=True, reason=_LIVED_APART_XFAIL_REASON)
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_compute_capital_gain_loss_is_the_halved_mfs_cap(self):
         """Same quantity one layer earlier, to localise a failure.
 
@@ -333,7 +337,8 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["capital_gain_loss"], -cap)
 
-    @pytest.mark.xfail(strict=True, reason=_LIVED_APART_XFAIL_REASON)
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_total_income_is_wages_minus_the_halved_cap(self):
         """Total income (1040 line 9) = wages + the ALLOWED loss, not the full
         loss and not the single-filer-capped loss.
@@ -348,7 +353,8 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["total_income"], WAGES - cap)  # 58,500
 
-    @pytest.mark.xfail(strict=True, reason=_LIVED_APART_XFAIL_REASON)
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_schedule_d_line_16_stays_the_true_uncapped_loss(self):
         """Schedule D line 16 is the TRUE net loss (-8,000) even though line 7a
         carries the capped figure. The two lines hold DIFFERENT numbers, and
