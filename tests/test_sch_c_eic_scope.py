@@ -149,8 +149,8 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
         # the estimate — is pinned on eic_possible ...
         from tenforty.orchestrator import eic_possible
         self.assertTrue(eic_possible(scn))
-        # ... and the routing + fail-closed refusal on the newest
-        # still-transitional cell (R-S6-1; ruling R-S8-6).
+        # ... and the scope predicate + fail-closed refusal on 2021, whose
+        # credit is never native (ruling R-S8-21).
         scn = dataclasses.replace(scn, config=dataclasses.replace(
             scn.config, year=transitional_eic_year("single")))
         self.assertFalse(self._in_scope(scn))
@@ -160,15 +160,6 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
                 NotImplementedError, r"^eic_2021_not_modeled: ") as ctx:
             self.orch.compute_federal(scn)
         self.assertIn("File this return by hand", str(ctx.exception))
-        self.assertNotIn("filer class declared on the native grid",
-                         str(ctx.exception))
-        # The workbook path's own Schedule C refusal, called directly: no
-        # compute_federal route reaches it for an on-grid filer any more.
-        eff, _ = self.orch._build_effective_scenario(scn)
-        with self.assertRaisesRegex(
-                NotImplementedError,
-                r"possibly eligible for the Earned Income Credit") as ctx:
-            self.orch._compute_1040_via_workbook(eff)
         self.assertNotIn("filer class declared on the native grid",
                          str(ctx.exception))
 
