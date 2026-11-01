@@ -82,6 +82,28 @@ PARITY_KEYS = (
     # native spine's own Form 8962 output, not just its downstream effect.
     "f8962_net_ptc",
     "f8962_repayment",
+    # Schedule 1 line 10 and Form 1040 lines 2b, 3a, 3b. Every workbook year's
+    # battery drives each of these nonzero on existing rows.
+    #
+    # Blank asymmetry, noted and not fixed: forms/f1040.compute coerces
+    # sch_1_line_10 None -> 0 (_NUMERIC_SCH_1_KEYS), so a blank workbook cell
+    # would hide here as 0. The other three are not coerced, so a blank surfaces
+    # as a parity failure. All four named ranges are ROUND/SUM formula cells.
+    #
+    # Additional_Income and Qualified_Dividends each have a per-year manual
+    # override cell (`IF(<override><>"", ROUND(<override>,0), ...)`). No F1040
+    # input mapping targets those cells.
+    #
+    # WARNING before adding a multi-payer battery row: no row today has more
+    # than one 1099-INT or 1099-DIV, so these keys do NOT exercise the known
+    # silent key drop. The workbook maps only interest_1 and
+    # ordinary_dividends_1 / qualified_dividends_1, and the engine drops
+    # unmapped keys. A multi-payer row will DIVERGE on interest and dividends
+    # until that drop is fixed.
+    "sch_1_line_10",
+    "taxable_interest",
+    "qualified_dividends",
+    "ordinary_dividends",
 )
 
 
