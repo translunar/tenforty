@@ -12,7 +12,7 @@ from tenforty.models import (
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
 from tenforty.params.federal import load as load_federal_params
 from tests._scorp_fixtures import _make_v1_scenario
-from tests.helpers import make_k1_scenario, needs_libreoffice
+from tests.helpers import make_k1_scenario
 
 
 def _address():
@@ -190,102 +190,23 @@ class BridgeLossYearQbiZeroFloorTests(unittest.TestCase):
         )
 
 
-def _assert_routes_to_workbook(test, orch, scenario):
-    """The guard under test lives on the workbook path only; a scenario that
-    routes native would pass these tests for the wrong reason (the native
-    Form 8995 refusal names 8995-A too)."""
-    eff, _ = orch._build_effective_scenario(scenario)
-    test.assertFalse(orch._scenario_in_spine_scope(eff))
-
-
-def _workbook_qbi_scenario(year, filing_status, *, wages, qbi, **config):
-    """A direct S-corp K-1 (ordinary income == QBI) plus ONE taxpayer W-2 --
-    the shape of test_amendment_packet_emit's `_build_eic_eligible_qbi_
-    scenario`. `acknowledges_qbi_below_threshold` is set False explicitly
-    (`make_k1_scenario` turns it on, which would bypass the guard)."""
-    scenario = make_k1_scenario()
-    base = float(load_federal_params(year).ss_wage_base)
-    ss_wages = min(wages, base)
-    scenario.config = dataclasses.replace(
-        scenario.config, year=year, filing_status=filing_status,
-        acknowledges_qbi_below_threshold=False, **config)
-    scenario.w2s = [W2(
-        employer="Example Employer Inc.", wages=wages,
-        federal_tax_withheld=round(wages * 0.1), ss_wages=ss_wages,
-        ss_tax_withheld=round(ss_wages * 0.062), medicare_wages=wages,
-        medicare_tax_withheld=round(wages * 0.0145), owner="taxpayer")]
-    scenario.schedule_k1s = [ScheduleK1(
-        entity_name="Example S-Corp Inc.", entity_ein="00-0000000",
-        entity_type=EntityType.S_CORP, material_participation=True,
-        ordinary_business_income=qbi, qbi_amount=qbi)]
-    return scenario
-
-
-@needs_libreoffice
-class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
-    """The orchestrator's workbook-path Form 8995 threshold guard, end to end
-    through the real XLSX workbook (soffice). Workbook-routed filers never
-    reach the native spine, where `forms/f8995.py`'s above-threshold refusal
-    lives; the 2025 workbook has an `8995` (simple-path) sheet and no `8995A`
-    sheet, so without the guard an above-threshold return would compute
-    silently on the wrong formula. The guard runs AFTER the workbook (it
-    reads the harvested taxable income before QBI), so a harvest refusal
-    (`Deduction` diagnostic, numeric probe) legitimately preempts it.
-
-    Vehicle (ruling R-S8-22): the BELOW-threshold half runs on a 2024 MFS
-    filer, which is outside the native grid and so routes to the workbook;
-    single no longer does (ruling R-S8-21). 2024, not 2025: the 2025 sheet
-    declines an MFS return on the lived-apart question. Its figures derive
-    from that year's params, nothing re-derived by hand.
-
-    The ABOVE-threshold half is RETIRED (ruled at back-year-2024 step 8). Its
-    end-to-end guard fire was proven at declare-fallout on a 2024
-    married-filing-jointly vehicle (oracle tier green,
-    oracle-tier-post-fallout.log); declaring 2024 MFJ native removed that
-    vehicle, and no permanent clean one exists: above the QBI threshold no
-    filer is EIC-possible, a 2025 MFS workbook return refuses upstream on the
-    lived-apart diagnostic ('Line 6ab (SS Bene)'!L29), and QSS is unverified
-    and parked. The guard's own logic stays pinned without soffice by
-    `WorkbookQbiThresholdGuardUnitTests` below (mocked workbook, MFS vehicle,
-    above- and below-threshold, attestation and missing-key cases)."""
-
-    def test_below_threshold_still_computes_via_workbook(self):
-        """8,000 of wages + 10,000 of K-1 QBI income, MFS: the return routes
-        to the workbook; taxable income before QBI (wages + K-1 less the MFS
-        standard deduction, from params) is below the threshold and QBI is
-        positive, so it must compute -- asserted on the real figures."""
-        mfs = FilingStatus.MARRIED_FILING_SEPARATELY
-        year = 2024
-        # The sheet declines MFS/MFJ with no spouse birthdate.
-        scenario = _workbook_qbi_scenario(
-            year, mfs, wages=8_000.0, qbi=10_000.0,
-            spouse_birthdate="1990-03-05")
-        view = load_federal_params(year).for_status(mfs)
-        expected = 8_000 + 10_000 - view.standard_deduction
-        self.assertGreater(expected, 0)
-        self.assertLess(expected, view.qbi_threshold)
-
-        with tempfile.TemporaryDirectory() as d:
-            orch = ReturnOrchestrator(
-                spreadsheets_dir=Path("spreadsheets"), work_dir=Path(d))
-            _assert_routes_to_workbook(self, orch, scenario)
-            results = orch.compute_federal(scenario)
-
-        self.assertEqual(
-            results["taxable_income_before_qbi_deduction"], expected)
-        self.assertGreater(results["qbi_deduction"], 0)
-        self.assertEqual(
-            results["taxable_income"],
-            results["taxable_income_before_qbi_deduction"]
-            - results["qbi_deduction"],
-        )
-
-
 class WorkbookQbiThresholdGuardUnitTests(unittest.TestCase):
-    """Isolates the orchestrator-level guard added to `_compute_1040_pipeline`
-    from the real XLSX workbook, which requires LibreOffice (the oracle
-    tier pinned end to end by BridgeNonSingleWorkbookRoutingQbiThresholdTests
-    above). Patches `_compute_1040_via_workbook` to return a synthetic
+    """BridgeWorkbookRoutingQbiThresholdTests (the end-to-end soffice version
+    of this guard) is FULLY RETIRED (rulings R-S8-6/22/23, gate-adjudicated
+    2026-11-01). Its ABOVE-threshold half retired at back-year-2024 step 8
+    (end-to-end fire proven on a then-workbook 2024 MFJ vehicle,
+    oracle-tier-post-fallout.log, before MFJ went native). Its BELOW-threshold
+    half retired when the last candidate vehicles were OBSERVED refusing at
+    the workbook's own diagnostics: 2024 MFS with spouse_birthdate refuses on
+    the lived-apart probe ('Line 6ab (SS Bene)'!J34 reads 'Answer question.';
+    2025's L29 equivalent previously observed), and 2024 QSS refuses on
+    'Line 16 (QDCG Tax)'!X140 reading 'Filing status?'. No out-of-grid status
+    completes a workbook compute, so no end-to-end vehicle can exist; the
+    guard's logic stays pinned deterministically by this class.
+
+    Isolates the orchestrator-level guard added to `_compute_1040_pipeline`
+    from the real XLSX workbook, which requires LibreOffice.
+    Patches `_compute_1040_via_workbook` to return a synthetic
     result carrying a chosen `taxable_income_before_qbi_deduction`, so the
     guard's conditional (out-of-spine-scope AND QBI > 0 AND the
     `acknowledges_qbi_below_threshold` attestation NOT set AND above
