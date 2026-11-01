@@ -62,15 +62,7 @@ def line_8z(scenario: Scenario) -> dict:
 
 
 def compute(scenario: Scenario, upstream: dict[str, dict]) -> dict:
-    """Compute Schedule 1 from scenario and upstream form results.
-
-    Cross-check note: Plan C's oracle test asserts
-    sch_1_line_10_total_additional_income == f1040["other_income"].
-    That holds ONLY when Sch E is the sole Sch 1 contributor. The
-    oracle test fixture carries the @pytest.mark.only_sch_e_contributes_to_sch_1
-    marker; scenarios with unemployment / business / farm income should
-    NOT run that oracle assertion.
-    """
+    """Compute Schedule 1 from scenario and upstream form results."""
     params = load_federal_params(scenario.config.year)
     sch_e = upstream.get("sch_e", {})
 

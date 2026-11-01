@@ -36,8 +36,6 @@ import unittest
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-import pytest
-
 from tenforty.models import W2, ScheduleCBusiness
 from tenforty.verification import emit_manifest
 from tests.fixtures.sch_c_battery import _build
@@ -115,14 +113,12 @@ class SchSeWageBaseOracleTests(unittest.TestCase):
         cls.recorded = {(c["tax_year"], c["case"]): _recorded_schedule_se(c)
                         for c in cls.cases}
 
-    @pytest.mark.oracle
     def test_the_oracle_has_fifteen_cases(self):
         self.assertEqual(sorted((c["tax_year"], c["case"]) for c in self.cases),
                          sorted((y, k) for y in range(2021, 2026)
                                 for k in ("1_at_base", "2_above_base",
                                           "3_below_base")))
 
-    @pytest.mark.oracle
     def test_every_printed_line_matches_the_oracle(self):
         for case in self.cases:
             values = self.recorded[(case["tax_year"], case["case"])]
@@ -138,7 +134,6 @@ class SchSeWageBaseOracleTests(unittest.TestCase):
                         self.assertEqual(values.get(KEYS[line]),
                                          _dollars(expected))
 
-    @pytest.mark.oracle
     def test_line_12_foots_on_the_printed_page(self):
         for case in self.cases:
             values = self.recorded[(case["tax_year"], case["case"])]

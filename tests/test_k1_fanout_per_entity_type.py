@@ -2,8 +2,6 @@
 
 import unittest
 
-import pytest
-
 from tenforty.forms import sch_b as form_sch_b
 from tenforty.forms import sch_d as form_sch_d
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
@@ -32,7 +30,6 @@ def _supported_k1(entity_type: str, **overrides) -> ScheduleK1:
     return ScheduleK1(**defaults)
 
 
-@pytest.mark.oracle
 class K1SupportedEntityFanoutTests(unittest.TestCase):
     """s_corp and partnership K-1s route correctly through all four forms."""
 

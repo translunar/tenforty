@@ -10,15 +10,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import pytest
-
 from tenforty.orchestrator import ReturnOrchestrator
 from tests.helpers import REPO_ROOT, needs_libreoffice, make_simple_scenario
 
 
 @needs_libreoffice
 class WorkbookOracleEntryPointTests(unittest.TestCase):
-    @pytest.mark.oracle
     def test_via_workbook_returns_core_keys(self):
         scenario = make_simple_scenario()
         with tempfile.TemporaryDirectory() as tmp:

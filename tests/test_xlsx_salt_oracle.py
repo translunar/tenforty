@@ -14,7 +14,6 @@ check, a later Sch A oracle diff could be silently wrong on both sides.
 import unittest
 from pathlib import Path
 
-import pytest
 from openpyxl import load_workbook
 
 from tenforty.models import FilingStatus
@@ -25,7 +24,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKBOOK_PATH = REPO_ROOT / "spreadsheets" / "federal" / "2025" / "1040.xlsx"
 
 
-@pytest.mark.oracle
 class XlsxSaltOracleTests(unittest.TestCase):
     """Cell-level check; does not require LibreOffice (fast)."""
 

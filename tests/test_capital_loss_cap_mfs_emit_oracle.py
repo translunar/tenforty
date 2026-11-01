@@ -8,9 +8,9 @@ test drives a married-filing-separately filer with a loss well over that cap
 through the REAL production entry points (``ReturnOrchestrator.compute_federal``
 → ``emit_pdfs``) and reads 1040 line 7a back out of the filled PDF.
 
-ROUTING — THIS IS NOT THE NATIVE SPINE. tenforty's native 1040 spine is
-single-filers-only: ``ReturnOrchestrator._scenario_in_spine_scope`` returns
-False for any filing status other than ``FilingStatus.SINGLE``, and
+ROUTING — THIS IS NOT THE NATIVE SPINE. No year declares married filing
+separately in ``years.NATIVE_SPINE_STATUSES``, so
+``ReturnOrchestrator._scenario_in_spine_scope`` returns False for it, and
 ``f1040_spine.compute_spine`` raises NotImplementedError if reached anyway. An
 MFS scenario therefore routes to the XLSX WORKBOOK oracle path
 (``_compute_1040_via_workbook``). For an MFS filer, the workbook *is*
@@ -26,61 +26,77 @@ Part (b) is genuinely ours and was genuinely untested for this filer class.
 
 WHAT IS **NOT** PINNED HERE: the NATIVE cap logic in ``sch_d.compute`` /
 ``f1040_spine.compute_income_preamble``. That code is UNREACHABLE for MFS BY
-DESIGN — no MFS scenario can reach it while the spine is single-only. A green
+DESIGN — no MFS scenario can reach it while the grid omits MFS. A green
 run here says nothing whatsoever about a native MFS path, because no such path
 exists. ``MFSCapTests`` in ``tests/test_capital_loss_cap_regression.py`` covers
 the native cap arithmetic by calling the shared preamble function directly.
-REVISIT THIS FILE when the native spine grows filing statuses: at that point
+REVISIT THIS FILE if a year declares MFS native: at that point
 the scenario below starts routing native, ``test_mfs_scenario_routes_to_the_
 workbook_not_the_native_spine`` fails as its designed signal, and this test
 should be re-pointed at (or duplicated for) the native path.
 
 FOUR OF THESE TESTS ARE STRICT-XFAIL, AND THE REASON IS NOT ABOUT CAPITAL LOSS.
-This file's earlier revision narrowed its harvest to the income section and
-explained why; that narrowing is now moot, because tenforty refuses the whole
-scenario before any figure is produced. Read on before "fixing" anything here.
+Read on before "fixing" anything here.
 
-There is a PRE-EXISTING defect on the workbook path for every MFJ/MFS return:
-tenforty has no spouse-birthdate concept, so the workbook's ``Birthday_Needed``
-flag ('1040'!BI136) is unconditionally TRUE for those statuses (BI143 =
-``OR(SpouseBirthMonth="", ...)``, always true for us). The workbook then REFUSES
-to compute the deduction-and-below section:
+HISTORY: THE BIRTHDATE REFUSAL (resolved). tenforty once had no spouse-birthdate
+concept, so the workbook's ``Birthday_Needed`` flag ('1040'!BI136) was
+unconditionally TRUE for MFJ/MFS (BI143 = ``OR(SpouseBirthMonth="", ...)``). The
+workbook then refused the deduction-and-below section:
   * '1040'!AL91 (line 12, the deduction) short-circuits to 0 on Birthday_Needed;
   * the ``Deduction`` named range ('1040'!AU91) holds the literal diagnostic
     string "Birthdate(s) needed." instead of a deduction-source caption;
   * ``Tax_SubTotal`` ('1040'!AL96) evaluates to "" (blank) on Birthday_Needed,
     which the engine reads as None.
-tenforty now HARVESTS that diagnostic and refuses on it
-(``tenforty/forms/f1040.py::workbook_refusal``, raising NotImplementedError from
-``f1040.compute``), instead of reading the blanked line 16 as data and emitting
-a 1040 whose line 18 silently omitted its own line-16 component. So an MFS
-scenario no longer produces figures at all: ``compute_federal`` raises.
+tenforty harvests that diagnostic and refuses on it
+(``tenforty/forms/f1040.py::workbook_refusal``). The four tests were marked
+strict-xfail against that refusal, expecting the spouse-birthdate unit to flip
+them. It landed as an OPTIONAL field for MFS that this scenario never set, so
+they never XPASSed. The scenario now supplies ``spouse_birthdate``, which clears
+this refusal.
 
-That makes the four tests below — every one that actually runs the workbook —
-structurally unreachable, through no fault of their own subject. They keep their
-assertions and are marked ``xfail(strict=True)`` rather than skipped or deleted,
-because strict xfail is self-enforcing: the day the spouse-birthdate unit lands,
-these XPASS, strict-xfail turns that into a FAILURE, and whoever lands that unit
-is forced to restore them as live pins. A skip would rot silently. THE §1211(b)
-MFS EMIT PLUMBING IS THEREFORE UNPINNED END-TO-END until that unit lands — this
-file names that gap rather than papering over it.
+THE LIVE BLOCKER: THE LIVED-APART PROBE. Behind the birthdate refusal sits a
+second one. The Social Security worksheet asks every MFS filer whether they lived
+apart from their spouse, whether or not they have any benefits: the MFS base
+amount is 0, so combined income exceeds it and the question is asked. Unanswered,
+this cell reads "Answer question.":
+  * 2025: 'Line 6ab (SS Bene)'!L29 (answer cells '1040'!AV7/AV8)
+  * 2024: 'Line 6ab (SS Bene)'!J34 (answer cells '1040'!AL7/AL8)
+  * 2023: 'Line 6ab (SS Bene)'!J31 (answer cells '1040'!AL7/AL8)
+  * 2021, 2022: 'Line 6ab (SS Bene)'!J31 (answer cells '1040'!AK6/AK7)
+Each is a numeric probe, so ``workbook_probe_refusal`` refuses on the text, and no
+F1040 input maps to any of the answer cells. ``compute_federal`` therefore raises
+for this scenario, and moving it to another year does not help.
+
+EVIDENCE. 2025 is observed: docs/plans/2026-10-13-native-filing-statuses-LEDGER.md
+lines 176-177 (2026-10-15, gitignored) record L29 firing on every MFS workbook
+compute in the oracle tier. 2021-2024 are read from the workbook formulas, pending
+oracle observation.
+
+THE TESTS KEEP THEIR ASSERTIONS and stay ``xfail(strict=True,
+raises=NotImplementedError)``, so only a refusal counts as the expected failure: a
+wrong figure's AssertionError fails the run. The §1211(b) MFS EMIT PLUMBING IS
+UNPINNED END-TO-END, and this file names that gap. The tripwire's
+audience is whoever builds a lived-apart input: these then XPASS, strict-xfail
+turns that into a FAILURE, and that person restores them as live pins. Do not
+allowlist the probe, and do not patch a mapping in to make them pass: that would
+pin a path no filer can take. Under ruling R-S8-19 the workbook is leaving
+production compute, so if that lands first these pins retire with the MFS workbook
+path instead of going live.
 
 The two tests that need no workbook (the params cap identity and the routing
 tripwire) still run and still pass.
 
-Line 7a and ``total_income`` do sit ABOVE the workbook's own refusal point and
-are structurally unaffected BY THE SHEET: '1040'!AL74 (line 7a /
-``CapitalGains``) and '1040'!AL77 (``Total_Income``) contain no Birthday_Needed
-guard, and neither does the wages chain feeding them (AL51/AL60). Verified by
-reading the 2025 workbook formulas. They are unreachable only because tenforty's
-refusal is at harvest, which is deliberately coarser than the sheet's: a return
-the sheet declined to finish is not a return we will emit half of.
+Line 7a and ``total_income`` sit ABOVE the sheet's own birthdate refusal:
+'1040'!AL74 (line 7a / ``CapitalGains``) and '1040'!AL77 (``Total_Income``) contain
+no Birthday_Needed guard, and neither does the wages chain feeding them (AL51/AL60).
+Verified by reading the 2025 workbook formulas. They are unreachable only because
+tenforty's probe refusal is at harvest, which is deliberately coarser than the
+sheet's: a return the sheet declined to finish is not a return we will emit half of.
 
 THEREFORE: this file deliberately does NOT reuse ``PARITY_KEYS`` from
-``tests/test_f1040_spine_oracle.py``. That constant contains ``taxable_income``,
-``total_deductions`` and ``total_tax`` — every one of them at or below the
-refusal line. Pointing this test at the shared constant would reawaken exactly
-the trap described above. Keep the narrow, local key set.
+``tests/test_f1040_spine_oracle.py``. Its subject is the capital-loss chain, and
+the shared constant compares figures this file has no expected values for. Keep
+the narrow, local key set.
 
 STANDALONE BY NECESSITY: this scenario is deliberately NOT added to the spine
 parity battery. ``tests/test_f1040_spine_oracle.py``'s routing guard asserts
@@ -128,6 +144,12 @@ LOT_COST_BASIS = LOT_PROCEEDS + LOT_LOSS
 # is the evidence.
 _LINE_7A_FIELD = "topmostSubform[0].Page1[0].f1_70[0]"
 
+_LIVED_APART_XFAIL_REASON = (
+    "MFS workbook compute refuses at harvest on the lived-apart probe: 'Line 6ab "
+    "(SS Bene)'!L29 in 2025 (J34 in 2024, J31 in 2021-2023) reads 'Answer "
+    "question.', and no F1040 input maps to the answer cells"
+)
+
 
 def _mfs_cap() -> int:
     """The MFS §1211(b) cap, read from params — never hardcoded as an INPUT."""
@@ -151,6 +173,7 @@ def _mfs_scenario() -> Scenario:
         year=YEAR,
         filing_status="married_filing_separately",
         birthdate="1985-04-20",
+        spouse_birthdate="1986-06-15",
         state="CA",
         first_name="Taxpayer",
         last_name="Sample",
@@ -222,7 +245,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             raw = fields.get(_LINE_7A_FIELD, {}).get("/V")
         return results, raw
 
-    @pytest.mark.oracle
     def test_mfs_capital_loss_limit_is_half_the_single_cap(self):
         """§1211(b): $3,000 generally, $1,500 married filing separately.
 
@@ -244,13 +266,12 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             "MFS cap must be exactly half the single-filer cap",
         )
 
-    @pytest.mark.oracle
     def test_mfs_scenario_routes_to_the_workbook_not_the_native_spine(self):
-        """Premise check, and a tripwire for the day the spine grows statuses.
+        """Premise check, and a tripwire for the day the spine declares MFS.
 
         The whole scope disclosure in this module's docstring depends on MFS
         being out of native-spine scope. Assert it rather than assume it. WHEN
-        THIS FAILS: the native spine has been extended past single filers —
+        THIS FAILS: the native spine has been extended to MFS —
         that is the designed signal, not a regression. Re-point this file (or
         add a native sibling) at the now-reachable native cap path, and revisit
         the harvest narrowing below, which exists only because the WORKBOOK
@@ -266,16 +287,14 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             self.assertFalse(
                 orch._scenario_in_spine_scope(effective),
                 "MFS scenario now routes to the NATIVE spine. If the spine "
-                "was deliberately extended to more filing statuses, this is "
+                "was deliberately extended to MFS, this is "
                 "the designed signal: this file's scope disclosure and its "
                 "income-section-only harvest are both stale and must be "
                 "revisited.",
             )
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "MFS Deduction-diagnostic refusal fires at harvest, before any "
-        "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_emitted_1040_line_7a_is_the_halved_mfs_cap(self):
         """THE CENTRAL ASSERTION: 1040 line 7a on the filled PDF == -1,500.
 
@@ -303,10 +322,8 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             f"raw Schedule D line 16 total reached line 7a.",
         )
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "MFS Deduction-diagnostic refusal fires at harvest, before any "
-        "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_compute_capital_gain_loss_is_the_halved_mfs_cap(self):
         """Same quantity one layer earlier, to localise a failure.
 
@@ -320,29 +337,24 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["capital_gain_loss"], -cap)
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "MFS Deduction-diagnostic refusal fires at harvest, before any "
-        "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_total_income_is_wages_minus_the_halved_cap(self):
         """Total income (1040 line 9) = wages + the ALLOWED loss, not the full
         loss and not the single-filer-capped loss.
 
         58,500 is distinct from both figures a wrong branch would produce: the
         single/MFJ $3,000 cap gives 57,000, and an uncapped full loss gives
-        52,000. Total income is the last line ABOVE the workbook's MFS
-        birthdate refusal, so it is safe to assert; everything below it
-        (deductions, taxable income, total tax) is not — see the module
+        52,000. Total income is the last line this file asserts; deductions,
+        taxable income and total tax are outside its subject — see the module
         docstring.
         """
         cap = _mfs_cap()
         results, _raw = self._compute_and_emit()
         self.assertEqual(results["total_income"], WAGES - cap)  # 58,500
 
-    @pytest.mark.xfail(strict=True, reason=(
-        "MFS Deduction-diagnostic refusal fires at harvest, before any "
-        "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
+    @pytest.mark.xfail(
+        strict=True, raises=NotImplementedError, reason=_LIVED_APART_XFAIL_REASON)
     def test_schedule_d_line_16_stays_the_true_uncapped_loss(self):
         """Schedule D line 16 is the TRUE net loss (-8,000) even though line 7a
         carries the capped figure. The two lines hold DIFFERENT numbers, and
