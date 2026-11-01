@@ -1,5 +1,6 @@
 """Shared test configuration and helpers."""
 
+import functools
 import os
 import subprocess
 import unittest
@@ -48,13 +49,19 @@ def hoh_facts(year: int) -> HeadOfHouseholdFacts:
 CA_SCOPE_OUT_FIELDS: frozenset[str] = frozenset(a.field for a in _CA_ATTESTATIONS)
 
 
+@functools.cache
 def libreoffice_available() -> bool:
+    # Cached: @needs_libreoffice calls this at decoration (import) time, so an
+    # uncached probe spawns one `soffice --version` per decorated site per
+    # collecting process — including fast-tier (`-m "not oracle"`) runs. One
+    # probe per process is the contract. A stalled probe (TimeoutExpired)
+    # counts as unavailable, same as a missing binary.
     try:
         result = subprocess.run(
             ["soffice", "--version"], capture_output=True, timeout=5,
         )
         return result.returncode == 0
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
 
 
