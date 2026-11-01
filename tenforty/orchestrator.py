@@ -1658,19 +1658,18 @@ class ReturnOrchestrator:
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
                 # scenario whose filer class is outside the declared native
-                # grid (or is EIC-possible) is refused, never routed to the
-                # workbook.
+                # grid is refused, never routed to the workbook.
                 cfg = effective_scenario.config
                 raise NotImplementedError(
                     "Scenario carries a Form 1095-A (Premium Tax Credit) but is "
                     "out of native-1040-spine scope: its filer class is outside "
-                    "the declared native grid. Either (tax year, filing status) "
+                    "the declared native grid. (Tax year, filing status) "
                     f"= ({cfg.year}, "
                     f"{parse_filing_status(cfg.filing_status).value!r}) is not "
-                    "declared in years.NATIVE_SPINE_STATUSES, or the filer is "
-                    "EIC-possible. Form 8962 is supported only on the native "
-                    "spine, so this return is refused. Declare the filer class "
-                    "on the native grid before enabling 8962 for it."
+                    "declared in years.NATIVE_SPINE_STATUSES. Form 8962 is "
+                    "supported only on the native spine, so this return is "
+                    "refused. Declare the filer class on the native grid before "
+                    "enabling 8962 for it."
                 )
             workbook_result = self._compute_1040_via_workbook(effective_scenario)
             # The native spine's f8995.compute refuses (NotImplementedError)
@@ -1678,8 +1677,8 @@ class ReturnOrchestrator:
             # the Form 8995 simple-path threshold, because Form 8995-A (the
             # above-threshold form) is not implemented in v1. That guard lives
             # inside f8995.py, which only runs on the spine path — every
-            # filer class outside the declared native grid (and any
-            # EIC-possible filer) routes here instead, to the XLSX workbook. The 2025 workbook has an `8995`
+            # filer class outside the declared native grid routes here
+            # instead, to the XLSX workbook. The 2025 workbook has an `8995`
             # sheet (simple path) and NO `8995A` sheet, so an above-threshold
             # scenario routed here would silently get a workbook-computed
             # result with no refusal — a wrong number, silently, exactly the

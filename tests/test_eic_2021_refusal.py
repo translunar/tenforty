@@ -146,6 +146,13 @@ class Eic2021GateBoundaryTests(_RoutedTestCase):
         self.assertEqual(result["wages"], OVER_THE_2021_CEILING)
         self.assertNotIn("eic", result)
 
+    def test_a_1095a_filer_over_the_ceiling_computes_natively(self):
+        block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
+        result = self.orch.compute_federal(
+            _scenario(wages=OVER_THE_2021_CEILING, form_1095a=block))
+        self.workbook.assert_not_called()
+        self.assertIn("f8962_net_ptc", result)
+
     def test_no_earned_income_computes_natively(self):
         scenario = _scenario(wages=0.0)
         self.assertFalse(eic_possible(scenario))
