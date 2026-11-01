@@ -9,6 +9,7 @@ from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
 from tenforty.models import RentalProperty, ScheduleK1
 from tenforty.orchestrator import ReturnOrchestrator
+from tenforty.rounding import irs_round
 
 from tests.helpers import REPO_ROOT, make_k1_scenario, needs_libreoffice
 
@@ -75,12 +76,12 @@ class F8582OracleTests(unittest.TestCase):
         # spine, so this key is the spine's pass-through of Form 8582) ...
         self.assertEqual(
             native["f8582_line_11_allowed_loss"],
-            round(f1040["f8582_line_11_oracle"]),
+            irs_round(f1040["f8582_line_11_oracle"]),
         )
         # ... and the workbook's, evaluated separately.
         self.assertEqual(
             native["f8582_line_11_allowed_loss"],
-            round(workbook["f8582_line_11_oracle"]),
+            irs_round(workbook["f8582_line_11_oracle"]),
         )
 
     def test_line_11_matches_xlsx_when_the_limitation_binds(self):
@@ -109,7 +110,7 @@ class F8582OracleTests(unittest.TestCase):
             native["f8582_line_1b_activities_with_loss"])
         self.assertEqual(
             native["f8582_line_11_allowed_loss"],
-            round(workbook["f8582_line_11_oracle"]),
+            irs_round(workbook["f8582_line_11_oracle"]),
         )
 
 
