@@ -2,13 +2,10 @@
 principles and diff every cell against the hand-keyed literals in
 forms.depreciation.tables.
 
-Marked @pytest.mark.oracle — the MACRS tables are year-stable (statutory),
-so this need only run on checkin / pre-release, not every commit. Any
-single-cell diff fails with a table/class/year/month-specific error."""
+Pure Python, no LibreOffice, so it runs in the fast tier. Any single-cell
+diff fails with a table/class/year/month-specific error."""
 
 import unittest
-
-import pytest
 
 from tenforty.forms.depreciation import tables as T
 from tenforty.forms.depreciation.table_generator import (
@@ -27,7 +24,6 @@ from tenforty.forms.depreciation.table_generator import (
 TOLERANCE = 1.5e-4
 
 
-@pytest.mark.oracle
 class TableA1OracleTests(unittest.TestCase):
     def test_regenerates_cell_for_cell(self):
         generated = generate_table_a_1()
@@ -51,7 +47,6 @@ class TableA1OracleTests(unittest.TestCase):
                     )
 
 
-@pytest.mark.oracle
 class TableA6OracleTests(unittest.TestCase):
     def test_regenerates_cell_for_cell(self):
         generated = generate_table_a_6()
@@ -68,7 +63,6 @@ class TableA6OracleTests(unittest.TestCase):
                         )
 
 
-@pytest.mark.oracle
 class TableA7aOracleTests(unittest.TestCase):
     def test_regenerates_cell_for_cell(self):
         generated = generate_table_a_7a()

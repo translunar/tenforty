@@ -7,8 +7,6 @@ earlier cherry-pick). Uses only the module's documented public API
 
 import unittest
 
-import pytest
-
 from tenforty.forms import sch_e_part_ii
 from tenforty.models import ScheduleK1
 from tests.oracles import k1_reference
@@ -16,7 +14,6 @@ from tests.oracles import k1_reference
 from tests.helpers import make_k1_scenario
 
 
-@pytest.mark.oracle
 class SchEPartIIOracleTests(unittest.TestCase):
     def _assert_row_matches(self, letter: str, k1: ScheduleK1, got: dict):
         expected = k1_reference.k1_to_expected_outputs(k1)
