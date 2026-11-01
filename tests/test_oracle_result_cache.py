@@ -2,7 +2,7 @@
 
 The cache wraps compute()'s contract (args in -> dict out), so every test stubs
 the recalculation phases and the subprocess module; no real soffice can launch.
-The template is a synthetic byte string: the stubbed phases never parse it.
+The template is a small synthetic workbook, read only for its defined names.
 """
 
 import datetime
@@ -15,11 +15,31 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import openpyxl
+from openpyxl.workbook.defined_name import DefinedName
+
+from tenforty.mappings.f1040 import F1040
 from tenforty.oracle import engine as engine_mod
 from tenforty.oracle.engine import SpreadsheetEngine
+from tests.helpers import SPREADSHEETS_DIR
 
 _VERSION = "LibreOffice 99.9.9 synthetic"
 _REAL_RECALCULATE = SpreadsheetEngine._recalculate
+
+
+def _write_template(path: Path, stamp: str = "", wages_cell: str = "$A$1") -> None:
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Sheet"
+    workbook.create_sheet("Other")
+    sheet["Z1"] = stamp
+    for name, target in (
+        ("Wages", f"Sheet!{wages_cell}"),
+        ("WagesAlias", "'Sheet'!$A$1"),
+        ("AGI", "Sheet!$A$2"),
+    ):
+        workbook.defined_names[name] = DefinedName(name, attr_text=target)
+    workbook.save(path)
 
 
 def _mapping(inputs=None, outputs=None, sheets=None) -> type:
@@ -51,7 +71,7 @@ class _CacheHarness(unittest.TestCase):
         self.cache_dir = self.tmp / "cache"
         self.template = self.tmp / "templates" / "1040.xlsx"
         self.template.parent.mkdir()
-        self.template.write_bytes(b"synthetic template")
+        _write_template(self.template)
         self.mapping = _mapping()
         self.inputs = {"wages": 100, "other": 2.5}
 
@@ -169,7 +189,7 @@ class KeyComposition(_CacheHarness):
     """Each component of the key must split the entry; the rest must not."""
 
     def _change_template(self) -> None:
-        self.template.write_bytes(b"synthetic template, revised")
+        _write_template(self.template, stamp="revised")
 
     def _change_engine_source(self) -> None:
         copy = self.tmp / "engine_copy.py"
@@ -199,6 +219,13 @@ class KeyComposition(_CacheHarness):
 
     def test_soffice_version(self) -> None:
         self._assert_splits(self._change_soffice_version)
+
+    def test_openpyxl_version(self) -> None:
+        def change() -> None:
+            patcher = patch.object(engine_mod.openpyxl, "__version__", "99.9.9")
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self._assert_splits(change)
 
     def test_one_input_value(self) -> None:
         self._assert_splits(None, inputs={"wages": 101, "other": 2.5})
@@ -256,6 +283,118 @@ class KeyComposition(_CacheHarness):
         self.assertEqual(self.recalculate.call_count, 1)
 
 
+class InputsSharingACellBypassTheCache(_CacheHarness):
+    """_write_inputs is last-write-wins and the key sorts inputs, so inputs that
+    share a cell could give two answers under one key. Those computes never cache.
+    """
+
+    def _assert_bypassed(self, mapping, inputs) -> None:
+        before = engine_mod.cache_stats()
+        self.compute(mapping=mapping, inputs=inputs)
+        self.compute(mapping=mapping, inputs=dict(reversed(list(inputs.items()))))
+        after = engine_mod.cache_stats()
+        self.assertEqual(self.recalculate.call_count, 2)
+        self.assertEqual(self.entries(), [])
+        self.assertEqual(after["bypasses"] - before["bypasses"], 2)
+        self.assertEqual(after["hits"], before["hits"])
+        self.assertEqual(after["misses"], before["misses"])
+        self.run_mock.assert_not_called()
+
+    def test_same_sheet_and_cell_ref(self) -> None:
+        self._assert_bypassed(
+            _mapping(inputs={"a": "C3", "b": "C3"},
+                     sheets={"a": "Sheet", "b": "Sheet", "tax": "Sheet"}),
+            {"a": 1, "b": 2})
+
+    def test_same_cell_in_a_different_spelling(self) -> None:
+        self._assert_bypassed(
+            _mapping(inputs={"a": "C3", "b": "$c$3"},
+                     sheets={"a": "Sheet", "b": "Sheet", "tax": "Sheet"}),
+            {"a": 1, "b": 2})
+
+    def test_two_defined_names_for_one_cell(self) -> None:
+        self._assert_bypassed(
+            _mapping(inputs={"a": "Wages", "b": "WagesAlias"}), {"a": 1, "b": 2})
+
+    def test_defined_name_and_direct_ref_for_one_cell(self) -> None:
+        self._assert_bypassed(
+            _mapping(inputs={"a": "Wages", "b": "A1"},
+                     sheets={"b": "Sheet", "tax": "Sheet"}),
+            {"a": 1, "b": 2})
+
+    def test_equal_values_still_bypass(self) -> None:
+        self._assert_bypassed(
+            _mapping(inputs={"a": "Wages", "b": "WagesAlias"}), {"a": 1, "b": 1})
+
+    def test_unreadable_template_bypasses(self) -> None:
+        self.template.write_bytes(b"not a workbook")
+        self._assert_bypassed(self.mapping, {"wages": 1})
+
+    def test_input_with_no_route_reaches_the_real_writer(self) -> None:
+        """_write_inputs owns this refusal (stubbed here), so it must be reached."""
+        mapping = _mapping(inputs={"a": "C3"})
+        self.compute(mapping=mapping, inputs={"a": 1})
+        self.write_inputs.assert_called_once()
+        self.assertEqual(self.entries(), [])
+
+    def _assert_cached(self, mapping, inputs) -> None:
+        before = engine_mod.cache_stats()
+        self.compute(mapping=mapping, inputs=inputs)
+        self.compute(mapping=mapping, inputs=inputs)
+        self.assertEqual(self.recalculate.call_count, 1)
+        self.assertEqual(
+            engine_mod.cache_stats()["bypasses"], before["bypasses"])
+
+    def test_sharing_in_the_map_only_does_not_bypass(self) -> None:
+        self._assert_cached(
+            _mapping(inputs={"a": "Wages", "b": "WagesAlias"}), {"a": 1})
+
+    def test_unmapped_inputs_cannot_share_a_cell(self) -> None:
+        self._assert_cached(
+            _mapping(inputs={"a": "Wages"}), {"a": 1, "unmapped": 2, "also": 3})
+
+    def test_same_ref_on_different_sheets_does_not_bypass(self) -> None:
+        self._assert_cached(
+            _mapping(inputs={"a": "C3", "b": "C3"},
+                     sheets={"a": "Sheet", "b": "Other", "tax": "Sheet"}),
+            {"a": 1, "b": 2})
+
+    def test_defined_names_are_read_once_per_template_content(self) -> None:
+        real_load = openpyxl.load_workbook
+        with patch.object(engine_mod.openpyxl, "load_workbook",
+                          side_effect=real_load) as load:
+            self.compute()
+            self.compute(inputs={"wages": 1})
+        self.assertLessEqual(load.call_count, 1)
+
+    def test_revised_template_is_resolved_afresh(self) -> None:
+        """Same path, new bytes: the name no longer lands on the other input's cell."""
+        mapping = _mapping(inputs={"a": "Wages", "b": "A1"},
+                           sheets={"b": "Sheet", "tax": "Sheet"})
+        inputs = {"a": 1, "b": 2}
+        self.compute(mapping=mapping, inputs=inputs)
+        self.assertEqual(self.entries(), [])
+        _write_template(self.template, wages_cell="$B$9")
+        self.compute(mapping=mapping, inputs=inputs)
+        self.assertEqual(len(self.entries()), 1)
+
+    def test_real_k1_entity_type_keys(self) -> None:
+        """The flattener supplies one entity-type key per K-1, so real computes
+        cache; a caller supplying both reaches the shared cell and bypasses."""
+        template = SPREADSHEETS_DIR / "federal" / "2025" / "1040.xlsx"
+        before = engine_mod.cache_stats()
+        self.compute(mapping=F1040, template=template,
+                     inputs={"k1_a_entity_type_s_corp": "X"})
+        self.assertEqual(engine_mod.cache_stats()["bypasses"], before["bypasses"])
+        self.assertEqual(len(self.entries()), 1)
+        self.compute(mapping=F1040, template=template,
+                     inputs={"k1_a_entity_type_s_corp": "X",
+                             "k1_a_entity_type_partnership": "X"})
+        self.assertEqual(
+            engine_mod.cache_stats()["bypasses"], before["bypasses"] + 1)
+        self.assertEqual(len(self.entries()), 1)
+
+
 class Disabled(_CacheHarness):
     """Unset, or anything other than exactly "1", means today's behavior."""
 
@@ -272,7 +411,9 @@ class Disabled(_CacheHarness):
 
     def test_unset(self) -> None:
         self.assertNotIn("TENFORTY_ORACLE_CACHE", os.environ)
-        self._assert_uncached()
+        with patch.object(engine_mod.openpyxl, "load_workbook") as load:
+            self._assert_uncached()
+        load.assert_not_called()
 
     def test_other_values(self) -> None:
         for value in ("0", "", "true", "yes", "11", " 1"):

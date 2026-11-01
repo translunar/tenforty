@@ -12,15 +12,27 @@ An entry's name is the sha256 of a canonical serialization of ALL of:
   - the `inputs` dict, sorted by key, each value by repr (so 1 and 1.0 differ);
   - `input_map`, `output_map` and `sheet_map`, each as sorted items;
   - the bytes of this file (any engine change invalidates everything);
+  - the openpyxl version (inputs are written and answers read through it);
   - the `soffice --version` string, probed at most once per process and only while
     caching is on. If the probe fails, nothing is cached in that process.
 
 `year` and the mapping class are deliberately absent: they act only through the
 three maps. Anything else compute() reads must be added to _cache_key.
 
+Computes whose supplied inputs resolve to one cell bypass the cache: the workbook
+keeps whichever was written last, but the key sorts inputs, so one key could stand
+for two answers. cache_stats() counts these as bypasses.
+
 Failure policy: open to recomputation, closed to wrong answers. Any cache-layer
 exception, unusable entry, or answer JSON would not reproduce exactly means the real
 compute runs; errors from the real compute still propagate and are never stored.
+
+Where to enable it: the synthetic test tier only.
+  - Keep it off for real-return computes. Outputs are stored as plain figures, even
+    though inputs appear only as a hash.
+  - Keep it off for fast-tier and evidentiary gate runs. A hit launches nothing, so
+    a warm entry can hide a test that reaches soffice without the oracle marker.
+    The engine does not police this; the test harness wiring must.
 """
 
 import datetime
@@ -46,12 +58,12 @@ _SOFFICE_LOCK = threading.Lock()
 
 _CACHE_ENV = "TENFORTY_ORACLE_CACHE"
 _CACHE_DIR_ENV = "TENFORTY_ORACLE_CACHE_DIR"
-_cache_counts = {"hits": 0, "misses": 0}
+_cache_counts = {"hits": 0, "misses": 0, "bypasses": 0}
 _cache_counts_lock = threading.Lock()
 
 
 def cache_stats() -> dict[str, int]:
-    """Process-level answer-cache counters: a snapshot of hits and misses."""
+    """Process-level answer-cache counters: a snapshot of hits, misses, bypasses."""
     with _cache_counts_lock:
         return dict(_cache_counts)
 
@@ -91,6 +103,51 @@ def _soffice_version() -> str | None:
     return version if result.returncode == 0 and version else None
 
 
+def _template_digest(spreadsheet_path: Path) -> str:
+    return hashlib.sha256(spreadsheet_path.read_bytes()).hexdigest()
+
+
+@functools.cache
+def _defined_names(template_digest: str, spreadsheet_path: Path) -> dict[str, object]:
+    """The template's defined names, memoized by content so warm runs stay cheap."""
+    workbook = openpyxl.load_workbook(spreadsheet_path, read_only=True)
+    try:
+        return {name.name: name for name in workbook.defined_names.values()}
+    finally:
+        workbook.close()
+
+
+def _inputs_share_a_cell(
+    spreadsheet_path: Path,
+    input_map: dict[str, str],
+    sheet_map: dict[str, str],
+    inputs: dict[str, object],
+) -> bool:
+    """Whether this compute must skip the cache, resolving cells as _write_inputs does.
+
+    Also True when a cell cannot be resolved: the real path then raises its own error.
+    """
+    try:
+        names = _defined_names(_template_digest(spreadsheet_path), spreadsheet_path)
+        targets: set[tuple[str, str]] = set()
+        for input_key in inputs:
+            if input_key not in input_map:
+                continue
+            cell_ref = input_map[input_key]
+            if cell_ref in names:
+                target = _resolve_named_range(names[cell_ref])
+            elif input_key in sheet_map:
+                target = (sheet_map[input_key], cell_ref.replace("$", "").upper())
+            else:
+                return True
+            if target in targets:
+                return True
+            targets.add(target)
+        return False
+    except Exception:
+        return True
+
+
 def _cache_key(
     spreadsheet_path: Path,
     input_map: dict[str, str],
@@ -101,12 +158,13 @@ def _cache_key(
 ) -> str:
     """Hash every workbook-side dependency; see the module docstring."""
     canonical = json.dumps({
-        "template": hashlib.sha256(spreadsheet_path.read_bytes()).hexdigest(),
+        "template": _template_digest(spreadsheet_path),
         "inputs": [[key, repr(inputs[key])] for key in sorted(inputs)],
         "input_map": sorted(input_map.items()),
         "output_map": sorted(output_map.items()),
         "sheet_map": sorted(sheet_map.items()),
         "engine": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "openpyxl": openpyxl.__version__,
         "soffice": soffice_version,
     }, sort_keys=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
@@ -234,18 +292,21 @@ class SpreadsheetEngine:
 
         entry = None
         if _cache_enabled():
-            entry = _cache_entry(
-                spreadsheet_path, input_map, output_map, sheet_map, inputs,
-            )
-            cached = _cache_read(entry, output_map) if entry else None
-            if cached is not None:
-                # DELIBERATE: A CACHE HIT SKIPS _assert_oracle_sanctioned. The
-                # sanction guards LibreOffice LAUNCHES, not answer reuse, and a
-                # hit launches no recalculation. The guard stays at the top of
-                # _recalculate, so every miss still passes through it.
-                _count_cache("hits")
-                return cached
-            _count_cache("misses")
+            if _inputs_share_a_cell(spreadsheet_path, input_map, sheet_map, inputs):
+                _count_cache("bypasses")
+            else:
+                entry = _cache_entry(
+                    spreadsheet_path, input_map, output_map, sheet_map, inputs,
+                )
+                cached = _cache_read(entry, output_map) if entry else None
+                if cached is not None:
+                    # DELIBERATE: A CACHE HIT SKIPS _assert_oracle_sanctioned. The
+                    # sanction guards LibreOffice LAUNCHES, not answer reuse, and a
+                    # hit launches no recalculation. The guard stays at the top of
+                    # _recalculate, so every miss still passes through it.
+                    _count_cache("hits")
+                    return cached
+                _count_cache("misses")
 
         work_dir = work_dir or Path("/tmp/tenforty_work")
         work_dir.mkdir(parents=True, exist_ok=True)
