@@ -4,8 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import pytest
-
 from tenforty.forms import f8582 as form_f8582
 from tenforty.forms import sch_e as form_sch_e
 from tenforty.forms import sch_e_part_ii as form_sch_e_part_ii
@@ -59,7 +57,6 @@ class F8582OracleTests(unittest.TestCase):
       result to the native form compute -- ``compute_federal`` would refuse.
     """
 
-    @pytest.mark.oracle
     def test_line_11_matches_xlsx(self):
         # K-1 loss 28,000 against rental income 3,000 + the 25,000 allowance:
         # allowed in full, nothing suspended.
@@ -86,7 +83,6 @@ class F8582OracleTests(unittest.TestCase):
             round(workbook["f8582_line_11_oracle"]),
         )
 
-    @pytest.mark.oracle
     def test_line_11_matches_xlsx_when_the_limitation_binds(self):
         # K-1 loss 30,000: 2,000 more than income + allowance, so part is
         # suspended. The native return refuses this shape, so the workbook is

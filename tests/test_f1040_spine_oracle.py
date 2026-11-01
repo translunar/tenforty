@@ -27,8 +27,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import pytest
-
 from tenforty.mappings.f1040 import F1040, WORKBOOK_KEY_EXCLUSIONS
 from tenforty.models import FilingStatus
 from tenforty.orchestrator import ReturnOrchestrator
@@ -167,7 +165,6 @@ class SpineParityTests(unittest.TestCase):
     the year-seam proof (same spine, swapped params, matches that year's
     workbook) runs for every year that has an oracle to match."""
 
-    @pytest.mark.oracle
     def test_native_matches_every_workbook_pennywise(self):
         # Every DECLARED (year, filing status) of every workbook year.
         for year in year_manifest.WORKBOOK_YEARS:

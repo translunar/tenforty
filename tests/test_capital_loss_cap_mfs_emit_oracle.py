@@ -222,7 +222,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             raw = fields.get(_LINE_7A_FIELD, {}).get("/V")
         return results, raw
 
-    @pytest.mark.oracle
     def test_mfs_capital_loss_limit_is_half_the_single_cap(self):
         """§1211(b): $3,000 generally, $1,500 married filing separately.
 
@@ -244,7 +243,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
             "MFS cap must be exactly half the single-filer cap",
         )
 
-    @pytest.mark.oracle
     def test_mfs_scenario_routes_to_the_workbook_not_the_native_spine(self):
         """Premise check, and a tripwire for the day the spine grows statuses.
 
@@ -275,7 +273,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
     @pytest.mark.xfail(strict=True, reason=(
         "MFS Deduction-diagnostic refusal fires at harvest, before any "
         "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
     def test_emitted_1040_line_7a_is_the_halved_mfs_cap(self):
         """THE CENTRAL ASSERTION: 1040 line 7a on the filled PDF == -1,500.
 
@@ -306,7 +303,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
     @pytest.mark.xfail(strict=True, reason=(
         "MFS Deduction-diagnostic refusal fires at harvest, before any "
         "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
     def test_compute_capital_gain_loss_is_the_halved_mfs_cap(self):
         """Same quantity one layer earlier, to localise a failure.
 
@@ -323,7 +319,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
     @pytest.mark.xfail(strict=True, reason=(
         "MFS Deduction-diagnostic refusal fires at harvest, before any "
         "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
     def test_total_income_is_wages_minus_the_halved_cap(self):
         """Total income (1040 line 9) = wages + the ALLOWED loss, not the full
         loss and not the single-filer-capped loss.
@@ -342,7 +337,6 @@ class MFSCapReachesEmittedPdfTests(unittest.TestCase):
     @pytest.mark.xfail(strict=True, reason=(
         "MFS Deduction-diagnostic refusal fires at harvest, before any "
         "figure is produced; spouse-birthdate unit restores reachability"))
-    @pytest.mark.oracle
     def test_schedule_d_line_16_stays_the_true_uncapped_loss(self):
         """Schedule D line 16 is the TRUE net loss (-8,000) even though line 7a
         carries the capped figure. The two lines hold DIFFERENT numbers, and

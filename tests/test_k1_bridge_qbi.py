@@ -4,8 +4,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from tenforty.forms import f1120s
 from tenforty.models import (
     Address, EntityType, FilingStatus, Form1099INT, K1Allocation,
@@ -251,7 +249,6 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     `WorkbookQbiThresholdGuardUnitTests` below (mocked workbook, MFS vehicle,
     above- and below-threshold, attestation and missing-key cases)."""
 
-    @pytest.mark.oracle
     def test_below_threshold_still_computes_via_workbook(self):
         """8,000 of wages + 10,000 of K-1 QBI income, MFS: the return routes
         to the workbook; taxable income before QBI (wages + K-1 less the MFS
