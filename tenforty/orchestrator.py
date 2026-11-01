@@ -1215,6 +1215,32 @@ def refuse_eic_with_child_candidate(scenario: Scenario) -> None:
         "hand.")
 
 
+# Ruling R-S8-21: tax year 2021 is feature-frozen and its native EIC will never
+# be built, so the transitional workbook route is closed for this year.
+EIC_NEVER_NATIVE_YEAR = 2021
+
+
+def refuse_eic_2021_not_modeled(scenario: Scenario) -> None:
+    """FAIL-CLOSED, pre-split (ruling R-S8-21): a 2021 return that may qualify
+    for the EIC refuses on every filing status, rather than reach the workbook
+    or compute natively with no credit. Keys on ``eic_possible``, which leans
+    toward refusing. Runs after ``refuse_dependents`` and
+    ``refuse_eic_with_child_candidate`` in the compute core and the emit
+    chokepoint, so a return those refuse names that year-independent cause."""
+    if (scenario.config.year != EIC_NEVER_NATIVE_YEAR
+            or not eic_possible(scenario)):
+        return
+    raise NotImplementedError(
+        "eic_2021_not_modeled: this return may qualify for the Earned Income "
+        "Credit: its earned income and estimated AGI are below the 2021 EIC "
+        "income ceiling. That test is deliberately conservative, so the "
+        "return may not actually qualify. tenforty does not model the 2021 "
+        "Earned Income Credit: the American Rescue Plan Act's one-year rules "
+        "are permanently out of scope. Computing without the credit could "
+        "understate the refund, so this return is refused. File this return "
+        "by hand.")
+
+
 _EIC_FACT_LABELS = {
     "ssn_valid_for_employment": "has no SSN valid for the EIC",
     "nonresident_alien_any_part_of_year":
@@ -1442,7 +1468,10 @@ class ReturnOrchestrator:
         # spine would compute such a return with no credit at all. It
         # retires cell by cell as years.NATIVE_EIC_STATUSES grows, and is
         # deleted when that grid covers every SINGLE/MFJ spine cell
-        # (TransitionalRoutingEndpointTests goes red then).
+        # (TransitionalRoutingEndpointTests goes red then). 2021's row stays
+        # empty for good (ruling R-S8-21): those returns refuse ahead of this
+        # predicate (refuse_eic_2021_not_modeled), so that row is
+        # refusal-terminal, never native, and takes no workbook route.
         return (year_manifest.native_eic_supports(year, status)
                 or not eic_possible(effective_scenario))
 
@@ -1624,23 +1653,23 @@ class ReturnOrchestrator:
         # and none computes the EIC with a qualifying child (spec §7.1).
         refuse_dependents(effective_scenario)
         refuse_eic_with_child_candidate(effective_scenario)
+        refuse_eic_2021_not_modeled(effective_scenario)
         if not self._scenario_in_spine_scope(effective_scenario):
             if effective_scenario.form_1095a is not None:
                 # Form 8962 is supported only on the native spine. A 1095-A
                 # scenario whose filer class is outside the declared native
-                # grid (or is EIC-possible) is refused, never routed to the
-                # workbook.
+                # grid is refused, never routed to the workbook.
                 cfg = effective_scenario.config
                 raise NotImplementedError(
                     "Scenario carries a Form 1095-A (Premium Tax Credit) but is "
                     "out of native-1040-spine scope: its filer class is outside "
-                    "the declared native grid. Either (tax year, filing status) "
+                    "the declared native grid. (Tax year, filing status) "
                     f"= ({cfg.year}, "
                     f"{parse_filing_status(cfg.filing_status).value!r}) is not "
-                    "declared in years.NATIVE_SPINE_STATUSES, or the filer is "
-                    "EIC-possible. Form 8962 is supported only on the native "
-                    "spine, so this return is refused. Declare the filer class "
-                    "on the native grid before enabling 8962 for it."
+                    "declared in years.NATIVE_SPINE_STATUSES. Form 8962 is "
+                    "supported only on the native spine, so this return is "
+                    "refused. Declare the filer class on the native grid before "
+                    "enabling 8962 for it."
                 )
             workbook_result = self._compute_1040_via_workbook(effective_scenario)
             # The native spine's f8995.compute refuses (NotImplementedError)
@@ -1648,8 +1677,8 @@ class ReturnOrchestrator:
             # the Form 8995 simple-path threshold, because Form 8995-A (the
             # above-threshold form) is not implemented in v1. That guard lives
             # inside f8995.py, which only runs on the spine path — every
-            # filer class outside the declared native grid (and any
-            # EIC-possible filer) routes here instead, to the XLSX workbook. The 2025 workbook has an `8995`
+            # filer class outside the declared native grid routes here
+            # instead, to the XLSX workbook. The 2025 workbook has an `8995`
             # sheet (simple path) and NO `8995A` sheet, so an above-threshold
             # scenario routed here would silently get a workbook-computed
             # result with no refusal — a wrong number, silently, exactly the
@@ -2500,6 +2529,7 @@ class ReturnOrchestrator:
         # prepared (the same refusals the compute core runs).
         refuse_dependents(scenario)
         refuse_eic_with_child_candidate(scenario)
+        refuse_eic_2021_not_modeled(scenario)
         if (scenario.schedule_c_businesses
                 and scenario.config.year
                 not in year_manifest.SCHEDULE_C_FAMILY_YEARS):

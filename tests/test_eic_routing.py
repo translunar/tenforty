@@ -1,7 +1,7 @@
 """Routing after the childless-EITC routing change (spec §7, Option B;
-ruling R-S6-1 transitional routing). Equivalence with the pre-change
-behavior, the transitional clause's anti-silent-drop coverage, and its
-enforced endpoint. All identities synthetic; amounts from params.
+ruling R-S6-1 transitional routing; 2021 refuses, ruling R-S8-21). Equivalence
+with the pre-change behavior and the transitional clause's anti-silent-drop
+coverage. All identities synthetic; amounts from params.
 
 Spec §7.2 hazard box (the checklist): an EIC-possible head-of-household
 return must never compute natively — the childless credit is zero for head
@@ -16,7 +16,6 @@ from pathlib import Path
 from unittest import mock
 
 from tenforty import years
-from tenforty.mappings.f1040 import F1040
 from tenforty.models import FilingStatus, Scenario
 from tenforty.orchestrator import (
     DEPENDENTS_REFUSAL,
@@ -153,36 +152,33 @@ class DeclaredCellComputesNativelyTests(unittest.TestCase):
 
 class TransitionalCoverageTests(unittest.TestCase):
     """Ruling R-S6-1: no EIC-possible return may EVER produce a native
-    result with the credit absent. On a SINGLE/MFJ spine cell not yet in
-    years.NATIVE_EIC_STATUSES it keeps the workbook route (which harvests
-    line 27 — the oracle tier proves the printed credit); on a declared one
-    the native result carries the credit's determination. Each undeclared
-    cell's instance dies when that cell lands."""
+    result with the credit absent. A SINGLE/MFJ spine cell not in
+    years.NATIVE_EIC_STATUSES is a 2021 cell, and it refuses (ruling
+    R-S8-21); on a declared one the native result carries the credit's
+    determination."""
 
     def test_no_eic_possible_return_computes_natively_without_the_credit(self):
         for year, status in _spine_cells():
             with self.subTest(year=year, status=status.value):
                 scenario = _eic_possible_childless(year, status)
                 self.assertTrue(eic_possible(scenario))
-                result = _route(self, scenario)
                 if years.native_eic_supports(year, status.value):
-                    self.assertIn("eic_determination", result)
+                    self.assertIn("eic_determination", _route(self, scenario))
                 else:
-                    self.assertEqual(result, "workbook")
-                    self.assertEqual(F1040.get_outputs(year).get("eic"),
-                                     "EIC")
+                    with self.assertRaises(NotImplementedError) as ctx:
+                        _route(self, scenario)
+                    self.assertTrue(str(ctx.exception).startswith(
+                        "eic_2021_not_modeled: "))
 
 
 class TransitionalRoutingEndpointTests(unittest.TestCase):
-    """Ruling R-S6-1's enforced endpoint. The transitional clause in
-    ReturnOrchestrator._scenario_in_spine_scope exists only while some
-    SINGLE/MFJ spine cell has no native childless credit. When
-    years.NATIVE_EIC_STATUSES covers them all, this goes RED: delete the
-    clause (scope becomes the pure grid lookup of spec §7.1), the
-    undeclared-cell branch of TransitionalCoverageTests, and this test, in
-    that same commit."""
+    """Ruling R-S8-21 replaces R-S6-1's planned endpoint: 2021's cells never
+    gain a native credit, so the clause in
+    ReturnOrchestrator._scenario_in_spine_scope stays. The undeclared cells
+    are exactly 2021's, which refuse; any other cell here is a new gap."""
 
-    def test_some_single_or_mfj_cell_still_lacks_the_native_credit(self):
+    def test_only_2021_lacks_the_native_credit(self):
         missing = [(y, s.value) for y, s in _spine_cells()
                    if not years.native_eic_supports(y, s.value)]
-        self.assertNotEqual(missing, [])
+        self.assertEqual(missing, [(2021, "single"),
+                                   (2021, "married_filing_jointly")])

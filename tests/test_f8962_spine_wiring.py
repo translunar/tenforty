@@ -28,20 +28,20 @@ from tenforty.models import (
     W2,
 )
 from tenforty.orchestrator import ReturnOrchestrator
-from tests.helpers import (
-    scope_out_attestation_defaults, transitional_eic_year)
+from tests.helpers import scope_out_attestation_defaults
 
 REPO_ROOT = Path(__file__).parent.parent
 
 
 def _scenario(wages: float, withheld: float, form_1095a=None,
-              year: int = 2025) -> Scenario:
-    """Single-filer W-2-only scenario. AGI == wages (no adjustments), so the
-    8962 MAGI the orchestrator derives is wages + block.tax_exempt_interest."""
+              year: int = 2025, filing_status: str = "single") -> Scenario:
+    """W-2-only scenario, single by default. AGI == wages (no adjustments), so
+    the 8962 MAGI the orchestrator derives is wages +
+    block.tax_exempt_interest."""
     return Scenario(
         config=TaxReturnConfig(
             year=year,
-            filing_status="single",
+            filing_status=filing_status,
             birthdate="1990-06-15",
             state="TX",
             **scope_out_attestation_defaults(),
@@ -120,16 +120,13 @@ class F8962SpineWiringTests(unittest.TestCase):
         # kept out of the line-16-only total_tax.
         self.assertEqual(with_block["total_tax"], without["total_tax"])
 
-    def test_c_eic_possible_1095a_scenario_refuses_workbook_fallback(self):
-        # Wages below the EIC ceiling → out of native-spine scope. With a
-        # 1095-A present, silent workbook fallback would drop the PTC, so the
-        # orchestrator must refuse rather than route to the (8962-less) workbook.
-        # The newest still-transitional cell (ruling R-S8-6): only a cell
-        # whose childless credit is not native yet still routes out
-        # (R-S6-1); a declared cell computes natively (NativeEicWithPtcTests).
+    def test_c_out_of_grid_1095a_scenario_refuses_workbook_fallback(self):
+        # MFS is outside the native grid. With a 1095-A present, silent
+        # workbook fallback would drop the PTC, so the orchestrator must refuse
+        # rather than route to the (8962-less) workbook.
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
         scenario = _scenario(10_000, 500, block,
-                             year=transitional_eic_year("single"))
+                             filing_status="married_filing_separately")
         with self.assertRaisesRegex(
             NotImplementedError, "out of native-1040-spine scope",
         ):
@@ -183,18 +180,23 @@ class CarveOutMessageTests(unittest.TestCase):
         )
 
     def _message(self):
-        # The newest still-transitional cell (R-S8-6); see test_c above.
+        # Outside the native grid; see test_c above.
         block = Form1095A(months=_months(premium=500, slcsp=500, aptc=0))
         with self.assertRaises(NotImplementedError) as ctx:
             self.orch.compute_federal(_scenario(
                 10_000, 500, block,
-                year=transitional_eic_year("single")))
+                filing_status="married_filing_separately"))
         return str(ctx.exception)
 
     def test_message_names_the_declared_native_grid(self):
         message = self._message()
         self.assertIn("out of native-1040-spine scope", message)
         self.assertIn("years.NATIVE_SPINE_STATUSES", message)
+        self.assertIn("(2025, 'married_filing_separately')", message)
+
+    def test_message_does_not_blame_the_eic(self):
+        # Ruling R-S8-22: no on-grid EIC-possible return reaches this refusal.
+        self.assertNotIn("EIC", self._message())
 
     def test_message_drops_the_stale_no_8962_claim(self):
         message = self._message()

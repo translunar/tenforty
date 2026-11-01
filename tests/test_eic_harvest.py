@@ -6,8 +6,8 @@ The vendor workbook computes the credit into the workbook-scoped `EIC` name
 an unnamed line-32 cell, and sums that into `Tot_Payments` (line 33). Neither
 27 nor 32 was harvested, so the credit reached line 33 while both printed
 blank and the payments section did not foot. Static workbook checks use
-openpyxl (no recalc); the computed amounts are exercised on the oracle tier
-(test_eic_harvest_oracle.py). All identities synthetic.
+openpyxl (no recalc); the computed amounts are compared on the oracle tier
+(test_eic_parity_oracle.py). All identities synthetic.
 """
 import dataclasses
 import re

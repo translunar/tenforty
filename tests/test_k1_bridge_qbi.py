@@ -14,7 +14,7 @@ from tenforty.models import (
 from tenforty.orchestrator import ReturnOrchestrator, _make_k1_from_1120s_allocation
 from tenforty.params.federal import load as load_federal_params
 from tests._scorp_fixtures import _make_v1_scenario
-from tests.helpers import make_k1_scenario, needs_libreoffice, transitional_eic_year
+from tests.helpers import make_k1_scenario, needs_libreoffice
 
 
 def _address():
@@ -234,15 +234,11 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
     reads the harvested taxable income before QBI), so a harvest refusal
     (`Deduction` diagnostic, numeric probe) legitimately preempts it.
 
-    Vehicle (team-lead ruling, declare-fallout): the BELOW-threshold half
-    runs on a SINGLE, EIC-POSSIBLE filer (low wages + a K-1), which routes
-    to the workbook. Since the childless-EITC routing change that holds only
-    on a cell whose childless credit is not native yet (transitional routing,
-    R-S6-1), so the vehicle is the newest still-transitional single cell
-    (tests.helpers.transitional_eic_year, ruling R-S8-6; its figures derive
-    from that year's params, nothing re-derived by hand). It is NOT
-    permanent: it goes red with the planned mass-retirement when no
-    transitional cell remains.
+    Vehicle (ruling R-S8-22): the BELOW-threshold half runs on a 2024 MFS
+    filer, which is outside the native grid and so routes to the workbook;
+    single no longer does (ruling R-S8-21). 2024, not 2025: the 2025 sheet
+    declines an MFS return on the lived-apart question. Its figures derive
+    from that year's params, nothing re-derived by hand.
 
     The ABOVE-threshold half is RETIRED (ruled at back-year-2024 step 8). Its
     end-to-end guard fire was proven at declare-fallout on a 2024
@@ -257,17 +253,17 @@ class BridgeWorkbookRoutingQbiThresholdTests(unittest.TestCase):
 
     @pytest.mark.oracle
     def test_below_threshold_still_computes_via_workbook(self):
-        """8,000 of wages + 10,000 of K-1 QBI income, single, on the newest
-        still-transitional cell: the cheap
-        EIC estimate is under the 0-child ceiling, so the return routes to
-        the workbook; taxable income before QBI (wages + K-1 less the single
+        """8,000 of wages + 10,000 of K-1 QBI income, MFS: the return routes
+        to the workbook; taxable income before QBI (wages + K-1 less the MFS
         standard deduction, from params) is below the threshold and QBI is
         positive, so it must compute -- asserted on the real figures."""
-        single = FilingStatus.SINGLE
-        year = transitional_eic_year(single)
+        mfs = FilingStatus.MARRIED_FILING_SEPARATELY
+        year = 2024
+        # The sheet declines MFS/MFJ with no spouse birthdate.
         scenario = _workbook_qbi_scenario(
-            year, single, wages=8_000.0, qbi=10_000.0)
-        view = load_federal_params(year).for_status(single)
+            year, mfs, wages=8_000.0, qbi=10_000.0,
+            spouse_birthdate="1990-03-05")
+        view = load_federal_params(year).for_status(mfs)
         expected = 8_000 + 10_000 - view.standard_deduction
         self.assertGreater(expected, 0)
         self.assertLess(expected, view.qbi_threshold)

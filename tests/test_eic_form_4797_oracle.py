@@ -18,8 +18,8 @@ credited rows would still pass under it. The catcher for that failure mode
 is the parity file's credited-row NoEICredit == FALSE pin
 (tests/test_eic_parity_oracle.py, R-S7-9a).
 
-2021-2024 credited rows are covered by tests/test_eic_routing_oracle.py
-(every undeclared cell routes to the workbook WITH a credit). All
+2022-2024 credited rows are covered by tests/test_eic_parity_oracle.py; 2021
+EIC-possible returns refuse (ruling R-S8-21). All
 identities synthetic.
 """
 import tempfile

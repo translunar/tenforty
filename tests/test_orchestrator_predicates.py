@@ -410,23 +410,22 @@ class SpineScopeRoutingTests(unittest.TestCase):
         self.assertTrue(self.orch._scenario_in_spine_scope(s))
 
     def test_genuinely_low_income_single_still_routes_out(self) -> None:
-        # UNCHANGED behavior guard: a genuinely low-income single filer (small
-        # wages, no other income → AGI below the ceiling) is *possibly* EIC-
-        # eligible and must still route OUT of the EIC-blind spine to the
-        # workbook. The fix must not pull these into the spine.
+        # A genuinely low-income single filer (small wages, no other income →
+        # AGI below the ceiling) is *possibly* EIC-eligible and stays out of
+        # spine scope. The fix must not pull these into the spine.
         s = make_simple_scenario()
         s.w2s = [self._low_wage()]
         # Ruling R-S6-2: the subject is the estimate (possibly eligible) ...
         self.assertTrue(eic_possible(s))
-        # ... and on the newest cell whose childless credit is not native yet
-        # (transitional routing R-S6-1; ruling R-S8-6) it still routes OUT.
+        # ... and on 2021, whose credit is never native, the scope predicate
+        # says OUT (compute_federal refuses this return, ruling R-S8-21).
         s.config.year = transitional_eic_year("single")
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
 
     def test_capital_loss_does_not_pull_eligible_filer_into_spine(self) -> None:
         # A low-wage filer with a capital LOSS must NOT be routed native by the
         # loss: losses clamp to 0 in the estimate (they never raise it), so this
-        # possibly-eligible filer still routes to the workbook — same as the
+        # possibly-eligible filer stays out of spine scope — same as the
         # no-other-income case.
         s = make_simple_scenario()
         s.w2s = [self._low_wage()]
@@ -436,8 +435,8 @@ class SpineScopeRoutingTests(unittest.TestCase):
             short_term=True,
         )]
         # Ruling R-S6-2: the loss clamps to 0, so the estimate still says
-        # possibly eligible; on the newest still-transitional cell (ruling
-        # R-S8-6) the filer still routes out.
+        # possibly eligible; on 2021 the scope predicate says OUT (ruling
+        # R-S8-21).
         self.assertTrue(eic_possible(s))
         s.config.year = transitional_eic_year("single")
         self.assertFalse(self.orch._scenario_in_spine_scope(s))
