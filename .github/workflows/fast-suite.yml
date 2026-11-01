@@ -10,7 +10,10 @@ concurrency:
 jobs:
   fast:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # GitHub's standard public runners have 4 cores; the suite that takes ~11
+    # min locally (-n 4 on 14 cores) exceeded 45 min there — the first run was
+    # killed by this timeout at 45m while still emitting output.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
