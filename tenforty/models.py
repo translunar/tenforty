@@ -144,6 +144,20 @@ class Form1098:
     mortgage_insurance_premiums: float = 0.0
 
 
+class EntityType(str, Enum):
+    """Pass-through entity type carried on ScheduleK1. YAML fixtures yield
+    strings; str-Enum lets them compare equal to their value string and
+    round-trip through a YAML boundary without a custom resolver.
+
+    Defined ABOVE ScheduleK1, which names it in a field annotation: on
+    Python <= 3.13 class-body annotations evaluate eagerly, so a forward
+    reference here breaks import on the floor version this package declares
+    (caught by the first-ever fast-suite CI run, Python 3.12)."""
+    S_CORP = "s_corp"
+    PARTNERSHIP = "partnership"
+    ESTATE_TRUST = "estate_trust"
+
+
 @dataclass
 class ScheduleK1:
     """A pass-through K-1 normalized into tenforty's unified shape.
@@ -467,15 +481,6 @@ class HeadOfHouseholdFacts:
     qualifying_person: HohQualifyingPerson
     lived_with_spouse_periods: tuple[LivedTogetherPeriod, ...] = ()
     separation_decree_kind: SeparationDecreeKind | None = None
-
-
-class EntityType(str, Enum):
-    """Pass-through entity type carried on ScheduleK1. YAML fixtures yield
-    strings; str-Enum lets them compare equal to their value string and
-    round-trip through a YAML boundary without a custom resolver."""
-    S_CORP = "s_corp"
-    PARTNERSHIP = "partnership"
-    ESTATE_TRUST = "estate_trust"
 
 
 class AccountingMethod(str, Enum):
