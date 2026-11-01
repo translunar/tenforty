@@ -20,6 +20,10 @@ TESTS_DIR = REPO_ROOT / "tests"
 # and justified.
 _MOCKED_ENGINE_ALLOWLIST = {
     "test_oracle_engine.py",  # patches subprocess.run; no real soffice
+    # Answer cache: every test patches subprocess.run and stubs the recalculation
+    # phases; the one real _recalculate call runs under a guard spy that raises
+    # before the launch, so no real soffice is ever invoked.
+    "test_oracle_result_cache.py",
     # Childless-EIC workbook health + answer-adapter mechanics: uses only
     # SpreadsheetEngine._write_inputs (the engine's openpyxl writer, no
     # recalculation), and its one _compute_1040_via_workbook call runs under
