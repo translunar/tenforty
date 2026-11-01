@@ -154,15 +154,21 @@ class NoW2ScheduleCEarnedIncomeTests(unittest.TestCase):
         scn = dataclasses.replace(scn, config=dataclasses.replace(
             scn.config, year=transitional_eic_year("single")))
         self.assertFalse(self._in_scope(scn))
-        # Out of the native spine, Schedule C refuses (the workbook path does
-        # not wire it) -- fail-closed, never a silent native compute -- and
-        # the refusal names the real cause: this filer IS on the declared
-        # grid, rerouted only because the EIC is possible.
+        # Fail-closed, never a silent native compute, naming the real cause
+        # (ruling R-S8-21): the 2021 EIC refusal runs ahead of the workbook.
+        with self.assertRaisesRegex(
+                NotImplementedError, r"^eic_2021_not_modeled: ") as ctx:
+            self.orch.compute_federal(scn)
+        self.assertIn("File this return by hand", str(ctx.exception))
+        self.assertNotIn("filer class declared on the native grid",
+                         str(ctx.exception))
+        # The workbook path's own Schedule C refusal, called directly: no
+        # compute_federal route reaches it for an on-grid filer any more.
+        eff, _ = self.orch._build_effective_scenario(scn)
         with self.assertRaisesRegex(
                 NotImplementedError,
                 r"possibly eligible for the Earned Income Credit") as ctx:
-            self.orch.compute_federal(scn)
-        self.assertIn("File this return by hand", str(ctx.exception))
+            self.orch._compute_1040_via_workbook(eff)
         self.assertNotIn("filer class declared on the native grid",
                          str(ctx.exception))
 
