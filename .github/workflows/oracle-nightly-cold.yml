@@ -27,6 +27,8 @@ jobs:
           soffice --version
           python --version
       - run: python -m pip install -e ".[dev]"
+      - name: Pin the PDF stack to the fleet's versions (CLAUDE.md §5)
+        run: python -m pip install pypdf==6.9.2 reportlab==5.0.0 pillow==12.3.0
       - name: Oracle tier (STRICTLY SERIAL — never -n)
         env:
           TENFORTY_ORACLE_OK: "1"

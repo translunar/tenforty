@@ -9,11 +9,18 @@ from tests.helpers import REPO_ROOT
 SCANNER_PATH = REPO_ROOT / "scripts" / "verify_no_personal_data.py"
 
 
-def _run_scanner(config_path: Path) -> subprocess.CompletedProcess:
+def _run_scanner(
+    config_path: Path, *, public_only: bool = False
+) -> subprocess.CompletedProcess:
     import os
 
     env = dict(os.environ)
     env["TENFORTY_PII_CONFIG"] = str(config_path)
+    # The fail-closed tests assert the NO-ENV behavior, so the CI workflow's
+    # global TENFORTY_PII_PUBLIC_CHECKS_ONLY must never leak into them.
+    env.pop("TENFORTY_PII_PUBLIC_CHECKS_ONLY", None)
+    if public_only:
+        env["TENFORTY_PII_PUBLIC_CHECKS_ONLY"] = "1"
     return subprocess.run(
         [sys.executable, str(SCANNER_PATH)],
         capture_output=True,
@@ -36,6 +43,33 @@ class TestNoPersonalData(unittest.TestCase):
             result.returncode, 0,
             f"Personal data check failed:\n{result.stdout}\n{result.stderr}",
         )
+
+    def test_public_only_env_allows_missing_config(self):
+        """CI mode: config absent + the env var = public checks run, exit 0.
+
+        The gitignored private config can never exist in public CI; the env
+        var (set only by .github/workflows) runs every public check and says
+        loudly that the private denylist layer was skipped."""
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_path = Path(tmp) / "does_not_exist.yaml"
+            result = _run_scanner(missing_path, public_only=True)
+            combined = result.stdout + result.stderr
+            self.assertEqual(
+                result.returncode, 0,
+                f"Public-only mode should pass without the config:\n{combined}",
+            )
+            self.assertIn("private denylist config absent", combined)
+            self.assertIn("Denylist check:", combined)
+            self.assertIn("Git history check:", combined)
+
+    def test_public_only_env_with_config_present_runs_full(self):
+        """The env var changes nothing when the config exists: full scan."""
+        result = _run_scanner(
+            SCANNER_PATH.parent / "personal_data_config.yaml", public_only=True
+        )
+        combined = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, combined)
+        self.assertNotIn("private denylist config absent", combined)
 
     def test_missing_config_fails_closed(self):
         """A missing config file must fail the scan, not warn-and-pass."""

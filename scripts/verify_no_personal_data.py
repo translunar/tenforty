@@ -221,10 +221,23 @@ def main() -> int:
     try:
         raw_patterns = _BUILTIN_DENYLIST + _load_denylist_config(config_path)
     except ConfigError as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        print(f"  Config path: {config_path}", file=sys.stderr)
-        print(f"  {_provisioning_hint(config_path)}", file=sys.stderr)
-        return 1
+        # Public CI opts into running WITHOUT the private denylist layer: the
+        # gitignored config can never exist there by design. Everything else
+        # (builtin denylist, allowlist, heuristic, git history) still runs.
+        # Without this env var a missing config fails closed, as always —
+        # the env is set only by .github/workflows, never locally.
+        if os.environ.get("TENFORTY_PII_PUBLIC_CHECKS_ONLY") == "1":
+            print(
+                "NOTE: private denylist config absent; running PUBLIC checks "
+                "only (TENFORTY_PII_PUBLIC_CHECKS_ONLY=1).",
+                file=sys.stderr,
+            )
+            raw_patterns = list(_BUILTIN_DENYLIST)
+        else:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            print(f"  Config path: {config_path}", file=sys.stderr)
+            print(f"  {_provisioning_hint(config_path)}", file=sys.stderr)
+            return 1
 
     denylist_patterns = [re.compile(p) for p in raw_patterns]
 
