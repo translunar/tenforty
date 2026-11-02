@@ -10,7 +10,9 @@ on:
 jobs:
   oracle-cold:
     runs-on: ubuntu-24.04
-    timeout-minutes: 330
+    # First successful baseline took 5h03m on the 4-core runner; 330 was a
+    # 27-minute margin. GitHub's hard job cap is 6h (360), so run close to it.
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
