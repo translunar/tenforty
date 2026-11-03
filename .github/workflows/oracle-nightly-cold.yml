@@ -2,17 +2,69 @@
 # answer. Cold is automatic — the result cache is opt-in (TENFORTY_ORACLE_CACHE=1)
 # and this job never sets it. Audits the cache and catches oracle regressions
 # within a day. Destination: .github/workflows/oracle-nightly-cold.yml
+#
+# SHARDED across two runner VMs: the whole tier outgrew GitHub's hard 6-hour
+# job cap (two single-job runs timed out at 355m; local serial is 1h57m and
+# the ~3x runner ratio lands right at the cap). soffice stays STRICTLY SERIAL
+# per machine — each shard is its own VM running pytest with no -n.
+# Shard A is an explicit file list; shard B is everything else (-m oracle
+# with A's files ignored), so the shards are disjoint by construction. The
+# census job proves completeness every night: |A| + |B| must equal the full
+# -m oracle collection, so a file added to the repo but missing from a list
+# can never silently drop out of the nightly.
 name: oracle-nightly-cold
 on:
   schedule:
     - cron: "0 9 * * *"   # 09:00 UTC = 1am PST / 2am PDT
   workflow_dispatch:
+env:
+  # Shard A: the emit/e2e-heavy files. Kept in ONE place so the census and
+  # both shards can never disagree about the split.
+  SHARD_A_FILES: >-
+    tests/test_pdf_1040_fill.py
+    tests/test_e2e_full_return.py
+    tests/test_e2e_itemized.py
+    tests/test_e2e_simple_w2.py
+    tests/test_e2e_plan_d.py
+    tests/test_e2e_w2_investments.py
+    tests/test_round_trip.py
+    tests/test_engine.py
+    tests/test_integration.py
+    tests/test_verification.py
 jobs:
-  oracle-cold:
+  census:
     runs-on: ubuntu-24.04
-    # First successful baseline took 5h03m on the 4-core runner; 330 was a
-    # 27-minute margin. GitHub's hard job cap is 6h (360), so run close to it.
-    timeout-minutes: 355
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e ".[dev]"
+      - name: Shards must partition the full oracle set (|A| + |B| == full)
+        env:
+          # Collect-only, no soffice — but the oracle fail-closed guard
+          # exits 4 whenever oracle tests are selected without the opt-in.
+          TENFORTY_ORACLE_OK: "1"
+        run: |
+          set -euo pipefail
+          count() { tail -1 | grep -oE '^[0-9]+'; }
+          IGNORES=""; for f in $SHARD_A_FILES; do IGNORES="$IGNORES --ignore=$f"; done
+          FULL=$(python -m pytest tests/ -m oracle --collect-only -q 2>/dev/null | count)
+          A=$(python -m pytest $SHARD_A_FILES -m oracle --collect-only -q 2>/dev/null | count)
+          B=$(python -m pytest tests/ -m oracle $IGNORES --collect-only -q 2>/dev/null | count)
+          echo "full=$FULL shardA=$A shardB=$B"
+          test "$((A + B))" = "$FULL"
+  oracle-cold:
+    needs: census
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [A, B]
+    runs-on: ubuntu-24.04
+    # Each shard is roughly half of a tier that took >5h55m whole; 330m
+    # leaves margin inside GitHub's 360m hard cap if the split is lopsided.
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -29,7 +81,16 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - name: Pin the PDF stack to the fleet's versions (CLAUDE.md §5)
         run: python -m pip install pypdf==6.9.2 reportlab==5.0.0 pillow==12.3.0
-      - name: Oracle tier (STRICTLY SERIAL — never -n)
+      - name: Oracle tier shard ${{ matrix.shard }} (STRICTLY SERIAL — never -n)
         env:
           TENFORTY_ORACLE_OK: "1"
-        run: PYTHONDONTWRITEBYTECODE=1 python -m pytest tests/ -m oracle -q
+        # --durations=25 feeds the rebalancing of the shard lists with real
+        # per-test runner timings.
+        run: |
+          set -euo pipefail
+          if [ "${{ matrix.shard }}" = "A" ]; then
+            SELECT="$SHARD_A_FILES"
+          else
+            SELECT="tests/"; for f in $SHARD_A_FILES; do SELECT="$SELECT --ignore=$f"; done
+          fi
+          PYTHONDONTWRITEBYTECODE=1 python -m pytest $SELECT -m oracle -q --durations=25
