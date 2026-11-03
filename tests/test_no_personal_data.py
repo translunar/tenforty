@@ -63,13 +63,18 @@ class TestNoPersonalData(unittest.TestCase):
             self.assertIn("Git history check:", combined)
 
     def test_public_only_env_with_config_present_runs_full(self):
-        """The env var changes nothing when the config exists: full scan."""
-        result = _run_scanner(
-            SCANNER_PATH.parent / "personal_data_config.yaml", public_only=True
-        )
-        combined = result.stdout + result.stderr
-        self.assertEqual(result.returncode, 0, combined)
-        self.assertNotIn("private denylist config absent", combined)
+        """The env var changes nothing when the config exists: full scan.
+
+        Uses a temp config, not the real gitignored one — that file can
+        never exist in public CI, so borrowing it makes the test's premise
+        environment-dependent (it failed CI run 41569301597 exactly so)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            valid_path = Path(tmp) / "valid.yaml"
+            valid_path.write_text("denylist_patterns: []\n")
+            result = _run_scanner(valid_path, public_only=True)
+            combined = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, combined)
+            self.assertNotIn("private denylist config absent", combined)
 
     def test_missing_config_fails_closed(self):
         """A missing config file must fail the scan, not warn-and-pass."""
