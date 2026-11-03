@@ -17,20 +17,8 @@ on:
   schedule:
     - cron: "0 9 * * *"   # 09:00 UTC = 1am PST / 2am PDT
   workflow_dispatch:
-env:
-  # Shard A: the emit/e2e-heavy files. Kept in ONE place so the census and
-  # both shards can never disagree about the split.
-  SHARD_A_FILES: >-
-    tests/test_pdf_1040_fill.py
-    tests/test_e2e_full_return.py
-    tests/test_e2e_itemized.py
-    tests/test_e2e_simple_w2.py
-    tests/test_e2e_plan_d.py
-    tests/test_e2e_w2_investments.py
-    tests/test_round_trip.py
-    tests/test_engine.py
-    tests/test_integration.py
-    tests/test_verification.py
+# The shard-A file list lives in .github/oracle-shard-a.txt, shared with
+# oracle-push-warm.yml so the two workflows can never disagree on the split.
 jobs:
   census:
     runs-on: ubuntu-24.04
@@ -48,6 +36,7 @@ jobs:
           TENFORTY_ORACLE_OK: "1"
         run: |
           set -euo pipefail
+          SHARD_A_FILES="$(xargs < .github/oracle-shard-a.txt)"
           count() { tail -1 | grep -oE '^[0-9]+'; }
           IGNORES=""; for f in $SHARD_A_FILES; do IGNORES="$IGNORES --ignore=$f"; done
           FULL=$(python -m pytest tests/ -m oracle --collect-only -q 2>/dev/null | count)
@@ -88,6 +77,7 @@ jobs:
         # per-test runner timings.
         run: |
           set -euo pipefail
+          SHARD_A_FILES="$(xargs < .github/oracle-shard-a.txt)"
           if [ "${{ matrix.shard }}" = "A" ]; then
             SELECT="$SHARD_A_FILES"
           else

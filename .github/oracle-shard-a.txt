@@ -1,0 +1,10 @@
+tests/test_pdf_1040_fill.py
+tests/test_e2e_full_return.py
+tests/test_e2e_itemized.py
+tests/test_e2e_simple_w2.py
+tests/test_e2e_plan_d.py
+tests/test_e2e_w2_investments.py
+tests/test_round_trip.py
+tests/test_engine.py
+tests/test_integration.py
+tests/test_verification.py

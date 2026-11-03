@@ -1,0 +1,75 @@
+# Push-triggered WARM oracle comparison: reruns the oracle tier with the
+# opt-in result cache (TENFORTY_ORACLE_CACHE=1), so an unchanged workbook
+# answer is served from cache in seconds and only what the push invalidated
+# recomputes under LibreOffice. The nightly cold run audits the cache's
+# honesty; this run gives per-push oracle signal at warm cost.
+#
+# Path-filtered: docs-only pushes never trigger it. Superseded pushes cancel.
+# SHARDED like the nightly (the shard-A list is the shared
+# .github/oracle-shard-a.txt): a broad cache miss — engine.py change, new
+# LibreOffice image on the runner — makes this a full COLD run, which does
+# not fit GitHub's 6-hour job cap in one VM. soffice stays strictly serial
+# per machine; each shard is its own VM with no -n.
+name: oracle-push-warm
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tenforty/**"
+      - "tests/**"
+      - "spreadsheets/**"
+      - "pyproject.toml"
+  workflow_dispatch:
+concurrency:
+  group: oracle-warm-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  oracle-warm:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [A, B]
+    runs-on: ubuntu-24.04
+    # Warm is minutes; the budget is for the cold worst case (half-tier).
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install LibreOffice (headless) + fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-calc fonts-liberation
+      - name: Record instrument versions (oracle numbers are per-LO-version)
+        run: |
+          soffice --version
+          python --version
+      - run: python -m pip install -e ".[dev]"
+      - name: Pin the PDF stack to the fleet's versions (CLAUDE.md §5)
+        run: python -m pip install pypdf==6.9.2 reportlab==5.0.0 pillow==12.3.0
+      - name: Restore oracle answer cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tenforty-oracle
+          # Per-shard key so BOTH shards' new entries are saved (a shared
+          # key lets only the first finisher save; the other's entries
+          # would be lost). restore-keys falls back to any prior save of
+          # either shard — a miss just recomputes, the cache is fail-open.
+          key: oracle-cache-${{ runner.os }}-${{ matrix.shard }}-${{ github.sha }}
+          restore-keys: |
+            oracle-cache-${{ runner.os }}-${{ matrix.shard }}-
+            oracle-cache-${{ runner.os }}-
+      - name: Oracle tier shard ${{ matrix.shard }}, cache-warm (STRICTLY SERIAL — never -n)
+        env:
+          TENFORTY_ORACLE_OK: "1"
+          TENFORTY_ORACLE_CACHE: "1"
+        run: |
+          set -euo pipefail
+          SHARD_A_FILES="$(xargs < .github/oracle-shard-a.txt)"
+          if [ "${{ matrix.shard }}" = "A" ]; then
+            SELECT="$SHARD_A_FILES"
+          else
+            SELECT="tests/"; for f in $SHARD_A_FILES; do SELECT="$SELECT --ignore=$f"; done
+          fi
+          PYTHONDONTWRITEBYTECODE=1 python -m pytest $SELECT -m oracle -q --durations=25
