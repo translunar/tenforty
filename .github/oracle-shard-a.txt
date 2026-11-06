@@ -8,3 +8,4 @@ tests/test_round_trip.py
 tests/test_engine.py
 tests/test_integration.py
 tests/test_verification.py
+tests/test_eic_parity_oracle.py
